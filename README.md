@@ -26,7 +26,13 @@ Proscenio fills the gap: rig and animate in Blender, import into Godot 4 as nati
 
 ## Quickstart
 
-The MVP is in progress. Full quickstart will land with the first end-to-end sample.
+The MVP is in progress. Full quickstart will land with the first end-to-end sample. The iteration loop, once both sides ship:
+
+1. Author the character in Blender — bones, sprites, animations.
+2. Run the Proscenio export operator to write a `.proscenio` next to the source.
+3. Drop the `.proscenio` (and its atlas) into your Godot project. The importer regenerates a `.scn` automatically on every reimport.
+4. **Wrap the imported scene** — instance the generated `.scn` in your own `.tscn` and attach scripts there. Scripts and extra nodes on the wrapper survive every re-export from Blender; the imported scene itself is regenerated each time. See [`examples/dummy/`](examples/dummy/) for the worked pattern.
+5. Re-export from Blender whenever the rig or animation changes. Reimport is automatic.
 
 ## Documentation
 

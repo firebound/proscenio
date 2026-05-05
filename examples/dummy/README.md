@@ -10,6 +10,19 @@ Hand-written end-to-end fixture for SPEC 000 Phase 1. Bypasses the Blender expor
 | `dummy.blend` | minimal Blender source matching the hand-written `.proscenio` | yes |
 | `atlas.png` | 256×256 placeholder texture with three labeled 80×80 regions | yes |
 | `generate_atlas.py` | regenerates `atlas.png` from scratch (Pillow required) | text |
+| `Dummy.tscn` + `Dummy.gd` | wrapper scene + script — see the Wrapper scene pattern section below | text |
+
+## Three files, three roles
+
+When you drop this folder into a Godot project, you end up with three layers — keep them straight:
+
+| File | Who writes it | Survives reimport? |
+| --- | --- | --- |
+| `dummy.proscenio` | Blender (or your DCC) — source of truth | rewritten by exporter |
+| `dummy.scn` (generated) | Godot importer regenerates from `dummy.proscenio` | **clobbered** every reimport |
+| `Dummy.tscn` + `Dummy.gd` | you — wraps the imported scene | **untouched** by reimport |
+
+The instance/inherit pattern in `Dummy.tscn` is the canonical way to add scripts and extra nodes (collisions, particles, AI controllers) without losing them when the DCC re-exports. See [SPEC 001](../../specs/001-reimport-merge/STUDY.md) for the full rationale.
 
 ## Anatomy
 
@@ -32,6 +45,16 @@ python -m check_jsonschema --schemafile schemas/proscenio.schema.json examples/d
 
 Should print `ok -- validation done`.
 
+## Wrapper scene pattern
+
+`Dummy.tscn` instances the imported `dummy.scn` and attaches `Dummy.gd` to the wrapper root. This is the recommended way to customize an imported character:
+
+- Scripts live on the wrapper. Reimport never touches the wrapper file.
+- Extra nodes (collision shapes, particle emitters, AI state machines) parent to the wrapper, not to bones inside the imported scene.
+- The imported scene's `AnimationPlayer` is reachable via `find_child("AnimationPlayer")`. To add Godot-authored animations, give the wrapper its *own* `AnimationPlayer` with a second `AnimationLibrary`, and play across both libraries.
+
+If you rename a bone in Blender, any `NodePath` in the wrapper that referenced the old name (`$DummyCharacter/Skeleton2D/old_name`) breaks on the next reimport. Plan renames as cross-DCC operations.
+
 ## Next steps in the spec
 
-This dummy is the input to the Godot importer smoke test (TODO §"Godot importer — make MVP work end-to-end" in [`specs/000-initial-plan/TODO.md`](../../specs/000-initial-plan/TODO.md)).
+This dummy is the input to the Godot importer smoke test (TODO §"Godot importer — make MVP work end-to-end" in [`specs/000-initial-plan/TODO.md`](../../specs/000-initial-plan/TODO.md)) and the worked example for [SPEC 001](../../specs/001-reimport-merge/STUDY.md).

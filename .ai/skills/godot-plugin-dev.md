@@ -42,17 +42,58 @@ godot-plugin/
 
 This plugin runs **only** at editor import time. Generated scenes use built-in nodes only. To verify: open a generated `.tscn` in another Godot project that does not have Proscenio installed — it must work.
 
-## Reimport merge (Phase 2)
+## Reimport behavior
 
-When a `.proscenio` file is reimported and a previous import exists:
+Reimport **always overwrites** the previous output. The importer rebuilds the
+scene from scratch from the current `.proscenio`. This is the resolution of
+[SPEC 001](../../specs/001-reimport-merge/STUDY.md) — Option A. Marker-based
+merge (Option B) is deferred unless concrete demand emerges.
 
-1. Load the existing imported scene from `.godot/imported/`.
-2. Walk both trees in parallel.
-3. Preserve any node not present in the new source `.proscenio` (the user added it).
-4. Preserve scripts attached to source nodes.
-5. Merge animations: replace ones from `.proscenio`, keep user-added ones in the same `AnimationLibrary`.
+The importer logs a single `print_verbose` line when overwriting an existing
+output, so the action is auditable when the user enables verbose mode.
 
-Do not implement until Phase 1 is solid and end-to-end verified.
+## Customizing an imported scene
+
+To attach scripts, extra nodes, or game logic without losing them on every
+reimport, **wrap the imported scene in your own `.tscn`**:
+
+```text
+res://characters/dummy/
+├── dummy.proscenio                    # source — DCC-authored
+├── Dummy.tscn                         # wrapper — yours, never touched
+└── Dummy.gd                           # script attached to the wrapper root
+```
+
+`Dummy.tscn` instances `dummy.proscenio` (Godot transparently uses the
+generated `.scn`). Scripts attach to the wrapper root, not to the imported
+scene's children. Extra nodes (collisions, particles, AI controllers)
+parent to the wrapper.
+
+See [`examples/dummy/Dummy.tscn`](../../examples/dummy/Dummy.tscn) and
+[`examples/dummy/Dummy.gd`](../../examples/dummy/Dummy.gd) for the worked
+documentation-by-example.
+
+### Bone rename caveat
+
+A Blender bone rename invalidates wrapper-scene `NodePath`s referencing the
+old name. `$DummyCharacter/Skeleton2D/torso` breaks if `torso` becomes
+`upper_body`. Plan renames as cross-DCC operations: rename in Blender, then
+fix every wrapper that referenced the old name.
+
+### Adding Godot-authored animations
+
+The imported scene's `AnimationPlayer` holds the default (`""`)
+`AnimationLibrary` populated from the `.proscenio`. To add animations
+authored in Godot:
+
+1. Give the wrapper its **own** `AnimationPlayer`, separate from the imported one.
+2. Create a second `AnimationLibrary`, e.g. `"user"`.
+3. Both libraries can play under the wrapper's logic — call
+   `AnimationPlayer.play("user/my_attack")` for the user-authored library
+   or `imported_player.play("idle")` for the DCC-authored one.
+
+This keeps the boundary clean: DCC-authored animations are owned by the
+exporter, user-authored ones never collide with reimport.
 
 ## Coding rules
 

@@ -106,7 +106,12 @@ func _import(
 	if pack_err != OK:
 		return pack_err
 
-	return ResourceSaver.save(packed, "%s.scn" % save_path)
+	var output_path := "%s.scn" % save_path
+	if ResourceLoader.exists(output_path):
+		print_verbose(
+			"Proscenio: regenerating %s (existing scene will be overwritten)" % output_path
+		)
+	return ResourceSaver.save(packed, output_path)
 
 
 static func _load_atlas(source_file: String, atlas_path: String) -> Texture2D:

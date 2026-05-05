@@ -29,19 +29,10 @@ func _initialize() -> void:
 		_finish()
 		return
 
-	var character := Node2D.new()
-	character.name = data.get("name", "Character")
-
-	var skeleton: Skeleton2D = SkeletonBuilder.build(data.get("skeleton", {}))
-	character.add_child(skeleton)
-	PolygonBuilder.attach_sprites(skeleton, data.get("sprites", []), null)
-
-	var player := AnimationPlayer.new()
-	player.name = "AnimationPlayer"
-	character.add_child(player)
-	AnimationBuilder.populate(player, skeleton, data.get("animations", []))
+	var character := _build_character(data)
 
 	_assert_eq(character.name, "dummy", "root name")
+	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
 	_assert_eq(skeleton.name, "Skeleton2D", "skeleton name")
 
 	var bones := _collect_descendants_of_type(skeleton, "Bone2D")
@@ -55,6 +46,7 @@ func _initialize() -> void:
 	var sprites := _collect_descendants_of_type(skeleton, "Polygon2D")
 	_assert_eq(sprites.size(), 3, "sprite count")
 
+	var player: AnimationPlayer = character.get_node("AnimationPlayer")
 	_assert_true(player.has_animation_library(""), "default animation library present")
 	if player.has_animation_library(""):
 		var lib := player.get_animation_library("")
@@ -64,8 +56,61 @@ func _initialize() -> void:
 		var anim := lib.get_animation("idle")
 		_assert_true(anim.length > 0.0, "animation length > 0")
 
+	_run_idempotency_check(data, character)
+
 	character.free()
 	_finish()
+
+
+func _build_character(data: Dictionary) -> Node2D:
+	var character := Node2D.new()
+	character.name = data.get("name", "Character")
+
+	var skeleton: Skeleton2D = SkeletonBuilder.build(data.get("skeleton", {}))
+	character.add_child(skeleton)
+	PolygonBuilder.attach_sprites(skeleton, data.get("sprites", []), null)
+
+	var player := AnimationPlayer.new()
+	player.name = "AnimationPlayer"
+	character.add_child(player)
+	AnimationBuilder.populate(player, skeleton, data.get("animations", []))
+
+	return character
+
+
+# SPEC 001: re-running the importer on the same `.proscenio` must produce
+# a structurally identical scene. We cannot diff packed-scene bytes
+# headlessly without an editor session, so the equivalence check compares
+# the construction output (node hierarchy + key transforms + animation
+# library) of two independent builds.
+func _run_idempotency_check(data: Dictionary, original: Node2D) -> void:
+	var twin := _build_character(data)
+	_assert_eq(_describe(twin), _describe(original), "idempotent rebuild matches first build")
+	twin.free()
+
+
+func _describe(node: Node) -> String:
+	var lines: PackedStringArray = []
+	_describe_recursive(node, "", lines)
+	return "\n".join(lines)
+
+
+func _describe_recursive(node: Node, prefix: String, out: PackedStringArray) -> void:
+	var line := "%s%s:%s" % [prefix, node.name, node.get_class()]
+	if node is Node2D:
+		var n2d: Node2D = node
+		line += (
+			" pos=(%.3f,%.3f) rot=%.4f scale=(%.3f,%.3f)"
+			% [n2d.position.x, n2d.position.y, n2d.rotation, n2d.scale.x, n2d.scale.y]
+		)
+	if node is AnimationPlayer:
+		var ap: AnimationPlayer = node
+		var libs: PackedStringArray = ap.get_animation_library_list()
+		libs.sort()
+		line += " libs=" + ", ".join(libs)
+	out.append(line)
+	for child: Node in node.get_children():
+		_describe_recursive(child, prefix + "  ", out)
 
 
 func _load_fixture(path: String) -> Dictionary:

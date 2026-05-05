@@ -176,14 +176,24 @@ _OBJECT_PROPS: tuple[tuple[str, str], ...] = (
 
 
 def _hydrate_existing_objects() -> None:
-    """Copy legacy Custom Properties into the new PropertyGroup on register.
+    """Copy legacy Custom Properties into the new PropertyGroup.
 
     Type-mismatched values (e.g. a string in an int slot) are skipped silently
     — the writer's RuntimeError will catch genuine invalid data at export
     time. Objects without the matching Custom Property fall back to the
     PropertyGroup's defaults.
+
+    During Blender's initial startup, ``bpy.data`` is wrapped in
+    ``_RestrictData`` and accessing ``.objects`` raises
+    ``AttributeError``. The function bails out silently in that case;
+    the ``load_post`` handler retries once the current `.blend` finishes
+    loading.
     """
-    for obj in bpy.data.objects:
+    try:
+        objects = list(bpy.data.objects)
+    except AttributeError:
+        return
+    for obj in objects:
         props = getattr(obj, "proscenio", None)
         if props is None:
             continue
@@ -191,6 +201,16 @@ def _hydrate_existing_objects() -> None:
             if custom_key in obj:
                 with contextlib.suppress(TypeError, ValueError):
                     setattr(props, prop_name, obj[custom_key])
+
+
+@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
+def _on_blend_load(_filepath: str) -> None:
+    """Re-hydrate every time a `.blend` finishes loading.
+
+    Persists across Blender's internal reloads so the handler does not
+    drop off when the user opens a different file.
+    """
+    _hydrate_existing_objects()
 
 
 _classes: tuple[type, ...] = (
@@ -205,13 +225,21 @@ def register() -> None:
         bpy.utils.register_class(cls)
     _Object.proscenio = PointerProperty(type=ProscenioObjectProps)
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
+    if _on_blend_load not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(_on_blend_load)
+    # Mid-session enable: bpy.data is real and ready, hydrate immediately.
+    # Initial-startup enable: hits _RestrictData and bails; load_post fires
+    # after the .blend finishes loading.
     _hydrate_existing_objects()
 
 
 def unregister() -> None:
+    if _on_blend_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(_on_blend_load)
     if hasattr(Scene, "proscenio"):
         del Scene.proscenio
     if hasattr(_Object, "proscenio"):
         del _Object.proscenio
     for cls in reversed(_classes):
-        bpy.utils.unregister_class(cls)
+        with contextlib.suppress(RuntimeError):
+            bpy.utils.unregister_class(cls)

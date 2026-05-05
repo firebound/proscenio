@@ -3,7 +3,9 @@ channelbag
 channelbags
 cmdln
 COATOOLS
+contextlib
 crossfade
+dataclass
 discriminator
 dotnet
 euler
@@ -16,6 +18,7 @@ gdtoolkit
 GLTF
 headlessly
 hframes
+hotfixes
 idname
 interp
 jsonschema
@@ -48,6 +51,7 @@ subpanel
 subpanels
 toolkits
 tscn
+unparented
 unskinned
 venv
 verts

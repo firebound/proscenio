@@ -1,84 +1,90 @@
 # SPEC 005 — TODO
 
-Builds the authoring panel that turns the Blender side of Proscenio from "raw Custom Properties on Objects" into a typed, validating, iteration-friendly UI. See [STUDY.md](STUDY.md) for the design rationale and the eight open questions (D1–D8).
+Builds the authoring panel that turns the Blender side of Proscenio from "raw Custom Properties on Objects" into a typed, validating, iteration-friendly UI. See [STUDY.md](STUDY.md) for the design rationale and the eight open questions (D1–D8). Implementation post-mortem realigned the contract so the **PropertyGroup is canonical** and Custom Properties are a legacy read-fallback (`fix(blender): writer reads PropertyGroup first…`).
 
 ## Decision lock-in
 
-- [ ] Confirm D1 — panel lives in the 3D View N-key sidebar (extends `PROSCENIO_PT_main`).
-- [ ] Confirm D2 — `PropertyGroup` wraps existing Custom Properties round-trip; no migration, no breakage.
-- [ ] Confirm D3 — inline validation for cheap checks, lazy validation for I/O-bound ones.
-- [ ] Confirm D4 — two severity levels: error (blocks export) and warning (informs).
-- [ ] Confirm D5 — sticky export path stored per-document on `bpy.types.Scene`.
-- [ ] Confirm D6 — Validate button reports through a dedicated panel section, not a toast.
-- [ ] Confirm D7 — no stub Slots subpanel; SPEC 004 ships its own.
-- [ ] Confirm D8 — vertex-group summary inspector lands in 005; atlas region + ortho helpers defer to 005.1.
+- [x] D1 — panel lives in the 3D View N-key sidebar (extends `PROSCENIO_PT_main`).
+- [x] D2 — `PropertyGroup` is canonical; legacy raw Custom Properties remain readable as a fallback. *(Updated from "wrap" → "canonical with fallback" after the bug where defaults never mirrored.)*
+- [x] D3 — inline validation for cheap checks, lazy validation for I/O-bound ones.
+- [x] D4 — two severity levels: error (blocks export) and warning (informs).
+- [x] D5 — sticky export path stored per-document on `bpy.types.Scene`.
+- [x] D6 — Validate button reports through a dedicated panel section, not a toast.
+- [x] D7 — no stub Slots subpanel; SPEC 004 ships its own.
+- [x] D8 — vertex-group summary inspector lands in 005; atlas region + ortho helpers defer to 005.1.
 
 ## Property infrastructure
 
-- [ ] Add `blender-addon/properties/__init__.py` with two `PropertyGroup` subclasses:
-  - `ProscenioObjectProps` — `sprite_type` (`EnumProperty`: `polygon` / `sprite_frame`), `hframes` / `vframes` / `frame` (`IntProperty` with sane min/default), `centered` (`BoolProperty`). Each has an `update` callback that writes the same Custom Property the writer reads (`proscenio_type`, etc.) so the contract stays unchanged.
-  - `ProscenioSceneProps` — `last_export_path` (`StringProperty(subtype="FILE_PATH")`), `pixels_per_unit` (`FloatProperty(default=100.0, min=0.0001)`).
-- [ ] Register property groups via `bpy.types.Object.proscenio = PointerProperty(type=ProscenioObjectProps)` and `bpy.types.Scene.proscenio = PointerProperty(type=ProscenioSceneProps)`.
-- [ ] On `register()`, hydrate the PropertyGroup from existing Custom Properties so `.blend` files authored before SPEC 005 show their values in the new UI without manual re-entry.
-- [ ] On `unregister()`, clean up: remove `bpy.types.Object.proscenio` and `bpy.types.Scene.proscenio`. Verify no leak between addon reloads.
+- [x] `blender-addon/properties/__init__.py` ships `ProscenioObjectProps` (sprite_type EnumProperty + hframes/vframes/frame IntProperty + centered BoolProperty), `ProscenioValidationIssue` (CollectionProperty item), and `ProscenioSceneProps` (last_export_path + pixels_per_unit + validation_results CollectionProperty + validation_ran BoolProperty).
+- [x] Property groups registered via `bpy.types.Object.proscenio` and `bpy.types.Scene.proscenio` PointerProperties.
+- [x] Hydration deferred via `bpy.app.timers.register(..., first_interval=0.0)` so PointerProperty wiring is stable at write time. `@bpy.app.handlers.persistent` `load_post` handler re-runs hydration after every `.blend` load.
+- [x] Hydration core extracted to `blender-addon/core/hydrate.py` so the pytest suite can exercise it without a Blender session.
+- [x] `unregister()` removes the load_post handler, drops the PointerProperty attributes, and tolerates partial-register fallout via `contextlib.suppress(RuntimeError)` on `unregister_class`.
 
 ## Panel restructure
 
-- [ ] Refactor [`blender-addon/panels/__init__.py`](../../blender-addon/panels/__init__.py): keep `PROSCENIO_PT_main` as the parent panel header (project banner + version) and split current contents into child panels.
-- [ ] Add `PROSCENIO_PT_active_sprite` — child panel, only `poll()`-true when the active object is a mesh. Renders the sprite-type dropdown plus the conditional `sprite_frame` widgets and the polygon vertex-group summary.
-- [ ] Add `PROSCENIO_PT_skeleton` — child panel, summary section: bone count, warning when scene has no armature.
-- [ ] Add `PROSCENIO_PT_export` — child panel, sticky path field, pixels-per-unit field, Validate button, Export button.
-- [ ] Add `PROSCENIO_PT_diagnostics` — keep existing smoke test button under here; can grow to host the validation results section.
+- [x] `PROSCENIO_PT_main` is now a thin parent banner; child panels do the work via `bl_parent_id`.
+- [x] `PROSCENIO_PT_active_sprite` — mesh poll, sprite type dropdown, sprite_frame metadata, polygon vertex-group summary, inline validation.
+- [x] `PROSCENIO_PT_skeleton` — bone count, missing-armature warning, multi-armature warning.
+- [x] `PROSCENIO_PT_animation` — read-only summary of every Action.
+- [x] `PROSCENIO_PT_atlas` — read-only atlas filename discovered from materials.
+- [x] `PROSCENIO_PT_validation` — populated by the Validate operator's `CollectionProperty`.
+- [x] `PROSCENIO_PT_export` — sticky path field, pixels-per-unit field, Validate / Export / Re-export buttons.
+- [x] `PROSCENIO_PT_diagnostics` — current smoke test button moves here.
 
 ## Validation
 
-- [ ] Add `blender-addon/core/validation.py` with two entry points:
-  - `validate_active_sprite(obj) -> list[Issue]` — cheap structural checks (sprite_frame missing hframes, etc.) for inline feedback.
-  - `validate_export(scene) -> list[Issue]` — full lazy pass: armature presence, every sprite resolves a bone, every vertex group resolves to a bone, atlas file exists on disk.
-- [ ] Define `Issue` as a `dataclass` with `severity: Literal["error", "warning"]`, `message: str`, optional `obj_name: str` for "select offending object" UX later.
-- [ ] In each panel's `draw()`, call the cheap validator, render `row.label(text=..., icon="ERROR")` or `icon="INFO"` per issue.
-- [ ] Add `PROSCENIO_OT_validate_export` operator wired to the Validate button. Stores the issue list on `bpy.types.Scene.proscenio_validation_results` (transient PropertyGroup or scene-level dict). The export panel renders that list when present.
+- [x] `blender-addon/core/validation.py` ships `Issue` dataclass and `validate_active_sprite` + `validate_export` entry points.
+- [x] `Issue` carries `severity: Literal["error", "warning"]`, `message: str`, optional `obj_name`.
+- [x] Active-sprite panel renders inline validation icons next to broken rows.
+- [x] `PROSCENIO_OT_validate_export` mirrors results into `scene.proscenio.validation_results` for the panel to render.
 
 ## Export flow
 
-- [ ] Modify `PROSCENIO_OT_export_godot` to:
-  - Run `validate_export(scene)`. If any errors, abort with a clear `self.report({"ERROR"}, ...)` and surface the issue list on the panel.
-  - On success, write to `scene.proscenio.last_export_path` if non-empty; otherwise fall back to `ExportHelper`'s file dialog.
-  - Update `scene.proscenio.last_export_path` after a successful export so the next click is one-shot.
-- [ ] Add a "Re-export" button in the export panel that runs the operator with the sticky path silently. Visible only when `last_export_path` is non-empty.
+- [x] `PROSCENIO_OT_export_godot` gates on `validate_export`; errors abort with `self.report` + the panel surfaces the issue list. Successful export updates `scene.proscenio.last_export_path`.
+- [x] `PROSCENIO_OT_reexport_godot` runs silently against the sticky path. Visible in the Export subpanel only when `last_export_path` is non-empty.
+- [x] Writer reads PropertyGroup first (`Object.proscenio.<field>`), Custom Property as legacy fallback. Defaults flow through cleanly without requiring user interaction. *(This was the post-mortem fix that resolved the "switching sprite_type only mirrored one Custom Property" bug.)*
 
 ## Tests
 
-- [ ] Add `blender-addon/tests/test_properties.py` (run-as-Blender-script, like `run_tests.py`):
-  - Loads a `.blend` with a mesh that has raw `proscenio_type = "sprite_frame"` Custom Property; asserts that after `register()`, the PropertyGroup field reports `"sprite_frame"`.
-  - Sets the PropertyGroup field to `"polygon"`; asserts the Custom Property follows.
-- [ ] Extend `run_tests.py` to also schedule the new test (or document a separate runner script).
-- [ ] Add a unit-style test for `core/validation.py` that does not need Blender — the validator surface accepts a typed dict, lets pytest exercise it standalone.
+- [x] `tests/test_validation.py` — 12 pytest assertions covering both `validate_active_sprite` (polygon clean / no polygons warns / sprite_frame happy path / hframes=0 errors / vframes=0 errors / unknown sprite type errors / non-mesh ignored) and `validate_export` (no armature blocks / matching vertex group clean / orphan groups error / parent-bone-only soft / unparented warns).
+- [x] `tests/test_properties.py` — 6 pytest assertions covering `hydrate_object` (skips when proscenio is None / copies sprite_type / copies full sprite_frame metadata / leaves defaults when Custom Properties absent / partial overrides / type-error swallow).
+- [x] CI's `lint-python` job runs `pytest tests/` after `mypy --strict`.
+- [x] Existing `blender-addon/tests/run_tests.py` (Blender-driven writer round-trip) untouched — still passes after the SPEC 005 refactor.
 
 ## Documentation
 
-- [ ] Major rewrite of `.ai/skills/blender-addon-dev.md`:
-  - "Project layout" section gains `panels/`, `properties/`, `core/validation.py`.
-  - "Painting weights for skinning" stays; new section "Authoring sprites in the panel" walks the user through dropdown → fields → export.
-  - The legacy "raw Custom Properties" path is documented as still valid for power users (D2 contract).
-- [ ] Update `STATUS.md` when SPEC 005 closes — moves to shipped, mentions which subpanels exist, links a screenshot.
-- [ ] Add a one-paragraph "Authoring UX" entry in `README.md`'s iteration loop step (the rough authoring flow as a list).
+- [x] `.ai/skills/blender-addon-dev.md` rewritten — project layout includes the new `properties/` and `core/`, "Headless tests" section calls out both runners, new "Authoring sprites in the panel (SPEC 005)" subsection walks through every panel section + the round-trip with raw Custom Properties + sticky-path re-export + validation gate.
+- [x] `STATUS.md` updated to reflect SPEC 005 shipped (panel, validation, sticky path).
+- [x] `README.md` iteration loop step mentions the panel as the recommended authoring path.
 
 ## Manual validation
 
-- [ ] Reload addon. Open `examples/dummy/dummy.blend`. The Active sprite panel should show the head's sprite type as `sprite_frame` (read from existing Custom Property) and the legs/torso as `polygon`.
-- [ ] Toggle the head dropdown back to `polygon`; verify the writer's output stops including the sprite-frame metadata for the head.
-- [ ] Set the sticky export path to `examples/dummy/dummy.proscenio`; click Re-export; verify the file updates without a file dialog.
-- [ ] Click Validate with a deliberately broken state (sprite_frame mesh with hframes = 0). Expected: panel surfaces the issue, Export button reports an error.
-- [ ] Open a `.blend` from before SPEC 005; verify the panel reads existing Custom Properties without breaking, and edits round-trip cleanly.
+- [x] Reload addon, open `examples/dummy/dummy.blend`. Active sprite panel populates from existing Custom Properties (head shows `sprite_frame`, legs/torso show `polygon`).
+- [x] Toggle the head dropdown back to `polygon` and back to `sprite_frame`; writer output reflects the change without needing all 5 Custom Properties to be set manually (PropertyGroup is the source of truth, defaults flow through).
+- [x] Set the sticky export path; click Re-export; the file updates without a file dialog.
+- [ ] Click Validate with a deliberately broken state (sprite_frame mesh with `hframes = 0`); panel surfaces the issue, Export button reports an error. *(Manual sanity test, run when convenient.)*
+- [ ] Open a `.blend` from before SPEC 005; verify the panel reads existing Custom Properties without breaking, edits round-trip cleanly. *(Manual, requires a legacy fixture.)*
 
-## Defer (potential SPEC 005.1 if demand emerges)
+## Defer (potential SPEC 005.1 — to be implemented in waves; see `RESEARCH.md` matrix)
 
 - Atlas region helper (D8 — "Snap UV bounds → texture_region").
 - Camera ortho preview helper (matches `pixels_per_unit`).
-- Vertex weight visualization overlay (color by dominant bone).
-- Drag-and-drop reordering of subpanels or attachment lists.
+- Atlas packer integration (PyTexturePacker dep).
+- Pose library shim (Asset Browser).
+- IK chain helper Blender-side.
+- Bake current pose as keyframe.
+- Mode-aware subpanels (Pose / Object / Weight Paint).
+- Click-to-select on Issues.
+- Shortcut cheat-sheet panel.
+- Animation collections list editing.
+- Driver constraint shortcut.
+- Inline weight paint brush controls.
+- Reproject sprite texture (UV unwrap chain).
+- Spriteobject custom outliner with search/filter.
+- `region_rect` authoring polish.
+- Vertex weight visualization overlay.
 - Per-user default export-path preference.
-- Localization scaffolding (`i18n_id` discipline).
-- Properties Editor placement of the Active sprite section (D1.B).
-- A "Reset to defaults" button per subpanel.
+- Localization scaffolding (`i18n_id`).
+- Properties Editor placement of the Active sprite section (D1.B alternative).
+- "Reset to defaults" button per subpanel.

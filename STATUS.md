@@ -102,15 +102,16 @@ flowchart TD
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
+| Test assertions Python | 18 (validation 12 + properties 6) |
 | Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
-| CI jobs | 5 |
-| SPECs escritos | 4 shipped (000, 001, 002, 003), 1 ativo (005), 1 placeholder (004) |
+| CI jobs | 5 (lint-python agora roda pytest também) |
+| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
 
 ## O que está em andamento
 
-SPEC 003 (skinning weights) **merged via PR #3**. Próxima implementação é SPEC 005 (Blender authoring panel) na branch `feat/spec-005-blender-authoring-panel`.
+SPEC 005 first-cut em **PR #4** (`feat/spec-005-blender-authoring-panel`). Todas as 8 decisões D1-D8 implementadas, painel funcional validado manualmente em `examples/dummy/dummy.blend`. Os hotfixes pós-implementação (timer-deferred hydration + writer reads PropertyGroup-first) corrigem dois bugs reais de timing e contrato.
 
-PRs 1, 2, 3 já estão merged. SPEC 004 (slots) ficou como placeholder até o painel ship.
+PRs 1, 2, 3 já estão merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x. Próxima implementação após merge da #4: branch `feat/spec-005.1-panel-polish` cobrindo a primeira onda da matriz 5.1 do RESEARCH.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -139,7 +140,7 @@ flowchart TB
     S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>✅ shipped]
     S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>✅ shipped]
     S4[SPEC 004<br/>Slot system<br/>📝 placeholder]
-    S5[SPEC 005<br/>Blender authoring panel<br/>📝 STUDY+TODO escritos]
+    S5[SPEC 005<br/>Blender authoring panel<br/>🟡 PR #4 first-cut, 5.1.x next]
 
     BACKLOG[Backlog<br/>Bezier preservation, animation events,<br/>multi-atlas, per-key interp, format v2]
 
@@ -160,6 +161,9 @@ flowchart TB
     style S3 fill:#dcfce7,stroke:#166534
     style S5 fill:#fef3c7,stroke:#92400e
     style SCHEMA_V2 fill:#fee2e2,stroke:#991b1b
+
+    NEXTWAVE[SPEC 005.1.x<br/>panel polish waves]
+    S5 -.next.-> NEXTWAVE
 ```
 
 ### Detalhamento
@@ -171,7 +175,7 @@ flowchart TB
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
-| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. Substitui Custom Properties manuais como UX padrão (raw continua válido). Inspirada no painel COA Tools. | STUDY+TODO escritos, próxima implementação |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | **PR #4 first-cut**; 5.1.x ondas seguintes (atlas helper, IK helper, pose library shim, etc — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md)) |
 
 ### Backlog (sem ordem)
 
@@ -188,11 +192,15 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 003 mergeada. Convenção de branches atualizada (`feat/spec-NNN-<slug>` daqui em diante).
+SPEC 005 first-cut em revisão. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **Implementar SPEC 005** (Blender authoring panel) — STUDY+TODO já locked, oito decisões D1–D8 com recomendações fechadas. Branch nasce em `feat/spec-005-blender-authoring-panel`.
-2. **SPEC 004 fica como placeholder** — slot system real STUDY/TODO se faz depois que o painel ship, porque a UX de slots depende da infra que SPEC 005 monta.
-3. **Manual validation aberto na SPEC 003** — pintar weights no `dummy.blend`, animar, observar deformação. Plugin-uninstall test pra cena skinned. Não bloqueia, é user-driven.
+1. **CI verde + merge da PR #4** — fecha SPEC 005 first-cut na main.
+2. **SPEC 005.1.a (panel polish wave)** — Click-to-select Issues, Shortcut cheat-sheet, Bake current pose, Mode-aware subpanels, Animation collections list. Branch `feat/spec-005.1-panel-polish`.
+3. **SPEC 005.1.b (helpers wave)** — Camera ortho preview, IK chain helper, Driver constraint shortcut, Reproject sprite texture, Inline weight brush controls.
+4. **SPEC 005.1.c (atlas wave)** — Atlas region helper, region_rect authoring, Atlas packer integration (PyTexturePacker dep).
+5. **SPEC 005.1.d (advanced wave)** — Pose library shim, Spriteobject custom outliner.
+6. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+7. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

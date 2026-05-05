@@ -20,6 +20,7 @@ const AnimationBuilder := preload("res://addons/proscenio/builders/animation_bui
 
 const FIXTURE := "res://tests/fixtures/dummy.proscenio"
 const EFFECT_FIXTURE := "res://tests/fixtures/effect.proscenio"
+const SKINNED_FIXTURE := "res://tests/fixtures/skinned_dummy.proscenio"
 
 var _failures: Array[String] = []
 var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
@@ -28,6 +29,7 @@ var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
 func _initialize() -> void:
 	_run_dummy_checks()
 	_run_effect_checks()
+	_run_skinned_checks()
 	_finish()
 
 
@@ -105,6 +107,38 @@ func _run_effect_checks() -> void:
 				"effect: frame track uses NEAREST"
 			)
 			_assert_eq(anim.track_get_key_count(0), 4, "effect: frame key count")
+
+	character.free()
+
+
+func _run_skinned_checks() -> void:
+	var data := _load_fixture(SKINNED_FIXTURE)
+	if data.is_empty():
+		_fail("could not load %s" % SKINNED_FIXTURE)
+		return
+
+	var character := _build_character(data)
+	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
+
+	var sprites := _collect_descendants_of_type(skeleton, "Polygon2D")
+	_assert_eq(sprites.size(), 1, "skinned: Polygon2D count")
+	if sprites.size() == 1:
+		var torso: Polygon2D = sprites[0]
+		_assert_eq(torso.name, "torso", "skinned: sprite name")
+		# Skinned polygons live under the skeleton, not the bone — weights
+		# move vertices, not the parent transform.
+		_assert_true(torso.get_parent() == skeleton, "skinned: parented to skeleton")
+		_assert_true(not torso.skeleton.is_empty(), "skinned: skeleton NodePath set")
+		_assert_eq(torso.get_bone_count(), 2, "skinned: bone count = 2")
+		if torso.get_bone_count() >= 2:
+			# add_bone preserves insertion order: upper first, lower second.
+			var upper_weights := torso.get_bone_weights(0)
+			var lower_weights := torso.get_bone_weights(1)
+			_assert_eq(upper_weights.size(), 4, "skinned: upper weights len")
+			_assert_eq(lower_weights.size(), 4, "skinned: lower weights len")
+			# Vertex 0 is at the top — fully weighted to 'upper'.
+			_assert_eq(upper_weights[0], 1.0, "skinned: vertex 0 → upper = 1.0")
+			_assert_eq(lower_weights[0], 0.0, "skinned: vertex 0 → lower = 0.0")
 
 	character.free()
 

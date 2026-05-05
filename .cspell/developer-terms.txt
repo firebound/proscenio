@@ -39,6 +39,7 @@ pyproject
 pytest
 rebakes
 reproject
+reprojected
 schemafile
 shapekey
 shapekeys

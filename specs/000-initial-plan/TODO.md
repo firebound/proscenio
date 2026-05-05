@@ -74,3 +74,4 @@ These belong to follow-up specs, listed only so they are not lost:
 - Spritesheets and `Sprite2D` path — SPEC 002.
 - Full skinning weights — SPEC 003.
 - Slot system — SPEC 004.
+- Blender authoring panel — SPEC 005.

@@ -181,5 +181,6 @@ Where is `(0, 0)` for the character?
 | 002 | Spritesheet support (introduces `Sprite2D` path) |
 | 003 | Skinning weights and `Polygon2D.skeleton` wiring |
 | 004 | Slot system |
+| 005 | Blender authoring panel (COA Tools-style ergonomics) |
 
 > Phase 1 MVP (originally penciled as SPEC 001) shipped under SPEC 000's TODO since the scope was small enough to absorb. SPECs are renumbered from 001 onward to keep the catalog dense.

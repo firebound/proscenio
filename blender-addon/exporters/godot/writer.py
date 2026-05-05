@@ -69,6 +69,11 @@ class SpriteFrameDict(TypedDict):
     centered: bool
 
 
+class WeightDict(TypedDict):
+    bone: str
+    values: list[float]
+
+
 def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_UNIT) -> None:
     """Write the active scene to a `.proscenio` file."""
     path_str = str(filepath)
@@ -288,11 +293,13 @@ def _build_sprite(
 
     polygon: list[list[float]] = []
     uvs: list[list[float]] = []
+    vertex_indices: list[int] = []  # mesh.vertex.index per polygon-winding slot
 
     if mesh.polygons:
         first_poly = mesh.polygons[0]
         for vi, li in zip(first_poly.vertices, first_poly.loop_indices, strict=False):
             v = mesh.vertices[vi]
+            vertex_indices.append(vi)
             world_blender = mesh_world @ v.co
             world_godot_pos = _world_to_godot_xy(world_blender, ppu)
             if bone_world is None:
@@ -313,14 +320,24 @@ def _build_sprite(
                 uvs.append([0.0, 0.0])
 
     region = _compute_texture_region(uvs)
+    weights = _build_sprite_weights(
+        obj,
+        mesh,
+        vertex_indices,
+        fallback_bone=bone_name,
+        available_bones=set(world_godot.keys()),
+    )
 
-    return {
+    sprite: dict[str, Any] = {
         "name": obj.name,
         "bone": bone_name,
         "texture_region": region,
         "polygon": polygon,
         "uv": uvs,
     }
+    if weights:
+        sprite["weights"] = weights
+    return sprite
 
 
 def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
@@ -352,6 +369,93 @@ def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
         "frame": int(obj.get("proscenio_frame", 0)),
         "centered": bool(obj.get("proscenio_centered", True)),
     }
+
+
+_WEIGHT_EPS = 1e-9
+
+
+def _resolve_known_groups(
+    obj: bpy.types.Object,
+    available_bones: set[str],
+) -> dict[int, str]:
+    """Return only the vertex groups whose names match real bones; warn for the rest."""
+    vg_index_to_name = {int(vg.index): str(vg.name) for vg in obj.vertex_groups}
+    known = {idx: name for idx, name in vg_index_to_name.items() if name in available_bones}
+    skipped = sorted({n for n in vg_index_to_name.values() if n not in available_bones})
+    for name in skipped:
+        print(
+            f"  WARN: sprite {obj.name!r} vertex group {name!r} has no "
+            f"matching bone — dropping from weights"
+        )
+    return known
+
+
+def _vertex_bone_weights(
+    vertex: bpy.types.MeshVertex,
+    known_groups: dict[int, str],
+) -> dict[str, float]:
+    """Sum per-bone weights for a single mesh vertex, ignoring unknown groups."""
+    out: dict[str, float] = {}
+    for vg in vertex.groups:
+        bone = known_groups.get(int(vg.group))
+        if bone is not None:
+            out[bone] = out.get(bone, 0.0) + float(vg.weight)
+    return out
+
+
+def _build_sprite_weights(
+    obj: bpy.types.Object,
+    mesh: bpy.types.Mesh,
+    vertex_indices: list[int],
+    *,
+    fallback_bone: str,
+    available_bones: set[str],
+) -> list[WeightDict]:
+    """Collect skinning weights from `obj`'s vertex groups (SPEC 003).
+
+    Returns an empty list when the mesh has no vertex groups — the importer
+    falls back to rigid attach. Vertex groups whose name does not resolve to
+    a bone in the armature are dropped with a console warning (D3). Per-
+    vertex sums are normalized to ``1.0`` (D1); vertices with zero total
+    weight are assigned `1.0` to ``fallback_bone`` (D2). Output is the
+    schema's bone-major shape: ``[{bone, values[]}]`` indexed by the
+    sprite's polygon-winding order, not Blender's mesh vertex index.
+
+    Raises ``RuntimeError`` when the mesh has vertex groups but none of
+    them resolve to bones — emitting an empty ``weights`` array would
+    silently downgrade the sprite to rigid attach without the user
+    noticing.
+    """
+    if not obj.vertex_groups or not vertex_indices:
+        return []
+
+    known_groups = _resolve_known_groups(obj, available_bones)
+    if not known_groups:
+        raise RuntimeError(
+            f"Proscenio: sprite {obj.name!r} has vertex groups but none "
+            f"resolve to bones in the armature — fix the group names or "
+            f"remove them so the sprite can use rigid attach."
+        )
+
+    n = len(vertex_indices)
+    bone_to_values: dict[str, list[float]] = {name: [0.0] * n for name in known_groups.values()}
+    if fallback_bone and fallback_bone in available_bones:
+        bone_to_values.setdefault(fallback_bone, [0.0] * n)
+
+    for slot, mesh_vi in enumerate(vertex_indices):
+        weights_here = _vertex_bone_weights(mesh.vertices[mesh_vi], known_groups)
+        total = sum(weights_here.values())
+        if total > _WEIGHT_EPS:
+            for bone, w in weights_here.items():
+                bone_to_values[bone][slot] = w / total
+        elif fallback_bone in bone_to_values:
+            bone_to_values[fallback_bone][slot] = 1.0
+
+    return [
+        {"bone": bone, "values": [round(v, 6) for v in values]}
+        for bone, values in bone_to_values.items()
+        if any(abs(v) > _WEIGHT_EPS for v in values)
+    ]
 
 
 def _resolve_sprite_bone(obj: bpy.types.Object) -> str:

@@ -213,6 +213,19 @@ def _on_blend_load(_filepath: str) -> None:
     _hydrate_existing_objects()
 
 
+def _deferred_hydrate() -> None:
+    """Run hydration one tick after register().
+
+    Blender's PointerProperty wiring is not fully established the moment
+    register() returns — assigning to the PropertyGroup inside register
+    sometimes writes to a stub that is dropped before the data block is
+    materialized. A zero-interval timer schedules the hydration for
+    after the addon-enable cycle completes, when the property data is
+    real and persistent.
+    """
+    _hydrate_existing_objects()
+
+
 _classes: tuple[type, ...] = (
     ProscenioObjectProps,
     ProscenioValidationIssue,
@@ -227,10 +240,13 @@ def register() -> None:
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
     if _on_blend_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_on_blend_load)
-    # Mid-session enable: bpy.data is real and ready, hydrate immediately.
-    # Initial-startup enable: hits _RestrictData and bails; load_post fires
-    # after the .blend finishes loading.
-    _hydrate_existing_objects()
+    # Defer hydration to the next tick. Two reasons:
+    #   1. During initial Blender startup, bpy.data is _RestrictData here.
+    #   2. Mid-session enable: PointerProperty wiring stabilizes only
+    #      after register() returns. Setting PropertyGroup fields inline
+    #      writes to a transient stub that drops before the data block is
+    #      committed.
+    bpy.app.timers.register(_deferred_hydrate, first_interval=0.0)
 
 
 def unregister() -> None:

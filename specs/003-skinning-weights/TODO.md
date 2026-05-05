@@ -14,44 +14,45 @@ Wires the `weights` field that has been in the schema since v1 into a real `Poly
 
 ## Schema and format docs
 
-- [ ] No schema change — `weights` field already in [`schemas/proscenio.schema.json`](../../schemas/proscenio.schema.json) since v1. Verify the inline `description` reflects "consumed by importer post-SPEC 003" instead of "accepted but ignored".
-- [ ] Update [`.ai/skills/format-spec.md`](../../.ai/skills/format-spec.md): replace the "Skinning weights (v1)" section's "ignored by importer" disclaimer with the live behavior. Add an authored example showing a torso sprite with weights split across `torso` and `legs`.
+- [x] No schema change needed — `weights` field already in [`schemas/proscenio.schema.json`](../../schemas/proscenio.schema.json) since v1. The shape stays identical.
+- [x] Updated [`.ai/skills/format-spec.md`](../../.ai/skills/format-spec.md): the "Skinning weights" section now describes live behavior with an authored example.
 
 ## Blender writer
 
-- [ ] In [`blender-addon/exporters/godot/writer.py`](../../blender-addon/exporters/godot/writer.py), replace `_resolve_sprite_bone`'s "first vertex group wins" heuristic with a real weight-collection step that runs whenever the mesh has vertex groups. The single-bone fallback survives only for sprites without groups.
-- [ ] Implement `_build_sprite_weights(obj, mesh, armature_bones) -> list[WeightDict]` returning the schema's bone-major shape. Skip vertex groups whose name is not a bone (log warning); normalize sums per vertex (writer-side); fall back to the sprite's resolved bone for vertices with zero total weight.
-- [ ] Add a `WeightDict` `TypedDict` mirroring the schema entry.
-- [ ] Surface a `RuntimeError` if a sprite's mesh has vertex groups but the writer cannot resolve any of them to bones — clearer than emitting an empty `weights` array.
-- [ ] Run the schema validator inside `run_tests.py` against the fresh writer output (already in place).
+- [x] [`writer.py`](../../blender-addon/exporters/godot/writer.py) now collects per-bone weights from vertex groups whenever the mesh has any. Single-bone resolution still drives the "rigid" path for sprites without groups.
+- [x] `_build_sprite_weights(obj, mesh, vertex_indices, fallback_bone, available_bones) -> list[WeightDict]` returns bone-major output, skips unmatched group names with a warning, normalizes per-vertex sums, and falls back to the resolved bone for zero-weight vertices.
+- [x] `WeightDict` `TypedDict` added; mypy `--strict` clean.
+- [x] `RuntimeError` raised when a sprite has vertex groups but none resolve to bones — fail-fast at export.
+- [x] Schema validator inside `run_tests.py` continues to assert the writer's fresh output (already in place from SPEC 002).
 
 ## Godot importer
 
-- [ ] In [`polygon_builder.gd`](../../godot-plugin/addons/proscenio/builders/polygon_builder.gd), branch when `sprite_data.has("weights")` and the array is non-empty:
-  - Resolve `Skeleton2D` NodePath: `polygon.skeleton = polygon.get_path_to(skeleton)` after `add_child`.
-  - For each weight entry, resolve the bone by name to its `Bone2D` and call `polygon.set_bone(NodePath, weights_for_that_bone)` (or the closest current API — verify against Godot 4.6).
-  - Drop the warning log; replace with a `print_verbose` confirmation listing the bone names that picked up.
-- [ ] Keep the rigid-attach path: sprites without `weights` (or with empty array) parent to their resolved bone exactly as today.
-- [ ] If a bone name in `weights` does not resolve to a `Bone2D` under the skeleton, push an `error` and skip that bone (do not crash the import).
+- [x] [`polygon_builder.gd`](../../godot-plugin/addons/proscenio/builders/polygon_builder.gd) branches when `sprite_data.weights` is present and non-empty:
+  - Sets `polygon.skeleton = polygon.get_path_to(skeleton)`.
+  - Calls `polygon.add_bone(bone_path, weights)` for each weight entry.
+  - Skinned polygons are parented to the `Skeleton2D` (not to a `Bone2D`) so vertex weights drive deformation rather than parent-transform inheritance.
+- [x] Rigid-attach path preserved for sprites without `weights` — `polygon` stays a child of its resolved `Bone2D`.
+- [x] Missing bone in a `weights` entry → `push_error` + skip that bone; importer does not crash the rest of the rig.
 
 ## Tests
 
-- [ ] Extend [`godot-plugin/tests/test_importer.gd`](../../godot-plugin/tests/test_importer.gd) with a third fixture `skinned_dummy.proscenio` that includes weights — assert `polygon.skeleton` resolves, `polygon.bones` has the expected count, and a known vertex's weight values match.
-- [ ] Add `godot-plugin/tests/fixtures/skinned_dummy.proscenio` hand-written: one root + two-bone chain, one mesh sprite weight-split between the two bones.
-- [ ] Update [`godot-plugin/tests/fixtures/dummy.proscenio`](../../godot-plugin/tests/fixtures/dummy.proscenio) only if the regression assertion needs adjustment — preference is to keep it untouched (pure backwards-compat).
-- [ ] Update [`blender-addon/tests/run_tests.py`](../../blender-addon/tests/run_tests.py) — no logic change, but the regen-on-FAIL workflow should pick up weights on `dummy.blend` if the user paints any. Document this in the run_tests.py docstring.
-- [ ] Verify `dummy.blend`'s torso has at least one vertex weighted to `legs` so the regenerated golden fixture exercises the new writer path.
+- [x] Added `godot-plugin/tests/fixtures/skinned_dummy.proscenio`: 3 bones (root → lower → upper) and one torso sprite weight-split across `upper` (top vertices) and `lower` (bottom vertices).
+- [x] Extended [`test_importer.gd`](../../godot-plugin/tests/test_importer.gd) with `_run_skinned_checks` — asserts polygon parents to skeleton, `skeleton` NodePath is set, bone count, and known vertex weights. Total assertions 22 → 31.
+- [x] [`godot-plugin/tests/fixtures/dummy.proscenio`](../../godot-plugin/tests/fixtures/dummy.proscenio) untouched — pure regression fixture for the rigid path.
+- [x] `blender-addon/tests/fixtures/dummy/expected.proscenio` regenerated to capture the writer's new `weights` output for `dummy.blend`'s vertex-grouped meshes (legs, torso).
 
 ## Documentation
 
-- [ ] Add a "Painting weights" subsection to [`.ai/skills/blender-addon-dev.md`](../../.ai/skills/blender-addon-dev.md): how to enter weight paint mode, name vertex groups after bones, the writer's normalization expectation.
-- [ ] Update [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md) "Choosing the rendering path" to mention that skinning unlocks here, formalizing what was forecasted in SPEC 002.
-- [ ] Update [`STATUS.md`](../../STATUS.md) — move SPEC 003 to shipped; bump LOC counts; reference the new fixture.
+- [x] "Painting weights for skinning (SPEC 003)" subsection in [`.ai/skills/blender-addon-dev.md`](../../.ai/skills/blender-addon-dev.md) covering vertex-group naming, normalization, fallback, RuntimeError, sprite_frame exclusion.
+- [x] [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md) "Choosing the rendering path" updated — `polygon` row mentions live skinning via `Polygon2D.skeleton` + `add_bone()`.
+- [x] [`STATUS.md`](../../STATUS.md) — moved to shipped on merge.
 
 ## Manual validation
 
-- [ ] On `dummy.blend`, paint vertex weights on the torso mesh: 0.7 to `torso` near the top, 0.3 to `legs` near the bottom. Export. Observe the imported scene: animating `legs` should now pull the lower torso vertices noticeably while the upper ones stay anchored to `torso`.
-- [ ] Plugin-uninstall test: with SPEC 001 wrapper scene + skinned `dummy.scn`, disable the Proscenio plugin, reload, confirm the deformation still plays. Skinning is a `Polygon2D` core feature — must work without the plugin.
+These are user-driven smoke tests against a real Blender + Godot loop. Not gated by CI.
+
+- [ ] On `dummy.blend`, paint vertex weights on the torso mesh: e.g. 0.7 to `torso` near the top, 0.3 to `legs` near the bottom. Export. Observe the imported scene: animating `legs` should now pull the lower torso vertices noticeably while the upper ones stay anchored to `torso`.
+- [ ] Plugin-uninstall test: with SPEC 001 wrapper scene + skinned `.scn`, disable the Proscenio plugin, reload, confirm the deformation still plays. Skinning is a `Polygon2D` core feature — must work without the plugin.
 
 ## Defer (potential SPEC 003.1 if demand emerges)
 

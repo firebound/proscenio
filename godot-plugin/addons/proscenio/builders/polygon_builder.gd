@@ -2,6 +2,36 @@
 extends RefCounted
 
 
+static func _apply_skinning(
+	poly: Polygon2D,
+	skeleton: Skeleton2D,
+	weights_data: Array,
+) -> void:
+	# Wire Polygon2D.skeleton + per-bone weight arrays. Each entry in
+	# weights_data is `{bone, values[]}` from the .proscenio document.
+	# Bones whose name does not resolve under the skeleton are reported
+	# and skipped — the rest of the rig still imports.
+	poly.skeleton = poly.get_path_to(skeleton)
+	poly.clear_bones()
+	for weight_entry in weights_data:
+		var bone_name: String = weight_entry.get("bone", "")
+		var bone_node := skeleton.find_child(bone_name, true, false)
+		if bone_node == null:
+			push_error(
+				(
+					"Proscenio: sprite '%s' weight entry references missing bone '%s' — skipping."
+					% [poly.name, bone_name]
+				)
+			)
+			continue
+		var values: Array = weight_entry.get("values", [])
+		var packed := PackedFloat32Array()
+		packed.resize(values.size())
+		for i in range(values.size()):
+			packed[i] = float(values[i])
+		poly.add_bone(poly.get_path_to(bone_node), packed)
+
+
 static func attach_sprites(skeleton: Skeleton2D, sprites_data: Array, atlas: Texture2D) -> void:
 	for sprite_data in sprites_data:
 		# Discriminator dispatch: this builder only handles polygon sprites.
@@ -34,21 +64,19 @@ static func attach_sprites(skeleton: Skeleton2D, sprites_data: Array, atlas: Tex
 		if atlas != null:
 			poly.texture = atlas
 
-		if sprite_data.has("weights"):
-			push_warning(
-				(
-					(
-						"Proscenio: sprite '%s' has weights — full skinning lands in Phase 2 "
-						+ "(SPEC 003); attaching rigidly to bone for now."
-					)
-					% poly.name
-				)
-			)
+		var weights_data: Array = sprite_data.get("weights", [])
+		var is_skinned: bool = not weights_data.is_empty()
 
 		var bone_name: String = sprite_data.get("bone", "")
+		# Skinned polygons live under the skeleton so the per-vertex weights
+		# (not the parent transform) drive deformation. Rigid polygons stay
+		# parented to the matching Bone2D so the bone transform carries them.
 		var parent: Node = skeleton
-		if bone_name != "":
+		if not is_skinned and bone_name != "":
 			var found := skeleton.find_child(bone_name, true, false)
 			if found != null:
 				parent = found
 		parent.add_child(poly)
+
+		if is_skinned:
+			_apply_skinning(poly, skeleton, weights_data)

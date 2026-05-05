@@ -47,7 +47,7 @@ The `.proscenio` schema uses a `type` discriminator per sprite (see [SPEC 002](.
 
 | Use case | Pick | Why |
 | --- | --- | --- |
-| Cutout-style character with deformable mesh (Spine / COA Tools target audience) | `polygon` | `Polygon2D` carries vertices + UV, eligible for skinning weights in SPEC 003 |
+| Cutout-style character with deformable mesh (Spine / COA Tools target audience) | `polygon` | `Polygon2D` carries vertices + UV; with a `weights` array, the importer wires `Polygon2D.skeleton` + `add_bone()` and the mesh deforms with the rig (SPEC 003 — shipped) |
 | Frame-by-frame pixel art animation | `sprite_frame` | `Sprite2D` with `hframes`/`vframes`/`frame` is the native idiom |
 | Particles, hit flashes, sparkles, simple effects | `sprite_frame` | cheapest, no per-vertex geometry |
 | Simple sprite that only translates/rotates with no deformation | either | `sprite_frame` is lighter when no skinning is on the horizon |

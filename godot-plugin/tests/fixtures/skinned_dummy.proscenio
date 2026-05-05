@@ -1,0 +1,36 @@
+{
+  "format_version": 1,
+  "name": "skinned_dummy",
+  "pixels_per_unit": 100,
+  "skeleton": {
+    "bones": [
+      { "name": "root",  "parent": null,    "position": [0, 0],    "rotation": 0, "scale": [1, 1], "length": 0 },
+      { "name": "lower", "parent": "root",  "position": [0, -50],  "rotation": 0, "scale": [1, 1], "length": 50 },
+      { "name": "upper", "parent": "lower", "position": [0, -50],  "rotation": 0, "scale": [1, 1], "length": 50 }
+    ]
+  },
+  "sprites": [
+    {
+      "type": "polygon",
+      "name": "torso",
+      "bone": "lower",
+      "texture_region": [0, 0, 100, 200],
+      "polygon": [
+        [-50, -100],
+        [50, -100],
+        [50, 100],
+        [-50, 100]
+      ],
+      "uv": [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1]
+      ],
+      "weights": [
+        { "bone": "upper", "values": [1.0, 1.0, 0.0, 0.0] },
+        { "bone": "lower", "values": [0.0, 0.0, 1.0, 1.0] }
+      ]
+    }
+  ]
+}

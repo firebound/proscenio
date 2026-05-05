@@ -33,6 +33,13 @@ from bpy.props import (
 from bpy.types import Object as _Object
 from bpy.types import PropertyGroup, Scene
 
+from ..core.hydrate import (  # type: ignore[import-not-found]
+    OBJECT_PROPS as _OBJECT_PROPS,  # noqa: F401
+)
+from ..core.hydrate import (
+    hydrate_object,
+)
+
 SPRITE_TYPE_ITEMS = (
     ("polygon", "Polygon", "Cutout-style sprite — Polygon2D vertices + UV (default)", 0),
     (
@@ -166,22 +173,8 @@ class ProscenioSceneProps(PropertyGroup):
     )
 
 
-_OBJECT_PROPS: tuple[tuple[str, str], ...] = (
-    ("proscenio_type", "sprite_type"),
-    ("proscenio_hframes", "hframes"),
-    ("proscenio_vframes", "vframes"),
-    ("proscenio_frame", "frame"),
-    ("proscenio_centered", "centered"),
-)
-
-
 def _hydrate_existing_objects() -> None:
-    """Copy legacy Custom Properties into the new PropertyGroup.
-
-    Type-mismatched values (e.g. a string in an int slot) are skipped silently
-    — the writer's RuntimeError will catch genuine invalid data at export
-    time. Objects without the matching Custom Property fall back to the
-    PropertyGroup's defaults.
+    """Walk every object in the current ``bpy.data`` and hydrate.
 
     During Blender's initial startup, ``bpy.data`` is wrapped in
     ``_RestrictData`` and accessing ``.objects`` raises
@@ -194,13 +187,7 @@ def _hydrate_existing_objects() -> None:
     except AttributeError:
         return
     for obj in objects:
-        props = getattr(obj, "proscenio", None)
-        if props is None:
-            continue
-        for custom_key, prop_name in _OBJECT_PROPS:
-            if custom_key in obj:
-                with contextlib.suppress(TypeError, ValueError):
-                    setattr(props, prop_name, obj[custom_key])
+        hydrate_object(obj)
 
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]

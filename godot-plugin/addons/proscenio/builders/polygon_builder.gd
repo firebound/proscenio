@@ -4,6 +4,12 @@ extends RefCounted
 
 static func attach_sprites(skeleton: Skeleton2D, sprites_data: Array, atlas: Texture2D) -> void:
 	for sprite_data in sprites_data:
+		# Discriminator dispatch: this builder only handles polygon sprites.
+		# Default to "polygon" when `type` is absent (v1 backwards-compat).
+		var sprite_type: String = sprite_data.get("type", "polygon")
+		if sprite_type != "polygon":
+			continue
+
 		var poly := Polygon2D.new()
 		poly.name = sprite_data.get("name", "sprite")
 

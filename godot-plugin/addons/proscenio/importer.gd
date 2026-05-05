@@ -3,6 +3,7 @@ extends EditorImportPlugin
 
 const SkeletonBuilder := preload("res://addons/proscenio/builders/skeleton_builder.gd")
 const PolygonBuilder := preload("res://addons/proscenio/builders/polygon_builder.gd")
+const SpriteFrameBuilder := preload("res://addons/proscenio/builders/sprite_frame_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
 
 const SUPPORTED_FORMAT_VERSION := 1
@@ -92,7 +93,11 @@ func _import(
 	root.add_child(skeleton)
 
 	var atlas := _load_atlas(source_file, data.get("atlas", ""))
-	PolygonBuilder.attach_sprites(skeleton, data.get("sprites", []), atlas)
+	# Each builder discriminator-filters its own sprite kind; calling both is
+	# cheap and keeps the dispatch table flat. Order does not matter.
+	var sprites_data: Array = data.get("sprites", [])
+	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas)
+	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas)
 
 	var animation_player := AnimationPlayer.new()
 	animation_player.name = "AnimationPlayer"

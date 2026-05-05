@@ -31,6 +31,68 @@ _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 
 
+def _draw_sprite_frame_readout(
+    box: bpy.types.UILayout,
+    obj: bpy.types.Object,
+    props: bpy.types.AnyType,
+) -> None:
+    """Show atlas + region + frame size info for a sprite_frame mesh.
+
+    Reads the active mesh's first image-textured material to surface atlas
+    pixel dimensions; combines with the region override (or full atlas) +
+    hframes/vframes to compute frame pixel size. Read-only — purely a
+    discoverability helper so the user can verify their grid lines up.
+    """
+    atlas_size = _discover_atlas_size_for(obj)
+    if atlas_size is None:
+        box.label(text="atlas: not linked in material", icon="INFO")
+        return
+    aw, ah = atlas_size
+    box.label(text=f"atlas: {aw}x{ah} px", icon="IMAGE_DATA")
+    if props.region_mode == "manual":
+        rw_px = max(1, round(props.region_w * aw))
+        rh_px = max(1, round(props.region_h * ah))
+        box.label(text=f"region: {rw_px}x{rh_px} px (manual)")
+    else:
+        rw_px, rh_px = aw, ah
+        box.label(text=f"region: {rw_px}x{rh_px} px (full atlas)")
+    hf = max(1, int(props.hframes))
+    vf = max(1, int(props.vframes))
+    fw = rw_px // hf
+    fh = rh_px // vf
+    box.label(text=f"frame: {fw}x{fh} px ({hf}x{vf} grid)")
+
+
+def _draw_weight_paint_disabled_hint(layout: bpy.types.UILayout) -> None:
+    """Show why weight paint controls are not surfaced for sprite_frame meshes.
+
+    sprite_frame renders as a Sprite2D in Godot — no Polygon2D.skeleton, no
+    per-vertex bone weights. Weight painting on this mesh has no effect on
+    the exported scene; the panel reflects that to avoid silent confusion.
+    """
+    box = layout.box()
+    box.label(
+        text="weight paint not applicable to sprite_frame",
+        icon="INFO",
+    )
+    box.label(text="(Sprite2D is not deformed by bones)")
+
+
+def _discover_atlas_size_for(obj: bpy.types.Object) -> tuple[int, int] | None:
+    """Walk the active mesh's materials and return the first image's pixel size."""
+    mesh = obj.data
+    materials = getattr(mesh, "materials", None) or []
+    for mat in materials:
+        if mat is None or not mat.use_nodes or mat.node_tree is None:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and node.image is not None:
+                w, h = node.image.size
+                if w > 0 and h > 0:
+                    return (int(w), int(h))
+    return None
+
+
 def _draw_region_box(
     layout: bpy.types.UILayout,
     props: bpy.types.AnyType,
@@ -54,7 +116,7 @@ def _draw_region_box(
         row.prop(props, "region_w")
         row.prop(props, "region_h")
         if sprite_type == "polygon":
-            box.operator("proscenio.snap_region_to_uv", icon="UV")
+            box.operator("proscenio.snap_region_to_uv", text="Snap to UV bounds", icon="UV")
     else:
         hint = (
             "computed from UV bounds at export"
@@ -62,6 +124,54 @@ def _draw_region_box(
             else "omitted at export — full atlas used"
         )
         box.label(text=hint, icon="INFO")
+
+
+def _draw_active_sprite_body(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+    obj: bpy.types.Object,
+    props: bpy.types.AnyType,
+) -> None:
+    """Pick the body subsection by sprite_type + active mode."""
+    if props.sprite_type == "sprite_frame":
+        _draw_sprite_frame_body(layout, context, obj, props)
+    elif context.mode == "PAINT_WEIGHT":
+        _draw_weight_paint_brush(layout, context)
+    else:
+        _draw_polygon_body(layout, obj, props)
+
+
+def _draw_sprite_frame_body(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+    obj: bpy.types.Object,
+    props: bpy.types.AnyType,
+) -> None:
+    box = layout.box()
+    box.label(text="Sprite frame", icon="IMAGE_DATA")
+    box.prop(props, "hframes")
+    box.prop(props, "vframes")
+    box.prop(props, "frame")
+    box.prop(props, "centered")
+    _draw_sprite_frame_readout(box, obj, props)
+    _draw_region_box(layout, props, sprite_type="sprite_frame")
+    if context.mode == "PAINT_WEIGHT":
+        _draw_weight_paint_disabled_hint(layout)
+
+
+def _draw_polygon_body(
+    layout: bpy.types.UILayout,
+    obj: bpy.types.Object,
+    props: bpy.types.AnyType,
+) -> None:
+    mesh = obj.data
+    vg_count = len(getattr(obj, "vertex_groups", []) or [])
+    poly_count = len(getattr(mesh, "polygons", []) or [])
+    box = layout.box()
+    box.label(text="Polygon", icon="MESH_DATA")
+    box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
+    box.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
+    _draw_region_box(layout, props, sprite_type="polygon")
 
 
 def _draw_weight_paint_brush(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
@@ -113,26 +223,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             return
 
         layout.prop(props, "sprite_type")
-
-        if props.sprite_type == "sprite_frame":
-            box = layout.box()
-            box.label(text="Sprite frame", icon="IMAGE_DATA")
-            box.prop(props, "hframes")
-            box.prop(props, "vframes")
-            box.prop(props, "frame")
-            box.prop(props, "centered")
-            _draw_region_box(layout, props, sprite_type="sprite_frame")
-        elif context.mode == "PAINT_WEIGHT":
-            _draw_weight_paint_brush(layout, context)
-        else:
-            mesh = obj.data
-            vg_count = len(getattr(obj, "vertex_groups", []) or [])
-            poly_count = len(getattr(mesh, "polygons", []) or [])
-            box = layout.box()
-            box.label(text="Polygon", icon="MESH_DATA")
-            box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
-            box.operator("proscenio.reproject_sprite_uv", icon="UV")
-            _draw_region_box(layout, props, sprite_type="polygon")
+        _draw_active_sprite_body(layout, context, obj, props)
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
@@ -174,11 +265,45 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                 text=f"{len(armatures)} armatures — writer uses the first only",
                 icon="ERROR",
             )
+        if bones:
+            scene_props = getattr(context.scene, "proscenio", None)
+            if scene_props is not None:
+                layout.template_list(
+                    "PROSCENIO_UL_bones",
+                    "",
+                    first.data,
+                    "bones",
+                    scene_props,
+                    "active_bone_index",
+                    rows=min(max(len(bones), 3), 8),
+                )
         # Pose-mode-only helpers (5.1.a + 5.1.b).
         if context.mode == "POSE":
             layout.separator()
-            layout.operator("proscenio.bake_current_pose", icon="KEY_HLT")
-            layout.operator("proscenio.toggle_ik_chain", icon="CON_KINEMATIC")
+            layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
+            layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
+
+
+class PROSCENIO_UL_bones(bpy.types.UIList):
+    """List view for ``Armature.bones`` — Skeleton subpanel uses this."""
+
+    bl_idname = "PROSCENIO_UL_bones"
+
+    def draw_item(
+        self,
+        _context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        _data: bpy.types.AnyType,
+        item: bpy.types.AnyType,
+        _icon: int,
+        _active_data: bpy.types.AnyType,
+        _active_propname: str,
+    ) -> None:
+        row = layout.row(align=True)
+        row.label(text=item.name, icon="BONE_DATA")
+        parent_name = item.parent.name if item.parent is not None else "—"
+        row.label(text=f"parent: {parent_name}")
+        row.label(text=f"len {item.length:.2f}")
 
 
 class PROSCENIO_UL_actions(bpy.types.UIList):
@@ -327,13 +452,15 @@ class PROSCENIO_PT_export(bpy.types.Panel):
 
         layout.prop(scene_props, "last_export_path")
         layout.prop(scene_props, "pixels_per_unit")
-        layout.operator("proscenio.create_ortho_camera", icon="OUTLINER_OB_CAMERA")
+        layout.operator(
+            "proscenio.create_ortho_camera", text="Preview Camera", icon="OUTLINER_OB_CAMERA"
+        )
         layout.separator()
         col = layout.column(align=True)
-        col.operator("proscenio.validate_export", icon="CHECKMARK")
-        col.operator("proscenio.export_godot", icon="EXPORT")
+        col.operator("proscenio.validate_export", text="Validate", icon="CHECKMARK")
+        col.operator("proscenio.export_godot", text="Export (.proscenio)", icon="EXPORT")
         if scene_props.last_export_path:
-            col.operator("proscenio.reexport_godot", icon="FILE_REFRESH")
+            col.operator("proscenio.reexport_godot", text="Re-export", icon="FILE_REFRESH")
 
 
 class PROSCENIO_PT_help(bpy.types.Panel):
@@ -383,10 +510,11 @@ class PROSCENIO_PT_diagnostics(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        layout.operator("proscenio.smoke_test", icon="PLAY")
+        layout.operator("proscenio.smoke_test", text="Run Smoke Test", icon="PLAY")
 
 
 _classes: tuple[type, ...] = (
+    PROSCENIO_UL_bones,
     PROSCENIO_UL_actions,
     PROSCENIO_PT_main,
     PROSCENIO_PT_active_sprite,

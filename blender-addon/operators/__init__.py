@@ -334,6 +334,62 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
+    """Copy current UV bounds into the manual region_x/y/w/h fields."""
+
+    bl_idname = "proscenio.snap_region_to_uv"
+    bl_label = "Snap to UV bounds"
+    bl_description = (
+        "Reads the active mesh's UV bounds and writes them into the manual "
+        "region fields. Use this to seed manual mode with the current auto value."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        return obj is not None and obj.type == "MESH"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj = context.active_object
+        props = getattr(obj, "proscenio", None)
+        if props is None:
+            self.report({"WARNING"}, "Proscenio: PropertyGroup not registered on this object")
+            return {"CANCELLED"}
+
+        mesh = obj.data
+        uv_layer = mesh.uv_layers.active
+        if uv_layer is None or not mesh.polygons:
+            self.report({"WARNING"}, f"Proscenio: '{obj.name}' has no UV layer or no polygons")
+            return {"CANCELLED"}
+
+        xs: list[float] = []
+        ys: list[float] = []
+        for poly in mesh.polygons:
+            for li in poly.loop_indices:
+                u = uv_layer.data[li].uv
+                xs.append(float(u.x))
+                ys.append(1.0 - float(u.y))
+
+        if not xs:
+            self.report({"WARNING"}, f"Proscenio: '{obj.name}' has no UV data")
+            return {"CANCELLED"}
+
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        props.region_x = x_min
+        props.region_y = y_min
+        props.region_w = x_max - x_min
+        props.region_h = y_max - y_min
+        self.report(
+            {"INFO"},
+            f"Proscenio: snapped region to UV bounds "
+            f"({props.region_x:.4f}, {props.region_y:.4f}, "
+            f"{props.region_w:.4f}, {props.region_h:.4f})",
+        )
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -376,6 +432,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_create_ortho_camera,
     PROSCENIO_OT_toggle_ik_chain,
     PROSCENIO_OT_reproject_sprite_uv,
+    PROSCENIO_OT_snap_region_to_uv,
     PROSCENIO_OT_bake_current_pose,
 )
 

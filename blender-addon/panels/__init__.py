@@ -31,6 +31,39 @@ _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 
 
+def _draw_region_box(
+    layout: bpy.types.UILayout,
+    props: bpy.types.AnyType,
+    *,
+    sprite_type: str,
+) -> None:
+    """Render the texture_region authoring box (5.1.c.1).
+
+    Auto mode shows a static "computed at export" hint; manual mode unlocks
+    the four region floats + the Snap-to-UV-bounds operator. For sprite_frame,
+    auto mode means the writer omits texture_region entirely (full atlas).
+    """
+    box = layout.box()
+    box.label(text="Texture region", icon="UV_DATA")
+    box.prop(props, "region_mode", text="")
+    if props.region_mode == "manual":
+        row = box.row(align=True)
+        row.prop(props, "region_x")
+        row.prop(props, "region_y")
+        row = box.row(align=True)
+        row.prop(props, "region_w")
+        row.prop(props, "region_h")
+        if sprite_type == "polygon":
+            box.operator("proscenio.snap_region_to_uv", icon="UV")
+    else:
+        hint = (
+            "computed from UV bounds at export"
+            if sprite_type == "polygon"
+            else "omitted at export — full atlas used"
+        )
+        box.label(text=hint, icon="INFO")
+
+
 def _draw_weight_paint_brush(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
     """Mirror Blender's weight-paint brush controls inline (5.1.b)."""
     box = layout.box()
@@ -88,6 +121,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             box.prop(props, "vframes")
             box.prop(props, "frame")
             box.prop(props, "centered")
+            _draw_region_box(layout, props, sprite_type="sprite_frame")
         elif context.mode == "PAINT_WEIGHT":
             _draw_weight_paint_brush(layout, context)
         else:
@@ -98,6 +132,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             box.label(text="Polygon", icon="MESH_DATA")
             box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
             box.operator("proscenio.reproject_sprite_uv", icon="UV")
+            _draw_region_box(layout, props, sprite_type="polygon")
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
@@ -329,6 +364,7 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.bake_current_pose", "Bake Current Pose"),
     ("proscenio.toggle_ik_chain", "Toggle IK"),
     ("proscenio.reproject_sprite_uv", "Reproject UV"),
+    ("proscenio.snap_region_to_uv", "Snap region to UV bounds"),
     ("proscenio.select_issue_object", "Select Issue Object"),
     ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
 )

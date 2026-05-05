@@ -50,6 +50,21 @@ SPRITE_TYPE_ITEMS = (
     ),
 )
 
+REGION_MODE_ITEMS = (
+    (
+        "auto",
+        "Auto",
+        "Compute texture_region from the mesh's UV bounds at export time (default)",
+        0,
+    ),
+    (
+        "manual",
+        "Manual",
+        "Use the explicit region_x/y/w/h fields on this Object instead of UV bounds",
+        1,
+    ),
+)
+
 
 def _mirror_to_object(prop_name: str, obj: _Object, value: Any) -> None:
     """Write a PropertyGroup value back to the legacy Custom Property."""
@@ -125,6 +140,48 @@ class ProscenioObjectProps(PropertyGroup):
         description="Whether the Sprite2D's offset centers on its origin",
         default=True,
         update=_on_centered_update,
+    )
+    region_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Region mode",
+        description=(
+            "How `texture_region` is decided at export. "
+            "Auto recomputes from UV bounds every export; "
+            "Manual writes region_x/y/w/h verbatim."
+        ),
+        items=REGION_MODE_ITEMS,
+        default="auto",
+    )
+    region_x: FloatProperty(  # type: ignore[valid-type]
+        name="X",
+        description="Region origin X (manual mode). Normalized [0,1] of atlas width.",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+    )
+    region_y: FloatProperty(  # type: ignore[valid-type]
+        name="Y",
+        description="Region origin Y (manual mode). Normalized [0,1] of atlas height.",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+    )
+    region_w: FloatProperty(  # type: ignore[valid-type]
+        name="Width",
+        description="Region width (manual mode). Normalized [0,1] of atlas width.",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+    )
+    region_h: FloatProperty(  # type: ignore[valid-type]
+        name="Height",
+        description="Region height (manual mode). Normalized [0,1] of atlas height.",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
     )
 
 

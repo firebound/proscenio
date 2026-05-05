@@ -5,24 +5,27 @@ Inspired by the FairCut conventions, adapted to Proscenio's polyglot pipeline (P
 ## Branches
 
 ```text
-spec/<NNN>-<slug>             # SPEC implementation (ex: spec/001-reimport-merge)
-feat/<short-description>      # Feature work outside a SPEC
-fix/<short-description>       # Bug fix
-docs/<short-description>      # Documentation only
-refactor/<short-description>  # Refactor without behavior change
-chore/<short-description>     # Maintenance, tooling, configs
-ci/<short-description>        # Workflow changes
+feat/<slug>                   # Feature — outside a SPEC
+feat/spec-<NNN>-<slug>        # Feature — implementation of a numbered SPEC
+fix/<slug>                    # Bug fix
+fix/spec-<NNN>-<slug>         # Bug fix tied to a SPEC
+docs/<slug>                   # Documentation only
+refactor/<slug>               # Refactor without behavior change
+chore/<slug>                  # Maintenance, tooling, configs
+ci/<slug>                     # Workflow changes
 ```
 
-Examples: `spec/001-reimport-merge`, `feat/photoshop-json-importer`, `fix/godot-bone-y-flip`.
+Branch names follow the [Conventional Commits](https://www.conventionalcommits.org/) prefix vocabulary. SPEC implementation work uses the same prefixes; the SPEC number is embedded after the prefix as a stable, searchable token.
+
+Examples: `feat/spec-003-skinning-weights`, `feat/photoshop-json-importer`, `fix/godot-bone-y-flip`, `chore/install-dev`.
 
 When an issue exists, reference it in the commit body (`Refs: #42`), not in the branch name. Keep branch names readable.
 
 ## Workflow
 
 - **`main`** holds planning artifacts (`specs/<NNN>-…/STUDY.md` and `TODO.md`, `specs/backlog.md`) and small chores. Spec docs land directly on `main` because they cross PR boundaries and inform parallel work.
-- **`spec/<NNN>-<slug>`** holds the implementation of a numbered SPEC. Branch from `main` once the SPEC's STUDY/TODO are reviewed. Commit gradually as TODO items close. Open a PR back to `main` when the TODO is satisfied.
-- **`feat/`, `fix/`, `chore/`, `ci/`, `docs/`, `refactor/`** branches are for work that does not belong to a numbered SPEC.
+- **`feat/spec-<NNN>-<slug>`** (or `fix/`, `chore/` if the SPEC's nature warrants) holds the implementation of a numbered SPEC. Branch from `main` once the SPEC's STUDY/TODO are reviewed. Commit gradually as TODO items close. Open a PR back to `main` when the TODO is satisfied.
+- **Branches without the `spec-NNN-` infix** are for work that does not belong to a numbered SPEC.
 
 Prefer many small commits on the working branch over a single squashed lump — the merge can squash if needed, but the branch history is the audit trail while work is in flight.
 

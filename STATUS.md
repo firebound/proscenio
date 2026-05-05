@@ -52,7 +52,7 @@ flowchart LR
 | **Tipagem forte everywhere** | GDScript 2.0 com `untyped_declaration=2` (error) + Python mypy `--strict` + ExtendScript `@ts-check` + JSDoc. Erros pegos antes de runtime. |
 | **Schema é contrato** | Mudança na shape do `.proscenio` exige bump de `format_version` + migrator. CI valida fixtures. |
 | **One component per PR** | Exceto schema bump (que cruza componentes por design). |
-| **Branch policy**: SPEC docs direto na `main`, implementação em `spec/<NNN>-<slug>` com PR | SPEC docs informam paralelos; implementação fica isolada. |
+| **Branch policy**: SPEC docs direto na `main`, implementação em `feat/spec-<NNN>-<slug>` (Conventional Commits prefix) com PR | SPEC docs informam paralelos; implementação fica isolada. Prefixos seguem padrão CC: `feat/`, `fix/`, `chore/`, etc. |
 | **C# / GDExtension como escape hatch documentado** | Não é opção atual. Triggers concretos (deep Firebound integration, perf ceiling, live link) listados em `specs/backlog.md` "Architecture revisits". |
 
 ## Validação em camadas
@@ -108,13 +108,15 @@ flowchart TD
 
 ## O que está em andamento
 
-**PR #2 — `spec/002-spritesheet-sprite2d`** → main. SPEC 002 entrega o caminho `Sprite2D` (spritesheet animation) ao lado do `Polygon2D` (cutout) via discriminador `type` por sprite, retro-compatível com fixtures v1.
+**PR #3 — `spec/003-skinning-weights`** → main. SPEC 003 entrega skinning real: `Polygon2D.skeleton` + `add_bone()` por entrada de weight, deformação suave de mesh seguindo o rig.
 
-PR #1 já está merged (SPEC 001 — wrapper-scene pattern).
+PR #1 (wrapper-scene pattern) e PR #2 (spritesheet path) já estão merged.
+
+> **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
 ```mermaid
 flowchart LR
-    PR[("PR #2<br/>spec/002-spritesheet-sprite2d")]
+    PR[("PR #3<br/>spec/003-skinning-weights")]
     PR --> CI{CI verde?}
     CI -->|✅| REVIEW[Revisão humana]
     CI -->|❌| FIX[Fix + push]
@@ -188,8 +190,8 @@ flowchart TB
 1. **Aguardar CI verde** na PR #2 (`gh pr checks 2`).
 2. **Revisar o diff** ([PR #2](https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/2)).
 3. **Merge** para `main`.
-4. **Deletar** branch `spec/002-spritesheet-sprite2d`.
-5. **Implementar SPEC 003** (skinning weights — STUDY+TODO já escritos em [`specs/003-skinning-weights/`](specs/003-skinning-weights/STUDY.md)). Pode rodar paralelo a SPEC 005 (Blender authoring panel) se quiser dois caminhos simultâneos.
+4. **Deletar** branch `spec/003-skinning-weights` após merge.
+5. **Decidir SPEC seguinte**: SPEC 004 (slot system) ou SPEC 005 (Blender authoring panel — destrava UX iterativa). Próxima branch nasce em `feat/spec-NNN-<slug>` por convenção.
 
 ---
 

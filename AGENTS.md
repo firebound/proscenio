@@ -30,7 +30,7 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 4. **Strict dependency direction.** Photoshop knows nothing of Blender. Blender knows nothing of Godot internals. Godot knows only `.proscenio`. The schema is the only shared artifact.
 5. **One component per PR** unless the change is a format bump (which by definition crosses components).
 6. **Conventional Commits.** Squash merge.
-7. **Branch policy.** SPEC docs (`specs/<NNN>-…/STUDY.md` and `TODO.md`) land directly on `main`. Implementation lives on a `spec/<NNN>-<slug>` branch and merges back via PR when the SPEC's TODO is satisfied. Other work uses `feat/`, `fix/`, `chore/`, `ci/`, `docs/`, `refactor/`. Full convention in [`.ai/conventions.md`](.ai/conventions.md#workflow).
+7. **Branch policy.** SPEC docs (`specs/<NNN>-…/STUDY.md` and `TODO.md`) land directly on `main`. Implementation lives on a `feat/spec-<NNN>-<slug>` branch (or `fix/spec-<NNN>-<slug>`, `chore/spec-<NNN>-<slug>` if the SPEC's nature warrants) and merges back via PR when the SPEC's TODO is satisfied. Branch names follow Conventional Commits prefixes everywhere. Full convention in [`.ai/conventions.md`](.ai/conventions.md#branches).
 
 ## Repository layout
 

@@ -1,10 +1,11 @@
 """Blender operators."""
 
+import contextlib
 from pathlib import Path
 from typing import ClassVar
 
 import bpy
-from bpy.props import FloatProperty, StringProperty
+from bpy.props import FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
@@ -184,6 +185,155 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
         return {"FINISHED"}
 
 
+_PREVIEW_CAM_NAME = "Proscenio.PreviewCam"
+_IK_CONSTRAINT_NAME = "Proscenio IK"
+
+
+class PROSCENIO_OT_create_ortho_camera(bpy.types.Operator):
+    """Create or focus an orthographic preview camera matching pixels_per_unit."""
+
+    bl_idname = "proscenio.create_ortho_camera"
+    bl_label = "Preview Camera"
+    bl_description = (
+        "Adds (or focuses) an orthographic camera sized to the scene's "
+        "pixels_per_unit and render resolution. Use Numpad 0 to enter the view."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        scene = context.scene
+        scene_props = getattr(scene, "proscenio", None)
+        ppu = float(scene_props.pixels_per_unit) if scene_props is not None else 100.0
+        ortho_scale = max(scene.render.resolution_x, scene.render.resolution_y) / ppu
+
+        cam_obj = bpy.data.objects.get(_PREVIEW_CAM_NAME)
+        if cam_obj is None:
+            cam_data = bpy.data.cameras.new(name=_PREVIEW_CAM_NAME)
+            cam_obj = bpy.data.objects.new(name=_PREVIEW_CAM_NAME, object_data=cam_data)
+            scene.collection.objects.link(cam_obj)
+            cam_obj.location = (0.0, -10.0, 0.0)
+            cam_obj.rotation_euler = (1.5707963, 0.0, 0.0)
+            created = True
+        else:
+            created = False
+
+        cam = cam_obj.data
+        cam.type = "ORTHO"
+        cam.ortho_scale = ortho_scale
+
+        scene.camera = cam_obj
+        for other in context.scene.objects:
+            other.select_set(False)
+        cam_obj.select_set(True)
+        context.view_layer.objects.active = cam_obj
+
+        verb = "created" if created else "updated"
+        self.report(
+            {"INFO"},
+            f"Proscenio: {verb} '{_PREVIEW_CAM_NAME}' (ortho_scale={ortho_scale:.4f})",
+        )
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_toggle_ik_chain(bpy.types.Operator):
+    """Toggle a Proscenio-owned IK constraint on the active pose bone."""
+
+    bl_idname = "proscenio.toggle_ik_chain"
+    bl_label = "Toggle IK"
+    bl_description = (
+        "Adds an IK constraint named 'Proscenio IK' to the active pose bone "
+        "(chain length 2). Click again to remove it. Hand-added constraints "
+        "are left untouched."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    chain_length: IntProperty(  # type: ignore[valid-type]
+        name="Chain length",
+        default=2,
+        min=0,
+        soft_max=8,
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        if context.mode != "POSE":
+            return False
+        bone = getattr(context, "active_pose_bone", None)
+        return bone is not None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bone = context.active_pose_bone
+        existing = bone.constraints.get(_IK_CONSTRAINT_NAME)
+        if existing is not None:
+            bone.constraints.remove(existing)
+            self.report({"INFO"}, f"Proscenio: removed IK from '{bone.name}'")
+            return {"FINISHED"}
+
+        ik = bone.constraints.new(type="IK")
+        ik.name = _IK_CONSTRAINT_NAME
+        ik.chain_count = self.chain_length
+        self.report(
+            {"INFO"},
+            f"Proscenio: added IK to '{bone.name}' (chain={self.chain_length}); "
+            f"set the target manually.",
+        )
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
+    """Re-unwrap the active mesh's UVs against its first image-textured material."""
+
+    bl_idname = "proscenio.reproject_sprite_uv"
+    bl_label = "Reproject UV"
+    bl_description = (
+        "Re-projects the active mesh's UVs (Smart UV Project) so the texture "
+        "lines up after vertex edits. Active object only."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    angle_limit: FloatProperty(  # type: ignore[valid-type]
+        name="Angle limit",
+        description="Smart UV Project angle limit (radians)",
+        default=1.15192,
+        min=0.0,
+        max=3.14159,
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        return obj is not None and obj.type == "MESH"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj = context.active_object
+        prior_mode = context.mode
+        prior_active = context.view_layer.objects.active
+        prior_selection = [o for o in context.scene.objects if o.select_get()]
+
+        try:
+            for other in context.scene.objects:
+                other.select_set(False)
+            obj.select_set(True)
+            context.view_layer.objects.active = obj
+            if prior_mode != "EDIT_MESH":
+                bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.uv.smart_project(angle_limit=self.angle_limit)
+        finally:
+            if prior_mode != "EDIT_MESH":
+                with contextlib.suppress(RuntimeError):
+                    bpy.ops.object.mode_set(mode="OBJECT")
+            for other in context.scene.objects:
+                other.select_set(False)
+            for o in prior_selection:
+                o.select_set(True)
+            if prior_active is not None:
+                context.view_layer.objects.active = prior_active
+
+        self.report({"INFO"}, f"Proscenio: reprojected UVs on '{obj.name}'")
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -223,6 +373,9 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_export_godot,
     PROSCENIO_OT_reexport_godot,
     PROSCENIO_OT_select_issue_object,
+    PROSCENIO_OT_create_ortho_camera,
+    PROSCENIO_OT_toggle_ik_chain,
+    PROSCENIO_OT_reproject_sprite_uv,
     PROSCENIO_OT_bake_current_pose,
 )
 

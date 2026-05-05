@@ -31,6 +31,25 @@ _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 
 
+def _draw_weight_paint_brush(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
+    """Mirror Blender's weight-paint brush controls inline (5.1.b)."""
+    box = layout.box()
+    box.label(text="Weight paint", icon="BRUSH_DATA")
+    tool_settings = context.tool_settings
+    wp = getattr(tool_settings, "weight_paint", None)
+    brush = getattr(wp, "brush", None) if wp is not None else None
+    if brush is None:
+        box.label(text="no active brush", icon="INFO")
+        return
+    ups = tool_settings.unified_paint_settings
+    box.prop(ups, "use_unified_size", text="Unified size")
+    box.prop(ups if ups.use_unified_size else brush, "size", slider=True)
+    box.prop(ups, "use_unified_strength", text="Unified strength")
+    box.prop(ups if ups.use_unified_strength else brush, "strength", slider=True)
+    box.prop(ups if ups.use_unified_weight else brush, "weight", slider=True)
+    box.prop(brush, "use_auto_normalize", text="Auto-normalize")
+
+
 class PROSCENIO_PT_active_sprite(bpy.types.Panel):
     """Per-sprite settings — sprite type dropdown + sprite_frame metadata."""
 
@@ -69,6 +88,8 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             box.prop(props, "vframes")
             box.prop(props, "frame")
             box.prop(props, "centered")
+        elif context.mode == "PAINT_WEIGHT":
+            _draw_weight_paint_brush(layout, context)
         else:
             mesh = obj.data
             vg_count = len(getattr(obj, "vertex_groups", []) or [])
@@ -76,6 +97,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             box = layout.box()
             box.label(text="Polygon", icon="MESH_DATA")
             box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
+            box.operator("proscenio.reproject_sprite_uv", icon="UV")
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
@@ -117,10 +139,11 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                 text=f"{len(armatures)} armatures — writer uses the first only",
                 icon="ERROR",
             )
-        # Pose-mode-only baking helper (5.1.a).
+        # Pose-mode-only helpers (5.1.a + 5.1.b).
         if context.mode == "POSE":
             layout.separator()
             layout.operator("proscenio.bake_current_pose", icon="KEY_HLT")
+            layout.operator("proscenio.toggle_ik_chain", icon="CON_KINEMATIC")
 
 
 class PROSCENIO_UL_actions(bpy.types.UIList):
@@ -269,6 +292,7 @@ class PROSCENIO_PT_export(bpy.types.Panel):
 
         layout.prop(scene_props, "last_export_path")
         layout.prop(scene_props, "pixels_per_unit")
+        layout.operator("proscenio.create_ortho_camera", icon="OUTLINER_OB_CAMERA")
         layout.separator()
         col = layout.column(align=True)
         col.operator("proscenio.validate_export", icon="CHECKMARK")
@@ -301,7 +325,10 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.validate_export", "Validate"),
     ("proscenio.export_godot", "Export Proscenio (.proscenio)"),
     ("proscenio.reexport_godot", "Re-export"),
+    ("proscenio.create_ortho_camera", "Preview Camera"),
     ("proscenio.bake_current_pose", "Bake Current Pose"),
+    ("proscenio.toggle_ik_chain", "Toggle IK"),
+    ("proscenio.reproject_sprite_uv", "Reproject UV"),
     ("proscenio.select_issue_object", "Select Issue Object"),
     ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
 )

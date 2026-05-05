@@ -7,23 +7,16 @@ a Blender session. The two entry points cover both modes:
   Godot-space UV list (``[u, v]`` with v already flipped).
 - :func:`resolve_region` — picks between the auto path and the manual
   ``Object.proscenio.region_*`` override based on ``region_mode``.
+
+``obj`` is duck-typed: anything that exposes ``getattr(obj, "proscenio")``
+plus ``__contains__`` / ``__getitem__`` for the legacy Custom Property
+fallback. Real Blender ``bpy.types.Object`` satisfies it; tests pass a
+:class:`types.SimpleNamespace`-flavored mock with the same shape.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol
-
-
-class _ObjectLike(Protocol):
-    """Subset of ``bpy.types.Object`` that ``resolve_region`` actually touches.
-
-    Real Blender Objects expose ``__contains__`` / ``__getitem__`` for raw
-    Custom Properties; tests pass a :class:`types.SimpleNamespace`-flavored
-    mock with the same shape.
-    """
-
-    def __contains__(self, key: str) -> bool: ...
-    def __getitem__(self, key: str) -> Any: ...
+from typing import Any
 
 
 def _read_field(obj: Any, field: str, custom_key: str, default: Any) -> Any:

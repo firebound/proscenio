@@ -1,7 +1,13 @@
 Aodaruma
 Aseprite
+Bassel
+BrashMonkey
 claude
+Cubism
 Defold
+DragonBones
+DUIK
+Esoteric
 Evgene
 firebound
 Firebound
@@ -9,6 +15,12 @@ GITHUB
 godot
 Krita
 Kuklin
+LoongBones
 ndee
+NickTiny
+Papagayo
 Qube
+RubberHose
+Spriter
 tozpeak
+Ángela

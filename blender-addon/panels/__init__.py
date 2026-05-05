@@ -27,6 +27,10 @@ class PROSCENIO_PT_main(bpy.types.Panel):
         layout.label(text="Pipeline v0.1.0", icon="INFO")
 
 
+_OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
+_POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
+
+
 class PROSCENIO_PT_active_sprite(bpy.types.Panel):
     """Per-sprite settings — sprite type dropdown + sprite_frame metadata."""
 
@@ -41,7 +45,9 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
-        return obj is not None and obj.type == "MESH"
+        if obj is None or obj.type != "MESH":
+            return False
+        return context.mode in _OBJECT_FRIENDLY_MODES
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -89,6 +95,10 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_main"
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return context.mode in _POSE_FRIENDLY_MODES
+
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
@@ -107,6 +117,31 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                 text=f"{len(armatures)} armatures — writer uses the first only",
                 icon="ERROR",
             )
+        # Pose-mode-only baking helper (5.1.a).
+        if context.mode == "POSE":
+            layout.separator()
+            layout.operator("proscenio.bake_current_pose", icon="KEY_HLT")
+
+
+class PROSCENIO_UL_actions(bpy.types.UIList):
+    """List view for ``bpy.data.actions`` — Animation subpanel uses this."""
+
+    bl_idname = "PROSCENIO_UL_actions"
+
+    def draw_item(
+        self,
+        _context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        _data: bpy.types.AnyType,
+        item: bpy.types.AnyType,
+        _icon: int,
+        _active_data: bpy.types.AnyType,
+        _active_propname: str,
+    ) -> None:
+        start, end = item.frame_range
+        row = layout.row(align=True)
+        row.label(text=item.name, icon="ACTION")
+        row.label(text=f"[{start:.0f}-{end:.0f}]")
 
 
 class PROSCENIO_PT_animation(bpy.types.Panel):
@@ -122,14 +157,20 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        actions = list(bpy.data.actions)
+        actions = bpy.data.actions
         if not actions:
             layout.label(text="no actions to export", icon="INFO")
             return
-        for action in actions:
-            row = layout.row()
-            start, end = action.frame_range
-            row.label(text=f"{action.name}  [{start:.0f}-{end:.0f}]", icon="ACTION")
+        layout.template_list(
+            "PROSCENIO_UL_actions",
+            "",
+            bpy.data,
+            "actions",
+            context.scene.proscenio,
+            "active_action_index",
+            rows=min(max(len(actions), 2), 6),
+        )
+        layout.label(text=f"{len(actions)} action(s) total", icon="INFO")
 
 
 class PROSCENIO_PT_atlas(bpy.types.Panel):
@@ -194,11 +235,19 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
             return
 
         for issue in issues:
-            row = layout.row()
+            row = layout.row(align=True)
             row.alert = issue.severity == "error"
             icon = "ERROR" if issue.severity == "error" else "INFO"
-            label = f"[{issue.obj_name}] {issue.message}" if issue.obj_name else issue.message
-            row.label(text=label, icon=icon)
+            if issue.obj_name:
+                op = row.operator(
+                    "proscenio.select_issue_object",
+                    text=f"[{issue.obj_name}] {issue.message}",
+                    icon=icon,
+                    emboss=False,
+                )
+                op.obj_name = issue.obj_name
+            else:
+                row.label(text=issue.message, icon=icon)
 
 
 class PROSCENIO_PT_export(bpy.types.Panel):
@@ -228,6 +277,36 @@ class PROSCENIO_PT_export(bpy.types.Panel):
             col.operator("proscenio.reexport_godot", icon="FILE_REFRESH")
 
 
+class PROSCENIO_PT_help(bpy.types.Panel):
+    """Shortcut cheat-sheet — every Proscenio operator with its idname."""
+
+    bl_label = "Help"
+    bl_idname = "PROSCENIO_PT_help"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_main"
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        layout.label(text="Operators (use F3 to search):", icon="QUESTION")
+        for idname, label in _OPERATOR_REFERENCE:
+            row = layout.row(align=True)
+            row.label(text=label)
+            row.label(text=idname)
+
+
+_OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
+    ("proscenio.validate_export", "Validate"),
+    ("proscenio.export_godot", "Export Proscenio (.proscenio)"),
+    ("proscenio.reexport_godot", "Re-export"),
+    ("proscenio.bake_current_pose", "Bake Current Pose"),
+    ("proscenio.select_issue_object", "Select Issue Object"),
+    ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
+)
+
+
 class PROSCENIO_PT_diagnostics(bpy.types.Panel):
     """Smoke test + future addon-health buttons."""
 
@@ -245,6 +324,7 @@ class PROSCENIO_PT_diagnostics(bpy.types.Panel):
 
 
 _classes: tuple[type, ...] = (
+    PROSCENIO_UL_actions,
     PROSCENIO_PT_main,
     PROSCENIO_PT_active_sprite,
     PROSCENIO_PT_skeleton,
@@ -252,6 +332,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_PT_atlas,
     PROSCENIO_PT_validation,
     PROSCENIO_PT_export,
+    PROSCENIO_PT_help,
     PROSCENIO_PT_diagnostics,
 )
 

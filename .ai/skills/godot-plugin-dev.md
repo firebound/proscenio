@@ -22,7 +22,8 @@ godot-plugin/
 │   ├── reimporter.gd       # diff/merge logic for non-destructive reimport
 │   └── builders/
 │       ├── skeleton_builder.gd
-│       ├── polygon_builder.gd
+│       ├── polygon_builder.gd        # type: "polygon" sprites — Polygon2D
+│       ├── sprite_frame_builder.gd   # type: "sprite_frame" sprites — Sprite2D
 │       └── animation_builder.gd
 └── tests/                  # GUT
 ```
@@ -34,9 +35,25 @@ godot-plugin/
 3. Importer parses the JSON and validates `format_version`.
 4. Builders construct nodes in memory:
    - `Node2D` (root)
-     - `Skeleton2D` → `Bone2D` (recursive) → `Polygon2D` (sprites attached to bones)
+     - `Skeleton2D` → `Bone2D` (recursive) → sprites attached to bones
+       - `Polygon2D` for sprites of `type: "polygon"` (default, cutout)
+       - `Sprite2D` for sprites of `type: "sprite_frame"` (spritesheet)
      - `AnimationPlayer` with one default `AnimationLibrary`
 5. Wrap root in `PackedScene`, save via `ResourceSaver` to `.godot/imported/<hash>.scn`.
+
+## Choosing the rendering path
+
+The `.proscenio` schema uses a `type` discriminator per sprite (see [SPEC 002](../../specs/002-spritesheet-sprite2d/STUDY.md) and [`format-spec.md`](format-spec.md#sprite-kinds-type-discriminator)). Pick by use case:
+
+| Use case | Pick | Why |
+| --- | --- | --- |
+| Cutout-style character with deformable mesh (Spine / COA Tools target audience) | `polygon` | `Polygon2D` carries vertices + UV, eligible for skinning weights in SPEC 003 |
+| Frame-by-frame pixel art animation | `sprite_frame` | `Sprite2D` with `hframes`/`vframes`/`frame` is the native idiom |
+| Particles, hit flashes, sparkles, simple effects | `sprite_frame` | cheapest, no per-vertex geometry |
+| Simple sprite that only translates/rotates with no deformation | either | `sprite_frame` is lighter when no skinning is on the horizon |
+| Static atlas region (one frame, no animation) | `polygon` quad | UV is explicit; no need to invent a 1×1 frame grid |
+
+Mixing both kinds inside the same character is supported and idiomatic — a cutout body with a spritesheet face is a common pattern.
 
 ## The "no GDExtension" rule
 

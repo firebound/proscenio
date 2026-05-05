@@ -20,9 +20,24 @@ JSON file with extension `.proscenio`. Source of truth: [`schemas/proscenio.sche
 | `slots` | array | no | sprite swap groups |
 | `animations` | array | no | track data |
 
+## Sprite kinds (`type` discriminator)
+
+Each entry in `sprites` is one of two shapes, distinguished by a `type` field:
+
+| `type` | Renders as | Required fields | Use when |
+| --- | --- | --- | --- |
+| `polygon` (default) | `Polygon2D` | `polygon`, `uv`, `texture_region` | cutout-style mesh, deformable, eligible for skinning weights (SPEC 003) |
+| `sprite_frame` | `Sprite2D` | `hframes`, `vframes`, `bone` | frame-by-frame animation (pixel art, particles, effects) |
+
+`type` is **optional** on `polygon` sprites — absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
+
+A sprite of `type: "sprite_frame"` carries an optional `texture_region` (the sub-rectangle of the atlas where the spritesheet lives) plus the frame grid (`hframes` × `vframes`), the initial `frame` index (row-major), and the standard `Sprite2D` knobs `offset` and `centered`. Animations advance the frame via a `sprite_frame` track on the matching sprite.
+
+A single `.proscenio` may freely mix both kinds — a cutout body with a spritesheet face, for example.
+
 ## UV coordinates
 
-UVs in `.proscenio` are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size).
+UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite_frame` sprites have no `uv` field — Godot derives the UV automatically from `frame` × `hframes`/`vframes`.
 
 ## Coordinate system
 
@@ -64,7 +79,7 @@ The Godot importer rejects unknown future versions with a clear error message an
 | Track type | Targets | Per-key data |
 | --- | --- | --- |
 | `bone_transform` | `Bone2D` | `position`, `rotation`, `scale` |
-| `sprite_frame` | `Sprite2D` / `Polygon2D` | `frame` (spritesheet index) |
+| `sprite_frame` | `Sprite2D` (sprite of `type: "sprite_frame"`) | `frame` (spritesheet index) — importer wires this to a value track at `:frame` with `INTERPOLATION_NEAREST` |
 | `slot_attachment` | slot | `attachment` (sprite name) |
 | `visibility` | any | `visible` (bool) |
 

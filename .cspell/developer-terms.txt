@@ -2,6 +2,7 @@ autocalculate
 channelbag
 channelbags
 cmdln
+discriminator
 dotnet
 euler
 fcurve
@@ -12,6 +13,7 @@ gdshader
 gdtoolkit
 GLTF
 headlessly
+hframes
 idname
 interp
 jsonschema
@@ -33,5 +35,7 @@ softprops
 spritesheet
 spritesheets
 tscn
+unskinned
 venv
 verts
+vframes

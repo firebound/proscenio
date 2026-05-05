@@ -73,7 +73,7 @@ A Blender operator that adds a properly configured ortho camera for pixel-perfec
 
 ### Spritesheet support and `Sprite2D` path
 
-Slated for SPEC 002. Add `Sprite2D` rendering path for sprites that animate via `frame` index. Schema needs a sprite `type` discriminator or implicit detection.
+**Resolved by [SPEC 002](002-spritesheet-sprite2d/STUDY.md)** — adopt explicit `type` discriminator field per sprite; default `"polygon"` keeps v1 fixtures backwards-compatible. `Sprite2D` ships as the `"sprite_frame"` variant with `hframes`/`vframes`/`frame` and the matching animation track.
 
 ### Slot system
 

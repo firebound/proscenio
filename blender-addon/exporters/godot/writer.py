@@ -41,6 +41,7 @@ DEFAULT_PIXELS_PER_UNIT = 100.0
 # both at the same time when the schema bumps.
 TrackType = Literal["bone_transform", "sprite_frame", "slot_attachment", "visibility"]
 InterpType = Literal["linear", "constant"]
+SpriteType = Literal["polygon", "sprite_frame"]
 
 
 class BoneDict(TypedDict):
@@ -56,6 +57,16 @@ class RestLocal(TypedDict):
     position: tuple[float, float]
     rotation: float
     scale: tuple[float, float]
+
+
+class SpriteFrameDict(TypedDict):
+    type: Literal["sprite_frame"]
+    name: str
+    bone: str
+    hframes: int
+    vframes: int
+    frame: int
+    centered: bool
 
 
 def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_UNIT) -> None:
@@ -261,7 +272,7 @@ def _build_sprite(
     """
     sprite_type: str = str(obj.get("proscenio_type", "polygon"))
     if sprite_type == "sprite_frame":
-        return _build_sprite_frame(obj)
+        return dict(_build_sprite_frame(obj))
     if sprite_type != "polygon":
         raise RuntimeError(
             f"Proscenio: object {obj.name!r} has unknown proscenio_type "
@@ -312,7 +323,7 @@ def _build_sprite(
     }
 
 
-def _build_sprite_frame(obj: bpy.types.Object) -> dict[str, Any]:
+def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
     """Emit a `sprite_frame` sprite entry from Object Custom Properties.
 
     Required custom properties on the Object:

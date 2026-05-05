@@ -109,9 +109,9 @@ flowchart TD
 
 ## O que está em andamento
 
-SPEC 005 first-cut em **PR #4** (`feat/spec-005-blender-authoring-panel`). Todas as 8 decisões D1-D8 implementadas, painel funcional validado manualmente em `examples/dummy/dummy.blend`. Os hotfixes pós-implementação (timer-deferred hydration + writer reads PropertyGroup-first) corrigem dois bugs reais de timing e contrato.
+SPEC 005 first-cut **mergeado** (PR #4). SPEC 005.1.a (panel polish wave) em andamento na branch `feat/spec-005.1-panel-polish`: click-to-select Issues, shortcut cheat-sheet, bake-current-pose operator, mode-aware subpanels e animation list (UIList) já implementados.
 
-PRs 1, 2, 3 já estão merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x. Próxima implementação após merge da #4: branch `feat/spec-005.1-panel-polish` cobrindo a primeira onda da matriz 5.1 do RESEARCH.
+PRs 1, 2, 3, 4 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x. Próxima implementação após merge da onda 5.1.a: branch `feat/spec-005.1-helpers` (5.1.b — camera ortho, IK helper, driver shortcut, reproject sprite, weight brush).
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -140,7 +140,7 @@ flowchart TB
     S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>✅ shipped]
     S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>✅ shipped]
     S4[SPEC 004<br/>Slot system<br/>📝 placeholder]
-    S5[SPEC 005<br/>Blender authoring panel<br/>🟡 PR #4 first-cut, 5.1.x next]
+    S5[SPEC 005<br/>Blender authoring panel<br/>✅ first-cut, 🟡 5.1.a in flight]
 
     BACKLOG[Backlog<br/>Bezier preservation, animation events,<br/>multi-atlas, per-key interp, format v2]
 
@@ -175,7 +175,7 @@ flowchart TB
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
-| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | **PR #4 first-cut**; 5.1.x ondas seguintes (atlas helper, IK helper, pose library shim, etc — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md)) |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut **shipped** (PR #4); **5.1.a em flight** (branch `feat/spec-005.1-panel-polish`); 5.1.b/c/d ondas seguintes (atlas helper, IK helper, pose library shim, etc — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md)) |
 
 ### Backlog (sem ordem)
 
@@ -192,15 +192,14 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 first-cut em revisão. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 first-cut shipped. SPEC 005.1.a em revisão. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge da PR #4** — fecha SPEC 005 first-cut na main.
-2. **SPEC 005.1.a (panel polish wave)** — Click-to-select Issues, Shortcut cheat-sheet, Bake current pose, Mode-aware subpanels, Animation collections list. Branch `feat/spec-005.1-panel-polish`.
-3. **SPEC 005.1.b (helpers wave)** — Camera ortho preview, IK chain helper, Driver constraint shortcut, Reproject sprite texture, Inline weight brush controls.
-4. **SPEC 005.1.c (atlas wave)** — Atlas region helper, region_rect authoring, Atlas packer integration (PyTexturePacker dep).
-5. **SPEC 005.1.d (advanced wave)** — Pose library shim, Spriteobject custom outliner.
-6. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
-7. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
+1. **CI verde + merge da PR de 5.1.a** — fecha a onda panel polish.
+2. **SPEC 005.1.b (helpers wave)** — Camera ortho preview, IK chain helper, Driver constraint shortcut, Reproject sprite texture, Inline weight brush controls.
+3. **SPEC 005.1.c (atlas wave)** — Atlas region helper, region_rect authoring, Atlas packer integration (PyTexturePacker dep).
+4. **SPEC 005.1.d (advanced wave)** — Pose library shim, Spriteobject custom outliner.
+5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+6. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

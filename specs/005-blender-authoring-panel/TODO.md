@@ -66,18 +66,21 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 - [ ] Click Validate with a deliberately broken state (sprite_frame mesh with `hframes = 0`); panel surfaces the issue, Export button reports an error. *(Manual sanity test, run when convenient.)*
 - [ ] Open a `.blend` from before SPEC 005; verify the panel reads existing Custom Properties without breaking, edits round-trip cleanly. *(Manual, requires a legacy fixture.)*
 
-## Defer (potential SPEC 005.1 — to be implemented in waves; see `RESEARCH.md` matrix)
+## SPEC 005.1.a — panel polish wave (shipped)
+
+- [x] Click-to-select on Issues (`PROSCENIO_OT_select_issue_object` — Validation rows are emboss-less operator buttons that select + activate the offending object).
+- [x] Shortcut cheat-sheet panel (`PROSCENIO_PT_help` — static idname/label table for F3 search).
+- [x] Bake current pose as keyframe (`PROSCENIO_OT_bake_current_pose` — pose-mode-only, inserts loc/rot/scale on every pose bone at the playhead; rendered inline in the Skeleton subpanel).
+- [x] Mode-aware subpanels (`_OBJECT_FRIENDLY_MODES` / `_POSE_FRIENDLY_MODES` — Active Sprite hides outside object/edit-mesh/weight-paint/vertex-paint; Skeleton hides outside object/pose/edit-armature).
+- [x] Animation collections list editing (`PROSCENIO_UL_actions` + `template_list` against `bpy.data.actions`; `ProscenioSceneProps.active_action_index` selects the row).
+
+## Defer (SPEC 005.1.b/c/d — see `RESEARCH.md` matrix)
 
 - Atlas region helper (D8 — "Snap UV bounds → texture_region").
 - Camera ortho preview helper (matches `pixels_per_unit`).
 - Atlas packer integration (PyTexturePacker dep).
 - Pose library shim (Asset Browser).
 - IK chain helper Blender-side.
-- Bake current pose as keyframe.
-- Mode-aware subpanels (Pose / Object / Weight Paint).
-- Click-to-select on Issues.
-- Shortcut cheat-sheet panel.
-- Animation collections list editing.
 - Driver constraint shortcut.
 - Inline weight paint brush controls.
 - Reproject sprite texture (UV unwrap chain).

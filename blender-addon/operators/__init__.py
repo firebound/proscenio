@@ -156,11 +156,74 @@ class PROSCENIO_OT_reexport_godot(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
+    """Select the object referenced by a validation issue and make it active."""
+
+    bl_idname = "proscenio.select_issue_object"
+    bl_label = "Select Object"
+    bl_description = "Selects and activates the object that the issue refers to"
+    bl_options: ClassVar[set[str]] = {"REGISTER"}
+
+    obj_name: StringProperty(  # type: ignore[valid-type]
+        name="Object name",
+        default="",
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        if not self.obj_name:
+            self.report({"WARNING"}, "Proscenio: issue has no object name")
+            return {"CANCELLED"}
+        obj = bpy.data.objects.get(self.obj_name)
+        if obj is None:
+            self.report({"WARNING"}, f"Proscenio: object '{self.obj_name}' not found")
+            return {"CANCELLED"}
+        for other in context.scene.objects:
+            other.select_set(False)
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
+    """Insert keyframes for every Bone2D's transform at the current frame."""
+
+    bl_idname = "proscenio.bake_current_pose"
+    bl_label = "Bake Current Pose"
+    bl_description = (
+        "Inserts a location/rotation/scale keyframe on every pose bone of the "
+        "first armature in the scene at the playhead. Requires Pose Mode."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        active = context.active_object
+        if active is None or active.type != "ARMATURE":
+            return False
+        return bool(context.mode == "POSE")
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        armature = context.active_object
+        frame = context.scene.frame_current
+        bones = armature.pose.bones
+        if not bones:
+            self.report({"WARNING"}, "Proscenio: armature has no pose bones")
+            return {"CANCELLED"}
+        for bone in bones:
+            for path in ("location", "rotation_quaternion", "rotation_euler", "scale"):
+                if hasattr(bone, path):
+                    bone.keyframe_insert(data_path=path, frame=frame)
+        self.report({"INFO"}, f"Proscenio: baked pose at frame {frame} for {len(bones)} bone(s)")
+        return {"FINISHED"}
+
+
 _classes: tuple[type, ...] = (
     PROSCENIO_OT_smoke_test,
     PROSCENIO_OT_validate_export,
     PROSCENIO_OT_export_godot,
     PROSCENIO_OT_reexport_godot,
+    PROSCENIO_OT_select_issue_object,
+    PROSCENIO_OT_bake_current_pose,
 )
 
 

@@ -171,6 +171,12 @@ class ProscenioSceneProps(PropertyGroup):
         default=False,
         description="True after the user has run Validate at least once this session",
     )
+    active_action_index: IntProperty(  # type: ignore[valid-type]
+        name="Active action",
+        description="Selected row in the Animation panel's action list",
+        default=0,
+        min=0,
+    )
 
 
 def _hydrate_existing_objects() -> None:

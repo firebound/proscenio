@@ -101,35 +101,34 @@ flowchart TD
 | --- | --- |
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
-| Test assertions Godot | 22 (dummy 10 + effect 12, incluindo idempotency) |
-| Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`) — `effect.blend` deferred |
+| Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
+| Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
 | CI jobs | 5 |
-| SPECs escritos | 2 fechadas (000, 002), 1 em revisão (001), 2 só previstas (003, 004) |
+| SPECs escritos | 4 shipped (000, 001, 002, 003), 1 ativo (005), 1 placeholder (004) |
 
 ## O que está em andamento
 
-**PR #3 — `spec/003-skinning-weights`** → main. SPEC 003 entrega skinning real: `Polygon2D.skeleton` + `add_bone()` por entrada de weight, deformação suave de mesh seguindo o rig.
+SPEC 003 (skinning weights) **merged via PR #3**. Próxima implementação é SPEC 005 (Blender authoring panel) na branch `feat/spec-005-blender-authoring-panel`.
 
-PR #1 (wrapper-scene pattern) e PR #2 (spritesheet path) já estão merged.
+PRs 1, 2, 3 já estão merged. SPEC 004 (slots) ficou como placeholder até o painel ship.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
 ```mermaid
 flowchart LR
-    PR[("PR #3<br/>spec/003-skinning-weights")]
-    PR --> CI{CI verde?}
+    BR[("feat/spec-005-<br/>blender-authoring-panel")]
+    BR --> IMPL[Implementação<br/>panels + properties + validation]
+    IMPL --> CI{CI verde?}
     CI -->|✅| REVIEW[Revisão humana]
     CI -->|❌| FIX[Fix + push]
     FIX --> CI
     REVIEW --> MERGE[merge na main]
-    MERGE --> DEL[apagar branch remote]
-    DEL --> NEXT[próxima SPEC ou backlog]
+    MERGE --> DEL[apagar branch + reload addon]
+    DEL --> NEXT[SPEC 004 design pass — slot system]
 
-    style PR fill:#dbeafe,stroke:#1e40af
+    style BR fill:#dbeafe,stroke:#1e40af
     style MERGE fill:#dcfce7,stroke:#166534
 ```
-
-7 commits SPEC 002 + arrumações (project.godot debug warnings, atlas mirror em `scripts/test_export.py`, regen do `expected.proscenio` pra refletir dummy mixto).
 
 ## Roadmap
 
@@ -137,10 +136,10 @@ flowchart LR
 flowchart TB
     S0[SPEC 000<br/>Initial plan + Phase 1 MVP<br/>✅ shipped]
     S1[SPEC 001<br/>Reimport-merge<br/>✅ shipped]
-    S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>🟡 PR #2 aberta]
-    S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>📝 STUDY+TODO escritos]
-    S4[SPEC 004<br/>Slot system<br/>📝 só prevista]
-    S5[SPEC 005<br/>Blender authoring panel<br/>📝 só prevista]
+    S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>✅ shipped]
+    S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>✅ shipped]
+    S4[SPEC 004<br/>Slot system<br/>📝 placeholder]
+    S5[SPEC 005<br/>Blender authoring panel<br/>📝 STUDY+TODO escritos]
 
     BACKLOG[Backlog<br/>Bezier preservation, animation events,<br/>multi-atlas, per-key interp, format v2]
 
@@ -157,7 +156,9 @@ flowchart TB
 
     style S0 fill:#dcfce7,stroke:#166534
     style S1 fill:#dcfce7,stroke:#166534
-    style S2 fill:#fef3c7,stroke:#92400e
+    style S2 fill:#dcfce7,stroke:#166534
+    style S3 fill:#dcfce7,stroke:#166534
+    style S5 fill:#fef3c7,stroke:#92400e
     style SCHEMA_V2 fill:#fee2e2,stroke:#991b1b
 ```
 
@@ -167,10 +168,10 @@ flowchart TB
 | --- | --- | --- |
 | **000** | Phase 1 MVP completo | shipped |
 | **001** | Wrapper-scene pattern, importer log na regenerate, idempotency test | shipped |
-| **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | **PR #2 em revisão** |
-| **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | STUDY+TODO escritos, próxima implementação |
-| **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | independente |
-| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, atlas region helper. Substitui Custom Properties manuais. Inspirada no painel COA Tools. | pode rodar paralelo a 003 |
+| **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
+| **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
+| **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. Substitui Custom Properties manuais como UX padrão (raw continua válido). Inspirada no painel COA Tools. | STUDY+TODO escritos, próxima implementação |
 
 ### Backlog (sem ordem)
 
@@ -187,11 +188,11 @@ flowchart TB
 
 ## Próximo passo
 
-1. **Aguardar CI verde** na PR #2 (`gh pr checks 2`).
-2. **Revisar o diff** ([PR #2](https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/2)).
-3. **Merge** para `main`.
-4. **Deletar** branch `spec/003-skinning-weights` após merge.
-5. **Decidir SPEC seguinte**: SPEC 004 (slot system) ou SPEC 005 (Blender authoring panel — destrava UX iterativa). Próxima branch nasce em `feat/spec-NNN-<slug>` por convenção.
+SPEC 003 mergeada. Convenção de branches atualizada (`feat/spec-NNN-<slug>` daqui em diante).
+
+1. **Implementar SPEC 005** (Blender authoring panel) — STUDY+TODO já locked, oito decisões D1–D8 com recomendações fechadas. Branch nasce em `feat/spec-005-blender-authoring-panel`.
+2. **SPEC 004 fica como placeholder** — slot system real STUDY/TODO se faz depois que o painel ship, porque a UX de slots depende da infra que SPEC 005 monta.
+3. **Manual validation aberto na SPEC 003** — pintar weights no `dummy.blend`, animar, observar deformação. Plugin-uninstall test pra cena skinned. Não bloqueia, é user-driven.
 
 ---
 

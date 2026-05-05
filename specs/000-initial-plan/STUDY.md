@@ -177,10 +177,10 @@ Where is `(0, 0)` for the character?
 
 | Number | Topic |
 | --- | --- |
-| 001 | Reimport with non-destructive merge |
-| 002 | Spritesheet support (introduces `Sprite2D` path) |
-| 003 | Skinning weights and `Polygon2D.skeleton` wiring |
-| 004 | Slot system |
-| 005 | Blender authoring panel (COA Tools-style ergonomics) |
+| 001 | Reimport with non-destructive merge — **shipped** |
+| 002 | Spritesheet support (introduces `Sprite2D` path) — **shipped** |
+| 003 | Skinning weights and `Polygon2D.skeleton` wiring — **shipped** |
+| 004 | Slot system — placeholder, design pass deferred until 005 ships |
+| 005 | Blender authoring panel (COA Tools-style ergonomics) — STUDY+TODO locked, next implementation |
 
 > Phase 1 MVP (originally penciled as SPEC 001) shipped under SPEC 000's TODO since the scope was small enough to absorb. SPECs are renumbered from 001 onward to keep the catalog dense.

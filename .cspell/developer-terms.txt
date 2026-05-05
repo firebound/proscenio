@@ -15,6 +15,7 @@ gdformat
 gdlint
 gdshader
 gdtoolkit
+getattr
 GLTF
 headlessly
 hframes
@@ -25,6 +26,7 @@ jsonschema
 keyframable
 keymap
 Keymap
+keymaps
 mathutils
 mkdocs
 multicriteria
@@ -37,7 +39,9 @@ PROSC
 pycache
 pyproject
 pytest
+pytexturepacker
 rebakes
+relinks
 reproject
 reprojected
 schemafile

@@ -92,6 +92,25 @@ Wave 5.1.c was split: this PR ships region authoring (UI + override + snap opera
 - [x] `PROSCENIO_OT_snap_region_to_uv` — copies the active mesh's UV bounds into the manual region floats (seeds manual mode with current auto value).
 - [x] `tests/test_region.py` — 7 pytest assertions covering auto bounds / manual override / Custom Property fallback / `manual_region_or_none` gate.
 
+## Post-005.1.c.1 fix bundle (shipped)
+
+Manual testing (2026-05-05) surfaced four bugs and three UX gaps. All fixed in one branch (`fix/spec-005-bug-fixes-and-polish`) since they share the same root cause (mirror semantics).
+
+### Bugs
+
+- [x] CP set partial after first edit — only the touched field's update callback fired, leaving other CPs absent. Fix: every callback now delegates to `core/mirror.py::mirror_all_fields` which writes the full 10-field map.
+- [x] Reload Scripts → PropertyGroup defaults — partial CPs left rehydration with nothing to restore. Fix: mirror-all keeps CPs complete; hydrate's `OBJECT_PROPS` map extended with the 5 region keys.
+- [x] `.blend` save with programmatic edits → partial CPs persisted. Fix: `@bpy.app.handlers.persistent save_pre` handler flushes PG → CP for every object before save.
+- [x] CP edited directly → PG out-of-date until reload. Documented as expected behavior — editing CPs is power-user only; PG is canonical, CP is read-only mirror. STUDY.md captures the rationale.
+
+### UX gaps
+
+- [x] Skeleton subpanel showed only bone count. Now ships `PROSCENIO_UL_bones` UIList rendering name + parent + length per row.
+- [x] F3 search "proscenio" returned nothing. Every operator's `bl_label` now starts with `Proscenio:`. Panel button labels override `text=` to keep the short version.
+- [x] sprite_frame mesh in PAINT_WEIGHT mode silently showed nothing useful. Now an info hint explains "weight paint not applicable to sprite_frame (Sprite2D is not deformed by bones)".
+- [x] sprite_frame region size opaque. Active Sprite panel now reads the linked image's pixel dimensions and renders `atlas: WxH px / region: WxH px / frame: WxH px (HxV grid)` so the user can verify the spritesheet grid lines up.
+- [x] `tests/test_mirror.py` — 5 pytest assertions covering mirror-all field set / missing-attribute skip / caster-error skip / mirror+hydrate round trip / OBJECT_PROPS region key coverage. Total now 30 (validation 12 + properties 6 + region 7 + mirror 5).
+
 ## Defer (SPEC 005.1.c.2 atlas packer + 5.1.d advanced — see `RESEARCH.md` matrix)
 
 - Atlas packer integration (vendored MaxRects, no external dep).

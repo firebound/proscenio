@@ -163,6 +163,80 @@ These are common COA-Tools-style panel features that user productivity benefits 
 
 **Recommendation: D8.C.** The vertex-group summary is essentially free — read-only data display, no write logic. Atlas region snapping and ortho preview deserve their own Q&D pass; defer.
 
+## Architectural patterns + tradeoffs
+
+These patterns surfaced during 005 + 005.1.x implementation. Captured here so successor SPECs (004 slots, 005.1.c.2 packer, 006 Photoshop importer) can reuse them without re-deriving the rationale.
+
+### PropertyGroup canonical, Custom Property as legacy mirror
+
+PropertyGroup is the editor-side source of truth — typed, validated, surfaced in panels. Custom Properties (`proscenio_type`, `proscenio_hframes`, etc.) are legacy fallback so `.blend` files authored before SPEC 005 still load cleanly. Writer reads PropertyGroup-first, Custom Property as fallback. Hydration on `load_post` + script-reload copies CPs back into PG.
+
+**Tradeoff.** Requires a one-way mirror (PG → CP) on every PG edit, plus complete-snapshot semantics (every field, not just the touched one). Editing a CP directly does **not** update the PG until the next reload. Documented as expected behavior; users who want bidirectional must edit through the panel.
+
+**Why not drop CPs entirely.** Pre-SPEC-005 fixtures (and any user `.blend` from before 2026-05-04) have CPs and no PG. Deleting CP support would make those files break silently — sprite_type defaults to polygon, frame counts reset, etc. Cost of keeping the fallback is one `getattr(props, field, default)` call per field per export. Negligible.
+
+### Mirror-all on any update + `save_pre` handler
+
+Per-field PropertyGroup update callbacks only fire when the user actually edits that field. Defaults never trigger a callback, so a partial CP set was the norm in early 005.1.c.1. Reload Scripts then rehydrated PG from incomplete CPs and lost untouched fields.
+
+**Fix pattern.** All field update callbacks delegate to `mirror_all_fields(props, obj)` (in `core/mirror.py`) which writes the entire 10-field map. A `@bpy.app.handlers.persistent save_pre` handler additionally walks every object in `bpy.data.objects` and flushes PG → CP before the `.blend` is saved, covering the case where values were authored programmatically without going through the panel.
+
+**Tradeoff.** 10 dict writes per panel edit instead of 1. Sub-microsecond cost; user does not perceive it. `save_pre` walks every object on every save — O(N) where N is the scene's object count. For ~100 objects it's <1 ms; not a concern.
+
+### Timer-deferred hydration
+
+PropertyGroup wiring is **not** stable when `register()` returns. Setting PG fields inline writes to a transient stub that gets dropped before the data block is committed.
+
+**Fix pattern.** `bpy.app.timers.register(hydrate, first_interval=0.0)` schedules hydration for the next event tick. Plus a `@bpy.app.handlers.persistent load_post` handler covers `.blend` opens after register has already run.
+
+**Tradeoff.** First panel render of a freshly-opened `.blend` may show defaults for one tick before hydration fires. Imperceptible (sub-frame). The alternative — synchronous hydration in register — silently loses data on first load.
+
+### Core extracted bpy-free
+
+Logic that does not strictly require Blender (validation, region resolution, hydration, mirror) lives under `blender-addon/core/` and imports zero `bpy`. Tests under `tests/` import these modules directly via `sys.path` munging and exercise them with `SimpleNamespace` mocks.
+
+**Tradeoff.** Slightly awkward import shape — `from ...core import region as region_core` from `exporters/godot/writer.py` (3-dot relative). Plus `# type: ignore[import-not-found]` on relative imports because mypy with the addon-as-non-package setup gets confused. In exchange, every meaningful code path runs in `pytest` without spinning up Blender. CI lint-python runs in <1 second instead of needing the test-blender headless job to validate the logic.
+
+### Mode-aware subpanel polls
+
+Each child panel of `PROSCENIO_PT_main` defines `poll(cls, context)` filtering by `context.mode`. Active Sprite hides outside object/edit-mesh/weight-paint/vertex-paint. Skeleton hides outside object/pose/edit-armature. Sidebar stops cluttering with subpanels that can't do anything in the active mode.
+
+**Tradeoff.** User entering an unexpected mode loses access to features they expect. Mitigated by keeping the parent banner always visible — the subpanel disappears, not the whole tab. Documented intent: "subpanel polls true only if its operations are valid in the active mode."
+
+### Marker-based toggle pattern
+
+`PROSCENIO_OT_toggle_ik_chain` stamps a constraint named exactly `Proscenio IK`. Toggle removes it by name. Constraints with any other name (user-authored, third-party addon) are left untouched.
+
+**Tradeoff.** Renaming our constraint manually breaks the toggle behavior — second click adds another instead of removing. Documented in the operator's `bl_description`.
+
+**Reusable.** Same pattern for any add/remove operator that should not stomp user state: pick a marker name, only act on objects matching it. SPEC 004 slot system can reuse for slot-attachment shortcuts.
+
+### Two-stage destructive operators
+
+5.1.c.2 (atlas packer) splits the destructive flow: `pack_atlas` generates `atlas_packed.png` next to the `.blend` without touching materials; `apply_packed_atlas` is a separate button that rewrites UVs and relinks materials.
+
+**Tradeoff.** Two clicks instead of one. In exchange, an accidental click does not destroy hand-tuned UVs. Pattern reusable for any operator whose effect is irreversible without source backup.
+
+### Vendor over pip
+
+Atlas packer (5.1.c.2) ships a vendored MaxRects implementation (`core/atlas_packer.py`, ~150 LOC, zero deps) instead of adding `pytexturepacker` to `pyproject.toml`.
+
+**Why.** `pip install` inside Blender's bundled Python is fragile cross-platform: paths differ Win/Mac/Linux, permissions vary, future Blender 6 may break ABI. Single-file pure-Python is portable, auditable, offline-installable.
+
+**Tradeoff.** ~150 LOC of code we own and must maintain. Acceptable: bin-packing is a stable algorithm, MaxRects has decades of literature, no security surface.
+
+### F3-searchable label prefix
+
+All operators prefix `bl_label` with `Proscenio:` so Blender's F3 search matches the addon namespace. Cheat-sheet panel still shows the raw idname for power users who want to wire keymaps.
+
+**Tradeoff.** Labels are 11 characters longer in any context that uses them (search popup, keymap editor, operator history). Inside the Proscenio sidebar the panel buttons override `text=` to drop the prefix and show the short label only.
+
+### Weight paint inline brush only for polygon
+
+`sprite_frame` meshes render as Sprite2D in Godot — no Polygon2D.skeleton, no per-vertex bone weights. Weight painting on a sprite_frame mesh has no export effect. Active Sprite panel acknowledges this with an info hint when the user enters PAINT_WEIGHT mode on a sprite_frame mesh, instead of silently showing the polygon weight controls.
+
+**Tradeoff.** Inconsistency between sprite kinds — polygon meshes get the brush controls inline, sprite_frame meshes don't. Mitigated by the explicit "(Sprite2D is not deformed by bones)" hint so the user understands the why.
+
 ## Out of scope (deferred to 005.1 or backlog)
 
 - Atlas region authoring helper (button: "Snap UV bounds → texture_region rectangle").

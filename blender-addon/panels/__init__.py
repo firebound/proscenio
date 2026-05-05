@@ -159,8 +159,10 @@ def _discover_atlas_name() -> str | None:
         for node in mat.node_tree.nodes:
             if node.type == "TEX_IMAGE" and node.image is not None:
                 fp = node.image.filepath
-                return str(bpy.path.abspath(fp)).split("\\")[-1].split("/")[-1] if fp else (
-                    f"{node.image.name} (unsaved)"
+                return (
+                    str(bpy.path.abspath(fp)).split("\\")[-1].split("/")[-1]
+                    if fp
+                    else (f"{node.image.name} (unsaved)")
                 )
     return None
 
@@ -195,9 +197,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
             row = layout.row()
             row.alert = issue.severity == "error"
             icon = "ERROR" if issue.severity == "error" else "INFO"
-            label = (
-                f"[{issue.obj_name}] {issue.message}" if issue.obj_name else issue.message
-            )
+            label = f"[{issue.obj_name}] {issue.message}" if issue.obj_name else issue.message
             row.label(text=label, icon=icon)
 
 

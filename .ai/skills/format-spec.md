@@ -53,9 +53,20 @@ The Godot importer trusts the exporter — it does not re-flip. If you write a n
 
 The `atlas` field is an optional path to a single pre-packed texture. **Atlases are packed externally** (TexturePacker, Free Texture Packer, etc.) before the Blender pipeline runs. The Blender addon consumes the atlas plus per-sprite `texture_region` rectangles; it does **not** pack atlases itself in v1. Multi-atlas characters split into multiple `.proscenio` files.
 
-## Skinning weights (v1)
+## Skinning weights
 
-The `weights` array on a sprite is **accepted by the schema** but **ignored by the v1 Godot importer**. Sprites without weights are attached rigidly to their `bone` (a child of the `Bone2D`, riding the bone transform). Full skinning (`Polygon2D.skeleton` path + `set_bones()`) lands in Phase 2 (SPEC 003). Until then, exporters may emit weights and the importer will log a one-line console warning.
+The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinning — `Polygon2D.skeleton` resolves to the character's `Skeleton2D` and each bone receives a per-vertex weight array. Shape:
+
+```json
+"weights": [
+  { "bone": "torso", "values": [1.0, 1.0, 0.7, 0.3] },
+  { "bone": "legs",  "values": [0.0, 0.0, 0.3, 0.7] }
+]
+```
+
+`values` is indexed by the sprite's vertex order — `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used, see [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
+
+Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) — backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites (SPEC 002) ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
 
 ## Versioning policy
 

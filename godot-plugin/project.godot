@@ -12,23 +12,20 @@ config_version=5
 
 compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
+[application]
+
+config/name="Proscenio Dev"
+config/features=PackedStringArray("4.6", "GL Compatibility")
+
 [debug]
 
 gdscript/warnings/treat_warnings_as_errors=true
 gdscript/warnings/untyped_declaration=2
 gdscript/warnings/return_value_discarded=1
-# JSON.parse returns Variant by design; the importer/builders consume those
-# Variants and downcast them. Keep these as info, not errors, so the JSON
-# boundary code does not need a `# warning-ignore` on every line.
 gdscript/warnings/unsafe_property_access=0
 gdscript/warnings/unsafe_method_access=0
 gdscript/warnings/unsafe_cast=0
 gdscript/warnings/unsafe_call_argument=0
-
-[application]
-
-config/name="Proscenio Dev"
-config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [dotnet]
 

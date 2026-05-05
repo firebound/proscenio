@@ -1,2 +1,7 @@
+dopesheet
+keyframing
+lipsync
+playhead
+prefs
 proscenio
 Proscenio

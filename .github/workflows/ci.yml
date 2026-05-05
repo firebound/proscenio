@@ -18,6 +18,8 @@ jobs:
       - name: Mypy strict
         working-directory: blender-addon
         run: uvx --with mypy mypy --config-file pyproject.toml
+      - name: Pytest (validation unit tests, no Blender)
+        run: uvx --with pytest pytest tests/
 
   lint-gdscript:
     runs-on: ubuntu-latest

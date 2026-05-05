@@ -262,20 +262,40 @@ def _wrap_pi(a: float) -> float:
 # --------------------------------------------------------------------------- #
 
 
+def _read_proscenio_field(obj: bpy.types.Object, field: str, custom_key: str, default: Any) -> Any:
+    """Resolve a Proscenio field from the PropertyGroup first, Custom Property fallback.
+
+    SPEC 005 makes ``Object.proscenio`` (the PropertyGroup) the canonical
+    authoring surface; Custom Properties remain as a legacy bridge for
+    `.blend` files authored before SPEC 005 and for power users who edit
+    raw ID Properties. The writer prefers the PropertyGroup so values
+    typed into the panel propagate immediately, regardless of whether
+    update callbacks have mirrored them yet.
+    """
+    props = getattr(obj, "proscenio", None)
+    if props is not None and hasattr(props, field):
+        return getattr(props, field)
+    if hasattr(obj, "get") and custom_key in obj:
+        return obj[custom_key]
+    return default
+
+
 def _build_sprite(
     obj: bpy.types.Object,
     world_godot: dict[str, dict[str, float]],
     ppu: float,
 ) -> dict[str, Any]:
-    """Build a sprite entry. The sprite kind is read from the
-    ``proscenio_type`` Object Custom Property (default ``"polygon"``).
+    """Build a sprite entry. The sprite kind is read from
+    ``Object.proscenio.sprite_type`` (PropertyGroup, SPEC 005), falling
+    back to the legacy ``proscenio_type`` Custom Property when the
+    PropertyGroup is unavailable (default ``"polygon"``).
 
-    For ``sprite_frame``, the writer emits the spritesheet metadata (hframes,
-    vframes, frame, centered) read from sibling custom properties; vertices
-    and UVs are not produced because Godot's Sprite2D derives them from the
-    grid at runtime.
+    For ``sprite_frame``, the writer emits the spritesheet metadata
+    (hframes, vframes, frame, centered) — vertices and UVs are not
+    produced because Godot's Sprite2D derives them from the grid at
+    runtime.
     """
-    sprite_type: str = str(obj.get("proscenio_type", "polygon"))
+    sprite_type: str = str(_read_proscenio_field(obj, "sprite_type", "proscenio_type", "polygon"))
     if sprite_type == "sprite_frame":
         return dict(_build_sprite_frame(obj))
     if sprite_type != "polygon":
@@ -341,33 +361,31 @@ def _build_sprite(
 
 
 def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
-    """Emit a `sprite_frame` sprite entry from Object Custom Properties.
+    """Emit a ``sprite_frame`` sprite entry.
 
-    Required custom properties on the Object:
-
-        proscenio_type      = "sprite_frame"
-        proscenio_hframes   : int  (>= 1)
-        proscenio_vframes   : int  (>= 1)
-
-    Optional:
-
-        proscenio_frame     : int  (default 0)
-        proscenio_centered  : bool (default True)
+    Reads from the SPEC 005 PropertyGroup (``Object.proscenio.hframes``,
+    etc.) when present, falling back to the legacy
+    ``proscenio_hframes`` / ``proscenio_vframes`` / ``proscenio_frame`` /
+    ``proscenio_centered`` Custom Properties. Both paths supply the
+    same defaults: ``hframes = vframes = 1``, ``frame = 0``,
+    ``centered = True``.
     """
-    if "proscenio_hframes" not in obj or "proscenio_vframes" not in obj:
+    hframes = int(_read_proscenio_field(obj, "hframes", "proscenio_hframes", 1))
+    vframes = int(_read_proscenio_field(obj, "vframes", "proscenio_vframes", 1))
+    if hframes < 1 or vframes < 1:
         raise RuntimeError(
-            f"Proscenio: sprite_frame object {obj.name!r} needs "
-            f"`proscenio_hframes` and `proscenio_vframes` Custom Properties."
+            f"Proscenio: sprite_frame object {obj.name!r} needs hframes >= 1 "
+            f"and vframes >= 1 (got hframes={hframes}, vframes={vframes})."
         )
 
     return {
         "type": "sprite_frame",
         "name": obj.name,
         "bone": _resolve_sprite_bone(obj),
-        "hframes": int(obj["proscenio_hframes"]),
-        "vframes": int(obj["proscenio_vframes"]),
-        "frame": int(obj.get("proscenio_frame", 0)),
-        "centered": bool(obj.get("proscenio_centered", True)),
+        "hframes": hframes,
+        "vframes": vframes,
+        "frame": int(_read_proscenio_field(obj, "frame", "proscenio_frame", 0)),
+        "centered": bool(_read_proscenio_field(obj, "centered", "proscenio_centered", True)),
     }
 
 

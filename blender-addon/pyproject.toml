@@ -44,7 +44,7 @@ warn_unreachable = true
 explicit_package_bases = true
 namespace_packages = true
 mypy_path = "."
-files = ["exporters", "operators", "panels", "core", "importers", "tests"]
+files = ["exporters", "operators", "panels", "properties", "core", "importers", "tests"]
 # `tests/fixtures/` holds frozen JSON, not Python.
 # `scripts/` (under repo root, not blender-addon/) holds one-off debug
 # helpers that print bpy hierarchies; typing them strictly is not worth

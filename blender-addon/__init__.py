@@ -1,12 +1,15 @@
 """Proscenio Blender addon entry point.
 
-Registers operators and panels. Real logic lives in the submodules.
+Registers properties, operators, and panels. Real logic lives in the
+submodules. Registration order matters: properties first so operators
+and panels see them at register time.
 """
 
-from . import operators, panels
+from . import operators, panels, properties
 
 
 def register() -> None:
+    properties.register()
     operators.register()
     panels.register()
 
@@ -14,3 +17,4 @@ def register() -> None:
 def unregister() -> None:
     panels.unregister()
     operators.unregister()
+    properties.unregister()

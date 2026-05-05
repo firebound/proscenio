@@ -16,14 +16,18 @@ description: Develop, install, lint, and test the Blender addon
 ```text
 blender-addon/
 ├── blender_manifest.toml   # Blender Extensions system manifest
-├── __init__.py             # entry point — registers operators/panels
-├── pyproject.toml          # ruff config + dev tooling
-├── core/                   # data classes — Bone, Sprite, Slot, Animation
+├── __init__.py             # entry point — registers properties, operators, panels
+├── pyproject.toml          # ruff config + mypy strict config
+├── core/                   # pure-Python helpers (validation.py, future data classes)
+├── properties/             # bpy.types.PropertyGroup — typed widgets backing the panel
 ├── operators/              # bpy.types.Operator subclasses
-├── panels/                 # bpy.types.Panel subclasses
+├── panels/                 # bpy.types.Panel subclasses (sidebar tab + child panels)
 ├── importers/              # PSD JSON, Krita JSON, etc.
 ├── exporters/godot/        # .proscenio writer
-└── tests/                  # headless test suite
+└── tests/                  # headless test suite (Blender-driven round-trip)
+
+tests/                      # repo-root pytest suite (no Blender required)
+└── test_validation.py      # core/validation.py unit tests
 ```
 
 The addon ID is `proscenio` (set in the manifest). The directory name `blender-addon/` is purely repo-side; when packaged the contents are zipped, and Blender extracts to `<extensions>/proscenio/`.
@@ -40,11 +44,17 @@ Reload via **Preferences → Get Extensions → Reload**, or restart Blender.
 
 ## Headless tests
 
+Two suites, two runners:
+
 ```sh
-blender --background --python blender-addon/tests/run_tests.py
+# Pure Python (validation, future utility tests) — no Blender needed.
+pytest tests/
+
+# Blender round-trip — re-exports dummy.blend, diffs against the golden fixture.
+blender --background examples/dummy/dummy.blend --python blender-addon/tests/run_tests.py
 ```
 
-Tests use the real `bpy` shipped with Blender — do not mock. Fixtures live in `blender-addon/tests/fixtures/`.
+Pytest tests use `SimpleNamespace` mocks so the validation module is exercised in isolation. The Blender suite uses the real `bpy` and lives in `blender-addon/tests/`. Fixtures: `blender-addon/tests/fixtures/<name>/expected.proscenio` (golden files for the writer) and `godot-plugin/tests/fixtures/*.proscenio` (importer fixtures).
 
 ## Coding rules
 
@@ -58,6 +68,28 @@ Tests use the real `bpy` shipped with Blender — do not mock. Fixtures live in 
 ## Manifest
 
 `blender_manifest.toml` follows the Blender Extensions schema. Required fields: `id`, `version`, `name`, `tagline`, `maintainer`, `type = "add-on"`, `blender_version_min`, `license`. See <https://docs.blender.org/manual/en/latest/extensions/getting_started.html>.
+
+## Authoring sprites in the panel (SPEC 005)
+
+The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob:
+
+- **Active sprite** — sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata fields (`hframes`, `vframes`, `frame`, `centered`), polygon vertex-group summary. Inline validation icons appear next to broken rows (e.g. `sprite_frame` with `hframes < 1`).
+- **Skeleton** — armature bone count + warnings (no armature, multiple armatures).
+- **Animation** — read-only summary of every Action that the writer would emit.
+- **Atlas** — read-only atlas filename discovered from materials.
+- **Validation** — populated by the Validate button. Lists every issue the export-time checker found (errors block export, warnings inform).
+- **Export** — sticky `last_export_path`, `pixels_per_unit`, Validate / Export / Re-export buttons.
+- **Diagnostics** — smoke test + future addon-health buttons.
+
+The panel widgets read and write `bpy.types.Object.proscenio` (a `PropertyGroup` registered by SPEC 005). The PropertyGroup mirrors the legacy raw Custom Properties (`proscenio_type`, `proscenio_hframes`, etc.) so power users can keep editing raw data — both paths round-trip.
+
+### One-click re-export
+
+After the first **File → Export → Proscenio** (or panel **Export** button) the path is stored on the Scene PropertyGroup. The **Re-export** button silently re-runs the writer to that path — no file dialog. Saved with the `.blend` so the document carries its export target.
+
+### Validate before export
+
+Both Export and Re-export gate on `validate_export(scene)`. If any issue carries severity `error`, the operator aborts with a clear `self.report` message and the panel's Validation list shows what to fix.
 
 ## Painting weights for skinning (SPEC 003)
 

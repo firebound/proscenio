@@ -74,16 +74,20 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 - [x] Mode-aware subpanels (`_OBJECT_FRIENDLY_MODES` / `_POSE_FRIENDLY_MODES` — Active Sprite hides outside object/edit-mesh/weight-paint/vertex-paint; Skeleton hides outside object/pose/edit-armature).
 - [x] Animation collections list editing (`PROSCENIO_UL_actions` + `template_list` against `bpy.data.actions`; `ProscenioSceneProps.active_action_index` selects the row).
 
-## Defer (SPEC 005.1.b/c/d — see `RESEARCH.md` matrix)
+## SPEC 005.1.b — helpers wave (shipped)
+
+- [x] Camera ortho preview (`PROSCENIO_OT_create_ortho_camera` — creates/focuses `Proscenio.PreviewCam` with `ortho_scale = max(resolution_x, resolution_y) / pixels_per_unit`; rendered as a button in the Export subpanel).
+- [x] IK chain toggle (`PROSCENIO_OT_toggle_ik_chain` — pose-mode-only; adds/removes a marker-named "Proscenio IK" constraint on the active pose bone, default `chain_count=2`. Hand-added IK constraints are left untouched).
+- [x] Reproject sprite UV (`PROSCENIO_OT_reproject_sprite_uv` — Smart UV Project on the active mesh only; saves + restores prior selection/mode/active object so the user lands back where they were).
+- [x] Inline weight paint brush controls (`_draw_weight_paint_brush` — when in `PAINT_WEIGHT` mode the polygon summary box is replaced by unified-aware brush size/strength/weight + auto-normalize toggle).
+- Driver constraint shortcut deferred to 5.1.d (lowest-value of the wave; Blender's stock driver editor already covers the use case).
+
+## Defer (SPEC 005.1.c/d — see `RESEARCH.md` matrix)
 
 - Atlas region helper (D8 — "Snap UV bounds → texture_region").
-- Camera ortho preview helper (matches `pixels_per_unit`).
 - Atlas packer integration (PyTexturePacker dep).
 - Pose library shim (Asset Browser).
-- IK chain helper Blender-side.
 - Driver constraint shortcut.
-- Inline weight paint brush controls.
-- Reproject sprite texture (UV unwrap chain).
 - Spriteobject custom outliner with search/filter.
 - `region_rect` authoring polish.
 - Vertex weight visualization overlay.

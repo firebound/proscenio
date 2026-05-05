@@ -251,11 +251,23 @@ def _build_sprite(
     world_godot: dict[str, dict[str, float]],
     ppu: float,
 ) -> dict[str, Any]:
-    """Build a sprite entry. Vertices are emitted in polygon winding order so
-    Godot's Polygon2D triangulator accepts them. Multi-polygon meshes are
-    flattened into a single fan over the first polygon's vertex order; future
-    work will handle multi-island meshes via Polygon2D.polygons.
+    """Build a sprite entry. The sprite kind is read from the
+    ``proscenio_type`` Object Custom Property (default ``"polygon"``).
+
+    For ``sprite_frame``, the writer emits the spritesheet metadata (hframes,
+    vframes, frame, centered) read from sibling custom properties; vertices
+    and UVs are not produced because Godot's Sprite2D derives them from the
+    grid at runtime.
     """
+    sprite_type: str = str(obj.get("proscenio_type", "polygon"))
+    if sprite_type == "sprite_frame":
+        return _build_sprite_frame(obj)
+    if sprite_type != "polygon":
+        raise RuntimeError(
+            f"Proscenio: object {obj.name!r} has unknown proscenio_type "
+            f"{sprite_type!r}; expected 'polygon' or 'sprite_frame'."
+        )
+
     mesh: bpy.types.Mesh = obj.data
     mesh_world = obj.matrix_world
 
@@ -297,6 +309,37 @@ def _build_sprite(
         "texture_region": region,
         "polygon": polygon,
         "uv": uvs,
+    }
+
+
+def _build_sprite_frame(obj: bpy.types.Object) -> dict[str, Any]:
+    """Emit a `sprite_frame` sprite entry from Object Custom Properties.
+
+    Required custom properties on the Object:
+
+        proscenio_type      = "sprite_frame"
+        proscenio_hframes   : int  (>= 1)
+        proscenio_vframes   : int  (>= 1)
+
+    Optional:
+
+        proscenio_frame     : int  (default 0)
+        proscenio_centered  : bool (default True)
+    """
+    if "proscenio_hframes" not in obj or "proscenio_vframes" not in obj:
+        raise RuntimeError(
+            f"Proscenio: sprite_frame object {obj.name!r} needs "
+            f"`proscenio_hframes` and `proscenio_vframes` Custom Properties."
+        )
+
+    return {
+        "type": "sprite_frame",
+        "name": obj.name,
+        "bone": _resolve_sprite_bone(obj),
+        "hframes": int(obj["proscenio_hframes"]),
+        "vframes": int(obj["proscenio_vframes"]),
+        "frame": int(obj.get("proscenio_frame", 0)),
+        "centered": bool(obj.get("proscenio_centered", True)),
     }
 
 

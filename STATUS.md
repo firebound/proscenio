@@ -101,18 +101,20 @@ flowchart TD
 | --- | --- |
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
-| Test assertions Godot | 10 (incluindo idempotency) |
-| Test fixtures Blender | 1 (`dummy/expected.proscenio`, golden diff) |
+| Test assertions Godot | 22 (dummy 10 + effect 12, incluindo idempotency) |
+| Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`) — `effect.blend` deferred |
 | CI jobs | 5 |
-| SPECs escritos | 1 ativa (001), 1 fechada (000), 3 só previstas |
+| SPECs escritos | 2 fechadas (000, 002), 1 em revisão (001), 2 só previstas (003, 004) |
 
 ## O que está em andamento
 
-**PR #1 — `spec/001-reimport-merge`** → main. SPEC 001 fecha a questão "como customizar uma imported scene sem perder no reimport".
+**PR #2 — `spec/002-spritesheet-sprite2d`** → main. SPEC 002 entrega o caminho `Sprite2D` (spritesheet animation) ao lado do `Polygon2D` (cutout) via discriminador `type` por sprite, retro-compatível com fixtures v1.
+
+PR #1 já está merged (SPEC 001 — wrapper-scene pattern).
 
 ```mermaid
 flowchart LR
-    PR[("PR #1<br/>spec/001-reimport-merge")]
+    PR[("PR #2<br/>spec/002-spritesheet-sprite2d")]
     PR --> CI{CI verde?}
     CI -->|✅| REVIEW[Revisão humana]
     CI -->|❌| FIX[Fix + push]
@@ -125,15 +127,15 @@ flowchart LR
     style MERGE fill:#dcfce7,stroke:#166534
 ```
 
-5 commits: importer log, idempotency test, wrapper example, docs (skill + README), TODO closure.
+7 commits SPEC 002 + arrumações (project.godot debug warnings, atlas mirror em `scripts/test_export.py`, regen do `expected.proscenio` pra refletir dummy mixto).
 
 ## Roadmap
 
 ```mermaid
 flowchart TB
     S0[SPEC 000<br/>Initial plan + Phase 1 MVP<br/>✅ shipped]
-    S1[SPEC 001<br/>Reimport-merge<br/>🟡 PR #1 aberta]
-    S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>📝 só prevista]
+    S1[SPEC 001<br/>Reimport-merge<br/>✅ shipped]
+    S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>🟡 PR #2 aberta]
     S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>📝 só prevista]
     S4[SPEC 004<br/>Slot system<br/>📝 só prevista]
 
@@ -150,7 +152,8 @@ flowchart TB
     S4 -.pode forçar.-> SCHEMA_V2
 
     style S0 fill:#dcfce7,stroke:#166534
-    style S1 fill:#fef3c7,stroke:#92400e
+    style S1 fill:#dcfce7,stroke:#166534
+    style S2 fill:#fef3c7,stroke:#92400e
     style SCHEMA_V2 fill:#fee2e2,stroke:#991b1b
 ```
 
@@ -159,8 +162,8 @@ flowchart TB
 | SPEC | O que entrega | Quando |
 | --- | --- | --- |
 | **000** | Phase 1 MVP completo | shipped |
-| **001** | Wrapper-scene pattern documentado, importer log na regenerate, idempotency test | **em revisão** |
-| **002** | `Sprite2D` + `frame` track type — sprites com spritesheet animation. Schema ganha sprite `type` discriminator. | aguardando |
+| **001** | Wrapper-scene pattern, importer log na regenerate, idempotency test | shipped |
+| **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | **PR #2 em revisão** |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | depende de 002 só se schema v2 lançar antes |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | independente |
 
@@ -179,11 +182,11 @@ flowchart TB
 
 ## Próximo passo
 
-1. **Aguardar CI verde** na PR #1 (`gh pr checks 1`). 
-2. **Revisar o diff** (https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/1).
+1. **Aguardar CI verde** na PR #2 (`gh pr checks 2`).
+2. **Revisar o diff** (https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/2).
 3. **Merge** para `main`.
-4. **Deletar** branch `spec/001-reimport-merge` (`git push origin --delete spec/001-reimport-merge`).
-5. **Decidir SPEC seguinte**: 002 (spritesheet — habilita personagens com `frame` animation, sem polígono) ou 004 (slot system — independente, pode rodar paralelo).
+4. **Deletar** branch `spec/002-spritesheet-sprite2d`.
+5. **Decidir SPEC seguinte**: 003 (skinning weights — `Polygon2D.skeleton` + bone weights, destrava mesh deformável) ou 004 (slot system — independente, pode rodar paralelo).
 
 ---
 

@@ -59,20 +59,33 @@
         "length": { "type": "number", "minimum": 0 }
       }
     },
+    "Rect": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "[x, y, width, height] in atlas pixels."
+    },
     "Sprite": {
+      "oneOf": [
+        { "$ref": "#/$defs/PolygonSprite" },
+        { "$ref": "#/$defs/SpriteFrameSprite" }
+      ]
+    },
+    "PolygonSprite": {
       "type": "object",
       "required": ["name", "texture_region", "polygon", "uv"],
       "additionalProperties": false,
+      "description": "Cutout-style sprite rendered as a Godot Polygon2D — vertices + UV. Default sprite kind when `type` is omitted (backwards-compatible with v1 documents).",
       "properties": {
+        "type": {
+          "const": "polygon",
+          "default": "polygon",
+          "description": "Discriminator. Optional; absence means `polygon`."
+        },
         "name": { "type": "string", "minLength": 1 },
         "bone": { "type": "string" },
-        "texture_region": {
-          "type": "array",
-          "items": { "type": "number" },
-          "minItems": 4,
-          "maxItems": 4,
-          "description": "[x, y, width, height] in atlas pixels."
-        },
+        "texture_region": { "$ref": "#/$defs/Rect" },
         "polygon": {
           "type": "array",
           "items": { "$ref": "#/$defs/Vec2" }
@@ -95,6 +108,40 @@
               }
             }
           }
+        }
+      }
+    },
+    "SpriteFrameSprite": {
+      "type": "object",
+      "required": ["type", "name", "bone", "hframes", "vframes"],
+      "additionalProperties": false,
+      "description": "Spritesheet sprite rendered as a Godot Sprite2D — `frame` indexes into an `hframes` × `vframes` grid carved out of the atlas (or out of `texture_region` when present).",
+      "properties": {
+        "type": {
+          "const": "sprite_frame",
+          "description": "Discriminator. Required and constant."
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "bone": { "type": "string" },
+        "texture_region": {
+          "$ref": "#/$defs/Rect",
+          "description": "Optional sub-rectangle within the atlas where the spritesheet lives. Absent → use the full atlas."
+        },
+        "hframes": { "type": "integer", "minimum": 1 },
+        "vframes": { "type": "integer", "minimum": 1 },
+        "frame": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Initial frame index (row-major). Animation tracks override at runtime."
+        },
+        "offset": {
+          "$ref": "#/$defs/Vec2",
+          "default": [0, 0]
+        },
+        "centered": {
+          "type": "boolean",
+          "default": true
         }
       }
     },

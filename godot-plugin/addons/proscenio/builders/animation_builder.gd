@@ -41,7 +41,25 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_data: Dictio
 			_add_value_track_if_present(anim, base_path, "position", keys)
 			_add_value_track_if_present(anim, base_path, "rotation", keys)
 			_add_value_track_if_present(anim, base_path, "scale", keys)
-		"sprite_frame", "slot_attachment", "visibility":
+		"sprite_frame":
+			var sprite := character_root.find_child(target, true, false)
+			if sprite == null:
+				push_error("Proscenio: sprite '%s' not found for sprite_frame track" % target)
+				return
+			if not (sprite is Sprite2D):
+				push_error(
+					(
+						(
+							"Proscenio: sprite '%s' is %s, not Sprite2D — sprite_frame "
+							+ "tracks only target sprites of type 'sprite_frame'."
+						)
+						% [target, sprite.get_class()]
+					)
+				)
+				return
+			var base_path := str(character_root.get_path_to(sprite))
+			_add_frame_track(anim, base_path, keys)
+		"slot_attachment", "visibility":
 			push_warning("Proscenio: track type '%s' not implemented yet" % track_type)
 		_:
 			push_warning("Proscenio: unknown track type '%s'" % track_type)
@@ -76,6 +94,19 @@ static func _add_value_track_if_present(
 			continue
 		var t := float(key.get("time", 0.0))
 		anim.track_insert_key(idx, t, _key_value_for(property, key[property]))
+
+
+static func _add_frame_track(anim: Animation, base_path: String, keys: Array) -> void:
+	# Frame indexes are discrete integers; smooth blending between them has no
+	# semantic meaning, so the track uses NEAREST interpolation.
+	var idx := anim.add_track(Animation.TYPE_VALUE)
+	anim.track_set_path(idx, NodePath("%s:frame" % base_path))
+	anim.track_set_interpolation_type(idx, Animation.INTERPOLATION_NEAREST)
+	for key in keys:
+		if not key.has("frame"):
+			continue
+		var t := float(key.get("time", 0.0))
+		anim.track_insert_key(idx, t, int(key["frame"]))
 
 
 static func _key_value_for(property: String, raw: Variant) -> Variant:

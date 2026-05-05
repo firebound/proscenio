@@ -80,7 +80,7 @@ The repo prefers **failing fast** at the earliest possible layer over discoverin
 - **VS Code** Pylance + SonarLint + cspell + gdtoolkit live diagnostics. `.vscode/settings.json` carries the project-specific overrides.
 - **Pyright config** at repo root resolves `bpy` / `mathutils` stubs as missing-but-OK and adds `blender-addon` to `extraPaths`.
 - **Blender's "Treat warnings as errors"** is too coarse for an addon shipped to users; relying on Pylance + ruff suffices.
-- **Godot project** sets `debug/gdscript/warnings/treat_warnings_as_errors=true` so live editor warnings break the import. Mirrored by `gdlint` in CI.
+- **Godot project** sets `debug/gdscript/warnings/treat_warnings_as_errors=true` so live editor warnings break the import. `untyped_declaration=2` enforces typing; the four `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` keys are pinned to `0` because `JSON.parse` returns `Variant` by design and the importer/builders downcast — without these pinned, every line at the JSON boundary would need a `# warning-ignore`. Mirrored by `gdlint` in CI. **Do not put comments inside `[debug]` in `project.godot`** — Godot's project-settings serializer mangles them when the editor saves.
 
 ### Pre-commit hooks
 

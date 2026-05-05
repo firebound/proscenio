@@ -136,8 +136,9 @@ flowchart TB
     S0[SPEC 000<br/>Initial plan + Phase 1 MVP<br/>✅ shipped]
     S1[SPEC 001<br/>Reimport-merge<br/>✅ shipped]
     S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>🟡 PR #2 aberta]
-    S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>📝 só prevista]
+    S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>📝 STUDY+TODO escritos]
     S4[SPEC 004<br/>Slot system<br/>📝 só prevista]
+    S5[SPEC 005<br/>Blender authoring panel<br/>📝 só prevista]
 
     BACKLOG[Backlog<br/>Bezier preservation, animation events,<br/>multi-atlas, per-key interp, format v2]
 
@@ -145,6 +146,7 @@ flowchart TB
     S1 --> S2
     S2 --> S3
     S3 --> S4
+    S3 -.in parallel.-> S5
 
     S0 -.alimenta.-> BACKLOG
     S2 -.pode forçar.-> SCHEMA_V2[Schema v2<br/>type discriminator]
@@ -164,8 +166,9 @@ flowchart TB
 | **000** | Phase 1 MVP completo | shipped |
 | **001** | Wrapper-scene pattern, importer log na regenerate, idempotency test | shipped |
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | **PR #2 em revisão** |
-| **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | depende de 002 só se schema v2 lançar antes |
+| **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | STUDY+TODO escritos, próxima implementação |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | independente |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, atlas region helper. Substitui Custom Properties manuais. Inspirada no painel COA Tools. | pode rodar paralelo a 003 |
 
 ### Backlog (sem ordem)
 
@@ -183,10 +186,10 @@ flowchart TB
 ## Próximo passo
 
 1. **Aguardar CI verde** na PR #2 (`gh pr checks 2`).
-2. **Revisar o diff** (https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/2).
+2. **Revisar o diff** ([PR #2](https://github.com/Space-Wizard-Studios/firebound-proscenio/pull/2)).
 3. **Merge** para `main`.
 4. **Deletar** branch `spec/002-spritesheet-sprite2d`.
-5. **Decidir SPEC seguinte**: 003 (skinning weights — `Polygon2D.skeleton` + bone weights, destrava mesh deformável) ou 004 (slot system — independente, pode rodar paralelo).
+5. **Implementar SPEC 003** (skinning weights — STUDY+TODO já escritos em [`specs/003-skinning-weights/`](specs/003-skinning-weights/STUDY.md)). Pode rodar paralelo a SPEC 005 (Blender authoring panel) se quiser dois caminhos simultâneos.
 
 ---
 

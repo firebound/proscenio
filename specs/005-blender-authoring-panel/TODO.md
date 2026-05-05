@@ -82,14 +82,23 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 - [x] Inline weight paint brush controls (`_draw_weight_paint_brush` — when in `PAINT_WEIGHT` mode the polygon summary box is replaced by unified-aware brush size/strength/weight + auto-normalize toggle).
 - Driver constraint shortcut deferred to 5.1.d (lowest-value of the wave; Blender's stock driver editor already covers the use case).
 
-## Defer (SPEC 005.1.c/d — see `RESEARCH.md` matrix)
+## SPEC 005.1.c.1 — region authoring (shipped)
 
-- Atlas region helper (D8 — "Snap UV bounds → texture_region").
-- Atlas packer integration (PyTexturePacker dep).
+Wave 5.1.c was split: this PR ships region authoring (UI + override + snap operator). The atlas packer ships separately as 5.1.c.2.
+
+- [x] `ProscenioObjectProps.region_mode` (`auto`/`manual` enum) + `region_x/y/w/h` FloatProperty.
+- [x] Writer respects `region_mode == "manual"` via `core/region.py` (extracted for testability). Auto path = current behavior (UV bounds for polygon, omitted for sprite_frame). Manual path emits `region_x/y/w/h` verbatim.
+- [x] Active Sprite panel renders a "Texture region" box: read-only hint in auto mode, four floats + `Snap to UV bounds` button in manual mode.
+- [x] `PROSCENIO_OT_snap_region_to_uv` — copies the active mesh's UV bounds into the manual region floats (seeds manual mode with current auto value).
+- [x] `tests/test_region.py` — 7 pytest assertions covering auto bounds / manual override / Custom Property fallback / `manual_region_or_none` gate.
+
+## Defer (SPEC 005.1.c.2 atlas packer + 5.1.d advanced — see `RESEARCH.md` matrix)
+
+- Atlas packer integration (vendored MaxRects, no external dep).
+- Two-stage packer flow: generate `atlas_packed.png` then apply (rewrite UVs + relink materials).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.
 - Spriteobject custom outliner with search/filter.
-- `region_rect` authoring polish.
 - Vertex weight visualization overlay.
 - Per-user default export-path preference.
 - Localization scaffolding (`i18n_id`).

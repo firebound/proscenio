@@ -1,0 +1,18 @@
+; Documentation-by-example wrapper scene for the Proscenio effect fixture.
+;
+; Mirrors examples/dummy/Dummy.tscn but instances a sprite_frame-driven
+; effect (Sprite2D + frame animation) instead of a cutout character.
+; The wrapper-scene pattern (SPEC 001) is identical regardless of the
+; underlying sprite kind.
+;
+; Paths assume you drop examples/effect/ at res://effect/ in your project.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://effect/effect.proscenio" id="1_effect"]
+[ext_resource type="Script" path="res://effect/Effect.gd" id="2_effect"]
+
+[node name="Effect" type="Node2D"]
+script = ExtResource("2_effect")
+
+[node name="EffectInstance" parent="." instance=ExtResource("1_effect")]

@@ -1,4 +1,4 @@
-"""Bpy-side IO for the atlas packer (SPEC 005.1.c.2).
+"""Bpy-side IO for the atlas packer (SPEC 005.1.c.2 + 005.1.c.2.1 slicing).
 
 Splits the bpy.types.Image plumbing out of the operator so the packer
 algorithm itself stays pure (and testable). This module is **not**
@@ -9,19 +9,15 @@ Responsibilities:
 
 - :func:`collect_source_images` — walk a list of mesh objects, return one
   ``SourceImage`` per object whose first material has an image-textured
-  node. Sprites with no source image are skipped.
+  node. Each carries a ``slice_px`` rect derived from the mesh's UV bounds
+  so the packer can extract just the relevant sub-region of the source
+  image (covers both 1-sprite-per-PNG and shared-atlas workflows).
 - :func:`compose_atlas` — given a :class:`PackResult` and the source
-  image list, assemble a new ``bpy.types.Image`` and save it to disk.
-- :func:`write_manifest` — JSON sidecar with the per-sprite rect,
-  consumed by ``apply_packed_atlas``.
+  image list, assemble a new ``bpy.types.Image`` containing only the
+  sliced sub-regions and save it to disk.
+- :func:`write_manifest` — JSON sidecar with the per-sprite rect plus
+  the slice metadata the apply operator needs to rewrite UVs / regions.
 - :func:`read_manifest` — inverse, used by the apply operator.
-
-Edge case (deferred to a later iteration): sprites whose source material
-points to an already-shared atlas (with different ``texture_region`` per
-sprite) require slicing — extracting the sub-image from the shared atlas
-before repacking. The current iteration assumes ``1 sprite = 1 source PNG``
-matching the Photoshop-first workflow (SPEC 006). Sliced-atlas support is
-tracked in the SPEC 005 TODO under "Defer".
 """
 
 from __future__ import annotations
@@ -32,24 +28,36 @@ from pathlib import Path
 from typing import Any
 
 from .atlas_packer import PackResult, Rect
+from .uv_bounds import uv_bbox_to_pixels
 
 
 @dataclass(frozen=True)
 class SourceImage:
-    """One source PNG to be repacked. ``image`` is the ``bpy.types.Image``."""
+    """One source slice to be repacked.
+
+    ``image`` is the source ``bpy.types.Image`` (often shared between
+    sprites). ``width`` / ``height`` are the source image dimensions.
+    ``slice_px`` ``(x, y, w, h)`` is the sub-rect of the source image
+    that this sprite actually uses, derived from its mesh UV bounds.
+    """
 
     obj_name: str
     image: Any  # bpy.types.Image — Any here so the module imports without bpy
     width: int
     height: int
+    slice_px: tuple[int, int, int, int]
 
 
 def collect_source_images(objects: list[Any]) -> list[SourceImage]:
     """Walk ``objects`` and gather their first image-textured material.
 
-    Returns one :class:`SourceImage` per object that has a usable source.
-    Objects with no image-textured material are silently skipped — the
-    caller's validation pass should surface that as a warning.
+    Each entry carries a ``slice_px`` rect derived from the mesh's UV
+    bounds — for 1-sprite-per-PNG sources this covers the whole image;
+    for shared-atlas sources it picks out just the sprite's sub-region.
+
+    Objects with no image-textured material or no UV layer are silently
+    skipped — the caller's validation pass should surface that as a
+    warning.
     """
     out: list[SourceImage] = []
     for obj in objects:
@@ -59,7 +67,34 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
         w, h = image.size
         if w <= 0 or h <= 0:
             continue
-        out.append(SourceImage(obj_name=obj.name, image=image, width=int(w), height=int(h)))
+        uvs = _collect_mesh_uvs(obj)
+        slice_px = uv_bbox_to_pixels(uvs, int(w), int(h))
+        out.append(
+            SourceImage(
+                obj_name=obj.name,
+                image=image,
+                width=int(w),
+                height=int(h),
+                slice_px=slice_px,
+            )
+        )
+    return out
+
+
+def _collect_mesh_uvs(obj: Any) -> list[tuple[float, float]]:
+    """Flatten the active UV layer's loop coords into ``[(u, v), ...]``."""
+    mesh = obj.data
+    uv_layer = getattr(mesh, "uv_layers", None)
+    if uv_layer is None:
+        return []
+    active = uv_layer.active
+    if active is None:
+        return []
+    out: list[tuple[float, float]] = []
+    for poly in mesh.polygons:
+        for li in poly.loop_indices:
+            u, v = active.data[li].uv
+            out.append((float(u), float(v)))
     return out
 
 
@@ -112,13 +147,16 @@ def compose_atlas(
         src_pixels = np.array(src.image.pixels[:], dtype=np.float32).reshape(
             src.height, src.width, 4
         )
-        # Blender pixel buffers are bottom-up. Convert to top-down before pasting,
-        # then flip the whole canvas at the end so atlas saves bottom-up too.
-        src_top_down = src_pixels[::-1]
-        canvas[rect.y : rect.y + rect.h, rect.x : rect.x + rect.w] = src_top_down
+        sx, sy, sw, sh = src.slice_px
+        # Both source and canvas are stored bottom-up. Slice in source bottom-up
+        # space then paste into the slot directly — no per-source flip needed.
+        sliced = src_pixels[sy : sy + sh, sx : sx + sw]
+        # Defensive clamp in case the slice rect is slightly larger than the
+        # placement (rounding from the packer's padding bookkeeping).
+        h = min(rect.h, sliced.shape[0])
+        w = min(rect.w, sliced.shape[1])
+        canvas[rect.y : rect.y + h, rect.x : rect.x + w] = sliced[:h, :w]
 
-    # Flip back to Blender's bottom-up convention.
-    canvas = canvas[::-1]
     atlas_img.pixels.foreach_set(canvas.flatten().tolist())
 
     atlas_img.filepath_raw = str(out_path)
@@ -127,27 +165,80 @@ def compose_atlas(
     return atlas_img
 
 
-def write_manifest(packed: PackResult, padding: int, manifest_path: Path) -> None:
-    """Persist the pack result as JSON next to the atlas PNG."""
+def write_manifest(
+    packed: PackResult,
+    padding: int,
+    sources: list[SourceImage],
+    manifest_path: Path,
+) -> None:
+    """Persist the pack result + source slice metadata as JSON.
+
+    ``format_version`` 2 adds ``source_w/h`` and ``slice_x/y/w/h`` per
+    placement so ``apply_packed_atlas`` can rewrite UVs (polygon) and
+    ``texture_region`` (sprite_frame) correctly when the source was a
+    shared atlas (slice_px ≠ full image).
+    """
+    by_name = {src.obj_name: src for src in sources}
+    placements_payload: dict[str, Any] = {}
+    for name, r in packed.placements.items():
+        src = by_name.get(name)
+        entry: dict[str, Any] = {"x": r.x, "y": r.y, "w": r.w, "h": r.h}
+        if src is not None:
+            sx, sy, sw, sh = src.slice_px
+            entry.update(
+                {
+                    "source_w": src.width,
+                    "source_h": src.height,
+                    "slice_x": sx,
+                    "slice_y": sy,
+                    "slice_w": sw,
+                    "slice_h": sh,
+                }
+            )
+        placements_payload[name] = entry
     payload: dict[str, Any] = {
-        "format_version": 1,
+        "format_version": 2,
         "atlas_w": packed.atlas_w,
         "atlas_h": packed.atlas_h,
         "padding": padding,
-        "placements": {
-            name: {"x": r.x, "y": r.y, "w": r.w, "h": r.h} for name, r in packed.placements.items()
-        },
+        "placements": placements_payload,
     }
     manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def read_manifest(manifest_path: Path) -> tuple[int, int, int, dict[str, Rect]]:
-    """Inverse of :func:`write_manifest`. Returns ``(atlas_w, atlas_h, padding, placements)``."""
+@dataclass(frozen=True)
+class Placement:
+    """Manifest entry: slot rect in atlas + slice rect in source image."""
+
+    slot: Rect
+    source_w: int
+    source_h: int
+    slice: Rect
+
+
+def read_manifest(manifest_path: Path) -> tuple[int, int, int, dict[str, Placement]]:
+    """Inverse of :func:`write_manifest`. Tolerates the v1 (no slice) format.
+
+    Returns ``(atlas_w, atlas_h, padding, placements)``. Entries from v1
+    manifests get ``slice == slot`` and ``source_w/h == slot.w/h`` so the
+    apply operator's slice-aware code path stays correct.
+    """
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    placements = {
-        name: Rect(int(r["x"]), int(r["y"]), int(r["w"]), int(r["h"]))
-        for name, r in payload["placements"].items()
-    }
+    placements: dict[str, Placement] = {}
+    for name, r in payload["placements"].items():
+        slot = Rect(int(r["x"]), int(r["y"]), int(r["w"]), int(r["h"]))
+        slice_rect = Rect(
+            int(r.get("slice_x", 0)),
+            int(r.get("slice_y", 0)),
+            int(r.get("slice_w", slot.w)),
+            int(r.get("slice_h", slot.h)),
+        )
+        placements[name] = Placement(
+            slot=slot,
+            source_w=int(r.get("source_w", slot.w)),
+            source_h=int(r.get("source_h", slot.h)),
+            slice=slice_rect,
+        )
     return (
         int(payload["atlas_w"]),
         int(payload["atlas_h"]),

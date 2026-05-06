@@ -451,8 +451,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         return bool(bpy.data.filepath)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ..core import atlas_io
-        from ..core.atlas_packer import pack as _pack
+        from ..core import atlas_io, atlas_packer
 
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
@@ -467,7 +466,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
 
         padding = int(scene_props.pack_padding_px)
         items = [(src.obj_name, src.width, src.height) for src in sources]
-        packed = _pack(
+        packed = atlas_packer.pack(
             items,
             padding=padding,
             max_size=int(scene_props.pack_max_size),

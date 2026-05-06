@@ -465,7 +465,10 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
             return {"CANCELLED"}
 
         padding = int(scene_props.pack_padding_px)
-        items = [(src.obj_name, src.width, src.height) for src in sources]
+        # Pack slice dimensions, not the full source image — this is what
+        # makes the packer work for both 1-sprite-per-PNG and shared-atlas
+        # workflows (5.1.c.2.1).
+        items = [(src.obj_name, src.slice_px[2], src.slice_px[3]) for src in sources]
         packed = atlas_packer.pack(
             items,
             padding=padding,
@@ -483,7 +486,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         atlas_png, manifest_json = _packed_atlas_paths(bpy.data.filepath)
         atlas_png.parent.mkdir(parents=True, exist_ok=True)
         atlas_io.compose_atlas(sources, packed, atlas_png, padding=padding)
-        atlas_io.write_manifest(packed, padding, manifest_json)
+        atlas_io.write_manifest(packed, padding, sources, manifest_json)
 
         self.report(
             {"INFO"},
@@ -536,8 +539,8 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         for obj in context.scene.objects:
             if obj.type != "MESH" or obj.name not in placements:
                 continue
-            rect = placements[obj.name]
-            if not self._rewrite_uvs(obj, rect, atlas_w, atlas_h):
+            placement = placements[obj.name]
+            if not self._apply_to_object(obj, placement, atlas_w, atlas_h):
                 skipped += 1
                 continue
             self._relink_material(obj, shared_mat, atlas_image)
@@ -549,6 +552,48 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         self.report({"INFO"}, msg)
         print(f"[Proscenio] {msg}")
         return {"FINISHED"}
+
+    def _apply_to_object(
+        self,
+        obj: bpy.types.Object,
+        placement: object,  # core.atlas_io.Placement — avoid bpy-side import here
+        atlas_w: int,
+        atlas_h: int,
+    ) -> bool:
+        """Apply the packed atlas to a single sprite mesh.
+
+        Always rewrites UVs (so Blender's solid-shading preview lands in the
+        right slot of the new atlas image). For sprite_frame additionally
+        sets ``region_mode = manual`` + ``region_x/y/w/h`` so the writer emits
+        a ``texture_region`` and Godot's Sprite2D slices the correct area.
+        """
+        props = getattr(obj, "proscenio", None)
+        sprite_type = str(getattr(props, "sprite_type", "polygon")) if props else "polygon"
+        rewrote = self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
+        if sprite_type == "sprite_frame" and props is not None:
+            self._apply_sprite_frame(props, placement, atlas_w, atlas_h)
+            return True
+        return rewrote
+
+    def _apply_sprite_frame(
+        self,
+        props: bpy.types.AnyType,
+        placement: object,
+        atlas_w: int,
+        atlas_h: int,
+    ) -> None:
+        """Set region_mode=manual + region_x/y/w/h pointing at the slot.
+
+        Region values are top-down (Godot's Sprite2D.region_rect convention)
+        — the writer flips its own UV outputs to top-down for the same
+        reason, so PG region_* values are stored top-down to match.
+        """
+        slot = placement.slot  # type: ignore[attr-defined]
+        props.region_mode = "manual"
+        props.region_x = slot.x / atlas_w
+        props.region_y = slot.y / atlas_h
+        props.region_w = slot.w / atlas_w
+        props.region_h = slot.h / atlas_h
 
     def _ensure_shared_material(self, atlas_image: bpy.types.Image) -> bpy.types.Material:
         """Create or refresh the shared 'Proscenio.PackedAtlas' material."""
@@ -571,26 +616,32 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def _rewrite_uvs(
         self,
         obj: bpy.types.Object,
-        rect: object,  # core.atlas_packer.Rect — avoid bpy-side import here
+        placement: object,  # core.atlas_io.Placement — avoid bpy-side import here
         atlas_w: int,
         atlas_h: int,
     ) -> bool:
-        """Map current UVs from source-image space to packed-atlas space."""
+        """Map polygon UVs from source-image space → packed-atlas space.
+
+        Coord systems: mesh UVs are bottom-up (Blender native), the slice rect
+        in the manifest is bottom-up (UV-derived), but the slot rect is the
+        packer's top-down output. Convert slot.y to bottom-up for the math.
+        """
         mesh = obj.data
         uv_layer = mesh.uv_layers.active
-        if uv_layer is None:
+        if uv_layer is None or len(uv_layer.data) == 0:
             return False
-        rx = rect.x  # type: ignore[attr-defined]
-        ry = rect.y  # type: ignore[attr-defined]
-        rw = rect.w  # type: ignore[attr-defined]
-        rh = rect.h  # type: ignore[attr-defined]
+        slot = placement.slot  # type: ignore[attr-defined]
+        slice_rect = placement.slice  # type: ignore[attr-defined]
+        src_w = placement.source_w  # type: ignore[attr-defined]
+        src_h = placement.source_h  # type: ignore[attr-defined]
+        slot_y_bu = atlas_h - slot.y - slot.h
         for poly in mesh.polygons:
             for li in poly.loop_indices:
                 u, v = uv_layer.data[li].uv
-                # Source uv is bottom-left origin in [0,1] of the source image;
-                # map into the rect inside the atlas, also bottom-left origin.
-                new_u = (rx + u * rw) / atlas_w
-                new_v = (ry + v * rh) / atlas_h
+                src_px_x = u * src_w
+                src_px_y = v * src_h
+                new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
+                new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
                 uv_layer.data[li].uv = (new_u, new_v)
         return True
 

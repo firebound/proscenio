@@ -102,16 +102,16 @@ flowchart TD
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
-| Test assertions Python | 38 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8) |
+| Test assertions Python | 46 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8 + uv_bounds 8) |
 | Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
 | CI jobs | 5 (lint-python agora roda pytest também) |
 | SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
 
 ## O que está em andamento
 
-SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito (PRs #4–#7). 5.1.c.1 (region authoring) em PR #8. Fix bundle (mirror-all + UX gaps) em PR #9 stacked. **5.1.c.2 (atlas packer) em andamento** na branch `feat/spec-005.1.c.2-atlas-packer`: vendored MaxRects-BSSF (`core/atlas_packer.py`), bpy-side IO (`core/atlas_io.py`), two-stage operators `pack_atlas` + `apply_packed_atlas`, scene props `pack_padding_px/pack_max_size/pack_pot`, per-Object `material_isolated` toggle.
+SPEC 005 first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 com merge feito (PRs #4–#11). **5.1.c.2.1 (sliced atlas)** em andamento na branch `feat/spec-005.1.c.2.1-sliced-atlas`: corrige o caso shared-atlas (dummy fixture) onde sprite_frame ia parar em região transparente. `core/uv_bounds.py` deriva slice rect das UV bounds; pack só empacota o slice; apply reescreve UVs (polygon) ou seta `region_mode=manual` + slot (sprite_frame).
 
-PRs 1–7 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.2: SPEC 006 (Photoshop → Blender importer) — desbloqueia o workflow PS-first com naming convention `<name>_<index>` aciona sprite_frame grouping.
+PRs 1–11 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.2.1: SPEC 006 (Photoshop → Blender importer) — desbloqueia o workflow PS-first com naming convention `<name>_<index>` que aciona sprite_frame grouping.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 

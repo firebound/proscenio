@@ -105,7 +105,7 @@ flowchart TD
 | Test assertions Python | 38 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8) |
 | Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
 | CI jobs | 5 (lint-python agora roda pytest também) |
-| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
+| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004), 1 design-only (007) |
 
 ## O que está em andamento
 
@@ -192,13 +192,14 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito. 5.1.c.1 em PR #8. Fix bundle em PR #9. 5.1.c.2 em branch atual. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 wave fechada (first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 merged). PRs em revisão: #12 (5.1.c.2.1 sliced atlas), #13 (5.1.c.2.2 Unpack). SPEC 007 (testing fixtures) em design — primeira PR é só docs, depois implementação dos fixtures `simple_doll` + `blink_eyes`. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge sequencial das PRs #8 → #9 → 5.1.c.2** — fecha região + fixes + packer.
-2. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping.
-3. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
-4. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
-5. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
+1. **CI verde + merge das PRs #12 → #13** — fecha o atlas track.
+2. **SPEC 007 fixtures** — implementar `scripts/fixtures/build_simple_doll.py` + `build_blink_eyes.py`, gerar `.blend` + golden `.proscenio`, parametrizar CI test-blender. Cobre o gap de testes pro workflow `1 sprite = 1 PNG` e pro `sprite_frame` com animação real.
+3. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping. Lock convention vem da SPEC 007 D4.
+4. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
+5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+6. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

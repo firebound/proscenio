@@ -137,6 +137,7 @@ Manual validation of 5.1.c.2 on the dummy fixture exposed that sprites whose sou
 
 ## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
 
+- 5.1.c.2.2 Unpack operator — duplicates the active UV layer to ``<name>.pre_pack`` before apply runs, plus stores the pre-apply material name on `ProscenioObjectProps`. Unpack restores both. Closes the "non-destructive across session boundaries" gap (today's apply is undoable only via Ctrl+Z within the session).
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.

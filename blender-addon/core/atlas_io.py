@@ -18,6 +18,32 @@ Responsibilities:
 - :func:`write_manifest` — JSON sidecar with the per-sprite rect plus
   the slice metadata the apply operator needs to rewrite UVs / regions.
 - :func:`read_manifest` — inverse, used by the apply operator.
+
+Idempotency contract. Pack and Apply are deterministic functions of the
+current Blender scene state. Running them in any order multiple times
+produces the same .blend / packed atlas as long as the underlying mesh
+UVs and source images are the same:
+
+- Pack(N times in a row): same .atlas.png + .atlas.json each run. The
+  on-disk PNG is overwritten in place; the existing
+  ``bpy.types.Image`` for the same name is removed and re-created. Source
+  pixels are snapshotted into NumPy before the removal happens, so a
+  source that *is* the existing packed atlas (true on second pack after
+  apply) still gets read cleanly.
+- Apply(N times in a row): UVs in slot coords are stable — second apply
+  rewrites them to the same numbers. Materials are linked to the shared
+  ``Proscenio.PackedAtlas`` (or left isolated per object).
+- Pack → Apply → Pack → Apply: the slice extracted in the second pack
+  comes from the already-packed atlas (slot interior) and ends up at the
+  same slot coordinates because the packer is deterministic. UVs after
+  the second apply land at the same positions. **Equivalent to Pack →
+  Apply once.**
+
+What the cycle is **not** is reversible across a session boundary —
+once the .blend is saved post-apply, the original UVs and the original
+material → image link are gone. SPEC 005.1.c.2.2 (Unpack operator) will
+add a duplicated UV layer (``UVMap.pre_pack``) snapshot so the operation
+becomes fully revertible. Until then, Ctrl+Z is the only revert path.
 """
 
 from __future__ import annotations
@@ -131,10 +157,38 @@ def compose_atlas(
     in this iteration — edge-extend padding to combat bilinear bleeding can
     be added later without changing the operator surface.
 
+    Idempotency note. The function tolerates the case where ``src.image``
+    is the same image we are about to overwrite (true on second pack runs
+    after the first apply linked every sprite to the shared packed atlas).
+    Source pixel arrays are copied into NumPy upfront — **before** the
+    existing atlas image is removed from ``bpy.data.images`` — so the
+    mid-loop ``StructRNA of type Image has been removed`` error cannot
+    happen.
+
     Returns the new ``bpy.types.Image``.
     """
     import bpy  # local import — module must remain importable from non-bpy contexts
     import numpy as np
+
+    # Snapshot every source's pixels into NumPy *before* mutating bpy.data.images.
+    # If `src.image` is the existing atlas-with-the-same-name we are about to
+    # remove, the snapshot detaches us from the bpy reference — Blender can
+    # then free the StructRNA without us crashing later in the loop.
+    placed_sources: list[tuple[SourceImage, Rect, np.ndarray]] = []
+    for src in sources:
+        rect: Rect | None = packed.placements.get(src.obj_name)
+        if rect is None:
+            continue
+        try:
+            pixels = np.array(src.image.pixels[:], dtype=np.float32).reshape(
+                src.height, src.width, 4
+            )
+        except (ReferenceError, AttributeError):
+            # Source image was already invalidated (e.g. an earlier pack run
+            # in this session removed it). Skip — the caller's validation
+            # path should surface this as a warning.
+            continue
+        placed_sources.append((src, rect, pixels))
 
     name = out_path.stem
     if name in bpy.data.images:
@@ -154,13 +208,7 @@ def compose_atlas(
     # bottom-up because Blender mesh UVs use bottom-left origin. We slice the
     # source in bottom-up space, then convert the slot's top-down y to a
     # bottom-up canvas row before pasting.
-    for src in sources:
-        rect: Rect | None = packed.placements.get(src.obj_name)
-        if rect is None:
-            continue
-        src_pixels = np.array(src.image.pixels[:], dtype=np.float32).reshape(
-            src.height, src.width, 4
-        )
+    for src, rect, src_pixels in placed_sources:
         sx, sy_bu, sw, sh = src.slice_px
         sliced = src_pixels[sy_bu : sy_bu + sh, sx : sx + sw]
         # Defensive clamp in case the slice rect is slightly larger than the

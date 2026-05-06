@@ -60,8 +60,10 @@ def remap_uv_into_slot(
 ) -> tuple[float, float]:
     """Translate a single UV from source-image space to packed-atlas space.
 
-    Used by ``apply_packed_atlas`` for polygon meshes — sprite_frame uses
-    ``texture_region`` instead and does not touch mesh UVs.
+    All inputs are expected in **bottom-up** convention (Blender native:
+    UV ``(0, 0)`` at bottom-left, pixel rows numbered from the bottom).
+    Callers using the packer's top-down slot output must convert
+    ``slot_px.y`` to bottom-up first via ``atlas_h - slot.y - slot.h``.
     """
     sx, sy, _sw, _sh = slice_px
     rx, ry, _rw, _rh = slot_px

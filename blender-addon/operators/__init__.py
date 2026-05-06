@@ -560,12 +560,20 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         atlas_w: int,
         atlas_h: int,
     ) -> bool:
-        """Dispatch to per-sprite-kind apply path. Returns False on skip."""
+        """Apply the packed atlas to a single sprite mesh.
+
+        Always rewrites UVs (so Blender's solid-shading preview lands in the
+        right slot of the new atlas image). For sprite_frame additionally
+        sets ``region_mode = manual`` + ``region_x/y/w/h`` so the writer emits
+        a ``texture_region`` and Godot's Sprite2D slices the correct area.
+        """
         props = getattr(obj, "proscenio", None)
         sprite_type = str(getattr(props, "sprite_type", "polygon")) if props else "polygon"
-        if sprite_type == "sprite_frame":
-            return self._apply_sprite_frame(props, placement, atlas_w, atlas_h)
-        return self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
+        rewrote = self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
+        if sprite_type == "sprite_frame" and props is not None:
+            self._apply_sprite_frame(props, placement, atlas_w, atlas_h)
+            return True
+        return rewrote
 
     def _apply_sprite_frame(
         self,
@@ -573,17 +581,19 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         placement: object,
         atlas_w: int,
         atlas_h: int,
-    ) -> bool:
-        """Set region_mode=manual + region_x/y/w/h pointing at the slot."""
-        if props is None:
-            return False
+    ) -> None:
+        """Set region_mode=manual + region_x/y/w/h pointing at the slot.
+
+        Region values are top-down (Godot's Sprite2D.region_rect convention)
+        — the writer flips its own UV outputs to top-down for the same
+        reason, so PG region_* values are stored top-down to match.
+        """
         slot = placement.slot  # type: ignore[attr-defined]
         props.region_mode = "manual"
         props.region_x = slot.x / atlas_w
         props.region_y = slot.y / atlas_h
         props.region_w = slot.w / atlas_w
         props.region_h = slot.h / atlas_h
-        return True
 
     def _ensure_shared_material(self, atlas_image: bpy.types.Image) -> bpy.types.Material:
         """Create or refresh the shared 'Proscenio.PackedAtlas' material."""
@@ -612,25 +622,26 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     ) -> bool:
         """Map polygon UVs from source-image space → packed-atlas space.
 
-        Honors the placement's slice rect: a UV at ``(u, v)`` in the source
-        image addresses pixel ``(u*src_w, v*src_h)``, which maps into the
-        slot at ``(slot.x + (px - slice.x), slot.y + (py - slice.y))``.
+        Coord systems: mesh UVs are bottom-up (Blender native), the slice rect
+        in the manifest is bottom-up (UV-derived), but the slot rect is the
+        packer's top-down output. Convert slot.y to bottom-up for the math.
         """
         mesh = obj.data
         uv_layer = mesh.uv_layers.active
-        if uv_layer is None:
+        if uv_layer is None or len(uv_layer.data) == 0:
             return False
         slot = placement.slot  # type: ignore[attr-defined]
         slice_rect = placement.slice  # type: ignore[attr-defined]
         src_w = placement.source_w  # type: ignore[attr-defined]
         src_h = placement.source_h  # type: ignore[attr-defined]
+        slot_y_bu = atlas_h - slot.y - slot.h
         for poly in mesh.polygons:
             for li in poly.loop_indices:
                 u, v = uv_layer.data[li].uv
                 src_px_x = u * src_w
                 src_px_y = v * src_h
                 new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
-                new_v = (slot.y + (src_px_y - slice_rect.y)) / atlas_h
+                new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
                 uv_layer.data[li].uv = (new_u, new_v)
         return True
 

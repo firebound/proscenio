@@ -82,17 +82,25 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
 
 
 def _collect_mesh_uvs(obj: Any) -> list[tuple[float, float]]:
-    """Flatten the active UV layer's loop coords into ``[(u, v), ...]``."""
+    """Flatten the active UV layer's loop coords into ``[(u, v), ...]``.
+
+    Defensive against partially-initialized meshes — Blender 5.x can have a
+    UV layer marker whose ``.data`` collection is empty (seen after the
+    apply operator on certain shared-material objects), which previously
+    crashed with ``IndexError`` on the second Pack Atlas run.
+    """
     mesh = obj.data
     uv_layer = getattr(mesh, "uv_layers", None)
     if uv_layer is None:
         return []
     active = uv_layer.active
-    if active is None:
+    if active is None or len(active.data) == 0:
         return []
     out: list[tuple[float, float]] = []
     for poly in mesh.polygons:
         for li in poly.loop_indices:
+            if li >= len(active.data):
+                continue
             u, v = active.data[li].uv
             out.append((float(u), float(v)))
     return out
@@ -140,6 +148,12 @@ def compose_atlas(
 
     canvas = np.zeros((packed.atlas_h, packed.atlas_w, 4), dtype=np.float32)
 
+    # Coordinate systems. The packer is internally top-down (y=0 means top of
+    # the atlas, the bin-packing convention); ``bpy.types.Image.pixels`` is
+    # bottom-up (row 0 = bottom of the image). UV-derived ``slice_px`` is
+    # bottom-up because Blender mesh UVs use bottom-left origin. We slice the
+    # source in bottom-up space, then convert the slot's top-down y to a
+    # bottom-up canvas row before pasting.
     for src in sources:
         rect: Rect | None = packed.placements.get(src.obj_name)
         if rect is None:
@@ -147,15 +161,14 @@ def compose_atlas(
         src_pixels = np.array(src.image.pixels[:], dtype=np.float32).reshape(
             src.height, src.width, 4
         )
-        sx, sy, sw, sh = src.slice_px
-        # Both source and canvas are stored bottom-up. Slice in source bottom-up
-        # space then paste into the slot directly — no per-source flip needed.
-        sliced = src_pixels[sy : sy + sh, sx : sx + sw]
+        sx, sy_bu, sw, sh = src.slice_px
+        sliced = src_pixels[sy_bu : sy_bu + sh, sx : sx + sw]
         # Defensive clamp in case the slice rect is slightly larger than the
         # placement (rounding from the packer's padding bookkeeping).
         h = min(rect.h, sliced.shape[0])
         w = min(rect.w, sliced.shape[1])
-        canvas[rect.y : rect.y + h, rect.x : rect.x + w] = sliced[:h, :w]
+        slot_y_bu = packed.atlas_h - rect.y - rect.h
+        canvas[slot_y_bu : slot_y_bu + h, rect.x : rect.x + w] = sliced[:h, :w]
 
     atlas_img.pixels.foreach_set(canvas.flatten().tolist())
 

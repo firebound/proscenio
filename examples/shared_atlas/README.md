@@ -30,8 +30,18 @@ Single bone `root` only. No animation. The fixture exists to test the packer, no
 
 ## Building from source
 
+Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headless Blender.
+
 ```bash
+# 1. Generate the atlas PNG (requires only Python + Pillow).
+python scripts/fixtures/draw_shared_atlas.py
+
+# 2. Assemble the .blend.
 blender --background --python scripts/fixtures/build_shared_atlas.py
+
+# 3. Generate the golden .proscenio.
+blender --background examples/shared_atlas/shared_atlas.blend \
+    --python scripts/fixtures/export_proscenio.py
 ```
 
 Output is committed to the repo. Re-run whenever the fixture spec changes.

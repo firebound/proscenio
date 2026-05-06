@@ -1,23 +1,16 @@
-"""Build the shared_atlas test fixture from scratch (SPEC 007 step 2).
+"""Assemble the shared_atlas .blend (SPEC 007 step 2, Blender side).
 
 Run with::
 
     blender --background --python scripts/fixtures/build_shared_atlas.py
 
-Idempotent: deletes the existing ``examples/shared_atlas/`` outputs and
-rewrites them deterministically. Generates:
+Loads ``examples/shared_atlas/atlas.png`` produced by
+``draw_shared_atlas.py`` and builds 3 polygon meshes whose UV bounds
+each cover one quadrant of the shared atlas. The bottom-right quadrant
+stays unused.
 
-- ``atlas.png`` (256×256) — three colored shapes drawn into different
-  quadrants. The fourth quadrant is transparent (so the slicing logic
-  has something to ignore).
-- ``shared_atlas.blend`` — three polygon meshes, each with UV bounds
-  covering exactly one shape's quadrant of the shared atlas.
-
-Tests the **sliced atlas packer** (SPEC 005.1.c.2.1): when Pack Atlas
-runs over this scene, it must extract each sprite's slice (just its
-shape's quadrant, not the whole atlas) into the new packed atlas. The
-golden ``.proscenio`` captures the per-sprite ``texture_region`` /
-UV layout so any regression in slicing surfaces in CI as a diff.
+Run ``draw_shared_atlas.py`` first or this script aborts on missing
+PNG.
 """
 
 from __future__ import annotations
@@ -27,9 +20,6 @@ from pathlib import Path
 
 import bpy
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _draw import Canvas, circle, fill, rect, save_as_png, triangle  # noqa: E402
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = REPO_ROOT / "examples" / "shared_atlas"
 ATLAS_PATH = FIXTURE_DIR / "atlas.png"
@@ -37,37 +27,35 @@ BLEND_PATH = FIXTURE_DIR / "shared_atlas.blend"
 
 ATLAS_W = 256
 ATLAS_H = 256
-QUAD = 128  # quadrant size
 PIXELS_PER_UNIT = 100.0
 
-# Background tint so the sliced areas are visually distinct from
-# transparent padding the packer produces.
-BACKGROUND = (0.07, 0.07, 0.07, 1.0)
-TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
-RED = (0.85, 0.20, 0.20, 1.0)
-GREEN = (0.20, 0.75, 0.30, 1.0)
-BLUE = (0.20, 0.40, 0.85, 1.0)
-
-# (sprite_name, uv_min_x, uv_min_y, uv_max_x, uv_max_y, color, shape_kind)
-# UVs are in [0,1] of atlas, bottom-up. Each sprite covers one quadrant
-# minus a small inset to keep the slice math non-trivial.
+# (sprite_name, uv_min_x, uv_min_y, uv_max_x, uv_max_y)
+# UVs are Blender-style (bottom-up): v=0 at bottom, v=1 at top.
+# The PNG was drawn top-down; Blender flips on load so v=[0.5, 1.0]
+# corresponds to the PNG's top half, matching where each shape was drawn.
 SPRITES = (
-    ("red_circle", 0.0, 0.5, 0.5, 1.0, RED, "circle"),
-    ("green_triangle", 0.5, 0.5, 1.0, 1.0, GREEN, "triangle"),
-    ("blue_square", 0.0, 0.0, 0.5, 0.5, BLUE, "square"),
+    # Red circle drawn at top-left of the PNG → top-left UV quadrant.
+    ("red_circle", 0.0, 0.5, 0.5, 1.0),
+    # Green triangle drawn at top-right of the PNG → top-right UV quadrant.
+    ("green_triangle", 0.5, 0.5, 1.0, 1.0),
+    # Blue square drawn at bottom-left of the PNG → bottom-left UV quadrant.
+    ("blue_square", 0.0, 0.0, 0.5, 0.5),
 )
 
 
 def main() -> None:
-    FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
+    if not ATLAS_PATH.exists():
+        print(
+            f"[build_shared_atlas] missing {ATLAS_PATH} — run draw_shared_atlas.py first",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     _wipe_blend()
-    _generate_atlas()
     armature_obj = _build_armature()
     for spec in SPRITES:
         _build_sprite_plane(spec, armature_obj)
     _save_blend()
-    print(f"[shared_atlas] wrote {ATLAS_PATH}")
-    print(f"[shared_atlas] wrote {BLEND_PATH}")
+    print(f"[build_shared_atlas] wrote {BLEND_PATH}")
 
 
 def _wipe_blend() -> None:
@@ -79,28 +67,8 @@ def _wipe_blend() -> None:
         bpy.data.images,
         bpy.data.actions,
     ):
-        for item in list(collection):
-            collection.remove(item)
-
-
-def _generate_atlas() -> None:
-    canvas = Canvas.empty(ATLAS_W, ATLAS_H)
-    fill(canvas, TRANSPARENT)
-
-    # red circle in top-left quadrant
-    circle(canvas, QUAD * 0.5, ATLAS_H - QUAD * 0.5, QUAD * 0.4, RED)
-    # green triangle in top-right quadrant
-    triangle(
-        canvas,
-        (QUAD + QUAD * 0.5, ATLAS_H - QUAD * 0.9),
-        (QUAD + QUAD * 0.1, ATLAS_H - QUAD * 0.1),
-        (QUAD + QUAD * 0.9, ATLAS_H - QUAD * 0.1),
-        GREEN,
-    )
-    # blue square in bottom-left quadrant
-    rect(canvas, int(QUAD * 0.2), int(QUAD * 0.2), int(QUAD * 0.6), int(QUAD * 0.6), BLUE)
-
-    save_as_png(canvas, "atlas", ATLAS_PATH)
+        while collection:
+            collection.remove(collection[0])
 
 
 def _build_armature() -> bpy.types.Object:
@@ -116,9 +84,10 @@ def _build_armature() -> bpy.types.Object:
     return arm_obj
 
 
-def _build_sprite_plane(spec: tuple, armature_obj: bpy.types.Object) -> bpy.types.Object:
-    name, uv_x0, uv_y0, uv_x1, uv_y1, _color, _shape = spec
-    # The plane size matches the slice in world units (slice px / ppu).
+def _build_sprite_plane(
+    spec: tuple[str, float, float, float, float], armature_obj: bpy.types.Object
+) -> bpy.types.Object:
+    name, uv_x0, uv_y0, uv_x1, uv_y1 = spec
     slice_w_px = (uv_x1 - uv_x0) * ATLAS_W
     slice_h_px = (uv_y1 - uv_y0) * ATLAS_H
     w = slice_w_px / PIXELS_PER_UNIT
@@ -137,7 +106,6 @@ def _build_sprite_plane(spec: tuple, armature_obj: bpy.types.Object) -> bpy.type
     )
     mesh.update()
 
-    # UVs cover only this sprite's quadrant of the shared atlas.
     uv = mesh.uv_layers.new(name="UVMap")
     uv.data[0].uv = (uv_x0, uv_y0)
     uv.data[1].uv = (uv_x1, uv_y0)
@@ -179,5 +147,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"[shared_atlas] FAILED: {exc}", file=sys.stderr)
+        print(f"[build_shared_atlas] FAILED: {exc}", file=sys.stderr)
         raise

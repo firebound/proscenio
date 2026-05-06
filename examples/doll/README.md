@@ -96,18 +96,29 @@ Future actions land as future SPECs require (talk action when lip phonemes ship 
 
 ## Building from source
 
+Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headless Blender.
+
 ```bash
+# 1. Generate every body PNG + eye spritesheet (Python + Pillow).
+python scripts/fixtures/draw_doll.py
+
+# 2. Assemble the .blend (37-bone armature + sprite meshes + weights + 4 actions).
 blender --background --python scripts/fixtures/build_doll.py
+
+# 3. Generate the golden .proscenio.
+blender --background examples/doll/doll.blend \
+    --python scripts/fixtures/export_proscenio.py
 ```
 
 Builder is split into helpers under `scripts/fixtures/`:
 
-- `_draw.py` — shape rasterizer
-- `_doll_armature.py` — 37-bone hierarchy
-- `_doll_meshes.py` — sprite planes + materials
-- `_doll_weights.py` — vertex groups + weights
-- `_doll_actions.py` — idle / wave / blink / walk
-- `build_doll.py` — orchestrator
+- `_draw.py` — Pillow-based shape rasterizer (no bpy)
+- `draw_doll.py` — Pillow orchestrator: every body PNG + eye spritesheet
+- `_doll_armature.py` — bpy: 37-bone hierarchy
+- `_doll_meshes.py` — bpy: load PNGs, build sprite planes + materials
+- `_doll_weights.py` — bpy: vertex groups + weights
+- `_doll_actions.py` — bpy: idle / wave / blink / walk
+- `build_doll.py` — bpy orchestrator
 
 ## What this fixture catches when broken
 

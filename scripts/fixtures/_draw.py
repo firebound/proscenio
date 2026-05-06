@@ -1,83 +1,105 @@
-"""Pure-Python shape rasterizer used by the SPEC 007 fixture builders.
+"""Pillow-based shape rasterizer used by the SPEC 007 fixture PNG draws.
 
-Every fixture's PNGs come out of geometric primitives drawn into a flat
-RGBA float list (one entry per pixel × 4 channels, bottom-up to match
-``bpy.types.Image.pixels`` semantics).
+Pure Python — runs **without Blender** (just Python + Pillow). The
+fixture builders are split into two stages:
 
-No external dependencies (no Pillow, no numpy needed) — Blender bundles
-everything via bpy and stdlib. Designed to be readable: 5 shape primitives
-plus a save helper, ~150 LOC total.
+1. ``draw_<fixture>.py`` (this layer) — generates PNGs via Pillow.
+   Run with ``python scripts/fixtures/draw_<fixture>.py``.
+2. ``build_<fixture>.py`` — assembles the ``.blend`` via bpy, loading
+   the PNGs from disk. Run with ``blender --background --python ...``.
 
-Coordinate convention: ``(0, 0)`` is bottom-left of the canvas, matching
-Blender's UV origin and ``Image.pixels`` row order.
+This split lets a developer iterate on visuals without booting Blender
+and lets the PNG generation be exercised in plain pytest if needed.
+
+Coordinate convention
+---------------------
+Matches Pillow native: ``y = 0`` is the **top** row of the canvas.
+Saved PNGs preserve this orientation — opening the file in Photoshop
+or a browser shows pixel ``(0, 0)`` at the top-left, which is also
+how Blender's UV editor displays the image once loaded.
+
+API surface
+-----------
+- :class:`Canvas` — wraps ``PIL.Image`` + ``ImageDraw``. Construct with
+  ``Canvas(width, height)``; saved via ``canvas.save(path)``.
+- Free functions ``fill``, ``rect``, ``border``, ``circle``,
+  ``triangle``, ``trapezoid`` — operate on a Canvas.
+
+Colors are RGBA float tuples ``(r, g, b, a)`` in ``[0, 1]``, matching
+the rest of the codebase. Pillow internally wants ``(0..255, ..., 0..255)``;
+the helpers convert.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+
+from PIL import Image, ImageDraw
 
 RGBA = tuple[float, float, float, float]
 
 
+def _to_pil_color(color: RGBA) -> tuple[int, int, int, int]:
+    """Convert a float RGBA in [0,1] to Pillow's 8-bit tuple."""
+    return (
+        max(0, min(255, int(color[0] * 255 + 0.5))),
+        max(0, min(255, int(color[1] * 255 + 0.5))),
+        max(0, min(255, int(color[2] * 255 + 0.5))),
+        max(0, min(255, int(color[3] * 255 + 0.5))),
+    )
+
+
 @dataclass
 class Canvas:
-    """RGBA float canvas. ``pixels`` flat row-major, bottom-up."""
+    """RGBA Pillow-backed canvas. ``y = 0`` is the **top** row."""
 
     width: int
     height: int
-    pixels: list[float]
+    image: Image.Image
+    draw: ImageDraw.ImageDraw
 
     @classmethod
     def empty(cls, width: int, height: int) -> "Canvas":
-        return cls(width=width, height=height, pixels=[0.0] * (width * height * 4))
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        return cls(width=width, height=height, image=image, draw=ImageDraw.Draw(image))
 
-    def set(self, x: int, y: int, color: RGBA) -> None:
-        if 0 <= x < self.width and 0 <= y < self.height:
-            i = (y * self.width + x) * 4
-            self.pixels[i] = color[0]
-            self.pixels[i + 1] = color[1]
-            self.pixels[i + 2] = color[2]
-            self.pixels[i + 3] = color[3]
+    def save(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.image.save(str(path), "PNG")
 
 
 def fill(canvas: Canvas, color: RGBA) -> None:
     """Paint every pixel with ``color``."""
-    for y in range(canvas.height):
-        for x in range(canvas.width):
-            canvas.set(x, y, color)
+    canvas.draw.rectangle(
+        [(0, 0), (canvas.width - 1, canvas.height - 1)],
+        fill=_to_pil_color(color),
+    )
 
 
 def rect(canvas: Canvas, x: int, y: int, w: int, h: int, color: RGBA) -> None:
-    """Filled axis-aligned rectangle. ``(x, y)`` is the bottom-left corner."""
-    for ry in range(max(0, y), min(canvas.height, y + h)):
-        for rx in range(max(0, x), min(canvas.width, x + w)):
-            canvas.set(rx, ry, color)
+    """Filled axis-aligned rectangle. ``(x, y)`` is the top-left corner."""
+    canvas.draw.rectangle(
+        [(x, y), (x + w - 1, y + h - 1)],
+        fill=_to_pil_color(color),
+    )
 
 
 def border(canvas: Canvas, color: RGBA, thickness: int = 1) -> None:
     """Draw a rectangular border around the entire canvas."""
-    for t in range(thickness):
-        rect(canvas, t, t, canvas.width - 2 * t, 1, color)
-        rect(canvas, t, canvas.height - 1 - t, canvas.width - 2 * t, 1, color)
-        rect(canvas, t, t, 1, canvas.height - 2 * t, color)
-        rect(canvas, canvas.width - 1 - t, t, 1, canvas.height - 2 * t, color)
+    canvas.draw.rectangle(
+        [(0, 0), (canvas.width - 1, canvas.height - 1)],
+        outline=_to_pil_color(color),
+        width=thickness,
+    )
 
 
 def circle(canvas: Canvas, cx: float, cy: float, radius: float, color: RGBA) -> None:
-    """Filled circle centered at ``(cx, cy)`` with the given ``radius``."""
-    r2 = radius * radius
-    x_min = max(0, int(cx - radius - 1))
-    x_max = min(canvas.width, int(cx + radius + 1))
-    y_min = max(0, int(cy - radius - 1))
-    y_max = min(canvas.height, int(cy + radius + 1))
-    for y in range(y_min, y_max):
-        for x in range(x_min, x_max):
-            dx = x + 0.5 - cx
-            dy = y + 0.5 - cy
-            if dx * dx + dy * dy <= r2:
-                canvas.set(x, y, color)
+    """Filled circle centered at ``(cx, cy)``."""
+    canvas.draw.ellipse(
+        [(cx - radius, cy - radius), (cx + radius, cy + radius)],
+        fill=_to_pil_color(color),
+    )
 
 
 def triangle(
@@ -87,74 +109,29 @@ def triangle(
     p2: tuple[float, float],
     color: RGBA,
 ) -> None:
-    """Filled triangle via simple barycentric scanline. Three pixel-space points."""
-    xs = [p0[0], p1[0], p2[0]]
-    ys = [p0[1], p1[1], p2[1]]
-    x_min = max(0, int(min(xs)))
-    x_max = min(canvas.width, int(max(xs)) + 1)
-    y_min = max(0, int(min(ys)))
-    y_max = min(canvas.height, int(max(ys)) + 1)
-    for y in range(y_min, y_max):
-        for x in range(x_min, x_max):
-            if _point_in_triangle(x + 0.5, y + 0.5, p0, p1, p2):
-                canvas.set(x, y, color)
+    """Filled triangle from three pixel-space points."""
+    canvas.draw.polygon([p0, p1, p2], fill=_to_pil_color(color))
 
 
 def trapezoid(
     canvas: Canvas,
     x: float,
     y: float,
-    bottom_w: float,
     top_w: float,
+    bottom_w: float,
     h: float,
     color: RGBA,
 ) -> None:
-    """Filled isoceles trapezoid. ``(x, y)`` is the bottom-left of the bottom edge."""
-    bottom_left = (x, y)
-    bottom_right = (x + bottom_w, y)
-    top_left = (x + (bottom_w - top_w) / 2.0, y + h)
-    top_right = (x + (bottom_w + top_w) / 2.0, y + h)
-    triangle(canvas, bottom_left, bottom_right, top_right, color)
-    triangle(canvas, bottom_left, top_right, top_left, color)
+    """Filled isoceles trapezoid. ``(x, y)`` is the top-left of the top edge.
 
-
-def _point_in_triangle(
-    px: float,
-    py: float,
-    p0: tuple[float, float],
-    p1: tuple[float, float],
-    p2: tuple[float, float],
-) -> bool:
-    """Sign-based point-in-triangle test."""
-    s1 = _sign(px, py, p0, p1)
-    s2 = _sign(px, py, p1, p2)
-    s3 = _sign(px, py, p2, p0)
-    has_neg = s1 < 0 or s2 < 0 or s3 < 0
-    has_pos = s1 > 0 or s2 > 0 or s3 > 0
-    return not (has_neg and has_pos)
-
-
-def _sign(
-    px: float,
-    py: float,
-    p0: tuple[float, float],
-    p1: tuple[float, float],
-) -> float:
-    return (px - p1[0]) * (p0[1] - p1[1]) - (p0[0] - p1[0]) * (py - p1[1])
-
-
-def save_as_png(canvas: Canvas, name: str, out_path: Path) -> Any:
-    """Persist ``canvas`` to a PNG via ``bpy.data.images``. Returns the Image."""
-    import bpy
-
-    if name in bpy.data.images:
-        bpy.data.images.remove(bpy.data.images[name])
-    img = bpy.data.images.new(
-        name=name, width=canvas.width, height=canvas.height, alpha=True
+    The trapezoid widens downward when ``bottom_w > top_w`` (typical
+    pelvis silhouette: narrower at top, wider at hips).
+    """
+    top_left = (x + (bottom_w - top_w) / 2.0, y)
+    top_right = (x + (bottom_w + top_w) / 2.0, y)
+    bottom_left = (x, y + h)
+    bottom_right = (x + bottom_w, y + h)
+    canvas.draw.polygon(
+        [top_left, top_right, bottom_right, bottom_left],
+        fill=_to_pil_color(color),
     )
-    img.pixels.foreach_set(canvas.pixels)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    img.filepath_raw = str(out_path)
-    img.file_format = "PNG"
-    img.save()
-    return img

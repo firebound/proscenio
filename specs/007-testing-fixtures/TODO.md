@@ -18,44 +18,40 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 ## Step 0 — shape rasterizer
 
-- [ ] `scripts/fixtures/_draw.py` — pure-Python shape rasterizer using `bpy.types.Image.pixels`. Functions: `circle(canvas, cx, cy, r, color)`, `rect(canvas, x, y, w, h, color)`, `triangle(canvas, points, color)`, `trapezoid(canvas, ...)`, `border(canvas, color)`. Used by every builder.
+- [x] `scripts/fixtures/_draw.py` — **Pillow-based** shape rasterizer. Functions: `circle(canvas, cx, cy, r, color)`, `rect(canvas, x, y, w, h, color)`, `triangle(canvas, p0, p1, p2, color)`, `trapezoid(canvas, x, y, top_w, bottom_w, h, color)`, `border(canvas, color)`, `fill(canvas, color)`. Pillow added to `blender-addon/pyproject.toml [dependency-groups.dev]`. Builder split: `draw_<fixture>.py` (pure Python + Pillow) generates PNGs; `build_<fixture>.py` (bpy) loads them and assembles `.blend`.
 
 ## Step 1 — `blink_eyes/` (smallest, validates pattern)
 
-- [ ] `scripts/fixtures/build_blink_eyes.py`:
-  - generates `eye_0.png` … `eye_3.png` (32x32, 4 frames of a blink — open / partial / nearly closed / closed) using `_draw.circle`.
-  - assembles a 128x32 `eye_spritesheet.png`.
-  - builds `.blend`: 1 sprite_frame mesh + 1-bone armature (`head`) + 1 action `blink` animating frame 0→1→2→3→2→1→0 over 12 frames.
-  - sets `proscenio.sprite_type = "sprite_frame"`, `hframes=4`, `vframes=1`.
-- [ ] `examples/blink_eyes/layers/*.png` + `eye_spritesheet.png` + `blink_eyes.blend`.
-- [ ] `examples/blink_eyes/blink_eyes.expected.proscenio` golden.
+- [x] `scripts/fixtures/draw_blink_eyes.py` — Pillow only: generates `eye_0.png` … `eye_3.png` (32×32) + 128×32 `eye_spritesheet.png`.
+- [x] `scripts/fixtures/build_blink_eyes.py` — bpy only: loads spritesheet, builds 1-bone armature + 1 sprite_frame mesh + `blink` action animating `proscenio.frame` 0→1→2→3→2→1→0 over 12 frames.
+- [ ] Run both → `examples/blink_eyes/layers/*.png` + `eye_spritesheet.png` + `blink_eyes.blend` committed.
+- [ ] `examples/blink_eyes/blink_eyes.expected.proscenio` golden (via `export_proscenio.py`).
 - [ ] `examples/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
-- [ ] `examples/blink_eyes/README.md`.
+- [x] `examples/blink_eyes/README.md`.
 
 ## Step 2 — `shared_atlas/` (validates sliced packer)
 
-- [ ] `scripts/fixtures/build_shared_atlas.py`:
-  - generates one shared `atlas.png` (e.g. 256x256) with three colored quadrants drawn via `_draw`.
-  - builds `.blend`: 3 polygon meshes referencing the same atlas with UV bounds covering one quadrant each.
-  - no skeleton (or just `root`), no animation — pure packer test.
-- [ ] `examples/shared_atlas/atlas.png` + `shared_atlas.blend`.
+- [x] `scripts/fixtures/draw_shared_atlas.py` — Pillow only: generates 256×256 `atlas.png` with three colored shapes in three quadrants (red circle / green triangle / blue square), bottom-right left transparent.
+- [x] `scripts/fixtures/build_shared_atlas.py` — bpy only: loads `atlas.png`, builds 3 polygon meshes with per-quadrant UV bounds, single `root` bone, no animation.
+- [ ] Run both → `examples/shared_atlas/atlas.png` + `shared_atlas.blend` committed.
 - [ ] `examples/shared_atlas/shared_atlas.expected.proscenio` golden.
 - [ ] `examples/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
-- [ ] `examples/shared_atlas/README.md`.
+- [x] `examples/shared_atlas/README.md`.
 
 ## Step 3 — `doll/` (full showcase)
 
 Builder split into helper modules so each piece is reviewable:
 
-- [ ] `scripts/fixtures/_doll_armature.py` — 37-bone hierarchy (root, pelvis.L/R, thigh.L/R → shin.L/R → foot.L/R, spine → spine.001 → 002 → 003 → breast.L/R, shoulder.L/R → upper_arm → forearm → hand → finger.001 → finger.002, neck → head → face → brow.L/R / ear.L/R / eye.L/R / jaw / lip.T / lip.B).
-- [ ] `scripts/fixtures/_doll_meshes.py` — sprite plane creation for each region. Uses `_draw` for visuals.
-- [ ] `scripts/fixtures/_doll_weights.py` — weight assignment. Pelvis block weighted 0.5/0.5 across `pelvis.L/R`. Spine block weighted across all 4 spine bones with falloff. Limbs single-bone with multi-bone spillover (forearm 1.0 + upper_arm 0.3).
-- [ ] `scripts/fixtures/_doll_actions.py` — `idle` (30 frames bob+breath), `wave` (30 frames right arm), `blink` (12 frames sprite_frame), `walk` (30 frames legs+spine).
-- [ ] `scripts/fixtures/build_doll.py` — orchestrator: wipe + draw PNGs + armature + meshes + weights + actions + save.
-- [ ] `examples/doll/layers/*.png` + `doll.blend`.
+- [x] `scripts/fixtures/draw_doll.py` — Pillow only: every body PNG + 4-frame eye spritesheet under `examples/doll/layers/`. Uses geometric primitives via `_draw`.
+- [x] `scripts/fixtures/_doll_armature.py` — bpy: 37-bone hierarchy.
+- [x] `scripts/fixtures/_doll_meshes.py` — bpy: loads PNGs from disk, builds sprite plane meshes + materials.
+- [x] `scripts/fixtures/_doll_weights.py` — bpy: weight assignment. `pelvis_block` 0.5/0.5 across `pelvis.L/R`. `spine_block` across the 4 spine bones with falloff. `forearm.L/R` 1.0 + 0.3 spillover to upper_arm.
+- [x] `scripts/fixtures/_doll_actions.py` — bpy: `idle` (30f bob), `wave` (30f arm), `blink` (12f sprite_frame), `walk` (30f legs+spine).
+- [x] `scripts/fixtures/build_doll.py` — bpy orchestrator.
+- [ ] Run draw + build → `examples/doll/layers/*.png` + `doll.blend` committed.
 - [ ] `examples/doll/doll.expected.proscenio` golden.
 - [ ] `examples/doll/Doll.tscn` + `Doll.gd`.
-- [ ] `examples/doll/README.md`.
+- [x] `examples/doll/README.md`.
 
 ## Test runner + CI
 

@@ -53,8 +53,18 @@ track on the `eye` target with these keys.
 
 ## Building from source
 
+Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headless Blender.
+
 ```bash
+# 1. Generate PNGs (requires only Python + Pillow).
+python scripts/fixtures/draw_blink_eyes.py
+
+# 2. Assemble the .blend.
 blender --background --python scripts/fixtures/build_blink_eyes.py
+
+# 3. Generate the golden .proscenio (open the .blend, run the addon's writer).
+blender --background examples/blink_eyes/blink_eyes.blend \
+    --python scripts/fixtures/export_proscenio.py
 ```
 
 ## What this fixture catches when broken

@@ -1,136 +1,63 @@
-"""Doll sprite meshes — geometric primitives drawn into PNGs (SPEC 007).
+"""Doll sprite meshes — loads PNGs from disk and builds bpy objects (SPEC 007).
 
-Each region of the doll gets a per-PNG mesh placed at the parent bone's
-position. Visual style is locked by SPEC 007 D10: squares, circles,
-triangles, rectangles, trapezoids — colored regionally for instant
-weight-paint debugging.
+Pure bpy module. PNGs must already exist under
+``examples/doll/layers/`` (run ``draw_doll.py`` first). Each region of
+the doll gets a quad mesh sized in pixels / pixels_per_unit, parented
++ bone-typed to the appropriate armature bone, materialed with a
+TEX_IMAGE node referencing the on-disk PNG.
 
-The function ``build_all`` is the entry point — it creates one
-``bpy.types.Object`` per region with an attached material whose image
-node points at the corresponding PNG under ``examples/doll/layers/``.
+The sprite list mirrors ``draw_doll.SPRITES`` — keep the two in sync.
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import bpy
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _draw import (  # noqa: E402
-    Canvas,
-    border,
-    circle,
-    fill,
-    rect,
-    save_as_png,
-    trapezoid,
-    triangle,
-)
-
-LAYERS_DIR = (
-    Path(__file__).resolve().parents[2] / "examples" / "doll" / "layers"
-)
+LAYERS_DIR = Path(__file__).resolve().parents[2] / "examples" / "doll" / "layers"
 PIXELS_PER_UNIT = 100.0
 
-# Color palette
-BEIGE = (0.93, 0.78, 0.68, 1.0)
-DARK_BROWN = (0.30, 0.20, 0.15, 1.0)
-WHITE = (0.95, 0.95, 0.95, 1.0)
-PUPIL = (0.10, 0.10, 0.10, 1.0)
-RED = (0.85, 0.20, 0.20, 1.0)
-NAVY = (0.10, 0.18, 0.45, 1.0)
-BLUE = (0.20, 0.40, 0.85, 1.0)
-LIGHT_BLUE = (0.40, 0.60, 0.95, 1.0)
-GREEN = (0.20, 0.65, 0.30, 1.0)
-GREEN_PALE = (0.55, 0.78, 0.55, 1.0)
-GOLD = (0.85, 0.65, 0.20, 1.0)
-BROWN = (0.50, 0.30, 0.15, 1.0)
-BORDER = (0.0, 0.0, 0.0, 1.0)
-TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
-
-# (name, w_px, h_px, parent_bone, sprite_type, draw_fn_kind)
-SPRITES: tuple[tuple[str, int, int, str, str, str], ...] = (
-    ("head_base", 96, 96, "head", "polygon", "head"),
-    ("brow.L", 24, 6, "brow.L", "polygon", "brow"),
-    ("brow.R", 24, 6, "brow.R", "polygon", "brow"),
-    ("ear.L", 16, 24, "ear.L", "polygon", "ear"),
-    ("ear.R", 16, 24, "ear.R", "polygon", "ear"),
-    ("jaw", 48, 16, "jaw", "polygon", "jaw"),
-    ("lip.T", 32, 6, "lip.T", "polygon", "lip"),
-    ("lip.B", 32, 6, "lip.B", "polygon", "lip"),
-    ("neck", 32, 24, "neck", "polygon", "neck"),
-    ("spine_block", 80, 144, "spine.001", "polygon", "torso"),
-    ("breast.L", 36, 36, "breast.L", "polygon", "breast"),
-    ("breast.R", 36, 36, "breast.R", "polygon", "breast"),
-    ("pelvis_block", 96, 64, "root", "polygon", "pelvis"),
-    ("shoulder.L", 32, 32, "shoulder.L", "polygon", "shoulder"),
-    ("shoulder.R", 32, 32, "shoulder.R", "polygon", "shoulder"),
-    ("upper_arm.L", 24, 80, "upper_arm.L", "polygon", "limb"),
-    ("upper_arm.R", 24, 80, "upper_arm.R", "polygon", "limb"),
-    ("forearm.L", 22, 72, "forearm.L", "polygon", "limb"),
-    ("forearm.R", 22, 72, "forearm.R", "polygon", "limb"),
-    ("hand.L", 24, 24, "hand.L", "polygon", "hand"),
-    ("hand.R", 24, 24, "hand.R", "polygon", "hand"),
-    ("finger.001.L", 8, 16, "finger.001.L", "polygon", "finger"),
-    ("finger.001.R", 8, 16, "finger.001.R", "polygon", "finger"),
-    ("finger.002.L", 8, 12, "finger.002.L", "polygon", "finger"),
-    ("finger.002.R", 8, 12, "finger.002.R", "polygon", "finger"),
-    ("thigh.L", 28, 96, "thigh.L", "polygon", "limb_gold"),
-    ("thigh.R", 28, 96, "thigh.R", "polygon", "limb_gold"),
-    ("shin.L", 26, 96, "shin.L", "polygon", "limb_gold"),
-    ("shin.R", 26, 96, "shin.R", "polygon", "limb_gold"),
-    ("foot.L", 32, 16, "foot.L", "polygon", "foot"),
-    ("foot.R", 32, 16, "foot.R", "polygon", "foot"),
+# (sprite_name, w_px, h_px, parent_bone, sprite_type)
+# Mirrors draw_doll.SPRITES — no draw_kind here because PNGs are loaded
+# from disk; the visual was settled at draw time.
+SPRITES: tuple[tuple[str, int, int, str, str], ...] = (
+    ("head_base", 96, 96, "head", "polygon"),
+    ("brow.L", 24, 6, "brow.L", "polygon"),
+    ("brow.R", 24, 6, "brow.R", "polygon"),
+    ("ear.L", 16, 24, "ear.L", "polygon"),
+    ("ear.R", 16, 24, "ear.R", "polygon"),
+    ("jaw", 48, 16, "jaw", "polygon"),
+    ("lip.T", 32, 6, "lip.T", "polygon"),
+    ("lip.B", 32, 6, "lip.B", "polygon"),
+    ("neck", 32, 24, "neck", "polygon"),
+    ("spine_block", 80, 144, "spine.001", "polygon"),
+    ("breast.L", 36, 36, "breast.L", "polygon"),
+    ("breast.R", 36, 36, "breast.R", "polygon"),
+    ("pelvis_block", 96, 64, "root", "polygon"),
+    ("shoulder.L", 32, 32, "shoulder.L", "polygon"),
+    ("shoulder.R", 32, 32, "shoulder.R", "polygon"),
+    ("upper_arm.L", 24, 80, "upper_arm.L", "polygon"),
+    ("upper_arm.R", 24, 80, "upper_arm.R", "polygon"),
+    ("forearm.L", 22, 72, "forearm.L", "polygon"),
+    ("forearm.R", 22, 72, "forearm.R", "polygon"),
+    ("hand.L", 24, 24, "hand.L", "polygon"),
+    ("hand.R", 24, 24, "hand.R", "polygon"),
+    ("finger.001.L", 8, 16, "finger.001.L", "polygon"),
+    ("finger.001.R", 8, 16, "finger.001.R", "polygon"),
+    ("finger.002.L", 8, 12, "finger.002.L", "polygon"),
+    ("finger.002.R", 8, 12, "finger.002.R", "polygon"),
+    ("thigh.L", 28, 96, "thigh.L", "polygon"),
+    ("thigh.R", 28, 96, "thigh.R", "polygon"),
+    ("shin.L", 26, 96, "shin.L", "polygon"),
+    ("shin.R", 26, 96, "shin.R", "polygon"),
+    ("foot.L", 32, 16, "foot.L", "polygon"),
+    ("foot.R", 32, 16, "foot.R", "polygon"),
 )
-
-# sprite_frame meshes (eyes — 4 frames each, drawn by build_blink_eyes
-# convention).
-SPRITE_FRAME_REGIONS = (
-    ("eye.L", "eye.L"),
-    ("eye.R", "eye.R"),
-)
-
-
-def _draw(kind: str, canvas: Canvas) -> None:
-    """Dispatch to the correct geometric primitive for a region."""
-    w, h = canvas.width, canvas.height
-    fill(canvas, TRANSPARENT)
-    if kind == "head":
-        circle(canvas, w / 2.0, h / 2.0, w / 2.0 - 1, BEIGE)
-    elif kind == "brow":
-        rect(canvas, 0, 0, w, h, DARK_BROWN)
-    elif kind == "ear":
-        triangle(canvas, (0, 0), (w, h / 2.0), (0, h), BEIGE)
-    elif kind == "jaw":
-        rect(canvas, 0, 0, w, h, BEIGE)
-    elif kind == "lip":
-        rect(canvas, 0, 0, w, h, RED)
-    elif kind == "neck":
-        rect(canvas, 0, 0, w, h, BEIGE)
-    elif kind == "torso":
-        rect(canvas, 0, 0, w, h, BLUE)
-    elif kind == "breast":
-        circle(canvas, w / 2.0, h / 2.0, w / 2.0 - 1, LIGHT_BLUE)
-    elif kind == "pelvis":
-        trapezoid(canvas, 0, 0, w, w * 0.6, h, NAVY)
-    elif kind == "shoulder":
-        circle(canvas, w / 2.0, h / 2.0, w / 2.0 - 1, GREEN)
-    elif kind == "limb":
-        rect(canvas, 0, 0, w, h, GREEN)
-    elif kind == "limb_gold":
-        rect(canvas, 0, 0, w, h, GOLD)
-    elif kind == "hand":
-        rect(canvas, 0, 0, w, h, GREEN_PALE)
-    elif kind == "finger":
-        rect(canvas, 0, 0, w, h, GREEN_PALE)
-    elif kind == "foot":
-        trapezoid(canvas, 0, 0, w, w * 0.7, h, BROWN)
-    border(canvas, BORDER)
 
 
 def _make_quad_mesh(name: str, w_px: int, h_px: int) -> bpy.types.Mesh:
+    """Quad sized so width / height in Blender units match pixels / ppu."""
     w = w_px / PIXELS_PER_UNIT
     h = h_px / PIXELS_PER_UNIT
     mesh = bpy.data.meshes.new(name)
@@ -170,18 +97,18 @@ def _make_image_material(name: str, image: bpy.types.Image) -> bpy.types.Materia
 
 
 def build_all(armature_obj: bpy.types.Object) -> dict[str, bpy.types.Object]:
-    """Build every doll sprite mesh + material. Returns a dict by sprite name.
+    """Build every doll polygon sprite mesh + material. Returns dict by name.
 
-    Each PNG is drawn fresh; each mesh is parented to its declared bone.
+    Loads each PNG from ``examples/doll/layers/<name>.png``. Sprite_frame
+    eye meshes are added by the orchestrator (build_doll.py) since they
+    share a single spritesheet image.
     """
-    LAYERS_DIR.mkdir(parents=True, exist_ok=True)
     out: dict[str, bpy.types.Object] = {}
 
-    for name, w_px, h_px, parent_bone, sprite_type, kind in SPRITES:
-        canvas = Canvas.empty(w_px, h_px)
-        _draw(kind, canvas)
+    for name, w_px, h_px, parent_bone, sprite_type in SPRITES:
         png_path = LAYERS_DIR / f"{name}.png"
-        image = save_as_png(canvas, name, png_path)
+        image = bpy.data.images.load(str(png_path), check_existing=True)
+        image.name = name
 
         mesh = _make_quad_mesh(name, w_px, h_px)
         obj = bpy.data.objects.new(name, mesh)

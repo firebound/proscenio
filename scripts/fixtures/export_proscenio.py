@@ -33,7 +33,10 @@ sys.path.insert(0, str(ADDON_PATH))
 def main() -> None:
     blend = bpy.data.filepath
     if not blend:
-        print("[export_proscenio] no .blend open — pass it via the command line", file=sys.stderr)
+        print(
+            "[export_proscenio] no .blend open — pass it via the command line",
+            file=sys.stderr,
+        )
         sys.exit(1)
     blend_path = Path(blend)
     out_path = blend_path.parent / f"{blend_path.stem}.expected.proscenio"

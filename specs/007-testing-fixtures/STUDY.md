@@ -137,7 +137,14 @@ Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).
 
 ### D2 — How are PNGs created?
 
-**Locked: programmatically generated** via Python (no Pillow dependency — uses `bpy.types.Image.pixels` directly with a small geometric shape rasterizer). Deterministic + tiny + diffable + version-controllable.
+**Locked: programmatically generated via Pillow.** Each fixture has a two-stage builder:
+
+- `scripts/fixtures/draw_<fixture>.py` — pure Python + Pillow, generates PNG layers. Run with `python scripts/fixtures/draw_<fixture>.py`. **No Blender required.**
+- `scripts/fixtures/build_<fixture>.py` — bpy-only, loads PNGs from disk and assembles `.blend`. Run with `blender --background --python scripts/fixtures/build_<fixture>.py`.
+
+The split lets a developer iterate visuals without booting Blender (a faster cycle) and lets the drawing code be exercised in plain pytest if needed. Pillow is a tiny, ubiquitous dev dependency listed under `blender-addon/pyproject.toml [dependency-groups.dev]`; it is **not** bundled with the addon — strictly fixture / dev tooling.
+
+**Why not bpy.types.Image directly:** earlier iteration used bpy for the drawing too. Coupled image generation to Blender unnecessarily — cycle was slower (Blender boot ~3s every iteration), helpers untestable in pytest, and a contributor wanting to tweak just visuals had to install Blender. Splitting out PNG generation removed all three pain points at the cost of one well-known dev dependency.
 
 ### D3 — `.blend` files committed or rebuilt every CI run?
 
@@ -233,12 +240,16 @@ examples/
     └── SharedAtlas.gd
 
 scripts/fixtures/
-├── _draw.py                  pure-Python shape rasterizer (no deps)
-├── _doll_armature.py         doll bone hierarchy + parenting
-├── _doll_meshes.py           doll sprite plane creation + UVs
-├── _doll_weights.py          doll weight assignment
-├── _doll_actions.py          doll idle / wave / blink / walk
-├── build_blink_eyes.py
-├── build_shared_atlas.py
-└── build_doll.py             orchestrator
+├── _draw.py                  Pillow shape rasterizer (no bpy)
+├── _doll_armature.py         bpy — doll bone hierarchy + parenting
+├── _doll_meshes.py           bpy — load PNGs, build sprite planes + UVs + materials
+├── _doll_weights.py          bpy — vertex groups + weights
+├── _doll_actions.py          bpy — doll idle / wave / blink / walk
+├── draw_blink_eyes.py        Pillow — eye frames + spritesheet PNG
+├── draw_shared_atlas.py      Pillow — shared atlas PNG
+├── draw_doll.py              Pillow — every doll body PNG
+├── build_blink_eyes.py       bpy — load PNGs, build .blend
+├── build_shared_atlas.py     bpy — load PNG, build .blend
+├── build_doll.py             bpy — orchestrator (uses _doll_*)
+└── export_proscenio.py       bpy — re-export an opened .blend → golden .proscenio
 ```

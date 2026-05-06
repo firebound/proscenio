@@ -69,7 +69,9 @@ def build_wave(armature_obj: bpy.types.Object) -> bpy.types.Action:
     return action
 
 
-def build_blink(eye_l_obj: bpy.types.Object, eye_r_obj: bpy.types.Object) -> bpy.types.Action:
+def build_blink(
+    eye_l_obj: bpy.types.Object, eye_r_obj: bpy.types.Object
+) -> bpy.types.Action:
     """Both eyes animate ``proscenio.frame`` 0→1→2→3→2→1→0 over 12 frames.
 
     Action targets the eye objects (one action per object actually — Blender

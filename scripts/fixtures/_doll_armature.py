@@ -12,7 +12,9 @@ import bpy
 
 # Body proportions, in Blender meters (1.0 unit = pixels_per_unit pixels).
 # Total height ~2.0 — fits a 200×100 px atlas comfortably with PPU=100.
-DOLL_BONES: tuple[tuple[str, tuple[float, float], tuple[float, float], str | None], ...] = (
+DOLL_BONES: tuple[
+    tuple[str, tuple[float, float], tuple[float, float], str | None], ...
+] = (
     ("root", (0.0, 0.0), (0.0, 0.05), None),
     # Pelvis split — asymmetric L/R for hip motion
     ("pelvis.L", (-0.08, 0.05), (-0.08, 0.30), "root"),

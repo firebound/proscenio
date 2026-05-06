@@ -451,8 +451,8 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         return bool(bpy.data.filepath)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ..core import atlas_io  # type: ignore[import-not-found]
-        from ..core.atlas_packer import pack as _pack  # type: ignore[import-not-found]
+        from ..core import atlas_io
+        from ..core.atlas_packer import pack as _pack
 
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
@@ -517,7 +517,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         return manifest.exists()
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ..core import atlas_io  # type: ignore[import-not-found]
+        from ..core import atlas_io
 
         atlas_png, manifest_json = _packed_atlas_paths(bpy.data.filepath)
         if not manifest_json.exists():

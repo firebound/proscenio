@@ -34,6 +34,8 @@ from typing import Any, Literal, TypedDict
 import bpy
 from mathutils import Vector
 
+from ...core import region as region_core  # type: ignore[import-not-found]
+
 SCHEMA_VERSION = 1
 DEFAULT_PIXELS_PER_UNIT = 100.0
 
@@ -59,7 +61,7 @@ class RestLocal(TypedDict):
     scale: tuple[float, float]
 
 
-class SpriteFrameDict(TypedDict):
+class SpriteFrameDict(TypedDict, total=False):
     type: Literal["sprite_frame"]
     name: str
     bone: str
@@ -67,6 +69,7 @@ class SpriteFrameDict(TypedDict):
     vframes: int
     frame: int
     centered: bool
+    texture_region: list[float]
 
 
 class WeightDict(TypedDict):
@@ -339,7 +342,7 @@ def _build_sprite(
             else:
                 uvs.append([0.0, 0.0])
 
-    region = _compute_texture_region(uvs)
+    region = region_core.resolve_region(obj, uvs)
     weights = _build_sprite_weights(
         obj,
         mesh,
@@ -378,7 +381,7 @@ def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
             f"and vframes >= 1 (got hframes={hframes}, vframes={vframes})."
         )
 
-    return {
+    out: SpriteFrameDict = {
         "type": "sprite_frame",
         "name": obj.name,
         "bone": _resolve_sprite_bone(obj),
@@ -387,6 +390,10 @@ def _build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameDict:
         "frame": int(_read_proscenio_field(obj, "frame", "proscenio_frame", 0)),
         "centered": bool(_read_proscenio_field(obj, "centered", "proscenio_centered", True)),
     }
+    manual = region_core.manual_region_or_none(obj)
+    if manual is not None:
+        out["texture_region"] = manual
+    return out
 
 
 _WEIGHT_EPS = 1e-9
@@ -482,21 +489,6 @@ def _resolve_sprite_bone(obj: bpy.types.Object) -> str:
     if obj.vertex_groups:
         return str(obj.vertex_groups[0].name)
     return ""
-
-
-def _compute_texture_region(uvs: list[list[float]]) -> list[float]:
-    if not uvs:
-        return [0.0, 0.0, 0.0, 0.0]
-    xs = [u[0] for u in uvs]
-    ys = [u[1] for u in uvs]
-    x_min, x_max = min(xs), max(xs)
-    y_min, y_max = min(ys), max(ys)
-    return [
-        round(x_min, 6),
-        round(y_min, 6),
-        round(x_max - x_min, 6),
-        round(y_max - y_min, 6),
-    ]
 
 
 # --------------------------------------------------------------------------- #

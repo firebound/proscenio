@@ -18,6 +18,11 @@ OBJECT_PROPS: tuple[tuple[str, str], ...] = (
     ("proscenio_vframes", "vframes"),
     ("proscenio_frame", "frame"),
     ("proscenio_centered", "centered"),
+    ("proscenio_region_mode", "region_mode"),
+    ("proscenio_region_x", "region_x"),
+    ("proscenio_region_y", "region_y"),
+    ("proscenio_region_w", "region_w"),
+    ("proscenio_region_h", "region_h"),
 )
 
 

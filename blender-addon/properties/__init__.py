@@ -18,7 +18,6 @@ Contract:
 from __future__ import annotations
 
 import contextlib
-from typing import Any
 
 import bpy
 from bpy.props import (
@@ -39,6 +38,9 @@ from ..core.hydrate import (  # type: ignore[import-not-found]
 from ..core.hydrate import (
     hydrate_object,
 )
+from ..core.mirror import (  # type: ignore[import-not-found]
+    mirror_all_fields,
+)
 
 SPRITE_TYPE_ITEMS = (
     ("polygon", "Polygon", "Cutout-style sprite — Polygon2D vertices + UV (default)", 0),
@@ -50,40 +52,33 @@ SPRITE_TYPE_ITEMS = (
     ),
 )
 
+REGION_MODE_ITEMS = (
+    (
+        "auto",
+        "Auto",
+        "Compute texture_region from the mesh's UV bounds at export time (default)",
+        0,
+    ),
+    (
+        "manual",
+        "Manual",
+        "Use the explicit region_x/y/w/h fields on this Object instead of UV bounds",
+        1,
+    ),
+)
 
-def _mirror_to_object(prop_name: str, obj: _Object, value: Any) -> None:
-    """Write a PropertyGroup value back to the legacy Custom Property."""
-    obj[prop_name] = value
 
+def _on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
+    """Mirror every field on any panel edit.
 
-def _on_sprite_type_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
+    Bug fix (post-005.1.c.1): individual per-field callbacks left the CP
+    set partial — defaults never fired their callback, so Reload Scripts
+    restored only the field the user touched. Mirroring all 10 fields on
+    every update keeps the CP snapshot complete after the first interaction.
+    """
     obj = context.active_object
     if obj is not None:
-        _mirror_to_object("proscenio_type", obj, self.sprite_type)
-
-
-def _on_hframes_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    obj = context.active_object
-    if obj is not None:
-        _mirror_to_object("proscenio_hframes", obj, int(self.hframes))
-
-
-def _on_vframes_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    obj = context.active_object
-    if obj is not None:
-        _mirror_to_object("proscenio_vframes", obj, int(self.vframes))
-
-
-def _on_frame_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    obj = context.active_object
-    if obj is not None:
-        _mirror_to_object("proscenio_frame", obj, int(self.frame))
-
-
-def _on_centered_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    obj = context.active_object
-    if obj is not None:
-        _mirror_to_object("proscenio_centered", obj, bool(self.centered))
+        mirror_all_fields(self, obj)
 
 
 class ProscenioObjectProps(PropertyGroup):
@@ -94,7 +89,7 @@ class ProscenioObjectProps(PropertyGroup):
         description="Rendering path for this sprite — see SPEC 002",
         items=SPRITE_TYPE_ITEMS,
         default="polygon",
-        update=_on_sprite_type_update,
+        update=_on_any_update,
     )
     hframes: IntProperty(  # type: ignore[valid-type]
         name="Horizontal frames",
@@ -102,7 +97,7 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_on_hframes_update,
+        update=_on_any_update,
     )
     vframes: IntProperty(  # type: ignore[valid-type]
         name="Vertical frames",
@@ -110,7 +105,7 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_on_vframes_update,
+        update=_on_any_update,
     )
     frame: IntProperty(  # type: ignore[valid-type]
         name="Initial frame",
@@ -118,13 +113,60 @@ class ProscenioObjectProps(PropertyGroup):
         "Animation tracks override at runtime.",
         default=0,
         min=0,
-        update=_on_frame_update,
+        update=_on_any_update,
     )
     centered: BoolProperty(  # type: ignore[valid-type]
         name="Centered",
         description="Whether the Sprite2D's offset centers on its origin",
         default=True,
-        update=_on_centered_update,
+        update=_on_any_update,
+    )
+    region_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Region mode",
+        description=(
+            "How `texture_region` is decided at export. "
+            "Auto recomputes from UV bounds every export; "
+            "Manual writes region_x/y/w/h verbatim."
+        ),
+        items=REGION_MODE_ITEMS,
+        default="auto",
+        update=_on_any_update,
+    )
+    region_x: FloatProperty(  # type: ignore[valid-type]
+        name="X",
+        description="Region origin X (manual mode). Normalized [0,1] of atlas width.",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+        update=_on_any_update,
+    )
+    region_y: FloatProperty(  # type: ignore[valid-type]
+        name="Y",
+        description="Region origin Y (manual mode). Normalized [0,1] of atlas height.",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+        update=_on_any_update,
+    )
+    region_w: FloatProperty(  # type: ignore[valid-type]
+        name="Width",
+        description="Region width (manual mode). Normalized [0,1] of atlas width.",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+        update=_on_any_update,
+    )
+    region_h: FloatProperty(  # type: ignore[valid-type]
+        name="Height",
+        description="Region height (manual mode). Normalized [0,1] of atlas height.",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        precision=4,
+        update=_on_any_update,
     )
 
 
@@ -177,6 +219,12 @@ class ProscenioSceneProps(PropertyGroup):
         default=0,
         min=0,
     )
+    active_bone_index: IntProperty(  # type: ignore[valid-type]
+        name="Active bone",
+        description="Selected row in the Skeleton panel's bone list",
+        default=0,
+        min=0,
+    )
 
 
 def _hydrate_existing_objects() -> None:
@@ -206,6 +254,28 @@ def _on_blend_load(_filepath: str) -> None:
     _hydrate_existing_objects()
 
 
+@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
+def _on_blend_save_pre(_filepath: str) -> None:
+    """Flush every PropertyGroup field to its Custom Property mirror before save.
+
+    Bug fix (post-005.1.c.1): callbacks only fire on user interaction, so
+    `.blend` files can be saved with a partial Custom Property snapshot if
+    the user authored values via Python / drivers / handlers without going
+    through the panel. The save handler walks every object with a Proscenio
+    PropertyGroup and writes all 10 mirror fields, guaranteeing the saved
+    `.blend` round-trips cleanly through Reload Scripts.
+    """
+    try:
+        objects = list(bpy.data.objects)
+    except AttributeError:
+        return
+    for obj in objects:
+        props = getattr(obj, "proscenio", None)
+        if props is None:
+            continue
+        mirror_all_fields(props, obj)
+
+
 def _deferred_hydrate() -> None:
     """Run hydration one tick after register().
 
@@ -233,6 +303,8 @@ def register() -> None:
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
     if _on_blend_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_on_blend_load)
+    if _on_blend_save_pre not in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.append(_on_blend_save_pre)
     # Defer hydration to the next tick. Two reasons:
     #   1. During initial Blender startup, bpy.data is _RestrictData here.
     #   2. Mid-session enable: PointerProperty wiring stabilizes only
@@ -243,6 +315,8 @@ def register() -> None:
 
 
 def unregister() -> None:
+    if _on_blend_save_pre in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.remove(_on_blend_save_pre)
     if _on_blend_load in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_on_blend_load)
     if hasattr(Scene, "proscenio"):

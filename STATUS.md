@@ -102,16 +102,18 @@ flowchart TD
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
-| Test assertions Python | 18 (validation 12 + properties 6) |
+| Test assertions Python | 25 (validation 12 + properties 6 + region 7) |
 | Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
 | CI jobs | 5 (lint-python agora roda pytest também) |
 | SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
 
 ## O que está em andamento
 
-SPEC 005 first-cut **mergeado** (PR #4). SPEC 005.1.a (panel polish) em PR #5. SPEC 005.1.b (helpers wave) em andamento na branch `feat/spec-005.1-helpers`: ortho preview camera, IK chain toggle (marker-named), reproject sprite UV (active-only), inline weight paint brush controls. Driver constraint shortcut deferred para 5.1.d.
+SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito (PRs #4–#7). SPEC 005.1.c.1 (region authoring) em andamento na branch `feat/spec-005.1.c-region-authoring`: `region_mode` enum (auto/manual), `region_x/y/w/h` floats, writer override via `core/region.py`, `Snap to UV bounds` operator, panel UI box.
 
-PRs 1, 2, 3, 4 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após merge das ondas 5.1.a/b: branch `feat/spec-005.1-atlas` (5.1.c — atlas region helper, region_rect authoring, atlas packer integration via PyTexturePacker).
+5.1.c foi dividido em duas ondas: **5.1.c.1** ships region authoring sozinho (PR atual). **5.1.c.2** ships atlas packer separadamente (vendored MaxRects, sem dep externa).
+
+PRs 1–7 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.1: branch `feat/spec-005.1.c.2-atlas-packer`.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -175,7 +177,7 @@ flowchart TB
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
-| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut **shipped** (PR #4); **5.1.a panel polish** PR #5; **5.1.b helpers wave** branch `feat/spec-005.1-helpers`; 5.1.c/d ondas seguintes (atlas helper + packer, pose library shim, etc — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md)) |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); **5.1.c.1 region authoring** em revisão; 5.1.c.2 (atlas packer) + 5.1.d (advanced) ondas seguintes — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
 
 ### Backlog (sem ordem)
 
@@ -192,14 +194,13 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 first-cut shipped. 5.1.a em revisão (PR #5). 5.1.b em revisão (PR pendente). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito. 5.1.c.1 em revisão. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge da PR de 5.1.a** — fecha a onda panel polish.
-2. **CI verde + merge da PR de 5.1.b** — fecha a onda helpers (camera, IK, reproject, weight brush).
-3. **SPEC 005.1.c (atlas wave)** — Atlas region helper, region_rect authoring, Atlas packer integration (PyTexturePacker dep).
-4. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
-5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
-6. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
+1. **CI verde + merge da PR de 5.1.c.1** — fecha region authoring (manual override + snap operator).
+2. **SPEC 005.1.c.2 (atlas packer)** — vendored MaxRects (`core/atlas_packer.py`), `pack_atlas` operator gera `atlas_packed.png`, `apply_packed_atlas` reescreve UVs + re-link materials. Two-stage por segurança.
+3. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
+4. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+5. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

@@ -82,14 +82,42 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 - [x] Inline weight paint brush controls (`_draw_weight_paint_brush` — when in `PAINT_WEIGHT` mode the polygon summary box is replaced by unified-aware brush size/strength/weight + auto-normalize toggle).
 - Driver constraint shortcut deferred to 5.1.d (lowest-value of the wave; Blender's stock driver editor already covers the use case).
 
-## Defer (SPEC 005.1.c/d — see `RESEARCH.md` matrix)
+## SPEC 005.1.c.1 — region authoring (shipped)
 
-- Atlas region helper (D8 — "Snap UV bounds → texture_region").
-- Atlas packer integration (PyTexturePacker dep).
+Wave 5.1.c was split: this PR ships region authoring (UI + override + snap operator). The atlas packer ships separately as 5.1.c.2.
+
+- [x] `ProscenioObjectProps.region_mode` (`auto`/`manual` enum) + `region_x/y/w/h` FloatProperty.
+- [x] Writer respects `region_mode == "manual"` via `core/region.py` (extracted for testability). Auto path = current behavior (UV bounds for polygon, omitted for sprite_frame). Manual path emits `region_x/y/w/h` verbatim.
+- [x] Active Sprite panel renders a "Texture region" box: read-only hint in auto mode, four floats + `Snap to UV bounds` button in manual mode.
+- [x] `PROSCENIO_OT_snap_region_to_uv` — copies the active mesh's UV bounds into the manual region floats (seeds manual mode with current auto value).
+- [x] `tests/test_region.py` — 7 pytest assertions covering auto bounds / manual override / Custom Property fallback / `manual_region_or_none` gate.
+
+## Post-005.1.c.1 fix bundle (shipped)
+
+Manual testing (2026-05-05) surfaced four bugs and three UX gaps. All fixed in one branch (`fix/spec-005-bug-fixes-and-polish`) since they share the same root cause (mirror semantics).
+
+### Bugs
+
+- [x] CP set partial after first edit — only the touched field's update callback fired, leaving other CPs absent. Fix: every callback now delegates to `core/mirror.py::mirror_all_fields` which writes the full 10-field map.
+- [x] Reload Scripts → PropertyGroup defaults — partial CPs left rehydration with nothing to restore. Fix: mirror-all keeps CPs complete; hydrate's `OBJECT_PROPS` map extended with the 5 region keys.
+- [x] `.blend` save with programmatic edits → partial CPs persisted. Fix: `@bpy.app.handlers.persistent save_pre` handler flushes PG → CP for every object before save.
+- [x] CP edited directly → PG out-of-date until reload. Documented as expected behavior — editing CPs is power-user only; PG is canonical, CP is read-only mirror. STUDY.md captures the rationale.
+
+### UX gaps
+
+- [x] Skeleton subpanel showed only bone count. Now ships `PROSCENIO_UL_bones` UIList rendering name + parent + length per row.
+- [x] F3 search "proscenio" returned nothing. Every operator's `bl_label` now starts with `Proscenio:`. Panel button labels override `text=` to keep the short version.
+- [x] sprite_frame mesh in PAINT_WEIGHT mode silently showed nothing useful. Now an info hint explains "weight paint not applicable to sprite_frame (Sprite2D is not deformed by bones)".
+- [x] sprite_frame region size opaque. Active Sprite panel now reads the linked image's pixel dimensions and renders `atlas: WxH px / region: WxH px / frame: WxH px (HxV grid)` so the user can verify the spritesheet grid lines up.
+- [x] `tests/test_mirror.py` — 5 pytest assertions covering mirror-all field set / missing-attribute skip / caster-error skip / mirror+hydrate round trip / OBJECT_PROPS region key coverage. Total now 30 (validation 12 + properties 6 + region 7 + mirror 5).
+
+## Defer (SPEC 005.1.c.2 atlas packer + 5.1.d advanced — see `RESEARCH.md` matrix)
+
+- Atlas packer integration (vendored MaxRects, no external dep).
+- Two-stage packer flow: generate `atlas_packed.png` then apply (rewrite UVs + relink materials).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.
 - Spriteobject custom outliner with search/filter.
-- `region_rect` authoring polish.
 - Vertex weight visualization overlay.
 - Per-user default export-path preference.
 - Localization scaffolding (`i18n_id`).

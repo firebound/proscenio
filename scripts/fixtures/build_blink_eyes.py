@@ -1,4 +1,4 @@
-"""Build the blink_eyes test fixture from scratch (SPEC 007).
+"""Build the blink_eyes test fixture from scratch (SPEC 007 step 1).
 
 Run with::
 
@@ -7,20 +7,16 @@ Run with::
 Idempotent: deletes the existing ``examples/blink_eyes/`` outputs and
 rewrites them deterministically. Generates:
 
-- ``layers/eye_0.png`` … ``eye_3.png`` — four frames of a blink animation,
-  32×32 each. Frame 0 = eye open, 3 = eye closed.
-- ``eye_spritesheet.png`` — concatenated 128×32 spritesheet (4 frames
-  horizontal). This is the actual texture the sprite_frame mesh
-  references; the per-frame PNGs are kept around so SPEC 006's
-  ``<name>_<index>`` Photoshop convention can be tested by re-packing
-  them into the sheet.
-- ``blink_eyes.blend`` — 1 sprite_frame mesh (``eye``) + 1-bone
-  armature + 1 action animating ``eye.proscenio.frame`` 0→1→2→3→2→1→0
-  over 12 frames.
+- ``layers/eye_0.png`` … ``eye_3.png`` — four 32×32 frames (open / partial /
+  nearly closed / closed). The ``<name>_<index>`` naming matches SPEC 007
+  D4 so SPEC 006's PS importer can later regroup them automatically.
+- ``eye_spritesheet.png`` — the 128×32 strip that the sprite_frame mesh
+  actually references at runtime.
+- ``blink_eyes.blend`` — 1 sprite_frame mesh + 1-bone armature + 1 action
+  animating ``proscenio.frame`` 0→1→2→3→2→1→0 over 12 frames.
 
-The fixture exercises the ``sprite_frame`` track path: a Blender action
-that drives the frame-index property and the writer emitting a
-``sprite_frame`` track in the resulting ``.proscenio``.
+Tests the ``sprite_frame`` end-to-end path: writer must emit a
+``sprite_frame`` track for the action; importer must consume it.
 
 NOT a unit-tested module — a fixture builder. Re-run whenever the
 fixture spec changes.
@@ -32,6 +28,9 @@ import sys
 from pathlib import Path
 
 import bpy
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _draw import Canvas, circle, save_as_png  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = REPO_ROOT / "examples" / "blink_eyes"
@@ -45,11 +44,13 @@ HFRAMES = 4
 VFRAMES = 1
 SHEET_W = FRAME_W * HFRAMES
 SHEET_H = FRAME_H * VFRAMES
-
 PIXELS_PER_UNIT = 100.0
 
-# (frame_index, eye_open_height_ratio) — height of the open part as a
-# fraction of FRAME_H. 1.0 = fully open, 0.0 = fully closed.
+WHITE = (0.95, 0.95, 0.95, 1.0)
+PUPIL = (0.10, 0.10, 0.10, 1.0)
+TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
+
+# (frame_index, eye_open_height_ratio) — 1.0 fully open, 0.0 fully closed.
 FRAMES = (
     (0, 1.0),
     (1, 0.6),
@@ -61,8 +62,8 @@ FRAMES = (
 def main() -> None:
     LAYERS_DIR.mkdir(parents=True, exist_ok=True)
     _wipe_blend()
-    _generate_frame_pngs()
-    _generate_spritesheet_png()
+    _generate_per_frame_pngs()
+    _generate_spritesheet()
     armature_obj = _build_armature()
     sprite_obj = _build_sprite_frame_plane(armature_obj)
     _build_blink_action(sprite_obj)
@@ -85,68 +86,41 @@ def _wipe_blend() -> None:
             collection.remove(item)
 
 
-def _eye_pixels(open_ratio: float) -> list[float]:
-    """Return RGBA float buffer for a single 32x32 eye frame.
-
-    White circle on transparent background; the eye "closes" by reducing
-    the visible vertical extent — mimics a blink without external assets.
-    """
-    pixels = [0.0] * (FRAME_W * FRAME_H * 4)
-    cx, cy = FRAME_W / 2.0, FRAME_H / 2.0
-    radius = FRAME_W / 2.0 - 2
-    open_h = (FRAME_H * open_ratio) / 2.0
-    for y in range(FRAME_H):
-        for x in range(FRAME_W):
-            dx = x - cx
-            dy = y - cy
-            inside_circle = (dx * dx + dy * dy) <= (radius * radius)
-            inside_open = abs(dy) <= open_h
-            if inside_circle and inside_open:
-                # White iris with a darker pupil center
-                pupil = (dx * dx + dy * dy) <= (radius * radius * 0.15)
-                rgb = (0.1, 0.1, 0.1) if pupil else (0.95, 0.95, 0.95)
-                a = 1.0
-            else:
-                rgb = (0.0, 0.0, 0.0)
-                a = 0.0
-            i = (y * FRAME_W + x) * 4
-            pixels[i : i + 4] = [rgb[0], rgb[1], rgb[2], a]
-    return pixels
+def _draw_eye_frame(canvas: Canvas, open_ratio: float) -> None:
+    """Stamp a single eye frame onto ``canvas`` — white iris + dark pupil, vertically clipped by ``open_ratio``."""
+    cx = canvas.width / 2.0
+    cy = canvas.height / 2.0
+    iris_r = canvas.width / 2.0 - 2
+    pupil_r = iris_r * 0.4
+    open_h = (canvas.height * open_ratio) / 2.0
+    circle(canvas, cx, cy, iris_r, WHITE)
+    circle(canvas, cx, cy, pupil_r, PUPIL)
+    if open_h < canvas.height / 2.0:
+        for y in range(canvas.height):
+            if abs(y + 0.5 - cy) > open_h:
+                for x in range(canvas.width):
+                    canvas.set(x, y, TRANSPARENT)
 
 
-def _generate_frame_pngs() -> None:
+def _generate_per_frame_pngs() -> None:
     for idx, open_ratio in FRAMES:
-        img = bpy.data.images.new(
-            name=f"eye_{idx}",
-            width=FRAME_W,
-            height=FRAME_H,
-            alpha=True,
-        )
-        img.pixels.foreach_set(_eye_pixels(open_ratio))
-        out = LAYERS_DIR / f"eye_{idx}.png"
-        img.filepath_raw = str(out)
-        img.file_format = "PNG"
-        img.save()
+        canvas = Canvas.empty(FRAME_W, FRAME_H)
+        _draw_eye_frame(canvas, open_ratio)
+        save_as_png(canvas, f"eye_{idx}", LAYERS_DIR / f"eye_{idx}.png")
 
 
-def _generate_spritesheet_png() -> None:
-    """Concatenate the per-frame PNGs into a single 128x32 strip."""
-    sheet = bpy.data.images.new(
-        name="eye_spritesheet", width=SHEET_W, height=SHEET_H, alpha=True
-    )
-    pixels = [0.0] * (SHEET_W * SHEET_H * 4)
+def _generate_spritesheet() -> None:
+    canvas = Canvas.empty(SHEET_W, SHEET_H)
     for idx, open_ratio in FRAMES:
-        frame = _eye_pixels(open_ratio)
+        sub = Canvas.empty(FRAME_W, FRAME_H)
+        _draw_eye_frame(sub, open_ratio)
         x_offset = idx * FRAME_W
         for y in range(FRAME_H):
             for x in range(FRAME_W):
                 src = (y * FRAME_W + x) * 4
                 dst = (y * SHEET_W + x_offset + x) * 4
-                pixels[dst : dst + 4] = frame[src : src + 4]
-    sheet.pixels.foreach_set(pixels)
-    sheet.filepath_raw = str(SHEET_PATH)
-    sheet.file_format = "PNG"
-    sheet.save()
+                canvas.pixels[dst : dst + 4] = sub.pixels[src : src + 4]
+    save_as_png(canvas, "eye_spritesheet", SHEET_PATH)
 
 
 def _build_armature() -> bpy.types.Object:
@@ -189,7 +163,6 @@ def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Objec
     obj.parent_type = "BONE"
     obj.parent_bone = "head"
 
-    # Material referencing the spritesheet, not the per-frame PNGs.
     mat = bpy.data.materials.new(name="eye.mat")
     mat.use_nodes = True
     nt = mat.node_tree
@@ -204,21 +177,17 @@ def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Objec
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     mesh.materials.append(mat)
 
-    # Tag as sprite_frame.
     if hasattr(obj, "proscenio"):
         obj.proscenio.sprite_type = "sprite_frame"
         obj.proscenio.hframes = HFRAMES
         obj.proscenio.vframes = VFRAMES
         obj.proscenio.frame = 0
         obj.proscenio.centered = True
-    # Mirror to legacy CPs in case the PropertyGroup is not registered yet
-    # (build script runs before the addon may be enabled in headless mode).
     obj["proscenio_type"] = "sprite_frame"
     obj["proscenio_hframes"] = HFRAMES
     obj["proscenio_vframes"] = VFRAMES
     obj["proscenio_frame"] = 0
     obj["proscenio_centered"] = True
-
     return obj
 
 

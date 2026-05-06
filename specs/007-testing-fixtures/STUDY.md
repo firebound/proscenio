@@ -2,154 +2,243 @@
 
 ## Problem
 
-The `dummy/` fixture covers only one of the workflows the addon must support — sprites whose source images all reference a **shared atlas**. The Photoshop-first workflow (the one most users will use once SPEC 006 ships) is the inverse: each layer is exported as its own PNG, then Blender either keeps `1 sprite = 1 PNG` or asks the addon to pack a fresh atlas.
+The original `dummy/` fixture covers only one workflow (a single shared atlas with N sub-rects per sprite). After validating the atlas packer (5.1.c.2 + 5.1.c.2.1 + 5.1.c.2.2) on dummy, the gaps in coverage are obvious:
 
-After validating the atlas packer (5.1.c.2 + 5.1.c.2.1 + 5.1.c.2.2) on `dummy/`, the gaps in coverage are obvious:
+- **No `1 sprite = 1 PNG` test.** The packer was implemented to handle this case — the common Photoshop-first path — but no fixture exercises it.
+- **No real `sprite_frame` animation test.** `effect/` (Godot-side fixture, hand-written `.proscenio`) tests the importer, but nothing tests the writer emitting a `sprite_frame` track from a real Blender action.
+- **No fixture is auditable from source.** `dummy.blend` is a binary; a developer cannot read what bones / sprites it contains without opening Blender.
+- **No comprehensive showcase.** A user trying to learn the pipeline has no single character that demonstrates polygon meshes + sprite_frame + weights + IK + multi-action authoring side-by-side.
 
-- **No `1 sprite = 1 PNG` test.** The packer was implemented to handle this case (and the slicing path in 5.1.c.2.1 specifically guards it), but no fixture exercises it end-to-end.
-- **No real `sprite_frame` animation test.** `effect/` (Godot-side fixture) tests the importer, but there is no Blender `.blend` that authors a `sprite_frame` mesh with an actual frame-index animation track.
-- **No fixture is auditable from source.** `dummy.blend` is a binary; a developer cannot tell what bones / sprites it contains without opening Blender. Diffing changes is a coin flip.
+Plus the Photoshop side is still scaffold — fixtures must not require Photoshop to bootstrap. Everything has to come out of `blender --background --python`.
 
 ## Reference: what other tools test against
 
-- **Spine examples** (open-source samples shipped with their runtime) — small, focused, one-feature-per-file.
-- **DragonBones samples** — separate `.dbproj` per skeletal style (mesh, basic, IK).
-- **COA Tools** — `examples/` per workflow; minimal art, deterministic.
+- **Spine examples** — small, focused, deterministic; one feature per example file.
+- **DragonBones samples** — separate project per skeletal style.
+- **COA Tools** — minimal art, all examples deterministic.
 
-The pattern is "small, focused, deterministic, source-controlled". Fixtures are tests, not portfolio art.
+The pattern is "small + focused + auditable + buildable from source". Fixtures are tests, not portfolio art.
 
 ## Constraints
 
-- Must run headlessly in CI (`blender --background <fixture>.blend --python run_tests.py`).
-- PNGs must be tiny (CI checkout speed; LFS already used for `.blend` files).
-- `.blend` is binary, but the **inputs** that produced it (PNG sources + a build script) should be source-controlled so the `.blend` is rebuildable.
-- No proprietary art assets — all fixtures use programmatically-generated images (solid colors, simple gradients).
-- Must cover at least: `1-sprite-1-PNG` polygon, `sprite_frame` with animation, weighted polygon. Shared-atlas coverage stays in `dummy/`.
+- Run headlessly in CI. No Photoshop dependency.
+- Source-controlled inputs: every PNG comes out of a Python script that draws geometric shapes (squares, circles, triangles, rectangles, cylinders) to a buffer. No artist labor on test fixtures.
+- LFS-friendly: `.blend` files committed but small.
+- Cover three distinct test concerns separately rather than overload one fixture.
 
-## Design surface
+## Two fixture types
+
+| Type | Defines | When to use |
+|---|---|---|
+| **A — End-to-end** | `.blend` source + builder script + golden `.proscenio` + Godot wrapper | Default. Tests writer + importer together. |
+| **B — Importer-only** | Hand-written `.proscenio` (no `.blend`) | Only for edge cases the writer cannot produce — invalid `format_version`, unknown track types, minimum-fields-default tests |
+
+In v1 of SPEC 007, only Type A fixtures ship. Type B starts when an actual edge case shows up in production debugging.
+
+## Three Type A fixtures
+
+| Fixture | Role | Rough size |
+|---|---|---|
+| **`doll/`** | **Comprehensive showcase.** Full humanoid rig (~37 bones), sprites covering polygon + sprite_frame + IK + multi-bone weights + multi-action authoring. The fixture grows as new features ship — SPEC 004 adds a slot, SPEC 008 adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~25 sprites, ~5 actions, evolving |
+| **`blink_eyes/`** | **Sprite_frame end-to-end isolation test.** A single sprite_frame mesh + 1 spritesheet PNG + 1 action animating frame index. Tests writer→`.proscenio`→importer for the sprite_frame path. | 1 sprite, 1 action, ~150 LOC builder |
+| **`shared_atlas/`** | **Sliced atlas packer isolation test.** Three quads referencing one shared atlas PNG with partial UV bounds. Tests the slicing logic introduced in SPEC 005.1.c.2.1. | 3 sprites, no animation, ~120 LOC builder |
+
+The three together cover every feature path end-to-end. `dummy/`, `effect/`, `skinned_dummy/` get retired in a follow-up PR after the new fixtures land and run green in CI.
+
+## `doll/` — the showcase fixture
+
+### Skeleton
+
+37 bones in a Rigify-inspired but simplified humanoid:
 
 ```
-examples/
-├── dummy/             # shared-atlas legacy + sliced-repack stress test
-├── effect/            # sprite_frame importer test (Godot-side, hand-written .proscenio)
-├── skinned_dummy/     # weights importer test (Godot-side, hand-written .proscenio)
-├── simple_doll/       # NEW — 1 sprite = 1 PNG, weighted skinning, 2 actions
-└── blink_eyes/        # NEW — sprite_frame mesh with frame-index animation track
+root
+├── pelvis.L                 (asymmetric pelvis bones — wiggle / hip motion)
+├── pelvis.R
+├── thigh.L → shin.L → foot.L
+├── thigh.R → shin.R → foot.R
+└── spine
+    └── spine.001
+        └── spine.002
+            └── spine.003
+                ├── breast.L
+                ├── breast.R
+                ├── shoulder.L
+                │   └── upper_arm.L → forearm.L → hand.L → finger.001.L → finger.002.L
+                ├── shoulder.R
+                │   └── upper_arm.R → forearm.R → hand.R → finger.001.R → finger.002.R
+                └── neck
+                    └── head
+                        └── face
+                            ├── brow.L
+                            ├── brow.R
+                            ├── ear.L
+                            ├── ear.R
+                            ├── eye.L
+                            ├── eye.R
+                            ├── jaw
+                            ├── lip.T
+                            └── lip.B
 ```
 
-### `simple_doll/`
+`pelvis.L/R` are intentionally asymmetric — useful for hip-sway / butt-jiggle weight paint demos.
 
-| Aspect | Choice |
-|---|---|
-| Sprites | 5 polygon meshes — `head`, `torso`, `arm.L`, `arm.R`, `legs` |
-| PNGs | One per sprite, programmatically generated (solid colors with thin border for visual debug) |
-| Skeleton | 6 bones: `root`, `spine`, `head`, `arm.L`, `arm.R`, `legs` |
-| Weights | Each sprite weighted to its parent bone (1.0); `arm.L` / `arm.R` get a 0.3 spillover to `spine` to test multi-bone weights |
-| Actions | `idle` (4-frame loop), `wave` (8-frame, animates `arm.R` rotation) |
-| Atlas | None initially — addon packs at export time (tests Pack + Apply path) |
-| Build script | `scripts/fixtures/build_simple_doll.py` — runs in headless Blender, generates PNGs + assembles `.blend` from scratch |
-| Golden | `simple_doll.expected.proscenio` checked in; CI re-exports and diffs |
+### Sprite layout
 
-### `blink_eyes/`
+| Region | Mesh kind | Rationale |
+|---|---|---|
+| `pelvis_block`, `spine_block` | polygon, weighted across N bones | Demonstrates multi-bone weight paint distribution. Pelvis mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R`; spine mesh weighted across all 4 spine bones with falloff. |
+| `head_base`, `breast.L`, `breast.R`, `arm.L`, `arm.R`, `hand.L`, `hand.R`, `leg.L`, `leg.R`, `foot.L`, `foot.R` | polygon, single primary bone | Standard parented sprites. |
+| `eye.L`, `eye.R` | sprite_frame | 4 frames each (open / mid / closing / closed). Driven by `blink` action. |
+| `lip.T`, `lip.B` | sprite_frame (later) | Phoneme frames for talking. Defer until needed. |
+| `brow.L`, `brow.R` | polygon, swap-ready | Slot system (SPEC 004) will swap between brow-up / brow-down attachments. |
+| `forearm.L`, `forearm.R` | polygon, **driver-driven texture swap** | Driver on `forearm` rotation flips between front/back forearm sprite. Lands when SPEC 004 + driver shortcut (5.1.d) ship. |
 
-| Aspect | Choice |
-|---|---|
-| Sprite | 1 sprite_frame mesh — `eye` |
-| PNG | 1 spritesheet `eye.png` — 4 frames horizontal (open / squint / closed / squint), each 32×32 |
-| Skeleton | 1 bone — `head` |
-| Action | `blink` (12 frames, animates `eye.proscenio.frame` from 0→1→2→3→2→1→0) — exercises the `sprite_frame` track type |
-| Atlas | None initially — addon Pack/Apply rebuilds; sliced support (5.1.c.2.1) puts the spritesheet in its own slot |
-| Build script | `scripts/fixtures/build_blink_eyes.py` |
-| Golden | `blink_eyes.expected.proscenio` |
+### Visual style
 
-## Design decisions to lock
+Geometric primitives — squares, circles, triangles, rectangles, trapezoids — colored regionally. Reasoning: makes weight-paint smearing obviously visible; avoids art commitment; reproducible; readable in screenshots.
+
+| Region | Shape | Color |
+|---|---|---|
+| Head base | circle | warm beige |
+| Eyes | smaller circle (per frame: open/squinting/closed) | white + dark pupil |
+| Brows | thin rectangle | dark brown |
+| Ears | small triangle | beige |
+| Jaw / lips | rectangle / thin rectangle | beige + red |
+| Neck | rectangle (cylinder-ish) | beige |
+| Spine block | tall rectangle | blue |
+| Pelvis block | trapezoid | navy |
+| Breasts | small circles | blue (lighter) |
+| Shoulders | circles | green |
+| Arms / forearms | rectangles | green |
+| Hands | square | green-pale |
+| Fingers | small rectangles | same |
+| Thighs / shins | rectangles | gold |
+| Feet | trapezoid | brown |
+
+### Actions
+
+Built into the `.blend` initially:
+
+| Action | Frames | Animates | Why |
+|---|---|---|---|
+| `idle` | 30, loop | spine bob + breath | tests bone_transform tracks across multiple bones |
+| `wave` | 30 | shoulder.R + upper_arm.R + forearm.R rotation | demonstrates IK chain (target on hand.R) |
+| `blink` | 12 | `eye.L.proscenio.frame` + `eye.R.proscenio.frame` | exercises sprite_frame track |
+| `walk` | 30, loop | thigh / shin / foot rotation, spine sway | full-body coordination test |
+
+Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).
+
+## Decisions to lock
 
 ### D1 — Where do fixtures live?
 
-- **D1.A — `examples/`** (current). Same place `dummy/` already lives.
-- **D1.B — `fixtures/`** (new top-level dir). Separate "examples for users" from "fixtures for tests".
-
-**Recommendation: D1.A.** `examples/` already mixes worked examples + golden fixtures and CI hardcodes the path. Splitting now adds churn for no signal.
+**Locked: `examples/`** (current). Same directory as `dummy/` already. CI already points there.
 
 ### D2 — How are PNGs created?
 
-- **D2.A — Hand-painted by an artist** in Photoshop / Krita.
-- **D2.B — Programmatically generated** by a Python script using PIL / Pillow (or `bpy.types.Image` directly).
+**Locked: programmatically generated** via Python (no Pillow dependency — uses `bpy.types.Image.pixels` directly with a small geometric shape rasterizer). Deterministic + tiny + diffable + version-controllable.
 
-**Recommendation: D2.B.** Fixture art is test scaffolding. Deterministic + tiny + diffable + version-controllable + buildable on any machine without Photoshop.
+### D3 — `.blend` files committed or rebuilt every CI run?
 
-### D3 — Are `.blend` files committed, or rebuilt every CI run?
+**Locked: committed**. Builders kept around for re-creation when the fixture spec changes. CI does not rebuild — it just runs the writer against the committed `.blend` and diffs.
 
-- **D3.A — Commit `.blend`** (current). Build script kept around for re-creation; `.blend` itself is the canonical source.
-- **D3.B — Rebuild from script every CI run.** No `.blend` in repo.
+### D4 — Sprite_frame frame layer naming convention
 
-**Recommendation: D3.A.** Rebuilding adds ~10s per CI job. `.blend` is < 1 MB per fixture (LFS handles it). Keep the build script for re-creation; `.blend` stays committed.
+**Locked: `<name>_<index>`** (e.g. `eye_0` … `eye_3`). Matches Spine convention; SPEC 006 PS importer will consume this same convention to group layers into sprite_frame meshes.
 
-### D4 — Naming convention for sprite_frame frame layers (preps for SPEC 006)
+### D5 — Builder script location
 
-- **D4.A — `<name>_<index>`** (e.g. `eye_0`, `eye_1`, `eye_2`, `eye_3`). Photoshop layer naming triggers sprite_frame grouping in the importer.
-- **D4.B — `<name>.frame.<index>`** (e.g. `eye.frame.0`). More explicit but verbose.
-- **D4.C — Folder-per-spriteframe** (PSD group `eye/` containing N layer children).
+**Locked: `scripts/fixtures/`** (under repo `scripts/`).
 
-**Recommendation: D4.A.** Concise, matches Spine's naming convention, easy to author. SPEC 006 will lock this convention; SPEC 007 fixture `blink_eyes/` uses it preemptively to avoid rework.
+### D6 — Builder runtime
 
-### D5 — Build script location
+**Locked: headless Blender** (`blender --background --python build_<name>.py`). Blender is already a CI dependency. Re-using it for fixture builds is free and avoids any external dependencies (Pillow, etc).
 
-- **D5.A — `scripts/fixtures/build_<name>.py`** (under repo `scripts/`).
-- **D5.B — `examples/<name>/build.py`** (next to the fixture).
+### D7 — CI integration
 
-**Recommendation: D5.A.** Build scripts are dev tooling; `scripts/` already collects this kind of thing. Examples directory stays asset-only.
+**Locked: one CI job iterates every fixture.** `tests/run_tests.py` walks `examples/*/` and re-exports each, diffing against the per-fixture golden.
 
-### D6 — Should the build script use Blender or a pure-Python approach?
+### D8 — Bone naming
 
-- **D6.A — Headless Blender** (`blender --background --python build.py`). Has full bpy API.
-- **D6.B — Pure Python** building `.blend` via library (e.g. `blender-asset-tracer`, but generally fragile).
+**Locked: Blender symmetric naming** (`name.L` / `name.R`). Indexed sub-bones use `name.001` / `name.002`. Neutral generics (`finger.001.L` not `index.001.L`) so future swaps (sword vs bow grip) do not require renaming.
 
-**Recommendation: D6.A.** Blender is already a CI dependency for `test-blender` job. Re-using it for fixture builds is free.
+### D9 — `pelvis.L` / `pelvis.R` keep or drop?
 
-### D7 — CI integration for new fixtures
+**Locked: keep.** Used for asymmetric hip motion + butt-jiggle weight demos. Cost is two extra bones; benefit is real-world authoring scenarios.
 
-- **D7.A — Add a CI job per fixture** mirroring `test-blender` for `dummy`.
-- **D7.B — One `test-blender` job iterates every fixture.**
+### D10 — Visual style
 
-**Recommendation: D7.B.** Less CI churn; one job, one Blender download, multiple fixtures asserted.
+**Locked: geometric primitives** (circles, rectangles, triangles, trapezoids). Colored by body region for instant visual debugging. No artist labor needed; fully reproducible from script.
 
-### D8 — What about the existing `dummy/`?
+### D11 — Build order
 
-- **D8.A — Keep as-is, document its limitation** (shared-atlas legacy / sliced-repack stress).
-- **D8.B — Replace with PS-first workflow.**
-- **D8.C — Drop entirely.**
-
-**Recommendation: D8.A.** `dummy/` is the only fixture exercising the shared-atlas + sliced packer code path. Real-world bug catch potential is high. Cost of keeping it is zero.
+**Locked: blink_eyes → shared_atlas → doll.** Smallest first, validates the pipeline + builder pattern, then escalating complexity. doll is large enough that we want the smaller fixtures known-good before tackling it.
 
 ## Out of scope
 
-- A test fixture for the slot system (SPEC 004 placeholder — fixture lands when SPEC 004 ships).
+- A test fixture for the slot system (SPEC 004) — placeholder only; lands when SPEC 004 ships.
 - A fixture for SPEC 006 PS importer (lands with SPEC 006).
-- Real character art (`firebound_character/`) — that's the integration test once SPEC 006 imports it.
-- UV animation fixture — premature without SPEC 008.
+- Real character art (`firebound_character/`) — that is the integration test for SPEC 006.
+- UV animation fixture (`flow_water/`) — premature without SPEC 008.
 
 ## Successor considerations
 
-- SPEC 004 (slots) adds `swap_face/` fixture: 1 mesh, 3 attachment images, slot animation track.
-- SPEC 006 (PS importer) adds `simple_psd/` fixture: source `.psd` + JSX-exported manifest + expected `.blend` post-import.
-- SPEC 008 (UV animation) adds `flow_water/` fixture if the SPEC ships.
+- SPEC 004 (slots): `doll/` gains a slot for `hand.L.attachment` (sword vs bow swap).
+- SPEC 006 (PS importer): `doll/` gets a PSD source + JSX manifest input alongside the build script as cross-validation.
+- SPEC 008 (UV animation): `doll/` gains an iris-scroll track on `eye.L`/`eye.R`.
 
-## Mockup — `simple_doll/` directory layout
+The doll fixture grows feature-by-feature. The two minimal fixtures (`blink_eyes`, `shared_atlas`) stay frozen — their job is to isolate one feature each.
+
+## Migration plan
+
+After this SPEC ships, a follow-up PR retires the legacy fixtures:
+
+| Today | Tomorrow | Coverage migrated to |
+|---|---|---|
+| `examples/dummy/` | DELETE | `doll/` (polygon + weights + bone_transform), `shared_atlas/` (sliced packer) |
+| `examples/effect/` | DELETE | `blink_eyes/` (end-to-end sprite_frame), `doll/` (sprite_frame mid-action) |
+| `examples/skinned_dummy/` | DELETE | `doll/` (multi-bone weights end-to-end) |
+
+The retirement PR ships only after the three new fixtures' goldens are committed and CI is green against them.
+
+## Mockup directory layout
 
 ```text
-examples/simple_doll/
-├── README.md                      what this fixture tests
-├── layers/
-│   ├── head.png                   64x64 solid red w/ thin black border
-│   ├── torso.png                  96x128 blue
-│   ├── arm.L.png                  32x96 green
-│   ├── arm.R.png                  32x96 green
-│   └── legs.png                   80x96 gold
-├── simple_doll.blend              committed binary (LFS)
-├── simple_doll.expected.proscenio golden — CI diffs against re-export
-├── Doll.tscn                      Godot wrapper (manual user pattern, SPEC 001)
-└── Doll.gd                        empty stub script
+examples/
+├── doll/
+│   ├── README.md
+│   ├── layers/                          generated PNGs, one per sprite
+│   │   ├── head_base.png
+│   │   ├── eye_0.png … eye_3.png
+│   │   ├── ...
+│   ├── doll.blend
+│   ├── doll.expected.proscenio
+│   ├── Doll.tscn
+│   └── Doll.gd
+├── blink_eyes/
+│   ├── README.md
+│   ├── layers/eye_0.png … eye_3.png
+│   ├── eye_spritesheet.png
+│   ├── blink_eyes.blend
+│   ├── blink_eyes.expected.proscenio
+│   ├── BlinkEyes.tscn
+│   └── BlinkEyes.gd
+└── shared_atlas/
+    ├── README.md
+    ├── atlas.png
+    ├── shared_atlas.blend
+    ├── shared_atlas.expected.proscenio
+    ├── SharedAtlas.tscn
+    └── SharedAtlas.gd
 
-scripts/fixtures/build_simple_doll.py    headless rebuilder
+scripts/fixtures/
+├── _draw.py                  pure-Python shape rasterizer (no deps)
+├── _doll_armature.py         doll bone hierarchy + parenting
+├── _doll_meshes.py           doll sprite plane creation + UVs
+├── _doll_weights.py          doll weight assignment
+├── _doll_actions.py          doll idle / wave / blink / walk
+├── build_blink_eyes.py
+├── build_shared_atlas.py
+└── build_doll.py             orchestrator
 ```

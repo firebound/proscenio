@@ -102,18 +102,16 @@ flowchart TD
 | GDScript LOC (plugin) | ~340 linhas, 100% typed |
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
-| Test assertions Python | 25 (validation 12 + properties 6 + region 7) |
+| Test assertions Python | 38 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8) |
 | Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
 | CI jobs | 5 (lint-python agora roda pytest também) |
 | SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
 
 ## O que está em andamento
 
-SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito (PRs #4–#7). SPEC 005.1.c.1 (region authoring) em andamento na branch `feat/spec-005.1.c-region-authoring`: `region_mode` enum (auto/manual), `region_x/y/w/h` floats, writer override via `core/region.py`, `Snap to UV bounds` operator, panel UI box.
+SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito (PRs #4–#7). 5.1.c.1 (region authoring) em PR #8. Fix bundle (mirror-all + UX gaps) em PR #9 stacked. **5.1.c.2 (atlas packer) em andamento** na branch `feat/spec-005.1.c.2-atlas-packer`: vendored MaxRects-BSSF (`core/atlas_packer.py`), bpy-side IO (`core/atlas_io.py`), two-stage operators `pack_atlas` + `apply_packed_atlas`, scene props `pack_padding_px/pack_max_size/pack_pot`, per-Object `material_isolated` toggle.
 
-5.1.c foi dividido em duas ondas: **5.1.c.1** ships region authoring sozinho (PR atual). **5.1.c.2** ships atlas packer separadamente (vendored MaxRects, sem dep externa).
-
-PRs 1–7 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.1: branch `feat/spec-005.1.c.2-atlas-packer`.
+PRs 1–7 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.2: SPEC 006 (Photoshop → Blender importer) — desbloqueia o workflow PS-first com naming convention `<name>_<index>` aciona sprite_frame grouping.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -177,7 +175,7 @@ flowchart TB
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
-| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); **5.1.c.1 region authoring** em revisão; 5.1.c.2 (atlas packer) + 5.1.d (advanced) ondas seguintes — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
+| **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); 5.1.c.1 (region authoring) PR #8; fix bundle PR #9; **5.1.c.2 (atlas packer)** branch atual; 5.1.d (advanced) onda seguinte — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
 
 ### Backlog (sem ordem)
 
@@ -194,10 +192,10 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito. 5.1.c.1 em revisão. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito. 5.1.c.1 em PR #8. Fix bundle em PR #9. 5.1.c.2 em branch atual. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge da PR de 5.1.c.1** — fecha region authoring (manual override + snap operator).
-2. **SPEC 005.1.c.2 (atlas packer)** — vendored MaxRects (`core/atlas_packer.py`), `pack_atlas` operator gera `atlas_packed.png`, `apply_packed_atlas` reescreve UVs + re-link materials. Two-stage por segurança.
+1. **CI verde + merge sequencial das PRs #8 → #9 → 5.1.c.2** — fecha região + fixes + packer.
+2. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping.
 3. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
 4. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
 5. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).

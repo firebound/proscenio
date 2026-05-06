@@ -1,4 +1,5 @@
 autocalculate
+BSSF
 channelbag
 channelbags
 cmdln
@@ -33,6 +34,7 @@ multicriteria
 mypy
 nullables
 nullglob
+numpy
 outliner
 parseia
 PROSC
@@ -56,6 +58,7 @@ subpanel
 subpanels
 toolkits
 tscn
+undoable
 unparented
 unskinned
 venv

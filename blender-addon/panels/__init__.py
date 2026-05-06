@@ -397,6 +397,13 @@ def _draw_packer_box(layout: bpy.types.UILayout, context: bpy.types.Context) -> 
         sub = box.row()
         sub.enabled = False
         sub.label(text="run Pack Atlas first", icon="INFO")
+    if _scene_has_pre_pack_snapshot(context.scene):
+        box.operator("proscenio.unpack_atlas", text="Unpack Atlas", icon="LOOP_BACK")
+
+
+def _scene_has_pre_pack_snapshot(scene: bpy.types.Scene) -> bool:
+    """True when at least one mesh carries a pre-pack snapshot (5.1.c.2.2)."""
+    return any("proscenio_pre_pack" in obj for obj in scene.objects if obj.type == "MESH")
 
 
 def _packed_manifest_exists() -> bool:
@@ -527,6 +534,7 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.snap_region_to_uv", "Snap region to UV bounds"),
     ("proscenio.pack_atlas", "Pack Atlas"),
     ("proscenio.apply_packed_atlas", "Apply Packed Atlas"),
+    ("proscenio.unpack_atlas", "Unpack Atlas"),
     ("proscenio.select_issue_object", "Select Issue Object"),
     ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
 )

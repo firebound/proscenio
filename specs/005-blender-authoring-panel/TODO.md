@@ -135,9 +135,17 @@ Manual validation of 5.1.c.2 on the dummy fixture exposed that sprites whose sou
   - sprite_frame: sets `region_mode = "manual"` + `region_x/y/w/h` to the slot in atlas-normalized coords, so Sprite2D's `hframes/vframes` slice the correct sub-rect.
 - [x] `tests/test_uv_bounds.py` — 8 pytest assertions covering empty UVs (full image fallback) / full-cover UVs / partial slice / expand padding / clamp to image edges / remap with full slice / remap with partial slice / remap far corner.
 
+## SPEC 005.1.c.2.2 — Unpack operator (shipped)
+
+Closes the "non-destructive across session boundaries" gap. Apply was already idempotent and Ctrl+Z-undoable, but a saved + reopened `.blend` lost the original UVs and material reference.
+
+- [x] `PROSCENIO_OT_apply_packed_atlas` snapshots the pre-Apply state into a Custom Property (`proscenio_pre_pack`) before mutating each mesh: original material name, original image node name, full `region_mode` + `region_x/y/w/h`. Plus duplicates the active UV layer to `<name>.pre_pack`. Snapshot is **idempotent** — second apply on an already-packed sprite leaves the existing snapshot alone (so Unpack still reverts to original-original).
+- [x] `PROSCENIO_OT_unpack_atlas` reads the snapshot, copies the saved UVs back into the active layer, removes the `.pre_pack` layer, restores the material reference and the region fields, then deletes the Custom Property.
+- [x] Atlas subpanel renders the Unpack button only when at least one mesh in the scene carries a snapshot (`_scene_has_pre_pack_snapshot`).
+- [x] Cycle survives `.blend` save/reload: snapshot CP is stored on the Object datablock, persists with the file. Unpack reads from the saved CP and restores cleanly.
+
 ## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
 
-- 5.1.c.2.2 Unpack operator — duplicates the active UV layer to ``<name>.pre_pack`` before apply runs, plus stores the pre-apply material name on `ProscenioObjectProps`. Unpack restores both. Closes the "non-destructive across session boundaries" gap (today's apply is undoable only via Ctrl+Z within the session).
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.

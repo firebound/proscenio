@@ -109,7 +109,7 @@ flowchart TD
 
 ## O que está em andamento
 
-SPEC 005 first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 com merge feito (PRs #4–#11). **5.1.c.2.1 (sliced atlas)** em andamento na branch `feat/spec-005.1.c.2.1-sliced-atlas`: corrige o caso shared-atlas (dummy fixture) onde sprite_frame ia parar em região transparente. `core/uv_bounds.py` deriva slice rect das UV bounds; pack só empacota o slice; apply reescreve UVs (polygon) ou seta `region_mode=manual` + slot (sprite_frame).
+SPEC 005 first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 com merge feito (PRs #4–#11). 5.1.c.2.1 sliced atlas em PR #12. **5.1.c.2.2 Unpack** em andamento na branch `feat/spec-005.1.c.2.2-unpack`: apply guarda snapshot do estado pré-Apply num CP `proscenio_pre_pack` + duplica UV layer pra `<name>.pre_pack`; novo operator `unpack_atlas` reverte tudo. Cycle pack→apply→unpack→pack→apply é idempotente e sobrevive `.blend` save/reload (Ctrl+Z não sobrevive).
 
 PRs 1–11 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.2.1: SPEC 006 (Photoshop → Blender importer) — desbloqueia o workflow PS-first com naming convention `<name>_<index>` que aciona sprite_frame grouping.
 

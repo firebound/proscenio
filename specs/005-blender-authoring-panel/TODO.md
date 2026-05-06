@@ -111,10 +111,23 @@ Manual testing (2026-05-05) surfaced four bugs and three UX gaps. All fixed in o
 - [x] sprite_frame region size opaque. Active Sprite panel now reads the linked image's pixel dimensions and renders `atlas: WxH px / region: WxH px / frame: WxH px (HxV grid)` so the user can verify the spritesheet grid lines up.
 - [x] `tests/test_mirror.py` — 5 pytest assertions covering mirror-all field set / missing-attribute skip / caster-error skip / mirror+hydrate round trip / OBJECT_PROPS region key coverage. Total now 30 (validation 12 + properties 6 + region 7 + mirror 5).
 
-## Defer (SPEC 005.1.c.2 atlas packer + 5.1.d advanced — see `RESEARCH.md` matrix)
+## SPEC 005.1.c.2 — atlas packer (shipped)
 
-- Atlas packer integration (vendored MaxRects, no external dep).
-- Two-stage packer flow: generate `atlas_packed.png` then apply (rewrite UVs + relink materials).
+- [x] `core/atlas_packer.py` — vendored MaxRects-BSSF, bpy-free, ~200 LOC. Tries doubling sizes from `start_size` up to `max_size`; padding around each placement. POT mode rounds up to nearest power of 2.
+- [x] `core/atlas_io.py` — bpy-side helpers: `collect_source_images` walks meshes for image-textured materials; `compose_atlas` builds a `bpy.types.Image` via numpy (bundled with Blender) and saves PNG; `write_manifest` / `read_manifest` for the JSON sidecar.
+- [x] `PROSCENIO_OT_pack_atlas` — non-destructive. Walks scene meshes, collects sources, runs MaxRects, writes `<blend>.atlas.png` + `<blend>.atlas.json`. Does **not** touch UVs or materials. Requires saved `.blend`.
+- [x] `PROSCENIO_OT_apply_packed_atlas` — destructive but undoable. Reads manifest, rewrites UVs to address packed atlas coordinates, links each sprite to a shared `Proscenio.PackedAtlas` material (or swaps just the image when `material_isolated=True`).
+- [x] `ProscenioSceneProps` gains `pack_padding_px` (default 2, max 64), `pack_max_size` (default 4096, max 8192), `pack_pot` (default off). All exposed in the Atlas subpanel.
+- [x] `ProscenioObjectProps` gains `material_isolated: BoolProperty` (default False). Marked sprites keep their own material on apply, only the image node swaps to the packed atlas.
+- [x] Atlas subpanel renders a "Atlas packer" box: padding/max_size/POT props, Pack button always available, Apply button visible when `<blend>.atlas.json` exists next to the file.
+- [x] `tests/test_atlas_packer.py` — 8 pytest assertions covering empty input / single rect / non-overlap / inside bounds / atlas growth / max_size cap / POT rounding / padding separation.
+
+**Deferred to a later iteration (sliced-atlas support)**: sprites whose source material points to an already-shared atlas (with different `texture_region` per sprite) need slicing — extracting the sub-image before repacking. Current iteration assumes 1 sprite = 1 source PNG (Photoshop-first workflow / SPEC 006). Documented in `core/atlas_io.py` module docstring.
+
+## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
+
+- Sliced-atlas repack support (extract sub-image from shared atlas before pack — needed when re-packing existing fixtures).
+- Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.
 - Spriteobject custom outliner with search/filter.

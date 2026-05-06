@@ -423,6 +423,208 @@ class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
         return {"FINISHED"}
 
 
+_PACKED_ATLAS_MAT_NAME = "Proscenio.PackedAtlas"
+
+
+def _packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:
+    """Return ``(atlas_png_path, manifest_json_path)`` next to the .blend."""
+    blend = Path(blend_path) if blend_path else Path("untitled.blend")
+    stem = blend.stem if blend.stem else "atlas_packed"
+    folder = blend.parent if blend_path else Path(bpy.path.abspath("//"))
+    return folder / f"{stem}.atlas.png", folder / f"{stem}.atlas.json"
+
+
+class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
+    """Generate a packed atlas PNG + manifest. Non-destructive — does not touch UVs or materials."""
+
+    bl_idname = "proscenio.pack_atlas"
+    bl_label = "Proscenio: Pack Atlas"
+    bl_description = (
+        "Walks every sprite mesh, collects its source image, packs them with "
+        "MaxRects-BSSF, and writes <blend>.atlas.png + <blend>.atlas.json. "
+        "Run Apply Packed Atlas afterwards to rewrite UVs and materials."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(bpy.data.filepath)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        from ..core import atlas_io  # type: ignore[import-not-found]
+        from ..core.atlas_packer import pack as _pack  # type: ignore[import-not-found]
+
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is None:
+            self.report({"ERROR"}, "Proscenio: scene props not registered")
+            return {"CANCELLED"}
+
+        sprite_meshes = [o for o in context.scene.objects if o.type == "MESH"]
+        sources = atlas_io.collect_source_images(sprite_meshes)
+        if not sources:
+            self.report({"WARNING"}, "Proscenio: no sprite meshes with source images found")
+            return {"CANCELLED"}
+
+        padding = int(scene_props.pack_padding_px)
+        items = [(src.obj_name, src.width, src.height) for src in sources]
+        packed = _pack(
+            items,
+            padding=padding,
+            max_size=int(scene_props.pack_max_size),
+            power_of_two=bool(scene_props.pack_pot),
+        )
+        if packed is None:
+            self.report(
+                {"ERROR"},
+                f"Proscenio: pack failed — {len(items)} sprite(s) do not fit in "
+                f"{scene_props.pack_max_size}x{scene_props.pack_max_size} px atlas.",
+            )
+            return {"CANCELLED"}
+
+        atlas_png, manifest_json = _packed_atlas_paths(bpy.data.filepath)
+        atlas_png.parent.mkdir(parents=True, exist_ok=True)
+        atlas_io.compose_atlas(sources, packed, atlas_png, padding=padding)
+        atlas_io.write_manifest(packed, padding, manifest_json)
+
+        self.report(
+            {"INFO"},
+            f"Proscenio: packed {len(packed.placements)} sprite(s) into "
+            f"{packed.atlas_w}x{packed.atlas_h} px atlas → {atlas_png.name}",
+        )
+        print(f"[Proscenio] packed atlas → {atlas_png}")
+        print(f"[Proscenio] manifest → {manifest_json}")
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
+    """Rewrite UVs + materials so every sprite reads from the packed atlas."""
+
+    bl_idname = "proscenio.apply_packed_atlas"
+    bl_label = "Proscenio: Apply Packed Atlas"
+    bl_description = (
+        "Reads <blend>.atlas.json, rewrites every sprite's UVs to address the "
+        "packed atlas, and (unless material_isolated is set on the object) "
+        "links the sprite to the shared 'Proscenio.PackedAtlas' material. "
+        "Undoable — Ctrl+Z reverts."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        if not bpy.data.filepath:
+            return False
+        _, manifest = _packed_atlas_paths(bpy.data.filepath)
+        return manifest.exists()
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        from ..core import atlas_io  # type: ignore[import-not-found]
+
+        atlas_png, manifest_json = _packed_atlas_paths(bpy.data.filepath)
+        if not manifest_json.exists():
+            self.report({"ERROR"}, f"Proscenio: manifest not found — {manifest_json.name}")
+            return {"CANCELLED"}
+
+        atlas_w, atlas_h, _padding, placements = atlas_io.read_manifest(manifest_json)
+
+        atlas_image = bpy.data.images.get(atlas_png.stem)
+        if atlas_image is None:
+            atlas_image = bpy.data.images.load(str(atlas_png), check_existing=True)
+
+        shared_mat = self._ensure_shared_material(atlas_image)
+
+        rewritten = 0
+        skipped = 0
+        for obj in context.scene.objects:
+            if obj.type != "MESH" or obj.name not in placements:
+                continue
+            rect = placements[obj.name]
+            if not self._rewrite_uvs(obj, rect, atlas_w, atlas_h):
+                skipped += 1
+                continue
+            self._relink_material(obj, shared_mat, atlas_image)
+            rewritten += 1
+
+        msg = f"Proscenio: applied packed atlas to {rewritten} sprite(s)"
+        if skipped:
+            msg += f"; skipped {skipped} (no UV layer)"
+        self.report({"INFO"}, msg)
+        print(f"[Proscenio] {msg}")
+        return {"FINISHED"}
+
+    def _ensure_shared_material(self, atlas_image: bpy.types.Image) -> bpy.types.Material:
+        """Create or refresh the shared 'Proscenio.PackedAtlas' material."""
+        mat = bpy.data.materials.get(_PACKED_ATLAS_MAT_NAME)
+        if mat is None:
+            mat = bpy.data.materials.new(name=_PACKED_ATLAS_MAT_NAME)
+        mat.use_nodes = True
+        nt = mat.node_tree
+        while nt.nodes:
+            nt.nodes.remove(nt.nodes[0])
+        out = nt.nodes.new(type="ShaderNodeOutputMaterial")
+        bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
+        tex = nt.nodes.new(type="ShaderNodeTexImage")
+        tex.image = atlas_image
+        nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+        nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
+        nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+        return mat
+
+    def _rewrite_uvs(
+        self,
+        obj: bpy.types.Object,
+        rect: object,  # core.atlas_packer.Rect — avoid bpy-side import here
+        atlas_w: int,
+        atlas_h: int,
+    ) -> bool:
+        """Map current UVs from source-image space to packed-atlas space."""
+        mesh = obj.data
+        uv_layer = mesh.uv_layers.active
+        if uv_layer is None:
+            return False
+        rx = rect.x  # type: ignore[attr-defined]
+        ry = rect.y  # type: ignore[attr-defined]
+        rw = rect.w  # type: ignore[attr-defined]
+        rh = rect.h  # type: ignore[attr-defined]
+        for poly in mesh.polygons:
+            for li in poly.loop_indices:
+                u, v = uv_layer.data[li].uv
+                # Source uv is bottom-left origin in [0,1] of the source image;
+                # map into the rect inside the atlas, also bottom-left origin.
+                new_u = (rx + u * rw) / atlas_w
+                new_v = (ry + v * rh) / atlas_h
+                uv_layer.data[li].uv = (new_u, new_v)
+        return True
+
+    def _relink_material(
+        self,
+        obj: bpy.types.Object,
+        shared_mat: bpy.types.Material,
+        atlas_image: bpy.types.Image,
+    ) -> None:
+        """Link sprite to shared material, or swap its image when isolated."""
+        materials = getattr(obj.data, "materials", None)
+        if materials is None:
+            return
+        props = getattr(obj, "proscenio", None)
+        if bool(getattr(props, "material_isolated", False)):
+            _swap_image_in_materials(materials, atlas_image)
+            return
+        if materials:
+            materials[0] = shared_mat
+        else:
+            materials.append(shared_mat)
+
+
+def _swap_image_in_materials(materials: bpy.types.AnyType, atlas_image: bpy.types.Image) -> None:
+    """For every image-textured node across ``materials``, swap to ``atlas_image``."""
+    for mat in materials:
+        if mat is None or not mat.use_nodes or mat.node_tree is None:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.type == "TEX_IMAGE":
+                node.image = atlas_image
+
+
 _classes: tuple[type, ...] = (
     PROSCENIO_OT_smoke_test,
     PROSCENIO_OT_validate_export,
@@ -433,6 +635,8 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_toggle_ik_chain,
     PROSCENIO_OT_reproject_sprite_uv,
     PROSCENIO_OT_snap_region_to_uv,
+    PROSCENIO_OT_pack_atlas,
+    PROSCENIO_OT_apply_packed_atlas,
     PROSCENIO_OT_bake_current_pose,
 )
 

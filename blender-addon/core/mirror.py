@@ -32,6 +32,7 @@ OBJECT_MIRROR_MAP: tuple[tuple[str, str, type], ...] = (
     ("proscenio_region_y", "region_y", float),
     ("proscenio_region_w", "region_w", float),
     ("proscenio_region_h", "region_h", float),
+    ("proscenio_material_isolated", "material_isolated", bool),
 )
 
 

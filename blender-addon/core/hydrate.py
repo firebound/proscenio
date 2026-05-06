@@ -23,6 +23,7 @@ OBJECT_PROPS: tuple[tuple[str, str], ...] = (
     ("proscenio_region_y", "region_y"),
     ("proscenio_region_w", "region_w"),
     ("proscenio_region_h", "region_h"),
+    ("proscenio_material_isolated", "material_isolated"),
 )
 
 

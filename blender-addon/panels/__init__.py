@@ -171,6 +171,7 @@ def _draw_polygon_body(
     box.label(text="Polygon", icon="MESH_DATA")
     box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
     box.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
+    box.prop(props, "material_isolated")
     _draw_region_box(layout, props, sprite_type="polygon")
 
 
@@ -372,8 +373,40 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
         atlas_name = _discover_atlas_name()
         if atlas_name is None:
             layout.label(text="no atlas linked in materials", icon="INFO")
-            return
-        layout.label(text=atlas_name, icon="IMAGE")
+        else:
+            layout.label(text=atlas_name, icon="IMAGE")
+        _draw_packer_box(layout, context)
+
+
+def _draw_packer_box(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
+    """Atlas packer controls (5.1.c.2): config + pack + apply."""
+    scene_props = getattr(context.scene, "proscenio", None)
+    if scene_props is None:
+        return
+    box = layout.box()
+    box.label(text="Atlas packer", icon="TEXTURE")
+    col = box.column(align=True)
+    col.prop(scene_props, "pack_padding_px")
+    col.prop(scene_props, "pack_max_size")
+    col.prop(scene_props, "pack_pot")
+    box.separator()
+    box.operator("proscenio.pack_atlas", text="Pack Atlas", icon="MOD_ARRAY")
+    if _packed_manifest_exists():
+        box.operator("proscenio.apply_packed_atlas", text="Apply Packed Atlas", icon="FILE_REFRESH")
+    else:
+        sub = box.row()
+        sub.enabled = False
+        sub.label(text="run Pack Atlas first", icon="INFO")
+
+
+def _packed_manifest_exists() -> bool:
+    """Check whether <blend>.atlas.json is sitting next to the active .blend."""
+    blend = bpy.data.filepath
+    if not blend:
+        return False
+    from pathlib import Path as _Path
+
+    return (_Path(blend).parent / f"{_Path(blend).stem}.atlas.json").exists()
 
 
 def _discover_atlas_name() -> str | None:
@@ -492,6 +525,8 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.toggle_ik_chain", "Toggle IK"),
     ("proscenio.reproject_sprite_uv", "Reproject UV"),
     ("proscenio.snap_region_to_uv", "Snap region to UV bounds"),
+    ("proscenio.pack_atlas", "Pack Atlas"),
+    ("proscenio.apply_packed_atlas", "Apply Packed Atlas"),
     ("proscenio.select_issue_object", "Select Issue Object"),
     ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
 )

@@ -168,6 +168,17 @@ class ProscenioObjectProps(PropertyGroup):
         precision=4,
         update=_on_any_update,
     )
+    material_isolated: BoolProperty(  # type: ignore[valid-type]
+        name="Isolated material",
+        description=(
+            "When packing, keep this sprite's own material instead of linking "
+            "it to the shared 'Proscenio.PackedAtlas' material. Useful for "
+            "effect sprites that need their own shader (additive blend, custom "
+            "fresnel, etc)."
+        ),
+        default=False,
+        update=_on_any_update,
+    )
 
 
 class ProscenioValidationIssue(PropertyGroup):
@@ -224,6 +235,25 @@ class ProscenioSceneProps(PropertyGroup):
         description="Selected row in the Skeleton panel's bone list",
         default=0,
         min=0,
+    )
+    pack_padding_px: IntProperty(  # type: ignore[valid-type]
+        name="Pack padding",
+        description="Pixels of padding reserved around each sprite in the packed atlas",
+        default=2,
+        min=0,
+        max=64,
+    )
+    pack_max_size: IntProperty(  # type: ignore[valid-type]
+        name="Pack max size",
+        description="Hard cap on the packed atlas dimensions (px). Pack fails above this.",
+        default=4096,
+        min=64,
+        max=8192,
+    )
+    pack_pot: BoolProperty(  # type: ignore[valid-type]
+        name="Power-of-two atlas",
+        description="Round packed atlas dimensions up to a power of two (legacy GPU optimization)",
+        default=False,
     )
 
 

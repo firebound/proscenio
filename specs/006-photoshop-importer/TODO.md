@@ -17,29 +17,30 @@ PSD → Blender importer. Closes the missing leg of the pipeline. See [STUDY.md]
 
 ## Wave 6.0 — manifest schema + parser (foundation)
 
-Branch: `feat/spec-006.0-foundation`.
+Branch: `feat/spec-006.0-foundation`. **Shipped:**
 
-- [ ] `schemas/psd_manifest.schema.json` — JSON Schema 2020-12 for manifest v1. Required fields, discriminator on `kind`, `frames[]` only valid when `kind == "sprite_frame"`.
-- [ ] `blender-addon/core/psd_manifest.py` — bpy-free parser. Loads JSON, validates against schema (or raises), returns `Manifest` dataclass with typed `Layer` entries.
-- [ ] `blender-addon/tests/test_psd_manifest.py` — pytest, exercises the v1 schema (valid + several invalid shapes covering missing required fields, wrong `kind`, frames on a polygon, etc).
-- [ ] CI `validate-schema` job glob picks up the new schema automatically.
+- [x] `schemas/psd_manifest.schema.json` — JSON Schema 2020-12 for manifest v1. Discriminator on `kind` via `oneOf`, `frames[]` valid only on `sprite_frame`, `additionalProperties: false` everywhere.
+- [x] `blender-addon/core/psd_manifest.py` — bpy-free parser. `load(path)` / `parse(raw)` return a `Manifest` dataclass with typed `PolygonLayer` / `SpriteFrameLayer` entries. Raises `ManifestError` on shape mismatch with field-path-aware messages.
+- [x] `tests/test_psd_manifest.py` — 16 cases (valid + missing required field, unknown kind, polygon-with-frames, single-frame sprite_frame, negative z_order, malformed size, unknown frame field, layers-not-array, file-missing, malformed JSON).
+- [x] CI `validate-schema` job glob (`schemas/*.schema.json` indirectly via `examples/**/*.proscenio` validation) — schema itself valid against Draft 2020-12.
 
 ## Wave 6.1 — JSX exporter v1
 
-Branch: `feat/spec-006.1-jsx-v1` (or bundle into 6.0 PR if small enough).
+Bundled into the foundation PR. **Shipped:**
 
-- [ ] `photoshop-exporter/proscenio_export.jsx` — emit `format_version: 1`, `pixels_per_unit` (default 100), `kind` discriminator, `z_order` from layer stack index, `frames[]` for sprite_frame groups (D9 detection at JSX side).
-- [ ] Hidden-layer + `_`-prefix skip rules preserved.
-- [ ] Manual smoke test in Photoshop CC 2015+ (no headless option).
+- [x] `photoshop-exporter/proscenio_export.jsx` rewritten to emit `format_version: 1`, `pixels_per_unit` (default 100), `kind` discriminator, `z_order` from a global counter, `frames[]` for sprite_frame groups (D9 detection at JSX side via `qualifiesAsSpriteFrameGroup` + the post-walk `aggregateFlatSpriteFrames` fallback).
+- [x] Hidden-layer + `_`-prefix skip rules preserved.
+- [ ] Manual smoke test in Photoshop CC 2015+ (no headless option) — pending hands-on verification.
 
 ## Wave 6.2 — naming convention parser
 
-Bundled with 6.0 if cohesive.
+Bundled into the foundation PR. **Shipped:**
 
-- [ ] `blender-addon/core/psd_naming.py` — bpy-free helpers used by 6.1 (JSX side mirrors the rules but in JS) and 6.3 (importer side validates the kind hint matches the layer name shape, sanity check).
-  - `match_indexed_frame(name) -> (group_name, index) | None`
+- [x] `blender-addon/core/psd_naming.py` — bpy-free helpers used by Wave 6.3 (importer-side sanity check) and mirrored by the JSX `matchIndexedFrame` for cross-language consistency.
+  - `match_indexed_frame(name) -> IndexedName | None`
   - `is_uniform_indexed_group(child_names) -> bool`
-- [ ] `blender-addon/tests/test_psd_naming.py` — exercises the conventions exhaustively.
+  - `group_by_index_suffix(layer_names) -> dict[base, list[(index, name)]]`
+- [x] `tests/test_psd_naming.py` — 15 cases covering pure-digit / `frame_<n>` / `<base>_<n>` matches, mixed-convention rejection, mixed-base rejection, gap rejection, non-zero-start rejection, empty/single-child rejection, fallback grouping.
 
 ## Wave 6.3 — importer core
 

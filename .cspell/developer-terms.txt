@@ -1,4 +1,5 @@
 autocalculate
+bsdf
 BSSF
 channelbag
 channelbags
@@ -26,11 +27,13 @@ hframes
 hotfixes
 idname
 interp
+isoceles
 jsonschema
 keyframable
 keymap
 Keymap
 keymaps
+mainfile
 mathutils
 mkdocs
 multicriteria
@@ -38,10 +41,13 @@ mypy
 nullables
 nullglob
 numpy
+onready
 outliner
 parseia
+printerr
 PROSC
 pycache
+pydata
 pyproject
 pytest
 pytexturepacker

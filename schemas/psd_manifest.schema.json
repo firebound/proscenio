@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json",
+  "title": "Proscenio PSD manifest",
+  "description": "Output of the Proscenio Photoshop JSX exporter; input of the Proscenio Blender importer (SPEC 006).",
+  "type": "object",
+  "required": ["format_version", "doc", "size", "pixels_per_unit", "layers"],
+  "additionalProperties": false,
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump on any breaking change to the shape of this document."
+    },
+    "doc": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Original PSD filename. Display only — not a resolvable path."
+    },
+    "size": {
+      "$ref": "#/$defs/uint_pair",
+      "description": "[doc_width_px, doc_height_px]."
+    },
+    "pixels_per_unit": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Blender pixels-per-unit factor; importer divides PSD pixels by this when stamping mesh size and position."
+    },
+    "layers": {
+      "type": "array",
+      "description": "Z-ordered top-to-bottom. Each entry is a single mesh in Blender after import.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/polygon_layer" },
+          { "$ref": "#/$defs/sprite_frame_layer" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "uint": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "uint_pair": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "polygon_layer": {
+      "type": "object",
+      "required": ["kind", "name", "path", "position", "size", "z_order"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "polygon",
+          "description": "Single PNG, single quad mesh."
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the layer PNG, relative to the manifest file."
+        },
+        "position": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "PSD top-left bbox of the layer in pixels."
+        },
+        "size": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "Layer bbox size in pixels."
+        },
+        "z_order": {
+          "$ref": "#/$defs/uint",
+          "description": "Stack index, 0 = top."
+        }
+      }
+    },
+    "sprite_frame_layer": {
+      "type": "object",
+      "required": ["kind", "name", "position", "size", "z_order", "frames"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "sprite_frame",
+          "description": "N frames, single quad mesh, animated via proscenio.frame."
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "position": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "PSD top-left bbox of the largest frame."
+        },
+        "size": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "Largest frame bbox size in pixels (importer pads smaller frames to match)."
+        },
+        "z_order": { "$ref": "#/$defs/uint" },
+        "frames": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["index", "path"],
+            "additionalProperties": false,
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Frame index, 0-based, contiguous, ordered."
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Path to the frame PNG, relative to the manifest file."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

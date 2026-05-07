@@ -1,6 +1,8 @@
+DONOTSAVECHANGES
 dopesheet
 keyframing
 lipsync
+PLACEATBEGINNING
 playhead
 prefs
 proscenio

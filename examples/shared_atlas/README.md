@@ -4,7 +4,7 @@ Tests the **sliced atlas packer** end-to-end (SPEC 005.1.c.2.1). Three polygon m
 
 ## Contents (after running the build script)
 
-```
+```plaintext
 shared_atlas/
 ├── atlas.png                       256×256, three colored shapes in three quadrants
 ├── shared_atlas.blend              3 polygon meshes referencing atlas.png with partial UVs
@@ -17,7 +17,7 @@ shared_atlas/
 ## Sprites
 
 | Name | Shape | Color | UV bounds |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `red_circle` | circle | red | (0.0, 0.5)–(0.5, 1.0) — top-left |
 | `green_triangle` | triangle | green | (0.5, 0.5)–(1.0, 1.0) — top-right |
 | `blue_square` | square | blue | (0.0, 0.0)–(0.5, 0.5) — bottom-left |

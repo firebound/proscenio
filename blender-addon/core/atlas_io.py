@@ -200,7 +200,7 @@ def compose_atlas(
         alpha=True,
     )
 
-    canvas = np.zeros((packed.atlas_h, packed.atlas_w, 4), dtype=np.float32)
+    canvas: np.ndarray = np.zeros((packed.atlas_h, packed.atlas_w, 4), dtype=np.float32)
 
     # Coordinate systems. The packer is internally top-down (y=0 means top of
     # the atlas, the bin-packing convention); ``bpy.types.Image.pixels`` is

@@ -33,6 +33,7 @@ keyframable
 keymap
 Keymap
 keymaps
+mainfile
 mathutils
 mkdocs
 multicriteria

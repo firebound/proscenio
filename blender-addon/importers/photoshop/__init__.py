@@ -19,11 +19,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 import bpy
 
 from ...core import psd_manifest  # type: ignore[import-not-found]
-from .armature import build_root_armature
+from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
 from .planes import stamp_polygon, stamp_sprite_frame
 
 
@@ -40,22 +41,34 @@ class ImportResult:
 def import_manifest(
     manifest_path: Path | str,
     *,
-    anchor_at_feet: bool = True,
+    placement: Literal["centered", "landed"] = "landed",
+    root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
 ) -> ImportResult:
     """Read ``manifest_path`` (PSD manifest v1) and stamp the scene.
 
-    When ``anchor_at_feet`` is True (default), every stamped mesh is
-    shifted so the lowest point of the figure lands on world Z=0 —
-    matches the Godot / game-engine convention of placing a
-    character's pivot at the feet. With ``anchor_at_feet=False`` the
-    figure stays centred around the manifest canvas centre (world
-    origin), useful when the user already has a coordinate plan.
+    ``placement`` chooses where the figure sits relative to the world:
+
+    - ``"landed"`` (default): every stamped mesh is shifted so the
+      lowest point of the figure lands on world Z=0 — matches the
+      Godot / game-engine convention of placing a character's pivot
+      at the feet.
+    - ``"centered"``: figure stays centred around the manifest canvas
+      centre (world origin), useful when the user already has a
+      coordinate plan or wants to align multiple imports in a shared
+      scene.
+
+    ``root_bone_name`` controls the single armature bone created at
+    import time. Default is ``"root"``; rigs that follow a different
+    convention (e.g. ``"spine"``) can override.
 
     Returns an :class:`ImportResult`. Raises
     :class:`psd_manifest.ManifestError` on shape mismatch.
     """
     manifest = psd_manifest.load(manifest_path)
-    armature_obj = build_root_armature(name=_armature_name(manifest))
+    armature_obj = build_root_armature(
+        name=_armature_name(manifest),
+        root_bone_name=root_bone_name,
+    )
     result = ImportResult(armature=armature_obj)
     for layer in manifest.layers:
         if layer.kind == "polygon":
@@ -71,7 +84,7 @@ def import_manifest(
                 result.spritesheets.append(stamped.spritesheet_path)
             else:
                 result.skipped.append(f"sprite_frame:{layer.name}")
-    if anchor_at_feet:
+    if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
 

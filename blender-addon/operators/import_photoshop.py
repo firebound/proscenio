@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import bpy
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 from ..core import psd_manifest  # type: ignore[import-not-found]
@@ -26,22 +26,43 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
     bl_label = "Proscenio: Import Photoshop Manifest"
     bl_description = (
         "Read a Photoshop manifest (SPEC 006 v1) and stamp one quad mesh "
-        "per layer, plus a stub root armature for posing"
+        "per layer, plus a stub armature for posing"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     filename_ext = ".json"
     filter_glob: StringProperty(default="*.json", options={"HIDDEN"})  # type: ignore[valid-type]
 
-    anchor_at_feet: BoolProperty(  # type: ignore[valid-type]
-        name="Anchor at Feet",
+    placement: EnumProperty(  # type: ignore[valid-type]
+        name="Placement",
+        description="Where the imported figure sits relative to the world origin",
+        items=[
+            (
+                "landed",
+                "Landed (Feet on Z=0)",
+                "Shift the figure so its lowest point sits on world Z=0. "
+                "Matches the Godot / game-engine convention of pivoting "
+                "characters at the feet.",
+            ),
+            (
+                "centered",
+                "Centered (Canvas at World Origin)",
+                "Keep the figure centred around the manifest canvas centre "
+                "(world origin). Useful when aligning multiple imports in a "
+                "shared scene.",
+            ),
+        ],
+        default="landed",
+    )
+
+    root_bone_name: StringProperty(  # type: ignore[valid-type]
+        name="Root Bone Name",
         description=(
-            "Shift the imported figure so its lowest point sits on world Z=0 "
-            "(matches the Godot / game-engine convention of pivoting "
-            "characters at the feet). Disable to keep the figure centred "
-            "around the manifest canvas centre (world origin)."
+            "Name of the single bone created in the stub armature. Default "
+            "is 'root'; rigs that prefer 'spine' or another identifier can "
+            "override here."
         ),
-        default=True,
+        default="root",
     )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -50,7 +71,11 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
             self.report({"ERROR"}, f"Manifest not found: {path}")
             return {"CANCELLED"}
         try:
-            result = import_manifest(path, anchor_at_feet=self.anchor_at_feet)
+            result = import_manifest(
+                path,
+                placement=self.placement,
+                root_bone_name=self.root_bone_name or "root",
+            )
         except psd_manifest.ManifestError as exc:
             self.report({"ERROR"}, f"Manifest invalid: {exc}")
             return {"CANCELLED"}

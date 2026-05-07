@@ -1,4 +1,4 @@
-// @ts-check
+#target photoshop
 // Proscenio -- Photoshop importer
 // Reads a SPEC 006 v1 PSD manifest (matches schemas/psd_manifest.schema.json)
 // and stamps every layer into a fresh PSD document at its declared
@@ -22,8 +22,6 @@
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-
-#target photoshop
 
 (function () {
     var manifestFile = File.openDialog(

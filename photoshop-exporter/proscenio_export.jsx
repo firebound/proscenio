@@ -1,4 +1,4 @@
-// @ts-check
+#target photoshop
 // Proscenio -- Photoshop exporter
 // Exports visible layers as PNG plus a position JSON manifest (v1) suitable
 // for the Proscenio Blender importer (SPEC 006).
@@ -40,8 +40,6 @@
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-
-#target photoshop
 
 var MANIFEST_FORMAT_VERSION = 1;
 var DEFAULT_PIXELS_PER_UNIT = 100;

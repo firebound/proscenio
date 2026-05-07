@@ -366,10 +366,65 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         if (typeof JSON !== "undefined" && JSON.stringify) {
             return JSON.stringify(m, null, 2);
         }
-        // Photoshop CC 2015+ ships JSON; older versions would need a polyfill.
-        // Bail loudly rather than emit a half-broken manual encoding.
-        throw new Error(
-            "JSON.stringify unavailable; Photoshop CC 2015 or later required."
-        );
+        // Older ExtendScript builds do not ship the JSON global. Manual
+        // serializer covers the manifest's bounded shape (objects,
+        // arrays, strings, finite numbers, booleans, null).
+        return manualStringify(m, "");
+    }
+
+    function manualStringify(value, indent) {
+        if (value === null) return "null";
+        var t = typeof value;
+        if (t === "boolean") return value ? "true" : "false";
+        if (t === "number") return isFinite(value) ? String(value) : "null";
+        if (t === "string") return jsonQuote(value);
+        if (Object.prototype.toString.call(value) === "[object Array]") {
+            if (value.length === 0) return "[]";
+            var nextIndent = indent + "  ";
+            var arrParts = [];
+            for (var i = 0; i < value.length; i++) {
+                arrParts.push(nextIndent + manualStringify(value[i], nextIndent));
+            }
+            return "[\n" + arrParts.join(",\n") + "\n" + indent + "]";
+        }
+        if (t === "object") {
+            var keys = [];
+            for (var k in value) {
+                if (Object.prototype.hasOwnProperty.call(value, k)) keys.push(k);
+            }
+            if (keys.length === 0) return "{}";
+            var nextIndent2 = indent + "  ";
+            var objParts = [];
+            for (var j = 0; j < keys.length; j++) {
+                var key = keys[j];
+                objParts.push(
+                    nextIndent2 + jsonQuote(key) + ": " +
+                    manualStringify(value[key], nextIndent2)
+                );
+            }
+            return "{\n" + objParts.join(",\n") + "\n" + indent + "}";
+        }
+        return "null";
+    }
+
+    function jsonQuote(s) {
+        var out = "\"";
+        for (var i = 0; i < s.length; i++) {
+            var c = s.charAt(i);
+            var code = s.charCodeAt(i);
+            if (c === "\\" || c === "\"") out += "\\" + c;
+            else if (c === "\n") out += "\\n";
+            else if (c === "\r") out += "\\r";
+            else if (c === "\t") out += "\\t";
+            else if (c === "\b") out += "\\b";
+            else if (c === "\f") out += "\\f";
+            else if (code < 0x20) {
+                var hex = code.toString(16);
+                while (hex.length < 4) hex = "0" + hex;
+                out += "\\u" + hex;
+            }
+            else out += c;
+        }
+        return out + "\"";
     }
 })();

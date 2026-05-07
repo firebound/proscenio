@@ -44,7 +44,7 @@
 
     var manifest;
     try {
-        manifest = JSON.parse(raw);
+        manifest = parseJsonText(raw);
     } catch (parseErr) {
         alert("Manifest is not valid JSON: " + parseErr);
         return;
@@ -243,5 +243,19 @@
 
     function isArray(value) {
         return Object.prototype.toString.call(value) === "[object Array]";
+    }
+
+    /**
+     * Parse JSON text. Uses native JSON.parse when available; falls back
+     * to eval() since older ExtendScript builds do not ship the JSON
+     * global. The manifest is trusted local data so eval is acceptable.
+     * @param {string} text
+     */
+    function parseJsonText(text) {
+        if (typeof JSON !== "undefined" && JSON.parse) {
+            return JSON.parse(text);
+        }
+        // eslint-disable-next-line no-eval
+        return eval("(" + text + ")");
     }
 })();

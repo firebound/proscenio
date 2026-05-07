@@ -12,6 +12,10 @@ dev = [
     "check-jsonschema>=0.29",
     "pytest>=8",
     "pre-commit>=4.0",
+    # Pillow is used only by the SPEC 007 fixture builders under
+    # ``scripts/fixtures/`` to generate PNG layers without Blender.
+    # Not bundled with the addon — strictly dev / fixture tooling.
+    "pillow>=10.0",
 ]
 
 [tool.ruff]

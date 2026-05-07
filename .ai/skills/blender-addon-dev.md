@@ -50,11 +50,20 @@ Two suites, two runners:
 # Pure Python (validation, future utility tests) — no Blender needed.
 pytest tests/
 
-# Blender round-trip — re-exports dummy.blend, diffs against the golden fixture.
-blender --background examples/dummy/dummy.blend --python blender-addon/tests/run_tests.py
+# Blender round-trip — walks every fixture under examples/<name>/<name>.blend,
+# re-exports each, diffs against examples/<name>/<name>.expected.proscenio.
+blender --background --python blender-addon/tests/run_tests.py
 ```
 
-Pytest tests use `SimpleNamespace` mocks so the validation module is exercised in isolation. The Blender suite uses the real `bpy` and lives in `blender-addon/tests/`. Fixtures: `blender-addon/tests/fixtures/<name>/expected.proscenio` (golden files for the writer) and `godot-plugin/tests/fixtures/*.proscenio` (importer fixtures).
+Pytest tests use `SimpleNamespace` mocks so the validation module is exercised in isolation. The Blender suite uses the real `bpy` and lives in `blender-addon/tests/`. Goldens live alongside their fixture: `examples/<name>/<name>.expected.proscenio`. Importer-side fixtures stay under `godot-plugin/tests/fixtures/`.
+
+### Adding a fixture
+
+1. Hand-author `examples/<name>/<name>.blend` (mesh objects + armature + materials + weights + actions). For procedural fixtures (`blink_eyes/`, `shared_atlas/`), keep the `scripts/fixtures/build_<name>.py` builder.
+2. For hand-authored fixtures: render layers from the `.blend` with `blender --background examples/<name>/<name>.blend --python scripts/fixtures/render_<name>_layers.py`. For procedural ones: run `python scripts/fixtures/draw_<name>.py` then the `build_<name>.py`.
+3. Generate the golden: `blender --background examples/<name>/<name>.blend --python scripts/fixtures/export_proscenio.py`.
+4. Add `<Name>.tscn` + `<Name>.gd` wrapper following the SPEC 001 pattern (see `examples/doll/Doll.gd` for the canonical template).
+5. Verify locally: `blender --background --python blender-addon/tests/run_tests.py`. The runner auto-discovers the new fixture.
 
 ## Coding rules
 

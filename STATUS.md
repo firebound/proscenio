@@ -33,15 +33,15 @@ flowchart LR
 | `schemas/` | JSON Schema 2020-12 | Contrato compartilhado, source of truth | `format_version=1`, validado em 3 pontos |
 | `examples/dummy/` | mix | Fixture canônica + worked-example wrapper | `.proscenio` hand-written + `.blend` minimal + `.tscn` wrapper |
 
-### O dummy fixture — três artefatos, três papéis
+### O doll fixture — três artefatos, três papéis
 
 | Arquivo | Quem escreve | Sobrevive reimport? |
 | --- | --- | --- |
-| `dummy.proscenio` | Blender / DCC — source of truth | rewritten pelo exporter |
-| `dummy.scn` (gerado) | Godot importer regenera do `.proscenio` | **clobbered** todo reimport |
-| `Dummy.tscn` + `Dummy.gd` | usuário — wrapper scene | **intacto** sempre |
+| `doll.proscenio` | Blender / DCC — source of truth | rewritten pelo exporter |
+| `doll.scn` (gerado) | Godot importer regenera do `.proscenio` | **clobbered** todo reimport |
+| `Doll.tscn` + `Doll.gd` | usuário — wrapper scene | **intacto** sempre |
 
-`Dummy.tscn` instancia `dummy.scn`. Scripts/colisões/AI/extra nodes ficam no wrapper, não na imported scene. Esta é a resolução da **SPEC 001 Option A** — full overwrite + wrapper pattern.
+`Doll.tscn` instancia `doll.scn`. Scripts/colisões/AI/extra nodes ficam no wrapper, não na imported scene. Esta é a resolução da **SPEC 001 Option A** — full overwrite + wrapper pattern.
 
 ### Decisões arquiteturais trancadas
 
@@ -66,8 +66,8 @@ flowchart TD
     CI --> LP[lint-python: ruff + mypy strict]
     CI --> LG[lint-gdscript: gdformat + gdlint]
     CI --> VS[validate-schema: check-jsonschema]
-    CI --> TB[test-blender: re-export dummy.blend + diff fixture]
-    CI --> TG[test-godot: build dummy + idempotency check]
+    CI --> TB[test-blender: walk examples/*/.blend + diff goldens]
+    CI --> TG[test-godot: importer fixtures + idempotency check]
     LP --> MERGE[merge → main]
     LG --> MERGE
     VS --> MERGE
@@ -103,9 +103,9 @@ flowchart TD
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
 | Test assertions Python | 46 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8 + uv_bounds 8) |
-| Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
+| Test fixtures Blender | 3 golden diffs auto-walked pelo `run_tests.py` (`examples/doll`, `examples/blink_eyes`, `examples/shared_atlas`). Legacy `examples/dummy/` + `examples/effect/` retired (Type B importer-only fixtures under `godot-plugin/tests/fixtures/` mantidas) |
 | CI jobs | 5 (lint-python agora roda pytest também) |
-| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004) |
+| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004), 1 design-only (007) |
 
 ## O que está em andamento
 
@@ -192,13 +192,14 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 first-cut + 5.1.a + 5.1.b com merge feito. 5.1.c.1 em PR #8. Fix bundle em PR #9. 5.1.c.2 em branch atual. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 wave fechada (first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 merged). PRs em revisão: #12 (5.1.c.2.1 sliced atlas), #13 (5.1.c.2.2 Unpack). SPEC 007 (testing fixtures) em implementação — `doll/` com `doll.blend` autorado à mão + `render_doll_layers.py` (rendering bpy headless do `.blend` em layers PNG flat-shaded), faltando golden + Godot wrapper + outras fixtures (`blink_eyes/`, `shared_atlas/`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge sequencial das PRs #8 → #9 → 5.1.c.2** — fecha região + fixes + packer.
-2. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping.
-3. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
-4. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
-5. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
+1. **CI verde + merge das PRs #12 → #13** — fecha o atlas track.
+2. **SPEC 007 fixtures** — finalizar `doll.expected.proscenio` + `Doll.tscn` / `Doll.gd`, gerar `blink_eyes.blend` + `shared_atlas.blend` com seus goldens + Godot wrappers, parametrizar CI `test-blender`. Cobre o gap de testes pro workflow `1 sprite = 1 PNG` e pro `sprite_frame` com animação real.
+3. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping. Lock convention vem da SPEC 007 D4.
+4. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
+5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+6. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

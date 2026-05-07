@@ -71,9 +71,9 @@ jobs:
           mkdir -p ~/blender
           curl -fL "https://download.blender.org/release/Blender5.1/blender-5.1.1-linux-x64.tar.xz" \
             | tar -xJ -C ~/blender --strip-components=1
-      - name: Re-export dummy fixture and diff
+      - name: Re-export every fixture and diff against goldens
         run: |
-          ~/blender/blender --background examples/dummy/dummy.blend \
+          ~/blender/blender --background \
             --python blender-addon/tests/run_tests.py
 
   test-godot:

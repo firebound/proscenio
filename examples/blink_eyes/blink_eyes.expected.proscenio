@@ -1,0 +1,35 @@
+{
+  "format_version": 1,
+  "name": "blink_eyes",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "head",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      }
+    ]
+  },
+  "sprites": [
+    {
+      "type": "sprite_frame",
+      "name": "eye",
+      "bone": "head",
+      "hframes": 4,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true
+    }
+  ],
+  "atlas": "eye_spritesheet.png"
+}

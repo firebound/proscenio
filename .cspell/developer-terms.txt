@@ -8,6 +8,8 @@ contextlib
 crossfade
 datablock
 dataclass
+dbproj
+diffable
 discriminator
 dotnet
 euler
@@ -44,6 +46,8 @@ pyproject
 pytest
 pytexturepacker
 rebakes
+rebuildable
+rebuilder
 relinks
 reproject
 reprojected
@@ -52,6 +56,7 @@ shapekey
 shapekeys
 shopt
 softprops
+spriteframe
 spriteobject
 spritesheet
 spritesheets

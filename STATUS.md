@@ -33,15 +33,15 @@ flowchart LR
 | `schemas/` | JSON Schema 2020-12 | Contrato compartilhado, source of truth | `format_version=1`, validado em 3 pontos |
 | `examples/dummy/` | mix | Fixture canônica + worked-example wrapper | `.proscenio` hand-written + `.blend` minimal + `.tscn` wrapper |
 
-### O dummy fixture — três artefatos, três papéis
+### O doll fixture — três artefatos, três papéis
 
 | Arquivo | Quem escreve | Sobrevive reimport? |
 | --- | --- | --- |
-| `dummy.proscenio` | Blender / DCC — source of truth | rewritten pelo exporter |
-| `dummy.scn` (gerado) | Godot importer regenera do `.proscenio` | **clobbered** todo reimport |
-| `Dummy.tscn` + `Dummy.gd` | usuário — wrapper scene | **intacto** sempre |
+| `doll.proscenio` | Blender / DCC — source of truth | rewritten pelo exporter |
+| `doll.scn` (gerado) | Godot importer regenera do `.proscenio` | **clobbered** todo reimport |
+| `Doll.tscn` + `Doll.gd` | usuário — wrapper scene | **intacto** sempre |
 
-`Dummy.tscn` instancia `dummy.scn`. Scripts/colisões/AI/extra nodes ficam no wrapper, não na imported scene. Esta é a resolução da **SPEC 001 Option A** — full overwrite + wrapper pattern.
+`Doll.tscn` instancia `doll.scn`. Scripts/colisões/AI/extra nodes ficam no wrapper, não na imported scene. Esta é a resolução da **SPEC 001 Option A** — full overwrite + wrapper pattern.
 
 ### Decisões arquiteturais trancadas
 
@@ -66,8 +66,8 @@ flowchart TD
     CI --> LP[lint-python: ruff + mypy strict]
     CI --> LG[lint-gdscript: gdformat + gdlint]
     CI --> VS[validate-schema: check-jsonschema]
-    CI --> TB[test-blender: re-export dummy.blend + diff fixture]
-    CI --> TG[test-godot: build dummy + idempotency check]
+    CI --> TB[test-blender: walk examples/*/.blend + diff goldens]
+    CI --> TG[test-godot: importer fixtures + idempotency check]
     LP --> MERGE[merge → main]
     LG --> MERGE
     VS --> MERGE

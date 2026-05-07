@@ -107,8 +107,7 @@ def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     fv = _require_field(raw, "format_version", "<root>")
     if fv != MANIFEST_FORMAT_VERSION:
         raise ManifestError(
-            f"unsupported manifest format_version {fv!r}; expected "
-            f"{MANIFEST_FORMAT_VERSION}"
+            f"unsupported manifest format_version {fv!r}; expected {MANIFEST_FORMAT_VERSION}"
         )
     doc = _require_field(raw, "doc", "<root>")
     if not isinstance(doc, str) or not doc:
@@ -116,9 +115,7 @@ def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     size = _parse_uint_pair(_require_field(raw, "size", "<root>"), "<root>.size")
     ppu = _require_field(raw, "pixels_per_unit", "<root>")
     if not isinstance(ppu, (int, float)) or ppu <= 0:
-        raise ManifestError(
-            f"<root>.pixels_per_unit must be a positive number, got {ppu!r}"
-        )
+        raise ManifestError(f"<root>.pixels_per_unit must be a positive number, got {ppu!r}")
     layers_raw = _require_field(raw, "layers", "<root>")
     if not isinstance(layers_raw, list):
         raise ManifestError(f"<root>.layers must be an array, got {type(layers_raw).__name__}")
@@ -146,9 +143,7 @@ def _parse_layer(entry: Any, idx: int) -> Layer:
         return _parse_polygon(entry, label)
     if kind == "sprite_frame":
         return _parse_sprite_frame(entry, label)
-    raise ManifestError(
-        f"{label}.kind must be 'polygon' or 'sprite_frame', got {kind!r}"
-    )
+    raise ManifestError(f"{label}.kind must be 'polygon' or 'sprite_frame', got {kind!r}")
 
 
 def _parse_polygon(entry: dict[str, Any], label: str) -> PolygonLayer:
@@ -177,12 +172,8 @@ def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
     z_order = _require_uint(entry, "z_order", label)
     frames_raw = _require_field(entry, "frames", label)
     if not isinstance(frames_raw, list) or len(frames_raw) < 2:
-        raise ManifestError(
-            f"{label}.frames must be an array of >= 2 entries, got {frames_raw!r}"
-        )
-    frames = tuple(
-        _parse_frame(f, f"{label}.frames[{i}]") for i, f in enumerate(frames_raw)
-    )
+        raise ManifestError(f"{label}.frames must be an array of >= 2 entries, got {frames_raw!r}")
+    frames = tuple(_parse_frame(f, f"{label}.frames[{i}]") for i, f in enumerate(frames_raw))
     extra = set(entry) - {"kind", "name", "position", "size", "z_order", "frames"}
     if extra:
         raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
@@ -227,9 +218,7 @@ def _require_str(entry: dict[str, Any], key: str, label: str) -> str:
 def _require_uint(entry: dict[str, Any], key: str, label: str) -> int:
     value = _require_field(entry, key, label)
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise ManifestError(
-            f"{label}.{key} must be a non-negative integer, got {value!r}"
-        )
+        raise ManifestError(f"{label}.{key} must be a non-negative integer, got {value!r}")
     return value
 
 
@@ -245,7 +234,5 @@ def _parse_uint_pair(value: Any, label: str) -> tuple[int, int]:
         or a < 0
         or b < 0
     ):
-        raise ManifestError(
-            f"{label} must contain non-negative integers, got {value!r}"
-        )
+        raise ManifestError(f"{label} must contain non-negative integers, got {value!r}")
     return (a, b)

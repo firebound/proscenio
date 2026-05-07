@@ -58,9 +58,7 @@ def match_indexed_frame(name: str) -> IndexedName | None:
         return IndexedName(base="", index=int(pure.group(1)), convention="digit")
     framed = _FRAME_PREFIX_RE.match(name)
     if framed is not None:
-        return IndexedName(
-            base="", index=int(framed.group(1)), convention="frame_prefix"
-        )
+        return IndexedName(base="", index=int(framed.group(1)), convention="frame_prefix")
     grouped = _GROUP_PREFIX_RE.match(name)
     if grouped is not None:
         return IndexedName(

@@ -1,24 +1,24 @@
 // @ts-check
-// Proscenio — Photoshop importer
+// Proscenio -- Photoshop importer
 // Reads a SPEC 006 v1 PSD manifest (matches schemas/psd_manifest.schema.json)
 // and stamps every layer into a fresh PSD document at its declared
 // `position` and `size`. Used to bootstrap test PSDs from existing
 // Blender fixtures (e.g. examples/doll/) without authoring by hand.
 //
-// Run: File > Scripts > Browse... → proscenio_import.jsx → pick manifest.json.
+// Run: File > Scripts > Browse... -> proscenio_import.jsx -> pick manifest.json.
 //
 // Conventions:
-// - kind=polygon → single layer, name = manifest layer name.
-// - kind=sprite_frame → LayerSet with the manifest layer name; child
+// - kind=polygon -> single layer, name = manifest layer name.
+// - kind=sprite_frame -> LayerSet with the manifest layer name; child
 //   layers named by frame index (matches the Wave 6.1 exporter D9
 //   primary mechanism).
 // - Layers stamped in z_order DESCENDING (so the lowest z_order ends up
-//   on top in the Photoshop layer stack — matches the export-side
+//   on top in the Photoshop layer stack -- matches the export-side
 //   convention where z_order 0 is the front layer).
 // - Hidden layers in the source manifest are still emitted but left
 //   visible (manifest does not carry visibility metadata).
 //
-// Compatible with Photoshop CC 2015 and later — uses `var`, string
+// Compatible with Photoshop CC 2015 and later -- uses `var`, string
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -85,7 +85,7 @@
     );
 
     // Photoshop layer stack: first added = bottom. Manifest z_order 0 =
-    // front, so iterate descending → highest z_order added first
+    // front, so iterate descending -> highest z_order added first
     // (bottom of stack), z_order 0 added last (top of stack).
     var layers = manifest.layers.slice();
     layers.sort(function (a, b) { return b.z_order - a.z_order; });
@@ -98,7 +98,7 @@
         } else if (entry.kind === "sprite_frame") {
             if (stampSpriteFrame(doc, entry, manifestDir)) stamped += 1;
         } else {
-            // Unknown kind — skip rather than abort, so a partial import
+            // Unknown kind -- skip rather than abort, so a partial import
             // still surfaces every layer the importer does understand.
         }
     }
@@ -116,7 +116,7 @@
 
     alert(
         "Proscenio import complete:\n" +
-        stamped + " entry(ies) stamped → " + savePath.fsName
+        stamped + " entry(ies) stamped -> " + savePath.fsName
     );
 
     /**
@@ -208,7 +208,7 @@
         var srcW = srcRight - srcLeft;
         var srcH = srcBottom - srcTop;
 
-        // Sanity warning when manifest size disagrees with PNG bounds —
+        // Sanity warning when manifest size disagrees with PNG bounds --
         // this can happen when frames are padded by the importer post-export
         // (D10) or when the rendered PNG was trimmed.
         if (Math.abs(srcW - expectedW) > 1 || Math.abs(srcH - expectedH) > 1) {
@@ -216,7 +216,7 @@
                 "[proscenio_import] " + pngFile.name +
                 " bounds " + srcW + "x" + srcH +
                 " differ from manifest " + expectedW + "x" + expectedH +
-                " — using PNG bounds for placement."
+                " -- using PNG bounds for placement."
             );
         }
 

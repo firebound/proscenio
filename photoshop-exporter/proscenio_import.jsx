@@ -110,7 +110,9 @@
     psdOpts.embedColorProfile = true;
     psdOpts.layers = true;
     psdOpts.spotColors = false;
-    doc.saveAs(savePath, psdOpts, true, Extension.LOWERCASE);
+    // asCopy = false so the open doc is associated with the saved file
+    // (otherwise subsequent calls to doc.path throw "document not saved").
+    doc.saveAs(savePath, psdOpts, false, Extension.LOWERCASE);
 
     alert(
         "Proscenio import complete:\n" +

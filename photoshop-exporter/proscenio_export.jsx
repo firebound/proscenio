@@ -51,6 +51,15 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
     }
 
     var doc = app.activeDocument;
+    if (doc.saved === false) {
+        alert(
+            "Save the document first.\n\n" +
+            "The Proscenio exporter writes the manifest + layer PNGs " +
+            "next to the .psd file, so the document must already be on " +
+            "disk (File > Save) before running the export."
+        );
+        return;
+    }
     var docPath = doc.path;
     var docName = doc.name.replace(/\.[^.]+$/, "");
     var outDir = new Folder(docPath + "/" + docName);

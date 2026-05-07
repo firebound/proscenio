@@ -25,7 +25,6 @@ import bpy
 
 from ...core import psd_manifest  # type: ignore[import-not-found]
 from ...core.psd_spritesheet import compose_spritesheet  # type: ignore[import-not-found]
-from .armature import ROOT_BONE_NAME
 
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
@@ -195,10 +194,19 @@ def _attach_material(obj: bpy.types.Object, image_path: Path) -> None:
 
 
 def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
-    """Parent ``obj`` to the armature's root bone (D3 stub armature)."""
+    """Parent ``obj`` to the armature object (D3 stub armature).
+
+    Uses ``parent_type='OBJECT'`` rather than ``parent_type='BONE'``
+    because bone-parenting rotates the child so its local Y aligns
+    with the bone's direction (Blender bone-Y == bone-axis).
+    With a conventional vertical root bone (pointing +Z) that flip
+    would rotate every mesh out of the XZ world plane, leaving the
+    figure visible only in Top Ortho instead of Front Ortho.
+    Object-parenting keeps the mesh's authored XZ orientation.
+    Per-bone vertex weights for posing land in a future wave.
+    """
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = ROOT_BONE_NAME
+    obj.parent_type = "OBJECT"
 
 
 def _tag_origin(obj: bpy.types.Object, layer_name: str) -> None:

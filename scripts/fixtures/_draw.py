@@ -113,6 +113,62 @@ def triangle(
     canvas.draw.polygon([p0, p1, p2], fill=_to_pil_color(color))
 
 
+def capsule(canvas: Canvas, color: RGBA, padding: int = 1) -> None:
+    """Capsule filling the canvas — rounded rect with semicircle caps.
+
+    Auto-orients: vertical capsule when ``height >= width``, horizontal
+    otherwise. Caps are drawn on the short axis. Padding leaves a 1px
+    transparent margin so any outline drawn separately does not bleed
+    off the canvas edge.
+    """
+    w = canvas.width - padding * 2
+    h = canvas.height - padding * 2
+    if w <= 0 or h <= 0:
+        return
+    fill_color = _to_pil_color(color)
+    if h >= w:
+        radius = w / 2.0
+        # Degenerate (caps overlap) → single disc fits the canvas.
+        if 2 * radius >= h - 1:
+            canvas.draw.ellipse(
+                [(padding, padding), (padding + w - 1, padding + h - 1)],
+                fill=fill_color,
+            )
+            return
+        canvas.draw.rectangle(
+            [(padding, padding + radius), (padding + w - 1, padding + h - 1 - radius)],
+            fill=fill_color,
+        )
+        canvas.draw.ellipse(
+            [(padding, padding), (padding + w - 1, padding + 2 * radius - 1)],
+            fill=fill_color,
+        )
+        canvas.draw.ellipse(
+            [(padding, padding + h - 1 - 2 * radius), (padding + w - 1, padding + h - 1)],
+            fill=fill_color,
+        )
+    else:
+        radius = h / 2.0
+        if 2 * radius >= w - 1:
+            canvas.draw.ellipse(
+                [(padding, padding), (padding + w - 1, padding + h - 1)],
+                fill=fill_color,
+            )
+            return
+        canvas.draw.rectangle(
+            [(padding + radius, padding), (padding + w - 1 - radius, padding + h - 1)],
+            fill=fill_color,
+        )
+        canvas.draw.ellipse(
+            [(padding, padding), (padding + 2 * radius - 1, padding + h - 1)],
+            fill=fill_color,
+        )
+        canvas.draw.ellipse(
+            [(padding + w - 1 - 2 * radius, padding), (padding + w - 1, padding + h - 1)],
+            fill=fill_color,
+        )
+
+
 def trapezoid(
     canvas: Canvas,
     x: float,

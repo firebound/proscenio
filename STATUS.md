@@ -103,7 +103,7 @@ flowchart TD
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
 | Test assertions Python | 38 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8) |
-| Test fixtures Blender | 1 golden diff (`dummy/expected.proscenio`); Godot test fixtures: `dummy`, `effect`, `skinned_dummy` |
+| Test fixtures Blender | 3 golden diffs auto-walked pelo `run_tests.py` (`examples/doll`, `examples/blink_eyes`, `examples/shared_atlas`). Legacy `dummy` + `effect` + `skinned_dummy` retiráveis numa próxima PR (SPEC 007 Step 4) |
 | CI jobs | 5 (lint-python agora roda pytest também) |
 | SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004), 1 design-only (007) |
 
@@ -192,10 +192,10 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 wave fechada (first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 merged). PRs em revisão: #12 (5.1.c.2.1 sliced atlas), #13 (5.1.c.2.2 Unpack). SPEC 007 (testing fixtures) em design — primeira PR é só docs, depois implementação dos fixtures `simple_doll` + `blink_eyes`. Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 005 wave fechada (first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 merged). PRs em revisão: #12 (5.1.c.2.1 sliced atlas), #13 (5.1.c.2.2 Unpack). SPEC 007 (testing fixtures) em implementação — `doll/` com `doll.blend` autorado à mão + `render_doll_layers.py` (rendering bpy headless do `.blend` em layers PNG flat-shaded), faltando golden + Godot wrapper + outras fixtures (`blink_eyes/`, `shared_atlas/`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
 1. **CI verde + merge das PRs #12 → #13** — fecha o atlas track.
-2. **SPEC 007 fixtures** — implementar `scripts/fixtures/build_simple_doll.py` + `build_blink_eyes.py`, gerar `.blend` + golden `.proscenio`, parametrizar CI test-blender. Cobre o gap de testes pro workflow `1 sprite = 1 PNG` e pro `sprite_frame` com animação real.
+2. **SPEC 007 fixtures** — finalizar `doll.expected.proscenio` + `Doll.tscn` / `Doll.gd`, gerar `blink_eyes.blend` + `shared_atlas.blend` com seus goldens + Godot wrappers, parametrizar CI `test-blender`. Cobre o gap de testes pro workflow `1 sprite = 1 PNG` e pro `sprite_frame` com animação real.
 3. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping. Lock convention vem da SPEC 007 D4.
 4. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
 5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.

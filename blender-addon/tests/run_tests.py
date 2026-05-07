@@ -1,32 +1,59 @@
-"""Headless Proscenio test runner.
+"""Headless Proscenio fixture test runner.
 
 Invoke from the repository root:
 
-    blender --background examples/dummy/dummy.blend \\
-        --python blender-addon/tests/run_tests.py
+    blender --background --python blender-addon/tests/run_tests.py
 
-The script runs inside Blender's bundled Python and has access to `bpy`.
-Re-exports the dummy fixture and diffs the result against
-`tests/fixtures/dummy/expected.proscenio`. Output is normalized via
-`json.dumps(sort_keys=True)` before comparison so dict ordering and
-trailing whitespace do not flap.
+Walks every fixture under ``examples/*/`` that owns a paired
+``<name>.blend`` + ``<name>.expected.proscenio``. For each pair, opens
+the ``.blend``, runs the addon writer, validates the JSON against
+``schemas/proscenio.schema.json`` (when ``jsonschema`` is available in
+Blender's bundled Python), and diffs the actual output against the
+golden. Exits non-zero on the first failure.
+
+Output is normalized via ``json.dumps(sort_keys=True, indent=2)`` before
+comparison so dict ordering and trailing whitespace do not flap.
 """
 
 from __future__ import annotations
 
 import difflib
+import importlib.util
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
+import bpy
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+ADDON_PATH = REPO_ROOT / "blender-addon"
+ADDON_PACKAGE = "proscenio"
+EXAMPLES_DIR = REPO_ROOT / "examples"
+SCHEMA_PATH = REPO_ROOT / "schemas" / "proscenio.schema.json"
 
-from exporters.godot import writer  # noqa: E402  — sys.path setup above
 
-EXPECTED = REPO_ROOT / "blender-addon" / "tests" / "fixtures" / "dummy" / "expected.proscenio"
-SCHEMA = REPO_ROOT / "schemas" / "proscenio.schema.json"
+def _load_addon_as_package() -> None:
+    """Register ``blender-addon/`` under sys.modules as ``proscenio``.
+
+    The addon's submodules use relative imports rooted at the package
+    name declared in its manifest (``proscenio``). The folder on disk
+    has a hyphen which is not a valid identifier, so we install it as a
+    synthetic package under the manifest name.
+    """
+    if ADDON_PACKAGE in sys.modules:
+        return
+    init_path = ADDON_PATH / "__init__.py"
+    spec = importlib.util.spec_from_file_location(
+        ADDON_PACKAGE,
+        init_path,
+        submodule_search_locations=[str(ADDON_PATH)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not build import spec for {init_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[ADDON_PACKAGE] = module
+    spec.loader.exec_module(module)
 
 
 def _normalize(doc: dict[str, Any]) -> str:
@@ -34,24 +61,18 @@ def _normalize(doc: dict[str, Any]) -> str:
 
 
 def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
-    """Return a list of schema violations for `doc`, empty if valid.
+    """Return schema violations for ``doc``, empty if valid.
 
-    Falls back gracefully if `jsonschema` is not in Blender's bundled Python
-    (it usually is not). Returns an empty list with a stderr note in that
-    case so the test still proves the writer round-trip — schema enforcement
-    in CI happens in the dedicated `validate-schema` job.
+    Falls back gracefully if ``jsonschema`` is not in Blender's bundled
+    Python (it usually is not). Returns ``[]`` with a stderr note in
+    that case so the test still proves the writer round-trip — schema
+    enforcement happens in the dedicated ``validate-schema`` CI job.
     """
     try:
         import jsonschema  # type: ignore[import-untyped]
     except ImportError:
-        print(
-            "NOTE: jsonschema not in Blender's Python — skipping in-process "
-            "schema validation (CI's validate-schema job covers this).",
-            file=sys.stderr,
-        )
         return []
-
-    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     validator = jsonschema.Draft202012Validator(schema)
     return [
         f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}"
@@ -59,44 +80,78 @@ def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
     ]
 
 
-def main() -> int:
-    if not EXPECTED.exists():
-        print(f"FAIL: missing fixture {EXPECTED}", file=sys.stderr)
-        return 1
+def _discover_fixtures() -> list[tuple[Path, Path]]:
+    """Find every ``examples/<name>/<name>.blend`` paired with a golden.
 
-    out_path = EXPECTED.with_name("actual.proscenio")
-    writer.export(out_path, pixels_per_unit=100.0)
+    Returns a sorted list of ``(blend_path, expected_path)`` tuples.
+    """
+    pairs: list[tuple[Path, Path]] = []
+    for fixture_dir in sorted(EXAMPLES_DIR.iterdir()):
+        if not fixture_dir.is_dir():
+            continue
+        name = fixture_dir.name
+        blend = fixture_dir / f"{name}.blend"
+        expected = fixture_dir / f"{name}.expected.proscenio"
+        if blend.exists() and expected.exists():
+            pairs.append((blend, expected))
+    return pairs
 
-    actual = json.loads(out_path.read_text(encoding="utf-8"))
-    expected = json.loads(EXPECTED.read_text(encoding="utf-8"))
+
+def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
+    """Open ``blend``, re-export, validate + diff. Return True on pass."""
+    print(f"--- {blend.parent.name}", flush=True)
+    bpy.ops.wm.open_mainfile(filepath=str(blend))
+    actual_path = expected.with_name(expected.stem + ".actual.proscenio")
+    writer_module.export(actual_path, pixels_per_unit=100.0)
+    actual = json.loads(actual_path.read_text(encoding="utf-8"))
+    expected_doc = json.loads(expected.read_text(encoding="utf-8"))
 
     schema_errors = _validate_against_schema(actual)
     if schema_errors:
-        print("FAIL: writer output is not schema-valid", file=sys.stderr)
+        print(f"FAIL ({blend.parent.name}): writer output is not schema-valid", file=sys.stderr)
         for err in schema_errors:
             print(f"  - {err}", file=sys.stderr)
-        return 1
+        return False
 
     actual_s = _normalize(actual)
-    expected_s = _normalize(expected)
-
+    expected_s = _normalize(expected_doc)
     if actual_s == expected_s:
-        out_path.unlink()
-        print("PASS: writer output matches expected fixture")
-        return 0
+        actual_path.unlink()
+        print(f"PASS ({blend.parent.name})")
+        return True
 
     diff = difflib.unified_diff(
         expected_s.splitlines(),
         actual_s.splitlines(),
-        fromfile=EXPECTED.name,
-        tofile="actual.proscenio",
+        fromfile=expected.name,
+        tofile=actual_path.name,
         lineterm="",
     )
-    print("FAIL: writer output differs from expected fixture", file=sys.stderr)
+    print(f"FAIL ({blend.parent.name}): writer output differs from golden", file=sys.stderr)
     for line in diff:
         print(line, file=sys.stderr)
-    print(f"\nactual written to: {out_path}", file=sys.stderr)
-    return 1
+    print(f"\nactual written to: {actual_path}", file=sys.stderr)
+    return False
+
+
+def main() -> int:
+    _load_addon_as_package()
+    from proscenio.exporters.godot import writer  # type: ignore[import-not-found]
+
+    fixtures = _discover_fixtures()
+    if not fixtures:
+        print("FAIL: no fixtures found under examples/", file=sys.stderr)
+        return 1
+
+    failures = 0
+    for blend, expected in fixtures:
+        if not _run_one(blend, expected, writer):
+            failures += 1
+
+    total = len(fixtures)
+    passed = total - failures
+    print(f"\n{passed}/{total} fixture(s) passed")
+    return 0 if failures == 0 else 1
 
 
 if __name__ == "__main__":

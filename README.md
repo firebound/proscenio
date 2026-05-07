@@ -31,7 +31,7 @@ The MVP is in progress. Full quickstart will land with the first end-to-end samp
 1. Author the character in Blender — bones, sprites, animations. Use the **Proscenio sidebar** (N-key → Proscenio tab) to set sprite type, sprite_frame metadata, sticky export path, and run validation before export. Raw Custom Properties remain a power-user fallback. See [`.ai/skills/blender-addon-dev.md`](.ai/skills/blender-addon-dev.md) for the panel walkthrough.
 2. Run the Proscenio **Export** (or **Re-export** after the first save) — the panel gates on validation; errors block the write.
 3. Drop the `.proscenio` (and its atlas) into your Godot project. The importer regenerates a `.scn` automatically on every reimport.
-4. **Wrap the imported scene** — instance the generated `.scn` in your own `.tscn` and attach scripts there. Scripts and extra nodes on the wrapper survive every re-export from Blender; the imported scene itself is regenerated each time. See [`examples/dummy/`](examples/dummy/) for the worked pattern.
+4. **Wrap the imported scene** — instance the generated `.scn` in your own `.tscn` and attach scripts there. Scripts and extra nodes on the wrapper survive every re-export from Blender; the imported scene itself is regenerated each time. See [`examples/doll/`](examples/doll/) for the comprehensive showcase, plus [`examples/blink_eyes/`](examples/blink_eyes/) (sprite_frame isolation test) and [`examples/shared_atlas/`](examples/shared_atlas/) (sliced atlas isolation test) for feature-focused fixtures.
 5. Re-export from Blender whenever the rig or animation changes. Reimport is automatic.
 
 ## Documentation

@@ -16,6 +16,7 @@ the output path from the .blend stem, and invokes
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -23,11 +24,33 @@ import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ADDON_PATH = REPO_ROOT / "blender-addon"
+ADDON_PACKAGE = "proscenio"  # matches blender-addon/blender_manifest.toml `id`
 
-# Make the addon's package importable. The addon is normally loaded as a
-# Blender extension; here we import directly so the script runs even when
-# the extension is not enabled in the headless environment.
-sys.path.insert(0, str(ADDON_PATH))
+
+def _load_addon_as_package() -> None:
+    """Register ``blender-addon/`` under sys.modules as ``proscenio``.
+
+    The addon ships as a Blender extension named ``proscenio`` (per its
+    manifest), and its submodules use relative imports rooted at that
+    package name (e.g. ``from ...core import region``). Loading the
+    extension via Blender's ``addon_utils`` is fragile in headless mode,
+    so instead we install the directory as a synthetic package under
+    that name. Subsequent ``from proscenio.X import Y`` calls resolve
+    naturally.
+    """
+    if ADDON_PACKAGE in sys.modules:
+        return
+    init_path = ADDON_PATH / "__init__.py"
+    spec = importlib.util.spec_from_file_location(
+        ADDON_PACKAGE,
+        init_path,
+        submodule_search_locations=[str(ADDON_PATH)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not build import spec for {init_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[ADDON_PACKAGE] = module
+    spec.loader.exec_module(module)
 
 
 def main() -> None:
@@ -41,8 +64,8 @@ def main() -> None:
     blend_path = Path(blend)
     out_path = blend_path.parent / f"{blend_path.stem}.expected.proscenio"
 
-    # Import lazily so the script can boot even with no addon registered.
-    from exporters.godot import writer  # type: ignore[import-not-found]
+    _load_addon_as_package()
+    from proscenio.exporters.godot import writer  # type: ignore[import-not-found]
 
     writer.export(out_path, pixels_per_unit=100.0)
     print(f"[export_proscenio] wrote {out_path}")

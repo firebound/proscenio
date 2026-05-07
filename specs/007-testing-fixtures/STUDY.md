@@ -39,7 +39,7 @@ In v1 of SPEC 007, only Type A fixtures ship. Type B starts when an actual edge 
 
 | Fixture | Role | Rough size |
 |---|---|---|
-| **`doll/`** | **Comprehensive showcase.** Full humanoid rig (~37 bones), sprites covering polygon + sprite_frame + IK + multi-bone weights + multi-action authoring. The fixture grows as new features ship — SPEC 004 adds a slot, SPEC 008 adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~25 sprites, ~5 actions, evolving |
+| **`doll/`** | **Comprehensive showcase.** Full humanoid rig + per-body-part meshes covering polygon + sprite_frame + multi-bone weights + multi-action authoring. The fixture grows as new features ship — SPEC 004 adds a slot, SPEC 008 adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~22 sprite meshes, ~4 actions, evolving |
 | **`blink_eyes/`** | **Sprite_frame end-to-end isolation test.** A single sprite_frame mesh + 1 spritesheet PNG + 1 action animating frame index. Tests writer→`.proscenio`→importer for the sprite_frame path. | 1 sprite, 1 action, ~150 LOC builder |
 | **`shared_atlas/`** | **Sliced atlas packer isolation test.** Three quads referencing one shared atlas PNG with partial UV bounds. Tests the slicing logic introduced in SPEC 005.1.c.2.1. | 3 sprites, no animation, ~120 LOC builder |
 
@@ -49,72 +49,23 @@ The three together cover every feature path end-to-end. `dummy/`, `effect/`, `sk
 
 ### Skeleton
 
-37 bones in a Rigify-inspired but simplified humanoid:
-
-```
-root
-├── pelvis.L                 (asymmetric pelvis bones — wiggle / hip motion)
-├── pelvis.R
-├── thigh.L → shin.L → foot.L
-├── thigh.R → shin.R → foot.R
-└── spine
-    └── spine.001
-        └── spine.002
-            └── spine.003
-                ├── breast.L
-                ├── breast.R
-                ├── shoulder.L
-                │   └── upper_arm.L → forearm.L → hand.L → finger.001.L → finger.002.L
-                ├── shoulder.R
-                │   └── upper_arm.R → forearm.R → hand.R → finger.001.R → finger.002.R
-                └── neck
-                    └── head
-                        └── face
-                            ├── brow.L
-                            ├── brow.R
-                            ├── ear.L
-                            ├── ear.R
-                            ├── eye.L
-                            ├── eye.R
-                            ├── jaw
-                            ├── lip.T
-                            └── lip.B
-```
-
-`pelvis.L/R` are intentionally asymmetric — useful for hip-sway / butt-jiggle weight paint demos.
+The armature is authored inside `doll.blend` (`doll.rig`). Hierarchy mirrors a simplified humanoid: root → pelvis split + leg chain (thigh / shin / foot) on each side, plus a 4-segment spine column ending at the neck → head with the usual face attachments (brow, ear, eye, lip). The arms branch off the upper spine (shoulder → arm → forearm → hand). `doll.blend` is the source of truth — read it in Blender for the exact bone names and counts.
 
 ### Sprite layout
 
-| Region | Mesh kind | Rationale |
+Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blender `.L` / `.R` symmetric convention (D8). Sprite kinds:
+
+| Mesh kind | Examples | Rationale |
 |---|---|---|
-| `pelvis_block`, `spine_block` | polygon, weighted across N bones | Demonstrates multi-bone weight paint distribution. Pelvis mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R`; spine mesh weighted across all 4 spine bones with falloff. |
-| `head_base`, `breast.L`, `breast.R`, `arm.L`, `arm.R`, `hand.L`, `hand.R`, `leg.L`, `leg.R`, `foot.L`, `foot.R` | polygon, single primary bone | Standard parented sprites. |
-| `eye.L`, `eye.R` | sprite_frame | 4 frames each (open / mid / closing / closed). Driven by `blink` action. |
-| `lip.T`, `lip.B` | sprite_frame (later) | Phoneme frames for talking. Defer until needed. |
-| `brow.L`, `brow.R` | polygon, swap-ready | Slot system (SPEC 004) will swap between brow-up / brow-down attachments. |
-| `forearm.L`, `forearm.R` | polygon, **driver-driven texture swap** | Driver on `forearm` rotation flips between front/back forearm sprite. Lands when SPEC 004 + driver shortcut (5.1.d) ship. |
+| polygon, single primary bone | `head`, `chest`, `belly`, `waist`, `arm.L/R`, `forearm.L/R`, `hand.L/R`, `leg.L/R`, `thigh.L/R`, `foot.L/R`, `brow.L/R`, `ear.L/R` | Standard parented sprites. |
+| polygon, multi-bone weights | `chest` / `belly` / `waist` (weighted across the spine chain), pelvic meshes weighted across `pelvis.L`/`pelvis.R` | Demonstrates weight-paint distribution + falloff. |
+| sprite_frame | `eye.L`, `eye.R` | 4 frames (open / mid / closing / closed). Driven by the `blink` action. |
+| polygon, slot-ready | `brow.L`, `brow.R` | Future home for the slot system (SPEC 004) swapping brow-up / brow-down. |
+| polygon, driver-driven texture swap | `forearm.L`, `forearm.R` | Driver on `forearm` rotation flips front/back forearm sprite. Lands when SPEC 004 + driver shortcut (5.1.d) ship. |
 
 ### Visual style
 
-Geometric primitives — squares, circles, triangles, rectangles, trapezoids — colored regionally. Reasoning: makes weight-paint smearing obviously visible; avoids art commitment; reproducible; readable in screenshots.
-
-| Region | Shape | Color |
-|---|---|---|
-| Head base | circle | warm beige |
-| Eyes | smaller circle (per frame: open/squinting/closed) | white + dark pupil |
-| Brows | thin rectangle | dark brown |
-| Ears | small triangle | beige |
-| Jaw / lips | rectangle / thin rectangle | beige + red |
-| Neck | rectangle (cylinder-ish) | beige |
-| Spine block | tall rectangle | blue |
-| Pelvis block | trapezoid | navy |
-| Breasts | small circles | blue (lighter) |
-| Shoulders | circles | green |
-| Arms / forearms | rectangles | green |
-| Hands | square | green-pale |
-| Fingers | small rectangles | same |
-| Thighs / shins | rectangles | gold |
-| Feet | trapezoid | brown |
+Each mesh in `doll.blend` carries a flat-color material. `render_doll_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background). Region colors are the artist's choice in the `.blend` — change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
 
 ### Actions
 
@@ -137,14 +88,12 @@ Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).
 
 ### D2 — How are PNGs created?
 
-**Locked: programmatically generated via Pillow.** Each fixture has a two-stage builder:
+**Locked: rendered from the committed `.blend` via headless Blender.** The `.blend` is the authored source of truth for the fixture's visual; per-region PNG layers fall out of it deterministically:
 
-- `scripts/fixtures/draw_<fixture>.py` — pure Python + Pillow, generates PNG layers. Run with `python scripts/fixtures/draw_<fixture>.py`. **No Blender required.**
-- `scripts/fixtures/build_<fixture>.py` — bpy-only, loads PNGs from disk and assembles `.blend`. Run with `blender --background --python scripts/fixtures/build_<fixture>.py`.
+- `scripts/fixtures/render_<fixture>_layers.py` — bpy-only, opens the `.blend`, walks every mesh object, and renders each one through an orthographic front camera with Workbench flat shading + transparent background. Run with `blender --background examples/<fixture>/<fixture>.blend --python scripts/fixtures/render_<fixture>_layers.py`.
+- `scripts/fixtures/build_<fixture>.py` — kept for fixtures whose `.blend` is generated procedurally rather than authored by hand (`blink_eyes/`, `shared_atlas/`). Loads PNGs from disk and assembles `.blend`.
 
-The split lets a developer iterate visuals without booting Blender (a faster cycle) and lets the drawing code be exercised in plain pytest if needed. Pillow is a tiny, ubiquitous dev dependency listed under `blender-addon/pyproject.toml [dependency-groups.dev]`; it is **not** bundled with the addon — strictly fixture / dev tooling.
-
-**Why not bpy.types.Image directly:** earlier iteration used bpy for the drawing too. Coupled image generation to Blender unnecessarily — cycle was slower (Blender boot ~3s every iteration), helpers untestable in pytest, and a contributor wanting to tweak just visuals had to install Blender. Splitting out PNG generation removed all three pain points at the cost of one well-known dev dependency.
+Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one layer per body part flattened to PNG) and removes the divergence risk between an authored 3D source and a separately drawn 2D layer roster. PNG resolution = mesh bounding-box × `PIXELS_PER_UNIT` (default 100) so pixels stay square across the fixture.
 
 ### D3 — `.blend` files committed or rebuilt every CI run?
 
@@ -168,7 +117,7 @@ The split lets a developer iterate visuals without booting Blender (a faster cyc
 
 ### D8 — Bone naming
 
-**Locked: Blender symmetric naming** (`name.L` / `name.R`). Indexed sub-bones use `name.001` / `name.002`. Neutral generics (`finger.001.L` not `index.001.L`) so future swaps (sword vs bow grip) do not require renaming.
+**Locked: Blender symmetric naming** (`name.L` / `name.R`). Indexed sub-bones use `name.001` / `name.002` (e.g. `spine` → `spine.001` → `spine.002`). Neutral generics over anatomical specifics where the swap target is open (e.g. an attachment slot named after the bone, not the prop, so future swaps do not require renaming).
 
 ### D9 — `pelvis.L` / `pelvis.R` keep or drop?
 
@@ -215,12 +164,16 @@ The retirement PR ships only after the three new fixtures' goldens are committed
 examples/
 ├── doll/
 │   ├── README.md
-│   ├── layers/                          generated PNGs, one per sprite
-│   │   ├── head_base.png
-│   │   ├── eye_0.png … eye_3.png
-│   │   ├── ...
-│   ├── doll.blend
+│   ├── layers/                          flat 2D PNGs rendered from doll.blend
+│   │   ├── head.png
+│   │   ├── chest.png / belly.png / waist.png
+│   │   ├── arm.L/R, forearm.L/R, hand.L/R
+│   │   ├── leg.L/R, thigh.L/R, foot.L/R
+│   │   ├── eye.L/R, brow.L/R, ear.L/R
+│   │   └── ...
+│   ├── doll.blend                       authored: meshes + doll.rig armature
 │   ├── doll.expected.proscenio
+│   ├── doll_pieces_sheet.png            contact sheet (visual debug)
 │   ├── Doll.tscn
 │   └── Doll.gd
 ├── blink_eyes/
@@ -240,16 +193,14 @@ examples/
     └── SharedAtlas.gd
 
 scripts/fixtures/
-├── _draw.py                  Pillow shape rasterizer (no bpy)
-├── _doll_armature.py         bpy — doll bone hierarchy + parenting
-├── _doll_meshes.py           bpy — load PNGs, build sprite planes + UVs + materials
-├── _doll_weights.py          bpy — vertex groups + weights
-├── _doll_actions.py          bpy — doll idle / wave / blink / walk
-├── draw_blink_eyes.py        Pillow — eye frames + spritesheet PNG
-├── draw_shared_atlas.py      Pillow — shared atlas PNG
-├── draw_doll.py              Pillow — every doll body PNG
-├── build_blink_eyes.py       bpy — load PNGs, build .blend
-├── build_shared_atlas.py     bpy — load PNG, build .blend
-├── build_doll.py             bpy — orchestrator (uses _doll_*)
+├── _draw.py                  Pillow shape rasterizer (used by blink_eyes / shared_atlas / contact sheet)
+├── render_doll_layers.py     bpy — opens doll.blend, renders each mesh as a flat 2D layer
+├── preview_doll_pieces.py    Pillow — contact sheet of every doll layer PNG (debug)
+├── draw_blink_eyes.py        Pillow — eye frames + spritesheet PNG (procedural fixture)
+├── draw_shared_atlas.py      Pillow — shared atlas PNG (procedural fixture)
+├── build_blink_eyes.py       bpy — load PNGs, build .blend (procedural fixture)
+├── build_shared_atlas.py     bpy — load PNG, build .blend (procedural fixture)
 └── export_proscenio.py       bpy — re-export an opened .blend → golden .proscenio
 ```
+
+The doll fixture has **no** programmatic weight or action assignment script — everything visual, weights, and animation lives inside the hand-authored `doll.blend`. The blink_eyes and shared_atlas fixtures stay procedural because they are minimal isolation tests where authoring a `.blend` by hand would add overhead with no payoff.

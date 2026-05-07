@@ -1,0 +1,19 @@
+; Documentation-by-example wrapper scene for the Proscenio blink_eyes fixture.
+;
+; Minimal sprite_frame isolation test — a single eye mesh with a 4-frame
+; spritesheet animated by the `blink` action. The wrapper instances the
+; imported scene and lets the user attach scripts / collisions / extra
+; nodes here without losing them on reimport (SPEC 001 Option A).
+;
+; Drop `examples/blink_eyes/` at `res://blink_eyes/` in your Godot project,
+; or adjust paths to match your layout.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://blink_eyes/blink_eyes.proscenio" id="1_blink"]
+[ext_resource type="Script" path="res://blink_eyes/BlinkEyes.gd" id="2_blink"]
+
+[node name="BlinkEyes" type="Node2D"]
+script = ExtResource("2_blink")
+
+[node name="BlinkEyesCharacter" parent="." instance=ExtResource("1_blink")]

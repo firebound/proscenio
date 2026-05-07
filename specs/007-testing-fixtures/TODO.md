@@ -5,7 +5,7 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 ## Decision lock-in
 
 - [x] D1 — fixtures live under `examples/`.
-- [x] D2 — PNG sources are programmatically generated (no Photoshop dependency).
+- [x] D2 — PNG layers are rendered from the committed `.blend` via headless Blender.
 - [x] D3 — `.blend` files committed; build script kept around for re-creation.
 - [x] D4 — sprite_frame layer naming convention `<name>_<index>` (locks for SPEC 006).
 - [x] D5 — build scripts under `scripts/fixtures/`.
@@ -16,53 +16,50 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 - [x] D10 — geometric primitives only (squares, circles, triangles, rectangles, trapezoids).
 - [x] D11 — build order: `blink_eyes` → `shared_atlas` → `doll`.
 
-## Step 0 — shape rasterizer
+## Step 0 — shape rasterizer (auxiliary)
 
-- [x] `scripts/fixtures/_draw.py` — **Pillow-based** shape rasterizer. Functions: `circle(canvas, cx, cy, r, color)`, `rect(canvas, x, y, w, h, color)`, `triangle(canvas, p0, p1, p2, color)`, `trapezoid(canvas, x, y, top_w, bottom_w, h, color)`, `border(canvas, color)`, `fill(canvas, color)`. Pillow added to `blender-addon/pyproject.toml [dependency-groups.dev]`. Builder split: `draw_<fixture>.py` (pure Python + Pillow) generates PNGs; `build_<fixture>.py` (bpy) loads them and assembles `.blend`.
+- [x] `scripts/fixtures/_draw.py` — Pillow-based shape rasterizer used by the auxiliary preview / skeleton diagnostic scripts (not by the canonical layer pipeline anymore — D2 now renders layers from the `.blend`). Functions: `circle`, `rect`, `triangle`, `trapezoid`, `border`, `fill`, `capsule`. Pillow stays in `blender-addon/pyproject.toml [dependency-groups.dev]` for these helpers.
 
 ## Step 1 — `blink_eyes/` (smallest, validates pattern)
 
 - [x] `scripts/fixtures/draw_blink_eyes.py` — Pillow only: generates `eye_0.png` … `eye_3.png` (32×32) + 128×32 `eye_spritesheet.png`.
 - [x] `scripts/fixtures/build_blink_eyes.py` — bpy only: loads spritesheet, builds 1-bone armature + 1 sprite_frame mesh + `blink` action animating `proscenio.frame` 0→1→2→3→2→1→0 over 12 frames.
-- [ ] Run both → `examples/blink_eyes/layers/*.png` + `eye_spritesheet.png` + `blink_eyes.blend` committed.
-- [ ] `examples/blink_eyes/blink_eyes.expected.proscenio` golden (via `export_proscenio.py`).
-- [ ] `examples/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
+- [x] Run both → `examples/blink_eyes/layers/*.png` + `eye_spritesheet.png` + `blink_eyes.blend` produced. Commit pending.
+- [x] `examples/blink_eyes/blink_eyes.expected.proscenio` golden (schema-valid).
+- [x] `examples/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
 - [x] `examples/blink_eyes/README.md`.
 
 ## Step 2 — `shared_atlas/` (validates sliced packer)
 
 - [x] `scripts/fixtures/draw_shared_atlas.py` — Pillow only: generates 256×256 `atlas.png` with three colored shapes in three quadrants (red circle / green triangle / blue square), bottom-right left transparent.
 - [x] `scripts/fixtures/build_shared_atlas.py` — bpy only: loads `atlas.png`, builds 3 polygon meshes with per-quadrant UV bounds, single `root` bone, no animation.
-- [ ] Run both → `examples/shared_atlas/atlas.png` + `shared_atlas.blend` committed.
-- [ ] `examples/shared_atlas/shared_atlas.expected.proscenio` golden.
-- [ ] `examples/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
+- [x] Run both → `examples/shared_atlas/atlas.png` + `shared_atlas.blend` produced. Commit pending.
+- [x] `examples/shared_atlas/shared_atlas.expected.proscenio` golden (schema-valid).
+- [x] `examples/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
 - [x] `examples/shared_atlas/README.md`.
 
 ## Step 3 — `doll/` (full showcase)
 
-Builder split into helper modules so each piece is reviewable:
+`doll.blend` is authored by hand in Blender (mesh objects per body part + armature). Layer PNGs are rendered from it; helper bpy modules drive auxiliary fixture work.
 
-- [x] `scripts/fixtures/draw_doll.py` — Pillow only: every body PNG + 4-frame eye spritesheet under `examples/doll/layers/`. Uses geometric primitives via `_draw`.
-- [x] `scripts/fixtures/_doll_armature.py` — bpy: 37-bone hierarchy.
-- [x] `scripts/fixtures/_doll_meshes.py` — bpy: loads PNGs from disk, builds sprite plane meshes + materials.
-- [x] `scripts/fixtures/_doll_weights.py` — bpy: weight assignment. `pelvis_block` 0.5/0.5 across `pelvis.L/R`. `spine_block` across the 4 spine bones with falloff. `forearm.L/R` 1.0 + 0.3 spillover to upper_arm.
-- [x] `scripts/fixtures/_doll_actions.py` — bpy: `idle` (30f bob), `wave` (30f arm), `blink` (12f sprite_frame), `walk` (30f legs+spine).
-- [x] `scripts/fixtures/build_doll.py` — bpy orchestrator.
-- [ ] Run draw + build → `examples/doll/layers/*.png` + `doll.blend` committed.
-- [ ] `examples/doll/doll.expected.proscenio` golden.
-- [ ] `examples/doll/Doll.tscn` + `Doll.gd`.
+- [x] `examples/doll/doll.blend` — hand-authored mesh objects + `doll.rig` armature + per-mesh materials + vertex weights + actions. Single source of truth for the doll fixture.
+- [x] `scripts/fixtures/render_doll_layers.py` — bpy: opens `doll.blend`, walks every mesh, renders each to `examples/doll/layers/<name>.png` (Workbench flat, transparent background, ortho front view).
+- [x] `scripts/fixtures/preview_doll_pieces.py` — Pillow: contact sheet of every layer PNG (visual debug).
+- [x] Run `render_doll_layers.py` → `examples/doll/layers/*.png` rendered alongside `doll.blend`. Commit pending alongside the rest of the fixture.
+- [x] `examples/doll/doll.expected.proscenio` golden generated via `export_proscenio.py` (1956 lines, schema-valid).
+- [x] `examples/doll/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
 - [x] `examples/doll/README.md`.
 
 ## Test runner + CI
 
-- [ ] `blender-addon/tests/run_tests.py` walks every `examples/*/` and re-exports → diffs against `<name>.expected.proscenio`.
-- [ ] CI `test-blender` job iterates the fixture list automatically.
+- [x] `blender-addon/tests/run_tests.py` walks every `examples/*/` and re-exports → diffs against `<name>.expected.proscenio`. Locally green: `3/3 fixture(s) passed` (blink_eyes, doll, shared_atlas).
+- [x] CI `test-blender` job invokes the runner with no `.blend` argument; the runner itself opens each fixture in turn.
 
 ## Documentation
 
-- [ ] `STATUS.md` — fixtures row updated to list the new three; legacy fixtures marked retired.
-- [ ] `README.md` — mention `doll/` as the showcase fixture, `blink_eyes/` + `shared_atlas/` as feature-isolated tests.
-- [ ] `.ai/skills/blender-addon-dev.md` — "Adding a fixture" section linking to `scripts/fixtures/build_*.py`.
+- [x] `STATUS.md` — fixtures row updated to list the three new fixtures + flagged legacy retirement.
+- [x] `README.md` — Quickstart now points at `doll/` as the showcase fixture, `blink_eyes/` + `shared_atlas/` as feature-isolated tests.
+- [x] `.ai/skills/blender-addon-dev.md` — "Adding a fixture" section pointing at the new render / build / export commands.
 
 ## Step 4 — retire legacy (follow-up PR)
 

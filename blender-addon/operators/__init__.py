@@ -1,14 +1,17 @@
 """Blender operators."""
 
 import contextlib
+import json
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import bpy
 from bpy.props import FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
+
+_PRE_PACK_CP_KEY = "proscenio_pre_pack"
 
 
 class PROSCENIO_OT_smoke_test(bpy.types.Operator):
@@ -390,6 +393,93 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
+    """Revert a previous Apply Packed Atlas — restore original UVs + materials."""
+
+    bl_idname = "proscenio.unpack_atlas"
+    bl_label = "Proscenio: Unpack Atlas"
+    bl_description = (
+        "Restores every sprite mesh to its pre-Apply state — original UVs, "
+        "original material, original region_mode. Reads a snapshot stored as "
+        "a Custom Property + a duplicated UV layer (`<name>.pre_pack`). "
+        "Survives .blend reload (Ctrl+Z does not)."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return _scene_has_pre_pack_snapshot(context.scene)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        restored = 0
+        for obj in context.scene.objects:
+            if obj.type != "MESH":
+                continue
+            snapshot = _pre_pack_snapshot_for(obj)
+            if snapshot is None:
+                continue
+            self._restore_object(obj, snapshot)
+            del obj[_PRE_PACK_CP_KEY]
+            restored += 1
+        msg = f"Proscenio: unpacked {restored} sprite(s) — restored pre-Apply state"
+        self.report({"INFO"}, msg)
+        print(f"[Proscenio] {msg}")
+        return {"FINISHED"}
+
+    def _restore_object(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
+        self._restore_uvs(obj, snapshot.get("uv_layer_snapshot", ""))
+        self._restore_material(obj, snapshot)
+        self._restore_region(obj, snapshot)
+
+    def _restore_uvs(self, obj: bpy.types.Object, snap_name: str) -> None:
+        if not snap_name:
+            return
+        uv_layers = getattr(obj.data, "uv_layers", None)
+        if uv_layers is None:
+            return
+        snap = uv_layers.get(snap_name)
+        if snap is None:
+            return
+        # Find the layer the snapshot was duplicated from (strip ".pre_pack").
+        original_name = snap_name[: -len(".pre_pack")] if snap_name.endswith(".pre_pack") else ""
+        target = uv_layers.get(original_name) or uv_layers.active
+        if target is None:
+            return
+        for i, loop in enumerate(snap.data):
+            target.data[i].uv = loop.uv
+        uv_layers.remove(snap)
+
+    def _restore_material(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
+        mat_name = str(snapshot.get("material", ""))
+        materials = getattr(obj.data, "materials", None)
+        if not mat_name or materials is None:
+            return
+        mat = bpy.data.materials.get(mat_name)
+        if mat is None:
+            return
+        if materials:
+            materials[0] = mat
+        else:
+            materials.append(mat)
+        # Also restore the image node link if we know the original image.
+        image_name = str(snapshot.get("image", ""))
+        if image_name:
+            image = bpy.data.images.get(image_name)
+            if image is not None:
+                _swap_image_in_materials(materials, image)
+
+    def _restore_region(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
+        props = getattr(obj, "proscenio", None)
+        if props is None or "region_mode" not in snapshot:
+            return
+        props.region_mode = str(snapshot["region_mode"])
+        with contextlib.suppress(TypeError, ValueError):
+            props.region_x = float(snapshot.get("region_x", 0.0))
+            props.region_y = float(snapshot.get("region_y", 0.0))
+            props.region_w = float(snapshot.get("region_w", 1.0))
+            props.region_h = float(snapshot.get("region_h", 1.0))
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -424,6 +514,60 @@ class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
 
 
 _PACKED_ATLAS_MAT_NAME = "Proscenio.PackedAtlas"
+
+
+def _first_texture_image_name(mat: bpy.types.Material) -> str:
+    """Return the name of the first image-textured node on ``mat`` (or '')."""
+    if not mat.use_nodes or mat.node_tree is None:
+        return ""
+    for node in mat.node_tree.nodes:
+        if node.type == "TEX_IMAGE" and node.image is not None:
+            return str(node.image.name)
+    return ""
+
+
+def _duplicate_active_uv_layer(obj: bpy.types.Object) -> str:
+    """Duplicate the active UV layer to ``<name>.pre_pack`` for later restore.
+
+    No-op when the snapshot already exists (so subsequent applies do not
+    overwrite the original-original UVs). Returns the snapshot layer name
+    or an empty string when there was no active UV layer.
+    """
+    mesh = obj.data
+    uv_layers = getattr(mesh, "uv_layers", None)
+    if uv_layers is None:
+        return ""
+    active = uv_layers.active
+    if active is None or len(active.data) == 0:
+        return ""
+    snap_name = f"{active.name}.pre_pack"
+    if snap_name in uv_layers:
+        return snap_name
+    snap = uv_layers.new(name=snap_name, do_init=False)
+    if snap is None:
+        return ""
+    for i, loop in enumerate(active.data):
+        snap.data[i].uv = loop.uv
+    # Keep the original active so apply still rewrites it in place.
+    uv_layers.active = active
+    return str(snap.name)
+
+
+def _pre_pack_snapshot_for(obj: bpy.types.Object) -> dict[str, Any] | None:
+    """Read the pre-pack snapshot stored as a Custom Property, or ``None``."""
+    raw = obj.get(_PRE_PACK_CP_KEY)
+    if not raw:
+        return None
+    try:
+        data = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _scene_has_pre_pack_snapshot(scene: bpy.types.Scene) -> bool:
+    """True when at least one mesh in ``scene`` carries a pre-pack snapshot."""
+    return any(_PRE_PACK_CP_KEY in obj for obj in scene.objects if obj.type == "MESH")
 
 
 def _packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:
@@ -465,7 +609,10 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
             return {"CANCELLED"}
 
         padding = int(scene_props.pack_padding_px)
-        items = [(src.obj_name, src.width, src.height) for src in sources]
+        # Pack slice dimensions, not the full source image — this is what
+        # makes the packer work for both 1-sprite-per-PNG and shared-atlas
+        # workflows (5.1.c.2.1).
+        items = [(src.obj_name, src.slice_px[2], src.slice_px[3]) for src in sources]
         packed = atlas_packer.pack(
             items,
             padding=padding,
@@ -483,7 +630,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         atlas_png, manifest_json = _packed_atlas_paths(bpy.data.filepath)
         atlas_png.parent.mkdir(parents=True, exist_ok=True)
         atlas_io.compose_atlas(sources, packed, atlas_png, padding=padding)
-        atlas_io.write_manifest(packed, padding, manifest_json)
+        atlas_io.write_manifest(packed, padding, sources, manifest_json)
 
         self.report(
             {"INFO"},
@@ -536,8 +683,9 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         for obj in context.scene.objects:
             if obj.type != "MESH" or obj.name not in placements:
                 continue
-            rect = placements[obj.name]
-            if not self._rewrite_uvs(obj, rect, atlas_w, atlas_h):
+            placement = placements[obj.name]
+            self._snapshot_pre_pack(obj)
+            if not self._apply_to_object(obj, placement, atlas_w, atlas_h):
                 skipped += 1
                 continue
             self._relink_material(obj, shared_mat, atlas_image)
@@ -549,6 +697,72 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         self.report({"INFO"}, msg)
         print(f"[Proscenio] {msg}")
         return {"FINISHED"}
+
+    def _snapshot_pre_pack(self, obj: bpy.types.Object) -> None:
+        """Snapshot pre-apply state to a Custom Property + duplicated UV layer.
+
+        Idempotent — second apply on an already-packed sprite leaves the
+        existing snapshot untouched (so Unpack can still revert to the
+        original-original state, not the packed state).
+        """
+        if _PRE_PACK_CP_KEY in obj:
+            return
+        snapshot: dict[str, Any] = {}
+        materials = getattr(obj.data, "materials", None) or []
+        if materials and materials[0] is not None:
+            snapshot["material"] = materials[0].name
+            snapshot["image"] = _first_texture_image_name(materials[0])
+        props = getattr(obj, "proscenio", None)
+        if props is not None:
+            snapshot["region_mode"] = str(props.region_mode)
+            snapshot["region_x"] = float(props.region_x)
+            snapshot["region_y"] = float(props.region_y)
+            snapshot["region_w"] = float(props.region_w)
+            snapshot["region_h"] = float(props.region_h)
+        snapshot["uv_layer_snapshot"] = _duplicate_active_uv_layer(obj)
+        obj[_PRE_PACK_CP_KEY] = json.dumps(snapshot)
+
+    def _apply_to_object(
+        self,
+        obj: bpy.types.Object,
+        placement: object,  # core.atlas_io.Placement — avoid bpy-side import here
+        atlas_w: int,
+        atlas_h: int,
+    ) -> bool:
+        """Apply the packed atlas to a single sprite mesh.
+
+        Always rewrites UVs (so Blender's solid-shading preview lands in the
+        right slot of the new atlas image). For sprite_frame additionally
+        sets ``region_mode = manual`` + ``region_x/y/w/h`` so the writer emits
+        a ``texture_region`` and Godot's Sprite2D slices the correct area.
+        """
+        props = getattr(obj, "proscenio", None)
+        sprite_type = str(getattr(props, "sprite_type", "polygon")) if props else "polygon"
+        rewrote = self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
+        if sprite_type == "sprite_frame" and props is not None:
+            self._apply_sprite_frame(props, placement, atlas_w, atlas_h)
+            return True
+        return rewrote
+
+    def _apply_sprite_frame(
+        self,
+        props: bpy.types.AnyType,
+        placement: object,
+        atlas_w: int,
+        atlas_h: int,
+    ) -> None:
+        """Set region_mode=manual + region_x/y/w/h pointing at the slot.
+
+        Region values are top-down (Godot's Sprite2D.region_rect convention)
+        — the writer flips its own UV outputs to top-down for the same
+        reason, so PG region_* values are stored top-down to match.
+        """
+        slot = placement.slot  # type: ignore[attr-defined]
+        props.region_mode = "manual"
+        props.region_x = slot.x / atlas_w
+        props.region_y = slot.y / atlas_h
+        props.region_w = slot.w / atlas_w
+        props.region_h = slot.h / atlas_h
 
     def _ensure_shared_material(self, atlas_image: bpy.types.Image) -> bpy.types.Material:
         """Create or refresh the shared 'Proscenio.PackedAtlas' material."""
@@ -571,26 +785,32 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def _rewrite_uvs(
         self,
         obj: bpy.types.Object,
-        rect: object,  # core.atlas_packer.Rect — avoid bpy-side import here
+        placement: object,  # core.atlas_io.Placement — avoid bpy-side import here
         atlas_w: int,
         atlas_h: int,
     ) -> bool:
-        """Map current UVs from source-image space to packed-atlas space."""
+        """Map polygon UVs from source-image space → packed-atlas space.
+
+        Coord systems: mesh UVs are bottom-up (Blender native), the slice rect
+        in the manifest is bottom-up (UV-derived), but the slot rect is the
+        packer's top-down output. Convert slot.y to bottom-up for the math.
+        """
         mesh = obj.data
         uv_layer = mesh.uv_layers.active
-        if uv_layer is None:
+        if uv_layer is None or len(uv_layer.data) == 0:
             return False
-        rx = rect.x  # type: ignore[attr-defined]
-        ry = rect.y  # type: ignore[attr-defined]
-        rw = rect.w  # type: ignore[attr-defined]
-        rh = rect.h  # type: ignore[attr-defined]
+        slot = placement.slot  # type: ignore[attr-defined]
+        slice_rect = placement.slice  # type: ignore[attr-defined]
+        src_w = placement.source_w  # type: ignore[attr-defined]
+        src_h = placement.source_h  # type: ignore[attr-defined]
+        slot_y_bu = atlas_h - slot.y - slot.h
         for poly in mesh.polygons:
             for li in poly.loop_indices:
                 u, v = uv_layer.data[li].uv
-                # Source uv is bottom-left origin in [0,1] of the source image;
-                # map into the rect inside the atlas, also bottom-left origin.
-                new_u = (rx + u * rw) / atlas_w
-                new_v = (ry + v * rh) / atlas_h
+                src_px_x = u * src_w
+                src_px_y = v * src_h
+                new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
+                new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
                 uv_layer.data[li].uv = (new_u, new_v)
         return True
 
@@ -636,6 +856,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_snap_region_to_uv,
     PROSCENIO_OT_pack_atlas,
     PROSCENIO_OT_apply_packed_atlas,
+    PROSCENIO_OT_unpack_atlas,
     PROSCENIO_OT_bake_current_pose,
 )
 

@@ -6,6 +6,7 @@ cmdln
 COATOOLS
 contextlib
 crossfade
+datablock
 dataclass
 dbproj
 diffable

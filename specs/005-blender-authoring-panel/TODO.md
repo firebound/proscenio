@@ -122,11 +122,30 @@ Manual testing (2026-05-05) surfaced four bugs and three UX gaps. All fixed in o
 - [x] Atlas subpanel renders a "Atlas packer" box: padding/max_size/POT props, Pack button always available, Apply button visible when `<blend>.atlas.json` exists next to the file.
 - [x] `tests/test_atlas_packer.py` — 8 pytest assertions covering empty input / single rect / non-overlap / inside bounds / atlas growth / max_size cap / POT rounding / padding separation.
 
-**Deferred to a later iteration (sliced-atlas support)**: sprites whose source material points to an already-shared atlas (with different `texture_region` per sprite) need slicing — extracting the sub-image before repacking. Current iteration assumes 1 sprite = 1 source PNG (Photoshop-first workflow / SPEC 006). Documented in `core/atlas_io.py` module docstring.
+## SPEC 005.1.c.2.1 — sliced atlas support (shipped)
+
+Manual validation of 5.1.c.2 on the dummy fixture exposed that sprites whose source image is a shared atlas (the head spritesheet sits inside `atlas.png` alongside torso/legs) repacked the entire shared image into each slot, leaving the actual sprite area in the wrong place. Sprite_frame meshes ended up sampling transparent regions because their `hframes/vframes` slice was applied to the full packed atlas, not to the head's sub-region.
+
+- [x] `core/uv_bounds.py` — bpy-free helpers: `uv_bbox_to_pixels` (UV bounds → source-pixel rect with optional padding) + `remap_uv_into_slot` (single UV → packed-atlas UV).
+- [x] `atlas_io.SourceImage` gains `slice_px: tuple[int, int, int, int]`. `collect_source_images` walks the mesh's UV layer and computes the slice via `uv_bbox_to_pixels`.
+- [x] `compose_atlas` extracts the slice sub-region from the source image and pastes it into the packed slot (instead of copying the full source image).
+- [x] Manifest format bumped to v2 — adds `source_w/h` + `slice_x/y/w/h` per placement. v1 manifests still load (slice defaults to slot for backward compat).
+- [x] `apply_packed_atlas` per-sprite-kind dispatch:
+  - polygon: rewrites UVs through the slice → slot transform so the original sprite area inside the source maps cleanly into the slot.
+  - sprite_frame: sets `region_mode = "manual"` + `region_x/y/w/h` to the slot in atlas-normalized coords, so Sprite2D's `hframes/vframes` slice the correct sub-rect.
+- [x] `tests/test_uv_bounds.py` — 8 pytest assertions covering empty UVs (full image fallback) / full-cover UVs / partial slice / expand padding / clamp to image edges / remap with full slice / remap with partial slice / remap far corner.
+
+## SPEC 005.1.c.2.2 — Unpack operator (shipped)
+
+Closes the "non-destructive across session boundaries" gap. Apply was already idempotent and Ctrl+Z-undoable, but a saved + reopened `.blend` lost the original UVs and material reference.
+
+- [x] `PROSCENIO_OT_apply_packed_atlas` snapshots the pre-Apply state into a Custom Property (`proscenio_pre_pack`) before mutating each mesh: original material name, original image node name, full `region_mode` + `region_x/y/w/h`. Plus duplicates the active UV layer to `<name>.pre_pack`. Snapshot is **idempotent** — second apply on an already-packed sprite leaves the existing snapshot alone (so Unpack still reverts to original-original).
+- [x] `PROSCENIO_OT_unpack_atlas` reads the snapshot, copies the saved UVs back into the active layer, removes the `.pre_pack` layer, restores the material reference and the region fields, then deletes the Custom Property.
+- [x] Atlas subpanel renders the Unpack button only when at least one mesh in the scene carries a snapshot (`_scene_has_pre_pack_snapshot`).
+- [x] Cycle survives `.blend` save/reload: snapshot CP is stored on the Object datablock, persists with the file. Unpack reads from the saved CP and restores cleanly.
 
 ## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
 
-- Sliced-atlas repack support (extract sub-image from shared atlas before pack — needed when re-packing existing fixtures).
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
 - Pose library shim (Asset Browser).
 - Driver constraint shortcut.

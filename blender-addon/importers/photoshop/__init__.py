@@ -37,11 +37,22 @@ class ImportResult:
     skipped: list[str] = field(default_factory=list)
 
 
-def import_manifest(manifest_path: Path | str) -> ImportResult:
+def import_manifest(
+    manifest_path: Path | str,
+    *,
+    anchor_at_feet: bool = True,
+) -> ImportResult:
     """Read ``manifest_path`` (PSD manifest v1) and stamp the scene.
 
-    Returns an :class:`ImportResult`. Raises :class:`psd_manifest.ManifestError`
-    on shape mismatch.
+    When ``anchor_at_feet`` is True (default), every stamped mesh is
+    shifted so the lowest point of the figure lands on world Z=0 —
+    matches the Godot / game-engine convention of placing a
+    character's pivot at the feet. With ``anchor_at_feet=False`` the
+    figure stays centred around the manifest canvas centre (world
+    origin), useful when the user already has a coordinate plan.
+
+    Returns an :class:`ImportResult`. Raises
+    :class:`psd_manifest.ManifestError` on shape mismatch.
     """
     manifest = psd_manifest.load(manifest_path)
     armature_obj = build_root_armature(name=_armature_name(manifest))
@@ -60,7 +71,40 @@ def import_manifest(manifest_path: Path | str) -> ImportResult:
                 result.spritesheets.append(stamped.spritesheet_path)
             else:
                 result.skipped.append(f"sprite_frame:{layer.name}")
+    if anchor_at_feet:
+        _anchor_meshes_at_feet(result.meshes, manifest)
     return result
+
+
+def _anchor_meshes_at_feet(
+    meshes: list[bpy.types.Object],
+    manifest: psd_manifest.Manifest,
+) -> None:
+    """Shift every stamped mesh upward so the lowest figure point sits on Z=0.
+
+    Computes the figure's lowest world Z by combining each mesh's
+    location with its manifest-declared size (half-height in world
+    units). The shift is applied as a Z translation so all relative
+    layouts and the per-layer ``z_order`` Y-offset stay intact.
+    """
+    if not meshes:
+        return
+    layer_by_name = {layer.name: layer for layer in manifest.layers}
+    lowest_z: float | None = None
+    for obj in meshes:
+        layer = layer_by_name.get(obj.name) or layer_by_name.get(
+            (obj.get("proscenio_import_origin") or "").removeprefix("psd:")
+        )
+        if layer is None:
+            continue
+        half_h = layer.size[1] / (2.0 * manifest.pixels_per_unit)
+        bottom = obj.location.z - half_h
+        if lowest_z is None or bottom < lowest_z:
+            lowest_z = bottom
+    if lowest_z is None or abs(lowest_z) < 1e-6:
+        return
+    for obj in meshes:
+        obj.location.z -= lowest_z
 
 
 def _armature_name(manifest: psd_manifest.Manifest) -> str:

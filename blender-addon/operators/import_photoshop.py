@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import bpy
-from bpy.props import StringProperty
+from bpy.props import BoolProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 from ..core import psd_manifest  # type: ignore[import-not-found]
@@ -33,13 +33,24 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
     filename_ext = ".json"
     filter_glob: StringProperty(default="*.json", options={"HIDDEN"})  # type: ignore[valid-type]
 
+    anchor_at_feet: BoolProperty(  # type: ignore[valid-type]
+        name="Anchor at Feet",
+        description=(
+            "Shift the imported figure so its lowest point sits on world Z=0 "
+            "(matches the Godot / game-engine convention of pivoting "
+            "characters at the feet). Disable to keep the figure centred "
+            "around the manifest canvas centre (world origin)."
+        ),
+        default=True,
+    )
+
     def execute(self, context: bpy.types.Context) -> set[str]:
         path = Path(self.filepath)
         if not path.exists():
             self.report({"ERROR"}, f"Manifest not found: {path}")
             return {"CANCELLED"}
         try:
-            result = import_manifest(path)
+            result = import_manifest(path, anchor_at_feet=self.anchor_at_feet)
         except psd_manifest.ManifestError as exc:
             self.report({"ERROR"}, f"Manifest invalid: {exc}")
             return {"CANCELLED"}

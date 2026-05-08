@@ -18,13 +18,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, circle, rect  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "blink_eyes"
-LAYERS_DIR = FIXTURE_DIR / "layers"
-SHEET_PATH = FIXTURE_DIR / "eye_spritesheet.png"
+LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
+SHEET_PATH = FIXTURE_DIR / "pillow_layers" / "eye_spritesheet.png"
 
 FRAME_W = 32
 FRAME_H = 32

@@ -51,10 +51,10 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "doll"
-LAYERS_DIR = FIXTURE_DIR / "layers"
-MANIFEST_OUT = FIXTURE_DIR / "doll.psd_manifest.json"
+LAYERS_DIR = FIXTURE_DIR / "render_layers"
+MANIFEST_OUT = FIXTURE_DIR / "photoshop_export" / "doll.psd_manifest.json"
 
 PIXELS_PER_UNIT = 100.0
 CANVAS_PADDING_PX = 32
@@ -182,7 +182,7 @@ def _layer_entry(
     return {
         "kind": "polygon",
         "name": name,
-        "path": f"layers/{name}.png",
+        "path": f"../render_layers/{name}.png",
         "position": [int(round(x)), int(round(y))],
         "size": [max(1, int(round(w))), max(1, int(round(h)))],
         "z_order": z_order,

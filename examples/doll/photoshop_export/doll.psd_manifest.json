@@ -10,7 +10,7 @@
     {
       "kind": "polygon",
       "name": "brow.L",
-      "path": "layers/brow.L.png",
+      "path": "../render_layers/brow.L.png",
       "position": [
         729,
         197
@@ -24,7 +24,7 @@
     {
       "kind": "polygon",
       "name": "brow.R",
-      "path": "layers/brow.R.png",
+      "path": "../render_layers/brow.R.png",
       "position": [
         567,
         197
@@ -38,7 +38,7 @@
     {
       "kind": "polygon",
       "name": "eye.L",
-      "path": "layers/eye.L.png",
+      "path": "../render_layers/eye.L.png",
       "position": [
         732,
         225
@@ -52,7 +52,7 @@
     {
       "kind": "polygon",
       "name": "eye.R",
-      "path": "layers/eye.R.png",
+      "path": "../render_layers/eye.R.png",
       "position": [
         597,
         225
@@ -66,7 +66,7 @@
     {
       "kind": "polygon",
       "name": "belly",
-      "path": "layers/belly.png",
+      "path": "../render_layers/belly.png",
       "position": [
         525,
         914
@@ -80,7 +80,7 @@
     {
       "kind": "polygon",
       "name": "ear.L",
-      "path": "layers/ear.L.png",
+      "path": "../render_layers/ear.L.png",
       "position": [
         817,
         214
@@ -94,7 +94,7 @@
     {
       "kind": "polygon",
       "name": "ear.R",
-      "path": "layers/ear.R.png",
+      "path": "../render_layers/ear.R.png",
       "position": [
         505,
         214
@@ -108,7 +108,7 @@
     {
       "kind": "polygon",
       "name": "chest",
-      "path": "layers/chest.png",
+      "path": "../render_layers/chest.png",
       "position": [
         483,
         475
@@ -122,7 +122,7 @@
     {
       "kind": "polygon",
       "name": "head",
-      "path": "layers/head.png",
+      "path": "../render_layers/head.png",
       "position": [
         549,
         32
@@ -136,7 +136,7 @@
     {
       "kind": "polygon",
       "name": "thigh.L",
-      "path": "layers/thigh.L.png",
+      "path": "../render_layers/thigh.L.png",
       "position": [
         708,
         1312
@@ -150,7 +150,7 @@
     {
       "kind": "polygon",
       "name": "thigh.R",
-      "path": "layers/thigh.R.png",
+      "path": "../render_layers/thigh.R.png",
       "position": [
         393,
         1312
@@ -164,7 +164,7 @@
     {
       "kind": "polygon",
       "name": "waist",
-      "path": "layers/waist.png",
+      "path": "../render_layers/waist.png",
       "position": [
         474,
         1091
@@ -178,7 +178,7 @@
     {
       "kind": "polygon",
       "name": "leg.L",
-      "path": "layers/leg.L.png",
+      "path": "../render_layers/leg.L.png",
       "position": [
         780,
         2021
@@ -192,7 +192,7 @@
     {
       "kind": "polygon",
       "name": "leg.R",
-      "path": "layers/leg.R.png",
+      "path": "../render_layers/leg.R.png",
       "position": [
         428,
         2021
@@ -206,7 +206,7 @@
     {
       "kind": "polygon",
       "name": "foot.L",
-      "path": "layers/foot.L.png",
+      "path": "../render_layers/foot.L.png",
       "position": [
         828,
         2695
@@ -220,7 +220,7 @@
     {
       "kind": "polygon",
       "name": "foot.R",
-      "path": "layers/foot.R.png",
+      "path": "../render_layers/foot.R.png",
       "position": [
         342,
         2695
@@ -234,7 +234,7 @@
     {
       "kind": "polygon",
       "name": "arm.L",
-      "path": "layers/arm.L.png",
+      "path": "../render_layers/arm.L.png",
       "position": [
         894,
         555
@@ -248,7 +248,7 @@
     {
       "kind": "polygon",
       "name": "arm.R",
-      "path": "layers/arm.R.png",
+      "path": "../render_layers/arm.R.png",
       "position": [
         239,
         555
@@ -262,7 +262,7 @@
     {
       "kind": "polygon",
       "name": "forearm.L",
-      "path": "layers/forearm.L.png",
+      "path": "../render_layers/forearm.L.png",
       "position": [
         1042,
         975
@@ -276,7 +276,7 @@
     {
       "kind": "polygon",
       "name": "forearm.R",
-      "path": "layers/forearm.R.png",
+      "path": "../render_layers/forearm.R.png",
       "position": [
         163,
         975
@@ -290,7 +290,7 @@
     {
       "kind": "polygon",
       "name": "hand.L",
-      "path": "layers/hand.L.png",
+      "path": "../render_layers/hand.L.png",
       "position": [
         1115,
         1326
@@ -304,7 +304,7 @@
     {
       "kind": "polygon",
       "name": "hand.R",
-      "path": "layers/hand.R.png",
+      "path": "../render_layers/hand.R.png",
       "position": [
         32,
         1326

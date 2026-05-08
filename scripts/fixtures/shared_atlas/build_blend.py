@@ -20,7 +20,7 @@ from pathlib import Path
 
 import bpy
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "shared_atlas"
 ATLAS_PATH = FIXTURE_DIR / "atlas.png"
 BLEND_PATH = FIXTURE_DIR / "shared_atlas.blend"

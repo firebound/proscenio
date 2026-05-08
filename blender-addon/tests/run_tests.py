@@ -91,7 +91,9 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
             continue
         name = fixture_dir.name
         blend = fixture_dir / f"{name}.blend"
-        expected = fixture_dir / f"{name}.expected.proscenio"
+        # Goldens live under the godot/ subfolder per the SPEC 007
+        # subfolder convention.
+        expected = fixture_dir / "godot" / f"{name}.expected.proscenio"
         if blend.exists() and expected.exists():
             pairs.append((blend, expected))
     return pairs

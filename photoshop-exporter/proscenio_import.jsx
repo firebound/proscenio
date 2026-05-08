@@ -73,51 +73,56 @@
     app.preferences.rulerUnits = Units.PIXELS;
     app.preferences.typeUnits = TypeUnits.PIXELS;
 
-    var doc = app.documents.add(
-        new UnitValue(docWidth, "px"),
-        new UnitValue(docHeight, "px"),
-        72,
-        docName,
-        NewDocumentMode.RGB,
-        DocumentFill.TRANSPARENT
-    );
-
-    // Photoshop layer stack: first added = bottom. Manifest z_order 0 =
-    // front, so iterate descending -> highest z_order added first
-    // (bottom of stack), z_order 0 added last (top of stack).
-    var layers = manifest.layers.slice();
-    layers.sort(function (a, b) { return b.z_order - a.z_order; });
-
     var stamped = 0;
-    for (var i = 0; i < layers.length; i++) {
-        var entry = layers[i];
-        if (entry.kind === "polygon") {
-            if (stampPolygon(doc, entry, manifestDir)) stamped += 1;
-        } else if (entry.kind === "sprite_frame") {
-            if (stampSpriteFrame(doc, entry, manifestDir)) stamped += 1;
-        } else {
-            // Unknown kind -- skip rather than abort, so a partial import
-            // still surfaces every layer the importer does understand.
+    try {
+        var doc = app.documents.add(
+            new UnitValue(docWidth, "px"),
+            new UnitValue(docHeight, "px"),
+            72,
+            docName,
+            NewDocumentMode.RGB,
+            DocumentFill.TRANSPARENT
+        );
+
+        // Photoshop layer stack: first added = bottom. Manifest z_order 0 =
+        // front, so iterate descending -> highest z_order added first
+        // (bottom of stack), z_order 0 added last (top of stack).
+        var layers = manifest.layers.slice();
+        layers.sort(function (a, b) { return b.z_order - a.z_order; });
+
+        for (var i = 0; i < layers.length; i++) {
+            var entry = layers[i];
+            if (entry.kind === "polygon") {
+                if (stampPolygon(doc, entry, manifestDir)) stamped += 1;
+            } else if (entry.kind === "sprite_frame") {
+                if (stampSpriteFrame(doc, entry, manifestDir)) stamped += 1;
+            } else {
+                // Unknown kind -- skip rather than abort, so a partial import
+                // still surfaces every layer the importer does understand.
+            }
         }
+
+        var savePath = new File(manifestDir + "/" + docName);
+        var psdOpts = new PhotoshopSaveOptions();
+        psdOpts.alphaChannels = true;
+        psdOpts.embedColorProfile = true;
+        psdOpts.layers = true;
+        psdOpts.spotColors = false;
+        // asCopy = false so the open doc is associated with the saved file
+        // (otherwise subsequent calls to doc.path throw "document not saved").
+        doc.saveAs(savePath, psdOpts, false, Extension.LOWERCASE);
+
+        alert(
+            "Proscenio import complete:\n" +
+            stamped + " entry(ies) stamped -> " + savePath.fsName
+        );
+    } finally {
+        // Restore PS preferences regardless of outcome -- otherwise an
+        // exception leaves rulerUnits / typeUnits stuck on PIXELS until
+        // the user manually resets them or restarts Photoshop.
+        app.preferences.rulerUnits = savedRulerUnits;
+        app.preferences.typeUnits = savedTypeUnits;
     }
-
-    app.preferences.rulerUnits = savedRulerUnits;
-    app.preferences.typeUnits = savedTypeUnits;
-
-    var savePath = new File(manifestDir + "/" + docName);
-    var psdOpts = new PhotoshopSaveOptions();
-    psdOpts.alphaChannels = true;
-    psdOpts.embedColorProfile = true;
-    psdOpts.layers = true;
-    psdOpts.spotColors = false;
-    // asCopy = false so the open doc is associated with the saved file
-    // (otherwise subsequent calls to doc.path throw "document not saved").
-    doc.saveAs(savePath, psdOpts, false, Extension.LOWERCASE);
-
-    alert(
-        "Proscenio import complete:\n" +
-        stamped + " entry(ies) stamped -> " + savePath.fsName
-    );
 
     /**
      * @param {Document} targetDoc
@@ -131,7 +136,18 @@
             $.writeln("[proscenio_import] missing PNG: " + (entry.path || "<no path>"));
             return false;
         }
-        var placed = placeAndPosition(targetDoc, pngFile, entry.position[0], entry.position[1], entry.size[0], entry.size[1]);
+        if (!hasPositionAndSize(entry)) {
+            $.writeln("[proscenio_import] polygon " + entry.name + " missing position/size; skipped");
+            return false;
+        }
+        var placed = placeAndPosition(
+            targetDoc,
+            pngFile,
+            entry.position[0],
+            entry.position[1],
+            entry.size[0],
+            entry.size[1]
+        );
         if (placed === null) return false;
         placed.name = entry.name;
         return true;
@@ -146,6 +162,13 @@
     function stampSpriteFrame(targetDoc, entry, baseDir) {
         if (!isArray(entry.frames) || entry.frames.length < 2) {
             $.writeln("[proscenio_import] sprite_frame " + entry.name + " has < 2 frames; skipped");
+            return false;
+        }
+        if (!hasPositionAndSize(entry)) {
+            $.writeln(
+                "[proscenio_import] sprite_frame " + entry.name +
+                " missing position/size; skipped"
+            );
             return false;
         }
         var group = targetDoc.layerSets.add();
@@ -198,37 +221,46 @@
             $.writeln("[proscenio_import] could not open " + pngFile.fsName + ": " + openErr);
             return null;
         }
-        // Source layer bounds before duplication.
-        var srcLayer = srcDoc.activeLayer;
-        var bounds = srcLayer.bounds;
-        var srcLeft = bounds[0].as("px");
-        var srcTop = bounds[1].as("px");
-        var srcRight = bounds[2].as("px");
-        var srcBottom = bounds[3].as("px");
-        var srcW = srcRight - srcLeft;
-        var srcH = srcBottom - srcTop;
+        var duped = null;
+        var deltaX = 0;
+        var deltaY = 0;
+        try {
+            // Source layer bounds before duplication.
+            var srcLayer = srcDoc.activeLayer;
+            var bounds = srcLayer.bounds;
+            var srcLeft = bounds[0].as("px");
+            var srcTop = bounds[1].as("px");
+            var srcRight = bounds[2].as("px");
+            var srcBottom = bounds[3].as("px");
+            var srcW = srcRight - srcLeft;
+            var srcH = srcBottom - srcTop;
 
-        // Sanity warning when manifest size disagrees with PNG bounds --
-        // this can happen when frames are padded by the importer post-export
-        // (D10) or when the rendered PNG was trimmed.
-        if (Math.abs(srcW - expectedW) > 1 || Math.abs(srcH - expectedH) > 1) {
-            $.writeln(
-                "[proscenio_import] " + pngFile.name +
-                " bounds " + srcW + "x" + srcH +
-                " differ from manifest " + expectedW + "x" + expectedH +
-                " -- using PNG bounds for placement."
-            );
+            // Sanity warning when manifest size disagrees with PNG bounds --
+            // this can happen when frames are padded by the importer
+            // post-export (D10) or when the rendered PNG was trimmed.
+            if (Math.abs(srcW - expectedW) > 1 || Math.abs(srcH - expectedH) > 1) {
+                $.writeln(
+                    "[proscenio_import] " + pngFile.name +
+                    " bounds " + srcW + "x" + srcH +
+                    " differ from manifest " + expectedW + "x" + expectedH +
+                    " -- using PNG bounds for placement."
+                );
+            }
+
+            duped = srcLayer.duplicate(targetDoc, ElementPlacement.PLACEATBEGINNING);
+            // Photoshop layers translate by deltas, not absolute coords.
+            // After duplicate the layer keeps its source bounds; offset to
+            // land top-left at (targetX, targetY).
+            deltaX = targetX - srcLeft;
+            deltaY = targetY - srcTop;
+        } finally {
+            // Close srcDoc regardless of whether bounds / duplicate threw.
+            // Without this, an exception leaves srcDoc orphaned in
+            // Photoshop's open-document list -- catastrophic on a 22-layer
+            // batch import where every leak compounds.
+            srcDoc.close(SaveOptions.DONOTSAVECHANGES);
         }
-
-        // Duplicate into target.
-        var duped = srcLayer.duplicate(targetDoc, ElementPlacement.PLACEATBEGINNING);
-        srcDoc.close(SaveOptions.DONOTSAVECHANGES);
-
-        // Photoshop layers translate by deltas, not absolute coords.
-        // After duplicate the layer keeps its source bounds; offset to
-        // land top-left at (targetX, targetY).
-        var deltaX = targetX - srcLeft;
-        var deltaY = targetY - srcTop;
+        if (duped === null) return null;
         duped.translate(new UnitValue(deltaX, "px"), new UnitValue(deltaY, "px"));
         return duped;
     }
@@ -245,6 +277,22 @@
 
     function isArray(value) {
         return Object.prototype.toString.call(value) === "[object Array]";
+    }
+
+    /**
+     * Defensive null guard for entry.position / entry.size before the
+     * placeAndPosition call dereferences index 0 / 1 on each. The schema
+     * already requires both fields, but JSX does not validate strictly,
+     * so a malformed manifest must surface as a skip + log line rather
+     * than an unhandled TypeError that aborts the whole import.
+     * @param {object} entry
+     * @returns {boolean}
+     */
+    function hasPositionAndSize(entry) {
+        return (
+            isArray(entry.position) && entry.position.length >= 2 &&
+            isArray(entry.size) && entry.size.length >= 2
+        );
     }
 
     /**

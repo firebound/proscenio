@@ -19,9 +19,12 @@ scripts/fixtures/
 ├── shared_atlas/
 │   ├── draw_atlas.py               Pillow -> atlas.png (256x256, three colored quadrants)
 │   └── build_blend.py              Bpy: load atlas, build shared_atlas.blend (3 sliced quads)
-└── simple_psd/
-    ├── draw_layers.py              Pillow -> pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
-    └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json -> simple_psd.blend
+├── simple_psd/
+│   ├── draw_layers.py              Pillow -> pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
+│   └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json -> simple_psd.blend
+└── slot_cycle/
+    ├── draw_layers.py              Pillow -> pillow_layers/attachment_red|green|blue.png (32x32 each)
+    └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action -> slot_cycle.blend
 ```
 
 ## Script -> output map
@@ -41,6 +44,9 @@ scripts/fixtures/
 | simple_psd | `simple_psd/draw_layers.py` | (Pillow primitives) | `examples/simple_psd/pillow_layers/square.png` + `arrow_0..3.png` + `arrow_spritesheet.png` |
 | simple_psd | `simple_psd/build_blend.py` | `examples/simple_psd/simple_psd.photoshop_manifest.json` | `examples/simple_psd/simple_psd.blend` |
 | simple_psd | `_shared/export_proscenio.py` | `examples/simple_psd/simple_psd.blend` | `examples/simple_psd/simple_psd.expected.proscenio` |
+| slot_cycle | `slot_cycle/draw_layers.py` | (Pillow primitives) | `examples/slot_cycle/pillow_layers/attachment_red.png` + `_green.png` + `_blue.png` |
+| slot_cycle | `slot_cycle/build_blend.py` | `examples/slot_cycle/pillow_layers/*.png` | `examples/slot_cycle/slot_cycle.blend` |
+| slot_cycle | `_shared/export_proscenio.py` | `examples/slot_cycle/slot_cycle.blend` | `examples/slot_cycle/slot_cycle.expected.proscenio` |
 
 ## Run modes
 

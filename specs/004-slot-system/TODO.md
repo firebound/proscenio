@@ -52,18 +52,41 @@ Branch: `feat/spec-004.2-slots-godot`.
 - [ ] `animation_builder.gd` adds `slot_attachment` track handling: at each key, finds the named child of the slot, sets `visible = true`, hides siblings. Track interpolation = `INTERPOLATION_NEAREST` (constant step).
 - [ ] GUT tests: `godot-plugin/tests/test_slots.gd` — slot structure (Node2D parent + children), default visibility, animation track flips visibility on the right child, multi-slot scene.
 
-## Wave 4.3 — fixtures + docs
+## Wave 4.3 — fixtures + docs (in flight)
 
 Branch: `feat/spec-004.3-slots-fixtures`.
 
-- [ ] `examples/doll/`: promote `brow.L` and `brow.R` to slots with brow-up/brow-down attachments. Re-author the doll's existing brow meshes as the default attachments; add brow-up sibling meshes as alternates.
-- [ ] `examples/slot_cycle/` — minimal new fixture: 1 armature, 1 slot Empty, 3 attachment meshes (red/green/blue squares), 1 action that cycles attachment per keyframe. Mirrors the SPEC 007 fixture layout (drawn via Pillow + assembled via `build_blend.py`).
-- [ ] `examples/slot_cycle/godot/SlotCycle.tscn` + `.gd` (wrapper per SPEC 001).
-- [ ] `examples/slot_cycle/slot_cycle.expected.proscenio` (golden via `_shared/export_proscenio.py`).
-- [ ] `STATUS.md` — flip SPEC 004 row to shipped + bump fixture count to 5.
-- [ ] `.ai/skills/godot-plugin-dev.md` — new "Slots" subsection with the wrapper + animation example.
-- [ ] `format-spec.md` (if it exists, otherwise schema docstring) — slot section moves from "schema-only" to live behavior.
-- [ ] Update `examples/doll/README.md` brow row from "future home for slots" to "demonstrates the slot system".
+**Drive-bys** (CI broken on main after Wave 4.2 merge):
+
+- [x] `godot-plugin/tests/fixtures/slots_demo.proscenio` — add the missing `texture_region` field on each polygon entry (PolygonSprite schema requires it).
+- [x] `examples/doll/doll.blend` — re-fix `waist` mesh's vertex group (`waist` -> `spine`); the rename done in Wave 4.1 did not persist into main. Regenerate `doll.expected.proscenio` golden.
+
+**Writer extension** (uncovered while authoring slot_cycle):
+
+- [x] `exporters/godot/writer.py`: `_build_slot_animations` walks slot Empties for `proscenio_slot_index` fcurve keyframes and emits `slot_attachment` tracks (D5: constant interp, target = slot name, `attachment` field per key resolved via the slot's `attachments[]` list). `_merge_slot_animations_into` consolidates per-action so bone-transform + slot-attachment tracks under the same action name share one Animation in Godot.
+
+**slot_cycle fixture (shipped)**:
+
+- [x] `scripts/fixtures/slot_cycle/draw_layers.py` — Pillow renders 3 colored 32x32 squares (red/green/blue) into `pillow_layers/`.
+- [x] `scripts/fixtures/slot_cycle/build_blend.py` — bpy assembles 1-bone armature + slot Empty (parent_type=OBJECT to armature, `is_slot=True`, `slot_default="attachment_red"`) + 3 polygon attachments + `cycle` action keyframing `proscenio_slot_index` 0/1/2 across 24 frames. Empty is object-parented (not bone-parented) so the XZ-plane attachments are not rotated by Blender's bone Y-axis alignment -- mirrors the doll fixture's parenting pattern.
+- [x] `examples/slot_cycle/slot_cycle.blend` — generated.
+- [x] `examples/slot_cycle/slot_cycle.expected.proscenio` — golden (3 sprites + 1 slot + 1 cycle animation with `slot_attachment` track).
+- [x] `examples/slot_cycle/godot/SlotCycle.tscn` + `.gd` — wrapper per SPEC 001 with autoplay defaulting to `cycle`.
+- [x] `examples/slot_cycle/.gitignore` — ignores `*.actual.proscenio`.
+- [x] `examples/slot_cycle/README.md` — fixture overview + slot setup table + build instructions.
+- [x] `blender-addon/tests/run_tests.py` auto-discovers it (5/5 fixtures pass).
+
+**Docs**:
+
+- [x] `STATUS.md` — flip SPEC 004 row to shipped + bump fixture count to 5.
+- [x] `scripts/fixtures/README.md` — `slot_cycle/` entry in the layout + script-output map.
+- [x] Update `examples/doll/README.md` brow row from "future home for slots" to a forward-looking note pointing at `examples/slot_cycle/` for the live slot demo.
+
+**Deferred (post-Wave-4.3)**:
+
+- Promoting `examples/doll/brow.L` / `brow.R` to slots requires authoring sibling brow-up / brow-down meshes + weight paint + a brow-swap action. Bigger fixture surface than `slot_cycle`. Tracked here as a future enhancement; `slot_cycle/` already proves the slot system end-to-end.
+- `format-spec.md` slot section moving from schema-only to live behavior -- the schema doc lives inside `schemas/proscenio.schema.json` for now; promote when a separate `format-spec.md` exists.
+- `.ai/skills/godot-plugin-dev.md` slots subsection -- short addition; can land in a doc-polish PR.
 
 ## Out of scope
 

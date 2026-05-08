@@ -1,0 +1,8 @@
+# Importer-composed spritesheets. Regenerable by re-running
+# scripts/fixtures/simple_psd/build_blend.py (which calls the addon
+# importer, which composes _spritesheets/<sprite_frame>.png on the fly).
+_spritesheets/
+
+# Test runner side-effect when goldens diverge — written next to the golden
+# by blender-addon/tests/run_tests.py and removed on PASS.
+*.actual.proscenio

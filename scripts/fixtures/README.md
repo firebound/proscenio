@@ -16,9 +16,12 @@ scripts/fixtures/
 ├── blink_eyes/
 │   ├── draw_layers.py              Pillow -> pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py              Bpy: load spritesheet, build blink_eyes.blend
-└── shared_atlas/
-    ├── draw_atlas.py               Pillow -> atlas.png (256x256, three colored quadrants)
-    └── build_blend.py              Bpy: load atlas, build shared_atlas.blend (3 sliced quads)
+├── shared_atlas/
+│   ├── draw_atlas.py               Pillow -> atlas.png (256x256, three colored quadrants)
+│   └── build_blend.py              Bpy: load atlas, build shared_atlas.blend (3 sliced quads)
+└── simple_psd/
+    ├── draw_layers.py              Pillow -> pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
+    └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json -> simple_psd.blend
 ```
 
 ## Script -> output map
@@ -35,6 +38,9 @@ scripts/fixtures/
 | shared_atlas | `shared_atlas/draw_atlas.py` | (Pillow primitives) | `examples/shared_atlas/atlas.png` |
 | shared_atlas | `shared_atlas/build_blend.py` | `examples/shared_atlas/atlas.png` | `examples/shared_atlas/shared_atlas.blend` |
 | shared_atlas | `_shared/export_proscenio.py` | `examples/shared_atlas/shared_atlas.blend` | `examples/shared_atlas/shared_atlas.expected.proscenio` |
+| simple_psd | `simple_psd/draw_layers.py` | (Pillow primitives) | `examples/simple_psd/pillow_layers/square.png` + `arrow_0..3.png` + `arrow_spritesheet.png` |
+| simple_psd | `simple_psd/build_blend.py` | `examples/simple_psd/simple_psd.photoshop_manifest.json` | `examples/simple_psd/simple_psd.blend` |
+| simple_psd | `_shared/export_proscenio.py` | `examples/simple_psd/simple_psd.blend` | `examples/simple_psd/simple_psd.expected.proscenio` |
 
 ## Run modes
 

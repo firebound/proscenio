@@ -1,0 +1,20 @@
+; Documentation-by-example wrapper scene for the Proscenio simple_psd fixture.
+;
+; Smallest end-to-end exercise of the SPEC 006 Photoshop importer:
+; one polygon layer + one sprite_frame group of 4 frames imported from
+; a v1 manifest. The wrapper instances the imported scene and lets the
+; user attach scripts / collisions / extra nodes here without losing
+; them on reimport (SPEC 001 Option A).
+;
+; Drop `examples/simple_psd/` at `res://simple_psd/` in your Godot project,
+; or adjust paths to match your layout.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://simple_psd/simple_psd.proscenio" id="1_simple"]
+[ext_resource type="Script" path="res://simple_psd/godot/SimplePSD.gd" id="2_simple"]
+
+[node name="SimplePSD" type="Node2D"]
+script = ExtResource("2_simple")
+
+[node name="SimplePSDCharacter" parent="." instance=ExtResource("1_simple")]

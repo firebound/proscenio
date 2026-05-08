@@ -82,11 +82,15 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 - [x] `scripts/fixtures/README.md` — `slot_cycle/` entry in the layout + script-output map.
 - [x] Update `examples/doll/README.md` brow row from "future home for slots" to a forward-looking note pointing at `examples/slot_cycle/` for the live slot demo.
 
-**Deferred (post-Wave-4.3)**:
+## Wave 4.4 — close-out (planned)
 
-- Promoting `examples/doll/brow.L` / `brow.R` to slots requires authoring sibling brow-up / brow-down meshes + weight paint + a brow-swap action. Bigger fixture surface than `slot_cycle`. Tracked here as a future enhancement; `slot_cycle/` already proves the slot system end-to-end.
-- `format-spec.md` slot section moving from schema-only to live behavior -- the schema doc lives inside `schemas/proscenio.schema.json` for now; promote when a separate `format-spec.md` exists.
-- `.ai/skills/godot-plugin-dev.md` slots subsection -- short addition; can land in a doc-polish PR.
+Branch: `feat/spec-004.4-close-out`. Bundles the Wave-4.3 deferred items into one final SPEC 004 PR so the spec ships fully closed before SPEC 005 close-out + SPEC 008 design pass.
+
+- [ ] `examples/doll/`: promote `brow.L` and `brow.R` to slots with brow-up / brow-down attachments. Author sibling `brow.L.up` / `brow.R.up` meshes; existing `brow.L` / `brow.R` become the "down" defaults. Weight paint each pair to the same brow bone the doll already exposes. Add a `brow_raise` action keyframing each slot's `proscenio_slot_index` 0 -> 1 -> 0.
+- [ ] Re-export `examples/doll/doll.expected.proscenio` golden so it includes the new slots[] + brow_raise animation.
+- [ ] `examples/doll/README.md`: brow row updated from "live slot demo coming" to "two slots (`brow.L.swap` / `brow.R.swap`) drive the brow_raise action".
+- [ ] `.ai/skills/godot-plugin-dev.md`: new "Slots" subsection -- worked example with `Node2D` parent + `visible`-toggled children + `slot_attachment` track expansion. Short (one screen of text + the doll brow scene tree).
+- [ ] `format-spec.md` (defer if the doc still does not exist) -- slot section listing the Slot schema shape + the slot_attachment track contract. Cross-references SPEC 004.
 
 ## Out of scope
 

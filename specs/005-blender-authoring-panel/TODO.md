@@ -158,23 +158,37 @@ Branch: `feat/spec-005.1.d.1-driver-shortcut`. Smallest authoring shortcut for t
 - [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` + `armature_name` + `bone_name` for in-place tweaking via F9.
 - [x] Manual smoke test: `examples/doll/doll.blend`, picked `forearm.L` mesh + `doll.rig` armature + `forearm.L` bone in the panel, clicked Drive from Bone, driver appeared in the Drivers Editor on `forearm.L.proscenio.region_x` with `var` expression and TRANSFORMS variable pointing at `doll.rig:forearm.L.ROT_Z`.
 
-### 5.1.d.2 — Pose library shim
+### 5.1.d.2 — Pose library shim (planned)
 
-Surface "Save current pose to Asset Browser" button. Tiny shim over Blender native pose library — Blender already does the heavy lifting (`POSELIB_OT_create_pose_asset`).
+Branch: `feat/spec-005.1.d.2-pose-library`. Surface "Save current pose to Asset Browser" button. Tiny shim over Blender native pose library -- Blender already does the heavy lifting (`POSELIB_OT_create_pose_asset`).
 
-- [ ] Operator + panel button.
+- [ ] `PROSCENIO_OT_save_pose_asset` operator: bundles armature's current pose + active action keyframes into a pose asset under the Asset Browser. Inputs: pose name (defaults to action name + frame). Wraps the native operator with sensible defaults pulled from the active scene.
+- [ ] Skeleton subpanel button "Save Pose to Library" (pose-mode only, surfaces beside Bake Current Pose / Toggle IK).
+- [ ] `core/feature_status.py` adds `pose_library` row (BLENDER_ONLY).
+- [ ] `core/help_topics.py` adds `pose_library` topic (what it does, how Blender's Asset Browser consumes it, why this is a no-op at .proscenio export time).
+- [ ] Manual smoke test: enter pose mode on `doll.rig`, set a pose, click Save Pose -- pose appears in Asset Browser.
 
-### 5.1.d.3 — Quick armature (click-drag bone draw)
+### 5.1.d.3 — Quick armature (click-drag bone draw, planned)
 
-COA Tools' rapid skeleton-creation operator. Single-click bone drawing tool for click-drag armature authoring without entering Edit Mode. Lower-priority — Blender's Edit Mode + Shift+E (extrude) covers the core use case.
+Branch: `feat/spec-005.1.d.3-quick-armature`. COA Tools' rapid skeleton-creation operator. Modal viewport tool for click-drag bone authoring without entering Edit Mode. Lower-priority -- Blender's Edit Mode + Shift+E (extrude) covers the core use case but loses the rapid-iteration flow when sketching new rigs.
 
-- [ ] Operator + viewport modal handler.
+- [ ] `PROSCENIO_OT_quick_armature` modal operator: invoke captures mouse, click-drag draws a bone from press point to release point, auto-parents to previous bone in the chain when Shift held. Esc / right-click to exit modal.
+- [ ] Skeleton subpanel button "Quick Armature" (always available, creates a new armature on first use, extends the existing one on subsequent runs).
+- [ ] `core/feature_status.py` adds `quick_armature` row (BLENDER_ONLY).
+- [ ] `core/help_topics.py` adds `quick_armature` topic with the click-drag flow + Shift-modifier behavior.
+- [ ] Manual smoke test: empty scene -> Quick Armature -> draw 5 bones in chain -> verify hierarchy in outliner.
 
-### 5.1.d.4 — Spriteobject custom outliner
+### 5.1.d.4 — Spriteobject custom outliner (planned)
 
-UIList that lists sprite_objects + armatures + bones in a custom hierarchical browser with search/filter. Replaces / supplements Blender's native outliner for sprite-centric hierarchies on big rigs.
+Branch: `feat/spec-005.1.d.4-outliner`. `UIList` that lists sprite_objects + armatures + bones in a sprite-centric hierarchical browser with search + filter. Replaces / supplements Blender's native outliner for big rigs (doll fixture has 64 bones + 22 sprite meshes -- finding "brow.L mesh" requires scroll + expand + filter every time).
 
-- [ ] Custom UIList + panel.
+- [ ] `PROSCENIO_UL_sprite_outliner` `bpy.types.UIList`: nested rows for slot Empties (with attachment children indented), then sprite meshes (grouped by parent bone), then armature bones (collapsed by default). Text filter via `bl_filter_string`.
+- [ ] New top-level subpanel `PROSCENIO_PT_outliner` (or section inside Skeleton -- TBD on layout). Hosts the UIList + filter input + "Show favorites only" toggle.
+- [ ] `ProscenioSceneProps` gains `outliner_filter: StringProperty` + `outliner_show_favorites: BoolProperty` + per-object `proscenio.is_outliner_favorite: BoolProperty`.
+- [ ] Click row → `PROSCENIO_OT_select_object` (similar pattern to `select_issue_object` from validation panel).
+- [ ] `core/feature_status.py` adds `outliner` row (BLENDER_ONLY).
+- [ ] `core/help_topics.py` adds `outliner` topic.
+- [ ] Manual smoke test: doll fixture -> outliner -> filter "brow" -> click row -> active object becomes brow.L.
 
 ### 5.1.d.5 — Feature-status badges + in-panel help (in flight)
 

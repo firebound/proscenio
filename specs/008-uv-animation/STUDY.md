@@ -52,6 +52,7 @@ Reads keyframes on `Object.proscenio.region_x/y/w/h` from a Blender action, emit
 ### Importer side
 
 For each `texture_region` track:
+
 - For sprite_frame target → animate `Sprite2D.region_rect` directly.
 - For polygon target → animate the UV coords (rebuild at runtime) or shader uniform — likely means polygon UV animation needs a custom approach (`SubViewport`? texture_region is Sprite2D-only). May restrict the track type to `sprite_frame` sprites only in v1.
 

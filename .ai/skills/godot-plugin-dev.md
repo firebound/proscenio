@@ -86,8 +86,8 @@ generated `.scn`). Scripts attach to the wrapper root, not to the imported
 scene's children. Extra nodes (collisions, particles, AI controllers)
 parent to the wrapper.
 
-See [`examples/dummy/Dummy.tscn`](../../examples/dummy/Dummy.tscn) and
-[`examples/dummy/Dummy.gd`](../../examples/dummy/Dummy.gd) for the worked
+See [`examples/doll/godot/Doll.tscn`](../../examples/doll/godot/Doll.tscn) and
+[`examples/doll/godot/Doll.gd`](../../examples/doll/godot/Doll.gd) for the worked
 documentation-by-example.
 
 ### Bone rename caveat

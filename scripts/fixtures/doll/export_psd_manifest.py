@@ -67,23 +67,29 @@ def main() -> None:
     if not targets:
         print("[export_doll_psd_manifest] no MESH objects in scene", file=sys.stderr)
         sys.exit(1)
-    bboxes = {obj.name: _world_bbox(obj) for obj in targets}
-    bboxes = {name: bbox for name, bbox in bboxes.items() if bbox is not None}
+    raw_bboxes = {obj.name: _world_bbox(obj) for obj in targets}
+    bboxes: dict[str, tuple[Vector, Vector]] = {
+        name: bbox for name, bbox in raw_bboxes.items() if bbox is not None
+    }
     if not bboxes:
         print("[export_doll_psd_manifest] no usable bboxes", file=sys.stderr)
         sys.exit(1)
-    global_min, global_max = _aggregate_bbox(bboxes.values())
+    global_min, global_max = _aggregate_bbox(list(bboxes.values()))
     canvas_size = _canvas_size(global_min, global_max)
-    z_sorted = _sort_by_world_depth(bboxes, targets)
+    z_sorted = _sort_by_world_depth(bboxes)
     layers = [
         _layer_entry(obj_name, bboxes[obj_name], global_min, global_max, z_order)
         for z_order, obj_name in enumerate(z_sorted)
     ]
-    missing = [layer for layer in layers if not (LAYERS_DIR / f"{layer['name']}.png").exists()]
-    if missing:
-        names = ", ".join(layer["name"] for layer in missing)
+    missing_names: list[str] = [
+        str(layer["name"])
+        for layer in layers
+        if not (LAYERS_DIR / f"{layer['name']}.png").exists()
+    ]
+    if missing_names:
+        names = ", ".join(missing_names)
         print(
-            f"[export_doll_psd_manifest] WARNING — missing layer PNG(s): {names}\n"
+            f"[export_doll_psd_manifest] WARNING -- missing layer PNG(s): {names}\n"
             f"  Run scripts/fixtures/render_doll_layers.py first to regenerate.",
             file=sys.stderr,
         )
@@ -139,8 +145,12 @@ def _aggregate_bbox(
     min_v = Vector((float("inf"),) * 3)
     max_v = Vector((float("-inf"),) * 3)
     for bb_min, bb_max in bboxes:
-        min_v = Vector((min(min_v.x, bb_min.x), min(min_v.y, bb_min.y), min(min_v.z, bb_min.z)))
-        max_v = Vector((max(max_v.x, bb_max.x), max(max_v.y, bb_max.y), max(max_v.z, bb_max.z)))
+        min_v = Vector(
+            (min(min_v.x, bb_min.x), min(min_v.y, bb_min.y), min(min_v.z, bb_min.z))
+        )
+        max_v = Vector(
+            (max(max_v.x, bb_max.x), max(max_v.y, bb_max.y), max(max_v.z, bb_max.z))
+        )
     return min_v, max_v
 
 
@@ -154,7 +164,6 @@ def _canvas_size(global_min: Vector, global_max: Vector) -> tuple[int, int]:
 
 def _sort_by_world_depth(
     bboxes: dict[str, tuple[Vector, Vector]],
-    targets: list[bpy.types.Object],
 ) -> list[str]:
     """Sort meshes by world Y midpoint ascending (frontmost first)."""
 

@@ -153,9 +153,9 @@ def _hide_non_render_objects(scene: bpy.types.Scene) -> None:
     the meshes that should appear in the current pass.
     """
     for obj in scene.objects:
-        if obj.type == "MESH" and obj.name in SKIP_MESHES:
-            obj.hide_render = True
-        elif obj.type not in {"MESH", "CAMERA"}:
+        if obj.type == "CAMERA":
+            continue
+        if obj.type != "MESH" or obj.name in SKIP_MESHES:
             obj.hide_render = True
 
 
@@ -183,8 +183,12 @@ def _render_one(
     # When width != height, ortho_scale spans the longer axis. Set
     # resolution_y proportionally so pixels stay square.
     scale_axis = max(width, height)
-    scene.render.resolution_x = max(1, int(round(scale_axis * PIXELS_PER_UNIT * res_x / max(res_x, res_y))))
-    scene.render.resolution_y = max(1, int(round(scale_axis * PIXELS_PER_UNIT * res_y / max(res_x, res_y))))
+    scene.render.resolution_x = max(
+        1, int(round(scale_axis * PIXELS_PER_UNIT * res_x / max(res_x, res_y)))
+    )
+    scene.render.resolution_y = max(
+        1, int(round(scale_axis * PIXELS_PER_UNIT * res_y / max(res_x, res_y)))
+    )
     scene.render.resolution_percentage = 100
     scene.render.filepath = str(LAYERS_DIR / f"{target.name}.png")
     bpy.ops.render.render(write_still=True)

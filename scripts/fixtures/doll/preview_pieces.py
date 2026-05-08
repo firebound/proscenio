@@ -80,7 +80,7 @@ def main() -> None:
     print(f"[preview_doll_pieces] {len(paths)} sprite(s) -> {OUT_PATH}")
 
 
-def _load_font(size: int) -> ImageFont.ImageFont:
+def _load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = [
         "C:/Windows/Fonts/consola.ttf",
         "C:/Windows/Fonts/arial.ttf",

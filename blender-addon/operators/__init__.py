@@ -10,9 +10,57 @@ from bpy.props import EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.help_topics import topic_for  # type: ignore[import-not-found]
 from .import_photoshop import PROSCENIO_OT_import_photoshop
 
 _PRE_PACK_CP_KEY = "proscenio_pre_pack"
+
+
+class PROSCENIO_OT_help(bpy.types.Operator):
+    """Pop up an in-panel help dialog for a given topic id (5.1.d.5).
+
+    The ``?`` button next to every Proscenio subpanel header invokes
+    this operator with a ``topic`` string. Content lives in
+    ``core/help_topics.py`` so the dispatch can be unit-tested + the
+    panel module avoids draw-time coupling to bpy-free strings.
+    """
+
+    bl_idname = "proscenio.help"
+    bl_label = "Proscenio: Help"
+    bl_description = "Open an explanation of this panel section"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "INTERNAL"}
+
+    topic: StringProperty(  # type: ignore[valid-type]
+        name="Topic",
+        description="Help-topic id resolved against core.help_topics.HELP_TOPICS",
+        default="pipeline_overview",
+    )
+
+    def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        return context.window_manager.invoke_popup(self, width=480)
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        return {"FINISHED"}
+
+    def draw(self, _context: bpy.types.Context) -> None:
+        layout = self.layout
+        topic = topic_for(self.topic)
+        if topic is None:
+            layout.label(text=f"unknown help topic: {self.topic!r}", icon="ERROR")
+            return
+        header = layout.row()
+        header.label(text=topic.title, icon="QUESTION")
+        layout.label(text=topic.summary)
+        for section in topic.sections:
+            layout.separator()
+            layout.label(text=section.heading + ":", icon="DOT")
+            for line in section.body:
+                layout.label(text=line)
+        if topic.see_also:
+            layout.separator()
+            layout.label(text="See also:", icon="URL")
+            for ref in topic.see_also:
+                layout.label(text="  " + ref)
 
 
 class PROSCENIO_OT_smoke_test(bpy.types.Operator):
@@ -1010,6 +1058,7 @@ def _swap_image_in_materials(materials: bpy.types.AnyType, atlas_image: bpy.type
 
 
 _classes: tuple[type, ...] = (
+    PROSCENIO_OT_help,
     PROSCENIO_OT_smoke_test,
     PROSCENIO_OT_validate_export,
     PROSCENIO_OT_export_godot,

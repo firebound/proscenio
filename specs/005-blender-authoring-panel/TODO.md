@@ -176,6 +176,18 @@ UIList that lists sprite_objects + armatures + bones in a custom hierarchical br
 
 - [ ] Custom UIList + panel.
 
+### 5.1.d.5 — Feature-status badges + in-panel help (in flight)
+
+Closes the "what is godot-ready vs blender-only vs planned" discoverability gap surfaced during 5.1.d.1 manual smoke testing. Bundled into the same PR as 5.1.d.1 so the new driver shortcut ships with the badge + help popup that explain what it does.
+
+- [x] `core/feature_status.py` — pure-Python `FeatureStatus` enum (`GODOT_READY`, `BLENDER_ONLY`, `PLANNED`, `OUT_OF_SCOPE`) + `STATUS_BADGES` icon/label/tooltip map + per-feature `FEATURE_STATUS` dispatch table. Unknown ids fall back to `BLENDER_ONLY` so a missing entry surfaces a generic badge instead of crashing the panel draw.
+- [x] `core/help_topics.py` — `HelpTopic` dataclass with title + summary + ordered `HelpSection`s + optional `see_also` cross-references. 9 topics shipped: `pipeline_overview`, `active_sprite`, `skeleton`, `animation`, `atlas`, `validation`, `export`, `drive_from_bone`, `import_photoshop`. Plain-text only -- Blender's `UILayout.label` renders one line per call.
+- [x] `PROSCENIO_OT_help` operator. `INTERNAL` flag (hidden from the operator search). `invoke()` opens via `wm.invoke_popup` at 480 px width; `draw()` renders title + summary + sections + see-also list.
+- [x] `_draw_panel_header` helper renders the standardized `<badge label> <icon> <?>` row at the top of every Proscenio subpanel (Active Sprite, Skeleton, Animation, Atlas, Validation, Export). Pipeline-overview button on the root panel.
+- [x] "Drive from bone" box in Active Sprite gains an inline status badge + dedicated help button so the 5.1.d.1 onboarding lands in context.
+- [x] `tests/test_feature_status.py` — 7 pytest assertions (badge metadata + dispatch + fallback + subpanel-id coverage + duplicate-key guard).
+- [x] `tests/test_help_topics.py` — 8 pytest assertions, including a `see_also` cross-reference check that fails CI if a help topic points at a deleted/renamed `specs/<NNN-slug>/` directory.
+
 ## Defer (lower-priority polish — see `RESEARCH.md` matrix)
 
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).

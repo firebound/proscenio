@@ -11,6 +11,7 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.feature_status import badge_for  # type: ignore[import-not-found]
 
 
 class PROSCENIO_PT_main(bpy.types.Panel):
@@ -24,11 +25,50 @@ class PROSCENIO_PT_main(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        layout.label(text="Pipeline v0.1.0", icon="INFO")
+        row = layout.row(align=True)
+        row.label(text="Pipeline v0.1.0", icon="INFO")
+        op = row.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+        op.topic = "pipeline_overview"
 
 
 _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
+_HELP_OP_IDNAME = "proscenio.help"
+
+
+def _draw_panel_header(
+    layout: bpy.types.UILayout,
+    feature_id: str,
+    help_topic: str,
+) -> None:
+    """Render the standardized status badge + help button row for a subpanel.
+
+    Each Proscenio subpanel calls this at the top of its ``draw`` so the
+    user gets a consistent 1-line "what kind of feature is this + where
+    to learn more" hint across the whole sidebar (5.1.d.5).
+    """
+    badge = badge_for(feature_id)
+    row = layout.row(align=True)
+    row.label(text=badge.short_label, icon=badge.icon)
+    row.separator()
+    op = row.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = help_topic
+
+
+def _draw_status_inline(
+    layout: bpy.types.UILayout,
+    feature_id: str,
+) -> None:
+    """Inline 1-icon hint for an operator row (no help button, no label).
+
+    Used inside boxes to flag a single sub-feature's readiness state
+    without eating a whole row. Tooltip is the full status description
+    so hovering the icon explains what godot-ready / blender-only mean.
+    """
+    badge = badge_for(feature_id)
+    row = layout.row(align=True)
+    row.alignment = "RIGHT"
+    row.label(text="", icon=badge.icon)
 
 
 def _draw_sprite_frame_readout(
@@ -222,6 +262,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "active_sprite", "active_sprite")
         obj = context.active_object
         if obj is None:
             return
@@ -256,7 +297,12 @@ def _draw_driver_shortcut(
     ``prop_search`` against the selected armature's bones.
     """
     box = layout.box()
-    box.label(text="Drive from bone", icon="DRIVER")
+    header = box.row(align=True)
+    header.label(text="Drive from bone", icon="DRIVER")
+    badge = badge_for("drive_from_bone")
+    header.label(text=badge.short_label, icon=badge.icon)
+    op = header.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = "drive_from_bone"
     box.prop(props, "driver_target", text="Target")
     box.prop(props, "driver_source_armature", text="Armature")
     box.prop(props, "driver_source_bone", text="Bone")
@@ -286,6 +332,7 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "skeleton", "skeleton")
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
         if not armatures:
             row = layout.row()
@@ -377,6 +424,7 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "animation", "animation")
         actions = bpy.data.actions
         if not actions:
             layout.label(text="no actions to export", icon="INFO")
@@ -406,6 +454,7 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "atlas", "atlas")
         atlas_name = _discover_atlas_name()
         if atlas_name is None:
             layout.label(text="no atlas linked in materials", icon="INFO")
@@ -479,6 +528,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "validation", "validation")
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
             layout.label(text="proscenio scene props not registered", icon="ERROR")
@@ -521,6 +571,7 @@ class PROSCENIO_PT_export(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        _draw_panel_header(layout, "export", "export")
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
             layout.label(text="proscenio scene props not registered", icon="ERROR")

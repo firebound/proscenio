@@ -182,8 +182,7 @@ def _build_slots(scene: bpy.types.Scene) -> list[dict[str, object]]:
     for obj in scene.objects:
         if obj.type != "EMPTY":
             continue
-        props = getattr(obj, "proscenio", None)
-        if props is None or not bool(getattr(props, "is_slot", False)):
+        if not _is_slot_empty(obj):
             continue
         bone = obj.parent_bone if obj.parent_type == "BONE" else ""
         attachments = tuple(child.name for child in obj.children if child.type == "MESH")
@@ -191,12 +190,41 @@ def _build_slots(scene: bpy.types.Scene) -> list[dict[str, object]]:
             SlotInput(
                 name=obj.name,
                 bone=str(bone),
-                slot_default=str(getattr(props, "slot_default", "")),
+                slot_default=_read_slot_default(obj),
                 attachments=attachments,
             )
         )
     result: list[dict[str, object]] = build_slots(slot_inputs)
     return result
+
+
+def _is_slot_empty(obj: bpy.types.Object) -> bool:
+    """True when ``obj`` is a slot-flagged Empty.
+
+    Reads PropertyGroup first (canonical post-SPEC 005), Custom Property
+    ``proscenio_is_slot`` as legacy fallback. The fallback matters in
+    headless contexts where the addon's PropertyGroup is not registered
+    -- CI runs Blender without the addon enabled, so PG access returns
+    None and the writer would otherwise skip every slot.
+    """
+    props = getattr(obj, "proscenio", None)
+    if props is not None and bool(getattr(props, "is_slot", False)):
+        return True
+    return bool(hasattr(obj, "get") and obj.get("proscenio_is_slot", False))
+
+
+def _read_slot_default(obj: bpy.types.Object) -> str:
+    """Read slot_default from PG, fall back to ``proscenio_slot_default`` CP."""
+    props = getattr(obj, "proscenio", None)
+    if props is not None:
+        value = getattr(props, "slot_default", "")
+        if value:
+            return str(value)
+    if hasattr(obj, "get"):
+        cp_value = obj.get("proscenio_slot_default", "")
+        if cp_value:
+            return str(cp_value)
+    return ""
 
 
 # --------------------------------------------------------------------------- #
@@ -218,8 +246,7 @@ def _build_slot_animations(scene: bpy.types.Scene) -> list[dict[str, Any]]:
     for obj in scene.objects:
         if obj.type != "EMPTY":
             continue
-        props = getattr(obj, "proscenio", None)
-        if props is None or not bool(getattr(props, "is_slot", False)):
+        if not _is_slot_empty(obj):
             continue
         anim_data = getattr(obj, "animation_data", None)
         action = getattr(anim_data, "action", None) if anim_data is not None else None

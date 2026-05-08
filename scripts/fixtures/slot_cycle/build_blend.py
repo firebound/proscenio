@@ -102,6 +102,12 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
         empty.proscenio.slot_default = ATTACHMENT_NAMES[0]
+    # Also write Custom Property fallback so headless writer (CI) detects
+    # the slot without relying on the addon's PropertyGroup being
+    # registered. Mirrors the proscenio_<field> pattern used by sprite
+    # meshes (SPEC 005 PG-canonical / CP-fallback contract).
+    empty["proscenio_is_slot"] = True
+    empty["proscenio_slot_default"] = ATTACHMENT_NAMES[0]
     return empty
 
 
@@ -150,18 +156,16 @@ def _build_attachment_mesh(name: str, slot_empty: bpy.types.Object) -> bpy.types
 
 
 def _build_cycle_action(slot_empty: bpy.types.Object) -> None:
-    """Cycle the slot's `slot_default` field per second (placeholder for
-    runtime slot_attachment track wiring -- the Godot writer/importer
-    expand the cycle into N visibility tracks at import time).
+    """Author a ``cycle`` action keyframing ``proscenio_slot_index``.
 
-    Note: the writer's slot_attachment track emission walks the action
-    fcurves on the slot Empty looking for ``proscenio.slot_default``
-    string keys. This action authors them via custom-prop keyframing
-    so the writer picks them up.
+    The writer's ``_build_slot_animations`` walker reads this Custom
+    Property fcurve and projects each int value to the matching slot
+    attachment name; the Godot importer then expands the resulting
+    ``slot_attachment`` track into N visibility tracks. Custom-property
+    keyframing works without the addon's PropertyGroup being registered,
+    so this path is robust to headless contexts (CI runs Blender with
+    no addon enabled).
     """
-    if not hasattr(slot_empty, "proscenio"):
-        print("[build_slot_cycle] proscenio PG missing -- skipping action", file=sys.stderr)
-        return
     slot_empty.animation_data_create()
     action = bpy.data.actions.new(name="cycle")
     slot_empty.animation_data.action = action

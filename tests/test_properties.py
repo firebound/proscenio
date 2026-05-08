@@ -35,7 +35,7 @@ class _ObjectMock:
     def __init__(
         self,
         custom_props: dict[str, Any] | None = None,
-        proscenio: SimpleNamespace | None = None,
+        proscenio: Any = None,
     ) -> None:
         self._custom = dict(custom_props or {})
         self.proscenio = proscenio

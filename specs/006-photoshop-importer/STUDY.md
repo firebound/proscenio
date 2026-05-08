@@ -152,7 +152,7 @@ Idempotent: meshes are identified by their manifest `name`. Re-import replaces t
 ## Decisions locked
 
 | ID | Decision | Choice |
-|---|---|---|
+| --- | --- | --- |
 | D1 | Manifest format | **v1 schema with `format_version`, `kind` discriminator, `pixels_per_unit`, `z_order`, `frames[]` for sprite_frame.** Locked at `schemas/psd_manifest.schema.json`. |
 | D2 | Atlas strategy | **Leave per-PNG.** User runs the existing Pack Atlas operator (SPEC 005.1.c.2) post-import. |
 | D3 | Armature stub | **Auto: single `root` bone, every mesh parented to it.** User adds the rest manually. |
@@ -179,7 +179,7 @@ Idempotent: meshes are identified by their manifest `name`. Re-import replaces t
 ## Surface (LOC estimate)
 
 | Wave | LOC | Files |
-|---|---|---|
+| --- | --- | --- |
 | 6.0 — manifest schema + parser | ~150 | `schemas/psd_manifest.schema.json`, `blender-addon/core/psd_manifest.py`, `blender-addon/tests/test_psd_manifest.py` |
 | 6.1 — JSX exporter v1 | ~80 | bump `photoshop-exporter/proscenio_export.jsx` to emit format_version + kind + frames |
 | 6.2 — naming convention parser | ~120 | `blender-addon/core/psd_naming.py`, `blender-addon/tests/test_psd_naming.py` |

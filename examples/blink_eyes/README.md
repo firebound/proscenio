@@ -41,14 +41,14 @@ Single-bone armature: `head`. The `eye` mesh is parented to it (no skinning).
 
 `blink` — 12 frames, animates `eye.proscenio.frame`:
 
-```
-1  → 0
-3  → 1
-5  → 2
-7  → 3
-9  → 2
-11 → 1
-12 → 0
+```text
+1  -> 0
+3  -> 1
+5  -> 2
+7  -> 3
+9  -> 2
+11 -> 1
+12 -> 0
 ```
 
 Eye opens-closes-opens. The writer should emit a single `sprite_frame`

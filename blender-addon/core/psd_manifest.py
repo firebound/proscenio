@@ -31,6 +31,7 @@ from typing import Any, Literal
 
 MANIFEST_FORMAT_VERSION = 1
 
+_ROOT = "<root>"
 
 LayerKind = Literal["polygon", "sprite_frame"]
 
@@ -103,22 +104,22 @@ def load(path: Path | str) -> Manifest:
 
 def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     """Parse a pre-loaded JSON document into a :class:`Manifest`."""
-    _require_dict(raw, "<root>")
-    fv = _require_field(raw, "format_version", "<root>")
+    _require_dict(raw, _ROOT)
+    fv = _require_field(raw, "format_version", _ROOT)
     if fv != MANIFEST_FORMAT_VERSION:
         raise ManifestError(
             f"unsupported manifest format_version {fv!r}; expected {MANIFEST_FORMAT_VERSION}"
         )
-    doc = _require_field(raw, "doc", "<root>")
+    doc = _require_field(raw, "doc", _ROOT)
     if not isinstance(doc, str) or not doc:
-        raise ManifestError(f"<root>.doc must be a non-empty string, got {doc!r}")
-    size = _parse_uint_pair(_require_field(raw, "size", "<root>"), "<root>.size")
-    ppu = _require_field(raw, "pixels_per_unit", "<root>")
+        raise ManifestError(f"{_ROOT}.doc must be a non-empty string, got {doc!r}")
+    size = _parse_uint_pair(_require_field(raw, "size", _ROOT), f"{_ROOT}.size")
+    ppu = _require_field(raw, "pixels_per_unit", _ROOT)
     if not isinstance(ppu, (int, float)) or ppu <= 0:
-        raise ManifestError(f"<root>.pixels_per_unit must be a positive number, got {ppu!r}")
-    layers_raw = _require_field(raw, "layers", "<root>")
+        raise ManifestError(f"{_ROOT}.pixels_per_unit must be a positive number, got {ppu!r}")
+    layers_raw = _require_field(raw, "layers", _ROOT)
     if not isinstance(layers_raw, list):
-        raise ManifestError(f"<root>.layers must be an array, got {type(layers_raw).__name__}")
+        raise ManifestError(f"{_ROOT}.layers must be an array, got {type(layers_raw).__name__}")
     layers = tuple(_parse_layer(entry, idx) for idx, entry in enumerate(layers_raw))
     return Manifest(
         format_version=fv,

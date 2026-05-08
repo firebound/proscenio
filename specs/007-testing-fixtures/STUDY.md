@@ -29,7 +29,7 @@ The pattern is "small + focused + auditable + buildable from source". Fixtures a
 ## Two fixture types
 
 | Type | Defines | When to use |
-|---|---|---|
+| --- | --- | --- |
 | **A — End-to-end** | `.blend` source + builder script + golden `.proscenio` + Godot wrapper | Default. Tests writer + importer together. |
 | **B — Importer-only** | Hand-written `.proscenio` (no `.blend`) | Only for edge cases the writer cannot produce — invalid `format_version`, unknown track types, minimum-fields-default tests |
 
@@ -38,7 +38,7 @@ In v1 of SPEC 007, only Type A fixtures ship. Type B starts when an actual edge 
 ## Three Type A fixtures
 
 | Fixture | Role | Rough size |
-|---|---|---|
+| --- | --- | --- |
 | **`doll/`** | **Comprehensive showcase.** Full humanoid rig + per-body-part meshes covering polygon + sprite_frame + multi-bone weights + multi-action authoring. The fixture grows as new features ship — SPEC 004 adds a slot, SPEC 008 adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~22 sprite meshes, ~4 actions, evolving |
 | **`blink_eyes/`** | **Sprite_frame end-to-end isolation test.** A single sprite_frame mesh + 1 spritesheet PNG + 1 action animating frame index. Tests writer→`.proscenio`→importer for the sprite_frame path. | 1 sprite, 1 action, ~150 LOC builder |
 | **`shared_atlas/`** | **Sliced atlas packer isolation test.** Three quads referencing one shared atlas PNG with partial UV bounds. Tests the slicing logic introduced in SPEC 005.1.c.2.1. | 3 sprites, no animation, ~120 LOC builder |
@@ -56,7 +56,7 @@ The armature is authored inside `doll.blend` (`doll.rig`). Hierarchy mirrors a s
 Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blender `.L` / `.R` symmetric convention (D8). Sprite kinds:
 
 | Mesh kind | Examples | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | polygon, single primary bone | `head`, `chest`, `belly`, `waist`, `arm.L/R`, `forearm.L/R`, `hand.L/R`, `leg.L/R`, `thigh.L/R`, `foot.L/R`, `brow.L/R`, `ear.L/R` | Standard parented sprites. |
 | polygon, multi-bone weights | `chest` / `belly` / `waist` (weighted across the spine chain), pelvic meshes weighted across `pelvis.L`/`pelvis.R` | Demonstrates weight-paint distribution + falloff. |
 | sprite_frame | `eye.L`, `eye.R` | 4 frames (open / mid / closing / closed). Driven by the `blink` action. |
@@ -72,7 +72,7 @@ Each mesh in `doll.blend` carries a flat-color material. `scripts/fixtures/doll/
 Built into the `.blend` initially:
 
 | Action | Frames | Animates | Why |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `idle` | 30, loop | spine bob + breath | tests bone_transform tracks across multiple bones |
 | `wave` | 30 | shoulder.R + upper_arm.R + forearm.R rotation | demonstrates IK chain (target on hand.R) |
 | `blink` | 12 | `eye.L.proscenio.frame` + `eye.R.proscenio.frame` | exercises sprite_frame track |
@@ -151,7 +151,7 @@ The doll fixture grows feature-by-feature. The two minimal fixtures (`blink_eyes
 After this SPEC ships, a follow-up PR retires the legacy fixtures:
 
 | Today | Tomorrow | Coverage migrated to |
-|---|---|---|
+| --- | --- | --- |
 | `examples/dummy/` | DELETE | `doll/` (polygon + weights + bone_transform), `shared_atlas/` (sliced packer) |
 | `examples/effect/` | DELETE | `blink_eyes/` (end-to-end sprite_frame), `doll/` (sprite_frame mid-action) |
 | `examples/skinned_dummy/` | DELETE | `doll/` (multi-bone weights end-to-end) |

@@ -17,7 +17,7 @@ Closes the reimport-merge question by adopting **Option A** (full overwrite, wra
 ## Example asset
 
 - [x] Add `examples/dummy/Dummy.tscn` — a wrapper scene that instances the generated `dummy.scn`, attaches a tiny `Dummy.gd` (one exported property: a default animation name), and lives next to the source `.proscenio`. This is the documentation-by-example.
-- [x] Add a one-sentence note in [`examples/dummy/`](../../examples/dummy/) (or update its README, if any) explaining the difference between `dummy.proscenio`, `dummy.scn` (generated), and `Dummy.tscn` (user-authored wrapper).
+- [x] Add a one-sentence note in `examples/dummy/` (or update its README, if any) explaining the difference between `dummy.proscenio`, `dummy.scn` (generated), and `Dummy.tscn` (user-authored wrapper). _(Fixture retired in SPEC 007 reorg; doll fixture covers the same role.)_
 
 ## Importer hardening (no behavior change)
 

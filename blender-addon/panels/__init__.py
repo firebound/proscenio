@@ -83,13 +83,21 @@ def _discover_atlas_size_for(obj: bpy.types.Object) -> tuple[int, int] | None:
     mesh = obj.data
     materials = getattr(mesh, "materials", None) or []
     for mat in materials:
-        if mat is None or not mat.use_nodes or mat.node_tree is None:
+        size = _first_tex_image_size(mat)
+        if size is not None:
+            return size
+    return None
+
+
+def _first_tex_image_size(mat: bpy.types.Material | None) -> tuple[int, int] | None:
+    if mat is None or not mat.use_nodes or mat.node_tree is None:
+        return None
+    for node in mat.node_tree.nodes:
+        if node.type != "TEX_IMAGE" or node.image is None:
             continue
-        for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                w, h = node.image.size
-                if w > 0 and h > 0:
-                    return (int(w), int(h))
+        w, h = node.image.size
+        if w > 0 and h > 0:
+            return (int(w), int(h))
     return None
 
 

@@ -65,7 +65,7 @@ def test_parse_returns_manifest_with_typed_layers() -> None:
     assert manifest.format_version == 1
     assert manifest.doc == "doll.psd"
     assert manifest.size == (1024, 1024)
-    assert manifest.pixels_per_unit == 100.0
+    assert manifest.pixels_per_unit == pytest.approx(100.0)
     assert len(manifest.layers) == 2
 
     polygon, sprite_frame = manifest.layers

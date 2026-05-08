@@ -22,9 +22,11 @@ propname
 proscenio
 Proscenio
 regenerable
+renameable
 renderable
 statictext
 subclassing
 subfolders
 tofile
+Toon
 visualisers

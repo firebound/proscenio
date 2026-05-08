@@ -11,6 +11,7 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.feature_status import badge_for, status_for  # type: ignore[import-not-found]
 
 
 class PROSCENIO_PT_main(bpy.types.Panel):
@@ -22,13 +23,46 @@ class PROSCENIO_PT_main(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
 
-    def draw(self, context: bpy.types.Context) -> None:
+    def draw(self, _context: bpy.types.Context) -> None:
         layout = self.layout
-        layout.label(text="Pipeline v0.1.0", icon="INFO")
+        row = layout.row()
+        row.label(text="Pipeline v0.1.0")
+        right = row.row()
+        right.alignment = "RIGHT"
+        op = right.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+        op.topic = "pipeline_overview"
 
 
 _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
+_HELP_OP_IDNAME = "proscenio.help"
+_STATUS_OP_IDNAME = "proscenio.status_info"
+
+
+def _draw_subpanel_header(
+    layout: bpy.types.UILayout,
+    feature_id: str,
+    help_topic: str,
+) -> None:
+    """Append status icon + help button to a Proscenio subpanel foldout.
+
+    Called from ``draw_header_preset`` (NOT ``draw_header``): Blender
+    renders ``draw_header_preset`` content RIGHT of the auto-drawn
+    ``bl_label``, which is what we want. ``draw_header`` would land
+    BEFORE the title, sandwiching the icons between the foldout arrow
+    and the title text.
+
+    The status icon is wrapped in ``proscenio.status_info`` so hovering
+    surfaces the band-specific tooltip (Blender does not honor custom
+    tooltips on plain ``layout.label``). Clicking opens the status
+    legend popup.
+    """
+    badge = badge_for(feature_id)
+    status = status_for(feature_id)
+    op = layout.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op.band = status.value
+    op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = help_topic
 
 
 def _draw_sprite_frame_readout(
@@ -220,6 +254,9 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             return False
         return context.mode in _OBJECT_FRIENDLY_MODES
 
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "active_sprite", "active_sprite")
+
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         obj = context.active_object
@@ -233,12 +270,49 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
         layout.prop(props, "sprite_type")
         _draw_active_sprite_body(layout, context, obj, props)
+        _draw_driver_shortcut(layout, context, props)
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
             icon = "ERROR" if issue.severity == "error" else "INFO"
             row.alert = issue.severity == "error"
             row.label(text=issue.message, icon=icon)
+
+
+def _draw_driver_shortcut(
+    layout: bpy.types.UILayout,
+    _context: bpy.types.Context,
+    props: bpy.types.AnyType,
+) -> None:
+    """Render the 5.1.d.1 driver-shortcut box.
+
+    Panel-side pickers replace the original "active object + selection"
+    flow so the user does not need to switch between Object / Pose modes
+    just to pick a source bone. The armature dropdown lists every
+    ARMATURE in the file (poll filter); the bone field is a
+    ``prop_search`` against the selected armature's bones.
+    """
+    box = layout.box()
+    header = box.row(align=True)
+    header.label(text="Drive from bone", icon="DRIVER")
+    right = header.row()
+    right.alignment = "RIGHT"
+    badge = badge_for("drive_from_bone")
+    status = status_for("drive_from_bone")
+    op_status = right.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op_status.band = status.value
+    op = right.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = "drive_from_bone"
+    box.prop(props, "driver_target", text="Target")
+    box.prop(props, "driver_source_armature", text="Armature")
+    box.prop(props, "driver_source_bone", text="Bone")
+    box.prop(props, "driver_source_axis", text="Axis")
+    box.prop(props, "driver_expression", text="Expression")
+    row = box.row()
+    armature = props.driver_source_armature
+    has_bones = armature is not None and bool(getattr(armature.data, "bones", None))
+    row.enabled = has_bones and bool(props.driver_source_bone)
+    row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
@@ -255,6 +329,9 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "skeleton", "skeleton")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -347,6 +424,9 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_main"
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "animation", "animation")
+
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         actions = bpy.data.actions
@@ -375,6 +455,9 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_main"
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "atlas", "atlas")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -449,6 +532,9 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_main"
 
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "validation", "validation")
+
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         scene_props = getattr(context.scene, "proscenio", None)
@@ -490,6 +576,9 @@ class PROSCENIO_PT_export(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_main"
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "export", "export")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

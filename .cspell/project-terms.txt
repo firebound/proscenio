@@ -16,6 +16,7 @@ lipsync
 PLACEATBEGINNING
 PLACEATEND
 playhead
+POSELIB
 prefs
 propname
 proscenio

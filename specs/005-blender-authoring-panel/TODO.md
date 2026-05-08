@@ -144,12 +144,53 @@ Closes the "non-destructive across session boundaries" gap. Apply was already id
 - [x] Atlas subpanel renders the Unpack button only when at least one mesh in the scene carries a snapshot (`_scene_has_pre_pack_snapshot`).
 - [x] Cycle survives `.blend` save/reload: snapshot CP is stored on the Object datablock, persists with the file. Unpack reads from the saved CP and restores cleanly.
 
-## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
+## SPEC 005.1.d — advanced authoring wave (in flight)
+
+Closes the polish gap left after 5.1.a/b/c shipped. Sub-divided per feature so each lands as its own focused PR. Some items in the original defer list are already shipped via earlier waves (`PROSCENIO_OT_toggle_ik_chain`, `PROSCENIO_OT_bake_current_pose`, `PROSCENIO_OT_create_ortho_camera`, `PROSCENIO_OT_reproject_sprite_uv`) and are not repeated here.
+
+### 5.1.d.1 — Driver constraint shortcut (in flight)
+
+Branch: `feat/spec-005.1.d.1-driver-shortcut`. Smallest authoring shortcut for the driver-driven texture-swap pattern (forearm rotation flips front/back forearm sprite). Wraps Blender's native `driver_add` + a `TRANSFORMS` driver variable so the user does not hand-author the scripted-driver shape every time.
+
+- [x] `ProscenioObjectProps` gains five driver fields: `driver_target` (Enum: `frame`/`region_x`/`region_y`/`region_w`/`region_h`), `driver_source_armature` (PointerProperty filtered to ARMATURE objects), `driver_source_bone` (StringProperty backed by `prop_search` against the picked armature), `driver_source_axis` (Enum: ROT/LOC × X/Y/Z), `driver_expression` (StringProperty, default `var`). Authoring-only — no CP mirror needed.
+- [x] Active Sprite subpanel renders a "Drive from bone" box with the five pickers + the action button. No mode-switching required: the user picks armature + bone via `prop_search` directly in the sidebar regardless of Object / Pose / Edit mode. Button stays disabled until both armature and bone are picked.
+- [x] `PROSCENIO_OT_create_driver` operator. Reads picker state from `Object.proscenio.driver_*` on `invoke`, re-mirrors the redo overrides back to the PG on `execute` so the panel reflects the latest choice. Idempotent: re-running on the same `(sprite, target_property)` pair removes the existing driver before adding the fresh one — no duplicate FCurves.
+- [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` + `armature_name` + `bone_name` for in-place tweaking via F9.
+- [x] Manual smoke test: `examples/doll/doll.blend`, picked `forearm.L` mesh + `doll.rig` armature + `forearm.L` bone in the panel, clicked Drive from Bone, driver appeared in the Drivers Editor on `forearm.L.proscenio.region_x` with `var` expression and TRANSFORMS variable pointing at `doll.rig:forearm.L.ROT_Z`.
+
+### 5.1.d.2 — Pose library shim
+
+Surface "Save current pose to Asset Browser" button. Tiny shim over Blender native pose library — Blender already does the heavy lifting (`POSELIB_OT_create_pose_asset`).
+
+- [ ] Operator + panel button.
+
+### 5.1.d.3 — Quick armature (click-drag bone draw)
+
+COA Tools' rapid skeleton-creation operator. Single-click bone drawing tool for click-drag armature authoring without entering Edit Mode. Lower-priority — Blender's Edit Mode + Shift+E (extrude) covers the core use case.
+
+- [ ] Operator + viewport modal handler.
+
+### 5.1.d.4 — Spriteobject custom outliner
+
+UIList that lists sprite_objects + armatures + bones in a custom hierarchical browser with search/filter. Replaces / supplements Blender's native outliner for sprite-centric hierarchies on big rigs.
+
+- [ ] Custom UIList + panel.
+
+### 5.1.d.5 — Feature-status badges + in-panel help (in flight)
+
+Closes the "what is godot-ready vs blender-only vs planned" discoverability gap surfaced during 5.1.d.1 manual smoke testing. Bundled into the same PR as 5.1.d.1 so the new driver shortcut ships with the badge + help popup that explain what it does.
+
+- [x] `core/feature_status.py` — pure-Python `FeatureStatus` enum (`GODOT_READY`, `BLENDER_ONLY`, `PLANNED`, `OUT_OF_SCOPE`) + `STATUS_BADGES` icon/label/tooltip map + per-feature `FEATURE_STATUS` dispatch table. Unknown ids fall back to `BLENDER_ONLY` so a missing entry surfaces a generic badge instead of crashing the panel draw.
+- [x] `core/help_topics.py` — `HelpTopic` dataclass with title + summary + ordered `HelpSection`s + optional `see_also` cross-references. 9 topics shipped: `pipeline_overview`, `active_sprite`, `skeleton`, `animation`, `atlas`, `validation`, `export`, `drive_from_bone`, `import_photoshop`. Plain-text only -- Blender's `UILayout.label` renders one line per call.
+- [x] `PROSCENIO_OT_help` operator. `INTERNAL` flag (hidden from the operator search). `invoke()` opens via `wm.invoke_popup` at 480 px width; `draw()` renders title + summary + sections + see-also list.
+- [x] `_draw_panel_header` helper renders the standardized `<badge label> <icon> <?>` row at the top of every Proscenio subpanel (Active Sprite, Skeleton, Animation, Atlas, Validation, Export). Pipeline-overview button on the root panel.
+- [x] "Drive from bone" box in Active Sprite gains an inline status badge + dedicated help button so the 5.1.d.1 onboarding lands in context.
+- [x] `tests/test_feature_status.py` — 7 pytest assertions (badge metadata + dispatch + fallback + subpanel-id coverage + duplicate-key guard).
+- [x] `tests/test_help_topics.py` — 8 pytest assertions, including a `see_also` cross-reference check that fails CI if a help topic points at a deleted/renamed `specs/<NNN-slug>/` directory.
+
+## Defer (lower-priority polish — see `RESEARCH.md` matrix)
 
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
-- Pose library shim (Asset Browser).
-- Driver constraint shortcut.
-- Spriteobject custom outliner with search/filter.
 - Vertex weight visualization overlay.
 - Per-user default export-path preference.
 - Localization scaffolding (`i18n_id`).

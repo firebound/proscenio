@@ -46,38 +46,37 @@ Bundled into the foundation PR. **Shipped:**
 
 Branch: `feat/spec-006.0.5-roundtrip-tooling`. Bootstraps real test PSDs from the existing Blender fixtures so the SPEC 006 importer (Wave 6.3) has cross-checked input data without hand-authoring PSDs.
 
-- [x] `scripts/fixtures/export_doll_psd_manifest.py` — bpy: opens `doll.blend`, walks every mesh, projects world XZ bbox to a top-left PSD canvas at `PIXELS_PER_UNIT=100`, emits `examples/doll/doll.psd_manifest.json` matching schema v1 (kind=polygon for every mesh; sprite_frame deferred until the doll grows hframed eyes).
-- [x] `examples/doll/doll.psd_manifest.json` — generated, schema-valid, references existing `layers/<name>.png`.
-- [x] `photoshop-exporter/proscenio_import.jsx` — JSX: file-picker on a manifest, builds a fresh PSD doc at `manifest.size`, stamps each layer at its declared `position`. Layers added in z_order **descending** so z=0 lands on top of the Photoshop layer stack. Sprite_frame layers become a `LayerSet` with frame children named by index (D9 primary mechanism mirrored on the import side).
-- [ ] Manual smoke test in Photoshop CC 2015+ (load `examples/doll/doll.psd_manifest.json` via the importer, confirm 22 layers placed correctly, run the Wave 6.1 exporter on the resulting PSD, diff the round-tripped manifest).
+- [x] `scripts/fixtures/doll/export_psd_manifest.py` — bpy: opens `doll.blend`, walks every mesh, projects world XZ bbox to a top-left PSD canvas at `PIXELS_PER_UNIT=100`, emits `examples/doll/photoshop_import/doll.psd_manifest.json` matching schema v1 (kind=polygon for every mesh; sprite_frame deferred until the doll grows hframed eyes). Layer paths point at `../render_layers/<name>.png`.
+- [x] `examples/doll/photoshop_import/doll.psd_manifest.json` — generated, schema-valid, references `../render_layers/<name>.png`.
+- [x] `photoshop-exporter/proscenio_import.jsx` — JSX: file-picker on a manifest, builds a fresh PSD doc at `manifest.size`, stamps each layer at its declared `position`. Layers added in z_order **descending** so z=0 lands on top of the Photoshop layer stack. Sprite_frame layers become a `LayerSet` with frame children named by index (D9 primary mechanism mirrored on the import side). Output PSD: `examples/doll/photoshop_import/doll.psd`.
+- [x] Manual smoke test in Photoshop: 22 layers placed correctly, JSX exporter round-trips identical positions / sizes (within 2 px from Workbench AA edge bleed). Round-trip output lands at `examples/doll/photoshop_export/` (gitignored) when `proscenio_export.jsx` runs on the imported PSD.
 
 ## Wave 6.3 — importer core
 
-Branch: `feat/spec-006.2-importer`.
+Branch: `feat/spec-006.1-importer`. **Shipped:**
 
-- [ ] `blender-addon/importers/photoshop/__init__.py` — orchestrator: read manifest (6.0), iterate layers, dispatch by `kind`.
-- [ ] `blender-addon/importers/photoshop/planes.py` — quad mesh stamper, coord conversion (D6), material builder (Principled BSDF + ShaderNodeTexImage).
-- [ ] `blender-addon/importers/photoshop/spritesheet.py` — Pillow util: pad N frames to bbox max (D10), concatenate horizontally, write `_spritesheets/<name>.png`. Returns `(hframes, vframes, tile_size_px)`.
-- [ ] `blender-addon/importers/photoshop/armature.py` — stub armature: single `root` bone, parent every mesh via `parent_type='BONE'`.
-- [ ] Re-import semantics (D5): identify existing meshes by `proscenio.import_origin = "psd:<layer_name>"`, replace mesh-data + material, preserve transform / parenting / weights.
+- [x] `blender-addon/importers/photoshop/__init__.py` — orchestrator: read manifest (6.0), iterate layers, dispatch by `kind`. Returns `ImportResult`. Optional `placement` enum (`landed` / `centered`) and `root_bone_name` parameter.
+- [x] `blender-addon/importers/photoshop/planes.py` — quad mesh stamper, coord conversion (D6), material builder (Principled BSDF + ShaderNodeTexImage). Uses `parent_type='OBJECT'` (avoids the bone-direction rotation flip that would put meshes in world XY instead of XZ). Re-import via `proscenio_import_origin = "psd:<layer_name>"` tag (D5).
+- [x] `blender-addon/core/psd_spritesheet.py` — bpy + numpy util: pad N frames to bbox max (D10), concatenate horizontally, write `_spritesheets/<name>.png`. Pillow avoided to keep the addon free of dev-only deps.
+- [x] `blender-addon/importers/photoshop/armature.py` — stub armature: single root-level bone (default name `root`, configurable). Every mesh parented to the armature object.
 
 ## Wave 6.4 — operator + panel
 
-Bundled with 6.3 if cohesive.
+Bundled with 6.3 (PR #18). **Shipped:**
 
-- [ ] `blender-addon/operators/import_photoshop.py` — `PROSCENIO_OT_import_photoshop` operator. File picker for the manifest JSON. Invokes the importer.
-- [ ] Panel button "Import Photoshop Manifest" in the main Proscenio sidebar.
-- [ ] Operator registered in `blender-addon/operators/__init__.py`, panel button in `blender-addon/panels/__init__.py`.
+- [x] `blender-addon/operators/import_photoshop.py` — `PROSCENIO_OT_import_photoshop` operator. File picker for the manifest JSON via `ImportHelper`. `placement: EnumProperty` (`landed` / `centered`) and `root_bone_name: StringProperty` surfaced in the redo panel.
+- [x] Panel button "Import Photoshop Manifest" in the main Proscenio sidebar.
+- [x] Operator registered in `blender-addon/operators/__init__.py`; panel button in `blender-addon/panels/__init__.py`.
 
 ## Wave 6.5 — fixture `simple_psd/`
 
-Branch: `feat/spec-006.3-simple-psd-fixture`.
+Branch: `feat/spec-006.5-simple-psd-fixture`. Mirrors the SPEC 007 fixture layout.
 
 - [ ] `examples/simple_psd/` — a small hand-authored `.psd` source (or a programmatically generated one if PSD authoring is too friction). Contains a polygon layer + a sprite_frame group of 4 frames.
-- [ ] `examples/simple_psd/manifest.json` — JSX exporter output, committed for repeatable testing.
-- [ ] `examples/simple_psd/simple_psd.blend` — expected post-import `.blend` (run the operator, save).
-- [ ] `examples/simple_psd/simple_psd.expected.proscenio` — golden via `scripts/fixtures/export_proscenio.py`.
-- [ ] `examples/simple_psd/SimplePSD.tscn` + `SimplePSD.gd` — Godot wrapper following the SPEC 001 pattern.
+- [ ] `examples/simple_psd/photoshop_export/` — JSX exporter output (`simple_psd.json` + `images/`).
+- [ ] `examples/simple_psd/simple_psd.blend` — expected post-import `.blend` at the fixture root.
+- [ ] `examples/simple_psd/simple_psd.expected.proscenio` — golden at the fixture root.
+- [ ] `examples/simple_psd/godot/SimplePSD.tscn` + `SimplePSD.gd` — Godot wrapper following the SPEC 001 pattern.
 - [ ] `blender-addon/tests/run_tests.py` auto-discovers it (no change needed).
 - [ ] `examples/simple_psd/README.md`.
 

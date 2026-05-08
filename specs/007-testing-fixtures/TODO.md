@@ -22,17 +22,17 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 ## Step 1 — `blink_eyes/` (smallest, validates pattern)
 
-- [x] `scripts/fixtures/draw_blink_eyes.py` — Pillow only: generates `eye_0.png` … `eye_3.png` (32×32) + 128×32 `eye_spritesheet.png`.
-- [x] `scripts/fixtures/build_blink_eyes.py` — bpy only: loads spritesheet, builds 1-bone armature + 1 sprite_frame mesh + `blink` action animating `proscenio.frame` 0→1→2→3→2→1→0 over 12 frames.
-- [x] Run both → `examples/blink_eyes/layers/*.png` + `eye_spritesheet.png` + `blink_eyes.blend` produced. Commit pending.
+- [x] `scripts/fixtures/blink_eyes/draw_layers.py` — Pillow only: generates `pillow_layers/eye_0.png` … `eye_3.png` (32×32) + 128×32 `pillow_layers/eye_spritesheet.png`.
+- [x] `scripts/fixtures/blink_eyes/build_blend.py` — bpy only: loads spritesheet, builds 1-bone armature + 1 sprite_frame mesh + `blink` action animating `proscenio.frame` 0→1→2→3→2→1→0 over 12 frames.
+- [x] Run both → `examples/blink_eyes/pillow_layers/*.png` + `blink_eyes.blend` produced.
 - [x] `examples/blink_eyes/blink_eyes.expected.proscenio` golden (schema-valid).
 - [x] `examples/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
 - [x] `examples/blink_eyes/README.md`.
 
 ## Step 2 — `shared_atlas/` (validates sliced packer)
 
-- [x] `scripts/fixtures/draw_shared_atlas.py` — Pillow only: generates 256×256 `atlas.png` with three colored shapes in three quadrants (red circle / green triangle / blue square), bottom-right left transparent.
-- [x] `scripts/fixtures/build_shared_atlas.py` — bpy only: loads `atlas.png`, builds 3 polygon meshes with per-quadrant UV bounds, single `root` bone, no animation.
+- [x] `scripts/fixtures/shared_atlas/draw_atlas.py` — Pillow only: generates 256×256 `atlas.png` with three colored shapes in three quadrants (red circle / green triangle / blue square), bottom-right left transparent.
+- [x] `scripts/fixtures/shared_atlas/build_blend.py` — bpy only: loads `atlas.png`, builds 3 polygon meshes with per-quadrant UV bounds, single `root` bone, no animation.
 - [x] Run both → `examples/shared_atlas/atlas.png` + `shared_atlas.blend` produced. Commit pending.
 - [x] `examples/shared_atlas/shared_atlas.expected.proscenio` golden (schema-valid).
 - [x] `examples/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
@@ -43,9 +43,9 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 `doll.blend` is authored by hand in Blender (mesh objects per body part + armature). Layer PNGs are rendered from it; helper bpy modules drive auxiliary fixture work.
 
 - [x] `examples/doll/doll.blend` — hand-authored mesh objects + `doll.rig` armature + per-mesh materials + vertex weights + actions. Single source of truth for the doll fixture.
-- [x] `scripts/fixtures/render_doll_layers.py` — bpy: opens `doll.blend`, walks every mesh, renders each to `examples/doll/layers/<name>.png` (Workbench flat, transparent background, ortho front view).
-- [x] `scripts/fixtures/preview_doll_pieces.py` — Pillow: contact sheet of every layer PNG (visual debug).
-- [x] Run `render_doll_layers.py` → `examples/doll/layers/*.png` rendered alongside `doll.blend`. Commit pending alongside the rest of the fixture.
+- [x] `scripts/fixtures/doll/render_layers.py` — bpy: opens `doll.blend`, walks every mesh, renders each to `examples/doll/render_layers/<name>.png` (Workbench flat, transparent background, ortho front view).
+- [x] `scripts/fixtures/doll/preview_pieces.py` — Pillow: contact sheet of every layer PNG (visual debug), output `examples/doll/render_layers/pieces_sheet.png`.
+- [x] Run `render_layers.py` → `examples/doll/render_layers/*.png` committed alongside `doll.blend`.
 - [x] `examples/doll/doll.expected.proscenio` golden generated via `export_proscenio.py` (1956 lines, schema-valid).
 - [x] `examples/doll/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
 - [x] `examples/doll/README.md`.

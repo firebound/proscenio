@@ -65,7 +65,7 @@ Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blen
 
 ### Visual style
 
-Each mesh in `doll.blend` carries a flat-color material. `render_doll_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background). Region colors are the artist's choice in the `.blend` — change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
+Each mesh in `doll.blend` carries a flat-color material. `scripts/fixtures/doll/render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background) under `examples/doll/render_layers/`. Region colors are the artist's choice in the `.blend` — change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
 
 ### Actions
 
@@ -90,7 +90,7 @@ Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).
 
 **Locked: rendered from the committed `.blend` via headless Blender.** The `.blend` is the authored source of truth for the fixture's visual; per-region PNG layers fall out of it deterministically:
 
-- `scripts/fixtures/render_<fixture>_layers.py` — bpy-only, opens the `.blend`, walks every mesh object, and renders each one through an orthographic front camera with Workbench flat shading + transparent background. Run with `blender --background examples/<fixture>/<fixture>.blend --python scripts/fixtures/render_<fixture>_layers.py`.
+- `scripts/fixtures/<fixture>/render_layers.py` — bpy-only, opens the `.blend`, walks every mesh object, and renders each one through an orthographic front camera with Workbench flat shading + transparent background. Run with `blender --background examples/<fixture>/<fixture>.blend --python scripts/fixtures/<fixture>/render_layers.py`. Output lands at `examples/<fixture>/render_layers/`.
 - `scripts/fixtures/build_<fixture>.py` — kept for fixtures whose `.blend` is generated procedurally rather than authored by hand (`blink_eyes/`, `shared_atlas/`). Loads PNGs from disk and assembles `.blend`.
 
 Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one layer per body part flattened to PNG) and removes the divergence risk between an authored 3D source and a separately drawn 2D layer roster. PNG resolution = mesh bounding-box × `PIXELS_PER_UNIT` (default 100) so pixels stay square across the fixture.
@@ -160,47 +160,62 @@ The retirement PR ships only after the three new fixtures' goldens are committed
 
 ## Mockup directory layout
 
+Each fixture is split into subfolders by **role in the pipeline**: the source-of-truth `.blend` and the validation golden live at the fixture root; everything else falls into a named subfolder.
+
 ```text
 examples/
 ├── doll/
 │   ├── README.md
-│   ├── layers/                          flat 2D PNGs rendered from doll.blend
-│   │   ├── head.png
-│   │   ├── chest.png / belly.png / waist.png
+│   ├── doll.blend                          [SOURCE — authored Blender]
+│   ├── doll.expected.proscenio             [GOLDEN — CI-diffed validation]
+│   ├── render_layers/                      Workbench-rendered PNGs, one per mesh
+│   │   ├── head.png / chest.png / belly.png / waist.png
 │   │   ├── arm.L/R, forearm.L/R, hand.L/R
 │   │   ├── leg.L/R, thigh.L/R, foot.L/R
 │   │   ├── eye.L/R, brow.L/R, ear.L/R
-│   │   └── ...
-│   ├── doll.blend                       authored: meshes + doll.rig armature
-│   ├── doll.expected.proscenio
-│   ├── doll_pieces_sheet.png            contact sheet (visual debug)
-│   ├── Doll.tscn
-│   └── Doll.gd
+│   │   └── pieces_sheet.png                contact sheet (visual debug)
+│   ├── photoshop_import/                   Inputs to + output of the JSX importer
+│   │   ├── doll.psd_manifest.json          bpy → SPEC 006 v1 manifest
+│   │   └── doll.psd                        JSX importer output (PSD)
+│   ├── photoshop_export/                   JSX exporter output (gitignored — roundtrip artifact)
+│   │   ├── doll.json                       re-exported manifest
+│   │   └── images/                         re-exported per-layer PNGs
+│   └── godot/                              Godot wrapper artifacts
+│       ├── Doll.tscn
+│       └── Doll.gd
 ├── blink_eyes/
 │   ├── README.md
-│   ├── layers/eye_0.png … eye_3.png
-│   ├── eye_spritesheet.png
-│   ├── blink_eyes.blend
-│   ├── blink_eyes.expected.proscenio
-│   ├── BlinkEyes.tscn
-│   └── BlinkEyes.gd
+│   ├── blink_eyes.blend                    [SOURCE — built by build_blend.py]
+│   ├── blink_eyes.expected.proscenio       [GOLDEN]
+│   ├── pillow_layers/                      Pillow draws + spritesheet
+│   │   ├── eye_0.png … eye_3.png
+│   │   └── eye_spritesheet.png
+│   └── godot/
+│       ├── BlinkEyes.tscn
+│       └── BlinkEyes.gd
 └── shared_atlas/
     ├── README.md
-    ├── atlas.png
-    ├── shared_atlas.blend
-    ├── shared_atlas.expected.proscenio
-    ├── SharedAtlas.tscn
-    └── SharedAtlas.gd
+    ├── shared_atlas.blend                  [SOURCE]
+    ├── shared_atlas.expected.proscenio     [GOLDEN]
+    ├── atlas.png                           Pillow → atlas (single PNG, no subfolder)
+    └── godot/
+        ├── SharedAtlas.tscn
+        └── SharedAtlas.gd
 
 scripts/fixtures/
-├── _draw.py                  Pillow shape rasterizer (used by blink_eyes / shared_atlas / contact sheet)
-├── render_doll_layers.py     bpy — opens doll.blend, renders each mesh as a flat 2D layer
-├── preview_doll_pieces.py    Pillow — contact sheet of every doll layer PNG (debug)
-├── draw_blink_eyes.py        Pillow — eye frames + spritesheet PNG (procedural fixture)
-├── draw_shared_atlas.py      Pillow — shared atlas PNG (procedural fixture)
-├── build_blink_eyes.py       bpy — load PNGs, build .blend (procedural fixture)
-├── build_shared_atlas.py     bpy — load PNG, build .blend (procedural fixture)
-└── export_proscenio.py       bpy — re-export an opened .blend → golden .proscenio
+├── _shared/
+│   ├── _draw.py                            Pillow rasterizer (used by every Pillow-driven fixture)
+│   └── export_proscenio.py                 bpy — open <fixture>.blend → write <fixture>.expected.proscenio
+├── doll/
+│   ├── render_layers.py                    bpy — doll.blend → render_layers/*.png (Workbench flat)
+│   ├── export_psd_manifest.py              bpy — doll.blend → photoshop_import/doll.psd_manifest.json
+│   └── preview_pieces.py                   Pillow — render_layers/*.png → render_layers/pieces_sheet.png
+├── blink_eyes/
+│   ├── draw_layers.py                      Pillow → pillow_layers/eye_0..3.png + eye_spritesheet.png
+│   └── build_blend.py                      bpy — load spritesheet, build blink_eyes.blend
+└── shared_atlas/
+    ├── draw_atlas.py                       Pillow → atlas.png
+    └── build_blend.py                      bpy — load atlas, build shared_atlas.blend
 ```
 
 The doll fixture has **no** programmatic weight or action assignment script — everything visual, weights, and animation lives inside the hand-authored `doll.blend`. The blink_eyes and shared_atlas fixtures stay procedural because they are minimal isolation tests where authoring a `.blend` by hand would add overhead with no payoff.

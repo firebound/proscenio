@@ -50,8 +50,8 @@ class PROSCENIO_OT_status_info(bpy.types.Operator):
         try:
             band = FeatureStatus(properties.band)
         except ValueError:
-            return cls.bl_label
-        return STATUS_BADGES[band].tooltip
+            return str(cls.bl_label)
+        return str(STATUS_BADGES[band].tooltip)
 
     def invoke(self, _context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         bpy.ops.proscenio.help("INVOKE_DEFAULT", topic="status_legend")
@@ -82,7 +82,8 @@ class PROSCENIO_OT_help(bpy.types.Operator):
     )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
-        return context.window_manager.invoke_popup(self, width=480)
+        result: set[str] = context.window_manager.invoke_popup(self, width=480)
+        return result
 
     def execute(self, _context: bpy.types.Context) -> set[str]:
         return {"FINISHED"}

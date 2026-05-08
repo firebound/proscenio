@@ -87,7 +87,7 @@ DRIVER_SOURCE_AXIS_ITEMS = (
 
 def _is_armature(_self: object, obj: bpy.types.Object) -> bool:
     """PointerProperty poll: only allow ARMATURE objects in the picker."""
-    return obj.type == "ARMATURE"
+    return bool(obj.type == "ARMATURE")
 
 
 # Module-level cache: Blender's EnumProperty with a callable ``items=`` GCs

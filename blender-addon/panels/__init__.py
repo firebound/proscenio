@@ -501,6 +501,12 @@ class PROSCENIO_PT_export(bpy.types.Panel):
         col.operator("proscenio.export_godot", text="Export (.proscenio)", icon="EXPORT")
         if scene_props.last_export_path:
             col.operator("proscenio.reexport_godot", text="Re-export", icon="FILE_REFRESH")
+        layout.separator()
+        layout.operator(
+            "proscenio.import_photoshop",
+            text="Import Photoshop Manifest",
+            icon="IMPORT",
+        )
 
 
 class PROSCENIO_PT_help(bpy.types.Panel):
@@ -527,6 +533,7 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.validate_export", "Validate"),
     ("proscenio.export_godot", "Export Proscenio (.proscenio)"),
     ("proscenio.reexport_godot", "Re-export"),
+    ("proscenio.import_photoshop", "Import Photoshop Manifest"),
     ("proscenio.create_ortho_camera", "Preview Camera"),
     ("proscenio.bake_current_pose", "Bake Current Pose"),
     ("proscenio.toggle_ik_chain", "Toggle IK"),

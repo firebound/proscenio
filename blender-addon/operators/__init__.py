@@ -10,6 +10,7 @@ from bpy.props import FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
+from .import_photoshop import PROSCENIO_OT_import_photoshop
 
 _PRE_PACK_CP_KEY = "proscenio_pre_pack"
 
@@ -858,6 +859,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_apply_packed_atlas,
     PROSCENIO_OT_unpack_atlas,
     PROSCENIO_OT_bake_current_pose,
+    PROSCENIO_OT_import_photoshop,
 )
 
 

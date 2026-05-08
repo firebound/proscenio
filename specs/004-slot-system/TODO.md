@@ -16,19 +16,32 @@ Slot system implementation. See [STUDY.md](STUDY.md) for the full design + decis
 - [x] D10 — slot child cannot also carry bone_transform keyframes (validation warning).
 - [x] D11 — no schema bump (`slots[]` + `slot_attachment` already in `format_version=1`).
 - [x] D12 — Godot child z-order follows attachment array order in the manifest.
+- [x] D13 — sprite_frame preview shader (Material Preview mode) bundled with Wave 4.1.
+- [x] D14 — slots are kind-agnostic; polygon + sprite_frame children compose under the same slot machinery.
 
-## Wave 4.1 — writer + authoring panel (Blender side)
+## Wave 4.1 — writer + authoring panel + preview shader (Blender side)
 
 Branch: `feat/spec-004.1-slots-blender`.
 
+**Slot system core** (D1–D12 + D14):
+
 - [ ] `properties/__init__.py` gains `is_slot: BoolProperty` + `slot_default: StringProperty` on `ProscenioObjectProps`.
 - [ ] `operators/__init__.py` gains `PROSCENIO_OT_create_slot` (D8 two-path: bare creation under active bone, or wrap N selected meshes in a fresh Empty).
-- [ ] Active Sprite subpanel renders a Slots section when `active_object.type == "EMPTY"` and `is_slot == True`: list of attachment children, default picker, "Add attachment" button (parents the active mesh into the slot Empty).
-- [ ] Writer (`exporters/godot/writer.py`) walks scene Empties, emits `slots[]` array. Each slot's `bone` = Empty's `parent_bone`; `attachments` = sorted child mesh names; `default` = `slot_default` or first child.
+- [ ] Active Sprite subpanel renders a Slots section when `active_object.type == "EMPTY"` and `is_slot == True`: list of attachment children, default picker, "Add attachment" button (parents the active mesh into the slot Empty), reorder buttons (D12 z-order). Children kind-mixed (polygon + sprite_frame) -- D14.
+- [ ] Writer (`exporters/godot/writer.py`) walks scene Empties, emits `slots[]` array. Each slot's `bone` = Empty's `parent_bone`; `attachments` = ordered child mesh names (per D12); `default` = `slot_default` or first child. Sprites continue to emit normally in `sprites[]` regardless of slot membership (D6).
 - [ ] Validation rules per D9 + D10 — surfaced in Validation subpanel via existing `Issue` + click-to-select.
 - [ ] `core/feature_status.py` flips `slot_system` from `PLANNED` to `GODOT_READY`.
-- [ ] `core/help_topics.py` adds a `slot_system` topic (what slots do, how to author, how Godot consumes them, contrast with driver shortcut).
-- [ ] Tests: writer round-trip on a hand-built slot fixture (`tests/test_slot_writer.py`), validation rules (`tests/test_slot_validation.py`).
+- [ ] `core/help_topics.py` adds a `slot_system` topic (what slots do, how to author, how Godot consumes them, contrast with driver shortcut, the two PS-import flows that compose under one slot per D14).
+- [ ] Tests: writer round-trip on a hand-built slot fixture (`tests/test_slot_writer.py`) covering polygon-only, sprite_frame-only, and mixed-kind slots; validation rules (`tests/test_slot_validation.py`).
+
+**Sprite_frame preview shader** (D13):
+
+- [ ] `core/sprite_frame_shader.py` -- pure Python helper that builds a reusable shader-node group ("Proscenio Sprite Frame Slicer") with input sockets `Frame`, `H Frames`, `V Frames` and a wired `Image Texture` lookup. Math: `cell_w = 1/hframes`, `cell_x = frame % hframes`, etc. The group is parametrized so the same node tree can serve every sprite_frame mesh in the scene.
+- [ ] `PROSCENIO_OT_setup_sprite_frame_preview` operator -- inserts the slicer between `TexCoord` and `TexImage` of the active mesh's first image-textured material; wires drivers from `obj.proscenio.frame / hframes / vframes` onto the matching shader inputs. Idempotent: re-runs detect an existing slicer and refresh drivers.
+- [ ] `PROSCENIO_OT_remove_sprite_frame_preview` -- bypasses the slicer (keeps the texture wired straight to BSDF), drops the drivers, leaves the node group present so other materials still reference it.
+- [ ] Active Sprite subpanel surfaces "Setup Preview Material" / "Remove Preview Material" button when `sprite_type == "sprite_frame"` and a material is linked.
+- [ ] `core/help_topics.py` `active_sprite` topic gains a "Material preview (Z-key cycles to Material Preview mode)" caveat sentence.
+- [ ] Tests: `tests/test_sprite_frame_shader.py` -- verify the math helpers (`cell_offset_x(frame, hframes)`, etc.) without booting Blender. Shader-node creation itself stays bpy-bound (manual smoke test on doll's eye fixture).
 
 ## Wave 4.2 — Godot importer + animation track
 

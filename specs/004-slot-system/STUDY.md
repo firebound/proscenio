@@ -40,6 +40,8 @@ The shared pattern across the discrete-swap tools: a parent group + N sibling vi
 | D10 | Slot interaction with bone tracks | **A mesh can be either a slot attachment OR a regular bone-parented sprite, not both.** Validator warns when a slot child carries `bone_transform` keyframes -- the slot toggles `visible`, bone keys still apply but won't propagate visually as the user might expect (only the visible child is seen). Out of scope for v1: per-attachment skeleton wiring (each attachment carrying its own bone targets). |
 | D11 | Schema bump | **None.** The `slots[]` array + `slot_attachment` track type were already in `format_version=1`. SPEC 004 adds *behavior*, not schema. Backward compatible: pre-004 `.proscenio` files lacking `slots[]` keep working. |
 | D12 | Slot order in the Godot scene | **Z-order follows attachment array order in the manifest.** First attachment is rendered behind, last on top -- matches Blender's outliner top-down ordering after `proscenio.attachment_order` operator (a small reorder helper on the Slots panel). |
+| D13 | Sprite_frame preview shader | **Bundle a Material Preview-mode shader graph with Wave 4.1.** A single mesh's spritesheet is sliced live in the viewport using a generated shader-node group: `[TexCoord] -> [Math: cell offset] -> [Image Texture] -> [BSDF]`. Drivers wire `obj.proscenio.frame / hframes / vframes` into the offset Math nodes so the visible cell tracks the panel + animation values without reload. Operator `PROSCENIO_OT_setup_sprite_frame_preview` toggles the slicer on/off per material; idempotent re-runs replace the existing slicer. Out of scope: padding-aware atlases, cycles material, Workbench compatibility (Workbench evaluates only `diffuse_color`, no shader nodes). |
+| D14 | Attachment kind agnosticism | **Slots are kind-agnostic.** `slots[].attachments[]` is just `string[]` of mesh names; the kind (`polygon` / `sprite_frame`) lives on each entry of the top-level `sprites[]` array. Importer dispatches per attachment by reading the matching Sprite entry's `kind`. This means a single slot can mix polygon (weight-painted) + sprite_frame (texture-sliced) children freely -- e.g. an eye slot with two polygon attachments (open / closed) plus one sprite_frame attachment (4-cell glow cycle). The two SPEC 006 input flows (PS layer stack and PS sprite_frame layer group) compose under the same slot machinery without any cross-flow conversion. |
 
 ## Out of scope
 
@@ -53,11 +55,11 @@ The shared pattern across the discrete-swap tools: a parent group + N sibling vi
 
 | Wave | LOC | Files |
 | --- | --- | --- |
-| 4.1 -- writer + authoring panel | ~350 | `properties/`, `operators/`, `panels/`, `core/validation.py`, `core/exporters/godot/writer.py` |
+| 4.1 -- writer + authoring panel + preview shader | ~500 | `properties/`, `operators/`, `panels/`, `core/validation.py`, `core/exporters/godot/writer.py`, `core/sprite_frame_shader.py` (new -- preview shader-node group builder) |
 | 4.2 -- Godot importer + animation track | ~200 | `godot-plugin/addons/proscenio/builders/slot_builder.gd`, `animation_builder.gd` patch, GUT tests |
 | 4.3 -- fixtures + docs | ~250 | `examples/doll/` (brow slots), `examples/slot_cycle/` (minimal slot fixture), `examples/<slot_cycle>.expected.proscenio`, godot wrapper, `STATUS.md`, `format-spec.md`, `.ai/skills/godot-plugin-dev.md` |
 
-Total estimated ~800 LOC across three waves. Each wave is one PR -- no further sub-division (avoids the 5.1.x.x.x nesting that grew accidentally during SPEC 005).
+Total estimated ~950 LOC across three waves. Each wave is one PR -- no further sub-division (avoids the 5.1.x.x.x nesting that grew accidentally during SPEC 005).
 
 ## Successor considerations
 

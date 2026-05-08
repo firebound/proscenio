@@ -1,5 +1,7 @@
+dejavu
 DONOTSAVECHANGES
 dopesheet
+goldens
 keyframing
 lipsync
 PLACEATBEGINNING

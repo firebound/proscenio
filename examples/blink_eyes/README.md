@@ -5,20 +5,23 @@ tagged as sprite_frame, its `frame` property animated through a Blender
 action, and the writer emitting a `sprite_frame` animation track in the
 resulting `.proscenio`.
 
-## Contents (after running the build script)
+## Directory layout
 
-```
-blink_eyes/
-├── layers/
+The fixture is split by **role in the pipeline**: `.blend` at the root is the source-of-truth; everything in subfolders is regenerable from it (or, for procedural fixtures like this one, from the matching script).
+
+```text
+examples/blink_eyes/
+├── blink_eyes.blend                       [SOURCE — built by build_blend.py from pillow_layers/]
+├── blink_eyes.expected.proscenio          [GOLDEN — CI-diffed validation midpoint]
+├── pillow_layers/                         [DERIVED — Pillow draws each frame + spritesheet]
 │   ├── eye_0.png         32x32 — eye open
-│   ├── eye_1.png         32x32 — eye partially closing
-│   ├── eye_2.png         32x32 — eye nearly closed
-│   └── eye_3.png         32x32 — eye fully closed
-├── eye_spritesheet.png   128x32 — concatenation of the 4 frames (the actual texture)
-├── blink_eyes.blend
-├── blink_eyes.expected.proscenio    golden — CI diffs against re-export
-├── BlinkEyes.tscn                   Godot wrapper
-└── BlinkEyes.gd                     empty stub
+│   ├── eye_1.png         32x32 — partially closing
+│   ├── eye_2.png         32x32 — nearly closed
+│   ├── eye_3.png         32x32 — fully closed
+│   └── eye_spritesheet.png   128x32 — concatenation, the texture the mesh references
+└── godot/
+    ├── BlinkEyes.tscn                     Godot wrapper
+    └── BlinkEyes.gd                       empty stub
 ```
 
 ## Why both per-frame PNGs and a spritesheet?
@@ -55,16 +58,16 @@ track on the `eye` target with these keys.
 
 Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headless Blender.
 
-```bash
-# 1. Generate PNGs (requires only Python + Pillow).
-python scripts/fixtures/draw_blink_eyes.py
+```sh
+# 1. Generate PNGs into pillow_layers/ (requires only Python + Pillow).
+python scripts/fixtures/blink_eyes/draw_layers.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/build_blink_eyes.py
+blender --background --python scripts/fixtures/blink_eyes/build_blend.py
 
-# 3. Generate the golden .proscenio (open the .blend, run the addon's writer).
+# 3. Generate the golden .proscenio under godot/.
 blender --background examples/blink_eyes/blink_eyes.blend \
-    --python scripts/fixtures/export_proscenio.py
+    --python scripts/fixtures/_shared/export_proscenio.py
 ```
 
 ## What this fixture catches when broken

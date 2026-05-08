@@ -22,9 +22,9 @@ from pathlib import Path
 
 import bpy
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "blink_eyes"
-SHEET_PATH = FIXTURE_DIR / "eye_spritesheet.png"
+SHEET_PATH = FIXTURE_DIR / "pillow_layers" / "eye_spritesheet.png"
 BLEND_PATH = FIXTURE_DIR / "blink_eyes.blend"
 
 FRAME_W = 32

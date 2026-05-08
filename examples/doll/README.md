@@ -1,47 +1,99 @@
 # doll fixture (SPEC 007)
 
-The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights, sprite_frame eyes, and authored actions. Layer PNGs are rendered from the `.blend` per [SPEC 007 D2](../../specs/007-testing-fixtures/STUDY.md). Demonstrates everything the addon supports today; grows feature-by-feature as future SPECs ship (slot system, UV animation, driver-based texture swap).
+The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights, sprite_frame eyes, and authored actions. Demonstrates everything the addon supports today; grows feature-by-feature as future SPECs ship.
 
-## Contents
+## Directory layout
 
-```plaintext
-doll/
-├── layers/                         flat 2D layer PNGs rendered from doll.blend
-│   ├── head.png                    each mesh in the .blend → its own PNG
-│   ├── chest.png / belly.png / waist.png
-│   ├── arm.L/R, forearm.L/R, hand.L/R
-│   ├── leg.L/R, thigh.L/R, foot.L/R
-│   ├── brow.L/R, ear.L/R, eye.L/R
-│   └── ...
-├── doll.blend                      authored: mesh objects + doll.rig armature
-├── doll.expected.proscenio         golden — CI diffs against re-export
-├── doll_pieces_sheet.png           contact sheet of every layer (visual debug)
-├── Doll.tscn                       Godot wrapper (manual user pattern, SPEC 001)
-├── Doll.gd                         empty stub
-└── README.md
+The fixture is split into subfolders by **role in the pipeline** so the input vs derived outputs stay obvious. The single source of truth lives at the root; everything under a subfolder can be regenerated from it.
+
+```text
+examples/doll/
+├── doll.blend                              [SOURCE — authored Blender]
+├── doll.expected.proscenio                 [GOLDEN — CI-diffed validation midpoint]
+├── render_layers/                          [DERIVED — Workbench renders, one PNG per mesh]
+│   ├── arm.L.png ... waist.png
+│   └── pieces_sheet.png                    contact-sheet preview of every layer
+├── photoshop_import/                       [INPUTS for + output of JSX importer]
+│   ├── doll.psd_manifest.json              bpy → SPEC 006 v1 manifest, paths point at ../render_layers/
+│   └── doll.psd                            PSD with one Photoshop layer per manifest entry
+├── photoshop_export/                       [JSX exporter OUTPUT (run on doll.psd) — gitignored]
+│   ├── doll.json                           re-exported manifest (roundtrip test)
+│   └── images/                             re-exported per-layer PNGs
+└── godot/                                  [Godot-side wrapper artifacts]
+    ├── Doll.tscn                           SPEC 001 wrapper that instances doll.scn
+    └── Doll.gd                             empty-stub script attached to the wrapper
+```
+
+## Pipeline at a glance
+
+```text
+doll.blend (authored)
+    │
+    ├──► [render_layers/]              scripts/fixtures/doll/render_layers.py
+    │       └──► one flat PNG per mesh (Workbench, ortho front view, transparent)
+    │
+    ├──► [photoshop_import/]           scripts/fixtures/doll/export_psd_manifest.py
+    │       └──► doll.psd_manifest.json (SPEC 006 v1; paths point at ../render_layers/)
+    │           │
+    │           └──► photoshop-exporter/proscenio_import.jsx (in Photoshop)
+    │                   └──► [photoshop_import/doll.psd] (PSD with placed layers)
+    │                           │
+    │                           └──► photoshop-exporter/proscenio_export.jsx (in Photoshop)
+    │                                   └──► [photoshop_export/]  (gitignored — roundtrip output)
+    │                                           ├──► doll.json
+    │                                           └──► images/<layer>.png
+    │
+    └──► doll.expected.proscenio       scripts/fixtures/_shared/export_proscenio.py
+            └──► CI compares against re-export of doll.blend each run
+```
+
+Inputs to authoring (you edit): `doll.blend`. Everything else falls out of it deterministically.
+
+## Building from source
+
+```sh
+# 1. Render every mesh to render_layers/<name>.png + pieces_sheet.png.
+blender --background examples/doll/doll.blend \
+    --python scripts/fixtures/doll/render_layers.py
+python scripts/fixtures/doll/preview_pieces.py
+
+# 2. Export the SPEC 006 manifest into photoshop_import/.
+blender --background examples/doll/doll.blend \
+    --python scripts/fixtures/doll/export_psd_manifest.py
+
+# 3. (optional) Build the PSD by running the JSX importer in Photoshop:
+#    File > Scripts > Browse... > photoshop-exporter/proscenio_import.jsx
+#    Pick examples/doll/photoshop_import/doll.psd_manifest.json.
+#    Output: examples/doll/photoshop_import/doll.psd.
+
+# 4. (optional) Roundtrip-test the PSD by running the JSX exporter on it:
+#    File > Scripts > Browse... > photoshop-exporter/proscenio_export.jsx
+#    Output: examples/doll/photoshop_export/{doll.json, images/} (gitignored).
+
+# 5. Generate the golden .proscenio at the fixture root (used by run_tests.py).
+blender --background examples/doll/doll.blend \
+    --python scripts/fixtures/_shared/export_proscenio.py
 ```
 
 ## Skeleton
 
-The armature lives inside `doll.blend` as `doll.rig` — open the `.blend` in Blender to read the exact bone names and parenting. The hierarchy is a simplified humanoid: `root` → pelvic split + per-side leg chain (thigh / shin / foot), plus a 4-segment spine column that ends at `neck → head` with the usual face attachments (brow, ear, eye, lip). The arms branch off the upper spine (shoulder → arm → forearm → hand). The `.blend` is the source of truth — this README does not duplicate the bone list because it would drift the moment the rig is tweaked.
+The armature lives inside `doll.blend` as `doll.rig` — open the `.blend` in Blender to read the exact bone names and parenting. The hierarchy is a simplified humanoid: `root` → pelvic split + per-side leg chain (thigh / shin / foot), plus a 4-segment spine column ending at `neck → head` with the usual face attachments (brow, ear, eye, lip). Arms branch off the upper spine (shoulder → arm → forearm → hand). The `.blend` is the source of truth — this README does not duplicate the bone list because it would drift the moment the rig is tweaked.
 
 ## Sprites (highlights)
 
-Each top-level mesh in `doll.blend` becomes one PNG layer when `render_doll_layers.py` runs. Sprite kinds:
+Each top-level mesh in `doll.blend` becomes one PNG layer when `render_layers.py` runs.
 
 | Mesh kind | Examples | Why it exists |
 | --- | --- | --- |
 | polygon, multi-bone weights | spine-region meshes (`chest` / `belly` / `waist`), pelvic mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R` | Demonstrates **multi-bone weights** + falloff distribution. |
-| polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (when SPEC 004 + 5.1.d ship). |
+| polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (SPEC 004 + 5.1.d). |
 | sprite_frame | `eye.L` / `eye.R` | Hframes=4 spritesheet, animated by the `blink` action. |
 | polygon, slot-ready | `brow.L` / `brow.R` | Future home for the slot system (SPEC 004) — brow-up / brow-down swap. |
-| polygon, single primary bone | everything else (`head`, `arm.L/R`, `leg.L/R`, `thigh.L/R`, `foot.L/R`, `hand.L/R`, `ear.L/R`, ...) | Standard parented sprites. |
+| polygon, single primary bone | everything else | Standard parented sprites. |
 
 ## Visual style
 
-Each mesh in `doll.blend` carries its own material; `render_doll_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background). Region colors are the artist's choice in the `.blend`, not hardcoded — change a material's Base Color, re-run the render, the layer PNG updates.
-
-Why flat-shaded layers (no lighting) — the layered 2D output mirrors the future Photoshop-driven workflow (one layer per region) and keeps weight-paint smearing across bone seams visually obvious.
+Each mesh in `doll.blend` carries a flat-color material; `render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background). Region colors are the artist's choice in the `.blend` — change a Base Color, re-run, the layer PNG updates. Flat shading mirrors the future Photoshop-driven workflow (one painted layer per region) and keeps weight-paint smearing across bone seams visually obvious.
 
 ## Actions
 
@@ -52,34 +104,11 @@ Why flat-shaded layers (no lighting) — the layered 2D output mirrors the futur
 | `blink` | 12 | eye.L + eye.R `proscenio.frame` 0→1→2→3→2→1→0 | exercises sprite_frame track type |
 | `walk` | 30, loop | thigh.L/R + shin.L/R rotation, spine sway | full-body coordination |
 
-Future actions land as future SPECs require (talk action when lip phonemes ship under SPEC 008, etc).
-
-## Building from source
-
-`doll.blend` is the authored source of truth (hand-modelled meshes + `doll.rig` armature). Layer PNGs fall out of it via headless Blender:
-
-```bash
-# 1. Render every mesh in doll.blend to examples/doll/layers/<name>.png
-#    (Workbench flat shading, ortho front view, transparent background).
-blender --background examples/doll/doll.blend \
-    --python scripts/fixtures/render_doll_layers.py
-
-# 2. Generate the golden .proscenio.
-blender --background examples/doll/doll.blend \
-    --python scripts/fixtures/export_proscenio.py
-```
-
-Helpers under `scripts/fixtures/`:
-
-- `render_doll_layers.py` — bpy: opens `doll.blend`, renders each mesh as a flat 2D layer
-- `preview_doll_pieces.py` — Pillow: contact sheet of every layer PNG (visual sanity check)
-- `export_proscenio.py` — bpy: re-exports the opened `.blend` to the golden `.proscenio`
-
-Weights and actions are authored inside `doll.blend` directly (vertex groups + weight paint + action editor). No separate script applies them.
+Future actions land as future SPECs require.
 
 ## What this fixture catches when broken
 
-- Anything end-to-end that touches polygon meshes + weights + actions + sprite_frame.
+- Anything end-to-end touching polygon meshes + weights + actions + sprite_frame.
 - Multi-bone weight export regression (pelvic mesh, spine-region meshes, `forearm.L/R`).
 - sprite_frame eye animation regression.
 - Multi-action authoring regression.
@@ -90,7 +119,7 @@ Weights and actions are authored inside `doll.blend` directly (vertex groups + w
 | When | Adds |
 | --- | --- |
 | SPEC 004 (slots) ships | Slot on `hand.L.attachment` (sword vs bow swap). Slot on `brow.L/R` (brow-up vs brow-down). |
-| SPEC 006 (PS importer) ships | A `doll.psd` source + JSX manifest input as cross-validation. |
+| SPEC 006 importer ships fully | A `doll.psd` round-trip test using `photoshop_import/doll.psd` as input. |
 | SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
 | Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |
 

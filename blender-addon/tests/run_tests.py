@@ -91,6 +91,8 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
             continue
         name = fixture_dir.name
         blend = fixture_dir / f"{name}.blend"
+        # Golden lives at the fixture root (it's the validation midpoint
+        # between Blender and Godot — neither pure Blender nor pure Godot).
         expected = fixture_dir / f"{name}.expected.proscenio"
         if blend.exists() and expected.exists():
             pairs.append((blend, expected))

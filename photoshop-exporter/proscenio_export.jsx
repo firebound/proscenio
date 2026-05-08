@@ -1,13 +1,24 @@
-// @ts-check
-// Proscenio — Photoshop exporter
+#target photoshop
+// Proscenio -- Photoshop exporter
 // Exports visible layers as PNG plus a position JSON manifest (v1) suitable
 // for the Proscenio Blender importer (SPEC 006).
 //
-// Output shape (matches schemas/psd_manifest.schema.json):
+// Output layout (matches schemas/psd_manifest.schema.json):
 //
-//   <doc>.json
-//   <doc>/images/<layer>.png
-//   <doc>/images/<sprite_frame>/<index>.png
+//   When the PSD lives at <root>/photoshop_import/<doc>.psd and the
+//   sibling <root>/photoshop_export/ folder exists, the exporter writes:
+//       <root>/photoshop_export/<doc>.json
+//       <root>/photoshop_export/images/<layer>.png
+//       <root>/photoshop_export/images/<sprite_frame>/<index>.png
+//
+//   Otherwise (PSD anywhere else) it falls back to a per-doc subfolder
+//   alongside the PSD:
+//       <docpath>/<doc>/<doc>.json
+//       <docpath>/<doc>/images/<layer>.png
+//       <docpath>/<doc>/images/<sprite_frame>/<index>.png
+//
+//   Manifest path entries are always relative to the manifest's own
+//   parent directory (i.e. "images/<layer>.png", never "<doc>/images/...").
 //
 //   {
 //     "format_version": 1,
@@ -36,12 +47,10 @@
 //   aggregated post-walk into sprite_frame entries (fallback for users
 //   who do not group their frames).
 //
-// Compatible with Photoshop CC 2015 and later — uses `var`, string
+// Compatible with Photoshop CC 2015 and later -- uses `var`, string
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-
-#target photoshop
 
 var MANIFEST_FORMAT_VERSION = 1;
 var DEFAULT_PIXELS_PER_UNIT = 100;
@@ -53,9 +62,26 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
     }
 
     var doc = app.activeDocument;
+    if (doc.saved === false) {
+        alert(
+            "Save the document first.\n\n" +
+            "The Proscenio exporter writes the manifest + layer PNGs " +
+            "next to the .psd file, so the document must already be on " +
+            "disk (File > Save) before running the export."
+        );
+        return;
+    }
     var docPath = doc.path;
     var docName = doc.name.replace(/\.[^.]+$/, "");
-    var outDir = new Folder(docPath + "/" + docName);
+
+    // Convention: when the PSD lives inside an examples/<fixture>/photoshop_import/
+    // tree, write the export output to the sibling photoshop_export/ folder so
+    // the directory layout mirrors the fixture pipeline (manifest in
+    // photoshop_import, exporter output in photoshop_export). Otherwise fall
+    // back to writing alongside the PSD.
+    var siblingExport = new Folder(docPath + "/../photoshop_export");
+    var outRoot = siblingExport.exists ? siblingExport : new Folder(docPath.toString());
+    var outDir = new Folder(outRoot + "/" + docName);
     var imagesDir = new Folder(outDir + "/images");
     if (!outDir.exists) outDir.create();
     if (!imagesDir.exists) imagesDir.create();
@@ -86,7 +112,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
 
     alert(
         "Proscenio export complete:\n" +
-        entries.length + " entry(ies) → " + outDir.fsName
+        entries.length + " entry(ies) -> " + outDir.fsName
     );
 
     /**
@@ -199,7 +225,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
             }
             frameEntries.push({
                 index: pair.index,
-                path: docName + "/images/" + safeMeshName + "/" + pair.index + ".png"
+                path: "images/" + safeMeshName + "/" + pair.index + ".png"
             });
         }
         if (maxBounds === null || frameEntries.length < 2) return null;
@@ -226,7 +252,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         return {
             kind: "polygon",
             name: name,
-            path: docName + "/images/" + safeName + ".png",
+            path: "images/" + safeName + ".png",
             position: [Math.round(bounds.x), Math.round(bounds.y)],
             size: [Math.round(bounds.w), Math.round(bounds.h)],
             z_order: zOrder
@@ -368,10 +394,65 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         if (typeof JSON !== "undefined" && JSON.stringify) {
             return JSON.stringify(m, null, 2);
         }
-        // Photoshop CC 2015+ ships JSON; older versions would need a polyfill.
-        // Bail loudly rather than emit a half-broken manual encoding.
-        throw new Error(
-            "JSON.stringify unavailable; Photoshop CC 2015 or later required."
-        );
+        // Older ExtendScript builds do not ship the JSON global. Manual
+        // serializer covers the manifest's bounded shape (objects,
+        // arrays, strings, finite numbers, booleans, null).
+        return manualStringify(m, "");
+    }
+
+    function manualStringify(value, indent) {
+        if (value === null) return "null";
+        var t = typeof value;
+        if (t === "boolean") return value ? "true" : "false";
+        if (t === "number") return isFinite(value) ? String(value) : "null";
+        if (t === "string") return jsonQuote(value);
+        if (Object.prototype.toString.call(value) === "[object Array]") {
+            if (value.length === 0) return "[]";
+            var nextIndent = indent + "  ";
+            var arrParts = [];
+            for (var i = 0; i < value.length; i++) {
+                arrParts.push(nextIndent + manualStringify(value[i], nextIndent));
+            }
+            return "[\n" + arrParts.join(",\n") + "\n" + indent + "]";
+        }
+        if (t === "object") {
+            var keys = [];
+            for (var k in value) {
+                if (Object.prototype.hasOwnProperty.call(value, k)) keys.push(k);
+            }
+            if (keys.length === 0) return "{}";
+            var nextIndent2 = indent + "  ";
+            var objParts = [];
+            for (var j = 0; j < keys.length; j++) {
+                var key = keys[j];
+                objParts.push(
+                    nextIndent2 + jsonQuote(key) + ": " +
+                    manualStringify(value[key], nextIndent2)
+                );
+            }
+            return "{\n" + objParts.join(",\n") + "\n" + indent + "}";
+        }
+        return "null";
+    }
+
+    function jsonQuote(s) {
+        var out = "\"";
+        for (var i = 0; i < s.length; i++) {
+            var c = s.charAt(i);
+            var code = s.charCodeAt(i);
+            if (c === "\\" || c === "\"") out += "\\" + c;
+            else if (c === "\n") out += "\\n";
+            else if (c === "\r") out += "\\r";
+            else if (c === "\t") out += "\\t";
+            else if (c === "\b") out += "\\b";
+            else if (c === "\f") out += "\\f";
+            else if (code < 0x20) {
+                var hex = code.toString(16);
+                while (hex.length < 4) hex = "0" + hex;
+                out += "\\u" + hex;
+            }
+            else out += c;
+        }
+        return out + "\"";
     }
 })();

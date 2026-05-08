@@ -42,6 +42,15 @@ Bundled into the foundation PR. **Shipped:**
   - `group_by_index_suffix(layer_names) -> dict[base, list[(index, name)]]`
 - [x] `tests/test_psd_naming.py` — 15 cases covering pure-digit / `frame_<n>` / `<base>_<n>` matches, mixed-convention rejection, mixed-base rejection, gap rejection, non-zero-start rejection, empty/single-child rejection, fallback grouping.
 
+## Wave 6.0.5 — roundtrip tooling
+
+Branch: `feat/spec-006.0.5-roundtrip-tooling`. Bootstraps real test PSDs from the existing Blender fixtures so the SPEC 006 importer (Wave 6.3) has cross-checked input data without hand-authoring PSDs.
+
+- [x] `scripts/fixtures/export_doll_psd_manifest.py` — bpy: opens `doll.blend`, walks every mesh, projects world XZ bbox to a top-left PSD canvas at `PIXELS_PER_UNIT=100`, emits `examples/doll/doll.psd_manifest.json` matching schema v1 (kind=polygon for every mesh; sprite_frame deferred until the doll grows hframed eyes).
+- [x] `examples/doll/doll.psd_manifest.json` — generated, schema-valid, references existing `layers/<name>.png`.
+- [x] `photoshop-exporter/proscenio_import.jsx` — JSX: file-picker on a manifest, builds a fresh PSD doc at `manifest.size`, stamps each layer at its declared `position`. Layers added in z_order **descending** so z=0 lands on top of the Photoshop layer stack. Sprite_frame layers become a `LayerSet` with frame children named by index (D9 primary mechanism mirrored on the import side).
+- [ ] Manual smoke test in Photoshop CC 2015+ (load `examples/doll/doll.psd_manifest.json` via the importer, confirm 22 layers placed correctly, run the Wave 6.1 exporter on the resulting PSD, diff the round-tripped manifest).
+
 ## Wave 6.3 — importer core
 
 Branch: `feat/spec-006.2-importer`.

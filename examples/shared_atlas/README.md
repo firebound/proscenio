@@ -2,16 +2,16 @@
 
 Tests the **sliced atlas packer** end-to-end (SPEC 005.1.c.2.1). Three polygon meshes reference the same shared atlas PNG, each mapped to a different quadrant via UV bounds. The packer must extract each sprite's slice (just its quadrant, not the whole atlas) into the new packed atlas.
 
-## Contents (after running the build script)
+## Directory layout
 
-```plaintext
-shared_atlas/
-├── atlas.png                       256×256, three colored shapes in three quadrants
-├── shared_atlas.blend              3 polygon meshes referencing atlas.png with partial UVs
-├── shared_atlas.expected.proscenio golden — CI diffs against re-export
-├── SharedAtlas.tscn                Godot wrapper (manual user pattern, SPEC 001)
-├── SharedAtlas.gd                  empty stub
-└── README.md
+```text
+examples/shared_atlas/
+├── shared_atlas.blend              [SOURCE — 3 polygon meshes referencing atlas.png with partial UVs]
+├── shared_atlas.expected.proscenio [GOLDEN — CI-diffed validation midpoint]
+├── atlas.png                       256x256, three colored shapes in three quadrants
+└── godot/
+    ├── SharedAtlas.tscn            Godot wrapper (SPEC 001)
+    └── SharedAtlas.gd              empty stub
 ```
 
 ## Sprites
@@ -32,16 +32,16 @@ Single bone `root` only. No animation. The fixture exists to test the packer, no
 
 Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headless Blender.
 
-```bash
+```sh
 # 1. Generate the atlas PNG (requires only Python + Pillow).
-python scripts/fixtures/draw_shared_atlas.py
+python scripts/fixtures/shared_atlas/draw_atlas.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/build_shared_atlas.py
+blender --background --python scripts/fixtures/shared_atlas/build_blend.py
 
-# 3. Generate the golden .proscenio.
+# 3. Generate the golden .proscenio under godot/.
 blender --background examples/shared_atlas/shared_atlas.blend \
-    --python scripts/fixtures/export_proscenio.py
+    --python scripts/fixtures/_shared/export_proscenio.py
 ```
 
 Output is committed to the repo. Re-run whenever the fixture spec changes.

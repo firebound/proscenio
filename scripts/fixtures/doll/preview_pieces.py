@@ -17,9 +17,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-LAYERS_DIR = REPO_ROOT / "examples" / "doll" / "layers"
-OUT_PATH = REPO_ROOT / "examples" / "doll" / "doll_pieces_sheet.png"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+LAYERS_DIR = REPO_ROOT / "examples" / "doll" / "render_layers"
+OUT_PATH = REPO_ROOT / "examples" / "doll" / "render_layers" / "pieces_sheet.png"
 
 SHEET_W = 1280
 CELL_PAD_X = 12

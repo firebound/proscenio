@@ -22,7 +22,7 @@ from pathlib import Path
 
 import bpy
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 ADDON_PATH = REPO_ROOT / "blender-addon"
 ADDON_PACKAGE = "proscenio"  # matches blender-addon/blender_manifest.toml `id`
 

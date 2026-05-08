@@ -49,8 +49,8 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-LAYERS_DIR = REPO_ROOT / "examples" / "doll" / "layers"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+LAYERS_DIR = REPO_ROOT / "examples" / "doll" / "render_layers"
 
 PIXELS_PER_UNIT = 100.0
 PADDING_UNITS = 0.02  # 2 px @ ppu=100 — keeps outline anti-aliasing safe

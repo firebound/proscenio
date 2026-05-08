@@ -105,13 +105,15 @@ flowchart TD
 | Test assertions Python | 46 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8 + uv_bounds 8) |
 | Test fixtures Blender | 4 golden diffs auto-walked pelo `run_tests.py` (`examples/doll`, `examples/blink_eyes`, `examples/shared_atlas`, `examples/simple_psd`). Legacy `examples/dummy/` + `examples/effect/` retired (Type B importer-only fixtures under `godot-plugin/tests/fixtures/` mantidas) |
 | CI jobs | 5 (lint-python agora roda pytest também) |
-| SPECs escritos | 6 shipped (000, 001, 002, 003, 005, 006), 1 placeholder (004), 1 design-only (007) |
+| SPECs escritos | 6 shipped (000, 001, 002, 003, 005, 006), 1 design-locked (004), 1 design-only (007) |
 
 ## O que está em andamento
 
 SPEC 006 (Photoshop → Blender importer) entregue end-to-end. Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 já merged (PRs #16–#20 + lint cleanup #21). Wave 6.5 (`examples/simple_psd/`) em PR aberta #22 — fixture com manifest 256x128 (1 polygon + 1 sprite_frame de 4 frames) driving o importer headless pra produzir `.blend` + golden `.proscenio`. Roundtrip integration: bpy → SPEC 006 v1 manifest → JSX importer → PSD real → JSX exporter → manifest mirror, mais o addon operator `Import Photoshop Manifest` que cria planes + stub armature.
 
-SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima frente: SPEC 005.1.d (advanced authoring shortcuts — drivers, pose lib, custom outliner) ou SPEC 004 design real conforme demanda.
+SPEC 005.1.d.1 (driver shortcut) + 5.1.d.5 (status badges + help popups) shipped (PR #23). Driver shortcut cobre gradual parameter mapping; hard texture swap (forearm front/back) caiu pra SPEC 004.
+
+SPEC 004 (slot system) com design pass real concluído — STUDY locked com 12 decisões (D1–D12), TODO com 3 waves grossas (4.1 writer + panel, 4.2 importer Godot, 4.3 fixtures). Schema já carrega `slots[]` + `slot_attachment` track desde `format_version=1`; SPEC 004 adiciona behavior, sem schema bump. Próxima frente: branch `feat/spec-004.1-slots-blender`.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -139,7 +141,7 @@ flowchart TB
     S1[SPEC 001<br/>Reimport-merge<br/>✅ shipped]
     S2[SPEC 002<br/>Spritesheet / Sprite2D path<br/>✅ shipped]
     S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>✅ shipped]
-    S4[SPEC 004<br/>Slot system<br/>📝 placeholder]
+    S4[SPEC 004<br/>Slot system<br/>🟡 design locked]
     S5[SPEC 005<br/>Blender authoring panel<br/>✅ first-cut, 🟡 5.1.a + 5.1.b in flight]
     S6[SPEC 006<br/>Photoshop → Blender importer<br/>✅ shipped]
 
@@ -176,7 +178,7 @@ flowchart TB
 | **001** | Wrapper-scene pattern, importer log na regenerate, idempotency test | shipped |
 | **002** | `Sprite2D` + `sprite_frame` track type, discriminador `type` aditivo, fixture `examples/effect/` | shipped |
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
-| **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
+| **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões + hard texture swap (forearm front/back). Empty Object como slot anchor + child meshes como attachments; Godot importer gera `Node2D` parent + `visible`-toggled children. Sem schema bump (`slots[]` já em v1). | design locked (12 decisões); 3 waves planejadas (4.1 panel + writer, 4.2 importer Godot, 4.3 fixtures) |
 | **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); 5.1.c.1 (region authoring) PR #8; fix bundle PR #9; **5.1.c.2 (atlas packer)** branch atual; 5.1.d (advanced) onda seguinte — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
 | **006** | Photoshop → Blender importer — JSON manifest v1 contract (schema 2020-12 com `kind` discriminator), JSX importer que monta PSD a partir do manifest, JSX exporter que emite o manifest mirror, addon `Import Photoshop Manifest` operator que cria planes + stub armature. Fixture `examples/simple_psd/` cobre roundtrip end-to-end. | Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 shipped (PRs #16–#20 + lint #21); Wave 6.5 (fixture) em PR #22 aguardando merge |
 

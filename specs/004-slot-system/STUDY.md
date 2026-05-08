@@ -1,43 +1,66 @@
 # SPEC 004 — Slot system (sprite swap)
 
-Status: **placeholder**, not yet designed. Tracked here so it does not get lost.
+Status: **design locked**. Implementation waves below.
 
-## Problem (sketch)
+## Problem
 
-A "slot" is a named attachment point that can present one of N sprites at a time, switched at runtime — head expressions (normal/angry/dead), equipment swaps (sword/staff/empty), weapon variants. The schema already defines the shape:
+A "slot" is a named attachment point that presents one of N sprites at a time, switched at runtime: head expressions (normal/angry/dead), equipment swaps (sword/staff/empty), forearm front/back swap when the bone passes a rotation threshold. The driver shortcut shipped in SPEC 005.1.d.1 covers gradual parameter mapping (iris scroll, region nudge) but is the wrong primitive for hard texture swaps -- a `FloatProperty` driven from a bone radian saturates at the clamp and cannot represent N discrete states.
 
-- `slots: [{name, bone, default, attachments[]}]`
-- Track type `slot_attachment` with key data `attachment` (sprite name)
-- Importer ignores the field today.
+The schema already carries the slot shape:
 
-## Why this is a placeholder
+- `slots: [{name, bone, default, attachments[]}]` on the root document.
+- Track type `slot_attachment` with key data `attachment: string` (sprite name).
+- Importer + writer ignore both today.
 
-SPEC 005 (Blender authoring panel) lands first. Slots without a UI to manage them are painful to author through Custom Properties alone, and any attempt at a CLI/text authoring contract for slots would be retrofitted as soon as the panel exists.
+SPEC 004 closes the loop: writer emits, importer realizes, panel authors.
 
-## Sketch of expected design (will be re-evaluated when work begins)
+## Reference: similar tools
 
-- **Godot side**: a slot is a parent node holding sibling sprites; the `slot_attachment` track flips `visible` on each child. No new node type — leverages built-in `visible` property and the existing animation builder.
-- **Blender side**: a Collection per slot, with the collection's children being the candidate attachments. The default attachment is identified by a Custom Property or by being the only visible one at export time.
-- **Authoring**: SPEC 005's panel gains a "Slots" subpanel — list editing, default picker, attachment ordering.
-- **Animation**: `slot_attachment` track in the schema already has `attachment: string` per key. Builder reads, finds the named child of the slot, switches `visible`.
+- **Spine** -- "Slot Attachments" + an `attachment` animation track. Each slot has multiple attachments; animation can swap which one is shown. Industry standard for cutout 2D rigs.
+- **DragonBones** -- "Display" list per slot, swapped via animation events.
+- **COA Tools** -- `slot_object` operator that bundles sprites into a swappable group; `slot_index` integer is keyframable.
+- **Toon Boom Harmony** -- "Drawing Substitution" with explicit swap-table keys.
+- **Live2D** -- different paradigm (parameter-driven deformers, not discrete swap); inspirational only.
 
-## Out of scope (current sketch)
+The shared pattern across the discrete-swap tools: a parent group + N sibling visuals + an animation track that picks which sibling is currently shown. SPEC 004 follows that pattern.
 
-- Skin systems beyond a flat slot list (Spine has skins, themes — not v1 territory).
-- Procedural / runtime attachment generation.
-- Slot-aware skinning (a swappable head with its own weights vs the default head's weights). Tracked: see SPEC 003 successor considerations.
+## Decisions locked
 
-## Open questions to resolve when work begins
+| ID | Decision | Choice |
+| --- | --- | --- |
+| D1 | Slot identity in Blender | **Empty Object as slot anchor + child meshes as attachments.** The Empty carries `proscenio.is_slot = True`. Each direct child mesh is one attachment. Empty over Collection because Empty has world transform + bone parent links, integrates with the armature posing chain cleanly; Collections are organizational only. |
+| D2 | Default attachment | **`proscenio.slot_default: StringProperty`** on the Empty, names one of the children. Empty string = first child by sorted name. Writer emits in `slots[].default`. |
+| D3 | Slot bone binding | **Empty's `parent_bone` (Blender bone-parenting) becomes `slots[].bone`.** All attachment children must share the same bone parent (validated at export -- mismatch = warning, not error, since users may have legitimate reasons during authoring). |
+| D4 | Godot scene shape | **`Node2D` parent + N attachment children (`Polygon2D` / `Sprite2D`); `visible` toggled.** No new node type, no GDExtension. Default attachment starts `visible = true`, others `false`. |
+| D5 | Track key shape | **Existing `Key.attachment: string` field, `slot_attachment` track type.** `target` = slot name (not sprite name). `interp` defaults to `constant` (no in-between -- swap is binary). |
+| D6 | Slot-attachment binding in `.proscenio` | **Existing `slots[].attachments[]` list of sprite names.** No new field on Sprite. Importer cross-references the slot list to know which sprites belong to which slot. Sprites authored as slot attachments are still emitted in the top-level `sprites[]` array; the slot list adds a grouping layer. |
+| D7 | Authoring panel surface | **New "Slots" section in the Active Sprite subpanel when the active object is an Empty with `is_slot = True`.** Lists attachment children, picker for default, "Add attachment" / "Promote to slot" operators. Same subpanel as Active Sprite (no new top-level subpanel) -- slots are object-scoped, not scene-scoped. |
+| D8 | "Promote to slot" workflow | **`PROSCENIO_OT_create_slot` operator.** Two paths: (a) with no selection, creates a new Empty parented to the active pose bone, ready to receive children; (b) with N meshes selected, parents them to a new Empty + flags it as a slot. Empty named `<bone>.slot` by default, renameable. |
+| D9 | Validation rules | **Slot Empty must have ≥1 child mesh; all children must share `parent_bone` if the Empty has one; `slot_default` must name an existing child (or be empty); slot names unique scene-wide.** Surfaces in the Validation panel via the existing `Issue` machinery. |
+| D10 | Slot interaction with bone tracks | **A mesh can be either a slot attachment OR a regular bone-parented sprite, not both.** Validator warns when a slot child carries `bone_transform` keyframes -- the slot toggles `visible`, bone keys still apply but won't propagate visually as the user might expect (only the visible child is seen). Out of scope for v1: per-attachment skeleton wiring (each attachment carrying its own bone targets). |
+| D11 | Schema bump | **None.** The `slots[]` array + `slot_attachment` track type were already in `format_version=1`. SPEC 004 adds *behavior*, not schema. Backward compatible: pre-004 `.proscenio` files lacking `slots[]` keep working. |
+| D12 | Slot order in the Godot scene | **Z-order follows attachment array order in the manifest.** First attachment is rendered behind, last on top -- matches Blender's outliner top-down ordering after `proscenio.attachment_order` operator (a small reorder helper on the Slots panel). |
 
-The list below is opening notes, not locked. Each will be revisited and answered as part of the real STUDY pass.
+## Out of scope
 
-- Q? — How does the importer represent a slot in the generated scene? Pure node hierarchy (parent + sibling sprites) or a metadata-only tag?
-- Q? — How are slot defaults expressed at import time? Default-visible-on-init vs a slot resource with a "current" property?
-- Q? — Does a slot's `bone` have to match all of its attachments' `bone`? Probably yes for sanity; document.
-- Q? — How does the wrapper-scene pattern (SPEC 001) interact with slot edits? Can the user drive slots from `Effect.gd`-style scripts cleanly?
-- Q? — Does SPEC 003 skinning compose with slots? Each attachment can carry its own `weights`; verify the importer handles per-attachment skeleton wiring.
+- **Skin systems** beyond a flat slot list (Spine "Skins" -- swap multiple slots in lockstep). Future SPEC if a real use case appears.
+- **Procedural / runtime attachment generation.** Slots are static -- the attachment list is fixed at export time.
+- **Per-attachment skeleton wiring.** A swappable head with its own per-vertex weights vs the default head's weights is an SPEC 003 successor item, not SPEC 004 territory.
+- **Crossfade / smooth slot transitions.** Slots are hard cuts (`interp = "constant"`); a future SPEC could add a `slot_blend` track type for crossfade, but that bumps `format_version` and is intentionally deferred.
+- **Slot-aware live-link** (Blender ↔ Godot real-time slot preview). Backlog under "Architecture revisits".
+
+## Surface (LOC estimate)
+
+| Wave | LOC | Files |
+| --- | --- | --- |
+| 4.1 -- writer + authoring panel | ~350 | `properties/`, `operators/`, `panels/`, `core/validation.py`, `core/exporters/godot/writer.py` |
+| 4.2 -- Godot importer + animation track | ~200 | `godot-plugin/addons/proscenio/builders/slot_builder.gd`, `animation_builder.gd` patch, GUT tests |
+| 4.3 -- fixtures + docs | ~250 | `examples/doll/` (brow slots), `examples/slot_cycle/` (minimal slot fixture), `examples/<slot_cycle>.expected.proscenio`, godot wrapper, `STATUS.md`, `format-spec.md`, `.ai/skills/godot-plugin-dev.md` |
+
+Total estimated ~800 LOC across three waves. Each wave is one PR -- no further sub-division (avoids the 5.1.x.x.x nesting that grew accidentally during SPEC 005).
 
 ## Successor considerations
 
-- A future "armor / skin" system that swaps multiple slots in lockstep is conceivable. Stay aware but do not couple SPEC 004 to it.
-- Animation events / method tracks (backlog) and slot transitions are independent but commonly co-author cues.
+- **Skin systems** (multi-slot lockstep swap) become natural after SPEC 004 ships; revisit if demand is concrete.
+- **Animation events** (backlog) often co-author with slot transitions (sound cue when sword swap fires); independent SPECs but document the pairing in their respective STUDYs.
+- **Per-attachment weights** -- a swappable head with its own vertex weights -- gets discussed when the first user hits the limitation. Until then, attachments share the default's weight setup (or stay rigid-attached).

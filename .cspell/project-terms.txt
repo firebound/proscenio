@@ -1,3 +1,4 @@
+anims
 bboxes
 dejavu
 docpath

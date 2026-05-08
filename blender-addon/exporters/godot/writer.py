@@ -297,9 +297,7 @@ def _merge_slot_animations_into(
             by_name[anim["name"]] = anim
             continue
         existing_anim["tracks"].extend(anim["tracks"])
-        existing_anim["length"] = max(
-            float(existing_anim["length"]), float(anim["length"])
-        )
+        existing_anim["length"] = max(float(existing_anim["length"]), float(anim["length"]))
     return out
 
 

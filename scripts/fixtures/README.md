@@ -27,14 +27,14 @@ scripts/fixtures/
 | --- | --- | --- | --- |
 | doll | `doll/render_layers.py` | `examples/doll/doll.blend` | `examples/doll/render_layers/*.png` |
 | doll | `doll/preview_pieces.py` | `examples/doll/render_layers/*.png` | `examples/doll/render_layers/pieces_sheet.png` |
-| doll | `doll/export_psd_manifest.py` | `examples/doll/doll.blend` | `examples/doll/photoshop_export/doll.psd_manifest.json` |
-| doll | `_shared/export_proscenio.py` | `examples/doll/doll.blend` | `examples/doll/godot/doll.expected.proscenio` |
+| doll | `doll/export_psd_manifest.py` | `examples/doll/doll.blend` | `examples/doll/photoshop_import/doll.psd_manifest.json` |
+| doll | `_shared/export_proscenio.py` | `examples/doll/doll.blend` | `examples/doll/doll.expected.proscenio` |
 | blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
 | blink_eyes | `blink_eyes/build_blend.py` | `examples/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/blink_eyes/blink_eyes.blend` |
-| blink_eyes | `_shared/export_proscenio.py` | `examples/blink_eyes/blink_eyes.blend` | `examples/blink_eyes/godot/blink_eyes.expected.proscenio` |
+| blink_eyes | `_shared/export_proscenio.py` | `examples/blink_eyes/blink_eyes.blend` | `examples/blink_eyes/blink_eyes.expected.proscenio` |
 | shared_atlas | `shared_atlas/draw_atlas.py` | (Pillow primitives) | `examples/shared_atlas/atlas.png` |
 | shared_atlas | `shared_atlas/build_blend.py` | `examples/shared_atlas/atlas.png` | `examples/shared_atlas/shared_atlas.blend` |
-| shared_atlas | `_shared/export_proscenio.py` | `examples/shared_atlas/shared_atlas.blend` | `examples/shared_atlas/godot/shared_atlas.expected.proscenio` |
+| shared_atlas | `_shared/export_proscenio.py` | `examples/shared_atlas/shared_atlas.blend` | `examples/shared_atlas/shared_atlas.expected.proscenio` |
 
 ## Run modes
 

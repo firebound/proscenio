@@ -3,11 +3,22 @@
 // Exports visible layers as PNG plus a position JSON manifest (v1) suitable
 // for the Proscenio Blender importer (SPEC 006).
 //
-// Output shape (matches schemas/psd_manifest.schema.json):
+// Output layout (matches schemas/psd_manifest.schema.json):
 //
-//   <doc>.json
-//   <doc>/images/<layer>.png
-//   <doc>/images/<sprite_frame>/<index>.png
+//   When the PSD lives at <root>/photoshop_import/<doc>.psd and the
+//   sibling <root>/photoshop_export/ folder exists, the exporter writes:
+//       <root>/photoshop_export/<doc>.json
+//       <root>/photoshop_export/images/<layer>.png
+//       <root>/photoshop_export/images/<sprite_frame>/<index>.png
+//
+//   Otherwise (PSD anywhere else) it falls back to a per-doc subfolder
+//   alongside the PSD:
+//       <docpath>/<doc>/<doc>.json
+//       <docpath>/<doc>/images/<layer>.png
+//       <docpath>/<doc>/images/<sprite_frame>/<index>.png
+//
+//   Manifest path entries are always relative to the manifest's own
+//   parent directory (i.e. "images/<layer>.png", never "<doc>/images/...").
 //
 //   {
 //     "format_version": 1,
@@ -62,7 +73,15 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
     }
     var docPath = doc.path;
     var docName = doc.name.replace(/\.[^.]+$/, "");
-    var outDir = new Folder(docPath + "/" + docName);
+
+    // Convention: when the PSD lives inside an examples/<fixture>/photoshop_import/
+    // tree, write the export output to the sibling photoshop_export/ folder so
+    // the directory layout mirrors the fixture pipeline (manifest in
+    // photoshop_import, exporter output in photoshop_export). Otherwise fall
+    // back to writing alongside the PSD.
+    var siblingExport = new Folder(docPath + "/../photoshop_export");
+    var outRoot = siblingExport.exists ? siblingExport : new Folder(docPath.toString());
+    var outDir = new Folder(outRoot + "/" + docName);
     var imagesDir = new Folder(outDir + "/images");
     if (!outDir.exists) outDir.create();
     if (!imagesDir.exists) imagesDir.create();
@@ -206,7 +225,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
             }
             frameEntries.push({
                 index: pair.index,
-                path: docName + "/images/" + safeMeshName + "/" + pair.index + ".png"
+                path: "images/" + safeMeshName + "/" + pair.index + ".png"
             });
         }
         if (maxBounds === null || frameEntries.length < 2) return null;
@@ -233,7 +252,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         return {
             kind: "polygon",
             name: name,
-            path: docName + "/images/" + safeName + ".png",
+            path: "images/" + safeName + ".png",
             position: [Math.round(bounds.x), Math.round(bounds.y)],
             size: [Math.round(bounds.w), Math.round(bounds.h)],
             z_order: zOrder

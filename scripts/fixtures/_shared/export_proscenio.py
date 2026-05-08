@@ -62,9 +62,7 @@ def main() -> None:
         )
         sys.exit(1)
     blend_path = Path(blend)
-    out_dir = blend_path.parent / "godot"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{blend_path.stem}.expected.proscenio"
+    out_path = blend_path.parent / f"{blend_path.stem}.expected.proscenio"
 
     _load_addon_as_package()
     from proscenio.exporters.godot import writer  # type: ignore[import-not-found]

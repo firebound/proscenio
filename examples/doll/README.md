@@ -9,16 +9,17 @@ The fixture is split into subfolders by **role in the pipeline** so the input vs
 ```text
 examples/doll/
 ├── doll.blend                              [SOURCE — authored Blender]
-├── render_layers/                          [DERIVED — Workbench renders of each mesh]
-│   ├── arm.L.png ... waist.png             one PNG per mesh in doll.blend
+├── doll.expected.proscenio                 [GOLDEN — CI-diffed validation midpoint]
+├── render_layers/                          [DERIVED — Workbench renders, one PNG per mesh]
+│   ├── arm.L.png ... waist.png
 │   └── pieces_sheet.png                    contact-sheet preview of every layer
-├── photoshop_export/                       [DERIVED — bpy → JSON manifest for the JSX importer]
-│   └── doll.psd_manifest.json              SPEC 006 v1 manifest, paths point at ../render_layers/
-├── photoshop_import/                       [DERIVED — JSX importer output (PSD)]
-│   ├── doll.psd                            PSD with one Photoshop layer per manifest entry
-│   └── _reexport/                          gitignored — regenerable
-└── godot/                                  [DERIVED — golden + Godot wrapper]
-    ├── doll.expected.proscenio             CI-diffed golden (run_tests.py)
+├── photoshop_import/                       [INPUTS for + output of JSX importer]
+│   ├── doll.psd_manifest.json              bpy → SPEC 006 v1 manifest, paths point at ../render_layers/
+│   └── doll.psd                            PSD with one Photoshop layer per manifest entry
+├── photoshop_export/                       [JSX exporter OUTPUT (run on doll.psd) — gitignored]
+│   ├── doll.json                           re-exported manifest (roundtrip test)
+│   └── images/                             re-exported per-layer PNGs
+└── godot/                                  [Godot-side wrapper artifacts]
     ├── Doll.tscn                           SPEC 001 wrapper that instances doll.scn
     └── Doll.gd                             empty-stub script attached to the wrapper
 ```
@@ -27,16 +28,23 @@ examples/doll/
 
 ```text
 doll.blend (authored)
-    ├──► [render_layers/]        scripts/fixtures/doll/render_layers.py
-    │       └──► one flat PNG per mesh (Workbench, ortho front view, transparent)
-    ├──► [photoshop_export/]     scripts/fixtures/doll/export_psd_manifest.py
-    │       └──► doll.psd_manifest.json (SPEC 006 v1)
-    │           │
-    │           └──► [photoshop_import/]    photoshop-exporter/proscenio_import.jsx
-    │                   └──► doll.psd (manifest -> PSD with placed layers)
     │
-    └──► [godot/]                scripts/fixtures/_shared/export_proscenio.py
-            └──► doll.expected.proscenio (golden — diffed in CI)
+    ├──► [render_layers/]              scripts/fixtures/doll/render_layers.py
+    │       └──► one flat PNG per mesh (Workbench, ortho front view, transparent)
+    │
+    ├──► [photoshop_import/]           scripts/fixtures/doll/export_psd_manifest.py
+    │       └──► doll.psd_manifest.json (SPEC 006 v1; paths point at ../render_layers/)
+    │           │
+    │           └──► photoshop-exporter/proscenio_import.jsx (in Photoshop)
+    │                   └──► [photoshop_import/doll.psd] (PSD with placed layers)
+    │                           │
+    │                           └──► photoshop-exporter/proscenio_export.jsx (in Photoshop)
+    │                                   └──► [photoshop_export/]  (gitignored — roundtrip output)
+    │                                           ├──► doll.json
+    │                                           └──► images/<layer>.png
+    │
+    └──► doll.expected.proscenio       scripts/fixtures/_shared/export_proscenio.py
+            └──► CI compares against re-export of doll.blend each run
 ```
 
 Inputs to authoring (you edit): `doll.blend`. Everything else falls out of it deterministically.
@@ -49,16 +57,20 @@ blender --background examples/doll/doll.blend \
     --python scripts/fixtures/doll/render_layers.py
 python scripts/fixtures/doll/preview_pieces.py
 
-# 2. Export the PSD manifest (used by the JSX importer below).
+# 2. Export the SPEC 006 manifest into photoshop_import/.
 blender --background examples/doll/doll.blend \
     --python scripts/fixtures/doll/export_psd_manifest.py
 
 # 3. (optional) Build the PSD by running the JSX importer in Photoshop:
 #    File > Scripts > Browse... > photoshop-exporter/proscenio_import.jsx
-#    Pick examples/doll/photoshop_export/doll.psd_manifest.json.
-#    Output lands at examples/doll/photoshop_import/doll.psd.
+#    Pick examples/doll/photoshop_import/doll.psd_manifest.json.
+#    Output: examples/doll/photoshop_import/doll.psd.
 
-# 4. Generate the golden .proscenio (used by run_tests.py).
+# 4. (optional) Roundtrip-test the PSD by running the JSX exporter on it:
+#    File > Scripts > Browse... > photoshop-exporter/proscenio_export.jsx
+#    Output: examples/doll/photoshop_export/{doll.json, images/} (gitignored).
+
+# 5. Generate the golden .proscenio at the fixture root (used by run_tests.py).
 blender --background examples/doll/doll.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```

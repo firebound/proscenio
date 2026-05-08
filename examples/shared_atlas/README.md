@@ -7,11 +7,11 @@ Tests the **sliced atlas packer** end-to-end (SPEC 005.1.c.2.1). Three polygon m
 ```text
 examples/shared_atlas/
 ├── shared_atlas.blend              [SOURCE — 3 polygon meshes referencing atlas.png with partial UVs]
-├── atlas.png                       256x256, three colored shapes in three quadrants (single PNG; no subfolder)
+├── shared_atlas.expected.proscenio [GOLDEN — CI-diffed validation midpoint]
+├── atlas.png                       256x256, three colored shapes in three quadrants
 └── godot/
-    ├── shared_atlas.expected.proscenio    golden — CI diffs against re-export
-    ├── SharedAtlas.tscn                   Godot wrapper (SPEC 001)
-    └── SharedAtlas.gd                     empty stub
+    ├── SharedAtlas.tscn            Godot wrapper (SPEC 001)
+    └── SharedAtlas.gd              empty stub
 ```
 
 ## Sprites

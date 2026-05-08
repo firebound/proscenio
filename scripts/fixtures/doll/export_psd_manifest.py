@@ -54,7 +54,7 @@ from mathutils import Vector
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "doll"
 LAYERS_DIR = FIXTURE_DIR / "render_layers"
-MANIFEST_OUT = FIXTURE_DIR / "photoshop_export" / "doll.psd_manifest.json"
+MANIFEST_OUT = FIXTURE_DIR / "photoshop_import" / "doll.psd_manifest.json"
 
 PIXELS_PER_UNIT = 100.0
 CANVAS_PADDING_PX = 32

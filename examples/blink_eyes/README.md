@@ -12,6 +12,7 @@ The fixture is split by **role in the pipeline**: `.blend` at the root is the so
 ```text
 examples/blink_eyes/
 ├── blink_eyes.blend                       [SOURCE — built by build_blend.py from pillow_layers/]
+├── blink_eyes.expected.proscenio          [GOLDEN — CI-diffed validation midpoint]
 ├── pillow_layers/                         [DERIVED — Pillow draws each frame + spritesheet]
 │   ├── eye_0.png         32x32 — eye open
 │   ├── eye_1.png         32x32 — partially closing
@@ -19,7 +20,6 @@ examples/blink_eyes/
 │   ├── eye_3.png         32x32 — fully closed
 │   └── eye_spritesheet.png   128x32 — concatenation, the texture the mesh references
 └── godot/
-    ├── blink_eyes.expected.proscenio      golden — CI diffs against re-export
     ├── BlinkEyes.tscn                     Godot wrapper
     └── BlinkEyes.gd                       empty stub
 ```

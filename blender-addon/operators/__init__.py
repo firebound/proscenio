@@ -790,7 +790,18 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
             empty.parent_type = "BONE"
             empty.parent_bone = bone_name
         elif selected_meshes:
-            empty.location = selected_meshes[0].matrix_world.to_translation()
+            # Fallback: inherit parent shape from the first selected mesh so
+            # the slot lands wherever the wrapped attachments already live
+            # (typical doll-fixture rigging: meshes parented to the armature
+            # object root, weighted via vertex groups). Without this the slot
+            # ends up unparented in world space, which the user did not ask
+            # for.
+            seed = selected_meshes[0]
+            if seed.parent is not None:
+                empty.parent = seed.parent
+                empty.parent_type = seed.parent_type
+                empty.parent_bone = seed.parent_bone
+            empty.location = seed.matrix_world.to_translation()
 
         if hasattr(empty, "proscenio"):
             empty.proscenio.is_slot = True

@@ -1,6 +1,8 @@
 @tool
 extends RefCounted
 
+const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
+
 
 static func populate(player: AnimationPlayer, skeleton: Skeleton2D, animations_data: Array) -> void:
 	var library := AnimationLibrary.new()
@@ -20,7 +22,10 @@ static func populate(player: AnimationPlayer, skeleton: Skeleton2D, animations_d
 
 static func _add_track(anim: Animation, skeleton: Skeleton2D, track_data: Dictionary) -> void:
 	var track_type: String = track_data.get("type", "")
-	var target: String = track_data.get("target", "")
+	# Sanitize so ``find_child`` matches the Godot-shaped node name (Node.name
+	# replaces ``.`` etc with ``_`` on assignment); the .proscenio document
+	# carries Blender-shaped names with dots intact.
+	var target: String = SlotBuilder.sanitize(String(track_data.get("target", "")))
 	var keys: Array = track_data.get("keys", [])
 
 	if keys.is_empty():
@@ -59,7 +64,13 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_data: Dictio
 				return
 			var base_path := str(character_root.get_path_to(sprite))
 			_add_frame_track(anim, base_path, keys)
-		"slot_attachment", "visibility":
+		"slot_attachment":
+			var slot_node := character_root.find_child(target, true, false)
+			if slot_node == null:
+				push_error("Proscenio: slot '%s' not found for slot_attachment track" % target)
+				return
+			_add_slot_attachment_tracks(anim, character_root, slot_node, keys)
+		"visibility":
 			push_warning("Proscenio: track type '%s' not implemented yet" % track_type)
 		_:
 			push_warning("Proscenio: unknown track type '%s'" % track_type)
@@ -94,6 +105,29 @@ static func _add_value_track_if_present(
 			continue
 		var t := float(key.get("time", 0.0))
 		anim.track_insert_key(idx, t, _key_value_for(property, key[property]))
+
+
+static func _add_slot_attachment_tracks(
+	anim: Animation, character_root: Node, slot_node: Node, keys: Array
+) -> void:
+	# Slot attachment animation = N visibility tracks, one per attachment
+	# child of the slot Node2D. At each key time, exactly one attachment is
+	# visible (the one named in `key.attachment`); the rest go hidden. Uses
+	# NEAREST interpolation -- attachment swaps are hard cuts, not blends
+	# (SPEC 004 D5).
+	var slot_path := str(character_root.get_path_to(slot_node))
+	for child in slot_node.get_children():
+		if not (child is CanvasItem):
+			continue
+		var idx := anim.add_track(Animation.TYPE_VALUE)
+		anim.track_set_path(idx, NodePath("%s/%s:visible" % [slot_path, child.name]))
+		anim.track_set_interpolation_type(idx, Animation.INTERPOLATION_NEAREST)
+		for key in keys:
+			if not key.has("attachment"):
+				continue
+			var t := float(key.get("time", 0.0))
+			var keyed_name: String = String(key.get("attachment", ""))
+			anim.track_insert_key(idx, t, child.name == keyed_name)
 
 
 static func _add_frame_track(anim: Animation, base_path: String, keys: Array) -> void:

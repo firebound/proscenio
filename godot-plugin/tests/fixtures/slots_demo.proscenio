@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "name": "slots_demo",
+  "pixels_per_unit": 100,
+  "skeleton": {
+    "bones": [
+      { "name": "root", "parent": null, "position": [0, 0], "rotation": 0, "scale": [1, 1], "length": 0 },
+      { "name": "head", "parent": "root", "position": [0, -80], "rotation": 0, "scale": [1, 1], "length": 40 }
+    ]
+  },
+  "sprites": [
+    {
+      "name": "face.neutral",
+      "bone": "head",
+      "polygon": [[-20, -20], [20, -20], [20, 20], [-20, 20]],
+      "uv": [[0, 0], [1, 0], [1, 1], [0, 1]]
+    },
+    {
+      "name": "face.angry",
+      "bone": "head",
+      "polygon": [[-20, -20], [20, -20], [20, 20], [-20, 20]],
+      "uv": [[0, 0], [1, 0], [1, 1], [0, 1]]
+    },
+    {
+      "type": "sprite_frame",
+      "name": "face.glow_cycle",
+      "bone": "head",
+      "hframes": 4,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true
+    },
+    {
+      "name": "torso",
+      "bone": "root",
+      "polygon": [[-40, -40], [40, -40], [40, 40], [-40, 40]],
+      "uv": [[0, 0], [1, 0], [1, 1], [0, 1]]
+    }
+  ],
+  "slots": [
+    {
+      "name": "face.state",
+      "bone": "head",
+      "default": "face.neutral",
+      "attachments": ["face.neutral", "face.angry", "face.glow_cycle"]
+    }
+  ],
+  "animations": [
+    {
+      "name": "swap_face",
+      "length": 1.0,
+      "loop": false,
+      "tracks": [
+        {
+          "type": "slot_attachment",
+          "target": "face.state",
+          "keys": [
+            { "time": 0.0, "interp": "constant", "attachment": "face.neutral" },
+            { "time": 0.5, "interp": "constant", "attachment": "face.angry" },
+            { "time": 0.75, "interp": "constant", "attachment": "face.glow_cycle" }
+          ]
+        }
+      ]
+    }
+  ]
+}

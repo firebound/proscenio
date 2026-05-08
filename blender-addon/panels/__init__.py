@@ -11,7 +11,7 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
-from ..core.feature_status import badge_for  # type: ignore[import-not-found]
+from ..core.feature_status import badge_for, status_for  # type: ignore[import-not-found]
 
 
 class PROSCENIO_PT_main(bpy.types.Panel):
@@ -36,6 +36,7 @@ class PROSCENIO_PT_main(bpy.types.Panel):
 _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
+_STATUS_OP_IDNAME = "proscenio.status_info"
 
 
 def _draw_subpanel_header(
@@ -50,9 +51,16 @@ def _draw_subpanel_header(
     ``bl_label``, which is what we want. ``draw_header`` would land
     BEFORE the title, sandwiching the icons between the foldout arrow
     and the title text.
+
+    The status icon is wrapped in ``proscenio.status_info`` so hovering
+    surfaces the band-specific tooltip (Blender does not honor custom
+    tooltips on plain ``layout.label``). Clicking opens the status
+    legend popup.
     """
     badge = badge_for(feature_id)
-    layout.label(text="", icon=badge.icon)
+    status = status_for(feature_id)
+    op = layout.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op.band = status.value
     op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
 
@@ -290,7 +298,9 @@ def _draw_driver_shortcut(
     right = header.row()
     right.alignment = "RIGHT"
     badge = badge_for("drive_from_bone")
-    right.label(text="", icon=badge.icon)
+    status = status_for("drive_from_bone")
+    op_status = right.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op_status.band = status.value
     op = right.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = "drive_from_bone"
     box.prop(props, "driver_target", text="Target")

@@ -63,6 +63,41 @@ def _section(heading: str, *lines: str) -> HelpSection:
 
 
 HELP_TOPICS: dict[str, HelpTopic] = {
+    "status_legend": HelpTopic(
+        title="Status badges",
+        summary="Quick legend for the icons next to every Proscenio panel header.",
+        sections=(
+            _section(
+                "godot-ready (CHECKMARK)",
+                "Exports to .proscenio + ships in the Godot importer. Edits to",
+                "fields under this panel reach the runtime scene.",
+            ),
+            _section(
+                "blender-only (TOOL_SETTINGS)",
+                "Authoring shortcut. Lives entirely on the Blender side -- the",
+                ".proscenio export ignores these. Useful for posing, IK chains,",
+                "preview cameras, driver shortcuts.",
+            ),
+            _section(
+                "planned (EXPERIMENTAL)",
+                "Designed in the SPECs but not yet implemented. The UI surface",
+                "exists today as a placeholder so the future feature has a",
+                "discoverable home.",
+            ),
+            _section(
+                "out-of-scope (CANCEL)",
+                "Intentionally not exported (see SPEC 000). Authored in Blender",
+                "for the user's own workflow only -- IK constraints, shape keys,",
+                "anything Godot does not consume.",
+            ),
+            _section(
+                "Per-feature status",
+                "Hover the icon for the specific band of THIS feature. Click",
+                "the icon to re-open this legend.",
+            ),
+        ),
+        see_also=("STATUS.md",),
+    ),
     "pipeline_overview": HelpTopic(
         title="Proscenio pipeline overview",
         summary="Photoshop -> Blender -> Godot, one JSON contract between every step.",

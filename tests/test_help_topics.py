@@ -51,6 +51,7 @@ def test_every_topic_has_required_fields() -> None:
 def test_panel_topic_ids_present() -> None:
     """Every topic id wired by the panel module must resolve."""
     panel_topic_ids = [
+        "status_legend",
         "pipeline_overview",
         "active_sprite",
         "skeleton",
@@ -81,7 +82,7 @@ def test_see_also_references_exist_on_disk() -> None:
 
 def test_known_topic_ids_returns_registration_order() -> None:
     ids = known_topic_ids()
-    assert ids[0] == "pipeline_overview"  # first registered, first in dict
+    assert ids[0] == "status_legend"  # first registered, first in dict
     assert "active_sprite" in ids
 
 

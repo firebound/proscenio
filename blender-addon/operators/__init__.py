@@ -10,10 +10,55 @@ from bpy.props import EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.feature_status import (  # type: ignore[import-not-found]
+    STATUS_BADGES,
+    FeatureStatus,
+)
 from ..core.help_topics import topic_for  # type: ignore[import-not-found]
 from .import_photoshop import PROSCENIO_OT_import_photoshop
 
 _PRE_PACK_CP_KEY = "proscenio_pre_pack"
+
+
+class PROSCENIO_OT_status_info(bpy.types.Operator):
+    """Status-icon proxy: hover -> band tooltip; click -> open status legend.
+
+    Replaces the plain ``layout.label(text="", icon=...)`` pattern in
+    panel headers so each badge icon carries a per-band tooltip
+    (Blender only renders the icon's name as tooltip on plain labels --
+    not useful for "godot-ready vs blender-only"). Operator description
+    is computed dynamically per call via the ``description`` classmethod
+    so the same operator covers all four bands without 4 subclasses.
+    """
+
+    bl_idname = "proscenio.status_info"
+    bl_label = "Proscenio: Feature Status"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "INTERNAL"}
+
+    band: StringProperty(  # type: ignore[valid-type]
+        name="Band",
+        description="FeatureStatus enum value -- 'godot-ready', 'blender-only', etc.",
+        default="godot-ready",
+    )
+
+    @classmethod
+    def description(
+        cls,
+        _context: bpy.types.Context,
+        properties: bpy.types.AnyType,
+    ) -> str:
+        try:
+            band = FeatureStatus(properties.band)
+        except ValueError:
+            return cls.bl_label
+        return STATUS_BADGES[band].tooltip
+
+    def invoke(self, _context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        bpy.ops.proscenio.help("INVOKE_DEFAULT", topic="status_legend")
+        return {"FINISHED"}
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        return {"FINISHED"}
 
 
 class PROSCENIO_OT_help(bpy.types.Operator):
@@ -1059,6 +1104,7 @@ def _swap_image_in_materials(materials: bpy.types.AnyType, atlas_image: bpy.type
 
 _classes: tuple[type, ...] = (
     PROSCENIO_OT_help,
+    PROSCENIO_OT_status_info,
     PROSCENIO_OT_smoke_test,
     PROSCENIO_OT_validate_export,
     PROSCENIO_OT_export_godot,

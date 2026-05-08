@@ -266,6 +266,24 @@ class ProscenioObjectProps(PropertyGroup):
         default="var",
     )
 
+    is_slot: BoolProperty(  # type: ignore[valid-type]
+        name="Is slot anchor",
+        description=(
+            "When True on an Empty object, marks it as the parent of a slot -- "
+            "child meshes become attachments, the writer emits a slots[] entry, "
+            "and the Godot importer wires a Node2D parent + visible-toggled children."
+        ),
+        default=False,
+    )
+    slot_default: StringProperty(  # type: ignore[valid-type]
+        name="Slot default",
+        description=(
+            "Name of the attachment shown by default when the scene loads. "
+            "Empty string defers to the first child mesh by sorted name."
+        ),
+        default="",
+    )
+
 
 class ProscenioValidationIssue(PropertyGroup):
     """A single validation finding stored on the scene for the panel to render."""

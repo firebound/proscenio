@@ -35,6 +35,10 @@ import bpy
 from mathutils import Vector
 
 from ...core import region as region_core  # type: ignore[import-not-found]
+from ...core.slot_emit import (  # type: ignore[import-not-found]
+    SlotInput,
+    build_slots,
+)
 
 SCHEMA_VERSION = 1
 DEFAULT_PIXELS_PER_UNIT = 100.0
@@ -100,6 +104,10 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
         "sprites": [_build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs],
     }
 
+    slots = _build_slots(scene)
+    if slots:
+        doc["slots"] = slots
+
     atlas = _find_atlas_image(path)
     if atlas:
         doc["atlas"] = atlas
@@ -153,6 +161,36 @@ def _find_atlas_image(out_path: Path) -> str | None:
 def _doc_name() -> str:
     blend = bpy.data.filepath
     return Path(blend).stem if blend else "proscenio_doc"
+
+
+def _build_slots(scene: bpy.types.Scene) -> list[dict[str, object]]:
+    """Walk Empty objects flagged with ``proscenio.is_slot`` and emit slots[].
+
+    Bpy walker -- delegates the schema-shaped projection to the bpy-free
+    ``core.slot_emit.build_slots`` so the slot logic can be exercised
+    under plain pytest. Per D3, ``bone`` is the Empty's ``parent_bone``
+    when ``parent_type == "BONE"``. Per D6, attachments are mesh names
+    only -- the meshes themselves still emit normally in ``sprites[]``.
+    """
+    slot_inputs: list[SlotInput] = []
+    for obj in scene.objects:
+        if obj.type != "EMPTY":
+            continue
+        props = getattr(obj, "proscenio", None)
+        if props is None or not bool(getattr(props, "is_slot", False)):
+            continue
+        bone = obj.parent_bone if obj.parent_type == "BONE" else ""
+        attachments = tuple(child.name for child in obj.children if child.type == "MESH")
+        slot_inputs.append(
+            SlotInput(
+                name=obj.name,
+                bone=str(bone),
+                slot_default=str(getattr(props, "slot_default", "")),
+                attachments=attachments,
+            )
+        )
+    result: list[dict[str, object]] = build_slots(slot_inputs)
+    return result
 
 
 # --------------------------------------------------------------------------- #

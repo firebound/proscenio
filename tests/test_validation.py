@@ -111,7 +111,9 @@ def _scene(*objects: Any) -> SimpleNamespace:
     return SimpleNamespace(objects=list(objects))
 
 
-def _armature(name: str = "rig", bone_names: tuple[str, ...] = ("root",)) -> SimpleNamespace:
+def _armature(
+    name: str = "rig", bone_names: tuple[str, ...] = ("root",)
+) -> SimpleNamespace:
     return SimpleNamespace(
         type="ARMATURE",
         name=name,

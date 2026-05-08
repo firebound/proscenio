@@ -196,9 +196,52 @@ def _draw_sprite_frame_body(
     box.prop(props, "frame")
     box.prop(props, "centered")
     _draw_sprite_frame_readout(box, obj, props)
+    _draw_preview_shader_buttons(box, obj)
     _draw_region_box(layout, props, sprite_type="sprite_frame")
     if context.mode == "PAINT_WEIGHT":
         _draw_weight_paint_disabled_hint(layout)
+
+
+def _draw_preview_shader_buttons(layout: bpy.types.UILayout, obj: bpy.types.Object) -> None:
+    """Render Material Preview slicer setup/remove buttons (SPEC 004 D13).
+
+    Both buttons render side-by-side; only one is enabled at a time
+    depending on whether the slicer node is currently linked into the
+    active mesh's material.
+    """
+    has_slicer = _material_has_slicer(obj)
+    row = layout.row(align=True)
+    setup = row.row()
+    setup.enabled = not has_slicer
+    setup.operator(
+        "proscenio.setup_sprite_frame_preview",
+        text="Setup Preview",
+        icon="SHADERFX",
+    )
+    remove = row.row()
+    remove.enabled = has_slicer
+    remove.operator(
+        "proscenio.remove_sprite_frame_preview",
+        text="Remove Preview",
+        icon="X",
+    )
+
+
+def _material_has_slicer(obj: bpy.types.Object) -> bool:
+    """True when any of the mesh's materials carries the SpriteFrameSlicer node."""
+    from ..core.sprite_frame_shader import SLICER_GROUP_NAME  # type: ignore[import-not-found]
+
+    materials = getattr(obj.data, "materials", None) or []
+    for mat in materials:
+        if mat is None or not getattr(mat, "use_nodes", False):
+            continue
+        nt = getattr(mat, "node_tree", None)
+        if nt is None:
+            continue
+        for node in nt.nodes:
+            if node.type == "GROUP" and getattr(node.node_tree, "name", "") == SLICER_GROUP_NAME:
+                return True
+    return False
 
 
 def _draw_polygon_body(
@@ -315,6 +358,98 @@ def _draw_driver_shortcut(
     row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
 
 
+class PROSCENIO_PT_active_slot(bpy.types.Panel):
+    """Slot authoring -- visible when the active Empty is flagged as a slot (SPEC 004)."""
+
+    bl_label = "Active Slot"
+    bl_idname = "PROSCENIO_PT_active_slot"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_main"
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        if obj is None or obj.type != "EMPTY":
+            return False
+        props = getattr(obj, "proscenio", None)
+        if props is None:
+            return False
+        return bool(getattr(props, "is_slot", False))
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "slot_system", "slot_system")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        empty = context.active_object
+        if empty is None:
+            return
+        props = empty.proscenio
+        children = sorted(
+            (c for c in empty.children if c.type == "MESH"),
+            key=lambda c: c.name,
+        )
+
+        col = layout.column()
+        col.label(text=f"Slot '{empty.name}'", icon="LINK_BLEND")
+        col.label(
+            text=f"bone: {empty.parent_bone or '(unparented)'}",
+            icon="BONE_DATA",
+        )
+
+        layout.separator()
+        layout.label(text=f"Attachments ({len(children)}):", icon="OUTLINER_OB_MESH")
+        if not children:
+            row = layout.row()
+            row.alert = True
+            row.label(text="empty slot -- add child meshes", icon="INFO")
+
+        current_default = props.slot_default or (children[0].name if children else "")
+        for child in children:
+            row = layout.row(align=True)
+            is_default = child.name == current_default
+            icon = "SOLO_ON" if is_default else "SOLO_OFF"
+            op = row.operator(
+                "proscenio.set_slot_default",
+                text="",
+                icon=icon,
+                emboss=is_default,
+            )
+            op.attachment_name = child.name
+            row.label(text=child.name)
+            kind = _attachment_kind_for(child)
+            row.label(text=kind, icon=_attachment_icon_for(kind))
+
+        layout.separator()
+        row = layout.row()
+        row.operator(
+            "proscenio.add_slot_attachment",
+            text="Add Selected Mesh",
+            icon="ADD",
+        )
+
+        for issue in validation.validate_active_slot(empty):
+            row = layout.row()
+            icon = "ERROR" if issue.severity == "error" else "INFO"
+            row.alert = issue.severity == "error"
+            row.label(text=issue.message, icon=icon)
+
+
+def _attachment_kind_for(mesh_obj: bpy.types.Object) -> str:
+    """Read the kind ("polygon" / "sprite_frame") of a slot attachment mesh."""
+    props = getattr(mesh_obj, "proscenio", None)
+    if props is None:
+        return "polygon"
+    return str(getattr(props, "sprite_type", "polygon"))
+
+
+def _attachment_icon_for(kind: str) -> str:
+    return "MESH_DATA" if kind == "polygon" else "IMAGE_DATA"
+
+
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
     """Skeleton summary — bone count + presence checks."""
 
@@ -368,6 +503,10 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             layout.separator()
             layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
             layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
+        # SPEC 004: slot creation -- works in any mode, anchors to active bone
+        # when in pose mode, otherwise creates an unparented slot Empty.
+        layout.separator()
+        layout.operator("proscenio.create_slot", text="Create Slot", icon="LINK_BLEND")
 
 
 class PROSCENIO_UL_bones(bpy.types.UIList):
@@ -665,6 +804,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_UL_actions,
     PROSCENIO_PT_main,
     PROSCENIO_PT_active_sprite,
+    PROSCENIO_PT_active_slot,
     PROSCENIO_PT_skeleton,
     PROSCENIO_PT_animation,
     PROSCENIO_PT_atlas,

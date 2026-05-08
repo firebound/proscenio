@@ -37,7 +37,8 @@ def test_known_features_resolve_to_expected_status() -> None:
     assert status_for("active_sprite") == FeatureStatus.GODOT_READY
     assert status_for("drive_from_bone") == FeatureStatus.BLENDER_ONLY
     assert status_for("toggle_ik") == FeatureStatus.BLENDER_ONLY
-    assert status_for("slot_system") == FeatureStatus.PLANNED
+    assert status_for("slot_system") == FeatureStatus.GODOT_READY
+    assert status_for("uv_animation") == FeatureStatus.PLANNED
     assert status_for("ik_constraint_export") == FeatureStatus.OUT_OF_SCOPE
 
 

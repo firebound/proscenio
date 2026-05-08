@@ -739,6 +739,285 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_create_slot(bpy.types.Operator):
+    """Create or wrap meshes into a Proscenio slot (SPEC 004 D8).
+
+    Two paths:
+
+    - With no MESH selection (Path A): create a fresh Empty parented to
+      the active pose bone (or scene origin), flag ``is_slot = True``,
+      ready to receive child attachments later.
+    - With N MESH selection (Path B): create a fresh Empty at the
+      active mesh's location and re-parent every selected mesh into
+      it. The new Empty inherits the active mesh's bone parenting when
+      present so the slot's ``bone`` field round-trips to the writer.
+    """
+
+    bl_idname = "proscenio.create_slot"
+    bl_label = "Proscenio: Create Slot"
+    bl_description = (
+        "Create a new slot Empty. With no mesh selected, anchors at the active "
+        "pose bone. With meshes selected, wraps them as attachments under a fresh "
+        "Empty parented to the active mesh's bone."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    slot_name: StringProperty(  # type: ignore[valid-type]
+        name="Slot name",
+        description="Name of the new Empty. Defaults to '<bone>.slot' or 'slot'.",
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        # Always available -- the bone target is optional and the wrap
+        # path needs at least one selected MESH which we check at execute.
+        return context.scene is not None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        scene = context.scene
+        selected_meshes = [obj for obj in context.selected_objects if obj.type == "MESH"]
+
+        bone_name, armature = _slot_bone_target(context, selected_meshes)
+        empty_name = self._resolve_name(bone_name)
+        empty = bpy.data.objects.new(empty_name, None)
+        empty.empty_display_type = "PLAIN_AXES"
+        empty.empty_display_size = 0.1
+        scene.collection.objects.link(empty)
+
+        if armature is not None and bone_name:
+            empty.parent = armature
+            empty.parent_type = "BONE"
+            empty.parent_bone = bone_name
+        elif selected_meshes:
+            empty.location = selected_meshes[0].matrix_world.to_translation()
+
+        if hasattr(empty, "proscenio"):
+            empty.proscenio.is_slot = True
+
+        for mesh_obj in selected_meshes:
+            world_matrix = mesh_obj.matrix_world.copy()
+            mesh_obj.parent = empty
+            mesh_obj.parent_type = "OBJECT"
+            mesh_obj.matrix_parent_inverse = empty.matrix_world.inverted()
+            mesh_obj.matrix_world = world_matrix
+
+        for obj in scene.objects:
+            obj.select_set(False)
+        empty.select_set(True)
+        context.view_layer.objects.active = empty
+
+        if selected_meshes:
+            self.report(
+                {"INFO"},
+                f"Proscenio: created slot '{empty.name}' wrapping "
+                f"{len(selected_meshes)} attachment(s)",
+            )
+        else:
+            self.report({"INFO"}, f"Proscenio: created empty slot '{empty.name}'")
+        return {"FINISHED"}
+
+    def _resolve_name(self, bone_name: str) -> str:
+        if self.slot_name:
+            return self.slot_name
+        return f"{bone_name}.slot" if bone_name else "slot"
+
+
+def _slot_bone_target(
+    context: bpy.types.Context,
+    selected_meshes: list[bpy.types.Object],
+) -> tuple[str, bpy.types.Object | None]:
+    """Resolve the (bone_name, armature) the new slot Empty should parent to.
+
+    Priority:
+
+    1. Active pose bone if the user is in pose mode of an armature.
+    2. The first selected mesh's bone parent (when ``parent_type=='BONE'``).
+    3. Empty string + None when neither applies (slot anchored at world).
+    """
+    active_bone = getattr(context, "active_pose_bone", None)
+    if (
+        active_bone is not None
+        and context.active_object is not None
+        and context.active_object.type == "ARMATURE"
+    ):
+        return active_bone.name, context.active_object
+    for mesh in selected_meshes:
+        if mesh.parent is not None and mesh.parent_type == "BONE" and mesh.parent_bone:
+            return str(mesh.parent_bone), mesh.parent
+    return "", None
+
+
+class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
+    """Re-parent the active mesh into the active slot Empty (SPEC 004)."""
+
+    bl_idname = "proscenio.add_slot_attachment"
+    bl_label = "Proscenio: Add Slot Attachment"
+    bl_description = "Re-parent the selected mesh as a child of the active slot Empty"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        empty = context.active_object
+        if empty is None or empty.type != "EMPTY":
+            return False
+        props = getattr(empty, "proscenio", None)
+        if props is None or not bool(getattr(props, "is_slot", False)):
+            return False
+        return any(obj.type == "MESH" and obj is not empty for obj in context.selected_objects)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        empty = context.active_object
+        meshes = [obj for obj in context.selected_objects if obj.type == "MESH"]
+        if not meshes:
+            self.report({"WARNING"}, "Proscenio: no MESH objects selected")
+            return {"CANCELLED"}
+        for mesh in meshes:
+            world = mesh.matrix_world.copy()
+            mesh.parent = empty
+            mesh.parent_type = "OBJECT"
+            mesh.matrix_parent_inverse = empty.matrix_world.inverted()
+            mesh.matrix_world = world
+        self.report(
+            {"INFO"},
+            f"Proscenio: added {len(meshes)} attachment(s) to slot '{empty.name}'",
+        )
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
+    """Insert the SpriteFrameSlicer node group into the active mesh's material (D13).
+
+    Wires drivers from ``obj.proscenio.frame / hframes / vframes`` onto
+    the slicer inputs so the visible cell tracks the panel + animation
+    state in Material Preview mode (Z-key cycles). Idempotent: re-runs
+    refresh the drivers without duplicating nodes.
+    """
+
+    bl_idname = "proscenio.setup_sprite_frame_preview"
+    bl_label = "Proscenio: Setup Preview Material"
+    bl_description = (
+        "Slice the spritesheet in the viewport via shader nodes + drivers. "
+        "Switch to Material Preview mode (Z-key) to see the active cell."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        if obj is None or obj.type != "MESH":
+            return False
+        props = getattr(obj, "proscenio", None)
+        if props is None or str(getattr(props, "sprite_type", "")) != "sprite_frame":
+            return False
+        mesh = obj.data
+        materials = getattr(mesh, "materials", None) or []
+        return any(m is not None for m in materials)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        from ..core import sprite_frame_shader
+
+        obj = context.active_object
+        material = next((m for m in obj.data.materials if m is not None), None)
+        if material is None:
+            self.report({"WARNING"}, "Proscenio: no material on this mesh")
+            return {"CANCELLED"}
+        applied = sprite_frame_shader.apply_slicer_to_material(
+            material,
+            obj=obj,
+            node_groups=bpy.data.node_groups,
+        )
+        if not applied:
+            self.report(
+                {"WARNING"},
+                "Proscenio: material has no Image Texture node -- cannot slice",
+            )
+            return {"CANCELLED"}
+        self.report(
+            {"INFO"},
+            f"Proscenio: slicer applied to '{material.name}' "
+            "(Z-key for Material Preview to see the active cell)",
+        )
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_remove_sprite_frame_preview(bpy.types.Operator):
+    """Strip the SpriteFrameSlicer from the active mesh's material (D13)."""
+
+    bl_idname = "proscenio.remove_sprite_frame_preview"
+    bl_label = "Proscenio: Remove Preview Material"
+    bl_description = (
+        "Remove the SpriteFrameSlicer node + drivers; re-link the ImageTexture "
+        "directly so the material renders the full atlas again."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        if obj is None or obj.type != "MESH":
+            return False
+        mesh = obj.data
+        materials = getattr(mesh, "materials", None) or []
+        return any(m is not None for m in materials)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        from ..core import sprite_frame_shader
+
+        obj = context.active_object
+        removed = 0
+        for material in obj.data.materials:
+            if material is None:
+                continue
+            if sprite_frame_shader.remove_slicer_from_material(material):
+                removed += 1
+        if removed == 0:
+            self.report({"INFO"}, "Proscenio: no slicer to remove")
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Proscenio: removed slicer from {removed} material(s)")
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_set_slot_default(bpy.types.Operator):
+    """Mark the named attachment as the slot's default (SPEC 004 D2)."""
+
+    bl_idname = "proscenio.set_slot_default"
+    bl_label = "Proscenio: Set Slot Default"
+    bl_description = "Make this attachment the slot's default visible child at scene load"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    attachment_name: StringProperty(  # type: ignore[valid-type]
+        name="Attachment name",
+        description="Name of the mesh child to flag as default",
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        empty = context.active_object
+        if empty is None or empty.type != "EMPTY":
+            return False
+        props = getattr(empty, "proscenio", None)
+        return props is not None and bool(getattr(props, "is_slot", False))
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        empty = context.active_object
+        props = empty.proscenio
+        children_names = {child.name for child in empty.children if child.type == "MESH"}
+        if self.attachment_name not in children_names:
+            self.report(
+                {"WARNING"},
+                f"Proscenio: '{self.attachment_name}' is not a child of slot '{empty.name}'",
+            )
+            return {"CANCELLED"}
+        props.slot_default = self.attachment_name
+        self.report(
+            {"INFO"},
+            f"Proscenio: slot '{empty.name}' default = '{self.attachment_name}'",
+        )
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -1120,6 +1399,11 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_unpack_atlas,
     PROSCENIO_OT_bake_current_pose,
     PROSCENIO_OT_create_driver,
+    PROSCENIO_OT_create_slot,
+    PROSCENIO_OT_add_slot_attachment,
+    PROSCENIO_OT_set_slot_default,
+    PROSCENIO_OT_setup_sprite_frame_preview,
+    PROSCENIO_OT_remove_sprite_frame_preview,
     PROSCENIO_OT_import_photoshop,
 )
 

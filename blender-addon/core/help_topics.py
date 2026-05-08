@@ -56,6 +56,7 @@ _SECTION_HOW = "How to use it"
 _SPEC_INITIAL_PLAN = "specs/000-initial-plan"
 _SPEC_REIMPORT_MERGE = "specs/001-reimport-merge"
 _SPEC_AUTHORING_PANEL = "specs/005-blender-authoring-panel"
+_SPEC_SLOT_SYSTEM = "specs/004-slot-system"
 
 
 def _section(heading: str, *lines: str) -> HelpSection:
@@ -312,8 +313,85 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         see_also=(
             _SPEC_AUTHORING_PANEL,
-            "specs/004-slot-system",
+            _SPEC_SLOT_SYSTEM,
         ),
+    ),
+    "slot_system": HelpTopic(
+        title="Slot system (SPEC 004)",
+        summary="Empty Object + child meshes = one slot. Animation flips visibility per key.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "A slot presents one of N attachment meshes at a time. Use it for",
+                "hard texture swaps -- forearm front/back, sword/staff/empty, brow",
+                "up/down, expression swap. Different from the driver shortcut",
+                "(SPEC 005.1.d.1) which is for gradual parameter mapping.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Pose-mode (or any mode): click 'Create Slot' in the Skeleton",
+                "   panel. With meshes selected, they wrap into the new Empty as",
+                "   attachments; without, an empty slot anchors at the active bone.",
+                "2. Promote selected meshes into an existing slot via 'Add Selected",
+                "   Mesh' in the Active Slot panel.",
+                "3. Pick which attachment is visible at scene load (default) by",
+                "   clicking the SOLO icon next to its row.",
+                "4. Animate slot_attachment by keyframing the slot's attachment",
+                "   value in the Action editor (Wave 4.2 -- Godot side -- ships",
+                "   the runtime; Wave 4.1 just emits the data into .proscenio).",
+            ),
+            _section(
+                "Mixing polygon + sprite_frame attachments",
+                "Slots are kind-agnostic. A single slot can hold polygon",
+                "(weight-painted) AND sprite_frame (texture-sliced) children",
+                "freely -- e.g. an eye slot with two polygon attachments",
+                "(open / closed) plus one sprite_frame attachment (4-cell glow",
+                "cycle). The Photoshop import flow that produced each child",
+                "(layer stack vs sprite_frame group) does not matter.",
+            ),
+            _section(
+                "What lands in Godot",
+                "(Wave 4.2) Each slot becomes a Node2D parent under the bone,",
+                "with N sibling Polygon2D / Sprite2D children. Default attachment",
+                "starts visible=true, others false. The slot_attachment animation",
+                "track flips visibility per key with constant interpolation.",
+            ),
+        ),
+        see_also=(_SPEC_SLOT_SYSTEM,),
+    ),
+    "sprite_frame_preview": HelpTopic(
+        title="Sprite_frame preview material (D13)",
+        summary="Slice the spritesheet live in Material Preview mode via shader nodes + drivers.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Inserts a SpriteFrameSlicer node group between the material's",
+                "TexCoord and ImageTexture nodes. Drivers wire",
+                "obj.proscenio.frame / hframes / vframes onto the slicer inputs",
+                "so the visible cell tracks the panel + animation values.",
+                "Without the slicer, Blender shows the full atlas on the quad.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Select a sprite_frame mesh.",
+                "2. Click 'Setup Preview' in the Active Sprite panel.",
+                "3. Z-key cycles to Material Preview mode -- the active cell",
+                "   shows on the quad, updating live as 'frame' animates.",
+                "4. 'Remove Preview' un-wires the slicer + drops the drivers,",
+                "   restoring the full-atlas render.",
+            ),
+            _section(
+                "Caveats",
+                "- Solid / Workbench engines only honor diffuse_color -- the",
+                "  slicer is invisible there. The render_layers fixture script",
+                "  uses Workbench so its output is unchanged.",
+                "- Atlases with padding between cells are not yet supported;",
+                "  the slicer assumes contiguous cells.",
+                "- Re-runs of Setup Preview are idempotent: existing slicer",
+                "  + drivers are refreshed without duplicating nodes.",
+            ),
+        ),
+        see_also=(_SPEC_SLOT_SYSTEM, "specs/002-spritesheet-sprite2d"),
     ),
     "import_photoshop": HelpTopic(
         title="Import Photoshop Manifest",

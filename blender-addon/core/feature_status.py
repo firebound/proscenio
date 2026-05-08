@@ -105,8 +105,13 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "apply_packed_atlas": FeatureStatus.GODOT_READY,
     "unpack_atlas": FeatureStatus.BLENDER_ONLY,
     "import_photoshop": FeatureStatus.BLENDER_ONLY,
+    # SPEC 004 Wave 4.1 -- slot system (Blender side: writer + panel + preview shader).
+    # Stays GODOT_READY because the writer emits slots[] in the .proscenio
+    # output even before the Godot importer (Wave 4.2) ships -- the entry
+    # is then a documented no-op on the Godot side until that wave lands.
+    "slot_system": FeatureStatus.GODOT_READY,
+    "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
     # Future / planned -- placeholder rows ready for the SPECs that ship them.
-    "slot_system": FeatureStatus.PLANNED,
     "uv_animation": FeatureStatus.PLANNED,
     "live_link": FeatureStatus.PLANNED,
     # Out-of-scope sentinels (not currently rendered, but available for

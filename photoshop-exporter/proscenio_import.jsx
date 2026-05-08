@@ -105,7 +105,12 @@
             }
         }
 
-        var savePath = new File(manifestDir + "/" + docName);
+        // Save the new PSD into a `photoshop/` subfolder next to the
+        // manifest so the fixture layout stays clean (manifest at root,
+        // PSD + future export/ side-by-side under photoshop/).
+        var psFolder = new Folder(manifestDir + "/photoshop");
+        if (!psFolder.exists) psFolder.create();
+        var savePath = new File(psFolder + "/" + docName);
         var psdOpts = new PhotoshopSaveOptions();
         psdOpts.alphaChannels = true;
         psdOpts.embedColorProfile = true;

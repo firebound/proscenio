@@ -5,20 +5,14 @@
 //
 // Output layout (matches schemas/psd_manifest.schema.json):
 //
-//   When the PSD lives at <root>/photoshop_import/<doc>.psd and the
-//   sibling <root>/photoshop_export/ folder exists, the exporter writes:
-//       <root>/photoshop_export/<doc>.json
-//       <root>/photoshop_export/images/<layer>.png
-//       <root>/photoshop_export/images/<sprite_frame>/<index>.png
+//   The exporter creates an `export/` subfolder next to the PSD and
+//   writes everything inside:
+//       <docpath>/export/<doc>.photoshop_exported.json
+//       <docpath>/export/images/<layer>.png
+//       <docpath>/export/images/<sprite_frame>/<index>.png
 //
-//   Otherwise (PSD anywhere else) it falls back to a per-doc subfolder
-//   alongside the PSD:
-//       <docpath>/<doc>/<doc>.json
-//       <docpath>/<doc>/images/<layer>.png
-//       <docpath>/<doc>/images/<sprite_frame>/<index>.png
-//
-//   Manifest path entries are always relative to the manifest's own
-//   parent directory (i.e. "images/<layer>.png", never "<doc>/images/...").
+//   Manifest path entries are relative to the manifest's own parent
+//   ("images/<layer>.png", never "<doc>/images/...").
 //
 //   {
 //     "format_version": 1,
@@ -78,14 +72,11 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
     var docPath = doc.path;
     var docName = doc.name.replace(/\.[^.]+$/, "");
 
-    // Convention: when the PSD lives inside an examples/<fixture>/photoshop_import/
-    // tree, write the export output to the sibling photoshop_export/ folder so
-    // the directory layout mirrors the fixture pipeline (manifest in
-    // photoshop_import, exporter output in photoshop_export). Otherwise fall
-    // back to writing alongside the PSD.
-    var siblingExport = new Folder(docPath + "/../photoshop_export");
-    var outRoot = siblingExport.exists ? siblingExport : new Folder(docPath.toString());
-    var outDir = new Folder(outRoot + "/" + docName);
+    // Convention: write the export output into a sibling `export/` folder
+    // next to the PSD. For the doll fixture this means
+    // examples/doll/photoshop/export/. For ad-hoc PSDs it just creates
+    // an export/ subfolder alongside.
+    var outDir = new Folder(docPath + "/export");
     var imagesDir = new Folder(outDir + "/images");
 
     var options = showExportDialog(doc, outDir);
@@ -110,7 +101,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         layers: entries
     };
 
-    var manifestFile = new File(outDir + "/" + docName + ".json");
+    var manifestFile = new File(outDir + "/" + docName + ".photoshop_exported.json");
     manifestFile.encoding = "UTF-8";
     manifestFile.open("w");
     manifestFile.write(stringifyManifest(manifest));

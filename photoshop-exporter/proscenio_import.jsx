@@ -68,6 +68,9 @@
     var docWidth = manifest.size && manifest.size[0] ? manifest.size[0] : 1024;
     var docHeight = manifest.size && manifest.size[1] ? manifest.size[1] : 1024;
 
+    var options = showImportDialog(manifestFile, manifest, manifestDir, docName, docWidth, docHeight);
+    if (options === null) return;  // user cancelled
+
     var savedRulerUnits = app.preferences.rulerUnits;
     var savedTypeUnits = app.preferences.typeUnits;
     app.preferences.rulerUnits = Units.PIXELS;
@@ -116,6 +119,9 @@
             "Proscenio import complete:\n" +
             stamped + " entry(ies) stamped -> " + savePath.fsName
         );
+        if (options.revealOutputFolder) {
+            manifestDir.execute();
+        }
     } finally {
         // Restore PS preferences regardless of outcome -- otherwise an
         // exception leaves rulerUnits / typeUnits stuck on PIXELS until
@@ -277,6 +283,82 @@
 
     function isArray(value) {
         return Object.prototype.toString.call(value) === "[object Array]";
+    }
+
+    /**
+     * Show the pre-import options dialog. Returns the chosen options
+     * object on OK, or null if the user cancelled.
+     * @param {File} manifestFile
+     * @param {object} manifest
+     * @param {Folder} manifestDir
+     * @param {string} docName
+     * @param {number} docWidth
+     * @param {number} docHeight
+     */
+    function showImportDialog(manifestFile, manifest, manifestDir, docName, docWidth, docHeight) {
+        var counts = countLayerKinds(manifest.layers);
+
+        var dlg = new Window("dialog", "Proscenio - Import Manifest");
+        dlg.alignChildren = "fill";
+        dlg.margins = 16;
+        dlg.spacing = 10;
+
+        var summary = dlg.add("panel", undefined, "Manifest");
+        summary.alignChildren = "left";
+        summary.margins = 12;
+        summary.add("statictext", undefined, "File: " + manifestFile.name);
+        summary.add(
+            "statictext",
+            undefined,
+            "Document: " + docName + " (" + docWidth + " x " + docHeight + " px)"
+        );
+        summary.add(
+            "statictext",
+            undefined,
+            "Layers: " + manifest.layers.length +
+            " total (" + counts.polygon + " polygon, " + counts.sprite_frame + " sprite_frame)"
+        );
+        summary.add(
+            "statictext",
+            undefined,
+            "Output: " + manifestDir.fsName + "/" + docName
+        );
+
+        var opts = dlg.add("panel", undefined, "Options");
+        opts.alignChildren = "left";
+        opts.margins = 12;
+        var revealOutput = opts.add("checkbox", undefined, "Reveal output folder when done");
+        revealOutput.value = false;
+
+        var buttons = dlg.add("group");
+        buttons.alignment = "right";
+        var ok = buttons.add("button", undefined, "Import", { name: "ok" });
+        var cancel = buttons.add("button", undefined, "Cancel", { name: "cancel" });
+
+        var result = null;
+        ok.onClick = function () {
+            result = {
+                revealOutputFolder: revealOutput.value
+            };
+            dlg.close();
+        };
+        cancel.onClick = function () { dlg.close(); };
+
+        dlg.show();
+        return result;
+    }
+
+    /**
+     * Count manifest entries per kind for the dialog summary.
+     * @param {object[]} layers
+     */
+    function countLayerKinds(layers) {
+        var counts = { polygon: 0, sprite_frame: 0 };
+        for (var i = 0; i < layers.length; i++) {
+            var k = layers[i].kind;
+            if (counts[k] !== undefined) counts[k] += 1;
+        }
+        return counts;
     }
 
     /**

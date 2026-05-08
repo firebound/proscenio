@@ -111,6 +111,10 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     # is then a documented no-op on the Godot side until that wave lands.
     "slot_system": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
+    # SPEC 005.1.d.2 -- pose library shim. Tiny wrapper around Blender's
+    # native poselib.create_pose_asset; pose assets live in the Asset
+    # Browser, never reach the .proscenio. Pure authoring shortcut.
+    "pose_library": FeatureStatus.BLENDER_ONLY,
     # Future / planned -- placeholder rows ready for the SPECs that ship them.
     "uv_animation": FeatureStatus.PLANNED,
     "live_link": FeatureStatus.PLANNED,

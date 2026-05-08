@@ -112,6 +112,82 @@ authored in Godot:
 This keeps the boundary clean: DCC-authored animations are owned by the
 exporter, user-authored ones never collide with reimport.
 
+## Slots (SPEC 004)
+
+A slot is a sprite-swap group: one named anchor with N alternate attachments, one of which is visible at a time. Use it for hard texture swaps where a `sprite_frame` index or a driver shortcut is the wrong primitive (forearm front/back rotation, equipment swap, expression swap).
+
+**Schema shape**:
+
+```json
+{
+  "slots": [
+    {
+      "name": "brow.L.swap",
+      "bone": "brow.L",
+      "default": "brow.L",
+      "attachments": ["brow.L", "brow.L.up"]
+    }
+  ],
+  "animations": [{
+    "name": "brow_raise",
+    "tracks": [{
+      "type": "slot_attachment",
+      "target": "brow.L.swap",
+      "keys": [
+        { "time": 0.0, "interp": "constant", "attachment": "brow.L" },
+        { "time": 0.5, "interp": "constant", "attachment": "brow.L.up" },
+        { "time": 1.0, "interp": "constant", "attachment": "brow.L" }
+      ]
+    }]
+  }]
+}
+```
+
+**Generated scene shape**:
+
+```text
+Skeleton2D
+└── Bone2D "brow.L"
+    └── Node2D "brow.L.swap"        ← slot anchor (one per slots[] entry)
+        ├── Polygon2D "brow.L"      visible=true   (default)
+        └── Polygon2D "brow.L.up"   visible=false
+
+AnimationPlayer
+└── Animation "brow_raise"
+    ├── Track "Skeleton2D/.../brow.L.swap/brow.L:visible"     NEAREST
+    └── Track "Skeleton2D/.../brow.L.swap/brow.L.up:visible"  NEAREST
+```
+
+**Builder dispatch** (`addons/proscenio/builders/slot_builder.gd`):
+
+- Reads `slots[]` BEFORE the sprite builders run.
+- Builds one `Node2D` per slot under the matching `Bone2D` (or `Skeleton2D` root when `bone` is empty).
+- Returns a `{sanitized_attachment_name: SlotInfo}` map. Sprite builders consult the map and route attachments under the slot Node2D + set `visible = (name == default)`.
+
+**Animation expansion** (`addons/proscenio/builders/animation_builder.gd`):
+
+- `slot_attachment` track expands to N `:visible` tracks (one per attachment child of the slot Node2D).
+- At each key time, the named attachment gets `visible=true`, siblings get `visible=false`.
+- `INTERPOLATION_NEAREST` -- attachment swaps are hard cuts (no in-between).
+
+**Name sanitization caveat**:
+
+Godot's `Node.name` setter strips `.` / `/` / `:` / `@` and replaces them with `_`. The Blender side typically authors names like `brow.L.swap` with dots intact. `SlotBuilder.sanitize` applies the same transform on every map key + `find_child` lookup, so writer + importer converge on the Godot-shaped name. Wrapper-side scripts addressing the slot via `$NodePath` must use the underscored form.
+
+**Customizing slot behavior in the wrapper**:
+
+Slots are pure-data Node2Ds — wrappers can drive them via:
+
+```gdscript
+var slot := $Skeleton2D/.../brow_L_swap  # note sanitized "_"
+for child in slot.get_children():
+    child.visible = (child.name == "brow_L_up")
+```
+
+User-authored animations on the wrapper's own AnimationPlayer can hook the same `:visible` track shape; the imported AnimationLibrary stays untouched on reimport.
+
+**See also**: `examples/slot_cycle/` (isolated minimal slot fixture), `examples/doll/` brow swap (slot on a comprehensive rig).
+
 ## Coding rules
 
 - GDScript 2.0 syntax. Use static typing wherever possible (`var x: int = 0`).

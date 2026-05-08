@@ -38,10 +38,14 @@
 //   }
 //
 // Conventions (SPEC 006 D9):
-// - Hidden layers skipped, layer names prefixed `_` skipped.
+// - Hidden layers and `_`-prefixed layer names are skipped by default;
+//   both are configurable per-run via the export dialog
+//   (`skipHidden` / `skipUnderscorePrefix` options consumed by
+//   `walkLayers`).
 // - A LayerSet whose visible children are all non-LayerSet AND match a
 //   uniform indexed frame convention emits as a single sprite_frame
-//   entry (group name = mesh name, frames sorted by index).
+//   entry (group name = mesh name, frames sorted by index). Sprite_frame
+//   child filtering stays hardcoded regardless of dialog options.
 // - Other LayerSets are walked recursively, output names join with `__`.
 // - Top-level layers matching `<base>_<index>` flat naming are
 //   aggregated post-walk into sprite_frame entries (fallback for users

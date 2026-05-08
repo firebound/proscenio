@@ -144,12 +144,41 @@ Closes the "non-destructive across session boundaries" gap. Apply was already id
 - [x] Atlas subpanel renders the Unpack button only when at least one mesh in the scene carries a snapshot (`_scene_has_pre_pack_snapshot`).
 - [x] Cycle survives `.blend` save/reload: snapshot CP is stored on the Object datablock, persists with the file. Unpack reads from the saved CP and restores cleanly.
 
-## Defer (SPEC 005.1.d advanced + 005.1.c.2 follow-ups — see `RESEARCH.md` matrix)
+## SPEC 005.1.d — advanced authoring wave (in flight)
+
+Closes the polish gap left after 5.1.a/b/c shipped. Sub-divided per feature so each lands as its own focused PR. Some items in the original defer list are already shipped via earlier waves (`PROSCENIO_OT_toggle_ik_chain`, `PROSCENIO_OT_bake_current_pose`, `PROSCENIO_OT_create_ortho_camera`, `PROSCENIO_OT_reproject_sprite_uv`) and are not repeated here.
+
+### 5.1.d.1 — Driver constraint shortcut (in flight)
+
+Branch: `feat/spec-005.1.d.1-driver-shortcut`. Smallest authoring shortcut for the driver-driven texture-swap pattern (forearm rotation flips front/back forearm sprite). Wraps Blender's native `driver_add` + a `TRANSFORMS` driver variable so the user does not hand-author the scripted-driver shape every time.
+
+- [x] `core/driver_helpers.py` — pure-Python helpers (`default_target_for_sprite`, `find_armature_with_active_bone`). bpy-free so the unit tests run without booting Blender.
+- [x] `PROSCENIO_OT_create_driver` operator. Idempotent: re-running on the same `(sprite, target_property)` pair removes the existing driver before adding the fresh one — no duplicate FCurves. Defaults: target = `frame` (sprite_frame) or `region_x` (polygon); source = `ROT_Z` of the active pose bone.
+- [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` for in-place tweaking.
+- [x] Active Sprite subpanel surfaces "Drive from Active Bone" button when both a sprite mesh (active object) and an armature with an active pose bone are co-selected. Hidden otherwise to keep the sidebar uncluttered for the polygon-only common case.
+- [x] `tests/test_driver_helpers.py` — 11 pytest assertions covering polygon/sprite_frame/None/unknown defaults + selection walker (first armature with active bone, skip armature-without-bones, skip empty-name active bone, empty selection, mesh-only selection, iteration order).
+
+### 5.1.d.2 — Pose library shim
+
+Surface "Save current pose to Asset Browser" button. Tiny shim over Blender native pose library — Blender already does the heavy lifting (`POSELIB_OT_create_pose_asset`).
+
+- [ ] Operator + panel button.
+
+### 5.1.d.3 — Quick armature (click-drag bone draw)
+
+COA Tools' rapid skeleton-creation operator. Single-click bone drawing tool for click-drag armature authoring without entering Edit Mode. Lower-priority — Blender's Edit Mode + Shift+E (extrude) covers the core use case.
+
+- [ ] Operator + viewport modal handler.
+
+### 5.1.d.4 — Spriteobject custom outliner
+
+UIList that lists sprite_objects + armatures + bones in a custom hierarchical browser with search/filter. Replaces / supplements Blender's native outliner for sprite-centric hierarchies on big rigs.
+
+- [ ] Custom UIList + panel.
+
+## Defer (lower-priority polish — see `RESEARCH.md` matrix)
 
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
-- Pose library shim (Asset Browser).
-- Driver constraint shortcut.
-- Spriteobject custom outliner with search/filter.
 - Vertex weight visualization overlay.
 - Per-user default export-path preference.
 - Localization scaffolding (`i18n_id`).

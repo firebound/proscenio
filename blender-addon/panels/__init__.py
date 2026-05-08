@@ -233,12 +233,38 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
         layout.prop(props, "sprite_type")
         _draw_active_sprite_body(layout, context, obj, props)
+        _draw_driver_shortcut(layout, context)
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
             icon = "ERROR" if issue.severity == "error" else "INFO"
             row.alert = issue.severity == "error"
             row.label(text=issue.message, icon=icon)
+
+
+def _draw_driver_shortcut(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+) -> None:
+    """Surface the 5.1.d.1 driver-shortcut button when an armature is co-selected.
+
+    Pattern: user selects sprite mesh + armature (with an active pose bone),
+    clicks the button, gets a driver wired with sensible defaults the redo
+    panel can refine. Hidden when no armature in the selection so the
+    sidebar stays uncluttered for the polygon-only common case.
+    """
+    has_armature = any(
+        obj.type == "ARMATURE" and getattr(obj.data, "bones", None) is not None
+        for obj in context.selected_objects
+    )
+    if not has_armature:
+        return
+    layout.separator()
+    layout.operator(
+        "proscenio.create_driver",
+        text="Drive from Active Bone",
+        icon="DRIVER",
+    )
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):

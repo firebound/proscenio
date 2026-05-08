@@ -6,10 +6,14 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import bpy
-from bpy.props import FloatProperty, IntProperty, StringProperty
+from bpy.props import EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.driver_helpers import (  # type: ignore[import-not-found]
+    default_target_for_sprite,
+    find_armature_with_active_bone,
+)
 from .import_photoshop import PROSCENIO_OT_import_photoshop
 
 _PRE_PACK_CP_KEY = "proscenio_pre_pack"
@@ -481,6 +485,141 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             props.region_h = float(snapshot.get("region_h", 1.0))
 
 
+_DRIVER_VAR_NAME = "var"
+_DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
+    ("frame", "Frame index", "Sprite-frame index — driven 0..hframes*vframes"),
+    ("region_x", "Region X", "Texture region origin X (0..1)"),
+    ("region_y", "Region Y", "Texture region origin Y (0..1)"),
+    ("region_w", "Region W", "Texture region width (0..1)"),
+    ("region_h", "Region H", "Texture region height (0..1)"),
+)
+_DRIVER_SOURCE_AXES: tuple[tuple[str, str, str], ...] = (
+    ("ROT_Z", "Bone Rot Z", "Pose bone local rotation around Z (typical 2D plane)"),
+    ("ROT_X", "Bone Rot X", "Pose bone local rotation around X"),
+    ("ROT_Y", "Bone Rot Y", "Pose bone local rotation around Y"),
+    ("LOC_X", "Bone Loc X", "Pose bone local translation X"),
+    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y"),
+    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z"),
+)
+
+
+def _ensure_single_driver(
+    sprite: bpy.types.Object,
+    data_path: str,
+) -> bpy.types.FCurve:
+    """Idempotent: drop any existing driver on ``data_path`` first, then add fresh.
+
+    Re-running the operator on the same sprite + property replaces the
+    driver instead of compounding duplicates.
+    """
+    if sprite.animation_data is not None:
+        existing = sprite.animation_data.drivers.find(data_path)
+        if existing is not None:
+            sprite.driver_remove(data_path)
+    return sprite.driver_add(data_path)
+
+
+class PROSCENIO_OT_create_driver(bpy.types.Operator):
+    """Drive a sprite's `proscenio.<prop>` from the active pose bone (5.1.d.1).
+
+    Smallest authoring shortcut for the cutout-driven texture-swap pattern
+    (forearm rotation flips front/back forearm sprite). Wraps Blender's
+    native ``driver_add`` + a ``TRANSFORMS`` driver variable so the user
+    does not have to hand-author the scripted-driver shape every time.
+    """
+
+    bl_idname = "proscenio.create_driver"
+    bl_label = "Proscenio: Drive Sprite from Active Bone"
+    bl_description = (
+        "Adds a driver to the active sprite's proscenio property whose "
+        "source is the active pose bone. Defaults: target = frame "
+        "(sprite_frame) or region_x (polygon); source = bone rotation Z. "
+        "Re-running on the same property replaces the driver."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    target_property: EnumProperty(  # type: ignore[valid-type]
+        name="Target",
+        description="Sprite proscenio property the driver writes to",
+        items=_DRIVER_TARGET_PROPERTIES,
+        default="frame",
+    )
+    source_axis: EnumProperty(  # type: ignore[valid-type]
+        name="Source",
+        description="Pose bone transform channel feeding the driver",
+        items=_DRIVER_SOURCE_AXES,
+        default="ROT_Z",
+    )
+    expression: StringProperty(  # type: ignore[valid-type]
+        name="Expression",
+        description=(
+            "Driver expression. 'var' is the bone channel; edit in the "
+            "Drivers Editor for scaling / offsets / branching."
+        ),
+        default="var",
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        sprite = context.active_object
+        if sprite is None or sprite.type != "MESH":
+            return False
+        if not hasattr(sprite, "proscenio"):
+            return False
+        armature, _bone = find_armature_with_active_bone(list(context.selected_objects))
+        return armature is not None
+
+    def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        sprite = context.active_object
+        if sprite is not None:
+            props = getattr(sprite, "proscenio", None)
+            if props is not None:
+                self.target_property = default_target_for_sprite(props)
+        return self.execute(context)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        sprite = context.active_object
+        props = getattr(sprite, "proscenio", None) if sprite is not None else None
+        if sprite is None or sprite.type != "MESH" or props is None:
+            self.report({"ERROR"}, "Proscenio: select a sprite mesh as the active object")
+            return {"CANCELLED"}
+
+        armature, bone_name = find_armature_with_active_bone(list(context.selected_objects))
+        if armature is None or not bone_name:
+            self.report(
+                {"ERROR"},
+                "Proscenio: also select an armature whose active bone will drive the sprite",
+            )
+            return {"CANCELLED"}
+
+        data_path = f"proscenio.{self.target_property}"
+        try:
+            fcurve = _ensure_single_driver(sprite, data_path)
+        except (TypeError, RuntimeError) as exc:
+            self.report({"ERROR"}, f"Proscenio: could not add driver on {data_path}: {exc}")
+            return {"CANCELLED"}
+
+        driver = fcurve.driver
+        driver.type = "SCRIPTED"
+        driver.expression = self.expression
+        var = driver.variables[0] if driver.variables else driver.variables.new()
+        var.name = _DRIVER_VAR_NAME
+        var.type = "TRANSFORMS"
+        target = var.targets[0]
+        target.id = armature
+        target.bone_target = bone_name
+        target.transform_type = self.source_axis
+        target.transform_space = "LOCAL_SPACE"
+        target.rotation_mode = "AUTO"
+
+        self.report(
+            {"INFO"},
+            f"Proscenio: driver on '{sprite.name}.{data_path}' "
+            f"<- {armature.name}:{bone_name}.{self.source_axis}",
+        )
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -859,6 +998,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_apply_packed_atlas,
     PROSCENIO_OT_unpack_atlas,
     PROSCENIO_OT_bake_current_pose,
+    PROSCENIO_OT_create_driver,
     PROSCENIO_OT_import_photoshop,
 )
 

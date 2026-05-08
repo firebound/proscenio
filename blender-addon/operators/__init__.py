@@ -819,7 +819,7 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
 
     def _resolve_name(self, bone_name: str) -> str:
         if self.slot_name:
-            return self.slot_name
+            return str(self.slot_name)
         return f"{bone_name}.slot" if bone_name else "slot"
 
 

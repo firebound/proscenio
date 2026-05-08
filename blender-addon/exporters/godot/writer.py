@@ -189,7 +189,8 @@ def _build_slots(scene: bpy.types.Scene) -> list[dict[str, object]]:
                 attachments=attachments,
             )
         )
-    return build_slots(slot_inputs)
+    result: list[dict[str, object]] = build_slots(slot_inputs)
+    return result
 
 
 # --------------------------------------------------------------------------- #

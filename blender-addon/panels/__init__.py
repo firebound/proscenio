@@ -43,18 +43,17 @@ def _draw_subpanel_header(
     feature_id: str,
     help_topic: str,
 ) -> None:
-    """Append the status icon + help button to a Proscenio subpanel foldout.
+    """Append status icon + help button to a Proscenio subpanel foldout.
 
-    Blender renders ``bl_label`` automatically inside the foldout when
-    ``draw_header`` is overridden -- attempting to draw the title here
-    duplicates it. The helper only adds the right-aligned ``[icon] [?]``
-    pair so the header collapses to ``> <bl_label> ... [icon] [?]``.
+    Called from ``draw_header_preset`` (NOT ``draw_header``): Blender
+    renders ``draw_header_preset`` content RIGHT of the auto-drawn
+    ``bl_label``, which is what we want. ``draw_header`` would land
+    BEFORE the title, sandwiching the icons between the foldout arrow
+    and the title text.
     """
-    right = layout.row()
-    right.alignment = "RIGHT"
     badge = badge_for(feature_id)
-    right.label(text="", icon=badge.icon)
-    op = right.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    layout.label(text="", icon=badge.icon)
+    op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
 
 
@@ -247,7 +246,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
             return False
         return context.mode in _OBJECT_FRIENDLY_MODES
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "active_sprite", "active_sprite")
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -321,7 +320,7 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "skeleton", "skeleton")
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -415,7 +414,7 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_main"
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "animation", "animation")
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -447,7 +446,7 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_main"
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "atlas", "atlas")
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -523,7 +522,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_main"
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "validation", "validation")
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -568,7 +567,7 @@ class PROSCENIO_PT_export(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_main"
 
-    def draw_header(self, _context: bpy.types.Context) -> None:
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
         _draw_subpanel_header(self.layout, "export", "export")
 
     def draw(self, context: bpy.types.Context) -> None:

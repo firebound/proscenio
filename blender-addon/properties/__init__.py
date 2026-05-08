@@ -96,9 +96,7 @@ def _is_armature(_self: object, obj: bpy.types.Object) -> bool:
 # labels). Keeping the per-armature list reachable here pins the references
 # for the lifetime of the addon.
 _DRIVER_BONE_ITEMS_CACHE: dict[int, list[tuple[str, str, str]]] = {}
-_NO_ARMATURE_ITEMS: tuple[tuple[str, str, str], ...] = (
-    ("", "(pick an armature first)", ""),
-)
+_NO_ARMATURE_ITEMS: tuple[tuple[str, str, str], ...] = (("", "(pick an armature first)", ""),)
 _NO_BONES_ITEMS: tuple[tuple[str, str, str], ...] = (("", "(armature has no bones)", ""),)
 
 

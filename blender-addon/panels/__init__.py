@@ -259,18 +259,13 @@ def _draw_driver_shortcut(
     box.label(text="Drive from bone", icon="DRIVER")
     box.prop(props, "driver_target", text="Target")
     box.prop(props, "driver_source_armature", text="Armature")
-    armature = props.driver_source_armature
-    bones = getattr(getattr(armature, "data", None), "bones", None) if armature else None
-    if bones is not None:
-        box.prop_search(props, "driver_source_bone", armature.data, "bones", text="Bone")
-    else:
-        row = box.row()
-        row.enabled = False
-        row.label(text="(pick an armature to choose a bone)", icon="INFO")
+    box.prop(props, "driver_source_bone", text="Bone")
     box.prop(props, "driver_source_axis", text="Axis")
     box.prop(props, "driver_expression", text="Expression")
     row = box.row()
-    row.enabled = bones is not None and bool(props.driver_source_bone)
+    armature = props.driver_source_armature
+    has_bones = armature is not None and bool(getattr(armature.data, "bones", None))
+    row.enabled = has_bones and bool(props.driver_source_bone)
     row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
 
 

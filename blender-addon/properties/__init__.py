@@ -90,6 +90,40 @@ def _is_armature(_self: object, obj: bpy.types.Object) -> bool:
     return obj.type == "ARMATURE"
 
 
+# Module-level cache: Blender's EnumProperty with a callable ``items=`` GCs
+# the returned list as soon as the callback exits, which corrupts the tuple
+# strings shown in the UI ("Detected EnumProperty items mismatch" + garbled
+# labels). Keeping the per-armature list reachable here pins the references
+# for the lifetime of the addon.
+_DRIVER_BONE_ITEMS_CACHE: dict[int, list[tuple[str, str, str]]] = {}
+_NO_ARMATURE_ITEMS: tuple[tuple[str, str, str], ...] = (
+    ("", "(pick an armature first)", ""),
+)
+_NO_BONES_ITEMS: tuple[tuple[str, str, str], ...] = (("", "(armature has no bones)", ""),)
+
+
+def _driver_bone_items(
+    self: ProscenioObjectProps,
+    _context: bpy.types.Context | None,
+) -> list[tuple[str, str, str]] | tuple[tuple[str, str, str], ...]:
+    """Dynamic items for the ``driver_source_bone`` dropdown.
+
+    Walks the picked ``driver_source_armature`` and lists every bone by
+    name. Falls back to a sentinel placeholder when no armature is picked
+    or the armature has no bones — keeps the dropdown clickable instead
+    of vanishing the whole row.
+    """
+    armature = self.driver_source_armature
+    if armature is None:
+        return _NO_ARMATURE_ITEMS
+    bones = getattr(getattr(armature, "data", None), "bones", None)
+    if bones is None or len(bones) == 0:
+        return _NO_BONES_ITEMS
+    items = [(bone.name, bone.name, "") for bone in bones]
+    _DRIVER_BONE_ITEMS_CACHE[id(armature)] = items
+    return items
+
+
 def _on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
     """Mirror every field on any panel edit.
 
@@ -214,10 +248,10 @@ class ProscenioObjectProps(PropertyGroup):
         type=_Object,
         poll=_is_armature,
     )
-    driver_source_bone: StringProperty(  # type: ignore[valid-type]
+    driver_source_bone: EnumProperty(  # type: ignore[valid-type]
         name="Driver bone",
         description="Pose bone whose transform feeds the driver",
-        default="",
+        items=_driver_bone_items,
     )
     driver_source_axis: EnumProperty(  # type: ignore[valid-type]
         name="Driver axis",

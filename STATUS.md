@@ -109,7 +109,7 @@ flowchart TD
 
 ## O que está em andamento
 
-SPEC 006 (Photoshop → Blender importer) shipped end-to-end (Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 + 6.5 merged, PRs #16–#21). Roundtrip integration: bpy → SPEC 006 v1 manifest → JSX importer → real PSD → JSX exporter → manifest mirror, plus addon `Import Photoshop Manifest` operator that stamps planes + stub armature from a manifest. Wave 6.5 (`examples/simple_psd/`) closes the deliverable: a 256x128 manifest with one polygon + one sprite_frame group of 4 frames, driven through the importer headless to produce the fixture's `.blend` + golden `.proscenio`.
+SPEC 006 (Photoshop → Blender importer) entregue end-to-end. Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 já merged (PRs #16–#20 + lint cleanup #21). Wave 6.5 (`examples/simple_psd/`) em PR aberta #22 — fixture com manifest 256x128 (1 polygon + 1 sprite_frame de 4 frames) driving o importer headless pra produzir `.blend` + golden `.proscenio`. Roundtrip integration: bpy → SPEC 006 v1 manifest → JSX importer → PSD real → JSX exporter → manifest mirror, mais o addon operator `Import Photoshop Manifest` que cria planes + stub armature.
 
 SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima frente: SPEC 005.1.d (advanced authoring shortcuts — drivers, pose lib, custom outliner) ou SPEC 004 design real conforme demanda.
 
@@ -178,7 +178,7 @@ flowchart TB
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
 | **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); 5.1.c.1 (region authoring) PR #8; fix bundle PR #9; **5.1.c.2 (atlas packer)** branch atual; 5.1.d (advanced) onda seguinte — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
-| **006** | Photoshop → Blender importer — JSON manifest v1 contract (schema 2020-12 com `kind` discriminator), JSX importer que monta PSD a partir do manifest, JSX exporter que emite o manifest mirror, addon `Import Photoshop Manifest` operator que cria planes + stub armature. Fixture `examples/simple_psd/` cobre roundtrip end-to-end. | shipped (PRs #16–#21, Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 + 6.5) |
+| **006** | Photoshop → Blender importer — JSON manifest v1 contract (schema 2020-12 com `kind` discriminator), JSX importer que monta PSD a partir do manifest, JSX exporter que emite o manifest mirror, addon `Import Photoshop Manifest` operator que cria planes + stub armature. Fixture `examples/simple_psd/` cobre roundtrip end-to-end. | Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 shipped (PRs #16–#20 + lint #21); Wave 6.5 (fixture) em PR #22 aguardando merge |
 
 ### Backlog (sem ordem)
 
@@ -195,7 +195,7 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 006 fechada end-to-end (Waves 6.0 → 6.5 merged em PRs #16–#21). 4 fixtures Type A em CI (`doll`, `blink_eyes`, `shared_atlas`, `simple_psd`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 006 fechada end-to-end no plano de implementação. Waves 6.0 → 6.4 + lint merged em PRs #16–#21. Wave 6.5 (`examples/simple_psd/` fixture) em PR aberta #22 — uma vez merged completa o conjunto de 4 fixtures Type A em CI (`doll`, `blink_eyes`, `shared_atlas`, `simple_psd`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
 1. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
 2. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.

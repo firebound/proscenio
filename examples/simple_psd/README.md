@@ -23,7 +23,7 @@ examples/simple_psd/
 │   └── arrow.png
 └── godot/
     ├── SimplePSD.tscn                     Godot wrapper
-    └── SimplePSD.gd                       empty stub
+    └── SimplePSD.gd                       autoplay stub (default_animation + autoplay exports)
 ```
 
 ## Pipeline at a glance

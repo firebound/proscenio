@@ -12,7 +12,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://simple_psd/simple_psd.proscenio" id="1_simple"]
-[ext_resource type="Script" path="res://simple_psd/SimplePSD.gd" id="2_simple"]
+[ext_resource type="Script" path="res://simple_psd/godot/SimplePSD.gd" id="2_simple"]
 
 [node name="SimplePSD" type="Node2D"]
 script = ExtResource("2_simple")

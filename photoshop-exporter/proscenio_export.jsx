@@ -83,6 +83,10 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
     var outRoot = siblingExport.exists ? siblingExport : new Folder(docPath.toString());
     var outDir = new Folder(outRoot + "/" + docName);
     var imagesDir = new Folder(outDir + "/images");
+
+    var options = showExportDialog(doc, outDir);
+    if (options === null) return;  // user cancelled
+
     if (!outDir.exists) outDir.create();
     if (!imagesDir.exists) imagesDir.create();
 
@@ -91,7 +95,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
 
     var entries = [];
     var zCounter = { value: 0 };
-    walkLayers(doc.layers, "", entries, zCounter);
+    walkLayers(doc.layers, "", entries, zCounter, options);
     entries = aggregateFlatSpriteFrames(entries);
 
     var manifest = {
@@ -114,6 +118,9 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
         "Proscenio export complete:\n" +
         entries.length + " entry(ies) -> " + outDir.fsName
     );
+    if (options.openOutputFolder) {
+        outDir.execute();
+    }
 
     /**
      * Walk a layer collection, emitting polygon and sprite_frame entries.
@@ -122,11 +129,11 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
      * @param {object[]} out   Mutable array of manifest entries.
      * @param {{value: number}} zCounter  Mutable z_order counter; incremented per emitted entry.
      */
-    function walkLayers(layers, prefix, out, zCounter) {
+    function walkLayers(layers, prefix, out, zCounter, opts) {
         for (var i = 0; i < layers.length; i++) {
             var layer = layers[i];
-            if (!layer.visible) continue;
-            if (layer.name.charAt(0) === "_") continue;
+            if (opts.skipHidden && !layer.visible) continue;
+            if (opts.skipUnderscorePrefix && layer.name.charAt(0) === "_") continue;
 
             if (layer.typename === "LayerSet") {
                 if (qualifiesAsSpriteFrameGroup(layer)) {
@@ -138,7 +145,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
                     continue;
                 }
                 var nestedPrefix = prefix === "" ? layer.name : prefix + "__" + layer.name;
-                walkLayers(layer.layers, nestedPrefix, out, zCounter);
+                walkLayers(layer.layers, nestedPrefix, out, zCounter, opts);
                 continue;
             }
 
@@ -388,6 +395,59 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
      */
     function sanitize(s) {
         return String(s).replace(/[^A-Za-z0-9_\-]/g, "_");
+    }
+
+    /**
+     * Show the pre-export options dialog. Returns the chosen options
+     * object on OK, or null if the user cancelled.
+     * @param {Document} doc
+     * @param {Folder} outDir
+     */
+    function showExportDialog(doc, outDir) {
+        var dlg = new Window("dialog", "Proscenio - Export Manifest");
+        dlg.alignChildren = "fill";
+        dlg.margins = 16;
+        dlg.spacing = 10;
+
+        var summary = dlg.add("panel", undefined, "Document");
+        summary.alignChildren = "left";
+        summary.margins = 12;
+        summary.add("statictext", undefined, "PSD: " + doc.name);
+        summary.add(
+            "statictext",
+            undefined,
+            "Canvas: " + doc.width.as("px") + " x " + doc.height.as("px") + " px"
+        );
+        summary.add("statictext", undefined, "Output: " + outDir.fsName);
+
+        var opts = dlg.add("panel", undefined, "Options");
+        opts.alignChildren = "left";
+        opts.margins = 12;
+        var skipHidden = opts.add("checkbox", undefined, "Skip hidden layers");
+        skipHidden.value = true;
+        var skipUnderscore = opts.add("checkbox", undefined, "Skip layers starting with `_`");
+        skipUnderscore.value = true;
+        var openAfter = opts.add("checkbox", undefined, "Open output folder when done");
+        openAfter.value = false;
+
+        var buttons = dlg.add("group");
+        buttons.alignment = "right";
+        var ok = buttons.add("button", undefined, "Export", { name: "ok" });
+        var cancel = buttons.add("button", undefined, "Cancel", { name: "cancel" });
+
+        var result = null;
+        ok.onClick = function () {
+            result = {
+                skipHidden: skipHidden.value,
+                skipUnderscorePrefix: skipUnderscore.value,
+                openOutputFolder: openAfter.value
+            };
+            dlg.close();
+        };
+        cancel.onClick = function () { dlg.close(); };
+
+        dlg.show();
+        return result;
     }
 
     function stringifyManifest(m) {

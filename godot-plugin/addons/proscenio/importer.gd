@@ -2,6 +2,7 @@
 extends EditorImportPlugin
 
 const SkeletonBuilder := preload("res://addons/proscenio/builders/skeleton_builder.gd")
+const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
 const PolygonBuilder := preload("res://addons/proscenio/builders/polygon_builder.gd")
 const SpriteFrameBuilder := preload("res://addons/proscenio/builders/sprite_frame_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
@@ -93,11 +94,15 @@ func _import(
 	root.add_child(skeleton)
 
 	var atlas := _load_atlas(source_file, data.get("atlas", ""))
+	# Slots build BEFORE sprites so the sprite builders can route attachment
+	# children under the slot Node2D parent (SPEC 004 Wave 4.2). Empty slots[]
+	# leaves the map empty and sprite routing falls back to bone-parented.
+	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
 	# Each builder discriminator-filters its own sprite kind; calling both is
 	# cheap and keeps the dispatch table flat. Order does not matter.
 	var sprites_data: Array = data.get("sprites", [])
-	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas)
-	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas)
+	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map)
+	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map)
 
 	var animation_player := AnimationPlayer.new()
 	animation_player.name = "AnimationPlayer"

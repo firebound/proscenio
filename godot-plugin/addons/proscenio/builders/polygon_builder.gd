@@ -32,7 +32,12 @@ static func _apply_skinning(
 		poly.add_bone(poly.get_path_to(bone_node), packed)
 
 
-static func attach_sprites(skeleton: Skeleton2D, sprites_data: Array, atlas: Texture2D) -> void:
+static func attach_sprites(
+	skeleton: Skeleton2D,
+	sprites_data: Array,
+	atlas: Texture2D,
+	slot_map: Dictionary = {},
+) -> void:
 	for sprite_data in sprites_data:
 		# Discriminator dispatch: this builder only handles polygon sprites.
 		# Default to "polygon" when `type` is absent (v1 backwards-compat).
@@ -68,14 +73,26 @@ static func attach_sprites(skeleton: Skeleton2D, sprites_data: Array, atlas: Tex
 		var is_skinned: bool = not weights_data.is_empty()
 
 		var bone_name: String = sprite_data.get("bone", "")
-		# Skinned polygons live under the skeleton so the per-vertex weights
-		# (not the parent transform) drive deformation. Rigid polygons stay
+		# Slot routing (SPEC 004 D6): sprites whose name appears in a slot's
+		# attachments[] reparent under the slot Node2D and inherit visibility
+		# from the slot's default. Otherwise: skinned polygons live under the
+		# skeleton (per-vertex weights drive deformation), rigid polygons stay
 		# parented to the matching Bone2D so the bone transform carries them.
-		var parent: Node = skeleton
-		if not is_skinned and bone_name != "":
+		# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set);
+		# slot_map keys are sanitized in slot_builder for consistency.
+		var sanitized_name: String = String(poly.name)
+		var slot_info = slot_map.get(sanitized_name, null)
+		var parent: Node
+		if slot_info != null:
+			parent = slot_info.node
+			poly.visible = sanitized_name == slot_info.default
+		elif not is_skinned and bone_name != "":
+			parent = skeleton
 			var found := skeleton.find_child(bone_name, true, false)
 			if found != null:
 				parent = found
+		else:
+			parent = skeleton
 		parent.add_child(poly)
 
 		if is_skinned:

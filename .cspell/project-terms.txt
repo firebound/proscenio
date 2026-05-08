@@ -23,6 +23,7 @@ proscenio
 Proscenio
 regenerable
 renameable
+reparent
 renderable
 SHADERFX
 statictext

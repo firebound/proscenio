@@ -14,6 +14,7 @@ extends SceneTree
 #     godot --headless --script godot-plugin/tests/test_importer.gd
 
 const SkeletonBuilder := preload("res://addons/proscenio/builders/skeleton_builder.gd")
+const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
 const PolygonBuilder := preload("res://addons/proscenio/builders/polygon_builder.gd")
 const SpriteFrameBuilder := preload("res://addons/proscenio/builders/sprite_frame_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
@@ -21,6 +22,7 @@ const AnimationBuilder := preload("res://addons/proscenio/builders/animation_bui
 const FIXTURE := "res://tests/fixtures/dummy.proscenio"
 const EFFECT_FIXTURE := "res://tests/fixtures/effect.proscenio"
 const SKINNED_FIXTURE := "res://tests/fixtures/skinned_dummy.proscenio"
+const SLOTS_FIXTURE := "res://tests/fixtures/slots_demo.proscenio"
 
 var _failures: Array[String] = []
 var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
@@ -30,6 +32,7 @@ func _initialize() -> void:
 	_run_dummy_checks()
 	_run_effect_checks()
 	_run_skinned_checks()
+	_run_slot_checks()
 	_finish()
 
 
@@ -143,17 +146,97 @@ func _run_skinned_checks() -> void:
 	character.free()
 
 
+func _run_slot_checks() -> void:
+	var data := _load_fixture(SLOTS_FIXTURE)
+	if data.is_empty():
+		_fail("could not load %s" % SLOTS_FIXTURE)
+		return
+
+	var character := _build_character(data)
+	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
+
+	# Slot Node2D is parented under the head Bone2D (per slot.bone field).
+	# Names are sanitized: ``face.state`` -> ``face_state`` etc (Godot strips
+	# ``.`` from Node.name on assignment).
+	var head_bone := skeleton.find_child("head", true, false)
+	_assert_true(head_bone != null, "slots: head bone exists")
+	var slot_node := skeleton.find_child("face_state", true, false)
+	_assert_true(slot_node != null, "slots: 'face_state' Node2D anchored")
+	if slot_node != null:
+		_assert_eq(slot_node.get_parent(), head_bone, "slots: parented under head bone")
+		_assert_true(slot_node is Node2D, "slots: anchor is Node2D")
+
+	# All three attachments (2 polygons + 1 sprite_frame) live under the slot.
+	# Names land sanitized: ``face.neutral`` -> ``face_neutral`` etc.
+	var attachments: Array = []
+	if slot_node != null:
+		attachments = slot_node.get_children()
+	_assert_eq(attachments.size(), 3, "slots: attachment count")
+	var attachment_names := PackedStringArray()
+	for attachment: Node in attachments:
+		attachment_names.append(String(attachment.name))
+	attachment_names.sort()
+	_assert_eq(
+		", ".join(attachment_names),
+		"face_angry, face_glow_cycle, face_neutral",
+		"slots: attachment names"
+	)
+
+	# Default attachment (face_neutral) starts visible; siblings hidden.
+	var neutral: Node = null
+	var angry: Node = null
+	var glow: Node = null
+	if slot_node != null:
+		neutral = slot_node.find_child("face_neutral", false, false)
+		angry = slot_node.find_child("face_angry", false, false)
+		glow = slot_node.find_child("face_glow_cycle", false, false)
+	_assert_true(neutral != null and (neutral as CanvasItem).visible, "slots: default visible")
+	_assert_true(angry != null and not (angry as CanvasItem).visible, "slots: non-default hidden")
+	_assert_true(glow != null and not (glow as CanvasItem).visible, "slots: glow hidden by default")
+
+	# Kind agnosticism (D14): polygon + sprite_frame attachments coexist.
+	_assert_true(neutral is Polygon2D, "slots: face_neutral kind = Polygon2D")
+	_assert_true(angry is Polygon2D, "slots: face_angry kind = Polygon2D")
+	_assert_true(glow is Sprite2D, "slots: face_glow_cycle kind = Sprite2D")
+
+	# Non-slot sprite (torso) routes via bone, not slot map.
+	var torso := skeleton.find_child("torso", true, false)
+	_assert_true(torso != null and torso is Polygon2D, "slots: non-slot torso routed normally")
+	if torso != null:
+		_assert_true(torso.get_parent() != slot_node, "slots: torso not under slot Node2D")
+
+	# Animation: slot_attachment track expands to N visibility tracks.
+	var player: AnimationPlayer = character.get_node("AnimationPlayer")
+	_assert_true(player.has_animation("swap_face"), "slots: swap_face animation present")
+	if player.has_animation("swap_face"):
+		var anim := player.get_animation("swap_face")
+		# 3 attachments → 3 visibility tracks.
+		_assert_eq(anim.get_track_count(), 3, "slots: 3 visibility tracks")
+		for i in range(anim.get_track_count()):
+			_assert_eq(
+				anim.track_get_interpolation_type(i),
+				Animation.INTERPOLATION_NEAREST,
+				"slots: track %d uses NEAREST" % i
+			)
+
+	character.free()
+
+
 func _build_character(data: Dictionary) -> Node2D:
 	var character := Node2D.new()
 	character.name = data.get("name", "Character")
 
 	var skeleton: Skeleton2D = SkeletonBuilder.build(data.get("skeleton", {}))
 	character.add_child(skeleton)
+	# Slots build BEFORE sprites so the sprite builders can route attachment
+	# children under the slot Node2D parent (SPEC 004 Wave 4.2). Mirrors the
+	# order in importer.gd._import.
+	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
 	# Both builders discriminator-filter their own kind — calling both is
 	# the same dispatch flow used in importer.gd._import.
 	var sprites_data: Array = data.get("sprites", [])
-	PolygonBuilder.attach_sprites(skeleton, sprites_data, null)
-	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, null)
+	PolygonBuilder.attach_sprites(skeleton, sprites_data, null, slot_map)
+	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, null, slot_map)
 
 	var player := AnimationPlayer.new()
 	player.name = "AnimationPlayer"

@@ -103,15 +103,15 @@ flowchart TD
 | Python LOC (addon) | ~470 linhas, mypy `--strict` clean |
 | Test assertions Godot | 31 (dummy 10 + effect 12 + skinned 9, incluindo idempotency) |
 | Test assertions Python | 46 (validation 12 + properties 6 + region 7 + mirror 5 + atlas_packer 8 + uv_bounds 8) |
-| Test fixtures Blender | 3 golden diffs auto-walked pelo `run_tests.py` (`examples/doll`, `examples/blink_eyes`, `examples/shared_atlas`). Legacy `examples/dummy/` + `examples/effect/` retired (Type B importer-only fixtures under `godot-plugin/tests/fixtures/` mantidas) |
+| Test fixtures Blender | 4 golden diffs auto-walked pelo `run_tests.py` (`examples/doll`, `examples/blink_eyes`, `examples/shared_atlas`, `examples/simple_psd`). Legacy `examples/dummy/` + `examples/effect/` retired (Type B importer-only fixtures under `godot-plugin/tests/fixtures/` mantidas) |
 | CI jobs | 5 (lint-python agora roda pytest também) |
-| SPECs escritos | 5 shipped (000, 001, 002, 003, 005), 1 placeholder (004), 1 design-only (007) |
+| SPECs escritos | 6 shipped (000, 001, 002, 003, 005, 006), 1 placeholder (004), 1 design-only (007) |
 
 ## O que está em andamento
 
-SPEC 005 first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 com merge feito (PRs #4–#11). 5.1.c.2.1 sliced atlas em PR #12. **5.1.c.2.2 Unpack** em andamento na branch `feat/spec-005.1.c.2.2-unpack`: apply guarda snapshot do estado pré-Apply num CP `proscenio_pre_pack` + duplica UV layer pra `<name>.pre_pack`; novo operator `unpack_atlas` reverte tudo. Cycle pack→apply→unpack→pack→apply é idempotente e sobrevive `.blend` save/reload (Ctrl+Z não sobrevive).
+SPEC 006 (Photoshop → Blender importer) shipped end-to-end (Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 + 6.5 merged, PRs #16–#21). Roundtrip integration: bpy → SPEC 006 v1 manifest → JSX importer → real PSD → JSX exporter → manifest mirror, plus addon `Import Photoshop Manifest` operator that stamps planes + stub armature from a manifest. Wave 6.5 (`examples/simple_psd/`) closes the deliverable: a 256x128 manifest with one polygon + one sprite_frame group of 4 frames, driven through the importer headless to produce the fixture's `.blend` + golden `.proscenio`.
 
-PRs 1–11 merged. SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima implementação após 5.1.c.2.1: SPEC 006 (Photoshop → Blender importer) — desbloqueia o workflow PS-first com naming convention `<name>_<index>` que aciona sprite_frame grouping.
+SPEC 004 (slots) fica placeholder até as ondas 5.1.x maturarem. Próxima frente: SPEC 005.1.d (advanced authoring shortcuts — drivers, pose lib, custom outliner) ou SPEC 004 design real conforme demanda.
 
 > **Nota de convenção**: branches recentes (`spec/001-…`, `spec/002-…`, `spec/003-…`) precedem a regra atualizada de Conventional Commits. Próximas branches usam `feat/spec-NNN-<slug>`.
 
@@ -141,6 +141,7 @@ flowchart TB
     S3[SPEC 003<br/>Skinning weights / Polygon2D.skeleton<br/>✅ shipped]
     S4[SPEC 004<br/>Slot system<br/>📝 placeholder]
     S5[SPEC 005<br/>Blender authoring panel<br/>✅ first-cut, 🟡 5.1.a + 5.1.b in flight]
+    S6[SPEC 006<br/>Photoshop → Blender importer<br/>✅ shipped]
 
     BACKLOG[Backlog<br/>Bezier preservation, animation events,<br/>multi-atlas, per-key interp, format v2]
 
@@ -160,6 +161,7 @@ flowchart TB
     style S2 fill:#dcfce7,stroke:#166534
     style S3 fill:#dcfce7,stroke:#166534
     style S5 fill:#fef3c7,stroke:#92400e
+    style S6 fill:#dcfce7,stroke:#166534
     style SCHEMA_V2 fill:#fee2e2,stroke:#991b1b
 
     NEXTWAVE[SPEC 005.1.x<br/>panel polish waves]
@@ -176,6 +178,7 @@ flowchart TB
 | **003** | `Polygon2D.skeleton` wiring + per-vertex bone weights — deformação real de mesh, não rigid attach | shipped |
 | **004** | Slot system — sprite-swap groups (`slot_attachment` track) para equipamento/expressões | placeholder — aguarda 005 antes do design real |
 | **005** | Blender authoring panel — sidebar com sprite type dropdown, sprite_frame metadata, sticky export, validation inline + lazy. PropertyGroup é canônica; raw Custom Property é fallback de leitura. Inspirada no painel COA Tools. | first-cut + 5.1.a + 5.1.b shipped (PRs #4–#7); 5.1.c.1 (region authoring) PR #8; fix bundle PR #9; **5.1.c.2 (atlas packer)** branch atual; 5.1.d (advanced) onda seguinte — ver [RESEARCH](specs/005-blender-authoring-panel/RESEARCH.md) |
+| **006** | Photoshop → Blender importer — JSON manifest v1 contract (schema 2020-12 com `kind` discriminator), JSX importer que monta PSD a partir do manifest, JSX exporter que emite o manifest mirror, addon `Import Photoshop Manifest` operator que cria planes + stub armature. Fixture `examples/simple_psd/` cobre roundtrip end-to-end. | shipped (PRs #16–#21, Waves 6.0 + 6.0.5 + 6.1 + 6.2 + 6.3 + 6.4 + 6.5) |
 
 ### Backlog (sem ordem)
 
@@ -192,14 +195,13 @@ flowchart TB
 
 ## Próximo passo
 
-SPEC 005 wave fechada (first-cut + 5.1.a + 5.1.b + 5.1.c.1 + 5.1.c.2 merged). PRs em revisão: #12 (5.1.c.2.1 sliced atlas), #13 (5.1.c.2.2 Unpack). SPEC 007 (testing fixtures) em implementação — `doll/` com `doll.blend` autorado à mão + `render_doll_layers.py` (rendering bpy headless do `.blend` em layers PNG flat-shaded), faltando golden + Godot wrapper + outras fixtures (`blink_eyes/`, `shared_atlas/`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
+SPEC 006 fechada end-to-end (Waves 6.0 → 6.5 merged em PRs #16–#21). 4 fixtures Type A em CI (`doll`, `blink_eyes`, `shared_atlas`, `simple_psd`). Convenção de branches: `feat/spec-NNN-<slug>` (ou `feat/spec-NNN.x-<slug>` pra ondas).
 
-1. **CI verde + merge das PRs #12 → #13** — fecha o atlas track.
-2. **SPEC 007 fixtures** — finalizar `doll.expected.proscenio` + `Doll.tscn` / `Doll.gd`, gerar `blink_eyes.blend` + `shared_atlas.blend` com seus goldens + Godot wrappers, parametrizar CI `test-blender`. Cobre o gap de testes pro workflow `1 sprite = 1 PNG` e pro `sprite_frame` com animação real.
-3. **SPEC 006 (Photoshop → Blender importer)** — lê manifest do JSX exporter, instancia planes posicionados, monta armature inicial. Naming convention `<name>_<index>` aciona sprite_frame grouping. Lock convention vem da SPEC 007 D4.
-4. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
-5. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
-6. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
+1. **SPEC 005.1.d (advanced wave)** — Driver constraint shortcut, Pose library shim, Spriteobject custom outliner.
+2. **SPEC 004 (slot system)** real design pass — depois que o painel estiver maduro o suficiente pra hospedar a UI de slots.
+3. **SPEC 008 (UV animation)** — `texture_region` track type para iris-scroll / hframes-cycling animados. Design já rascunhado em `specs/008-uv-animation/STUDY.md`.
+4. **`README.md` Quickstart** — mencionar `Import Photoshop Manifest` operator + `.ai/skills/photoshop-jsx-dev.md` + `blender-addon-dev.md` "Adding a fixture" notas pendentes do Wave 6.5.
+5. **Manual validation aberto na SPEC 003** continua user-driven (paint weights, observar deformação, plugin-uninstall test).
 
 ---
 

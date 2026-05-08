@@ -70,19 +70,23 @@ Bundled with 6.3 (PR #18). **Shipped:**
 
 ## Wave 6.5 — fixture `simple_psd/`
 
-Branch: `feat/spec-006.5-simple-psd-fixture`. Mirrors the SPEC 007 fixture layout.
+Branch: `feat/spec-006.5-simple-psd-fixture`. Mirrors the SPEC 007 fixture layout. **Shipped:**
 
-- [ ] `examples/simple_psd/` — a small hand-authored `.psd` source (or a programmatically generated one if PSD authoring is too friction). Contains a polygon layer + a sprite_frame group of 4 frames.
-- [ ] `examples/simple_psd/photoshop_export/` — JSX exporter output (`simple_psd.json` + `images/`).
-- [ ] `examples/simple_psd/simple_psd.blend` — expected post-import `.blend` at the fixture root.
-- [ ] `examples/simple_psd/simple_psd.expected.proscenio` — golden at the fixture root.
-- [ ] `examples/simple_psd/godot/SimplePSD.tscn` + `SimplePSD.gd` — Godot wrapper following the SPEC 001 pattern.
-- [ ] `blender-addon/tests/run_tests.py` auto-discovers it (no change needed).
-- [ ] `examples/simple_psd/README.md`.
+- [x] `examples/simple_psd/` — programmatically generated (Pillow draws + hand-authored manifest). Contains a polygon layer (`square.png`, 64x64) + a sprite_frame group of 4 frames (`arrow_0..3.png`, 32x32 each, cardinal-rotation arrow).
+- [x] `examples/simple_psd/simple_psd.photoshop_manifest.json` — hand-authored SPEC 006 v1 manifest (256x128 canvas, polygon + sprite_frame entries). PSD authoring deferred — the manifest is the source contract.
+- [x] `scripts/fixtures/simple_psd/draw_layers.py` — Pillow draws the per-layer + per-frame PNGs into `pillow_layers/`.
+- [x] `scripts/fixtures/simple_psd/build_blend.py` — bpy: loads the addon as `proscenio` package, runs `import_manifest()` on the committed manifest, saves `simple_psd.blend`. Roundtrip integration test of the SPEC 006 importer itself.
+- [x] `examples/simple_psd/simple_psd.blend` — generated post-import blend at the fixture root.
+- [x] `examples/simple_psd/simple_psd.expected.proscenio` — golden at the fixture root, produced by `_shared/export_proscenio.py`.
+- [x] `examples/simple_psd/godot/SimplePSD.tscn` + `SimplePSD.gd` — Godot wrapper following the SPEC 001 pattern.
+- [x] `blender-addon/tests/run_tests.py` auto-discovers it — no change required (4/4 fixtures pass after the new fixture lands).
+- [x] `examples/simple_psd/README.md` — pipeline overview + manifest layout table + build commands.
+- [x] `examples/simple_psd/.gitignore` — ignores `_spritesheets/` (importer output) + `*.actual.proscenio` (test runner side-effect on golden mismatch).
 
 ## Documentation
 
-- [ ] `STATUS.md` — fixtures row gains `simple_psd` once Wave 6.5 lands.
+- [x] `STATUS.md` — fixtures row gains `simple_psd`; SPEC 006 row reflects all waves shipped.
+- [x] `scripts/fixtures/README.md` — adds the new `simple_psd/` script entries + script-to-output map rows.
 - [ ] `README.md` — Quickstart mentions the new "Import Photoshop Manifest" operator.
 - [ ] `.ai/skills/blender-addon-dev.md` — "Adding a fixture" section already covers the auto-discovery; add a note about the photoshop importer entry-point.
 - [ ] `.ai/skills/photoshop-jsx-dev.md` — manifest v1 contract, sprite_frame group detection rules.

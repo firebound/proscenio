@@ -1,0 +1,29 @@
+{
+  "format_version": 1,
+  "doc": "simple_psd.psd",
+  "size": [256, 128],
+  "pixels_per_unit": 100,
+  "layers": [
+    {
+      "kind": "polygon",
+      "name": "square",
+      "path": "pillow_layers/square.png",
+      "position": [16, 32],
+      "size": [64, 64],
+      "z_order": 1
+    },
+    {
+      "kind": "sprite_frame",
+      "name": "arrow",
+      "position": [144, 48],
+      "size": [32, 32],
+      "z_order": 0,
+      "frames": [
+        { "index": 0, "path": "pillow_layers/arrow_0.png" },
+        { "index": 1, "path": "pillow_layers/arrow_1.png" },
+        { "index": 2, "path": "pillow_layers/arrow_2.png" },
+        { "index": 3, "path": "pillow_layers/arrow_3.png" }
+      ]
+    }
+  ]
+}

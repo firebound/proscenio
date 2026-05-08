@@ -67,6 +67,28 @@ REGION_MODE_ITEMS = (
     ),
 )
 
+DRIVER_TARGET_ITEMS = (
+    ("frame", "Frame index", "Sprite-frame cell — driven 0..hframes*vframes-1", 0),
+    ("region_x", "Region X", "Texture region origin X (0..1)", 1),
+    ("region_y", "Region Y", "Texture region origin Y (0..1)", 2),
+    ("region_w", "Region W", "Texture region width (0..1)", 3),
+    ("region_h", "Region H", "Texture region height (0..1)", 4),
+)
+
+DRIVER_SOURCE_AXIS_ITEMS = (
+    ("ROT_Z", "Bone Rot Z", "Pose bone local rotation around Z (typical 2D plane)", 0),
+    ("ROT_X", "Bone Rot X", "Pose bone local rotation around X", 1),
+    ("ROT_Y", "Bone Rot Y", "Pose bone local rotation around Y", 2),
+    ("LOC_X", "Bone Loc X", "Pose bone local translation X", 3),
+    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y", 4),
+    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z", 5),
+)
+
+
+def _is_armature(_self: object, obj: bpy.types.Object) -> bool:
+    """PointerProperty poll: only allow ARMATURE objects in the picker."""
+    return obj.type == "ARMATURE"
+
 
 def _on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
     """Mirror every field on any panel edit.
@@ -178,6 +200,38 @@ class ProscenioObjectProps(PropertyGroup):
         ),
         default=False,
         update=_on_any_update,
+    )
+
+    driver_target: EnumProperty(  # type: ignore[valid-type]
+        name="Driver target",
+        description="Sprite proscenio property the driver writes to",
+        items=DRIVER_TARGET_ITEMS,
+        default="region_x",
+    )
+    driver_source_armature: PointerProperty(  # type: ignore[valid-type]
+        name="Driver armature",
+        description="Armature whose pose bone supplies the driver value",
+        type=_Object,
+        poll=_is_armature,
+    )
+    driver_source_bone: StringProperty(  # type: ignore[valid-type]
+        name="Driver bone",
+        description="Pose bone whose transform feeds the driver",
+        default="",
+    )
+    driver_source_axis: EnumProperty(  # type: ignore[valid-type]
+        name="Driver axis",
+        description="Pose bone transform channel feeding the driver",
+        items=DRIVER_SOURCE_AXIS_ITEMS,
+        default="ROT_Z",
+    )
+    driver_expression: StringProperty(  # type: ignore[valid-type]
+        name="Driver expression",
+        description=(
+            "Driver expression. 'var' is the raw bone channel; "
+            "edit in the Drivers Editor for scaling, offsets, branching."
+        ),
+        default="var",
     )
 
 

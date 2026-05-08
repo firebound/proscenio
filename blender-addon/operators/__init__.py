@@ -10,10 +10,6 @@ from bpy.props import EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
-from ..core.driver_helpers import (  # type: ignore[import-not-found]
-    default_target_for_sprite,
-    find_armature_with_active_bone,
-)
 from .import_photoshop import PROSCENIO_OT_import_photoshop
 
 _PRE_PACK_CP_KEY = "proscenio_pre_pack"
@@ -520,21 +516,24 @@ def _ensure_single_driver(
 
 
 class PROSCENIO_OT_create_driver(bpy.types.Operator):
-    """Drive a sprite's `proscenio.<prop>` from the active pose bone (5.1.d.1).
+    """Drive a sprite's `proscenio.<prop>` from a chosen pose bone (5.1.d.1).
 
     Smallest authoring shortcut for the cutout-driven texture-swap pattern
     (forearm rotation flips front/back forearm sprite). Wraps Blender's
     native ``driver_add`` + a ``TRANSFORMS`` driver variable so the user
     does not have to hand-author the scripted-driver shape every time.
+
+    Source-of-truth is ``Object.proscenio.driver_*`` -- panel pickers
+    populate the fields, then the operator reads them. Operator-level
+    properties exist as redo-panel overrides + headless API surface.
     """
 
     bl_idname = "proscenio.create_driver"
-    bl_label = "Proscenio: Drive Sprite from Active Bone"
+    bl_label = "Proscenio: Drive Sprite from Bone"
     bl_description = (
-        "Adds a driver to the active sprite's proscenio property whose "
-        "source is the active pose bone. Defaults: target = frame "
-        "(sprite_frame) or region_x (polygon); source = bone rotation Z. "
-        "Re-running on the same property replaces the driver."
+        "Adds a driver to the active sprite's proscenio property using "
+        "the armature/bone selected in the panel. Re-running on the same "
+        "sprite + target property replaces the driver."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -542,7 +541,7 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         name="Target",
         description="Sprite proscenio property the driver writes to",
         items=_DRIVER_TARGET_PROPERTIES,
-        default="frame",
+        default="region_x",
     )
     source_axis: EnumProperty(  # type: ignore[valid-type]
         name="Source",
@@ -558,23 +557,36 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         ),
         default="var",
     )
+    armature_name: StringProperty(  # type: ignore[valid-type]
+        name="Armature",
+        description="Name of the armature object hosting the source bone",
+        default="",
+    )
+    bone_name: StringProperty(  # type: ignore[valid-type]
+        name="Bone",
+        description="Pose bone whose transform feeds the driver",
+        default="",
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         sprite = context.active_object
         if sprite is None or sprite.type != "MESH":
             return False
-        if not hasattr(sprite, "proscenio"):
-            return False
-        armature, _bone = find_armature_with_active_bone(list(context.selected_objects))
-        return armature is not None
+        return hasattr(sprite, "proscenio")
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        """Pre-fill operator props from the active sprite's PropertyGroup."""
         sprite = context.active_object
         if sprite is not None:
             props = getattr(sprite, "proscenio", None)
             if props is not None:
-                self.target_property = default_target_for_sprite(props)
+                self.target_property = str(props.driver_target)
+                self.source_axis = str(props.driver_source_axis)
+                self.expression = str(props.driver_expression) or "var"
+                arm = props.driver_source_armature
+                self.armature_name = arm.name if arm is not None else ""
+                self.bone_name = str(props.driver_source_bone)
         return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -584,11 +596,15 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
             self.report({"ERROR"}, "Proscenio: select a sprite mesh as the active object")
             return {"CANCELLED"}
 
-        armature, bone_name = find_armature_with_active_bone(list(context.selected_objects))
-        if armature is None or not bone_name:
+        armature = bpy.data.objects.get(self.armature_name) if self.armature_name else None
+        if armature is None or armature.type != "ARMATURE":
+            self.report({"ERROR"}, "Proscenio: pick a source armature in the panel")
+            return {"CANCELLED"}
+        bones = getattr(armature.data, "bones", None)
+        if bones is None or self.bone_name not in bones:
             self.report(
                 {"ERROR"},
-                "Proscenio: also select an armature whose active bone will drive the sprite",
+                f"Proscenio: bone '{self.bone_name}' not in armature '{armature.name}'",
             )
             return {"CANCELLED"}
 
@@ -601,21 +617,30 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
 
         driver = fcurve.driver
         driver.type = "SCRIPTED"
-        driver.expression = self.expression
+        driver.expression = self.expression or "var"
         var = driver.variables[0] if driver.variables else driver.variables.new()
         var.name = _DRIVER_VAR_NAME
         var.type = "TRANSFORMS"
         target = var.targets[0]
         target.id = armature
-        target.bone_target = bone_name
+        target.bone_target = self.bone_name
         target.transform_type = self.source_axis
         target.transform_space = "LOCAL_SPACE"
         target.rotation_mode = "AUTO"
 
+        # Mirror the redo-panel overrides back to the PropertyGroup so the
+        # picker reflects the latest state and the next invoke pre-fills
+        # from the freshly-saved choice.
+        props.driver_target = self.target_property
+        props.driver_source_axis = self.source_axis
+        props.driver_expression = self.expression or "var"
+        props.driver_source_armature = armature
+        props.driver_source_bone = self.bone_name
+
         self.report(
             {"INFO"},
             f"Proscenio: driver on '{sprite.name}.{data_path}' "
-            f"<- {armature.name}:{bone_name}.{self.source_axis}",
+            f"<- {armature.name}:{self.bone_name}.{self.source_axis}",
         )
         return {"FINISHED"}
 

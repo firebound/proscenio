@@ -233,7 +233,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
         layout.prop(props, "sprite_type")
         _draw_active_sprite_body(layout, context, obj, props)
-        _draw_driver_shortcut(layout, context)
+        _draw_driver_shortcut(layout, context, props)
 
         for issue in validation.validate_active_sprite(obj):
             row = layout.row()
@@ -244,27 +244,34 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
 def _draw_driver_shortcut(
     layout: bpy.types.UILayout,
-    context: bpy.types.Context,
+    _context: bpy.types.Context,
+    props: bpy.types.AnyType,
 ) -> None:
-    """Surface the 5.1.d.1 driver-shortcut button when an armature is co-selected.
+    """Render the 5.1.d.1 driver-shortcut box.
 
-    Pattern: user selects sprite mesh + armature (with an active pose bone),
-    clicks the button, gets a driver wired with sensible defaults the redo
-    panel can refine. Hidden when no armature in the selection so the
-    sidebar stays uncluttered for the polygon-only common case.
+    Panel-side pickers replace the original "active object + selection"
+    flow so the user does not need to switch between Object / Pose modes
+    just to pick a source bone. The armature dropdown lists every
+    ARMATURE in the file (poll filter); the bone field is a
+    ``prop_search`` against the selected armature's bones.
     """
-    has_armature = any(
-        obj.type == "ARMATURE" and getattr(obj.data, "bones", None) is not None
-        for obj in context.selected_objects
-    )
-    if not has_armature:
-        return
-    layout.separator()
-    layout.operator(
-        "proscenio.create_driver",
-        text="Drive from Active Bone",
-        icon="DRIVER",
-    )
+    box = layout.box()
+    box.label(text="Drive from bone", icon="DRIVER")
+    box.prop(props, "driver_target", text="Target")
+    box.prop(props, "driver_source_armature", text="Armature")
+    armature = props.driver_source_armature
+    bones = getattr(getattr(armature, "data", None), "bones", None) if armature else None
+    if bones is not None:
+        box.prop_search(props, "driver_source_bone", armature.data, "bones", text="Bone")
+    else:
+        row = box.row()
+        row.enabled = False
+        row.label(text="(pick an armature to choose a bone)", icon="INFO")
+    box.prop(props, "driver_source_axis", text="Axis")
+    box.prop(props, "driver_expression", text="Expression")
+    row = box.row()
+    row.enabled = bones is not None and bool(props.driver_source_bone)
+    row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):

@@ -152,11 +152,11 @@ Closes the polish gap left after 5.1.a/b/c shipped. Sub-divided per feature so e
 
 Branch: `feat/spec-005.1.d.1-driver-shortcut`. Smallest authoring shortcut for the driver-driven texture-swap pattern (forearm rotation flips front/back forearm sprite). Wraps Blender's native `driver_add` + a `TRANSFORMS` driver variable so the user does not hand-author the scripted-driver shape every time.
 
-- [x] `core/driver_helpers.py` — pure-Python helpers (`default_target_for_sprite`, `find_armature_with_active_bone`). bpy-free so the unit tests run without booting Blender.
-- [x] `PROSCENIO_OT_create_driver` operator. Idempotent: re-running on the same `(sprite, target_property)` pair removes the existing driver before adding the fresh one — no duplicate FCurves. Defaults: target = `frame` (sprite_frame) or `region_x` (polygon); source = `ROT_Z` of the active pose bone.
-- [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` for in-place tweaking.
-- [x] Active Sprite subpanel surfaces "Drive from Active Bone" button when both a sprite mesh (active object) and an armature with an active pose bone are co-selected. Hidden otherwise to keep the sidebar uncluttered for the polygon-only common case.
-- [x] `tests/test_driver_helpers.py` — 11 pytest assertions covering polygon/sprite_frame/None/unknown defaults + selection walker (first armature with active bone, skip armature-without-bones, skip empty-name active bone, empty selection, mesh-only selection, iteration order).
+- [x] `ProscenioObjectProps` gains five driver fields: `driver_target` (Enum: `frame`/`region_x`/`region_y`/`region_w`/`region_h`), `driver_source_armature` (PointerProperty filtered to ARMATURE objects), `driver_source_bone` (StringProperty backed by `prop_search` against the picked armature), `driver_source_axis` (Enum: ROT/LOC × X/Y/Z), `driver_expression` (StringProperty, default `var`). Authoring-only — no CP mirror needed.
+- [x] Active Sprite subpanel renders a "Drive from bone" box with the five pickers + the action button. No mode-switching required: the user picks armature + bone via `prop_search` directly in the sidebar regardless of Object / Pose / Edit mode. Button stays disabled until both armature and bone are picked.
+- [x] `PROSCENIO_OT_create_driver` operator. Reads picker state from `Object.proscenio.driver_*` on `invoke`, re-mirrors the redo overrides back to the PG on `execute` so the panel reflects the latest choice. Idempotent: re-running on the same `(sprite, target_property)` pair removes the existing driver before adding the fresh one — no duplicate FCurves.
+- [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` + `armature_name` + `bone_name` for in-place tweaking via F9.
+- [x] Manual smoke test: `examples/doll/doll.blend`, picked `forearm.L` mesh + `doll.rig` armature + `forearm.L` bone in the panel, clicked Drive from Bone, driver appeared in the Drivers Editor on `forearm.L.proscenio.region_x` with `var` expression and TRANSFORMS variable pointing at `doll.rig:forearm.L.ROT_Z`.
 
 ### 5.1.d.2 — Pose library shim
 

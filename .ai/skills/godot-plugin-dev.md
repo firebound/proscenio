@@ -118,6 +118,8 @@ A slot is a sprite-swap group: one named anchor with N alternate attachments, on
 
 **Schema shape**:
 
+`bone` is **optional** -- the writer emits it only when the slot Empty is bone-parented (`parent_type == "BONE"`); object-parented slot Empties (like the doll fixture's brow swaps, which use `parent_type == "OBJECT"` to avoid the bone Y-axis rotating its attachments) omit `bone` and the importer anchors the slot directly under `Skeleton2D`. The example below shows the bone-parented variant; see `examples/doll/doll.expected.proscenio` for the object-parented golden.
+
 ```json
 {
   "slots": [

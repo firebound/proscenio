@@ -57,7 +57,10 @@ def _promote_one_side(side: str) -> None:
 
     down = bpy.data.objects.get(down_name)
     if down is None:
-        print(f"[promote_brows_to_slots] no '{down_name}' -- skipping side", file=sys.stderr)
+        print(
+            f"[promote_brows_to_slots] no '{down_name}' -- skipping side",
+            file=sys.stderr,
+        )
         return
 
     up = bpy.data.objects.get(up_name) or _duplicate_as_raised(down, up_name)
@@ -112,11 +115,16 @@ def _rebuild_brow_raise_action() -> None:
         if slot is None:
             continue
         slot.animation_data_create()
-        action_name = "brow_raise"
-        existing = bpy.data.actions.get(f"{slot.name}{action_name}")
+        # Idempotent rebuild: drop the action currently bound to THIS slot
+        # before creating the fresh one. Looking up by name was wrong
+        # (string was f"{slot.name}{action_name}" -> "brow.L.swapbrow_raise"
+        # which never existed) so re-runs piled up "brow_raise.001",
+        # "brow_raise.002", ... instead of overwriting in place.
+        existing = slot.animation_data.action
         if existing is not None:
+            slot.animation_data.action = None
             bpy.data.actions.remove(existing)
-        action = bpy.data.actions.new(name=action_name)
+        action = bpy.data.actions.new(name="brow_raise")
         slot.animation_data.action = action
         bpy.context.scene.frame_start = 1
         bpy.context.scene.frame_end = 30

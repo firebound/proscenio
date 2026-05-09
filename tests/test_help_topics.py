@@ -60,6 +60,7 @@ def test_panel_topic_ids_present() -> None:
         "validation",
         "export",
         "drive_from_bone",
+        "pose_library",
     ]
     for tid in panel_topic_ids:
         assert tid in HELP_TOPICS, f"missing topic {tid!r}"

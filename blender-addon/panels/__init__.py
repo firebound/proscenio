@@ -498,11 +498,16 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                     "active_bone_index",
                     rows=min(max(len(bones), 3), 8),
                 )
-        # Pose-mode-only helpers (5.1.a + 5.1.b).
+        # Pose-mode-only helpers (5.1.a + 5.1.b + 5.1.d.2).
         if context.mode == "POSE":
             layout.separator()
             layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
             layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
+            layout.operator(
+                "proscenio.save_pose_asset",
+                text="Save Pose to Library",
+                icon="ASSET_MANAGER",
+            )
         # SPEC 004: slot creation -- works in any mode, anchors to active bone
         # when in pose mode, otherwise creates an unparented slot Empty.
         layout.separator()

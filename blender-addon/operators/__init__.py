@@ -1029,6 +1029,80 @@ class PROSCENIO_OT_set_slot_default(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
+    """Save the current pose to the Asset Browser (SPEC 005.1.d.2).
+
+    Tiny shim over Blender's native ``poselib.create_pose_asset`` --
+    the Asset Browser does the heavy lifting. The Proscenio panel just
+    surfaces a one-click entry point so authors do not have to dig
+    through Window > Pose Library every time. Pose name defaults to
+    ``<action>.<frame>`` when an action is active, otherwise
+    ``<armature>.<frame>``.
+    """
+
+    bl_idname = "proscenio.save_pose_asset"
+    bl_label = "Proscenio: Save Pose to Library"
+    bl_description = (
+        "Bundle the current armature pose into a Pose Library asset so it shows "
+        "up in the Asset Browser. Wraps Blender's poselib.create_pose_asset."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    pose_name: StringProperty(  # type: ignore[valid-type]
+        name="Pose name",
+        description=(
+            "Asset name. Empty string falls back to '<action>.<frame>' or '<armature>.<frame>'."
+        ),
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        active = context.active_object
+        if active is None or active.type != "ARMATURE":
+            return False
+        return bool(context.mode == "POSE")
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        armature = context.active_object
+        if armature is None or armature.type != "ARMATURE":
+            self.report({"ERROR"}, "Proscenio: no active armature")
+            return {"CANCELLED"}
+        if not armature.pose or not armature.pose.bones:
+            self.report({"WARNING"}, "Proscenio: armature has no pose bones")
+            return {"CANCELLED"}
+        if not hasattr(bpy.ops.poselib, "create_pose_asset"):
+            self.report(
+                {"ERROR"},
+                "Proscenio: bpy.ops.poselib.create_pose_asset not available "
+                "(Blender < 3.5 or pose library disabled).",
+            )
+            return {"CANCELLED"}
+
+        pose_name = self.pose_name or _default_pose_asset_name(armature, context)
+        try:
+            bpy.ops.poselib.create_pose_asset(pose_name=pose_name)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, f"Proscenio: pose library refused: {exc}")
+            return {"CANCELLED"}
+
+        self.report(
+            {"INFO"},
+            f"Proscenio: saved pose asset '{pose_name}' to the Asset Browser",
+        )
+        return {"FINISHED"}
+
+
+def _default_pose_asset_name(armature: bpy.types.Object, context: bpy.types.Context) -> str:
+    """Compose ``<action>.<frame>`` or ``<armature>.<frame>`` for the asset name."""
+    frame = int(context.scene.frame_current)
+    anim_data = getattr(armature, "animation_data", None)
+    action = getattr(anim_data, "action", None) if anim_data is not None else None
+    if action is not None and action.name:
+        return f"{action.name}.{frame}"
+    return f"{armature.name}.{frame}"
+
+
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
     """Insert keyframes for every Bone2D's transform at the current frame."""
 
@@ -1409,6 +1483,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_apply_packed_atlas,
     PROSCENIO_OT_unpack_atlas,
     PROSCENIO_OT_bake_current_pose,
+    PROSCENIO_OT_save_pose_asset,
     PROSCENIO_OT_create_driver,
     PROSCENIO_OT_create_slot,
     PROSCENIO_OT_add_slot_attachment,

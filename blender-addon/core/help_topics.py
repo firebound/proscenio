@@ -393,6 +393,43 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         see_also=(_SPEC_SLOT_SYSTEM, "specs/002-spritesheet-sprite2d"),
     ),
+    "pose_library": HelpTopic(
+        title="Save Pose to Library (5.1.d.2)",
+        summary="Bundle the current armature pose into a Blender Asset Browser entry.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Tiny shim over Blender's native poselib.create_pose_asset.",
+                "Wraps the call with sensible defaults so authors get a one-click",
+                "entry point in the Skeleton subpanel instead of digging through",
+                "Window > Pose Library every time.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Enter Pose Mode on the active armature.",
+                "2. Set the desired pose -- rotate / translate / scale bones.",
+                "3. Click 'Save Pose to Library' in the Skeleton panel.",
+                "4. The pose lands in the Asset Browser as '<action>.<frame>'",
+                "   (or '<armature>.<frame>' when no action is active).",
+                "5. Open Window > Asset Browser to apply the saved pose later.",
+            ),
+            _section(
+                "Where it fits",
+                "Pose assets live entirely on the Blender side -- they never",
+                "reach the .proscenio export. Use them to library + reuse poses",
+                "across animations, characters, or projects. Animation tracks",
+                "still drive the runtime; pose assets are an authoring shortcut.",
+            ),
+            _section(
+                "Caveats",
+                "- Requires Blender 3.5+ (poselib operator availability).",
+                "- The shim does not curate the Asset Browser layout -- pose",
+                "  assets land in the active asset library; configure that via",
+                "  Edit > Preferences > File Paths > Asset Libraries.",
+            ),
+        ),
+        see_also=(_SPEC_AUTHORING_PANEL,),
+    ),
     "import_photoshop": HelpTopic(
         title="Import Photoshop Manifest",
         summary="Stamp planes + stub armature from a SPEC 006 v1 PSD manifest.",

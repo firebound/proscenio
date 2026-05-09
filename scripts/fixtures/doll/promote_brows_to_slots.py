@@ -5,14 +5,19 @@ Run with::
     blender --background examples/doll/doll.blend \\
         --python scripts/fixtures/doll/promote_brows_to_slots.py
 
-Idempotent. Walks the doll.blend, ensures:
+The script reads the canonical baseline ``examples/doll/doll.blend``
+(meshes + clean armature, no slots) and writes the promoted result to
+``examples/doll/doll_slots.blend``. The baseline blend stays untouched
+so the photoshop render-layers roundtrip keeps a single source of
+truth -- the slot fixture is a derived artefact.
 
-- ``brow.L`` and ``brow.R`` exist as the "down" attachment meshes
-  (their pre-promotion state -- vertex group named after the bone,
-  weighted via that group).
-- ``brow.L.up`` and ``brow.R.up`` exist as sibling alternates --
-  duplicates of the down meshes shifted +Z by 0.05u (raised brow
-  position).
+Idempotent. The output blend, after the script runs, contains:
+
+- ``brow.L`` and ``brow.R`` as the "down" attachment meshes (their
+  pre-promotion state -- vertex group named after the bone, weighted
+  via that group).
+- ``brow.L.up`` and ``brow.R.up`` as sibling alternates -- duplicates
+  of the down meshes shifted +Z by 0.05u (raised brow position).
 - A slot Empty per side (``brow.L.swap`` / ``brow.R.swap``) parents
   both attachments. ``parent_type='OBJECT'`` to ``doll.rig`` (mirrors
   the doll's vertex-group weighting pattern). ``is_slot=True``,
@@ -22,8 +27,8 @@ Idempotent. Walks the doll.blend, ensures:
   down). Writer expands these into ``slot_attachment`` tracks at
   export.
 
-Re-running after a previous run is a no-op (slot Empty already
-present, attachments already wrapped).
+Re-running overwrites ``doll_slots.blend`` deterministically (no
+duplicate ``.up`` meshes, no piled-up actions).
 """
 
 from __future__ import annotations
@@ -36,7 +41,8 @@ import bpy
 from mathutils import Vector
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-BLEND_PATH = REPO_ROOT / "examples" / "doll" / "doll.blend"
+BASELINE_PATH = REPO_ROOT / "examples" / "doll" / "doll.blend"
+OUTPUT_PATH = REPO_ROOT / "examples" / "doll" / "doll_slots.blend"
 
 BROW_SIDES = ("L", "R")
 RAISE_OFFSET_Z = 0.05
@@ -46,8 +52,8 @@ def main() -> None:
     for side in BROW_SIDES:
         _promote_one_side(side)
     _rebuild_brow_raise_action()
-    bpy.ops.wm.save_mainfile()
-    print(f"[promote_brows_to_slots] saved {BLEND_PATH}")
+    bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT_PATH))
+    print(f"[promote_brows_to_slots] wrote {OUTPUT_PATH}")
 
 
 def _promote_one_side(side: str) -> None:

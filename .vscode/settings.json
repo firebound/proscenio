@@ -1,0 +1,29 @@
+{
+    "godotTools.editorPath.godot4": "e:\\godot\\godot.exe",
+    "files.associations": {
+        "*.jsx": "javascriptreact",
+        "*.tsx": "typescriptreact",
+        "LICENSE": "plaintext",
+        ".gdlintrc": "yaml",
+        "pyrightconfig.json": "jsonc"
+    },
+    "javascript.preferences.importModuleSpecifier": "relative",
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.tsdk": "photoshop-exporter/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "[javascriptreact]": {
+        "editor.tabSize": 4
+    },
+    "[typescriptreact]": {
+        "editor.tabSize": 4
+    },
+    "sonarlint.rules": {
+        "python:S101": {
+            "level": "off"
+        }
+    },
+    "sonarlint.analysisExcludesPattern": "**/AppData/**,**/site-packages/**,**/Lib/**,**/pythoncore-*/**",
+    "markdown.validate.ignoredLinks": [
+        "../../examples/dummy/Dummy.tscn"
+    ]
+}

@@ -6,9 +6,9 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.select import select_only  # type: ignore[import-not-found]
 from ..core.props_access import scene_props  # type: ignore[import-not-found]
 from ..core.report import report_info  # type: ignore[import-not-found]
-from ..core.select import select_only  # type: ignore[import-not-found]
 
 _PREVIEW_CAM_NAME = "Proscenio.PreviewCam"
 

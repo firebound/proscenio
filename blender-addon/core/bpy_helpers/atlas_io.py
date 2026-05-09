@@ -53,8 +53,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .atlas_packer import PackResult, Rect
-from .uv_bounds import uv_bbox_to_pixels
+from ..atlas_packer import PackResult, Rect
+from ..uv_bounds import uv_bbox_to_pixels
 
 
 @dataclass(frozen=True)

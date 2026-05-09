@@ -156,7 +156,9 @@ def _draw_preview_shader_buttons(layout: bpy.types.UILayout, obj: bpy.types.Obje
 
 def _material_has_slicer(obj: bpy.types.Object) -> bool:
     """True when any of the mesh's materials carries the SpriteFrameSlicer node."""
-    from ..core.sprite_frame_shader import SLICER_GROUP_NAME  # type: ignore[import-not-found]
+    from ..core.bpy_helpers.sprite_frame_shader import (  # type: ignore[import-not-found]
+        SLICER_GROUP_NAME,
+    )
 
     materials = getattr(obj.data, "materials", None) or []
     for mat in materials:

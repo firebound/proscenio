@@ -15,7 +15,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
 
-from core.sprite_frame_shader import (  # noqa: E402
+from core.bpy_helpers.sprite_frame_shader import (  # noqa: E402
     cell_offset_x,
     cell_offset_y,
     cell_size,

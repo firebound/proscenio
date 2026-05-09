@@ -24,7 +24,9 @@ from pathlib import Path
 import bpy
 
 from ...core import psd_manifest  # type: ignore[import-not-found]
-from ...core.psd_spritesheet import compose_spritesheet  # type: ignore[import-not-found]
+from ...core.bpy_helpers.psd_spritesheet import (  # type: ignore[import-not-found]
+    compose_spritesheet,
+)
 
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"

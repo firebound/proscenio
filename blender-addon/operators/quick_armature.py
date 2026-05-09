@@ -6,8 +6,10 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.viewport_math import (  # type: ignore[import-not-found]
+    mouse_event_to_z0_point,
+)
 from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
-from ..core.viewport_math import mouse_event_to_z0_point  # type: ignore[import-not-found]
 
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 

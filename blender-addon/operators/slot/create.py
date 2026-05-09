@@ -7,8 +7,8 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
+from ...core.bpy_helpers.select import select_only  # type: ignore[import-not-found]
 from ...core.report import report_info  # type: ignore[import-not-found]
-from ...core.select import select_only  # type: ignore[import-not-found]
 
 
 def _slot_bone_target(

@@ -28,7 +28,8 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         return bool(bpy.data.filepath)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core import atlas_io, atlas_packer  # type: ignore[import-not-found]
+        from ...core import atlas_packer  # type: ignore[import-not-found]
+        from ...core.bpy_helpers import atlas_io  # type: ignore[import-not-found]
 
         props = scene_props(context)
         if props is None:

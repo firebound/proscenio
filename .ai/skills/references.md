@@ -5,80 +5,31 @@ description: Prior-art repos and external docs to study before implementing a fe
 
 # References
 
-External resources, ranked by how often you should reach for them while working on Proscenio. Read the relevant section before writing a feature, not after.
+External resources grouped by tier. Read the relevant section before writing a feature, not after.
 
-## Tier 1 — read before touching the relevant area
+## Tier 1 - Engine internals (Godot)
 
-### Godot 2D Bridge — `Tor-Kai/Godot-2d-Bridge-1.0.0`
+Classes and concepts the importer uses every day.
 
-Repo: <https://github.com/Tor-Kai/Godot-2d-Bridge-1.0.0>
-
-The closest existing prior art. A Blender addon that exports 2D meshes and armatures to a Godot scene as `Polygon2D` and `Skeleton2D` nodes. Stuck on Godot 4.0, no animation support.
-
-What to read:
-
-- `gd2db_scene_parsing.py` — main exporter. Note especially:
-  - **Boundary-first vertex ordering via BMesh.** Boundary vertices come first to match Godot's polygon winding expectation. Replicate this when we write the Blender exporter.
-  - **UV extraction.** Active render layer, scaled by image dimensions, Y-flipped.
-  - **Bone weights from Blender vertex groups** mapped to Godot's `bones = [name, PoolRealArray(...)]`.
-  - **Skeleton2D rest + pose.** Each bone gets a rest `Transform2D` plus a current pose value.
-  - **Single armature per mesh** is a hard limit — Godot does not link more than one armature to a `Polygon2D`. We enforce the same.
-- `gd2db_2d_constraints.py` — how the addon locks 2D objects to the XY plane in Blender.
-
-What we deliberately do differently:
-
-- They write `.tscn` text directly. We use `PackedScene.pack()` + `ResourceSaver.save()` inside an `EditorImportPlugin`. More robust against `.tscn` syntax drift and lets the engine canonicalize.
-- They support Godot 1.x / 2.x / 3.x in one file. We target 4.3+ only.
-- They have no animation pipeline. We do — that is the whole point of Proscenio.
-
-### coa_tools2 — `Aodaruma/coa_tools2`
-
-Repo: <https://github.com/Aodaruma/coa_tools2>
-
-Forked from `ndee85/coa_tools` in 2023, alive on Blender 3.4 → 5.x. The Photoshop and Krita exporter scripts work and are the right starting point for the Proscenio Photoshop side. **The Godot export is missing entirely** — see `issue #28` (open since 2023).
-
-What to read:
-
-- `coa_tools2/Photoshop/coa_export.jsx` — port forward into `photoshop-exporter/proscenio_export.jsx`, adapt output JSON to our format.
-- `coa_tools2/Krita/coa_export.py` — same porting target for the Krita path (Phase 2).
-- The Blender addon code only as a study of how Sprite Objects, slots, and the import-from-JSON flow are structured. Do **not** copy the export pipeline — the existing JSON exporter is broken and incompatible with Blender 2.8+.
-- `issue #28` thread: <https://github.com/Aodaruma/coa_tools2/issues/28>. Confirms the gap, shows EvgeneKuklin's 2023 attempt at a fix that never merged. Useful as a list of pitfalls to avoid.
-
-### Original ndee85 — `ndee85/coa_tools`
-
-Repo: <https://github.com/ndee85/coa_tools>
-
-Dead since 2019. JSON export was actively being removed by the maintainer at the time. The Godot importer (`coa_importer/`) was Godot 2.x only.
-
-Worth reading **only** for the **reimport-with-merge algorithm** in the GDScript importer. That single piece of design is recovered and modernized for Godot 4 in Phase 2 (SPEC 001).
-
-## Tier 2 — Godot internals
-
-### `EditorImportPlugin` docs
+### `EditorImportPlugin`
 
 <https://docs.godotengine.org/en/stable/classes/class_editorimportplugin.html>
 
-The class our plugin extends. Required reading to understand the import lifecycle, how options work, and how saved resources are placed under `.godot/imported/`.
+The class our plugin extends. Import lifecycle, options, where saved resources land under `.godot/imported/`.
 
 ### `PackedScene` and `ResourceSaver`
 
 <https://docs.godotengine.org/en/stable/classes/class_packedscene.html>
 <https://docs.godotengine.org/en/stable/classes/class_resourcesaver.html>
 
-How scenes are constructed in memory and saved to disk. Crucial for the importer.
+How scenes are constructed in memory and saved to disk.
 
 ### `AnimationLibrary` and `AnimationPlayer`
 
 <https://docs.godotengine.org/en/stable/classes/class_animationlibrary.html>
 <https://docs.godotengine.org/en/stable/classes/class_animationplayer.html>
 
-Godot 4 separated animations from the player into reusable libraries. Our importer creates one default library `""` and adds animations to it.
-
-### TSCN file format
-
-<https://docs.godotengine.org/en/stable/contributing/development/file_formats/tscn.html>
-
-We do not write `.tscn` text by hand — `PackedScene.pack()` does it for us — but understanding the format is useful when debugging diffs and reading test output.
+Godot 4 separated animations from the player. Importer creates one default library `""` and adds animations to it.
 
 ### `Skeleton2D`, `Bone2D`, `Polygon2D`
 
@@ -86,26 +37,81 @@ We do not write `.tscn` text by hand — `PackedScene.pack()` does it for us —
 <https://docs.godotengine.org/en/stable/classes/class_bone2d.html>
 <https://docs.godotengine.org/en/stable/classes/class_polygon2d.html>
 
-The three nodes the importer assembles. `Polygon2D.skeleton` (NodePath) and `Polygon2D.set_bones()` are the skinning entry points consumed in Phase 2.
+The three nodes the importer assembles. `Polygon2D.skeleton` (NodePath) and `Polygon2D.set_bones()` are the skinning entry points.
 
-## Tier 3 — Blender addon authoring
+### `Sprite2D`
+
+<https://docs.godotengine.org/en/stable/classes/class_sprite2d.html>
+
+The `sprite_frame` track type relies on `hframes` / `vframes` / `frame`.
+
+### TSCN file format
+
+<https://docs.godotengine.org/en/stable/contributing/development/file_formats/tscn.html>
+
+We do not write `.tscn` text by hand - `PackedScene.pack()` handles it - but the format is useful for debugging diffs.
+
+## Tier 2 - DCC authoring (Blender, Photoshop)
 
 ### Blender Extensions Platform
 
 <https://docs.blender.org/manual/en/latest/extensions/getting_started.html>
 
-The 4.2+ extension system that replaces the old `bl_info` style. Our addon ships under it — see `blender_manifest.toml`.
+The 4.2+ extension system. Our addon ships under it - see [`blender-addon/blender_manifest.toml`](../../blender-addon/blender_manifest.toml).
 
 ### `bpy` API reference
 
 <https://docs.blender.org/api/current/>
 
-Look up specific operators, properties, and types. Stay on stable APIs only — `coa_tools2` has been chasing `bpy` drift for years (issues #92, #93, #95, #107, #109, #110, #111).
+Lookup for operators, properties, types. Stay on stable APIs - `coa_tools2` has been chasing `bpy` drift for years (issues #92, #93, #95, #107, #109, #110, #111).
 
-## Tier 4 — what we explicitly avoid
+### Photoshop UXP guide (Adobe)
 
-### Spine Godot integration
+<https://developer.adobe.com/photoshop/uxp/2022/guides/>
+
+UXP plugin target. TypeScript + React stack; replaces ExtendScript / JSX.
+
+### Photoshop UXP API reference
+
+<https://developer.adobe.com/photoshop/uxp/2022/ps_reference/>
+
+Photoshop DOM exposed to UXP plugins.
+
+### Photoshop UXP storage (file system)
+
+<https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/Modules/uxp/Persistent%20File%20Storage/>
+
+Sandboxed file system API. Replaces ExtendScript's direct `File` constructor.
+
+## Tier 3 - Competitor and prior-art study
+
+One line per entry. Read the source or docs when designing a feature that overlaps the tool's niche.
+
+### Skeleton-based cutout (paradigm-direct)
+
+- **Spine** (paid, industry standard). <https://esotericsoftware.com/> + <https://en.esotericsoftware.com/spine-in-depth>. Reference for skeletal 2D animation features (skins, FFD, IK, paths, runtime preview).
+- **DragonBones** (open Spine alt, multi-runtime). <https://github.com/DragonBones>. Free Spine-clone with JSON format and a community editor.
+- **COA Tools 2** (Aodaruma fork, GPL, alive). <https://github.com/Aodaruma/coa_tools2>. Direct prior art for the Blender side. PSD / Krita / GIMP exporters useful as porting targets; Godot importer broken - see issue [#28](https://github.com/Aodaruma/coa_tools2/issues/28).
+- **COA Tools original** (ndee85, abandoned since 2019). <https://github.com/ndee85/coa_tools>. Source of the reimport-merge pattern that informed SPEC 001's wrapper-scene approach. Godot 2.x only.
+- **Godot 2D Bridge** (Tor-Kai, stuck on Godot 4.0). <https://github.com/Tor-Kai/Godot-2d-Bridge-1.0.0>. Boundary-first vertex ordering and bone-weight mapping references; no animation pipeline.
+
+### Engine-side plugins
+
+- **Souperior 2D Skeleton Modifications** (Godot, MIT). <https://github.com/ZedManul/souperior-2d-skeleton-modifications>. IK + LookAt nodes that extend Godot's `Skeleton2D` modification system. Stack-on-top reference for runtime IK polish.
+- **Puppet2D** (Unity, paid Asset Store). Skeletal rigging with control-point mesh deform inside Unity.
+- **AnyPortrait** (Unity, paid Asset Store). <http://anyportrait.com/>. Closest Unity-side feature counterpart - PSD layered import, mesh deform with weights, IK, motion paths, bone physics, automesh from sprite.
+- **Unity 2D Animation package** (Unity, free). <https://docs.unity3d.com/Packages/com.unity.2d.animation@latest/>. Sprite Skinning + IK Manager 2D + Sprite Library. Closest engine-native counterpart on Unity.
+
+### Adjacent paradigms (different problem space)
+
+- **Live2D Cubism** (paid, free tier). <https://www.live2d.com/>. Illustration-first, parameter-driven 2.5D mesh deformer. Different art form; reference for "preserve the drawn artwork" philosophy.
+- **DUIK Angela** (free). <https://rxlaboratory.org/tools/duik/>. Auto-rig + controller paradigm for After Effects. Reference for templates / presets QoL.
+- **RubberHose** (paid). <https://battleaxe.co/rubberhose>. Non-destructive mid-animation re-rig paradigm. Reference for the "technique decisions do not lock creative direction" philosophy.
+
+## Tier 4 - explicitly avoided
+
+### Spine Godot runtime
 
 <https://github.com/EsotericSoftware/spine-runtimes/tree/4.2/spine-godot>
 
-Cited as the anti-pattern Proscenio rejects: paid runtime, GDExtension dependency, "third-party-of-third-party" support, custom C++ engine module variant. Read once to understand why we chose differently. Do not adopt patterns from it.
+The anti-pattern Proscenio rejects: paid runtime, GDExtension dependency, "third-party-of-third-party" support, custom C++ engine module variant. Read once to understand why we chose differently. Do not adopt patterns from it.

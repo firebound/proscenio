@@ -19,11 +19,12 @@ godot-plugin/
 │   ├── plugin.cfg
 │   ├── plugin.gd           # EditorPlugin entry — registers importer
 │   ├── importer.gd         # EditorImportPlugin
-│   ├── reimporter.gd       # diff/merge logic for non-destructive reimport
+│   ├── reimporter.gd       # reimport orchestration (Option A full overwrite)
 │   └── builders/
 │       ├── skeleton_builder.gd
 │       ├── polygon_builder.gd        # type: "polygon" sprites — Polygon2D
 │       ├── sprite_frame_builder.gd   # type: "sprite_frame" sprites — Sprite2D
+│       ├── slot_builder.gd           # SPEC 004 — Node2D anchors + visible toggling
 │       └── animation_builder.gd
 └── tests/                  # GUT
 ```

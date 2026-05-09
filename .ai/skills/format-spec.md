@@ -26,8 +26,8 @@ Each entry in `sprites` is one of two shapes, distinguished by a `type` field:
 
 | `type` | Renders as | Required fields | Use when |
 | --- | --- | --- | --- |
-| `polygon` (default) | `Polygon2D` | `polygon`, `uv`, `texture_region` | cutout-style mesh, deformable, eligible for skinning weights (SPEC 003) |
-| `sprite_frame` | `Sprite2D` | `hframes`, `vframes`, `bone` | frame-by-frame animation (pixel art, particles, effects) |
+| `polygon` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style mesh, deformable, eligible for skinning weights (SPEC 003) |
+| `sprite_frame` | `Sprite2D` | `type`, `name`, `bone`, `hframes`, `vframes` | frame-by-frame animation (pixel art, particles, effects) |
 
 `type` is **optional** on `polygon` sprites — absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
 
@@ -51,7 +51,9 @@ The Godot importer trusts the exporter — it does not re-flip. If you write a n
 
 ## Atlas packing (v1)
 
-The `atlas` field is an optional path to a single pre-packed texture. **Atlases are packed externally** (TexturePacker, Free Texture Packer, etc.) before the Blender pipeline runs. The Blender addon consumes the atlas plus per-sprite `texture_region` rectangles; it does **not** pack atlases itself in v1. Multi-atlas characters split into multiple `.proscenio` files.
+The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** (SPEC 005.1.c.2) that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible — the writer reads whatever `texture_region` the user supplies.
+
+Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md).
 
 ## Skinning weights
 
@@ -77,11 +79,13 @@ Sprites with the field absent or empty stay rigid-attached (a child of the `Bone
 
 ## Migration
 
-Each version bump ships a migrator at:
+Each version bump ships a migrator under the writer package:
 
 ```text
-blender-addon/exporters/godot/migrations/v{N}_to_v{N+1}.py
+blender-addon/exporters/godot/writer/migrations/v{N}_to_v{N+1}.py
 ```
+
+The directory is created when the first migration lands. Today the writer is `format_version=1` only; no migrations exist yet.
 
 The Godot importer rejects unknown future versions with a clear error message and refuses to import.
 
@@ -94,4 +98,12 @@ The Godot importer rejects unknown future versions with a clear error message an
 | `slot_attachment` | slot | `attachment` (sprite name) |
 | `visibility` | any | `visible` (bool) |
 
-Per-key interpolation: `interp` field with values `linear` or `constant`. Default is `linear` if omitted. Cubic Bézier was considered for v1 but dropped — proper cubic interpolation needs in/out tangent handles per key, which the schema does not yet model. Add in a future format bump if real demand surfaces.
+Per-key `interp` field: `linear` or `constant`. Default `linear` if omitted.
+
+**Track-level interpolation override**: the Godot importer applies cubic interpolation at the track level for `bone_transform` tracks, regardless of per-key `interp`:
+
+- Rotation track: `INTERPOLATION_CUBIC_ANGLE` (handles wrap-around at ±π).
+- Position / scale tracks: `INTERPOLATION_CUBIC`.
+- `sprite_frame` and `slot_attachment` tracks: `INTERPOLATION_NEAREST` (hard cuts).
+
+This means per-key `interp` is currently ignored for transform tracks — the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred — it requires schema fields the v1 shape does not model.

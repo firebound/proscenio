@@ -80,14 +80,15 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 
 ## Authoring sprites in the panel (SPEC 005)
 
-The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob:
+The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob. Every subpanel header carries two icons on the right: a **status badge** (`godot-ready` / `blender-only` / `planned` / `out-of-scope` — hover for the band-specific tooltip) and a **`?` button** that opens a topic-specific in-panel help popup. The full topic dispatch lives in [`blender-addon/core/help_topics.py`](../../blender-addon/core/help_topics.py).
 
-- **Active sprite** — sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata fields (`hframes`, `vframes`, `frame`, `centered`), polygon vertex-group summary. Inline validation icons appear next to broken rows (e.g. `sprite_frame` with `hframes < 1`).
-- **Skeleton** — armature bone count + warnings (no armature, multiple armatures).
+- **Active sprite** — sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata (`hframes`, `vframes`, `frame`, `centered`), texture region (auto / manual + Snap-to-UV), in-viewport sprite_frame preview slicer (5.1.d.5), polygon vertex-group summary, **Drive from Bone** picker (5.1.d.1), **Import Photoshop Manifest** button (5.1.b → 6.x integration), and inline validation icons next to broken rows. Active Slot subpanel surfaces when an Empty with `is_slot=True` is selected — pick the default attachment via SOLO icons.
+- **Skeleton** — armature bone count + warnings (no armature, multiple armatures), pose-mode helpers (**Bake Current Pose**, **Toggle IK**, **Save Pose to Library** — 5.1.d.2 wraps `POSELIB_OT_create_pose_asset`), **Quick Armature** modal (5.1.d.3 — click-drag bone draw on z=0), **Create Slot** (5.1.b SPEC 004 — wraps selected meshes into an Empty as attachments).
+- **Outliner** (5.1.d.4) — sprite-centric flat list of slots, attachments, sprite meshes, armatures. Substring filter + favorites toggle. Click a row to activate the target object. SOLO icon next to each row pins it as a favorite.
 - **Animation** — read-only summary of every Action that the writer would emit.
-- **Atlas** — read-only atlas filename discovered from materials.
-- **Validation** — populated by the Validate button. Lists every issue the export-time checker found (errors block export, warnings inform).
-- **Export** — sticky `last_export_path`, `pixels_per_unit`, Validate / Export / Re-export buttons.
+- **Atlas** — read-only atlas filename discovered from materials, **Pack Atlas / Apply Packed Atlas / Unpack Atlas** flow.
+- **Validation** — populated by the Validate button. Lists every issue the export-time checker found (errors block export, warnings inform). Click a row to activate the offending object.
+- **Export** — sticky `last_export_path`, `pixels_per_unit`, **Preview Camera** (orthographic camera matching `pixels_per_unit`), **Validate / Export / Re-export** buttons.
 - **Diagnostics** — smoke test + future addon-health buttons.
 
 The panel widgets read and write `bpy.types.Object.proscenio` (a `PropertyGroup` registered by SPEC 005). The PropertyGroup mirrors the legacy raw Custom Properties (`proscenio_type`, `proscenio_hframes`, etc.) so power users can keep editing raw data — both paths round-trip.

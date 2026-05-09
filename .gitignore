@@ -56,4 +56,13 @@ desktop.ini
 # Build artifacts
 dist/
 build/
+out/
 *.zip
+
+# Node / UXP plugin
+node_modules/
+package-lock.json
+yarn.lock
+
+# Local-only files
+MANUAL_TESTS_PENDING.md

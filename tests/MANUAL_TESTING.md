@@ -20,14 +20,15 @@ Recomendação: comece pelos smoke tests. Se quebrar lá, não adianta ir adiant
 
 ## 0. Smoke tests críticos
 
-Validam que addon carrega + workflow básico ainda funciona após refactors recentes (waves 9.x + apps/ reorg).
+Validam que addon carrega + workflow básico funciona.
 
-- [ ] **Addon load**: Edit > Preferences > Add-ons > "proscenio" check. Sem warnings de import.
+- [x] **Addon load**: Edit > Preferences > Add-ons > "proscenio" check. Sem warnings de import.
 - [ ] **Addon reload**: Edit > Preferences > addon disable + enable. Sem erro de re-registration.
 - [ ] **Reload Scripts** (F3 > "Reload Scripts" ou Code editor): nenhuma exception no console.
+- [x] **Operator dispatch**: Diagnostics panel > "Run Smoke Test" -> INFO bar mostra "Proscenio smoke test OK", console imprime mesma string.
 - [ ] **Properties registered**: abrir `examples/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
 - [ ] **Scene props**: Scene > Properties > scroll pra "Proscenio" Custom Properties section, ver `last_export_path` field.
-- [ ] **PG hydration**: abrir um .blend antigo (pre-SPEC 005) com Custom Properties manuais (`proscenio_type=sprite_frame`) -- PG inicializa com mesmo valor.
+- [ ] **PG hydration**: abrir um .blend antigo (legacy) com Custom Properties manuais (`proscenio_type=sprite_frame`) -- PG inicializa com mesmo valor.
 
 ---
 
@@ -45,7 +46,7 @@ Workbench file recomendado: `examples/doll/doll_workbench.blend` (clone do basel
 - [ ] "Reproject UV" button (polygon): reprojeta UV active layer
 - [ ] material_isolated checkbox: salva no PG + CP
 
-### 1.2 Sprite Frame preview shader (SPEC 004 D13)
+### 1.2 Sprite Frame preview shader
 
 Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
 
@@ -56,7 +57,7 @@ Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
 - [ ] Re-Setup idempotente: clicar 2x não duplica nodes
 - [ ] Solid shading mode: flat diffuse (slicer invisível, esperado)
 
-### 1.3 Drive from bone (SPEC 5.1.d.1)
+### 1.3 Drive from bone
 
 Active Sprite > Drive from bone box:
 
@@ -68,7 +69,7 @@ Active Sprite > Drive from bone box:
 - [ ] F9 redo panel: trocar `target_property` re-wires driver
 - [ ] Custom expression `var * 0.5 + 0.3`: mid-region scroll funciona
 
-### 1.4 Active Slot panel (SPEC 004)
+### 1.4 Active Slot panel
 
 Workbench file: `examples/doll/doll_slots.blend` (já tem brow.L.swap, brow.R.swap).
 
@@ -98,7 +99,7 @@ Em doll_slots.blend ou cenário custom:
 - [ ] Validate button -> resultados aparecem no Validation subpanel
 - [ ] Click issue na Validation panel -> seleciona objeto offending
 
-### 1.7 Outliner panel (SPEC 5.1.d.4)
+### 1.7 Outliner panel
 
 - [ ] Lista todos sprite meshes (não bones, não Empties não-slot)
 - [ ] Filtro substring funciona (digita "brow" -> só brow meshes)
@@ -119,7 +120,7 @@ Em doll_slots.blend ou cenário custom:
 - [ ] Active action sticky
 - [ ] Scrub timeline com action selected funciona
 
-### 1.10 Atlas panel (SPEC 005.1.c.2)
+### 1.10 Atlas panel
 
 Em workbench com N sprites de PNGs separados:
 
@@ -150,7 +151,7 @@ Em workbench com N sprites de PNGs separados:
 - [ ] Pixels per unit setting respeitada no output
 - [ ] Validation gate bloqueia export se errors críticos não resolvidos
 
-### 1.13 Help + status badges (SPEC 5.1.d.5)
+### 1.13 Help + status badges
 
 - [ ] Cada subpanel mostra ícone status + ? alinhados à direita do header
 - [ ] Hover ícone -> tooltip per-band (godot-ready / blender-only / planned / out-of-scope)
@@ -158,11 +159,11 @@ Em workbench com N sprites de PNGs separados:
 - [ ] Click ? em cada subpanel -> abre topic-specific help popup
 - [ ] Pipeline overview popup (root ?) renderiza todos sections + see-also
 - [ ] Drive-from-bone help topic conteúdo confere
-- [ ] See-also links resolvem em paths reais (specs/004-slot-system, etc)
+- [ ] See-also links resolvem em paths reais
 - [ ] `slot_system` topic abre via Active Slot ? button
 - [ ] `sprite_frame_preview` topic abre via Active Sprite ? button (sprite_frame mode)
 
-### 1.14 Quick Armature (SPEC 5.1.d.3)
+### 1.14 Quick Armature
 
 - [ ] "Quick Armature" operator: 3D viewport, click-drag head -> tail desenha bone
 - [ ] Bone aparece em armature `Proscenio.QuickRig`
@@ -172,7 +173,7 @@ Em workbench com N sprites de PNGs separados:
 - [ ] Cancel sem nenhum bone criado: armature vazio removido (não polui scene)
 - [ ] Drag muito curto (< 1e-4): skip, não cria bone
 
-### 1.15 Pose library (SPEC 5.1.d.2)
+### 1.15 Pose library
 
 - [ ] "Save Pose to Library": com armature em pose mode, pose name -> action criada
 - [ ] Action salva apenas keyframes do current pose
@@ -184,7 +185,7 @@ Em workbench com N sprites de PNGs separados:
 - [ ] "Toggle IK Chain": pose bone selected -> IK constraint added; re-toggle remove
 - [ ] "Reproject Sprite UV": reprojeta UV do sprite ativo
 
-### 1.17 Photoshop import (SPEC 006)
+### 1.17 Photoshop import
 
 - [ ] "Import Photoshop Manifest" operator: file picker abre
 - [ ] `examples/doll/doll.photoshop_manifest.json`: stamp polygon + sprite_frame meshes corretamente
@@ -237,7 +238,7 @@ Em workbench com N sprites de PNGs separados:
 
 ## 3. Apps/Photoshop
 
-### 3.1 UXP plugin (SPEC 010 -- in progress)
+### 3.1 UXP plugin
 
 Quando UXP migration shippa:
 

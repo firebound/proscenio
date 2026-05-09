@@ -82,7 +82,12 @@ def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
 
 
 def _discover_fixtures() -> list[tuple[Path, Path]]:
-    """Find every ``examples/<name>/<name>.blend`` paired with a golden.
+    """Find every ``examples/<dir>/<name>.blend`` paired with a golden.
+
+    Globs ``*.expected.proscenio`` per fixture dir so a single dir can
+    host multiple fixtures (e.g. ``examples/doll/doll.blend`` baseline
+    plus ``examples/doll/doll_slots.blend`` derived). The blend
+    filename is derived from the golden stem.
 
     Returns a sorted list of ``(blend_path, expected_path)`` tuples.
     """
@@ -90,19 +95,18 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
     for fixture_dir in sorted(EXAMPLES_DIR.iterdir()):
         if not fixture_dir.is_dir():
             continue
-        name = fixture_dir.name
-        blend = fixture_dir / f"{name}.blend"
-        # Golden lives at the fixture root (it's the validation midpoint
-        # between Blender and Godot — neither pure Blender nor pure Godot).
-        expected = fixture_dir / f"{name}.expected.proscenio"
-        if blend.exists() and expected.exists():
-            pairs.append((blend, expected))
+        for expected in sorted(fixture_dir.glob("*.expected.proscenio")):
+            name = expected.name[: -len(".expected.proscenio")]
+            blend = fixture_dir / f"{name}.blend"
+            if blend.exists():
+                pairs.append((blend, expected))
     return pairs
 
 
 def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
     """Open ``blend``, re-export, validate + diff. Return True on pass."""
-    print(f"--- {blend.parent.name}", flush=True)
+    label = f"{blend.parent.name}/{blend.stem}"
+    print(f"--- {label}", flush=True)
     bpy.ops.wm.open_mainfile(filepath=str(blend))
     actual_path = expected.with_name(expected.stem + ".actual.proscenio")
     writer_module.export(actual_path, pixels_per_unit=100.0)
@@ -111,7 +115,7 @@ def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
 
     schema_errors = _validate_against_schema(actual)
     if schema_errors:
-        print(f"FAIL ({blend.parent.name}): writer output is not schema-valid", file=sys.stderr)
+        print(f"FAIL ({label}): writer output is not schema-valid", file=sys.stderr)
         for err in schema_errors:
             print(f"  - {err}", file=sys.stderr)
         return False
@@ -120,7 +124,7 @@ def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
     expected_s = _normalize(expected_doc)
     if actual_s == expected_s:
         actual_path.unlink()
-        print(f"PASS ({blend.parent.name})")
+        print(f"PASS ({label})")
         return True
 
     diff = difflib.unified_diff(
@@ -130,7 +134,7 @@ def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
         tofile=actual_path.name,
         lineterm="",
     )
-    print(f"FAIL ({blend.parent.name}): writer output differs from golden", file=sys.stderr)
+    print(f"FAIL ({label}): writer output differs from golden", file=sys.stderr)
     for line in diff:
         print(line, file=sys.stderr)
     print(f"\nactual written to: {actual_path}", file=sys.stderr)

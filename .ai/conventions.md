@@ -1,7 +1,5 @@
 # Conventions — Proscenio
 
-Inspired by the FairCut conventions, adapted to Proscenio's polyglot pipeline (Python + GDScript + JSX + a JSON schema as contract).
-
 ## Branches
 
 ```text
@@ -48,7 +46,7 @@ The `.proscenio` format uses `snake_case` keys throughout (`format_version`, `pi
 
 ## Module organization (Blender addon)
 
-Established by SPEC 009. Every concern lives in its own module; `__init__.py` orchestrates registration only.
+Every concern lives in its own module; `__init__.py` orchestrates registration only.
 
 - `blender-addon/__init__.py` — addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
 - `operators/`, `panels/`, `properties/` — packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
@@ -130,7 +128,7 @@ In Python, model `.proscenio` shapes as `TypedDict` (or `dataclass`) inside the 
 
 ### Defensive throws / asserts
 
-Cheap to write, expensive to skip. In Python, raise `RuntimeError` at the boundary with a context-rich message (`"Proscenio export needs an Armature in the scene"`). In GDScript, `assert(condition, msg)` is stripped from release builds — useful for invariants documented as code. In ExtendScript, `throw new Error(...)` early-fails the script with a usable message.
+Cheap to write, expensive to skip. In Python, raise `RuntimeError` at the boundary with a context-rich message (`"Proscenio export needs an Armature in the scene"`). In GDScript, `assert(condition, msg)` is stripped from release builds — useful for invariants documented as code. In TypeScript (UXP plugin), `throw new Error(...)` early-fails the operation with a usable message.
 
 ### Test discipline
 
@@ -188,7 +186,7 @@ Conventional Commits:
 | --- | --- |
 | `blender` | Blender addon |
 | `godot` | Godot plugin |
-| `photoshop` | Photoshop JSX exporter |
+| `photoshop` | Photoshop UXP plugin |
 | `schema` | `.proscenio` format schema |
 | `skills` | `.ai/skills/` and `.ai/conventions.md` |
 | `specs` | Planning specs under `specs/` |

@@ -115,7 +115,7 @@ Each top-level mesh in `doll.blend` becomes one PNG layer when `render_layers.py
 | polygon, multi-bone weights | spine-region meshes (`chest` / `belly` / `waist`), pelvic mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R` | Demonstrates **multi-bone weights** + falloff distribution. |
 | polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (SPEC 004 + 5.1.d). |
 | sprite_frame | `eye.L` / `eye.R` | Hframes=4 spritesheet, animated by the `blink` action. |
-| polygon, slot-ready | `brow.L` / `brow.R` | Future home for the slot system (SPEC 004) — brow-up / brow-down swap. |
+| polygon, slot-bound (SPEC 004 ✅) | `brow.L` + `brow.L.up` under `brow.L.swap` slot Empty; same for the right side | Two slots driven by the `brow_raise` action keyframing `proscenio_slot_index` 0 → 1 → 0. End-to-end slot demo on a comprehensive rig; complements `examples/slot_cycle/` (isolated test). Re-author via `scripts/fixtures/doll/promote_brows_to_slots.py` (idempotent). |
 | polygon, single primary bone | everything else | Standard parented sprites. |
 
 ## Visual style
@@ -130,6 +130,7 @@ Each mesh in `doll.blend` carries a flat-color material; `render_layers.py` read
 | `wave` | 30 | upper_arm.R + forearm.R rotation | demonstrates IK-friendly chain (no IK constraint exported, but Blender-side Toggle IK works) |
 | `blink` | 12 | eye.L + eye.R `proscenio.frame` 0→1→2→3→2→1→0 | exercises sprite_frame track type |
 | `walk` | 30, loop | thigh.L/R + shin.L/R rotation, spine sway | full-body coordination |
+| `brow_raise` | 30 | `brow.L.swap` + `brow.R.swap` slot index 0 → 1 → 0 | exercises slot_attachment track (writer expands to per-attachment visibility tracks at import) |
 
 Future actions land as future SPECs require.
 
@@ -145,7 +146,7 @@ Future actions land as future SPECs require.
 
 | When | Adds |
 | --- | --- |
-| SPEC 004 (slots) ships | Slot on `hand.L.attachment` (sword vs bow swap). Slot on `brow.L/R` (brow-up vs brow-down). |
+| SPEC 004 (slots) shipped ✅ | Brow swap (`brow.L.swap` / `brow.R.swap`) slots + `brow_raise` action live now. Future: slot on `hand.L.attachment` (sword vs bow swap). |
 | SPEC 006 importer ships fully | A `doll.psd` round-trip test using `photoshop_import/doll.psd` as input. |
 | SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
 | Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |

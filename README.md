@@ -41,9 +41,9 @@ What Proscenio gives you:
 
 | Component | Tech | Role |
 | --- | --- | --- |
-| Photoshop side ([`photoshop-exporter/`](photoshop-exporter/)) | UXP plugin, TypeScript + React | PSD → manifest JSON + per-layer PNGs. Optional manifest mirror back to PSD. Photoshop CC 2021+. |
-| Blender side ([`blender-addon/`](blender-addon/)) | Python 3.11, mypy `--strict` | Manifest import, sprite/armature authoring panel, validation, `.proscenio` writer. |
-| Godot side ([`godot-plugin/`](godot-plugin/)) | GDScript 2.0 typed | `EditorImportPlugin` reading `.proscenio` and regenerating `.scn` on every reimport. |
+| Photoshop side ([`apps/photoshop/`](apps/photoshop/)) | UXP plugin, TypeScript + React | PSD → manifest JSON + per-layer PNGs. Optional manifest mirror back to PSD. Photoshop CC 2021+. |
+| Blender side ([`apps/blender/`](apps/blender/)) | Python 3.11, mypy `--strict` | Manifest import, sprite/armature authoring panel, validation, `.proscenio` writer. |
+| Godot side ([`apps/godot/`](apps/godot/)) | GDScript 2.0 typed | `EditorImportPlugin` reading `.proscenio` and regenerating `.scn` on every reimport. |
 | Schema ([`schemas/`](schemas/)) | JSON Schema 2020-12 | Source of truth. `proscenio.schema.json` (Blender↔Godot) and `psd_manifest.schema.json` (Photoshop↔Blender). |
 
 ## In scope

@@ -9,4 +9,4 @@ extends Node2D
 ## SPEC 005.1.c.2.1. No animation — verifies the polygon + sliced-UV
 ## path on its own.
 ##
-## See [code].ai/skills/godot-plugin-dev.md[/code] for the full wrapper pattern.
+## See [code].ai/skills/godot-dev.md[/code] for the full wrapper pattern.

@@ -16,7 +16,7 @@ The user-facing rule: **edit only the PSD; never hand-edit the manifest. Re-impo
 ## Layout
 
 ```text
-photoshop-exporter/                   plugin source (UXP, TypeScript + React)
+apps/photoshop/                   plugin source (UXP, TypeScript + React)
 └── ...
 
 <your project>/

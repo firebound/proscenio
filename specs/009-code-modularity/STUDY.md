@@ -12,15 +12,15 @@ Top-level LOC by language, May 2026 snapshot:
 
 | Area | Top files | LOC |
 | --- | --- | --- |
-| `blender-addon/operators/__init__.py` | 25 operator classes + 13 module-level helpers | 1755 |
-| `blender-addon/panels/__init__.py` | 11 panels + 3 UILists + 19 draw helpers | 1002 |
-| `blender-addon/exporters/godot/writer.py` | 4 TypedDicts + 33 functions | 869 |
-| `blender-addon/core/help_topics.py` | 2 dataclasses + 13 topic dicts | 539 |
-| `blender-addon/properties/__init__.py` | 3 PropertyGroups + 7 helpers + 2 handlers | 493 |
-| `blender-addon/core/validation.py` | 1 dataclass + 22 functions | 361 |
-| `blender-addon/core/sprite_frame_shader.py` | 1 dataclass + bpy graph builder | 337 |
-| `blender-addon/core/atlas_io.py` | image collection + assembly | 308 |
-| `blender-addon/core/psd_manifest.py` | manifest dataclass + reader | 239 |
+| `apps/blender/operators/__init__.py` | 25 operator classes + 13 module-level helpers | 1755 |
+| `apps/blender/panels/__init__.py` | 11 panels + 3 UILists + 19 draw helpers | 1002 |
+| `apps/blender/exporters/godot/writer.py` | 4 TypedDicts + 33 functions | 869 |
+| `apps/blender/core/help_topics.py` | 2 dataclasses + 13 topic dicts | 539 |
+| `apps/blender/properties/__init__.py` | 3 PropertyGroups + 7 helpers + 2 handlers | 493 |
+| `apps/blender/core/validation.py` | 1 dataclass + 22 functions | 361 |
+| `apps/blender/core/sprite_frame_shader.py` | 1 dataclass + bpy graph builder | 337 |
+| `apps/blender/core/atlas_io.py` | image collection + assembly | 308 |
+| `apps/blender/core/psd_manifest.py` | manifest dataclass + reader | 239 |
 
 Addon total: ~7480 LOC across 24 Python files.
 
@@ -28,9 +28,9 @@ Other languages:
 
 | Area | Top files | LOC |
 | --- | --- | --- |
-| `godot-plugin/addons/proscenio/` | 8 GDScript files (importer + 5 builders + plugin + reimporter) | 622 |
+| `apps/godot/addons/proscenio/` | 8 GDScript files (importer + 5 builders + plugin + reimporter) | 622 |
 | `scripts/fixtures/` + `scripts/maintenance/` | 14 fixture builders + helpers | 2423 |
-| `photoshop-exporter/` | 2 JSX scripts (export, import) | 911 |
+| `apps/photoshop/` | 2 JSX scripts (export, import) | 911 |
 
 The size disparity is the headline. Two files (`operators/__init__.py` and `panels/__init__.py`) carry ~37% of all addon LOC. Every other file in the addon is under 540 LOC — most under 200. The two oversized ones are the immediate restructure target.
 
@@ -39,7 +39,7 @@ The size disparity is the headline. Two files (`operators/__init__.py` and `pane
 Current addon layout:
 
 ```text
-blender-addon/
+apps/blender/
   __init__.py             20 LOC — registers properties, operators, panels (clean)
   blender_manifest.toml
   pyproject.toml
@@ -290,7 +290,7 @@ Underscore-prefixed (`_draw_*`, `_build_*`, `_resolve_*`). Consistent. The conve
 
 ## 12. Public API surface
 
-`blender-addon/__init__.py` re-exports nothing — only `register()` / `unregister()`. Submodule `__init__.py` files behave inconsistently:
+`apps/blender/__init__.py` re-exports nothing — only `register()` / `unregister()`. Submodule `__init__.py` files behave inconsistently:
 
 - `operators/__init__.py`, `panels/__init__.py`, `properties/__init__.py` define everything in the file itself (god-modules).
 - `core/__init__.py` is empty.
@@ -339,12 +339,12 @@ Validation messages are constructed inline at each issue site. No template regis
 
 ## 15. Test coverage shape
 
-121 pytest assertions across 13 test files. All run without bpy via `SimpleNamespace` mocks or pure-Python entry points. The Blender round-trip lives in `blender-addon/tests/run_tests.py` (5 fixture goldens).
+121 pytest assertions across 13 test files. All run without bpy via `SimpleNamespace` mocks or pure-Python entry points. The Blender round-trip lives in `apps/blender/tests/run_tests.py` (5 fixture goldens).
 
 Test imports follow a pattern:
 
 ```python
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 from core.help_topics import HELP_TOPICS, ...
 ```
 
@@ -413,7 +413,7 @@ The recurring shapes in the codebase that warrant a name:
 
 ## 20. GDScript plugin side
 
-`godot-plugin/addons/proscenio/`:
+`apps/godot/addons/proscenio/`:
 
 | File | LOC | Concern |
 | --- | --- | --- |
@@ -430,7 +430,7 @@ Already factored. No file exceeds 160 LOC. The builder pattern is clean: `builde
 
 ## 21. Photoshop JSX side
 
-`photoshop-exporter/`:
+`apps/photoshop/`:
 
 | File | LOC | Concern |
 | --- | --- | --- |

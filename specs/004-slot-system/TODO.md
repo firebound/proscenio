@@ -47,10 +47,10 @@ Branch: `feat/spec-004.1-slots-blender`.
 
 Branch: `feat/spec-004.2-slots-godot`.
 
-- [ ] `godot-plugin/addons/proscenio/builders/slot_builder.gd` — reads `slots[]` from manifest, builds a `Node2D` per slot under the skeleton, populates with attachment children (delegated back to `polygon_builder.gd` / `sprite_frame_builder.gd`), sets `visible` per default.
+- [ ] `apps/godot/addons/proscenio/builders/slot_builder.gd` — reads `slots[]` from manifest, builds a `Node2D` per slot under the skeleton, populates with attachment children (delegated back to `polygon_builder.gd` / `sprite_frame_builder.gd`), sets `visible` per default.
 - [ ] `polygon_builder.gd` / `sprite_frame_builder.gd` patch: when a sprite name appears in any `slots[].attachments[]`, route it under the slot Node2D instead of the skeleton root.
 - [ ] `animation_builder.gd` adds `slot_attachment` track handling: at each key, finds the named child of the slot, sets `visible = true`, hides siblings. Track interpolation = `INTERPOLATION_NEAREST` (constant step).
-- [ ] GUT tests: `godot-plugin/tests/test_slots.gd` — slot structure (Node2D parent + children), default visibility, animation track flips visibility on the right child, multi-slot scene.
+- [ ] GUT tests: `apps/godot/tests/test_slots.gd` — slot structure (Node2D parent + children), default visibility, animation track flips visibility on the right child, multi-slot scene.
 
 ## Wave 4.3 — fixtures + docs (in flight)
 
@@ -58,7 +58,7 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 
 **Drive-bys** (CI broken on main after Wave 4.2 merge):
 
-- [x] `godot-plugin/tests/fixtures/slots_demo.proscenio` — add the missing `texture_region` field on each polygon entry (PolygonSprite schema requires it).
+- [x] `apps/godot/tests/fixtures/slots_demo.proscenio` — add the missing `texture_region` field on each polygon entry (PolygonSprite schema requires it).
 - [x] `examples/doll/doll.blend` — re-fix `waist` mesh's vertex group (`waist` -> `spine`); the rename done in Wave 4.1 did not persist into main. Regenerate `doll.expected.proscenio` golden.
 
 **Writer extension** (uncovered while authoring slot_cycle):
@@ -74,7 +74,7 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 - [x] `examples/slot_cycle/godot/SlotCycle.tscn` + `.gd` — wrapper per SPEC 001 with autoplay defaulting to `cycle`.
 - [x] `examples/slot_cycle/.gitignore` — ignores `*.actual.proscenio`.
 - [x] `examples/slot_cycle/README.md` — fixture overview + slot setup table + build instructions.
-- [x] `blender-addon/tests/run_tests.py` auto-discovers it (5/5 fixtures pass).
+- [x] `apps/blender/tests/run_tests.py` auto-discovers it (5/5 fixtures pass).
 
 **Docs**:
 
@@ -89,7 +89,7 @@ Branch: `feat/spec-004.4-close-out`. Bundles the Wave-4.3 deferred items into on
 - [ ] `examples/doll/`: promote `brow.L` and `brow.R` to slots with brow-up / brow-down attachments. Author sibling `brow.L.up` / `brow.R.up` meshes; existing `brow.L` / `brow.R` become the "down" defaults. Weight paint each pair to the same brow bone the doll already exposes. Add a `brow_raise` action keyframing each slot's `proscenio_slot_index` 0 -> 1 -> 0.
 - [ ] Re-export `examples/doll/doll.expected.proscenio` golden so it includes the new slots[] + brow_raise animation.
 - [ ] `examples/doll/README.md`: brow row updated from "live slot demo coming" to "two slots (`brow.L.swap` / `brow.R.swap`) drive the brow_raise action".
-- [ ] `.ai/skills/godot-plugin-dev.md`: new "Slots" subsection -- worked example with `Node2D` parent + `visible`-toggled children + `slot_attachment` track expansion. Short (one screen of text + the doll brow scene tree).
+- [ ] `.ai/skills/godot-dev.md`: new "Slots" subsection -- worked example with `Node2D` parent + `visible`-toggled children + `slot_attachment` track expansion. Short (one screen of text + the doll brow scene tree).
 - [ ] `format-spec.md` (defer if the doc still does not exist) -- slot section listing the Slot schema shape + the slot_attachment track contract. Cross-references SPEC 004.
 
 ## Out of scope

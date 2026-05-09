@@ -1,6 +1,6 @@
 # SPEC 010 — Photoshop UXP migration
 
-**Status**: scaffolded. UXP plugin template already in [`photoshop-exporter/`](../../photoshop-exporter/) (React + webpack + Babel). Decisions to lock + implementation pending.
+**Status**: scaffolded. UXP plugin template already in [`apps/photoshop/`](../../apps/photoshop/) (React + webpack + Babel). Decisions to lock + implementation pending.
 
 ## Problem
 
@@ -18,10 +18,10 @@ This blocks the **Predictable contract** pillar: the Photoshop side is the only 
 
 Replace the JSX exporter with a UXP plugin written in TypeScript + React. Schema (`psd_manifest.schema.json` v1) does not change — the wire format stays byte-identical. Only the implementation moves.
 
-The scaffold is already in [`photoshop-exporter/`](../../photoshop-exporter/):
+The scaffold is already in [`apps/photoshop/`](../../apps/photoshop/):
 
 ```text
-photoshop-exporter/
+apps/photoshop/
 ├── package.json          # webpack + babel + react
 ├── webpack.config.js
 ├── plugin/
@@ -150,11 +150,11 @@ lint-photoshop:
     - uses: actions/setup-node@v4
       with: { node-version: '20' }
     - run: npm ci
-      working-directory: photoshop-exporter
+      working-directory: apps/photoshop
     - run: npm run typecheck
-      working-directory: photoshop-exporter
+      working-directory: apps/photoshop
     - run: npm test
-      working-directory: photoshop-exporter
+      working-directory: apps/photoshop
 ```
 
 Brings the validation count from 5 gates to 6.

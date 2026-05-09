@@ -3,7 +3,7 @@
 # https://github.com/Scony/godot-gdscript-toolkit/wiki/3.-Linter
 #
 # We rely on Godot's own "treat warnings as errors" setting (configured in
-# `godot-plugin/project.godot`) for the typing enforcement; gdlint here
+# `apps/godot/project.godot`) for the typing enforcement; gdlint here
 # covers structural / sizing / design rules that the editor parser does not.
 
 # Sizing — surface reviews early.

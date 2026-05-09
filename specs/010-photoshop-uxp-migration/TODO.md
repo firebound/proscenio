@@ -23,7 +23,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 ## Pre-implementation
 
 - [ ] Confirm `examples/simple_psd/source.psd` exists and exports a valid v1 manifest (use as parity oracle).
-- [ ] Verify the React scaffold builds: `cd photoshop-exporter && npm install && npm run build`.
+- [ ] Verify the React scaffold builds: `cd apps/photoshop && npm install && npm run build`.
 - [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT.
 - [ ] Capture current JSX output for `examples/simple_psd/source.psd` as the byte-equality target.
 
@@ -89,14 +89,14 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 ## Wave 10.7 - JSX retirement
 
 - [ ] Confirm parity manually on `examples/simple_psd/` and any other PSD fixtures.
-- [ ] Delete `photoshop-exporter/proscenio_export.jsx`.
-- [ ] Delete `photoshop-exporter/proscenio_import.jsx`.
+- [ ] Delete `apps/photoshop/proscenio_export.jsx`.
+- [ ] Delete `apps/photoshop/proscenio_import.jsx`.
 - [ ] Remove JSX porting notes from `photoshop-uxp-dev` skill.
 - [ ] Bump README minimum Photoshop version note.
 
 ## Wave 10.8 - Documentation polish
 
-- [ ] `photoshop-exporter/README.md` updated with UXP install + dev loop.
+- [ ] `apps/photoshop/README.md` updated with UXP install + dev loop.
 - [ ] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) end-to-end usage walkthrough mentions the UXP plugin path (currently mentions JSX in step 1).
 - [ ] [`docs/DECISIONS.md`](../../docs/DECISIONS.md) gains "SPEC 010 - Photoshop UXP migration" subsection capturing locked decisions and the JSX retirement.
 - [ ] [`STATUS.md`](../../STATUS.md) flips SPEC 010 row to shipped.

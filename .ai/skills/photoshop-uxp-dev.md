@@ -8,7 +8,7 @@ description: UXP plugin for Photoshop - layer slicing and manifest JSON via Type
 ## Stack
 
 - **UXP** (Unified Extensibility Platform). Adobe's modern plugin runtime; replaces ExtendScript.
-- **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc. `tsconfig.json` ships in `photoshop-exporter/` with `strict: true`; `allowJs: true` lets the existing `.jsx` scaffold continue to import while the port to `.tsx` proceeds.
+- **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc. `tsconfig.json` ships in `apps/photoshop/` with `strict: true`; `allowJs: true` lets the existing `.jsx` scaffold continue to import while the port to `.tsx` proceeds.
 - **React** for the panel UI.
 - **webpack + babel** bundle into the UXP plugin format. Webpack is **locked** as the bundler (per [SPEC 010](../../specs/010-photoshop-uxp-migration/STUDY.md) D15) — Adobe's officially supported path. Vite was evaluated and rejected; UXP runtime needs CommonJS output and Vite's ESM-first defaults fight it.
 - **pnpm** as the package manager (per SPEC 010 D14). `package.json` declares `packageManager: pnpm@9.x`.
@@ -19,7 +19,7 @@ ExtendScript / JSX is no longer the target. Legacy `proscenio_export.jsx` and `p
 ## Folder layout
 
 ```text
-photoshop-exporter/
+apps/photoshop/
 ├── package.json          # pnpm; webpack + babel + react + TypeScript devDeps
 ├── tsconfig.json         # strict TypeScript config; allowJs for the JSX scaffold
 ├── webpack.config.js     # build config; @babel/preset-typescript handles .ts/.tsx + .jsx
@@ -59,7 +59,7 @@ The plugin emits a manifest JSON that conforms to [`schemas/psd_manifest.schema.
 }
 ```
 
-This JSON is consumed by [`blender-addon/importers/photoshop_json.py`](../../blender-addon/importers/photoshop_json.py).
+This JSON is consumed by [`apps/blender/importers/photoshop_json.py`](../../apps/blender/importers/photoshop_json.py).
 
 ## Conventions
 

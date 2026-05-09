@@ -4,7 +4,7 @@ Status: **draft**, design phase. No implementation until the questions below are
 
 ## Problem
 
-The Godot importer ([`godot-plugin/addons/proscenio/importer.gd`](../../godot-plugin/addons/proscenio/importer.gd)) regenerates a packed scene from each `.proscenio` on every reimport. A re-export from Blender therefore clobbers any work the user did *to the imported scene itself*: attached scripts, child nodes added in the editor, animations authored in Godot, exported property values.
+The Godot importer ([`apps/godot/addons/proscenio/importer.gd`](../../apps/godot/addons/proscenio/importer.gd)) regenerates a packed scene from each `.proscenio` on every reimport. A re-export from Blender therefore clobbers any work the user did *to the imported scene itself*: attached scripts, child nodes added in the editor, animations authored in Godot, exported property values.
 
 This is fine for first import but punishes iteration. The user authors a character in Blender, imports, attaches a `dummy.gd` to the root, adds a `CollisionShape2D` under the `torso` bone, then re-exports a fixed-up animation from Blender — and loses the script and the collision.
 
@@ -89,7 +89,7 @@ Reasons:
 
 ## Open questions
 
-- **Q1.** Where in `godot-plugin/` should the canonical "wrapper scene" example live, and how should it be documented? Tentative: `examples/dummy/Dummy.tscn` instancing `dummy.scn`, with a one-paragraph note in [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md).
+- **Q1.** Where in `apps/godot/` should the canonical "wrapper scene" example live, and how should it be documented? Tentative: `examples/dummy/Dummy.tscn` instancing `dummy.scn`, with a one-paragraph note in [`.ai/skills/godot-dev.md`](../../.ai/skills/godot-dev.md).
 - **Q2.** Is "Editable Children" workflow good enough for users who want to attach a script to a single bone inside the imported scene, or do we need to ship a small helper that scripts a Bone2D safely? Default: don't ship anything until someone asks.
 - **Q3.** Animations authored in Godot — should the wrapper scene's `AnimationPlayer` *merge* the imported `AnimationLibrary` plus user-authored animations into a single named library (so playback is one call), or is it acceptable to have two libraries side by side? Tentative: document that the wrapper can call `AnimationPlayer.add_animation_library("user", user_lib)` alongside the imported `""` library and play across both.
 - **Q4.** If a user re-exports the `.proscenio` with a renamed bone, the generated `.scn` changes structurally. Wrapper scenes that referenced the old bone name (`$Skeleton2D/torso`) break. Acceptable cost? Tentative: yes, document it as the price of a cross-DCC rename. A rename in Blender is a rename in Godot — same as renaming a node in any other engine workflow.

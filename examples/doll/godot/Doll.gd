@@ -11,7 +11,7 @@ extends Node2D
 ## like this one — and customize there. The wrapper is yours; reimport
 ## never touches it.
 ##
-## See [code].ai/skills/godot-plugin-dev.md[/code] for the full pattern.
+## See [code].ai/skills/godot-dev.md[/code] for the full pattern.
 
 ## Animation library name to play on [code]_ready()[/code]. The Proscenio
 ## importer puts DCC-authored animations under the default ("") library;

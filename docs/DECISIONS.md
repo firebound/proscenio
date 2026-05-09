@@ -71,7 +71,7 @@ Selected highlights (full list in [`specs/004-slot-system/STUDY.md`](../specs/00
 ### SPEC 007 — Testing fixtures (design-only)
 
 - **Five Type A fixtures cover orthogonal feature isolation.** `doll` (comprehensive showcase, grows with SPECs), `blink_eyes` (sprite_frame isolation), `shared_atlas` (sliced atlas isolation), `simple_psd` (SPEC 006 roundtrip), `slot_cycle` (SPEC 004 isolation).
-- **Type B fixtures (importer-only, under `godot-plugin/tests/fixtures/`) retired in favor of Type A.** Type A drives both writer goldens and importer regenerations from one source.
+- **Type B fixtures (importer-only, under `apps/godot/tests/fixtures/`) retired in favor of Type A.** Type A drives both writer goldens and importer regenerations from one source.
 
 ### SPEC 008 — UV animation (design-only)
 

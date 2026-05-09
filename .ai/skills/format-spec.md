@@ -82,7 +82,7 @@ Sprites with the field absent or empty stay rigid-attached (a child of the `Bone
 Each version bump ships a migrator under the writer package:
 
 ```text
-blender-addon/exporters/godot/writer/migrations/v{N}_to_v{N+1}.py
+apps/blender/exporters/godot/writer/migrations/v{N}_to_v{N+1}.py
 ```
 
 The directory is created when the first migration lands. Today the writer is `format_version=1` only; no migrations exist yet.

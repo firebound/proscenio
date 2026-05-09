@@ -15,10 +15,10 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 
 ## Property infrastructure
 
-- [x] `blender-addon/properties/__init__.py` ships `ProscenioObjectProps` (sprite_type EnumProperty + hframes/vframes/frame IntProperty + centered BoolProperty), `ProscenioValidationIssue` (CollectionProperty item), and `ProscenioSceneProps` (last_export_path + pixels_per_unit + validation_results CollectionProperty + validation_ran BoolProperty).
+- [x] `apps/blender/properties/__init__.py` ships `ProscenioObjectProps` (sprite_type EnumProperty + hframes/vframes/frame IntProperty + centered BoolProperty), `ProscenioValidationIssue` (CollectionProperty item), and `ProscenioSceneProps` (last_export_path + pixels_per_unit + validation_results CollectionProperty + validation_ran BoolProperty).
 - [x] Property groups registered via `bpy.types.Object.proscenio` and `bpy.types.Scene.proscenio` PointerProperties.
 - [x] Hydration deferred via `bpy.app.timers.register(..., first_interval=0.0)` so PointerProperty wiring is stable at write time. `@bpy.app.handlers.persistent` `load_post` handler re-runs hydration after every `.blend` load.
-- [x] Hydration core extracted to `blender-addon/core/hydrate.py` so the pytest suite can exercise it without a Blender session.
+- [x] Hydration core extracted to `apps/blender/core/hydrate.py` so the pytest suite can exercise it without a Blender session.
 - [x] `unregister()` removes the load_post handler, drops the PointerProperty attributes, and tolerates partial-register fallout via `contextlib.suppress(RuntimeError)` on `unregister_class`.
 
 ## Panel restructure
@@ -34,7 +34,7 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 
 ## Validation
 
-- [x] `blender-addon/core/validation.py` ships `Issue` dataclass and `validate_active_sprite` + `validate_export` entry points.
+- [x] `apps/blender/core/validation.py` ships `Issue` dataclass and `validate_active_sprite` + `validate_export` entry points.
 - [x] `Issue` carries `severity: Literal["error", "warning"]`, `message: str`, optional `obj_name`.
 - [x] Active-sprite panel renders inline validation icons next to broken rows.
 - [x] `PROSCENIO_OT_validate_export` mirrors results into `scene.proscenio.validation_results` for the panel to render.
@@ -50,11 +50,11 @@ Builds the authoring panel that turns the Blender side of Proscenio from "raw Cu
 - [x] `tests/test_validation.py` — 12 pytest assertions covering both `validate_active_sprite` (polygon clean / no polygons warns / sprite_frame happy path / hframes=0 errors / vframes=0 errors / unknown sprite type errors / non-mesh ignored) and `validate_export` (no armature blocks / matching vertex group clean / orphan groups error / parent-bone-only soft / unparented warns).
 - [x] `tests/test_properties.py` — 6 pytest assertions covering `hydrate_object` (skips when proscenio is None / copies sprite_type / copies full sprite_frame metadata / leaves defaults when Custom Properties absent / partial overrides / type-error swallow).
 - [x] CI's `lint-python` job runs `pytest tests/` after `mypy --strict`.
-- [x] Existing `blender-addon/tests/run_tests.py` (Blender-driven writer round-trip) untouched — still passes after the SPEC 005 refactor.
+- [x] Existing `apps/blender/tests/run_tests.py` (Blender-driven writer round-trip) untouched — still passes after the SPEC 005 refactor.
 
 ## Documentation
 
-- [x] `.ai/skills/blender-addon-dev.md` rewritten — project layout includes the new `properties/` and `core/`, "Headless tests" section calls out both runners, new "Authoring sprites in the panel (SPEC 005)" subsection walks through every panel section + the round-trip with raw Custom Properties + sticky-path re-export + validation gate.
+- [x] `.ai/skills/blender-dev.md` rewritten — project layout includes the new `properties/` and `core/`, "Headless tests" section calls out both runners, new "Authoring sprites in the panel (SPEC 005)" subsection walks through every panel section + the round-trip with raw Custom Properties + sticky-path re-export + validation gate.
 - [x] `STATUS.md` updated to reflect SPEC 005 shipped (panel, validation, sticky path).
 - [x] `README.md` iteration loop step mentions the panel as the recommended authoring path.
 
@@ -208,7 +208,7 @@ Closes the "what is godot-ready vs blender-only vs planned" discoverability gap 
 Branch: `feat/spec-005.1.d.6-readme-polish`. Final pass after 5.1.d.1–.4 lands, so the READMEs and skills can reference the new shortcuts as concrete examples instead of TODO stubs.
 
 - [x] `README.md` Quickstart expanded into 7 ordered authoring steps: Photoshop import, rig + Quick Armature, per-sprite knobs + Drive from Bone, slot system, outliner, validate/export/wrap, iterate. Cross-links to skills + SPEC 003 + every example fixture.
-- [x] `.ai/skills/blender-addon-dev.md` "Authoring sprites in the panel" section refreshed: every subpanel now lists its 5.1.d.x shortcut, status-badge + help-popup convention is documented at the top, every operator is linked back to its SPEC sub-wave id.
+- [x] `.ai/skills/blender-dev.md` "Authoring sprites in the panel" section refreshed: every subpanel now lists its 5.1.d.x shortcut, status-badge + help-popup convention is documented at the top, every operator is linked back to its SPEC sub-wave id.
 - [x] No code changes -- pure docs PR. Lint runs clean by virtue of touching only `*.md`.
 
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).

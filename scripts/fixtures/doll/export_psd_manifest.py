@@ -16,7 +16,7 @@ for every mesh). Output sits at
 
 Pipeline role: the Wave 6.0.5 roundtrip-tooling deliverable. The
 generated manifest feeds the new JSX importer
-(``photoshop-exporter/proscenio_import.jsx``) so the doll fixture can
+(``apps/photoshop/proscenio_import.jsx``) so the doll fixture can
 be opened as a real PSD with every body part placed at the correct
 position. That PSD then drives the SPEC 006 PSD → Blender importer
 (Wave 6.3) end-to-end, closing the loop.

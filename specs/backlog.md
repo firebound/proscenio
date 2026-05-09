@@ -91,7 +91,7 @@ Currently the rule "scene must work without the plugin" is enforced by review. A
 
 ### JSX exporter port from `coa_tools2`
 
-Port `coa_tools2/Photoshop/coa_export.jsx` forward into `photoshop-exporter/proscenio_export.jsx`. Adapt output JSON to the format documented in `.ai/skills/photoshop-jsx-dev.md`.
+Port `coa_tools2/Photoshop/coa_export.jsx` forward into `apps/photoshop/proscenio_export.jsx`. Adapt output JSON to the format documented in `.ai/skills/photoshop-jsx-dev.md`.
 
 ### Krita exporter
 
@@ -109,7 +109,7 @@ A single-version `test-blender` job ships in [`.github/workflows/ci.yml`](../.gi
 
 ### Godot importer test — full editor reimport
 
-[`godot-plugin/tests/test_importer.gd`](../godot-plugin/tests/test_importer.gd) exercises the builders directly. A higher-fidelity test would launch the editor headlessly, drop a `.proscenio` into the project, and assert the generated `.scn` opens with the plugin disabled (the no-GDExtension hard rule, automated). Currently verified manually per [SPEC 000 TODO](000-initial-plan/TODO.md).
+[`apps/godot/tests/test_importer.gd`](../apps/godot/tests/test_importer.gd) exercises the builders directly. A higher-fidelity test would launch the editor headlessly, drop a `.proscenio` into the project, and assert the generated `.scn` opens with the plugin disabled (the no-GDExtension hard rule, automated). Currently verified manually per [SPEC 000 TODO](000-initial-plan/TODO.md).
 
 ### CI matrix expansion
 
@@ -123,7 +123,7 @@ The current `test-godot` job pins Godot 4.6.2-stable. Add Godot 4.3 and 4.5 to t
 
 ### Maintainer contact
 
-Resolved — `blender-addon/blender_manifest.toml` now points to `contato@spacewiz.dev`.
+Resolved — `apps/blender/blender_manifest.toml` now points to `contato@spacewiz.dev`.
 
 ### Final repo URL
 
@@ -135,7 +135,7 @@ Resolved — canonical URL is `https://github.com/Space-Wizard-Studios/firebound
 
 ### Statusline / dev-loop polish
 
-The dev junction setup for the Blender addon is a manual `New-Item -ItemType Junction`. A `scripts/install-dev.ps1` would automate it. Same for copying the dummy fixture into `godot-plugin/test_dummy/`.
+The dev junction setup for the Blender addon is a manual `New-Item -ItemType Junction`. A `scripts/install-dev.ps1` would automate it. Same for copying the dummy fixture into `apps/godot/test_dummy/`.
 
 ## Architecture revisits
 
@@ -157,7 +157,7 @@ These items intentionally violate or expand on a current hard rule. They are **n
 
 **What that future SPEC would look like:**
 
-- Likely targets a *separate optional component* (`godot-plugin-csharp/`) that ships alongside the GDScript plugin, gated behind a feature flag, so non-mono users still have the GDScript path.
+- Likely targets a *separate optional component* (`apps/godot-csharp/`) that ships alongside the GDScript plugin, gated behind a feature flag, so non-mono users still have the GDScript path.
 - Mono-only audience cut would be **documented openly** as the price of the feature; this is acceptable for Firebound users (already on mono) but acknowledged as a regression for general OSS reach.
 - Anything moved to native must remain **import-time only** unless the SPEC explicitly relaxes the runtime side. Generated `.scn` keeps using built-in nodes.
 

@@ -180,11 +180,11 @@ Idempotent: meshes are identified by their manifest `name`. Re-import replaces t
 
 | Wave | LOC | Files |
 | --- | --- | --- |
-| 6.0 — manifest schema + parser | ~150 | `schemas/psd_manifest.schema.json`, `blender-addon/core/psd_manifest.py`, `blender-addon/tests/test_psd_manifest.py` |
-| 6.1 — JSX exporter v1 | ~80 | bump `photoshop-exporter/proscenio_export.jsx` to emit format_version + kind + frames |
-| 6.2 — naming convention parser | ~120 | `blender-addon/core/psd_naming.py`, `blender-addon/tests/test_psd_naming.py` |
-| 6.3 — importer core | ~250 | `blender-addon/importers/photoshop/__init__.py` (manifest reader, plane stamper, material builder, spritesheet composer) |
-| 6.4 — operator + panel | ~100 | `blender-addon/operators/import_photoshop.py`, panel button in `blender-addon/panels/__init__.py` |
+| 6.0 — manifest schema + parser | ~150 | `schemas/psd_manifest.schema.json`, `apps/blender/core/psd_manifest.py`, `apps/blender/tests/test_psd_manifest.py` |
+| 6.1 — JSX exporter v1 | ~80 | bump `apps/photoshop/proscenio_export.jsx` to emit format_version + kind + frames |
+| 6.2 — naming convention parser | ~120 | `apps/blender/core/psd_naming.py`, `apps/blender/tests/test_psd_naming.py` |
+| 6.3 — importer core | ~250 | `apps/blender/importers/photoshop/__init__.py` (manifest reader, plane stamper, material builder, spritesheet composer) |
+| 6.4 — operator + panel | ~100 | `apps/blender/operators/import_photoshop.py`, panel button in `apps/blender/panels/__init__.py` |
 | 6.5 — fixture `simple_psd/` | ~60 | tiny PSD source + JSX manifest + expected post-import `.blend` (and golden `.proscenio` via `export_proscenio.py`) |
 
 Total: ~760 LOC + manifest schema lock-in.

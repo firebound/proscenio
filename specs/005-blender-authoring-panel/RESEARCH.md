@@ -241,7 +241,7 @@ These rows extend the matrix at the bottom of this document — they are not dup
 | IK suite shortcuts (Set IK / Stretch IK / Remove IK) | **5.1** — operators that scaffold Blender's native bone constraints. Stays Blender-side, never exported. |
 | Edit-mode toggles per object (boolean flags drive panel UI state) | **first cut** — already implicit in SPEC 005 D2 (PropertyGroup wraps Custom Properties). Documented as the COA-1 pattern. |
 | Spriteobject outliner (custom hierarchical browser with search/filter/favorites) | **5.1** — Blender's native outliner is fine for first cut; custom outliner is polish for big rigs. |
-| Sprite import from JSON (Photoshop exporter integration) | **future** SPEC — pairs with the existing photoshop-exporter work. Already in the long-term backlog seeds. |
+| Sprite import from JSON (Photoshop exporter integration) | **future** SPEC — pairs with the existing apps/photoshop work. Already in the long-term backlog seeds. |
 | Bulk batch render of animations | **future** SPEC — useful for art-team turnaround. Low priority for engine-targeted assets. |
 | NLA mode toggle (Action vs NLA strip authoring) | **future** — Blender exposes both natively; toggle would be a minor convenience. |
 | Driver constraint shortcut | **5.1** — single button that wraps `object.create_driver_constraint` with sensible defaults. |
@@ -316,7 +316,7 @@ These came up during the survey and should be carried into [`specs/backlog.md`](
 - **Joystick / slider authoring** — multi-pose blend widget; pairs well with Godot's `AnimationTree.BlendSpace2D`.
 - **Onion-skin overlay** — viewport draw handler showing rest pose + N keyframes around playhead.
 - **Live link Blender ↔ Godot** — TCP / WebSocket protocol with optional GDExtension. Already a trigger in "Architecture revisits".
-- **Photoshop → Blender importer** — read the JSX exporter's JSON, stamp planes + skeleton in Blender. Pairs with the existing photoshop-exporter work.
+- **Photoshop → Blender importer** — read the JSX exporter's JSON, stamp planes + skeleton in Blender. Pairs with the existing apps/photoshop work.
 - **Bone physics** — `format_version=2` extension; importer wires `Joint2D` chains.
 - **Pose library shim** — Blender Asset Browser integration.
 - **IK chain helper** — Blender-side scaffolding (constraint stack), still no IK in `.proscenio` per SPEC 000.
@@ -344,7 +344,7 @@ These came up during the survey and should be carried into [`specs/backlog.md`](
 | Bone physics | Spine, Live2D | future SPEC + format v2 |
 | Onion-skin viewport overlay | Spine, DragonBones | future SPEC |
 | Joystick / sliders authoring | DUIK | future SPEC |
-| Photoshop → Blender importer | DUIK, COA Tools | future SPEC (paired with photoshop-exporter) |
+| Photoshop → Blender importer | DUIK, COA Tools | future SPEC (paired with apps/photoshop) |
 | Live link Blender ↔ Godot | (none — novel) | future SPEC, may force GDExtension reconsideration |
 | Mesh shape-key animation | Spine FFD, Live2D | future SPEC, low priority |
 | Mesh mirror helper | Live2D | future, low priority |

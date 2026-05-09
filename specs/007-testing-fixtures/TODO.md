@@ -18,7 +18,7 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 ## Step 0 — shape rasterizer (auxiliary)
 
-- [x] `scripts/fixtures/_draw.py` — Pillow-based shape rasterizer used by the auxiliary preview / skeleton diagnostic scripts (not by the canonical layer pipeline anymore — D2 now renders layers from the `.blend`). Functions: `circle`, `rect`, `triangle`, `trapezoid`, `border`, `fill`, `capsule`. Pillow stays in `blender-addon/pyproject.toml [dependency-groups.dev]` for these helpers.
+- [x] `scripts/fixtures/_draw.py` — Pillow-based shape rasterizer used by the auxiliary preview / skeleton diagnostic scripts (not by the canonical layer pipeline anymore — D2 now renders layers from the `.blend`). Functions: `circle`, `rect`, `triangle`, `trapezoid`, `border`, `fill`, `capsule`. Pillow stays in `apps/blender/pyproject.toml [dependency-groups.dev]` for these helpers.
 
 ## Step 1 — `blink_eyes/` (smallest, validates pattern)
 
@@ -52,23 +52,23 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 ## Test runner + CI
 
-- [x] `blender-addon/tests/run_tests.py` walks every `examples/*/` and re-exports → diffs against `<name>.expected.proscenio`. Locally green: `3/3 fixture(s) passed` (blink_eyes, doll, shared_atlas).
+- [x] `apps/blender/tests/run_tests.py` walks every `examples/*/` and re-exports → diffs against `<name>.expected.proscenio`. Locally green: `3/3 fixture(s) passed` (blink_eyes, doll, shared_atlas).
 - [x] CI `test-blender` job invokes the runner with no `.blend` argument; the runner itself opens each fixture in turn.
 
 ## Documentation
 
 - [x] `STATUS.md` — fixtures row updated to list the three new fixtures + flagged legacy retirement.
 - [x] `README.md` — Quickstart now points at `doll/` as the showcase fixture, `blink_eyes/` + `shared_atlas/` as feature-isolated tests.
-- [x] `.ai/skills/blender-addon-dev.md` — "Adding a fixture" section pointing at the new render / build / export commands.
+- [x] `.ai/skills/blender-dev.md` — "Adding a fixture" section pointing at the new render / build / export commands.
 
 ## Step 4 — retire legacy
 
 - [x] DELETE `examples/dummy/`. Coverage moved to `doll/` (polygon + weights + bone_transform) and `shared_atlas/` (sliced packer).
 - [x] DELETE `examples/effect/`. Coverage moved to `blink_eyes/` (end-to-end sprite_frame).
 - [x] `examples/skinned_dummy/` already absent at retire time. Coverage now lives in `doll/`.
-- [x] DELETE orphan `blender-addon/tests/fixtures/dummy/expected.proscenio` (superseded by per-fixture goldens under `examples/`).
-- [x] `blender-addon/tests/run_tests.py` no longer hardcodes the dummy path — auto-discovery handles every fixture.
-- [x] CI `validate-schema` glob (`examples/**/*.proscenio`) keeps working post-delete; importer-only goldens under `godot-plugin/tests/fixtures/` stay (Type B fixtures).
+- [x] DELETE orphan `apps/blender/tests/fixtures/dummy/expected.proscenio` (superseded by per-fixture goldens under `examples/`).
+- [x] `apps/blender/tests/run_tests.py` no longer hardcodes the dummy path — auto-discovery handles every fixture.
+- [x] CI `validate-schema` glob (`examples/**/*.proscenio`) keeps working post-delete; importer-only goldens under `apps/godot/tests/fixtures/` stay (Type B fixtures).
 
 ## Out of scope (deferred)
 

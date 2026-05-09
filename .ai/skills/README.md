@@ -6,8 +6,8 @@ Task-scoped guidance for LLM agents and human contributors. Load the skill that 
 | --- | --- |
 | Understand repo layout, components, boundaries | [architecture.md](architecture.md) |
 | Touch the `.proscenio` format or schema | [format-spec.md](format-spec.md) |
-| Edit Blender addon code | [blender-addon-dev.md](blender-addon-dev.md) |
-| Edit Godot plugin code | [godot-plugin-dev.md](godot-plugin-dev.md) |
+| Edit Blender addon code | [blender-dev.md](blender-dev.md) |
+| Edit Godot plugin code | [godot-dev.md](godot-dev.md) |
 | Edit Photoshop UXP plugin | [photoshop-uxp-dev.md](photoshop-uxp-dev.md) |
 | Run or write tests | [testing.md](testing.md) |
 | Package, version, release | [release.md](release.md) |

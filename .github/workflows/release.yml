@@ -3,9 +3,9 @@ name: Release
 on:
   push:
     tags:
-      - "blender-addon-v*"
-      - "godot-plugin-v*"
-      - "photoshop-exporter-v*"
+      - "blender-v*"
+      - "godot-v*"
+      - "photoshop-v*"
 
 permissions:
   contents: write
@@ -29,14 +29,14 @@ jobs:
         run: |
           mkdir -p dist
           case "${{ steps.meta.outputs.name }}" in
-            blender-addon)
-              (cd blender-addon && zip -r "../dist/proscenio-blender-${{ steps.meta.outputs.version }}.zip" . -x "tests/*" "pyproject.toml" "README.md")
+            blender)
+              (cd apps/blender && zip -r "../../dist/proscenio-blender-${{ steps.meta.outputs.version }}.zip" . -x "tests/*" "pyproject.toml" "README.md")
               ;;
-            godot-plugin)
-              (cd godot-plugin && zip -r "../dist/proscenio-godot-${{ steps.meta.outputs.version }}.zip" addons/proscenio)
+            godot)
+              (cd apps/godot && zip -r "../../dist/proscenio-godot-${{ steps.meta.outputs.version }}.zip" addons/proscenio)
               ;;
-            photoshop-exporter)
-              cp photoshop-exporter/proscenio_export.jsx "dist/proscenio-photoshop-${{ steps.meta.outputs.version }}.jsx"
+            photoshop)
+              cp apps/photoshop/proscenio_export.jsx "dist/proscenio-photoshop-${{ steps.meta.outputs.version }}.jsx"
               ;;
             *)
               echo "Unknown component: ${{ steps.meta.outputs.name }}"

@@ -131,7 +131,7 @@ After the splits, codify the import contract so future contributors don't reintr
 
 - [x] `.ai/conventions.md` gets a "Module organization" section listing the rules: package per concern, `__init__.py` orchestrates, submodules carry their own `register()`/`unregister()`, cross-cutting helpers in `_helpers.py` or `core/`, bpy-bound modules confined to `core/bpy_helpers/`.
 - [x] CI ruff config gains a `lint.per-file-ignores` entry that flags excessive top-level definitions per file (manual rule of thumb, not enforced — track as a comment in the convention).
-- [x] `.ai/skills/blender-addon-dev.md` "Project layout" section updated to reflect the new tree (operators package, panels package, writer package, core subpackages).
+- [x] `.ai/skills/blender-dev.md` "Project layout" section updated to reflect the new tree (operators package, panels package, writer package, core subpackages).
 
 ### Wave 9.10 — SRP residuals after waves 9.1-9.9
 
@@ -145,8 +145,8 @@ Post-9.9 audit found four files still mixing concerns. None of them rise to the 
 
 ## Out of scope
 
-- GDScript plugin (`godot-plugin/addons/proscenio/`) — already factored per STUDY section 20.
-- Photoshop JSX (`photoshop-exporter/`) — language constraint, see STUDY section 21.
+- GDScript plugin (`apps/godot/addons/proscenio/`) — already factored per STUDY section 20.
+- Photoshop JSX (`apps/photoshop/`) — language constraint, see STUDY section 21.
 - Behavior changes, bug fixes, new features. Strictly structure-only.
 - Renaming public symbols. The bl_idname strings, class names, and test-imported function names stay byte-identical.
 - Performance work. Lazy-import patterns are preserved as-is.

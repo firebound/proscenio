@@ -1,7 +1,7 @@
 """Unit tests for the PSD layer naming convention helpers (SPEC 006 Wave 6.2).
 
 Pure Python; no Blender. Locked rules in
-``blender-addon/core/psd_naming.py``.
+``apps/blender/core/psd_naming.py``.
 
 Run from the repo root::
 
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core import psd_naming  # noqa: E402
 

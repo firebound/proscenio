@@ -193,7 +193,7 @@ PropertyGroup wiring is **not** stable when `register()` returns. Setting PG fie
 
 ### Core extracted bpy-free
 
-Logic that does not strictly require Blender (validation, region resolution, hydration, mirror) lives under `blender-addon/core/` and imports zero `bpy`. Tests under `tests/` import these modules directly via `sys.path` munging and exercise them with `SimpleNamespace` mocks.
+Logic that does not strictly require Blender (validation, region resolution, hydration, mirror) lives under `apps/blender/core/` and imports zero `bpy`. Tests under `tests/` import these modules directly via `sys.path` munging and exercise them with `SimpleNamespace` mocks.
 
 **Tradeoff.** Slightly awkward import shape — `from ...core import region as region_core` from `exporters/godot/writer.py` (3-dot relative). Plus `# type: ignore[import-not-found]` on relative imports because mypy with the addon-as-non-package setup gets confused. In exchange, every meaningful code path runs in `pytest` without spinning up Blender. CI lint-python runs in <1 second instead of needing the test-blender headless job to validate the logic.
 

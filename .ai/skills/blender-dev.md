@@ -1,5 +1,5 @@
 ---
-name: blender-addon-dev
+name: blender-dev
 description: Develop, install, lint, and test the Blender addon
 ---
 
@@ -16,7 +16,7 @@ description: Develop, install, lint, and test the Blender addon
 Post SPEC 009 (May 2026). Every package below is multi-file: the `__init__.py` orchestrates registration; topical submodules carry the actual classes / helpers.
 
 ```text
-blender-addon/
+apps/blender/
 ├── blender_manifest.toml          Blender Extensions system manifest
 ├── __init__.py                    addon entry — chains submodule register() / unregister()
 ├── pyproject.toml                 ruff + mypy strict config
@@ -91,7 +91,7 @@ tests/                             repo-root pytest suite (no Blender required)
 └── (others)
 ```
 
-The addon ID is `proscenio` (set in the manifest). The directory name `blender-addon/` is purely repo-side; when packaged the contents are zipped, and Blender extracts to `<extensions>/proscenio/`.
+The addon ID is `proscenio` (set in the manifest). The directory name `apps/blender/` is purely repo-side; when packaged the contents are zipped, and Blender extracts to `<extensions>/proscenio/`.
 
 ### Where to add new code
 
@@ -106,7 +106,7 @@ When a single file grows past ~300 LOC, ask whether it has absorbed multiple con
 
 ## Install for development
 
-Symlink (Windows: directory junction) the contents of `blender-addon/` into Blender's extensions directory:
+Symlink (Windows: directory junction) the contents of `apps/blender/` into Blender's extensions directory:
 
 ```text
 %APPDATA%\Blender Foundation\Blender\<version>\extensions\user_default\proscenio
@@ -124,10 +124,10 @@ pytest tests/
 
 # Blender round-trip — walks every fixture under examples/<name>/<name>.blend,
 # re-exports each, diffs against examples/<name>/<name>.expected.proscenio.
-blender --background --python blender-addon/tests/run_tests.py
+blender --background --python apps/blender/tests/run_tests.py
 ```
 
-Pytest tests use `SimpleNamespace` mocks so the validation module is exercised in isolation. The Blender suite uses the real `bpy` and lives in `blender-addon/tests/`. Goldens live alongside their fixture: `examples/<name>/<name>.expected.proscenio`. Importer-side fixtures stay under `godot-plugin/tests/fixtures/`.
+Pytest tests use `SimpleNamespace` mocks so the validation module is exercised in isolation. The Blender suite uses the real `bpy` and lives in `apps/blender/tests/`. Goldens live alongside their fixture: `examples/<name>/<name>.expected.proscenio`. Importer-side fixtures stay under `apps/godot/tests/fixtures/`.
 
 ### Adding a fixture
 
@@ -135,14 +135,14 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 2. For hand-authored fixtures: render layers from the `.blend` with `blender --background examples/<name>/<name>.blend --python scripts/fixtures/render_<name>_layers.py`. For procedural ones: run `python scripts/fixtures/draw_<name>.py` then the `build_<name>.py`.
 3. Generate the golden: `blender --background examples/<name>/<name>.blend --python scripts/fixtures/export_proscenio.py`.
 4. Add `<Name>.tscn` + `<Name>.gd` wrapper following the SPEC 001 pattern (see `examples/doll/Doll.gd` for the canonical template).
-5. Verify locally: `blender --background --python blender-addon/tests/run_tests.py`. The runner auto-discovers the new fixture.
+5. Verify locally: `blender --background --python apps/blender/tests/run_tests.py`. The runner auto-discovers the new fixture.
 
 ## Coding rules
 
 - All UI strings should be wrapped for `bpy.app.translations` (i18n later, hooks now).
 - No global mutable state. Use `bpy.types.Scene` properties or operator properties.
 - Operators must be undoable: `bl_options = {'REGISTER', 'UNDO'}`.
-- Lint: `ruff check blender-addon/`. Format: `ruff format blender-addon/`.
+- Lint: `ruff check apps/blender/`. Format: `ruff format apps/blender/`.
 - Lazy-import inside operator methods if a top-level import would break Blender's reload cycle.
 - Always `unregister()` cleanly — leaked classes break reload.
 
@@ -152,7 +152,7 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 
 ## Authoring sprites in the panel (SPEC 005)
 
-The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob. Every subpanel header carries two icons on the right: a **status badge** (`godot-ready` / `blender-only` / `planned` / `out-of-scope` — hover for the band-specific tooltip) and a **`?` button** that opens a topic-specific in-panel help popup. The full topic dispatch lives in [`blender-addon/core/help_topics.py`](../../blender-addon/core/help_topics.py).
+The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob. Every subpanel header carries two icons on the right: a **status badge** (`godot-ready` / `blender-only` / `planned` / `out-of-scope` — hover for the band-specific tooltip) and a **`?` button** that opens a topic-specific in-panel help popup. The full topic dispatch lives in [`apps/blender/core/help_topics.py`](../../apps/blender/core/help_topics.py).
 
 - **Active sprite** — sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata (`hframes`, `vframes`, `frame`, `centered`), texture region (auto / manual + Snap-to-UV), in-viewport sprite_frame preview slicer (5.1.d.5), polygon vertex-group summary, **Drive from Bone** picker (5.1.d.1), **Import Photoshop Manifest** button (5.1.b → 6.x integration), and inline validation icons next to broken rows. Active Slot subpanel surfaces when an Empty with `is_slot=True` is selected — pick the default attachment via SOLO icons.
 - **Skeleton** — armature bone count + warnings (no armature, multiple armatures), pose-mode helpers (**Bake Current Pose**, **Toggle IK**, **Save Pose to Library** — 5.1.d.2 wraps `POSELIB_OT_create_pose_asset`), **Quick Armature** modal (5.1.d.3 — click-drag bone draw on z=0), **Create Slot** (5.1.b SPEC 004 — wraps selected meshes into an Empty as attachments).

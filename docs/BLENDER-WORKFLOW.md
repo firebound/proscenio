@@ -197,7 +197,7 @@ When export blocks, fix the issues listed in the Validation subpanel and re-Vali
 
 ## Internals (Contributor)
 
-The addon layout is documented in [`.ai/skills/blender-addon-dev.md`](../.ai/skills/blender-addon-dev.md). The lifecycle pieces relevant to this doc:
+The addon layout is documented in [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md). The lifecycle pieces relevant to this doc:
 
 - **Registration**: `__init__.py` chains submodule `register()` / `unregister()`. Each operator / panel / property module ships its own `_classes` tuple. Reload depends on clean unregistration; leaks break reload.
 - **Handlers**: `properties/_handlers.py` registers `load_post` (CP → PG hydrate) and `save_pre` (PG → CP mirror). Both are persistent (`@bpy.app.handlers.persistent`), so they survive `.blend` reload. Driver and modal handler cleanup happens in `unregister()`.
@@ -207,13 +207,13 @@ The addon layout is documented in [`.ai/skills/blender-addon-dev.md`](../.ai/ski
 - **Validator subpackage** (`core/validation/`): each scope has its own module (`active_sprite`, `active_slot`, `export`, `_shared`). Validators are pure functions over `SimpleNamespace`-style mocks; pytest exercises them headless. `Validate` operator orchestrates the suite over the live scene.
 - **Writer package** (`exporters/godot/writer/`): per [SPEC 009](../specs/009-code-modularity/STUDY.md). Public entry is `export(scene)`. Internal modules (`scene_discovery`, `skeleton`, `sprites`, `slots`, `slot_animations`, `animations`) are pure-Python and unit-tested.
 
-For the full register / unregister cycle and how reload survival is guaranteed, walk `blender-addon/__init__.py` plus `properties/_handlers.py`.
+For the full register / unregister cycle and how reload survival is guaranteed, walk `apps/blender/__init__.py` plus `properties/_handlers.py`.
 
 ## See also
 
 - [`docs/PHOTOSHOP-WORKFLOW.md`](PHOTOSHOP-WORKFLOW.md): Photoshop side, manifest re-import idempotency, PSD feature matrix.
 - [`docs/GODOT-WORKFLOW.md`](GODOT-WORKFLOW.md): Godot side, wrapper pattern, Editable Children fragility.
-- [`.ai/skills/blender-addon-dev.md`](../.ai/skills/blender-addon-dev.md): contributor-focused addon internals.
+- [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md): contributor-focused addon internals.
 - [`.ai/skills/format-spec.md`](../.ai/skills/format-spec.md): `.proscenio` schema details.
 - [SPEC 005 — Blender authoring panel](../specs/005-blender-authoring-panel/STUDY.md): panel design, PG canonical decision.
 - [SPEC 003 — Skinning weights](../specs/003-skinning-weights/STUDY.md): vertex group ↔ bone matching.

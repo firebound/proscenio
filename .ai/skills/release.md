@@ -9,9 +9,9 @@ description: Package and publish each component
 
 SemVer per component. Tag format: `<component>-vX.Y.Z`.
 
-- `blender-addon-v0.1.0`
-- `godot-plugin-v0.1.0`
-- `photoshop-exporter-v0.1.0`
+- `apps/blender-v0.1.0`
+- `apps/godot-v0.1.0`
+- `apps/photoshop-v0.1.0`
 
 `schemas/proscenio.schema.json` carries its own integer `format_version`, **independent** of component versions. Bumping the schema version is a separate decision documented in the PR.
 
@@ -20,7 +20,7 @@ SemVer per component. Tag format: `<component>-vX.Y.Z`.
 Target distribution: the official **Blender Extensions Platform** (`extensions.blender.org`).
 
 ```sh
-cd blender-addon
+cd apps/blender
 blender --command extension build
 ```
 
@@ -30,7 +30,7 @@ Output: `proscenio-X.Y.Z.zip`. Submit via the Extensions Platform. Also attach t
 
 Target distribution: the **Godot Asset Library** plus GitHub Releases.
 
-Zip the `godot-plugin/addons/proscenio/` folder and submit via <https://godotengine.org/asset-library>.
+Zip the `apps/godot/addons/proscenio/` folder and submit via <https://godotengine.org/asset-library>.
 
 ## Photoshop exporter
 

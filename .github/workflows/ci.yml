@@ -12,11 +12,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - name: Ruff lint
-        run: uvx ruff check blender-addon/
+        run: uvx ruff check apps/blender/
       - name: Ruff format check
-        run: uvx ruff format --check blender-addon/
+        run: uvx ruff format --check apps/blender/
       - name: Mypy strict
-        working-directory: blender-addon
+        working-directory: apps/blender
         run: uvx --with mypy mypy --config-file pyproject.toml
       - name: Pytest (validation unit tests, no Blender)
         run: uvx --with pytest pytest tests/
@@ -29,8 +29,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install gdtoolkit
-      - run: gdformat --check godot-plugin/addons/proscenio/
-      - run: gdlint godot-plugin/addons/proscenio/
+      - run: gdformat --check apps/godot/addons/proscenio/
+      - run: gdlint apps/godot/addons/proscenio/
 
   validate-schema:
     runs-on: ubuntu-latest
@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           shopt -s globstar nullglob
-          files=(examples/**/*.proscenio godot-plugin/tests/fixtures/**/*.proscenio blender-addon/tests/fixtures/**/*.proscenio)
+          files=(examples/**/*.proscenio apps/godot/tests/fixtures/**/*.proscenio apps/blender/tests/fixtures/**/*.proscenio)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No .proscenio files yet — skipping."
             exit 0
@@ -74,7 +74,7 @@ jobs:
       - name: Re-export every fixture and diff against goldens
         run: |
           ~/blender/blender --background \
-            --python blender-addon/tests/run_tests.py
+            --python apps/blender/tests/run_tests.py
 
   test-godot:
     runs-on: ubuntu-latest
@@ -99,5 +99,5 @@ jobs:
           chmod +x ~/godot/godot
       - name: Run importer smoke test
         run: |
-          ~/godot/godot --headless --path godot-plugin \
+          ~/godot/godot --headless --path apps/godot \
             --script res://tests/test_importer.gd

@@ -23,12 +23,12 @@ export.cfg
 export_presets.cfg
 
 # Dev-only fixture copies inside the Godot dev project — canonical lives in examples/
-godot-plugin/test_dummy/
-godot-plugin/effect/
-godot-plugin/dummy/
+apps/godot/test_dummy/
+apps/godot/effect/
+apps/godot/dummy/
 
 # Godot's import sidecars under tests/fixtures/ — regenerated locally, not source
-godot-plugin/tests/fixtures/*.import
+apps/godot/tests/fixtures/*.import
 
 # Headless test artifacts under scripts/ — re-runnable, not source
 scripts/*.out

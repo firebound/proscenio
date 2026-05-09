@@ -32,9 +32,6 @@ ignore = [
     "N802",
     "N803",
     "N815",
-    # The addon directory is `blender-addon/` (hyphen) by Blender Extensions
-    # repo convention; it is never imported as a top-level Python package.
-    "N999",
 ]
 
 [tool.ruff.format]
@@ -50,9 +47,9 @@ namespace_packages = true
 mypy_path = "."
 files = ["exporters", "operators", "panels", "properties", "core", "importers", "tests"]
 # `tests/fixtures/` holds frozen JSON, not Python.
-# `scripts/` (under repo root, not blender-addon/) holds one-off debug
+# `scripts/` (under repo root, not apps/blender/) holds one-off debug
 # helpers that print bpy hierarchies; typing them strictly is not worth
-# the cost — they re-run from scratch each Blender invocation.
+# the cost -- they re-run from scratch each Blender invocation.
 exclude = ["tests/fixtures"]
 # bpy.types.* resolve to Any (no stubs); allow subclassing them.
 disallow_subclassing_any = false

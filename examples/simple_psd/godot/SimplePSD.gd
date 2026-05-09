@@ -10,7 +10,7 @@ extends Node2D
 ## Photoshop manifest -> Blender importer -> writer -> Godot importer
 ## path without the noise of a full character rig.
 ##
-## See [code].ai/skills/godot-plugin-dev.md[/code] for the full wrapper pattern.
+## See [code].ai/skills/godot-dev.md[/code] for the full wrapper pattern.
 
 @export var default_animation: StringName = ""
 @export var autoplay: bool = false

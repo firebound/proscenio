@@ -379,10 +379,18 @@ def register() -> None:
     #      after register() returns. Setting PropertyGroup fields inline
     #      writes to a transient stub that drops before the data block
     #      is committed.
-    bpy.app.timers.register(deferred_hydrate, first_interval=0.0)
+    # Guard against duplicate registration so reload-the-addon does not
+    # pile up timers; a residual timer would fire after Scene.proscenio
+    # has been deleted in unregister().
+    if not bpy.app.timers.is_registered(deferred_hydrate):
+        bpy.app.timers.register(deferred_hydrate, first_interval=0.0)
 
 
 def unregister() -> None:
+    # Pull the deferred hydrate timer first so a pending tick does not
+    # fire against a half-torn-down PropertyGroup.
+    if bpy.app.timers.is_registered(deferred_hydrate):
+        bpy.app.timers.unregister(deferred_hydrate)
     if on_blend_save_pre in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.remove(on_blend_save_pre)
     if on_blend_load in bpy.app.handlers.load_post:

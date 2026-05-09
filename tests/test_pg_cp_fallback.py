@@ -82,3 +82,16 @@ def test_read_bool_flag_cp_fallback() -> None:
 def test_read_bool_flag_false_default() -> None:
     obj = FakeObj()
     assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is False
+
+
+def test_read_bool_flag_pg_false_suppresses_cp_true() -> None:
+    """PG-first: explicit False on the PG must NOT fall through to CP."""
+    pg = SimpleNamespace(is_slot=False)
+    obj = FakeObj(proscenio=pg, cps={"proscenio_is_slot": True})
+    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is False
+
+
+def test_read_bool_flag_pg_missing_falls_back_to_cp() -> None:
+    pg = SimpleNamespace()  # no is_slot attribute
+    obj = FakeObj(proscenio=pg, cps={"proscenio_is_slot": True})
+    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is True

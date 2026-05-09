@@ -17,10 +17,14 @@ def mouse_event_to_z0_point(
 ) -> tuple[float, float, float] | None:
     """Project a viewport mouse event onto the world z=0 plane.
 
-    Returns ``None`` when the active region is not a 3D viewport or when
-    the view direction is parallel to z=0 (orthographic top view edge
-    case). Falls back to ``region_2d_to_location_3d`` at depth 0 when
-    the plane intersection lies behind the camera.
+    Returns ``None`` only when the active region is not a 3D viewport
+    (no region or no region_data). When the view direction is parallel
+    to z=0 (orthographic top view edge case) or when the plane
+    intersection lies behind the camera, the helper falls back to
+    ``region_2d_to_location_3d`` at depth 0 -- it never returns
+    ``None`` for those cases. Callers that want to distinguish "viewport
+    missing" from "fallback used" should treat the fallback as a normal
+    success path.
     """
     from bpy_extras import view3d_utils
     from mathutils import Vector

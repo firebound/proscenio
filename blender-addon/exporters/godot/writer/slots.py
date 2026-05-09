@@ -8,6 +8,7 @@ from ....core.cp_keys import (  # type: ignore[import-not-found]
     PROSCENIO_IS_SLOT,
     PROSCENIO_SLOT_DEFAULT,
 )
+from ....core.pg_cp_fallback import read_bool_flag  # type: ignore[import-not-found]
 from ....core.slot_emit import (  # type: ignore[import-not-found]
     SlotInput,
     build_slots,
@@ -50,12 +51,11 @@ def is_slot_empty(obj: bpy.types.Object) -> bool:
     Reads PropertyGroup first (canonical post-SPEC 005), Custom Property
     ``proscenio_is_slot`` as legacy fallback. The fallback matters in
     headless contexts where the addon's PropertyGroup is not registered
-    -- CI runs Blender without the addon enabled.
+    -- CI runs Blender without the addon enabled. Delegates to
+    ``read_bool_flag`` so an explicit ``is_slot=False`` on the PG
+    suppresses a stale CP-True (PG-first contract).
     """
-    props = getattr(obj, "proscenio", None)
-    if props is not None and bool(getattr(props, "is_slot", False)):
-        return True
-    return bool(hasattr(obj, "get") and obj.get(PROSCENIO_IS_SLOT, False))
+    return bool(read_bool_flag(obj, pg_field="is_slot", cp_key=PROSCENIO_IS_SLOT))
 
 
 def read_slot_default(obj: bpy.types.Object) -> str:

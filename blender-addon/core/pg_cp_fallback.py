@@ -45,10 +45,18 @@ def read_bool_flag(obj: Any, *, pg_field: str, cp_key: str) -> bool:
     Specialised on bool because the most common shape (``is_slot``,
     ``material_isolated``, etc) is a flag predicate and casting
     consistently to ``bool`` keeps call sites tidy.
+
+    The PG check uses a sentinel-vs-default check (not a truthiness
+    check) so an explicit ``False`` on the PG correctly suppresses the
+    CP fallback. The earlier truthy-only branch let a CP-True override
+    a PG-False.
     """
+    _missing = object()
     props = getattr(obj, "proscenio", None)
-    if props is not None and bool(getattr(props, pg_field, False)):
-        return True
+    if props is not None:
+        pg_value = getattr(props, pg_field, _missing)
+        if pg_value is not _missing and pg_value is not None:
+            return bool(pg_value)
     if hasattr(obj, "get"):
         return bool(obj.get(cp_key, False))
     return False

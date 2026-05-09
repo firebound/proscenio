@@ -6,7 +6,9 @@ rest of ``core/`` is bpy-free.
 
 Modules:
 
-- ``atlas_io.py``           atlas image collection + assembly + manifest IO
+- ``atlas_collect.py``      ``SourceImage`` + walk meshes for textured materials
+- ``atlas_compose.py``      assemble packed ``bpy.types.Image`` + write manifest JSON
+- ``atlas_manifest.py``     ``Placement`` + read manifest JSON
 - ``psd_spritesheet.py``    Photoshop-driven spritesheet composition
 - ``sprite_frame_shader.py`` Material slicer node group setup / removal
 - ``select.py``             ``select_only(context, obj)`` helper

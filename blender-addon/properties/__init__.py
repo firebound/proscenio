@@ -266,6 +266,15 @@ class ProscenioObjectProps(PropertyGroup):
         default="var",
     )
 
+    is_outliner_favorite: BoolProperty(  # type: ignore[valid-type]
+        name="Outliner favorite",
+        description=(
+            "Pin this object to the top of the Proscenio outliner (5.1.d.4). "
+            "Toggle 'Show favorites only' on the panel to hide everything else."
+        ),
+        default=False,
+    )
+
     is_slot: BoolProperty(  # type: ignore[valid-type]
         name="Is slot anchor",
         description=(
@@ -358,6 +367,28 @@ class ProscenioSceneProps(PropertyGroup):
         name="Power-of-two atlas",
         description="Round packed atlas dimensions up to a power of two (legacy GPU optimization)",
         default=False,
+    )
+    outliner_filter: StringProperty(  # type: ignore[valid-type]
+        name="Outliner filter",
+        description=(
+            "Substring filter applied to the Proscenio outliner (5.1.d.4). "
+            "Empty string shows every Proscenio-relevant object."
+        ),
+        default="",
+    )
+    outliner_show_favorites: BoolProperty(  # type: ignore[valid-type]
+        name="Favorites only",
+        description=(
+            "When True, the outliner hides every object except those flagged "
+            "via proscenio.is_outliner_favorite."
+        ),
+        default=False,
+    )
+    active_outliner_index: IntProperty(  # type: ignore[valid-type]
+        name="Active outliner row",
+        description="Selected row in the Proscenio outliner UIList",
+        default=0,
+        min=0,
     )
 
 

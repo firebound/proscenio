@@ -508,9 +508,13 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                 text="Save Pose to Library",
                 icon="ASSET_MANAGER",
             )
+        # 5.1.d.3 quick armature -- modal viewport bone draw. Available in
+        # any mode; the modal itself transitions the QuickRig in/out of
+        # edit-mode per bone so the user does not have to.
+        layout.separator()
+        layout.operator("proscenio.quick_armature", text="Quick Armature", icon="GREASEPENCIL")
         # SPEC 004: slot creation -- works in any mode, anchors to active bone
         # when in pose mode, otherwise creates an unparented slot Empty.
-        layout.separator()
         layout.operator("proscenio.create_slot", text="Create Slot", icon="LINK_BLEND")
 
 
@@ -778,6 +782,7 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.create_ortho_camera", "Preview Camera"),
     ("proscenio.bake_current_pose", "Bake Current Pose"),
     ("proscenio.toggle_ik_chain", "Toggle IK"),
+    ("proscenio.quick_armature", "Quick Armature"),
     ("proscenio.reproject_sprite_uv", "Reproject UV"),
     ("proscenio.snap_region_to_uv", "Snap region to UV bounds"),
     ("proscenio.pack_atlas", "Pack Atlas"),

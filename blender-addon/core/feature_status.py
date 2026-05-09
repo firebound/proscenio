@@ -100,6 +100,7 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "drive_from_bone": FeatureStatus.BLENDER_ONLY,
     "bake_current_pose": FeatureStatus.BLENDER_ONLY,
     "toggle_ik": FeatureStatus.BLENDER_ONLY,
+    "quick_armature": FeatureStatus.BLENDER_ONLY,
     "create_ortho_camera": FeatureStatus.BLENDER_ONLY,
     "pack_atlas": FeatureStatus.GODOT_READY,
     "apply_packed_atlas": FeatureStatus.GODOT_READY,

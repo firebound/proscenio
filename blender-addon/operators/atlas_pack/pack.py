@@ -29,7 +29,13 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         from ...core import atlas_packer  # type: ignore[import-not-found]
-        from ...core.bpy_helpers import atlas_io  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.atlas_collect import (  # type: ignore[import-not-found]
+            collect_source_images,
+        )
+        from ...core.bpy_helpers.atlas_compose import (  # type: ignore[import-not-found]
+            compose_atlas,
+            write_manifest,
+        )
 
         props = scene_props(context)
         if props is None:
@@ -37,7 +43,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
             return {"CANCELLED"}
 
         sprite_meshes = [o for o in context.scene.objects if o.type == "MESH"]
-        sources = atlas_io.collect_source_images(sprite_meshes)
+        sources = collect_source_images(sprite_meshes)
         if not sources:
             report_warn(self, "no sprite meshes with source images found")
             return {"CANCELLED"}
@@ -60,8 +66,8 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
 
         atlas_png, manifest_json = packed_atlas_paths(bpy.data.filepath)
         atlas_png.parent.mkdir(parents=True, exist_ok=True)
-        atlas_io.compose_atlas(sources, packed, atlas_png, padding=padding)
-        atlas_io.write_manifest(packed, padding, sources, manifest_json)
+        compose_atlas(sources, packed, atlas_png, padding=padding)
+        write_manifest(packed, padding, sources, manifest_json)
 
         report_info(
             self,

@@ -68,7 +68,9 @@ photoshop-exporter/
 | **D10** | Test fixtures | Reuse `examples/simple_psd/`. Add `examples/simple_psd/source.psd` if not present so the UXP plugin has a fixture to run against. |
 | **D11** | JSX retirement trigger | **Feature parity confirmed** by manual roundtrip on `examples/simple_psd/` and `examples/doll/` (when its PSD source ships). Then delete `proscenio_export.jsx` + `proscenio_import.jsx`. |
 | **D12** | Distribution channel | **`.ccx` packaged via UDT** for releases; UDT direct-load for dev. Adobe Marketplace optional later. |
-| **D13** | Live reload during dev | **Yes** via `npm run uxp:watch` (already in scaffold). Documented in `photoshop-uxp-dev` skill. |
+| **D13** | Live reload during dev | **Yes** via `pnpm run uxp:watch` (already in scaffold). Documented in `photoshop-uxp-dev` skill. |
+| **D14** | Package manager | **pnpm (locked)**. `package.json` declares `packageManager: pnpm@9.x`. `package-lock.json` and `yarn.lock` ignored; pnpm-lock.yaml is the canonical lock when committed. |
+| **D15** | Bundler | **webpack (locked)**. Adobe officially supports webpack for UXP; the React starter ships with it. Vite was evaluated and rejected: ESM-first defaults fight UXP's CommonJS runtime, no Adobe support, community plugins immature. Revisit only if Adobe ships first-class Vite tooling. |
 
 ## Implementation surface
 

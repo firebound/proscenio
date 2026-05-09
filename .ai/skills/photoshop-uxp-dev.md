@@ -8,9 +8,10 @@ description: UXP plugin for Photoshop - layer slicing and manifest JSON via Type
 ## Stack
 
 - **UXP** (Unified Extensibility Platform). Adobe's modern plugin runtime; replaces ExtendScript.
-- **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc.
+- **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc. `tsconfig.json` ships in `photoshop-exporter/` with `strict: true`; `allowJs: true` lets the existing `.jsx` scaffold continue to import while the port to `.tsx` proceeds.
 - **React** for the panel UI.
-- **webpack + babel** bundle into the UXP plugin format.
+- **webpack + babel** bundle into the UXP plugin format. Webpack is **locked** as the bundler (per [SPEC 010](../../specs/010-photoshop-uxp-migration/STUDY.md) D15) — Adobe's officially supported path. Vite was evaluated and rejected; UXP runtime needs CommonJS output and Vite's ESM-first defaults fight it.
+- **pnpm** as the package manager (per SPEC 010 D14). `package.json` declares `packageManager: pnpm@9.x`.
 - **Photoshop CC 2021+ (PS 22+)** minimum requirement.
 
 ExtendScript / JSX is no longer the target. Legacy `proscenio_export.jsx` and `proscenio_import.jsx` stay as historical reference until the UXP plugin reaches feature parity, then retire.
@@ -19,14 +20,15 @@ ExtendScript / JSX is no longer the target. Legacy `proscenio_export.jsx` and `p
 
 ```text
 photoshop-exporter/
-├── package.json          # webpack + babel + react deps
-├── webpack.config.js     # build config
+├── package.json          # pnpm; webpack + babel + react + TypeScript devDeps
+├── tsconfig.json         # strict TypeScript config; allowJs for the JSX scaffold
+├── webpack.config.js     # build config; @babel/preset-typescript handles .ts/.tsx + .jsx
 ├── plugin/               # UXP package output target
 │   ├── manifest.json     # plugin manifest (host, entrypoints, permissions)
 │   ├── index.html        # panel root
 │   └── icons/
 ├── src/
-│   ├── index.jsx         # plugin entry
+│   ├── index.jsx         # plugin entry (will become index.tsx)
 │   ├── components/       # React UI
 │   ├── controllers/      # PS DOM operations (layer walk, export)
 │   ├── panels/           # panel registrations
@@ -80,12 +82,15 @@ The user picks an export folder once per session; the plugin writes the manifest
 ## Dev loop
 
 ```sh
-npm install
-npm run build       # webpack into dist/
-npm run uxp:load    # load plugin into Photoshop via UDT
-npm run uxp:watch   # rebuild + reload on src changes
-npm run uxp:debug   # open Chrome DevTools attached to the plugin
+pnpm install
+pnpm run typecheck   # tsc --noEmit; gates IDE + CI before bundling
+pnpm run build       # webpack into dist/
+pnpm run uxp:load    # load plugin into Photoshop via UDT
+pnpm run uxp:watch   # rebuild + reload on src changes
+pnpm run uxp:debug   # open Chrome DevTools attached to the plugin
 ```
+
+`npm run ...` works as a fallback if a contributor has not installed pnpm; the lockfile shape will diverge but the build is the same.
 
 Adobe UXP Developer Tool (UDT) must be installed and connected. Documentation: <https://developer.adobe.com/photoshop/uxp/2022/guides/>.
 

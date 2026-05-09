@@ -16,15 +16,18 @@ module.exports = {
         os: 'commonjs2 os'
     },
     resolve: {
-        extensions: [".js", ".jsx"]
+        extensions: [".ts", ".tsx", ".js", ".jsx"]
     },
     module: {
         rules: [
             {
-                test: /\.jsx?$/,
+                test: /\.(ts|tsx|js|jsx)$/,
                 exclude: /node_modules/,
                 loader: "babel-loader",
                 options: {
+                    presets: [
+                        "@babel/preset-typescript"
+                    ],
                     plugins: [
                         "@babel/transform-react-jsx",
                         "@babel/proposal-object-rest-spread",

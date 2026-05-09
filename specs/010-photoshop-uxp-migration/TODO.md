@@ -6,7 +6,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 - [ ] D1 - cut-over vs coexistence (default: cut over)
 - [ ] D2 - Photoshop minimum version (default: PS 22 / CC 2021+)
-- [ ] D3 - TypeScript vs plain JS (default: TypeScript)
+- [x] D3 - TypeScript vs plain JS (locked: TypeScript; `tsconfig.json` shipped)
 - [ ] D4 - React vs Adobe Spectrum UXP (default: React)
 - [ ] D5 - schema validation library (default: `ajv`)
 - [ ] D6 - file system flow (default: pick folder once per session)
@@ -16,7 +16,9 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 - [ ] D10 - test fixtures (default: reuse `examples/simple_psd/`)
 - [ ] D11 - JSX retirement trigger (default: parity confirmed by manual roundtrip)
 - [ ] D12 - distribution channel (default: `.ccx` + UDT)
-- [ ] D13 - live reload (default: yes via `npm run uxp:watch`)
+- [x] D13 - live reload (locked: yes via `pnpm run uxp:watch`)
+- [x] D14 - package manager (locked: pnpm)
+- [x] D15 - bundler (locked: webpack; Vite rejected)
 
 ## Pre-implementation
 
@@ -27,12 +29,12 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 ## Wave 10.1 - TypeScript foundation
 
-- [ ] Add `tsconfig.json` with `strict: true`.
-- [ ] Add `@types/react`, `@types/react-dom` to `package.json`.
+- [x] `tsconfig.json` with `strict: true` (allowJs for the scaffold transition).
+- [x] `@types/react`, `@types/react-dom`, `typescript`, `@babel/preset-typescript` in `package.json`.
+- [x] Webpack config handles `.ts` / `.tsx` / `.js` / `.jsx` via `@babel/preset-typescript`.
+- [x] `pnpm run typecheck` script (`tsc --noEmit`).
 - [ ] Add UXP types (Adobe ships a typings package - confirm exact name).
 - [ ] Rename `src/index.jsx` → `src/index.tsx`.
-- [ ] Add `npm run typecheck` script (`tsc --noEmit`).
-- [ ] Webpack config picks up `.ts` / `.tsx` via `ts-loader` or `@babel/preset-typescript`.
 - [ ] CI: `lint-photoshop` job stub running typecheck only.
 
 ## Wave 10.2 - Layer walk + manifest builder

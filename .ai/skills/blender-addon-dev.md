@@ -13,24 +13,96 @@ description: Develop, install, lint, and test the Blender addon
 
 ## Project layout
 
+Post SPEC 009 (May 2026). Every package below is multi-file: the `__init__.py` orchestrates registration; topical submodules carry the actual classes / helpers.
+
 ```text
 blender-addon/
-├── blender_manifest.toml   # Blender Extensions system manifest
-├── __init__.py             # entry point — registers properties, operators, panels
-├── pyproject.toml          # ruff config + mypy strict config
-├── core/                   # pure-Python helpers (validation.py, future data classes)
-├── properties/             # bpy.types.PropertyGroup — typed widgets backing the panel
-├── operators/              # bpy.types.Operator subclasses
-├── panels/                 # bpy.types.Panel subclasses (sidebar tab + child panels)
-├── importers/              # PSD JSON, Krita JSON, etc.
-├── exporters/godot/        # .proscenio writer
-└── tests/                  # headless test suite (Blender-driven round-trip)
+├── blender_manifest.toml          Blender Extensions system manifest
+├── __init__.py                    addon entry — chains submodule register() / unregister()
+├── pyproject.toml                 ruff + mypy strict config
+├── core/                          bpy-free helpers
+│   ├── __init__.py                package contract docstring
+│   ├── cp_keys.py                 Custom Property string registry (proscenio_*)
+│   ├── feature_status.py          status badge dispatch (5.1.d.5)
+│   ├── help_topics.py             in-panel help dispatch (5.1.d.5)
+│   ├── hydrate.py                 CP -> PG hydration logic
+│   ├── mirror.py                  PG -> CP mirror logic
+│   ├── pg_cp_fallback.py          PG-first / CP-fallback reader
+│   ├── props_access.py            scene_props / object_props typed accessors
+│   ├── psd_manifest.py            Photoshop manifest reader
+│   ├── psd_naming.py              PSD layer-name parsing
+│   ├── region.py                  texture region resolver
+│   ├── report.py                  operator report helpers ("Proscenio: " prefix)
+│   ├── slot_emit.py               slot dict projection (SPEC 004)
+│   ├── uv_bounds.py               UV bbox math
+│   ├── atlas_packer.py            MaxRects packer
+│   ├── bpy_helpers/               bpy-bound helpers (atlas_io, sprite_frame_shader,
+│   │                                 psd_spritesheet, select, viewport_math)
+│   └── validation/                per-validator subpackage (issue, active_sprite,
+│                                    active_slot, export, _shared)
+├── properties/                    PropertyGroup classes
+│   ├── __init__.py                3 PGs + register/unregister
+│   ├── _dynamic_items.py          EnumProperty items + PointerProperty poll filters
+│   └── _handlers.py               persistent load_post / save_pre handlers
+├── operators/                     bpy.types.Operator subclasses
+│   ├── __init__.py                orchestrator
+│   ├── help_dispatch.py           status_info, help, smoke_test
+│   ├── export_flow.py             validate_export, export_godot, reexport_godot
+│   ├── selection.py               select_issue, select_outliner, toggle_favorite
+│   ├── authoring_camera.py        create_ortho_camera
+│   ├── authoring_ik.py            toggle_ik_chain
+│   ├── uv_authoring.py            reproject_sprite_uv, snap_region_to_uv
+│   ├── driver.py                  create_driver (5.1.d.1)
+│   ├── pose_library.py            save_pose_asset, bake_current_pose
+│   ├── quick_armature.py          quick_armature modal (5.1.d.3)
+│   ├── slot/                      create_slot, add_attachment, set_default,
+│   │                                preview_shader (SPEC 004)
+│   ├── atlas_pack/                pack, apply, unpack + shared _paths.py
+│   └── import_photoshop.py        Photoshop manifest importer (SPEC 006)
+├── panels/                        bpy.types.Panel subclasses
+│   ├── __init__.py                root PROSCENIO_PT_main + orchestrator
+│   ├── _helpers.py                draw_subpanel_header + mode predicates
+│   ├── active_sprite.py           sprite type, region, driver shortcut, validation row
+│   ├── active_slot.py             slot anchor, attachments list (SPEC 004)
+│   ├── skeleton.py                bone count + UL_bones + pose-mode shortcuts
+│   ├── outliner.py                sprite-centric flat list (5.1.d.4)
+│   ├── animation.py               actions UIList
+│   ├── atlas.py                   atlas filename + packer box
+│   ├── validation.py              issue list, click-to-select
+│   ├── export.py                  sticky path + Validate / Export / Re-export
+│   ├── help.py                    F3 cheat-sheet
+│   └── diagnostics.py             smoke test
+├── importers/photoshop/           PSD manifest -> Blender meshes
+└── exporters/godot/writer/        .proscenio writer (package)
+    ├── __init__.py                public export() entry
+    ├── _schema.py                 TypedDicts mirroring schema
+    ├── scene_discovery.py         find_armature / sprites / atlas
+    ├── skeleton.py                coord conversion + Bone2D world transforms
+    ├── sprites.py                 polygon body + sprite_frame + weights pipeline
+    ├── slots.py                   slot Empty walker (SPEC 004)
+    ├── slot_animations.py         slot_attachment track emission
+    └── animations.py              bone_transform track emission
 
-tests/                      # repo-root pytest suite (no Blender required)
-└── test_validation.py      # core/validation.py unit tests
+tests/                             repo-root pytest suite (no Blender required)
+├── test_cp_keys.py                wave 9.1 helpers
+├── test_props_access.py           wave 9.1 helpers
+├── test_pg_cp_fallback.py         wave 9.1 helpers
+├── test_validation.py             core/validation/ subpackage
+└── (others)
 ```
 
 The addon ID is `proscenio` (set in the manifest). The directory name `blender-addon/` is purely repo-side; when packaged the contents are zipped, and Blender extracts to `<extensions>/proscenio/`.
+
+### Where to add new code
+
+- A pure-Python helper that does math, parses strings, walks dataclasses → `core/<name>.py`.
+- A helper that calls `bpy.data` / `bpy.ops` / `bpy.context` / etc. → `core/bpy_helpers/<name>.py`.
+- A new operator → `operators/<concern>.py` (or grow an existing concern's module). Each submodule owns its `_classes` tuple + `register()` / `unregister()`.
+- A new panel → `panels/<concern>.py` (or split if it already crowds `_helpers.py`).
+- A new validator → add a function under `core/validation/<scope>.py` and re-export from `core/validation/__init__.py`.
+- A Custom Property literal → add a constant to `core/cp_keys.py` and import the constant.
+
+When a single file grows past ~300 LOC, ask whether it has absorbed multiple concerns. If yes, split it (the SPEC 009 STUDY documents the rationale).
 
 ## Install for development
 

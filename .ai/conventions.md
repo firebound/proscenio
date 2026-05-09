@@ -46,6 +46,24 @@ Prefer many small commits on the working branch over a single squashed lump — 
 
 The `.proscenio` format uses `snake_case` keys throughout (`format_version`, `pixels_per_unit`). Any new field must follow this rule. The schema in [`schemas/proscenio.schema.json`](../schemas/proscenio.schema.json) is the source of truth.
 
+## Module organization (Blender addon)
+
+Established by SPEC 009. Every concern lives in its own module; `__init__.py` orchestrates registration only.
+
+- `blender-addon/__init__.py` — addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
+- `operators/`, `panels/`, `properties/` — packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
+- One submodule per topical concern. Examples: `operators/export_flow.py`, `operators/quick_armature.py`, `operators/slot/create.py`, `panels/active_sprite.py`, `panels/outliner.py`. Aim for under ~300 LOC per submodule.
+- Cross-cutting helpers shared by multiple sibling submodules go in `_helpers.py` (panels) or `_paths.py` / `_handlers.py` / `_dynamic_items.py` (private prefix conveys "module-internal, not the public API").
+- `core/` — bpy-free helpers. Direct children of `core/` import nothing from `bpy` at module top. They may lazy-import `bpy` inside one function and accept `Any`-typed inputs from tests.
+- `core/bpy_helpers/` — bpy-bound helpers. Modules under this subpackage import `bpy` at module top. Tests that touch them either patch `bpy` first or skip when running outside Blender.
+- `core/validation/` — per-validator subpackage with `Issue`, `validate_active_sprite`, `validate_active_slot`, `validate_export`. Re-exports the public API from its `__init__.py`.
+- `exporters/godot/writer/` — package, not single file. Submodules per emission concern (`scene_discovery`, `skeleton`, `sprites`, `slots`, `slot_animations`, `animations`). The `__init__.py` re-exports the public `export()` entry.
+- Custom Property string keys live in `core/cp_keys.py` (single source of truth, every `proscenio_*` literal goes there).
+- Operator user-facing reports go through `core/report.py` (`report_info` / `report_warn` / `report_error`) so the `"Proscenio: "` prefix lives in one place.
+- Cross-package import direction: `panels` → `operators` (only via `bl_idname` strings, never direct class imports) → `core`. `properties` → `core`. No cycles.
+
+When a single file grows past ~300 LOC, ask whether it has absorbed multiple concerns. If yes, split it.
+
 ## Static typing
 
 Both first-class languages in this repo support static typing. **Use it everywhere — do not ship dynamic code when typed code is available.**

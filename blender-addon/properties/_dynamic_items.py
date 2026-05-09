@@ -23,7 +23,7 @@ import bpy
 from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
-    from . import ProscenioObjectProps
+    from .object_props import ProscenioObjectProps
 
 
 def is_armature(_self: object, obj: bpy.types.Object) -> bool:

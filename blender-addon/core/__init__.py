@@ -26,6 +26,8 @@ Top-level modules (bpy-free):
 - ``region.py``          texture region resolver
 - ``report.py``          operator report helpers (Proscenio: prefix)
 - ``slot_emit.py``       slot dict projection
+- ``sprite_frame_math.py`` per-cell UV slicing math (bpy-free counterpart
+                         of ``bpy_helpers/sprite_frame_shader.py``)
 - ``uv_bounds.py``       UV-bounds rect computation
 - ``atlas_packer.py``    pure-Python MaxRects packer
 

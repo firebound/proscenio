@@ -40,14 +40,16 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         return manifest.exists()
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers import atlas_io  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.atlas_manifest import (  # type: ignore[import-not-found]
+            read_manifest,
+        )
 
         atlas_png, manifest_json = packed_atlas_paths(bpy.data.filepath)
         if not manifest_json.exists():
             report_error(self, f"manifest not found -- {manifest_json.name}")
             return {"CANCELLED"}
 
-        atlas_w, atlas_h, _padding, placements = atlas_io.read_manifest(manifest_json)
+        atlas_w, atlas_h, _padding, placements = read_manifest(manifest_json)
 
         atlas_image = bpy.data.images.get(atlas_png.stem)
         if atlas_image is None:

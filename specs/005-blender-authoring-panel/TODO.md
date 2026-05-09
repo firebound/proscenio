@@ -168,15 +168,15 @@ Branch: `feat/spec-005.1.d.2-pose-library`. Surface "Save current pose to Asset 
 - [ ] `core/help_topics.py` adds `pose_library` topic (what it does, how Blender's Asset Browser consumes it, why this is a no-op at .proscenio export time).
 - [ ] Manual smoke test: enter pose mode on `doll.rig`, set a pose, click Save Pose -- pose appears in Asset Browser.
 
-### 5.1.d.3 — Quick armature (click-drag bone draw, planned)
+### 5.1.d.3 — Quick armature (click-drag bone draw, shipped)
 
 Branch: `feat/spec-005.1.d.3-quick-armature`. COA Tools' rapid skeleton-creation operator. Modal viewport tool for click-drag bone authoring without entering Edit Mode. Lower-priority -- Blender's Edit Mode + Shift+E (extrude) covers the core use case but loses the rapid-iteration flow when sketching new rigs.
 
-- [ ] `PROSCENIO_OT_quick_armature` modal operator: invoke captures mouse, click-drag draws a bone from press point to release point, auto-parents to previous bone in the chain when Shift held. Esc / right-click to exit modal.
-- [ ] Skeleton subpanel button "Quick Armature" (always available, creates a new armature on first use, extends the existing one on subsequent runs).
-- [ ] `core/feature_status.py` adds `quick_armature` row (BLENDER_ONLY).
-- [ ] `core/help_topics.py` adds `quick_armature` topic with the click-drag flow + Shift-modifier behavior.
-- [ ] Manual smoke test: empty scene -> Quick Armature -> draw 5 bones in chain -> verify hierarchy in outliner.
+- [x] `PROSCENIO_OT_quick_armature` modal operator: invoke captures mouse, click-drag draws a bone from press point to release point, auto-parents to previous bone in the chain when Shift held. Esc / right-click to exit modal. Bones land flat on world z=0 (2D pipeline). Each release internally toggles the QuickRig in/out of Edit Mode so the user never sees the mode switch.
+- [x] Skeleton subpanel button "Quick Armature" (always available, creates `Proscenio.QuickRig` on first use, extends it on subsequent runs).
+- [x] `core/feature_status.py` adds `quick_armature` row (BLENDER_ONLY).
+- [x] `core/help_topics.py` adds `quick_armature` topic with the click-drag flow + Shift-modifier behavior.
+- [ ] Manual smoke test: empty scene -> Quick Armature -> draw 5 bones in chain -> verify hierarchy in outliner. *(Modal -- only exercisable interactively, no headless equivalent.)*
 
 ### 5.1.d.4 — Spriteobject custom outliner (planned)
 

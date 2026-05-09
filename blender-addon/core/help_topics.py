@@ -316,6 +316,37 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _SPEC_SLOT_SYSTEM,
         ),
     ),
+    "quick_armature": HelpTopic(
+        title="Quick Armature (5.1.d.3)",
+        summary="Click-drag in the viewport to draw bones without entering Edit Mode.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Modal viewport tool that creates or extends a 'Proscenio.QuickRig'",
+                "armature one bone per click-drag. Each press records the bone head",
+                "on the world z=0 plane; each release records the tail and lands the",
+                "bone. Speeds up the rough-sketch phase before refining in Edit Mode.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Click 'Quick Armature' in the Skeleton subpanel.",
+                "2. Click-drag in the 3D viewport: press = head, release = tail.",
+                "3. Hold Shift on press to auto-parent the new bone to the previous",
+                "   one in the chain (use_connect=False -- head stays where you",
+                "   clicked rather than snapping onto the parent's tail).",
+                "4. Esc or right-click exits the modal session.",
+            ),
+            _section(
+                "Caveats",
+                "Bones are flat on the z=0 plane (this is a 2D pipeline). Drags",
+                "shorter than 1e-4 world units are skipped to avoid degenerate",
+                "zero-length bones. The QuickRig armature is identical to any",
+                "hand-built one -- rename, parent meshes, weight-paint, or merge",
+                "into your main rig as usual.",
+            ),
+        ),
+        see_also=(_SPEC_AUTHORING_PANEL,),
+    ),
     "slot_system": HelpTopic(
         title="Slot system (SPEC 004)",
         summary="Empty Object + child meshes = one slot. Animation flips visibility per key.",

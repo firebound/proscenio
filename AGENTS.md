@@ -2,9 +2,9 @@
 
 This repository ships three components that bridge Blender → Godot 4 for 2D cutout animation:
 
-- `photoshop-exporter/` — Photoshop UXP plugin (TypeScript + React; PSD layers + manifest JSON)
-- `blender-addon/` — Blender 4.2+ addon (sprite import, rigging, animation, `.proscenio` export)
-- `godot-plugin/` — Godot 4.3+ editor plugin (`.proscenio` → native `.tscn`)
+- `apps/photoshop/` — Photoshop UXP plugin (TypeScript + React; PSD layers + manifest JSON)
+- `apps/blender/` — Blender 4.2+ addon (sprite import, rigging, animation, `.proscenio` export)
+- `apps/godot/` — Godot 4.3+ editor plugin (`.proscenio` → native `.tscn`)
 
 For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`](.ai/skills/README.md). Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in [`.ai/conventions.md`](.ai/conventions.md) — read those first.
 
@@ -14,8 +14,8 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 | --- | --- |
 | Understand repo layout, components, boundaries | [.ai/skills/architecture.md](.ai/skills/architecture.md) |
 | Touch the `.proscenio` format or schema | [.ai/skills/format-spec.md](.ai/skills/format-spec.md) |
-| Edit Blender addon code | [.ai/skills/blender-addon-dev.md](.ai/skills/blender-addon-dev.md) |
-| Edit Godot plugin code | [.ai/skills/godot-plugin-dev.md](.ai/skills/godot-plugin-dev.md) |
+| Edit Blender addon code | [.ai/skills/blender-dev.md](.ai/skills/blender-dev.md) |
+| Edit Godot plugin code | [.ai/skills/godot-dev.md](.ai/skills/godot-dev.md) |
 | Edit Photoshop UXP plugin | [.ai/skills/photoshop-uxp-dev.md](.ai/skills/photoshop-uxp-dev.md) |
 | Run or write tests | [.ai/skills/testing.md](.ai/skills/testing.md) |
 | Package, version, release | [.ai/skills/release.md](.ai/skills/release.md) |
@@ -45,9 +45,9 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 ├── docs/                      # user docs (mkdocs later)
 ├── schemas/                   # .proscenio JSON Schema
 ├── examples/                  # end-to-end samples (LFS for binaries)
-├── photoshop-exporter/        # UXP (TypeScript + React)
-├── blender-addon/             # Python (Blender Extensions package)
-└── godot-plugin/              # GDScript (dev project + addon)
+├── apps/photoshop/        # UXP (TypeScript + React)
+├── apps/blender/             # Python (Blender Extensions package)
+└── apps/godot/              # GDScript (dev project + addon)
 ```
 
 ## Status

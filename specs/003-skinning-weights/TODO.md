@@ -19,7 +19,7 @@ Wires the `weights` field that has been in the schema since v1 into a real `Poly
 
 ## Blender writer
 
-- [x] [`writer.py`](../../blender-addon/exporters/godot/writer.py) now collects per-bone weights from vertex groups whenever the mesh has any. Single-bone resolution still drives the "rigid" path for sprites without groups.
+- [x] [`writer.py`](../../apps/blender/exporters/godot/writer.py) now collects per-bone weights from vertex groups whenever the mesh has any. Single-bone resolution still drives the "rigid" path for sprites without groups.
 - [x] `_build_sprite_weights(obj, mesh, vertex_indices, fallback_bone, available_bones) -> list[WeightDict]` returns bone-major output, skips unmatched group names with a warning, normalizes per-vertex sums, and falls back to the resolved bone for zero-weight vertices.
 - [x] `WeightDict` `TypedDict` added; mypy `--strict` clean.
 - [x] `RuntimeError` raised when a sprite has vertex groups but none resolve to bones — fail-fast at export.
@@ -27,7 +27,7 @@ Wires the `weights` field that has been in the schema since v1 into a real `Poly
 
 ## Godot importer
 
-- [x] [`polygon_builder.gd`](../../godot-plugin/addons/proscenio/builders/polygon_builder.gd) branches when `sprite_data.weights` is present and non-empty:
+- [x] [`polygon_builder.gd`](../../apps/godot/addons/proscenio/builders/polygon_builder.gd) branches when `sprite_data.weights` is present and non-empty:
   - Sets `polygon.skeleton = polygon.get_path_to(skeleton)`.
   - Calls `polygon.add_bone(bone_path, weights)` for each weight entry.
   - Skinned polygons are parented to the `Skeleton2D` (not to a `Bone2D`) so vertex weights drive deformation rather than parent-transform inheritance.
@@ -36,15 +36,15 @@ Wires the `weights` field that has been in the schema since v1 into a real `Poly
 
 ## Tests
 
-- [x] Added `godot-plugin/tests/fixtures/skinned_dummy.proscenio`: 3 bones (root → lower → upper) and one torso sprite weight-split across `upper` (top vertices) and `lower` (bottom vertices).
-- [x] Extended [`test_importer.gd`](../../godot-plugin/tests/test_importer.gd) with `_run_skinned_checks` — asserts polygon parents to skeleton, `skeleton` NodePath is set, bone count, and known vertex weights. Total assertions 22 → 31.
-- [x] [`godot-plugin/tests/fixtures/dummy.proscenio`](../../godot-plugin/tests/fixtures/dummy.proscenio) untouched — pure regression fixture for the rigid path.
-- [x] `blender-addon/tests/fixtures/dummy/expected.proscenio` regenerated to capture the writer's new `weights` output for `dummy.blend`'s vertex-grouped meshes (legs, torso).
+- [x] Added `apps/godot/tests/fixtures/skinned_dummy.proscenio`: 3 bones (root → lower → upper) and one torso sprite weight-split across `upper` (top vertices) and `lower` (bottom vertices).
+- [x] Extended [`test_importer.gd`](../../apps/godot/tests/test_importer.gd) with `_run_skinned_checks` — asserts polygon parents to skeleton, `skeleton` NodePath is set, bone count, and known vertex weights. Total assertions 22 → 31.
+- [x] [`apps/godot/tests/fixtures/dummy.proscenio`](../../apps/godot/tests/fixtures/dummy.proscenio) untouched — pure regression fixture for the rigid path.
+- [x] `apps/blender/tests/fixtures/dummy/expected.proscenio` regenerated to capture the writer's new `weights` output for `dummy.blend`'s vertex-grouped meshes (legs, torso).
 
 ## Documentation
 
-- [x] "Painting weights for skinning (SPEC 003)" subsection in [`.ai/skills/blender-addon-dev.md`](../../.ai/skills/blender-addon-dev.md) covering vertex-group naming, normalization, fallback, RuntimeError, sprite_frame exclusion.
-- [x] [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md) "Choosing the rendering path" updated — `polygon` row mentions live skinning via `Polygon2D.skeleton` + `add_bone()`.
+- [x] "Painting weights for skinning (SPEC 003)" subsection in [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) covering vertex-group naming, normalization, fallback, RuntimeError, sprite_frame exclusion.
+- [x] [`.ai/skills/godot-dev.md`](../../.ai/skills/godot-dev.md) "Choosing the rendering path" updated — `polygon` row mentions live skinning via `Polygon2D.skeleton` + `add_bone()`.
 - [x] [`STATUS.md`](../../STATUS.md) — moved to shipped on merge.
 
 ## Manual validation

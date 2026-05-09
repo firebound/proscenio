@@ -33,18 +33,18 @@ Photoshop ──UXP plugin──▶ layer PNGs + manifest JSON (psd_manifest.sch
 
 | Concern | Component |
 | --- | --- |
-| Layer slicing, alpha trim, manifest JSON | photoshop-exporter (UXP plugin) |
-| Manifest validation against `psd_manifest.schema.json` | photoshop-exporter + blender-addon (consumer) |
-| Bone hierarchy, weights, keyframes | blender-addon |
-| Mesh tessellation, UV, slot system, atlas packing | blender-addon |
-| `.proscenio` file production | blender-addon (`exporters/godot/writer/` package) |
-| `.scn` generation | godot-plugin |
-| Reimport overwrite + wrapper-scene pattern | godot-plugin |
+| Layer slicing, alpha trim, manifest JSON | apps/photoshop (UXP plugin) |
+| Manifest validation against `psd_manifest.schema.json` | apps/photoshop + apps/blender (consumer) |
+| Bone hierarchy, weights, keyframes | apps/blender |
+| Mesh tessellation, UV, slot system, atlas packing | apps/blender |
+| `.proscenio` file production | apps/blender (`exporters/godot/writer/` package) |
+| `.scn` generation | apps/godot |
+| Reimport overwrite + wrapper-scene pattern | apps/godot |
 
 ## Extension points
 
-- New DCC input format (Krita, GIMP, Aseprite) → emit conforming `psd_manifest.schema.json` from that DCC; reuse the existing [`blender-addon/importers/photoshop/`](../../blender-addon/importers/) consumer (manifest is DCC-agnostic by design).
-- New output target (Unity, Defold, raw Spine emitter) → new module under [`blender-addon/exporters/`](../../blender-addon/exporters/).
+- New DCC input format (Krita, GIMP, Aseprite) → emit conforming `psd_manifest.schema.json` from that DCC; reuse the existing [`apps/blender/importers/photoshop/`](../../apps/blender/importers/) consumer (manifest is DCC-agnostic by design).
+- New output target (Unity, Defold, raw Spine emitter) → new module under [`apps/blender/exporters/`](../../apps/blender/exporters/).
 - New animation track type → bump `format_version` in `proscenio.schema.json`, update schema, update Blender writer, update Godot animation builder.
 
 ## Hard rules

@@ -28,7 +28,7 @@ The MVP is in progress. Full quickstart will land with the first end-to-end samp
 
 Pick whichever entry point matches your asset:
 
-- **Photoshop authored** - open the source `.psd` and run the JSX exporter (see [`photoshop-exporter/`](photoshop-exporter/)). It writes a manifest JSON + per-layer PNGs. In Blender, click **Import Photoshop Manifest** (Active Sprite subpanel) and point at the manifest. Each layer lands as a quad sprite with the right pivot, atlas region, and naming convention pre-populated.
+- **Photoshop authored** - open the source `.psd` and run the JSX exporter (see [`apps/photoshop/`](apps/photoshop/)). It writes a manifest JSON + per-layer PNGs. In Blender, click **Import Photoshop Manifest** (Active Sprite subpanel) and point at the manifest. Each layer lands as a quad sprite with the right pivot, atlas region, and naming convention pre-populated.
 - **Hand authored in Blender** - model your meshes directly. The panel still applies; just skip the manifest import.
 
 ### 2. Rig and weight
@@ -68,7 +68,7 @@ Big rigs (the doll fixture has 64 bones + 22 sprite meshes) drown Blender's nati
 
 Re-export from Blender whenever the rig or animation changes. Reimport in Godot is automatic.
 
-For the full panel walkthrough, the in-panel `?` button next to every subpanel header opens a topic-specific help popup. The same content lives in [`.ai/skills/blender-addon-dev.md`](.ai/skills/blender-addon-dev.md) (Blender side) and [`.ai/skills/godot-plugin-dev.md`](.ai/skills/godot-plugin-dev.md) (Godot side).
+For the full panel walkthrough, the in-panel `?` button next to every subpanel header opens a topic-specific help popup. The same content lives in [`.ai/skills/blender-dev.md`](.ai/skills/blender-dev.md) (Blender side) and [`.ai/skills/godot-dev.md`](.ai/skills/godot-dev.md) (Godot side).
 
 ## License
 

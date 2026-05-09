@@ -1,5 +1,5 @@
 ---
-name: godot-plugin-dev
+name: godot-dev
 description: Develop, lint, and test the Godot editor plugin
 ---
 
@@ -13,7 +13,7 @@ description: Develop, lint, and test the Godot editor plugin
 ## Project layout
 
 ```text
-godot-plugin/
+apps/godot/
 ├── project.godot           # dev project — kept inline for easy testing
 ├── addons/proscenio/
 │   ├── plugin.cfg
@@ -200,10 +200,10 @@ User-authored animations on the wrapper's own AnimationPlayer can hook the same 
 
 ## Testing
 
-GUT-based tests in `godot-plugin/tests/`. Run via Godot CLI:
+GUT-based tests in `apps/godot/tests/`. Run via Godot CLI:
 
 ```sh
-godot --headless --path godot-plugin -s addons/gut/gut_cmdln.gd
+godot --headless --path apps/godot -s addons/gut/gut_cmdln.gd
 ```
 
 Fixtures: small `.proscenio` files in `tests/fixtures/`.

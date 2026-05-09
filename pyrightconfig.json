@@ -1,6 +1,6 @@
 {
-    "include": ["blender-addon", "scripts"],
-    "extraPaths": ["blender-addon"],
+    "include": ["apps/blender", "scripts"],
+    "extraPaths": ["apps/blender"],
     "reportMissingImports": "none",
     "reportMissingModuleSource": "none",
     "reportAttributeAccessIssue": "none"

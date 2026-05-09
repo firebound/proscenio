@@ -506,7 +506,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Reads a manifest emitted by photoshop-exporter/proscenio_export.jsx,",
+                "Reads a manifest emitted by apps/photoshop/proscenio_export.jsx,",
                 "stamps one polygon mesh per layer + composes spritesheet textures",
                 "for sprite_frame groups, parents everything to a stub root armature.",
             ),

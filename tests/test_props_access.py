@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.props_access import object_props, scene_props  # noqa: E402
 

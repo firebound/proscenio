@@ -41,6 +41,6 @@ examples/**/*.webp filter=lfs diff=lfs merge=lfs -text
 # Photoshop ExtendScript is ECMAScript ~3 with the Photoshop DOM, not modern
 # JavaScript. Marking the exporter directory non-detectable keeps CodeQL's
 # JavaScript analyzer from choking on `#target photoshop` and similar.
-photoshop-exporter/**/*.jsx linguist-language=Text linguist-detectable=false
+apps/photoshop/**/*.jsx linguist-language=Text linguist-detectable=false
 *.jsx linguist-language=JavaScript
 schemas/*.json linguist-detectable=false

@@ -16,9 +16,9 @@ The decision is to build a fresh tool — Proscenio — instead of forking COA T
 
 | Component | Language | Target |
 | --- | --- | --- |
-| `photoshop-exporter/` | ExtendScript (`.jsx`) | Photoshop CC 2015+ |
-| `blender-addon/` | Python 3.11 | Blender 4.2 LTS, tested through 5.x |
-| `godot-plugin/` | GDScript 2.0 | Godot 4.3+ |
+| `apps/photoshop/` | ExtendScript (`.jsx`) | Photoshop CC 2015+ |
+| `apps/blender/` | Python 3.11 | Blender 4.2 LTS, tested through 5.x |
+| `apps/godot/` | GDScript 2.0 | Godot 4.3+ |
 | `schemas/proscenio.schema.json` | JSON Schema (draft 2020-12) | shared contract |
 
 Strict dependency direction: Photoshop knows nothing of Blender; Blender knows nothing of Godot internals; Godot reads only `.proscenio`. The schema is the only shared artifact.

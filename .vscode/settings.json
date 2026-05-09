@@ -9,7 +9,7 @@
     },
     "javascript.preferences.importModuleSpecifier": "relative",
     "typescript.preferences.importModuleSpecifier": "relative",
-    "typescript.tsdk": "photoshop-exporter/node_modules/typescript/lib",
+    "typescript.tsdk": "apps/photoshop/node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
     "[javascriptreact]": {
         "editor.tabSize": 4

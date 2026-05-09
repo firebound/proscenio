@@ -18,7 +18,7 @@ Implements the `Sprite2D` rendering path alongside the existing `Polygon2D` path
 
 ## Blender writer
 
-- [x] In [`blender-addon/exporters/godot/writer.py`](../../blender-addon/exporters/godot/writer.py), branch `_build_sprite` on `obj.get("proscenio_type", "polygon")`:
+- [x] In [`apps/blender/exporters/godot/writer.py`](../../apps/blender/exporters/godot/writer.py), branch `_build_sprite` on `obj.get("proscenio_type", "polygon")`:
   - `"polygon"` → emit current shape (no changes to existing fixtures' output).
   - `"sprite_frame"` → emit `{ type, name, bone, hframes, vframes, frame, centered }` from custom properties.
 - [x] Add a `Literal["polygon", "sprite_frame"]` alias and a `SpriteFrameDict` `TypedDict` to mirror the schema additions.
@@ -34,7 +34,7 @@ Implements the `Sprite2D` rendering path alongside the existing `Polygon2D` path
   - Honors `region` via `region_enabled = true` + `region_rect` if present.
   - Returns the configured `Sprite2D` to the dispatcher.
 - [x] Treat the absence of `type` as `"polygon"` (do not error on legacy fixtures).
-- [x] Implement the `sprite_frame` track case in [`animation_builder.gd`](../../godot-plugin/addons/proscenio/builders/animation_builder.gd): a Godot `Animation` value track at `<sprite>:frame` with `INTERPOLATION_NEAREST`.
+- [x] Implement the `sprite_frame` track case in [`animation_builder.gd`](../../apps/godot/addons/proscenio/builders/animation_builder.gd): a Godot `Animation` value track at `<sprite>:frame` with `INTERPOLATION_NEAREST`.
 - [x] Push a clear `push_error` when `track.target` references a sprite that does not exist or is the wrong kind for the track type.
 - [x] Run the existing `test_importer.gd` to confirm the legacy `Polygon2D` path is untouched. The dummy fixture still holds at 10 of the 22 total assertions.
 
@@ -48,14 +48,14 @@ Implements the `Sprite2D` rendering path alongside the existing `Polygon2D` path
 
 ## Tests
 
-- [x] Extend [`godot-plugin/tests/test_importer.gd`](../../godot-plugin/tests/test_importer.gd) (or add a sibling test file) to load the new fixture, assert the `Sprite2D` is constructed with the right `hframes`/`vframes`/`frame`, assert the animation library has a track on `:frame`, and confirm the idempotent rebuild equality still holds.
-- [x] Add a regression assertion for legacy `.proscenio` (no `type` field) — `godot-plugin/tests/fixtures/dummy.proscenio` is the legacy shape; the test asserts `Polygon2D count = 3`, confirming the dispatcher still defaults to polygon when `type` is omitted.
+- [x] Extend [`apps/godot/tests/test_importer.gd`](../../apps/godot/tests/test_importer.gd) (or add a sibling test file) to load the new fixture, assert the `Sprite2D` is constructed with the right `hframes`/`vframes`/`frame`, assert the animation library has a track on `:frame`, and confirm the idempotent rebuild equality still holds.
+- [x] Add a regression assertion for legacy `.proscenio` (no `type` field) — `apps/godot/tests/fixtures/dummy.proscenio` is the legacy shape; the test asserts `Polygon2D count = 3`, confirming the dispatcher still defaults to polygon when `type` is omitted.
 - [x] CI matrix-aware comments in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — no workflow change needed; the existing `test-blender` and `test-godot` jobs picked up the new fixture without edit.
 - [ ] **Deferred** — Add a Blender-side `effect.blend` so `run_tests.py` exercises the sprite_frame writer path end-to-end. Authoring requires a real Blender session; the writer was instead validated manually by adding `proscenio_type=sprite_frame` to the `dummy.blend` head bone (output diff confirmed in the regenerated `expected.proscenio`). Tracked as a SPEC 002.1 follow-up in [`specs/backlog.md`](../backlog.md).
 
 ## Documentation
 
-- [x] Add a "Choosing the rendering path" subsection to [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md): when to pick `Polygon2D`, when to pick `Sprite2D`, what each unlocks downstream (skinning weights for the former, frame animation for the latter).
+- [x] Add a "Choosing the rendering path" subsection to [`.ai/skills/godot-dev.md`](../../.ai/skills/godot-dev.md): when to pick `Polygon2D`, when to pick `Sprite2D`, what each unlocks downstream (skinning weights for the former, frame animation for the latter).
 - [x] Update [`README.md`](../../README.md) iteration loop — no change needed; the wrapper-scene pattern stays identical and the iteration loop already references it.
 - [x] Update [`STATUS.md`](../../STATUS.md) when SPEC 002 closes, moving it from "só prevista" to "shipped" and linking the worked example.
 

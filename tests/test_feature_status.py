@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.feature_status import (  # noqa: E402
     FEATURE_STATUS,

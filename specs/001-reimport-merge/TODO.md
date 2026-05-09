@@ -9,7 +9,7 @@ Closes the reimport-merge question by adopting **Option A** (full overwrite, wra
 
 ## Documentation
 
-- [x] Add a "Customizing an imported scene" subsection to [`.ai/skills/godot-plugin-dev.md`](../../.ai/skills/godot-plugin-dev.md). Describe the wrapper-scene pattern: instance the generated `.scn`, attach scripts and extra nodes to the wrapper.
+- [x] Add a "Customizing an imported scene" subsection to [`.ai/skills/godot-dev.md`](../../.ai/skills/godot-dev.md). Describe the wrapper-scene pattern: instance the generated `.scn`, attach scripts and extra nodes to the wrapper.
 - [x] Document the bone-rename caveat (Q4): a Blender bone rename invalidates wrapper-scene `NodePath`s referencing the old name. State this explicitly so users know to plan renames as cross-DCC operations.
 - [x] Document the animation-extension pattern (Q3): the wrapper's `AnimationPlayer` can hold a second library for user-authored animations.
 - [x] Update [`README.md`](../../README.md) iteration-loop section to point at the wrapper-scene pattern as the recommended workflow.
@@ -24,7 +24,7 @@ Closes the reimport-merge question by adopting **Option A** (full overwrite, wra
 The importer already overwrites on every reimport. Add explicit safety so the user is not surprised:
 
 - [x] If the target `.scn` already exists when the importer runs, log a single-line confirmation: `Proscenio: regenerating <path> (existing scene will be overwritten)`. Use `print_verbose` so it is suppressible.
-- [x] Add a unit test (GUT) that runs the importer twice on the same `.proscenio` and asserts the resulting `.scn` is byte-identical (or at least produces an identical `PackedScene` tree). Catches non-determinism early. *Implemented in [`godot-plugin/tests/test_importer.gd`](../../godot-plugin/tests/test_importer.gd) as a structural diff (node hierarchy + transforms + animation libraries) since `EditorImportPlugin._import` is editor-only and unsuitable for headless byte-equality.*
+- [x] Add a unit test (GUT) that runs the importer twice on the same `.proscenio` and asserts the resulting `.scn` is byte-identical (or at least produces an identical `PackedScene` tree). Catches non-determinism early. *Implemented in [`apps/godot/tests/test_importer.gd`](../../apps/godot/tests/test_importer.gd) as a structural diff (node hierarchy + transforms + animation libraries) since `EditorImportPlugin._import` is editor-only and unsuitable for headless byte-equality.*
 
 ## Defer (potential SPEC 001.1 if demand emerges)
 

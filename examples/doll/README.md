@@ -35,10 +35,10 @@ doll.blend (authored)
     ├──► doll.photoshop_manifest.json      scripts/fixtures/doll/export_psd_manifest.py
     │       │ (SPEC 006 v1; paths point at render_layers/)
     │       │
-    │       └──► photoshop-exporter/proscenio_import.jsx (in Photoshop)
+    │       └──► apps/photoshop/proscenio_import.jsx (in Photoshop)
     │               └──► [photoshop/doll.psd] (PSD with placed layers)
     │                       │
-    │                       └──► photoshop-exporter/proscenio_export.jsx (in Photoshop)
+    │                       └──► apps/photoshop/proscenio_export.jsx (in Photoshop)
     │                               └──► [photoshop/export/]  (gitignored — roundtrip output)
     │                                       ├──► doll.photoshop_exported.json
     │                                       └──► images/<layer>.png
@@ -87,12 +87,12 @@ blender --background examples/doll/doll.blend \
 # -> writes examples/doll/doll.photoshop_manifest.json
 
 # 3. (optional) Build the PSD via the JSX importer in Photoshop:
-#    File > Scripts > Browse... > photoshop-exporter/proscenio_import.jsx
+#    File > Scripts > Browse... > apps/photoshop/proscenio_import.jsx
 #    Pick examples/doll/doll.photoshop_manifest.json.
 #    Output: examples/doll/photoshop/doll.psd
 
 # 4. (optional) Roundtrip-test by running the JSX exporter on the PSD:
-#    File > Scripts > Browse... > photoshop-exporter/proscenio_export.jsx
+#    File > Scripts > Browse... > apps/photoshop/proscenio_export.jsx
 #    Output: examples/doll/photoshop/export/ (gitignored)
 #       - doll.photoshop_exported.json
 #       - images/<layer>.png

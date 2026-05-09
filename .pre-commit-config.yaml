@@ -24,16 +24,16 @@ repos:
       hooks:
           - id: ruff
             args: [--fix]
-            files: ^blender-addon/
+            files: ^apps/blender/
           - id: ruff-format
-            files: ^blender-addon/
+            files: ^apps/blender/
 
     - repo: https://github.com/pre-commit/mirrors-mypy
       rev: v1.13.0
       hooks:
           - id: mypy
-            files: ^blender-addon/
-            args: [--config-file, blender-addon/pyproject.toml]
+            files: ^apps/blender/
+            args: [--config-file, apps/blender/pyproject.toml]
             additional_dependencies: []
             pass_filenames: false
 
@@ -41,9 +41,9 @@ repos:
       rev: 4.3.3
       hooks:
           - id: gdformat
-            files: ^godot-plugin/.*\.gd$
+            files: ^apps/godot/.*\.gd$
           - id: gdlint
-            files: ^godot-plugin/.*\.gd$
+            files: ^apps/godot/.*\.gd$
 
     - repo: https://github.com/python-jsonschema/check-jsonschema
       rev: 0.31.0

@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core import validation  # noqa: E402
 

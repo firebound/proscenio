@@ -9,7 +9,7 @@ extends Node2D
 ## the frame index. Use this fixture when debugging the writer →
 ## [code].proscenio[/code] → importer path for sprite_frame specifically.
 ##
-## See [code].ai/skills/godot-plugin-dev.md[/code] for the full wrapper pattern.
+## See [code].ai/skills/godot-dev.md[/code] for the full wrapper pattern.
 
 @export var default_animation: StringName = "blink"
 @export var autoplay: bool = true

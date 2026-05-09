@@ -57,7 +57,7 @@ We do not write `.tscn` text by hand - `PackedScene.pack()` handles it - but the
 
 <https://docs.blender.org/manual/en/latest/extensions/getting_started.html>
 
-The 4.2+ extension system. Our addon ships under it - see [`blender-addon/blender_manifest.toml`](../../blender-addon/blender_manifest.toml).
+The 4.2+ extension system. Our addon ships under it - see [`apps/blender/blender_manifest.toml`](../../apps/blender/blender_manifest.toml).
 
 ### `bpy` API reference
 

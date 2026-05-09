@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.sprite_frame_math import (  # noqa: E402
     cell_offset_x,

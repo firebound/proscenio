@@ -30,7 +30,7 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ADDON_DIR = REPO_ROOT / "blender-addon"
+ADDON_DIR = REPO_ROOT / "apps/blender"
 ADDON_PACKAGE = "proscenio"
 FIXTURE_DIR = REPO_ROOT / "examples" / "simple_psd"
 MANIFEST_PATH = FIXTURE_DIR / "simple_psd.photoshop_manifest.json"
@@ -49,9 +49,9 @@ def main() -> None:
 
 
 def _load_addon_as_package() -> None:
-    """Register ``blender-addon/`` under sys.modules as ``proscenio``.
+    """Register ``apps/blender/`` under sys.modules as ``proscenio``.
 
-    Mirrors ``blender-addon/tests/run_tests.py``: the addon's submodules
+    Mirrors ``apps/blender/tests/run_tests.py``: the addon's submodules
     use relative imports rooted at the manifest package name, but the
     folder on disk has a hyphen which is not a valid identifier.
     """

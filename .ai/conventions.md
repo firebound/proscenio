@@ -48,7 +48,7 @@ The `.proscenio` format uses `snake_case` keys throughout (`format_version`, `pi
 
 Every concern lives in its own module; `__init__.py` orchestrates registration only.
 
-- `blender-addon/__init__.py` — addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
+- `apps/blender/__init__.py` — addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
 - `operators/`, `panels/`, `properties/` — packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
 - One submodule per topical concern. Examples: `operators/export_flow.py`, `operators/quick_armature.py`, `operators/slot/create.py`, `panels/active_sprite.py`, `panels/outliner.py`. Aim for under ~300 LOC per submodule.
 - Cross-cutting helpers shared by multiple sibling submodules go in `_helpers.py` (panels) or `_paths.py` / `_handlers.py` / `_dynamic_items.py` (private prefix conveys "module-internal, not the public API").
@@ -97,7 +97,7 @@ The repo prefers **failing fast** at the earliest possible layer over discoverin
 ### Editor / IDE
 
 - **VS Code** Pylance + SonarLint + cspell + gdtoolkit live diagnostics. `.vscode/settings.json` carries the project-specific overrides.
-- **Pyright config** at repo root resolves `bpy` / `mathutils` stubs as missing-but-OK and adds `blender-addon` to `extraPaths`.
+- **Pyright config** at repo root resolves `bpy` / `mathutils` stubs as missing-but-OK and adds `apps/blender` to `extraPaths`.
 - **Blender's "Treat warnings as errors"** is too coarse for an addon shipped to users; relying on Pylance + ruff suffices.
 - **Godot project** sets `debug/gdscript/warnings/treat_warnings_as_errors=true` so live editor warnings break the import. `untyped_declaration=2` enforces typing; the four `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` keys are pinned to `0` because `JSON.parse` returns `Variant` by design and the importer/builders downcast — without these pinned, every line at the JSON boundary would need a `# warning-ignore`. Mirrored by `gdlint` in CI. **Do not put comments inside `[debug]` in `project.godot`** — Godot's project-settings serializer mangles them when the editor saves.
 
@@ -107,7 +107,7 @@ A single `.pre-commit-config.yaml` runs all of: `ruff check`, `ruff format`, `my
 
 ### Static analysis
 
-- **`mypy --strict`** for `blender-addon/` and `scripts/`. `Any` only at the `bpy` boundary (documented inline). `pyproject.toml` carries the config.
+- **`mypy --strict`** for `apps/blender/` and `scripts/`. `Any` only at the `bpy` boundary (documented inline). `pyproject.toml` carries the config.
 - **`gdlint`** with strict typing rules in `.gdlintrc`: typed everything, `class_name` required, no untyped signals, no magic numbers.
 - **`ruff check`** with `E`, `F`, `I`, `B`, `UP`, `N`, `RUF`, `SIM` selected.
 - **`cspell`** custom dictionaries under `.cspell/` cover project-specific vocabulary.
@@ -116,8 +116,8 @@ A single `.pre-commit-config.yaml` runs all of: `ruff check`, `ruff format`, `my
 
 The `.proscenio` JSON Schema is the only cross-component truth. It is enforced at **three** points:
 
-1. **Writer output** — `blender-addon/tests/run_tests.py` schema-validates the freshly exported `.proscenio` before diffing against the golden fixture. The exporter cannot ship a document the importer would reject.
-2. **Importer input** — `godot-plugin/addons/proscenio/importer.gd` checks `format_version` and surfaces a clear error per missing field. Future migrators consume the version guard.
+1. **Writer output** — `apps/blender/tests/run_tests.py` schema-validates the freshly exported `.proscenio` before diffing against the golden fixture. The exporter cannot ship a document the importer would reject.
+2. **Importer input** — `apps/godot/addons/proscenio/importer.gd` checks `format_version` and surfaces a clear error per missing field. Future migrators consume the version guard.
 3. **CI fixtures** — `.github/workflows/ci.yml` runs `check-jsonschema` against every `.proscenio` in `examples/` and `tests/fixtures/`.
 
 When v2 lands, the same gate ensures every existing fixture either migrates or breaks loudly — no silent drift.
@@ -140,9 +140,9 @@ Three independent SemVer streams plus one integer schema version:
 
 | Stream | Tag prefix |
 | --- | --- |
-| Photoshop exporter | `photoshop-exporter-vX.Y.Z` |
-| Blender addon | `blender-addon-vX.Y.Z` |
-| Godot plugin | `godot-plugin-vX.Y.Z` |
+| Photoshop exporter | `apps/photoshop-vX.Y.Z` |
+| Blender addon | `apps/blender-vX.Y.Z` |
+| Godot plugin | `apps/godot-vX.Y.Z` |
 
 `schemas/proscenio.schema.json` carries its own integer `format_version`, independent of component versions. Bump only on a breaking change to the document shape.
 

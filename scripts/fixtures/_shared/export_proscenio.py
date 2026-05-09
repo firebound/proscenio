@@ -23,12 +23,12 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ADDON_PATH = REPO_ROOT / "blender-addon"
-ADDON_PACKAGE = "proscenio"  # matches blender-addon/blender_manifest.toml `id`
+ADDON_PATH = REPO_ROOT / "apps/blender"
+ADDON_PACKAGE = "proscenio"  # matches apps/blender/blender_manifest.toml `id`
 
 
 def _load_addon_as_package() -> None:
-    """Register ``blender-addon/`` under sys.modules as ``proscenio``.
+    """Register ``apps/blender/`` under sys.modules as ``proscenio``.
 
     The addon ships as a Blender extension named ``proscenio`` (per its
     manifest), and its submodules use relative imports rooted at that

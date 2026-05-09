@@ -2,7 +2,7 @@
 
 Invoke from the repository root:
 
-    blender --background --python blender-addon/tests/run_tests.py
+    blender --background --python apps/blender/tests/run_tests.py
 
 Walks every fixture under ``examples/*/`` that owns a paired
 ``<name>.blend`` + ``<name>.expected.proscenio``. For each pair, opens
@@ -26,20 +26,21 @@ from typing import Any
 
 import bpy
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-ADDON_PATH = REPO_ROOT / "blender-addon"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+ADDON_PATH = REPO_ROOT / "apps" / "blender"
 ADDON_PACKAGE = "proscenio"
 EXAMPLES_DIR = REPO_ROOT / "examples"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "proscenio.schema.json"
 
 
 def _load_addon_as_package() -> None:
-    """Register ``blender-addon/`` under sys.modules as ``proscenio``.
+    """Register ``apps/blender/`` under sys.modules as ``proscenio``.
 
     The addon's submodules use relative imports rooted at the package
     name declared in its manifest (``proscenio``). The folder on disk
-    has a hyphen which is not a valid identifier, so we install it as a
-    synthetic package under the manifest name.
+    is named ``blender`` -- valid as identifier, but mounting it under
+    the manifest name keeps the package path identical to what the
+    extension loader produces.
     """
     if ADDON_PACKAGE in sys.modules:
         return

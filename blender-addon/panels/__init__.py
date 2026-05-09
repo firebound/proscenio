@@ -561,6 +561,169 @@ class PROSCENIO_UL_actions(bpy.types.UIList):
         row.label(text=f"[{start:.0f}-{end:.0f}]")
 
 
+_OUTLINER_RANK_HIDDEN = 9
+
+
+def _outliner_category_rank(obj: bpy.types.Object) -> int:
+    """Rank the object for the outliner's sort-by-category pass.
+
+    0 = slot Empty (top of the list, drives a slot).
+    1 = slot attachment mesh (rendered indented under its slot).
+    2 = sprite mesh (Proscenio polygon / sprite_frame, parented to bone or floating).
+    3 = armature.
+    9 = irrelevant for Proscenio (cameras, lights, etc.) -- hidden by ``filter_items``.
+    """
+    obj_props = getattr(obj, "proscenio", None)
+    if obj.type == "EMPTY" and obj_props is not None and bool(getattr(obj_props, "is_slot", False)):
+        return 0
+    if obj.type == "ARMATURE":
+        return 3
+    if obj.type == "MESH":
+        parent = obj.parent
+        parent_props = getattr(parent, "proscenio", None) if parent is not None else None
+        if (
+            parent is not None
+            and parent.type == "EMPTY"
+            and parent_props is not None
+            and bool(getattr(parent_props, "is_slot", False))
+        ):
+            return 1
+        return 2
+    return _OUTLINER_RANK_HIDDEN
+
+
+class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
+    """Sprite-centric outliner — slots, attachments, sprite meshes, armatures (5.1.d.4).
+
+    Backs the Proscenio sidebar's outliner panel. Filters ``bpy.data.objects``
+    down to Proscenio-relevant rows, sorts them by category (slots first,
+    attachments indented under their slot, then sprite meshes, then
+    armatures), and supports a substring text filter + a 'favorites only'
+    toggle. Replaces / supplements Blender's native outliner for big rigs
+    (doll fixture: 64 bones + 22 sprite meshes + N slots).
+    """
+
+    bl_idname = "PROSCENIO_UL_sprite_outliner"
+
+    def draw_item(
+        self,
+        _context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        _data: bpy.types.AnyType,
+        item: bpy.types.AnyType,
+        _icon: int,
+        _active_data: bpy.types.AnyType,
+        _active_propname: str,
+    ) -> None:
+        obj = item
+        obj_props = getattr(obj, "proscenio", None)
+        is_fav = bool(obj_props is not None and getattr(obj_props, "is_outliner_favorite", False))
+        rank = _outliner_category_rank(obj)
+        if rank == 0:
+            row_icon = "LINK_BLEND"
+            label = f"[slot] {obj.name}"
+        elif rank == 1:
+            row_icon = "OBJECT_DATAMODE"
+            label = f"  ↳ {obj.name}"
+        elif rank == 2:
+            row_icon = "MESH_DATA"
+            parent_bone = obj.parent_bone if obj.parent and obj.parent_type == "BONE" else ""
+            label = f"{obj.name}{' @ ' + parent_bone if parent_bone else ''}"
+        elif rank == 3:
+            row_icon = "ARMATURE_DATA"
+            label = f"[arm] {obj.name}"
+        else:
+            row_icon = "OBJECT_DATA"
+            label = obj.name
+        row = layout.row(align=True)
+        op = row.operator(
+            "proscenio.select_outliner_object",
+            text=label,
+            icon=row_icon,
+            emboss=False,
+        )
+        op.obj_name = obj.name
+        fav = row.operator(
+            "proscenio.toggle_outliner_favorite",
+            text="",
+            icon="SOLO_ON" if is_fav else "SOLO_OFF",
+            emboss=False,
+        )
+        fav.obj_name = obj.name
+
+    def filter_items(
+        self,
+        context: bpy.types.Context,
+        data: bpy.types.AnyType,
+        propname: str,
+    ) -> tuple[list[int], list[int]]:
+        """Hide non-Proscenio objects, apply text + favorites filter, sort by category."""
+        objects = list(getattr(data, propname))
+        scene_props = getattr(context.scene, "proscenio", None)
+        flt_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
+        favorites_only = bool(
+            scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
+        )
+        n = len(objects)
+        flt_flags = [0] * n
+        ranks: list[int] = [0] * n
+        for i, obj in enumerate(objects):
+            rank = _outliner_category_rank(obj)
+            ranks[i] = rank
+            if rank == _OUTLINER_RANK_HIDDEN:
+                continue
+            obj_props = getattr(obj, "proscenio", None)
+            is_fav = bool(
+                obj_props is not None and getattr(obj_props, "is_outliner_favorite", False)
+            )
+            if favorites_only and not is_fav:
+                continue
+            if flt_text and flt_text not in obj.name.lower():
+                continue
+            flt_flags[i] = self.bitflag_filter_item
+        # Sort: rank ascending, name ascending. Slots float to the top, their
+        # attachments come second so the indented children land right after.
+        order = sorted(range(n), key=lambda i: (ranks[i], objects[i].name.lower()))
+        flt_neworder = [0] * n
+        for new_i, orig_i in enumerate(order):
+            flt_neworder[orig_i] = new_i
+        return flt_flags, flt_neworder
+
+
+class PROSCENIO_PT_outliner(bpy.types.Panel):
+    """Sprite-centric outliner — replaces Blender's outliner for big rigs (5.1.d.4)."""
+
+    bl_label = "Outliner"
+    bl_idname = "PROSCENIO_PT_outliner"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_main"
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        _draw_subpanel_header(self.layout, "outliner", "outliner")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is None:
+            layout.label(text="Proscenio scene props not registered", icon="ERROR")
+            return
+        row = layout.row(align=True)
+        row.prop(scene_props, "outliner_filter", text="", icon="VIEWZOOM")
+        row.prop(scene_props, "outliner_show_favorites", text="", icon="SOLO_ON")
+        layout.template_list(
+            "PROSCENIO_UL_sprite_outliner",
+            "",
+            bpy.data,
+            "objects",
+            scene_props,
+            "active_outliner_index",
+            rows=8,
+        )
+
+
 class PROSCENIO_PT_animation(bpy.types.Panel):
     """Read-only summary of the actions the writer would emit."""
 
@@ -789,6 +952,8 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.apply_packed_atlas", "Apply Packed Atlas"),
     ("proscenio.unpack_atlas", "Unpack Atlas"),
     ("proscenio.select_issue_object", "Select Issue Object"),
+    ("proscenio.select_outliner_object", "Select Outliner Object"),
+    ("proscenio.toggle_outliner_favorite", "Toggle Outliner Favorite"),
     ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
 )
 
@@ -812,10 +977,12 @@ class PROSCENIO_PT_diagnostics(bpy.types.Panel):
 _classes: tuple[type, ...] = (
     PROSCENIO_UL_bones,
     PROSCENIO_UL_actions,
+    PROSCENIO_UL_sprite_outliner,
     PROSCENIO_PT_main,
     PROSCENIO_PT_active_sprite,
     PROSCENIO_PT_active_slot,
     PROSCENIO_PT_skeleton,
+    PROSCENIO_PT_outliner,
     PROSCENIO_PT_animation,
     PROSCENIO_PT_atlas,
     PROSCENIO_PT_validation,

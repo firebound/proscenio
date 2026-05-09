@@ -283,6 +283,68 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
+    """Select + activate the object clicked in the Proscenio outliner (5.1.d.4).
+
+    Decoupled from ``select_issue_object`` because that operator's tooltip
+    references validation; surfacing it on outliner rows would mislead the
+    user into thinking the row carried an open issue.
+    """
+
+    bl_idname = "proscenio.select_outliner_object"
+    bl_label = "Proscenio: Select Outliner Object"
+    bl_description = "Selects and activates the object represented by this outliner row"
+    bl_options: ClassVar[set[str]] = {"REGISTER"}
+
+    obj_name: StringProperty(  # type: ignore[valid-type]
+        name="Object name",
+        default="",
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        if not self.obj_name:
+            return {"CANCELLED"}
+        obj = bpy.data.objects.get(self.obj_name)
+        if obj is None:
+            self.report({"WARNING"}, f"Proscenio: object '{self.obj_name}' not found")
+            return {"CANCELLED"}
+        for other in context.scene.objects:
+            other.select_set(False)
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):
+    """Flip the outliner favorite flag on a target object (5.1.d.4)."""
+
+    bl_idname = "proscenio.toggle_outliner_favorite"
+    bl_label = "Proscenio: Toggle Outliner Favorite"
+    bl_description = (
+        "Pin / unpin this object in the Proscenio outliner. "
+        "Pinned objects survive the 'Favorites only' filter."
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    obj_name: StringProperty(  # type: ignore[valid-type]
+        name="Object name",
+        default="",
+    )
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        if not self.obj_name:
+            return {"CANCELLED"}
+        obj = bpy.data.objects.get(self.obj_name)
+        if obj is None:
+            return {"CANCELLED"}
+        props = getattr(obj, "proscenio", None)
+        if props is None:
+            self.report({"WARNING"}, "Proscenio: PropertyGroup not registered on this object")
+            return {"CANCELLED"}
+        props.is_outliner_favorite = not bool(props.is_outliner_favorite)
+        return {"FINISHED"}
+
+
 _PREVIEW_CAM_NAME = "Proscenio.PreviewCam"
 _IK_CONSTRAINT_NAME = "Proscenio IK"
 
@@ -1661,6 +1723,8 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_export_godot,
     PROSCENIO_OT_reexport_godot,
     PROSCENIO_OT_select_issue_object,
+    PROSCENIO_OT_select_outliner_object,
+    PROSCENIO_OT_toggle_outliner_favorite,
     PROSCENIO_OT_create_ortho_camera,
     PROSCENIO_OT_toggle_ik_chain,
     PROSCENIO_OT_reproject_sprite_uv,

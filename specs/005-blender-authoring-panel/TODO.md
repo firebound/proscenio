@@ -178,17 +178,18 @@ Branch: `feat/spec-005.1.d.3-quick-armature`. COA Tools' rapid skeleton-creation
 - [x] `core/help_topics.py` adds `quick_armature` topic with the click-drag flow + Shift-modifier behavior.
 - [ ] Manual smoke test: empty scene -> Quick Armature -> draw 5 bones in chain -> verify hierarchy in outliner. *(Modal -- only exercisable interactively, no headless equivalent.)*
 
-### 5.1.d.4 — Spriteobject custom outliner (planned)
+### 5.1.d.4 — Spriteobject custom outliner (shipped)
 
 Branch: `feat/spec-005.1.d.4-outliner`. `UIList` that lists sprite_objects + armatures + bones in a sprite-centric hierarchical browser with search + filter. Replaces / supplements Blender's native outliner for big rigs (doll fixture has 64 bones + 22 sprite meshes -- finding "brow.L mesh" requires scroll + expand + filter every time).
 
-- [ ] `PROSCENIO_UL_sprite_outliner` `bpy.types.UIList`: nested rows for slot Empties (with attachment children indented), then sprite meshes (grouped by parent bone), then armature bones (collapsed by default). Text filter via `bl_filter_string`.
-- [ ] New top-level subpanel `PROSCENIO_PT_outliner` (or section inside Skeleton -- TBD on layout). Hosts the UIList + filter input + "Show favorites only" toggle.
-- [ ] `ProscenioSceneProps` gains `outliner_filter: StringProperty` + `outliner_show_favorites: BoolProperty` + per-object `proscenio.is_outliner_favorite: BoolProperty`.
-- [ ] Click row → `PROSCENIO_OT_select_object` (similar pattern to `select_issue_object` from validation panel).
-- [ ] `core/feature_status.py` adds `outliner` row (BLENDER_ONLY).
-- [ ] `core/help_topics.py` adds `outliner` topic.
-- [ ] Manual smoke test: doll fixture -> outliner -> filter "brow" -> click row -> active object becomes brow.L.
+- [x] `PROSCENIO_UL_sprite_outliner` `bpy.types.UIList`: feeds `bpy.data.objects`; `filter_items` hides non-Proscenio rows + applies the substring filter + the favorites toggle, then sorts by category (slots first with `[slot]` prefix, attachments indented with `↳`, sprite meshes second, armatures last with `[arm]` prefix). Text filter is live -- no enter required.
+- [x] New top-level subpanel `PROSCENIO_PT_outliner` (sibling of Skeleton, between Skeleton + Animation). Hosts a one-row toolbar (filter input + favorites toggle) + the UIList.
+- [x] `ProscenioSceneProps` gains `outliner_filter: StringProperty` + `outliner_show_favorites: BoolProperty` + `active_outliner_index: IntProperty`. `ProscenioObjectProps` gains `is_outliner_favorite: BoolProperty`.
+- [x] Click row → `PROSCENIO_OT_select_outliner_object` (decoupled from `select_issue_object` so the tooltip does not lie about validation context).
+- [x] Click SOLO icon next to a row → `PROSCENIO_OT_toggle_outliner_favorite` flips `is_outliner_favorite`.
+- [x] `core/feature_status.py` adds `outliner` row (BLENDER_ONLY).
+- [x] `core/help_topics.py` adds `outliner` topic with What/How/Layout/Where sections.
+- [ ] Manual smoke test: doll fixture -> outliner -> filter "brow" -> click row -> active object becomes brow.L. Click SOLO on brow.L -> toggle 'Favorites only' -> verify only brow.L survives. *(Manual; no headless equivalent for UIList draw.)*
 
 ### 5.1.d.5 — Feature-status badges + in-panel help (in flight)
 

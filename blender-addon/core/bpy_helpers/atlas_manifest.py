@@ -28,8 +28,10 @@ def read_manifest(manifest_path: Path) -> tuple[int, int, int, dict[str, Placeme
     """Inverse of ``compose.write_manifest``. Tolerates the v1 (no slice) format.
 
     Returns ``(atlas_w, atlas_h, padding, placements)``. Entries from v1
-    manifests get ``slice == slot`` and ``source_w/h == slot.w/h`` so
-    the apply operator's slice-aware code path stays correct.
+    manifests default ``slice`` to ``Rect(0, 0, slot.w, slot.h)`` and
+    ``source_w/h`` to ``slot.w/h`` so the apply operator's slice-aware
+    code path stays correct (v1 implicitly assumed the slice covered
+    the full source from its origin).
     """
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     placements: dict[str, Placement] = {}

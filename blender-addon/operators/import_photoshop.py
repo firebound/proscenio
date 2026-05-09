@@ -93,3 +93,16 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
             msg += f"; composed {len(result.spritesheets)} spritesheet(s)"
         self.report({"INFO"}, msg)
         return {"FINISHED"}
+
+
+_classes: tuple[type, ...] = (PROSCENIO_OT_import_photoshop,)
+
+
+def register() -> None:
+    for cls in _classes:
+        bpy.utils.register_class(cls)
+
+
+def unregister() -> None:
+    for cls in reversed(_classes):
+        bpy.utils.unregister_class(cls)

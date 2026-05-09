@@ -1,4 +1,4 @@
-"""Proscenio property groups (SPEC 005).
+"""Proscenio property groups (SPEC 005, repackaged in SPEC 009 wave 9.7).
 
 These property groups expose typed widgets for the addon panel. Their
 values round-trip with the legacy Custom Properties on the same data
@@ -7,12 +7,25 @@ values without manual re-entry, and power users can keep editing raw
 Custom Properties if they prefer.
 
 Contract:
-- The PropertyGroup is the editor-side source of truth (typed, validated,
-  surfaced in the panel).
-- Each property has an `update` callback that mirrors the value to the
-  Custom Property the writer reads (`proscenio_type`, etc.).
-- On `register()`, every existing Custom Property is hydrated into the
-  PropertyGroup so legacy data shows up in the new UI.
+
+- The PropertyGroup is the editor-side source of truth (typed,
+  validated, surfaced in the panel).
+- Each property has an ``update`` callback that mirrors the value to
+  the Custom Property the writer reads (``proscenio_type``, etc).
+- On ``register()``, every existing Custom Property is hydrated into
+  the PropertyGroup so legacy data shows up in the new UI.
+
+Submodules per concern:
+
+- ``_handlers.py``       persistent ``bpy.app.handlers`` (load_post,
+                         save_pre) + the deferred-hydrate timer job.
+- ``_dynamic_items.py``  EnumProperty dynamic-items callbacks +
+                         PointerProperty poll filters + the GC-pinning
+                         items cache.
+
+The PropertyGroup classes live here because their order of definition
++ their cross-references to ``_dynamic_items`` callbacks is tightest
+when colocated.
 """
 
 from __future__ import annotations
@@ -35,19 +48,15 @@ from bpy.types import PropertyGroup, Scene
 from ..core.hydrate import (  # type: ignore[import-not-found]
     OBJECT_PROPS as _OBJECT_PROPS,  # noqa: F401
 )
-from ..core.hydrate import (
-    hydrate_object,
-)
-from ..core.mirror import (  # type: ignore[import-not-found]
-    mirror_all_fields,
-)
+from ._dynamic_items import driver_bone_items, is_armature, on_any_update
+from ._handlers import deferred_hydrate, on_blend_load, on_blend_save_pre
 
 SPRITE_TYPE_ITEMS = (
-    ("polygon", "Polygon", "Cutout-style sprite — Polygon2D vertices + UV (default)", 0),
+    ("polygon", "Polygon", "Cutout-style sprite -- Polygon2D vertices + UV (default)", 0),
     (
         "sprite_frame",
         "Sprite Frame",
-        "Spritesheet sprite — Sprite2D with hframes x vframes grid",
+        "Spritesheet sprite -- Sprite2D with hframes x vframes grid",
         1,
     ),
 )
@@ -68,7 +77,7 @@ REGION_MODE_ITEMS = (
 )
 
 DRIVER_TARGET_ITEMS = (
-    ("frame", "Frame index", "Sprite-frame cell — driven 0..hframes*vframes-1", 0),
+    ("frame", "Frame index", "Sprite-frame cell -- driven 0..hframes*vframes-1", 0),
     ("region_x", "Region X", "Texture region origin X (0..1)", 1),
     ("region_y", "Region Y", "Texture region origin Y (0..1)", 2),
     ("region_w", "Region W", "Texture region width (0..1)", 3),
@@ -85,65 +94,15 @@ DRIVER_SOURCE_AXIS_ITEMS = (
 )
 
 
-def _is_armature(_self: object, obj: bpy.types.Object) -> bool:
-    """PointerProperty poll: only allow ARMATURE objects in the picker."""
-    return bool(obj.type == "ARMATURE")
-
-
-# Module-level cache: Blender's EnumProperty with a callable ``items=`` GCs
-# the returned list as soon as the callback exits, which corrupts the tuple
-# strings shown in the UI ("Detected EnumProperty items mismatch" + garbled
-# labels). Keeping the per-armature list reachable here pins the references
-# for the lifetime of the addon.
-_DRIVER_BONE_ITEMS_CACHE: dict[int, list[tuple[str, str, str]]] = {}
-_NO_ARMATURE_ITEMS: tuple[tuple[str, str, str], ...] = (("", "(pick an armature first)", ""),)
-_NO_BONES_ITEMS: tuple[tuple[str, str, str], ...] = (("", "(armature has no bones)", ""),)
-
-
-def _driver_bone_items(
-    self: ProscenioObjectProps,
-    _context: bpy.types.Context | None,
-) -> list[tuple[str, str, str]] | tuple[tuple[str, str, str], ...]:
-    """Dynamic items for the ``driver_source_bone`` dropdown.
-
-    Walks the picked ``driver_source_armature`` and lists every bone by
-    name. Falls back to a sentinel placeholder when no armature is picked
-    or the armature has no bones — keeps the dropdown clickable instead
-    of vanishing the whole row.
-    """
-    armature = self.driver_source_armature
-    if armature is None:
-        return _NO_ARMATURE_ITEMS
-    bones = getattr(getattr(armature, "data", None), "bones", None)
-    if bones is None or len(bones) == 0:
-        return _NO_BONES_ITEMS
-    items = [(bone.name, bone.name, "") for bone in bones]
-    _DRIVER_BONE_ITEMS_CACHE[id(armature)] = items
-    return items
-
-
-def _on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    """Mirror every field on any panel edit.
-
-    Bug fix (post-005.1.c.1): individual per-field callbacks left the CP
-    set partial — defaults never fired their callback, so Reload Scripts
-    restored only the field the user touched. Mirroring all 10 fields on
-    every update keeps the CP snapshot complete after the first interaction.
-    """
-    obj = context.active_object
-    if obj is not None:
-        mirror_all_fields(self, obj)
-
-
 class ProscenioObjectProps(PropertyGroup):
-    """Per-Object Proscenio settings — one PropertyGroup per mesh."""
+    """Per-Object Proscenio settings -- one PropertyGroup per mesh."""
 
     sprite_type: EnumProperty(  # type: ignore[valid-type]
         name="Sprite type",
-        description="Rendering path for this sprite — see SPEC 002",
+        description="Rendering path for this sprite -- see SPEC 002",
         items=SPRITE_TYPE_ITEMS,
         default="polygon",
-        update=_on_any_update,
+        update=on_any_update,
     )
     hframes: IntProperty(  # type: ignore[valid-type]
         name="Horizontal frames",
@@ -151,7 +110,7 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_on_any_update,
+        update=on_any_update,
     )
     vframes: IntProperty(  # type: ignore[valid-type]
         name="Vertical frames",
@@ -159,21 +118,23 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_on_any_update,
+        update=on_any_update,
     )
     frame: IntProperty(  # type: ignore[valid-type]
         name="Initial frame",
-        description="Frame index shown at rest pose (sprite_frame only). "
-        "Animation tracks override at runtime.",
+        description=(
+            "Frame index shown at rest pose (sprite_frame only). "
+            "Animation tracks override at runtime."
+        ),
         default=0,
         min=0,
-        update=_on_any_update,
+        update=on_any_update,
     )
     centered: BoolProperty(  # type: ignore[valid-type]
         name="Centered",
         description="Whether the Sprite2D's offset centers on its origin",
         default=True,
-        update=_on_any_update,
+        update=on_any_update,
     )
     region_mode: EnumProperty(  # type: ignore[valid-type]
         name="Region mode",
@@ -184,7 +145,7 @@ class ProscenioObjectProps(PropertyGroup):
         ),
         items=REGION_MODE_ITEMS,
         default="auto",
-        update=_on_any_update,
+        update=on_any_update,
     )
     region_x: FloatProperty(  # type: ignore[valid-type]
         name="X",
@@ -193,7 +154,7 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=_on_any_update,
+        update=on_any_update,
     )
     region_y: FloatProperty(  # type: ignore[valid-type]
         name="Y",
@@ -202,7 +163,7 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=_on_any_update,
+        update=on_any_update,
     )
     region_w: FloatProperty(  # type: ignore[valid-type]
         name="Width",
@@ -211,7 +172,7 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=_on_any_update,
+        update=on_any_update,
     )
     region_h: FloatProperty(  # type: ignore[valid-type]
         name="Height",
@@ -220,7 +181,7 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=_on_any_update,
+        update=on_any_update,
     )
     material_isolated: BoolProperty(  # type: ignore[valid-type]
         name="Isolated material",
@@ -231,7 +192,7 @@ class ProscenioObjectProps(PropertyGroup):
             "fresnel, etc)."
         ),
         default=False,
-        update=_on_any_update,
+        update=on_any_update,
     )
 
     driver_target: EnumProperty(  # type: ignore[valid-type]
@@ -244,12 +205,12 @@ class ProscenioObjectProps(PropertyGroup):
         name="Driver armature",
         description="Armature whose pose bone supplies the driver value",
         type=_Object,
-        poll=_is_armature,
+        poll=is_armature,
     )
     driver_source_bone: EnumProperty(  # type: ignore[valid-type]
         name="Driver bone",
         description="Pose bone whose transform feeds the driver",
-        items=_driver_bone_items,
+        items=driver_bone_items,
     )
     driver_source_axis: EnumProperty(  # type: ignore[valid-type]
         name="Driver axis",
@@ -314,12 +275,14 @@ class ProscenioValidationIssue(PropertyGroup):
 
 
 class ProscenioSceneProps(PropertyGroup):
-    """Scene-level Proscenio settings — sticky export path, default ppu."""
+    """Scene-level Proscenio settings -- sticky export path, default ppu."""
 
     last_export_path: StringProperty(  # type: ignore[valid-type]
         name="Last export path",
-        description="Sticky destination for one-click re-export. "
-        "Saved with the .blend so the document carries its export target.",
+        description=(
+            "Sticky destination for one-click re-export. "
+            "Saved with the .blend so the document carries its export target."
+        ),
         subtype="FILE_PATH",
         default="",
     )
@@ -365,7 +328,9 @@ class ProscenioSceneProps(PropertyGroup):
     )
     pack_pot: BoolProperty(  # type: ignore[valid-type]
         name="Power-of-two atlas",
-        description="Round packed atlas dimensions up to a power of two (legacy GPU optimization)",
+        description=(
+            "Round packed atlas dimensions up to a power of two (legacy GPU optimization)"
+        ),
         default=False,
     )
     outliner_filter: StringProperty(  # type: ignore[valid-type]
@@ -392,68 +357,6 @@ class ProscenioSceneProps(PropertyGroup):
     )
 
 
-def _hydrate_existing_objects() -> None:
-    """Walk every object in the current ``bpy.data`` and hydrate.
-
-    During Blender's initial startup, ``bpy.data`` is wrapped in
-    ``_RestrictData`` and accessing ``.objects`` raises
-    ``AttributeError``. The function bails out silently in that case;
-    the ``load_post`` handler retries once the current `.blend` finishes
-    loading.
-    """
-    try:
-        objects = list(bpy.data.objects)
-    except AttributeError:
-        return
-    for obj in objects:
-        hydrate_object(obj)
-
-
-@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
-def _on_blend_load(_filepath: str) -> None:
-    """Re-hydrate every time a `.blend` finishes loading.
-
-    Persists across Blender's internal reloads so the handler does not
-    drop off when the user opens a different file.
-    """
-    _hydrate_existing_objects()
-
-
-@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
-def _on_blend_save_pre(_filepath: str) -> None:
-    """Flush every PropertyGroup field to its Custom Property mirror before save.
-
-    Bug fix (post-005.1.c.1): callbacks only fire on user interaction, so
-    `.blend` files can be saved with a partial Custom Property snapshot if
-    the user authored values via Python / drivers / handlers without going
-    through the panel. The save handler walks every object with a Proscenio
-    PropertyGroup and writes all 10 mirror fields, guaranteeing the saved
-    `.blend` round-trips cleanly through Reload Scripts.
-    """
-    try:
-        objects = list(bpy.data.objects)
-    except AttributeError:
-        return
-    for obj in objects:
-        props = getattr(obj, "proscenio", None)
-        if props is None:
-            continue
-        mirror_all_fields(props, obj)
-
-
-def _deferred_hydrate() -> None:
-    """Run hydration one tick after register().
-
-    Blender's PointerProperty wiring is not fully established the moment
-    register() returns — assigning to the PropertyGroup inside register
-    sometimes writes to a stub that is dropped before the data block is
-    materialized. A zero-interval timer schedules the hydration for
-    after the addon-enable cycle completes, when the property data is
-    real and persistent.
-    """
-    _hydrate_existing_objects()
-
-
 _classes: tuple[type, ...] = (
     ProscenioObjectProps,
     ProscenioValidationIssue,
@@ -466,24 +369,24 @@ def register() -> None:
         bpy.utils.register_class(cls)
     _Object.proscenio = PointerProperty(type=ProscenioObjectProps)
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
-    if _on_blend_load not in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.append(_on_blend_load)
-    if _on_blend_save_pre not in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.append(_on_blend_save_pre)
+    if on_blend_load not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(on_blend_load)
+    if on_blend_save_pre not in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.append(on_blend_save_pre)
     # Defer hydration to the next tick. Two reasons:
     #   1. During initial Blender startup, bpy.data is _RestrictData here.
     #   2. Mid-session enable: PointerProperty wiring stabilizes only
     #      after register() returns. Setting PropertyGroup fields inline
-    #      writes to a transient stub that drops before the data block is
-    #      committed.
-    bpy.app.timers.register(_deferred_hydrate, first_interval=0.0)
+    #      writes to a transient stub that drops before the data block
+    #      is committed.
+    bpy.app.timers.register(deferred_hydrate, first_interval=0.0)
 
 
 def unregister() -> None:
-    if _on_blend_save_pre in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.remove(_on_blend_save_pre)
-    if _on_blend_load in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.remove(_on_blend_load)
+    if on_blend_save_pre in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.remove(on_blend_save_pre)
+    if on_blend_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(on_blend_load)
     if hasattr(Scene, "proscenio"):
         del Scene.proscenio
     if hasattr(_Object, "proscenio"):

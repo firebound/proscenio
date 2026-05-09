@@ -18,7 +18,7 @@ export const About = ({ dialog }) => { // NOSONAR S6774: scaffold; PropTypes wil
         <webview id="webview" width="100%" height="360px" src="https://www.google.com"></webview>
         <sp-body class="well">
             <sp-icon name="ui:InfoSmall" size="s"></sp-icon>
-            We've also included the `WC` component and a couple of controllers. You
+            We've also included the `WebComponent` component and a couple of controllers. You
             do not need to use these in your own projects, but you are welcome to do so.
         </sp-body>
         <sp-detail>VERSIONS</sp-detail>

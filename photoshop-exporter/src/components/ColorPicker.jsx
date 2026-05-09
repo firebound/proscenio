@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 
-import { WC } from "../components/WC.jsx";
+import { WebComponent } from "../components/WebComponent.jsx";
 
 import "./ColorPicker.css";
 
@@ -37,7 +37,7 @@ export const ColorPicker = () => {
     return (
         <div className="colorPicker">
                 <div className="color" style={{backgroundColor: `rgb(${R}, ${G}, ${B})`}}></div>
-                <WC onInput={updateColor}>
+                <WebComponent onInput={updateColor}>
                     <div className="sliderWithInput">
                         <div className="filledRange">
                         <div className="gradient red" style={{background:`linear-gradient(to right, rgb(0, ${G}, ${B}), rgb(255, ${G}, ${B}))`}}></div>
@@ -65,7 +65,7 @@ export const ColorPicker = () => {
                         </div>
                         <sp-textfield ref={_txtB} data-part="B" type="number" value={B} min={0} max={255}></sp-textfield>
                     </div>
-                </WC>
+                </WebComponent>
             </div>
         );
     }

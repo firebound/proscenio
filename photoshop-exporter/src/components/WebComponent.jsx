@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-export const WC = ({ children, ...rest }) => { // NOSONAR S6774,S6770: scaffold; PropTypes + naming will arrive with TypeScript port (SPEC 010)
+export const WebComponent = ({ children, ...rest }) => { // NOSONAR S6774: scaffold; PropTypes will arrive with TypeScript port (SPEC 010)
     const elRef = useRef(null);
 
     const handleEvent = (evt) => {

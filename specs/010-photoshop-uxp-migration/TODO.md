@@ -33,9 +33,23 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 - [x] `@types/react`, `@types/react-dom`, `typescript`, `@babel/preset-typescript` in `package.json`.
 - [x] Webpack config handles `.ts` / `.tsx` / `.js` / `.jsx` via `@babel/preset-typescript`.
 - [x] `pnpm run typecheck` script (`tsc --noEmit`).
+- [x] Replace deprecated `@babel/plugin-proposal-object-rest-spread` with `@babel/plugin-transform-object-rest-spread`.
 - [ ] Add UXP types (Adobe ships a typings package - confirm exact name).
 - [ ] Rename `src/index.jsx` → `src/index.tsx`.
 - [ ] CI: `lint-photoshop` job stub running typecheck only.
+
+## Wave 10.1.x - Adobe scaffold modernization (follow-up)
+
+The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.1 lands, sweep these:
+
+- [ ] `babel-loader` 8 → 10
+- [ ] `clean-webpack-plugin` 2 → 4
+- [ ] `copy-webpack-plugin` 5 → 14 (large API change; rewrite the `CopyPlugin` block in `webpack.config.js`)
+- [ ] `css-loader` 6 → 7
+- [ ] `style-loader` 1 → 4
+- [ ] `nodemon` 2 → 3
+- [ ] Replace `file-loader` with webpack 5 asset modules (file-loader is deprecated)
+- [ ] Audit `resolutions` for `acorn-with-stage3`: webpack 5.88+ ships modern acorn natively; the override may be obsolete and removable. Convert to `pnpm.overrides` if still needed.
 
 ## Wave 10.2 - Layer walk + manifest builder
 

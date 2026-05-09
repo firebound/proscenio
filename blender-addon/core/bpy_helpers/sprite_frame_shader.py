@@ -1,20 +1,14 @@
 """Sprite_frame preview shader-node group builder (SPEC 004 D13).
 
-Splits into two halves:
+Bpy graph builder: assembles the ``Proscenio.SpriteFrameSlicer`` node
+group + wires drivers from ``obj.proscenio.frame / hframes / vframes``
+onto the matching shader inputs. Invoked from the SPEC 004 panel
+operator.
 
-- **Pure-Python helpers** (``cell_offset_x``, ``cell_offset_y``,
-  ``cell_size``) that compute the UV slicing math given a frame index +
-  hframes / vframes. Bpy-free, unit-testable.
-- **Bpy graph builder** (``ensure_slicer_group`` /
-  ``apply_slicer_to_material`` / ``remove_slicer_from_material``) that
-  assembles the node tree + wires drivers from
-  ``obj.proscenio.frame / hframes / vframes`` onto the matching shader
-  inputs. Invoked from the SPEC 004 panel operator.
-
-Why a separate module: the math is independent of Blender's shader
-graph, and ``operators/`` would otherwise keep growing. Keeping the
-graph builder out of ``panels/`` avoids draw-time coupling to bpy
-material nodes.
+The pure-Python cell math (``cell_size``, ``cell_offset_x``,
+``cell_offset_y``) lives in ``core.sprite_frame_math`` -- bpy-free and
+exercised by pytest directly. Wave 9.10 moved it out so this module
+stays focused on the bpy node tree.
 """
 
 from __future__ import annotations
@@ -28,49 +22,6 @@ _SOCK_UV = "UV"
 _SOCK_FRAME = "Frame"
 _SOCK_HFRAMES = "H Frames"
 _SOCK_VFRAMES = "V Frames"
-
-
-# --------------------------------------------------------------------------- #
-# Pure-Python math (unit-testable)
-# --------------------------------------------------------------------------- #
-
-
-def cell_size(hframes: int, vframes: int) -> tuple[float, float]:
-    """Per-cell UV span as ``(width, height)``.
-
-    Falls back to ``(1, 1)`` when either dimension is non-positive so the
-    shader graph never divides by zero. The validation pass surfaces the
-    user-facing error separately.
-    """
-    safe_h = max(1, int(hframes))
-    safe_v = max(1, int(vframes))
-    return (1.0 / safe_h, 1.0 / safe_v)
-
-
-def cell_offset_x(frame: int, hframes: int) -> float:
-    """U origin of the cell at ``frame`` in a ``hframes``-wide grid."""
-    safe_h = max(1, int(hframes))
-    column = int(frame) % safe_h
-    return column / safe_h
-
-
-def cell_offset_y(frame: int, hframes: int, vframes: int) -> float:
-    """V origin of the cell at ``frame`` in an ``hframes`` x ``vframes`` grid.
-
-    Returns the *Blender* UV origin (bottom-up). Frames advance left-to-right
-    then top-to-bottom; the V origin flips so frame 0 sits at the top of the
-    atlas, matching how authors usually paint spritesheets.
-    """
-    safe_h = max(1, int(hframes))
-    safe_v = max(1, int(vframes))
-    row = (int(frame) // safe_h) % safe_v
-    cell_h = 1.0 / safe_v
-    return 1.0 - (row + 1) * cell_h
-
-
-# --------------------------------------------------------------------------- #
-# Bpy graph builder
-# --------------------------------------------------------------------------- #
 
 
 def ensure_slicer_group(node_groups: Any) -> Any:

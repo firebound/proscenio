@@ -1,8 +1,9 @@
-"""Unit tests for the SPEC 004 D13 sprite_frame preview shader math.
+"""Unit tests for the SPEC 004 D13 sprite_frame preview cell math.
 
-Pure pytest, no Blender. Covers the pure-Python helpers that compute
-the per-cell UV slicing math; the bpy graph builder is exercised
-manually on the doll fixture.
+Pure pytest, no Blender. Covers the bpy-free helpers in
+``core.sprite_frame_math`` that compute the per-cell UV slicing math;
+the bpy graph builder in ``core.bpy_helpers.sprite_frame_shader`` is
+exercised manually on the doll fixture.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "blender-addon"))
 
-from core.bpy_helpers.sprite_frame_shader import (  # noqa: E402
+from core.sprite_frame_math import (  # noqa: E402
     cell_offset_x,
     cell_offset_y,
     cell_size,

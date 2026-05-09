@@ -1051,8 +1051,7 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
     pose_name: StringProperty(  # type: ignore[valid-type]
         name="Pose name",
         description=(
-            "Asset name. Empty string falls back to '<action>.<frame>' "
-            "or '<armature>.<frame>'."
+            "Asset name. Empty string falls back to '<action>.<frame>' or '<armature>.<frame>'."
         ),
         default="",
     )

@@ -202,7 +202,13 @@ Closes the "what is godot-ready vs blender-only vs planned" discoverability gap 
 - [x] `tests/test_feature_status.py` — 7 pytest assertions (badge metadata + dispatch + fallback + subpanel-id coverage + duplicate-key guard).
 - [x] `tests/test_help_topics.py` — 8 pytest assertions, including a `see_also` cross-reference check that fails CI if a help topic points at a deleted/renamed `specs/<NNN-slug>/` directory.
 
-## Defer (lower-priority polish — see `RESEARCH.md` matrix)
+### 5.1.d.6 — Quickstart + skill cross-refs (shipped)
+
+Branch: `feat/spec-005.1.d.6-readme-polish`. Final pass after 5.1.d.1–.4 lands, so the READMEs and skills can reference the new shortcuts as concrete examples instead of TODO stubs.
+
+- [x] `README.md` Quickstart expanded into 7 ordered authoring steps: Photoshop import, rig + Quick Armature, per-sprite knobs + Drive from Bone, slot system, outliner, validate/export/wrap, iterate. Cross-links to skills + SPEC 003 + every example fixture.
+- [x] `.ai/skills/blender-addon-dev.md` "Authoring sprites in the panel" section refreshed: every subpanel now lists its 5.1.d.x shortcut, status-badge + help-popup convention is documented at the top, every operator is linked back to its SPEC sub-wave id.
+- [x] No code changes -- pure docs PR. Lint runs clean by virtue of touching only `*.md`.
 
 - Edge-extend padding pixels (currently transparent; may show bleed at bilinear filtering with mip-maps).
 - Vertex weight visualization overlay.

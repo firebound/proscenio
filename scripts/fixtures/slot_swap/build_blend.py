@@ -194,19 +194,16 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     """Empty parented to the arm bone tip; flagged as a slot.
 
-    Positioned visually so the weapon hovers above the middle of the
-    arm sprite with a clear vertical gap, mirroring a hand+weapon
-    layout in 2D RPG iconography.
-
-    - X = +arm_w/2: slot Empty horizontally centered over the arm
-      sprite (arm extends from X=0 to X=arm_w; mid-point is X=arm_w/2).
+    - X = 0: slot Empty stays at the bone tip horizontally. Combined
+      with the arm's local X shift (arm.location.x = +arm_w/2,
+      placing the arm's LEFT edge at the bone), this puts the weapon
+      directly above the arm's left end -- 'hand at the wrist
+      gripping the weapon'.
     - Y = -0.05: in front of the arm on the picture-plane stack
       (avoid z-fight with the arm at Y=0).
-    - Z = +0.32: clear vertical gap above the arm so attachments and
-      arm don't visually touch -- reads as a separated weapon held
-      above the hand.
+    - Z = +0.20: weapon's bottom edge meets the arm's top edge
+      with no visible gap.
     """
-    arm_world_w = ARM_W_PX / PIXELS_PER_UNIT
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
@@ -214,7 +211,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent = armature_obj
     empty.parent_type = "BONE"
     empty.parent_bone = ARM_BONE
-    empty.location = (arm_world_w / 2.0, -0.05, 0.32)
+    empty.location = (0.0, -0.05, 0.20)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True

@@ -81,8 +81,8 @@ def main() -> None:
     armature_obj = _build_armature()
     _build_arm_mesh(armature_obj)
     slot_empty = _build_slot_empty(armature_obj)
-    _build_attachment("axe", AXE_PATH, slot_empty)
-    _build_attachment("sword", SWORD_PATH, slot_empty)
+    _build_attachment("axe", AXE_PATH, slot_empty, is_default=True)
+    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False)
     _build_swing_action(armature_obj)
     _build_swap_action(slot_empty)
     _save_blend()
@@ -183,7 +183,12 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """Empty parented to the arm bone tip; flagged as a slot."""
+    """Empty parented to the arm bone tip; flagged as a slot.
+
+    Offset slightly toward the Front Ortho camera (-Y) so attachments
+    sit in front of the arm sprite when both are rendered, instead of
+    z-fighting at Y=0.
+    """
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
@@ -191,7 +196,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent = armature_obj
     empty.parent_type = "BONE"
     empty.parent_bone = ARM_BONE
-    empty.location = (0.0, 0.0, 0.0)
+    empty.location = (0.0, -0.05, 0.0)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
@@ -206,8 +211,16 @@ def _build_attachment(
     name: str,
     image_path: Path,
     slot_empty: bpy.types.Object,
+    *,
+    is_default: bool,
 ) -> bpy.types.Object:
-    """Polygon mesh attachment parented to the slot Empty."""
+    """Polygon mesh attachment parented to the slot Empty.
+
+    Non-default attachments are hidden in the viewport + render so the
+    Blender preview matches the slot's runtime semantics (only one
+    attachment visible at a time). Animation tracks toggle visibility
+    at runtime via the slot_attachment track in the .proscenio output.
+    """
     mesh = _quad_mesh(name, WEAPON_W_PX, WEAPON_H_PX)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
@@ -216,6 +229,9 @@ def _build_attachment(
     mat = _build_material(f"{name}.mat", image_path)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)
+    if not is_default:
+        obj.hide_viewport = True
+        obj.hide_render = True
     return obj
 
 

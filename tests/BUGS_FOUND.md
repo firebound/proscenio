@@ -170,7 +170,7 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 **Fix:** trocar 3 paths nos `.tscn` afetados:
 
 - `examples/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
-- `examples/doll/godot/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd`
+- `examples/authored/doll/godot/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd`
 - `examples/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
 
 `mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.

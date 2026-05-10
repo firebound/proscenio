@@ -26,7 +26,7 @@ Validam que addon carrega + workflow básico funciona.
 - [x] **Addon reload**: Edit > Preferences > addon disable + enable. Após pycache clear + restart, registra limpo em cena fresh, doll.blend, doll_workbench.blend.
 - [x] **Reload Scripts** (F3 > "Reload Scripts" ou Code editor): nenhuma exception no console.
 - [x] **Operator dispatch**: Diagnostics panel > "Run Smoke Test" -> INFO bar mostra "Proscenio smoke test OK", console imprime mesma string.
-- [x] **Properties registered**: abrir `examples/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
+- [x] **Properties registered**: abrir `examples/authored/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
 - [x] **Scene props**: Scene PG não espelha pra CPs (by design). Verificar via panel surface: Export panel mostra `pixels_per_unit` field + `last_export_path` text; Atlas panel mostra pack settings.
 - [~] **PG hydration**: abrir um .blend antigo (legacy) com Custom Properties manuais (`proscenio_type=sprite_frame`) -- PG inicializa com mesmo valor. Deferred -- testar quando produzir cena from-scratch e validar populate.
 
@@ -34,7 +34,7 @@ Validam que addon carrega + workflow básico funciona.
 
 ## 1. Apps/Blender
 
-Workbench file recomendado: `examples/doll/doll_workbench.blend` (clone do baseline). NÃO mexer no `doll.blend` canônico.
+Workbench file recomendado: `examples/authored/doll/doll_workbench.blend` (clone do baseline). NÃO mexer no `doll.blend` canônico.
 
 ### 1.1 Active Sprite panel
 
@@ -71,7 +71,7 @@ Active Sprite > Drive from bone box:
 
 ### 1.4 Active Slot panel
 
-Workbench file: `examples/doll/doll_slots.blend` (já tem brow.L.swap, brow.R.swap).
+Workbench file: `examples/slot_swap/slot_swap.blend` (arm + slot Empty + club/sword attachments). `doll_slots.blend` foi retirado -- slot coverage agora em `slot_swap/` e `slot_cycle/`.
 
 - [x] Selecionar slot Empty: "Active Slot" subpanel aparece (testado em slot_swap workbench)
 - [x] Subpanel hide quando active object não é Empty + is_slot
@@ -188,7 +188,7 @@ Em workbench com N sprites de PNGs separados:
 ### 1.17 Photoshop import
 
 - [ ] "Import Photoshop Manifest" operator: file picker abre
-- [ ] `examples/doll/doll.photoshop_manifest.json`: stamp polygon + sprite_frame meshes corretamente
+- [ ] `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json`: stamp polygon + sprite_frame meshes corretamente
 - [ ] `examples/simple_psd/simple_psd.photoshop_manifest.json`: stamp simples funciona
 - [ ] Imported scene tem stub armature root + meshes parented
 - [ ] PSD layer names viram object names (sem colisão)
@@ -292,4 +292,4 @@ Quando UXP migration shippa:
 - Atualizar este arquivo após cada smoke session.
 - Failures `[!]` viram issues a corrigir em PRs separados.
 - Antes de mergear PR grande, marcar manual tests da branch como `[x]` ou `[!]`.
-- Use `examples/doll/doll_workbench.blend` (Save As do baseline) pra mexer livremente. NÃO editar `doll.blend` canônico.
+- Use `examples/authored/doll/doll_workbench.blend` (Save As do baseline) pra mexer livremente. NÃO editar `doll.blend` canônico.

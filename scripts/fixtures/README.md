@@ -10,9 +10,9 @@ scripts/fixtures/
 │   ├── _draw.py                    Pillow shape rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py         Bpy: open <fixture>.blend, write godot/<fixture>.expected.proscenio
 ├── doll/
-│   ├── render_layers.py            Bpy: doll.blend  -> render_layers/*.png (Workbench flat)
-│   ├── export_psd_manifest.py      Bpy: doll.blend  -> photoshop_export/doll.psd_manifest.json
-│   └── preview_pieces.py           Pillow: render_layers/*.png -> render_layers/pieces_sheet.png
+│   ├── render_layers.py            Bpy: doll.blend  -> 01_to_photoshop/render_layers/*.png (Workbench flat)
+│   ├── export_psd_manifest.py      Bpy: doll.blend  -> 01_to_photoshop/doll.photoshop_manifest.json
+│   └── preview_pieces.py           Pillow: 01_to_photoshop/render_layers/*.png -> .../pieces_sheet.png
 ├── blink_eyes/
 │   ├── draw_layers.py              Pillow -> pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py              Bpy: load spritesheet, build blink_eyes.blend
@@ -37,10 +37,10 @@ scripts/fixtures/
 
 | Fixture | Script | Input | Output |
 | --- | --- | --- | --- |
-| doll | `doll/render_layers.py` | `examples/doll/doll.blend` | `examples/doll/render_layers/*.png` |
-| doll | `doll/preview_pieces.py` | `examples/doll/render_layers/*.png` | `examples/doll/render_layers/pieces_sheet.png` |
-| doll | `doll/export_psd_manifest.py` | `examples/doll/doll.blend` | `examples/doll/doll.photoshop_manifest.json` |
-| doll | `_shared/export_proscenio.py` | `examples/doll/doll.blend` | `examples/doll/doll.expected.proscenio` |
+| doll | `doll/render_layers.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` |
+| doll | `doll/preview_pieces.py` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` | `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png` |
+| doll | `doll/export_psd_manifest.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` |
+| doll | `_shared/export_proscenio.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/doll.expected.proscenio` |
 | blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
 | blink_eyes | `blink_eyes/build_blend.py` | `examples/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/blink_eyes/blink_eyes.blend` |
 | blink_eyes | `_shared/export_proscenio.py` | `examples/blink_eyes/blink_eyes.blend` | `examples/blink_eyes/blink_eyes.expected.proscenio` |
@@ -131,6 +131,6 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
 
 ### Test integration
 
-- Drop a `<name>.expected.proscenio` golden next to the `.blend` -- `apps/blender/tests/run_tests.py` discovers fixtures via `examples/*/<name>.expected.proscenio` glob.
+- Drop a `<name>.expected.proscenio` golden next to the `.blend` -- `apps/blender/tests/run_tests.py` discovers fixtures via `examples/**/*.expected.proscenio` recursive glob (so nested `examples/authored/<name>/` works too).
 - Goldens regenerate by running the writer against the rebuilt `.blend`. The `_shared/export_proscenio.py` script handles this.
 - Include the fixture in the global headless run before opening a PR: `blender --background --python apps/blender/tests/run_tests.py` should print `N/N fixture(s) passed`.

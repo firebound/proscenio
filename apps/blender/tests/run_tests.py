@@ -82,24 +82,28 @@ def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
 
 
 def _discover_fixtures() -> list[tuple[Path, Path]]:
-    """Find every ``examples/<dir>/<name>.blend`` paired with a golden.
+    """Find every ``*.expected.proscenio`` under ``examples/`` paired with a golden.
 
-    Globs ``*.expected.proscenio`` per fixture dir so a single dir can
-    host multiple fixtures (e.g. ``examples/doll/doll.blend`` baseline
-    plus ``examples/doll/doll_slots.blend`` derived). The blend
-    filename is derived from the golden stem.
+    Recursive walk so the tier-0 hand-authored fixtures under
+    ``examples/authored/<name>/`` are discovered alongside the
+    procedural ones at the root (``examples/<name>/``). A single
+    fixture dir may host multiple ``(blend, golden)`` pairs (e.g.
+    a baseline + a derived variant) -- one pair per golden.
 
     Returns a sorted list of ``(blend_path, expected_path)`` tuples.
     """
     pairs: list[tuple[Path, Path]] = []
-    for fixture_dir in sorted(EXAMPLES_DIR.iterdir()):
-        if not fixture_dir.is_dir():
-            continue
-        for expected in sorted(fixture_dir.glob("*.expected.proscenio")):
-            name = expected.name[: -len(".expected.proscenio")]
-            blend = fixture_dir / f"{name}.blend"
-            if blend.exists():
-                pairs.append((blend, expected))
+    orphans: list[Path] = []
+    for expected in sorted(EXAMPLES_DIR.rglob("*.expected.proscenio")):
+        name = expected.name[: -len(".expected.proscenio")]
+        blend = expected.parent / f"{name}.blend"
+        if blend.exists():
+            pairs.append((blend, expected))
+        else:
+            orphans.append(expected)
+    if orphans:
+        listing = "\n".join(f"  - {p}" for p in orphans)
+        raise RuntimeError("orphan golden(s) with no matching .blend sibling:\n" + listing)
     return pairs
 
 

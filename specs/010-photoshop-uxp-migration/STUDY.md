@@ -66,7 +66,7 @@ apps/photoshop/
 | **D8** | Schema bump | **No bump**. `psd_manifest.schema.json` v1 unchanged. Implementation-only migration. |
 | **D9** | CI integration | **`npm test` + `tsc --noEmit` + `check-jsonschema` in `lint-photoshop` job**. Adds a 6th gate. |
 | **D10** | Test fixtures | Reuse `examples/simple_psd/`. Add `examples/simple_psd/source.psd` if not present so the UXP plugin has a fixture to run against. |
-| **D11** | JSX retirement trigger | **Feature parity confirmed** by manual roundtrip on `examples/simple_psd/` and `examples/doll/` (when its PSD source ships). Then delete `proscenio_export.jsx` + `proscenio_import.jsx`. |
+| **D11** | JSX retirement trigger | **Feature parity confirmed** by manual roundtrip on `examples/simple_psd/` and `examples/authored/doll/` (when its PSD source ships). Then delete `proscenio_export.jsx` + `proscenio_import.jsx`. |
 | **D12** | Distribution channel | **`.ccx` packaged via UDT** for releases; UDT direct-load for dev. Adobe Marketplace optional later. |
 | **D13** | Live reload during dev | **Yes** via `pnpm run uxp:watch` (already in scaffold). Documented in `photoshop-uxp-dev` skill. |
 | **D14** | Package manager | **pnpm (locked)**. `package.json` declares `packageManager: pnpm@9.x`. `package-lock.json` and `yarn.lock` ignored; pnpm-lock.yaml is the canonical lock when committed. |

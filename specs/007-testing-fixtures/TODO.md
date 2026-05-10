@@ -42,13 +42,13 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 `doll.blend` is authored by hand in Blender (mesh objects per body part + armature). Layer PNGs are rendered from it; helper bpy modules drive auxiliary fixture work.
 
-- [x] `examples/doll/doll.blend` — hand-authored mesh objects + `doll.rig` armature + per-mesh materials + vertex weights + actions. Single source of truth for the doll fixture.
-- [x] `scripts/fixtures/doll/render_layers.py` — bpy: opens `doll.blend`, walks every mesh, renders each to `examples/doll/render_layers/<name>.png` (Workbench flat, transparent background, ortho front view).
-- [x] `scripts/fixtures/doll/preview_pieces.py` — Pillow: contact sheet of every layer PNG (visual debug), output `examples/doll/render_layers/pieces_sheet.png`.
-- [x] Run `render_layers.py` → `examples/doll/render_layers/*.png` committed alongside `doll.blend`.
-- [x] `examples/doll/doll.expected.proscenio` golden generated via `export_proscenio.py` (1956 lines, schema-valid).
-- [x] `examples/doll/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
-- [x] `examples/doll/README.md`.
+- [x] `examples/authored/doll/doll.blend` — hand-authored mesh objects + `doll.rig` armature + per-mesh materials + vertex weights + actions. Single source of truth for the doll fixture.
+- [x] `scripts/fixtures/doll/render_layers.py` — bpy: opens `doll.blend`, walks every mesh, renders each to `examples/authored/doll/01_to_photoshop/render_layers/<name>.png` (Workbench flat, transparent background, ortho front view).
+- [x] `scripts/fixtures/doll/preview_pieces.py` — Pillow: contact sheet of every layer PNG (visual debug), output `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png`.
+- [x] Run `render_layers.py` → `examples/authored/doll/01_to_photoshop/render_layers/*.png` committed alongside `doll.blend`.
+- [x] `examples/authored/doll/doll.expected.proscenio` golden generated via `export_proscenio.py` (1956 lines, schema-valid).
+- [x] `examples/authored/doll/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
+- [x] `examples/authored/doll/README.md`.
 
 ## Test runner + CI
 

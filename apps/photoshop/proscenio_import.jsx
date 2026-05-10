@@ -3,7 +3,7 @@
 // Reads a SPEC 006 v1 PSD manifest (matches schemas/psd_manifest.schema.json)
 // and stamps every layer into a fresh PSD document at its declared
 // `position` and `size`. Used to bootstrap test PSDs from existing
-// Blender fixtures (e.g. examples/doll/) without authoring by hand.
+// Blender fixtures (e.g. examples/authored/doll/) without authoring by hand.
 //
 // Run: File > Scripts > Browse... -> proscenio_import.jsx -> pick manifest.json.
 //

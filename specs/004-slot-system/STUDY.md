@@ -57,7 +57,7 @@ The shared pattern across the discrete-swap tools: a parent group + N sibling vi
 | --- | --- | --- |
 | 4.1 -- writer + authoring panel + preview shader | ~500 | `properties/`, `operators/`, `panels/`, `core/validation.py`, `core/exporters/godot/writer.py`, `core/sprite_frame_shader.py` (new -- preview shader-node group builder) |
 | 4.2 -- Godot importer + animation track | ~200 | `apps/godot/addons/proscenio/builders/slot_builder.gd`, `animation_builder.gd` patch, GUT tests |
-| 4.3 -- fixtures + docs | ~250 | `examples/doll/` (brow slots), `examples/slot_cycle/` (minimal slot fixture), `examples/<slot_cycle>.expected.proscenio`, godot wrapper, `STATUS.md`, `format-spec.md`, `.ai/skills/godot-dev.md` |
+| 4.3 -- fixtures + docs | ~250 | `examples/authored/doll/` (brow slots), `examples/slot_cycle/` (minimal slot fixture), `examples/<slot_cycle>.expected.proscenio`, godot wrapper, `STATUS.md`, `format-spec.md`, `.ai/skills/godot-dev.md` |
 
 Total estimated ~950 LOC across three waves. Each wave is one PR -- no further sub-division (avoids the 5.1.x.x.x nesting that grew accidentally during SPEC 005).
 

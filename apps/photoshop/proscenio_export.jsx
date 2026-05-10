@@ -74,7 +74,7 @@ var DEFAULT_PIXELS_PER_UNIT = 100;
 
     // Convention: write the export output into a sibling `export/` folder
     // next to the PSD. For the doll fixture this means
-    // examples/doll/photoshop/export/. For ad-hoc PSDs it just creates
+    // examples/authored/doll/02_from_photoshop/export/. For ad-hoc PSDs it just creates
     // an export/ subfolder alongside.
     var outDir = new Folder(docPath + "/export");
     var imagesDir = new Folder(outDir + "/images");

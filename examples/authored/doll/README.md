@@ -7,16 +7,17 @@ The **comprehensive showcase fixture** for the Proscenio pipeline. A full humano
 The fixture is split into subfolders by **role in the pipeline** so the input vs derived outputs stay obvious. The single source of truth lives at the root; everything under a subfolder can be regenerated from it.
 
 ```text
-examples/doll/
-├── doll.blend                              [SOURCE — authored Blender]
-├── doll.expected.proscenio                 [GOLDEN — CI-diffed validation midpoint]
-├── doll.photoshop_manifest.json            [DERIVED — bpy emits SPEC 006 v1 manifest at root]
-├── render_layers/                          [DERIVED — Workbench renders, one PNG per mesh]
-│   ├── arm.L.png ... waist.png
-│   └── pieces_sheet.png                    contact-sheet preview of every layer
-├── photoshop/                              [PSD + JSX exporter output]
+examples/authored/doll/
+├── doll.blend                              [SOURCE -- hand-authored Blender, do not regenerate]
+├── doll.expected.proscenio                 [GOLDEN -- CI-diffed validation midpoint]
+├── 01_to_photoshop/                        [DERIVED -- outputs going INTO photoshop]
+│   ├── doll.photoshop_manifest.json        SPEC 006 v1 manifest (bpy emits)
+│   └── render_layers/                      one flat PNG per mesh (Workbench renders)
+│       ├── arm.L.png ... waist.png
+│       └── pieces_sheet.png                contact-sheet preview of every layer
+├── 02_from_photoshop/                      [DERIVED -- outputs coming BACK from photoshop]
 │   ├── doll.psd                            JSX importer output (placed layers from manifest)
-│   └── export/                             gitignored — JSX exporter run-on-doll.psd output
+│   └── export/                             gitignored -- JSX exporter run-on-doll.psd output
 │       ├── doll.photoshop_exported.json    re-exported manifest (roundtrip test)
 │       └── images/                         re-exported per-layer PNGs
 └── godot/                                  [Godot-side wrapper artifacts]
@@ -29,17 +30,18 @@ examples/doll/
 ```text
 doll.blend (authored)
     │
-    ├──► [render_layers/]                  scripts/fixtures/doll/render_layers.py
+    ├──► [01_to_photoshop/render_layers/]  scripts/fixtures/doll/render_layers.py
     │       └──► one flat PNG per mesh (Workbench, ortho front view, transparent)
     │
-    ├──► doll.photoshop_manifest.json      scripts/fixtures/doll/export_psd_manifest.py
-    │       │ (SPEC 006 v1; paths point at render_layers/)
+    ├──► [01_to_photoshop/doll.photoshop_manifest.json]
+    │       │   scripts/fixtures/doll/export_psd_manifest.py
+    │       │   (SPEC 006 v1; paths point at 01_to_photoshop/render_layers/)
     │       │
     │       └──► apps/photoshop/proscenio_import.jsx (in Photoshop)
-    │               └──► [photoshop/doll.psd] (PSD with placed layers)
+    │               └──► [02_from_photoshop/doll.psd] (PSD with placed layers)
     │                       │
     │                       └──► apps/photoshop/proscenio_export.jsx (in Photoshop)
-    │                               └──► [photoshop/export/]  (gitignored — roundtrip output)
+    │                               └──► [02_from_photoshop/export/]  (gitignored)
     │                                       ├──► doll.photoshop_exported.json
     │                                       └──► images/<layer>.png
     │
@@ -58,47 +60,49 @@ When tweaking the doll source:
 3. Re-render layers + regenerate manifest:
 
    ```sh
-   blender --background examples/doll/doll.blend \
+   blender --background examples/authored/doll/doll.blend \
        --python scripts/fixtures/doll/render_layers.py
-   blender --background examples/doll/doll.blend \
+   blender --background examples/authored/doll/doll.blend \
        --python scripts/fixtures/doll/export_psd_manifest.py
    ```
 
 4. (optional) Re-import into the PSD: in Photoshop, run
-   `proscenio_import.jsx` against `doll.photoshop_manifest.json` →
-   refreshes `photoshop/doll.psd`.
+   `proscenio_import.jsx` against
+   `01_to_photoshop/doll.photoshop_manifest.json` -> refreshes
+   `02_from_photoshop/doll.psd`.
 5. (optional) Re-export from the PSD: in Photoshop, run
-   `proscenio_export.jsx` on `photoshop/doll.psd` → drops
-   `photoshop/export/doll.photoshop_exported.json` + `images/`.
-6. Diff round-trip: `doll.photoshop_manifest.json` vs
-   `photoshop/export/doll.photoshop_exported.json`.
+   `proscenio_export.jsx` on `02_from_photoshop/doll.psd` -> drops
+   `02_from_photoshop/export/doll.photoshop_exported.json` + `images/`.
+6. Diff round-trip:
+   `01_to_photoshop/doll.photoshop_manifest.json` vs
+   `02_from_photoshop/export/doll.photoshop_exported.json`.
 
 ## Building from source
 
 ```sh
 # 1. Render every mesh to render_layers/<name>.png + pieces_sheet.png.
-blender --background examples/doll/doll.blend \
+blender --background examples/authored/doll/doll.blend \
     --python scripts/fixtures/doll/render_layers.py
 python scripts/fixtures/doll/preview_pieces.py
 
-# 2. Emit the SPEC 006 manifest at the fixture root.
-blender --background examples/doll/doll.blend \
+# 2. Emit the SPEC 006 manifest under 01_to_photoshop/.
+blender --background examples/authored/doll/doll.blend \
     --python scripts/fixtures/doll/export_psd_manifest.py
-# -> writes examples/doll/doll.photoshop_manifest.json
+# -> writes examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json
 
 # 3. (optional) Build the PSD via the JSX importer in Photoshop:
 #    File > Scripts > Browse... > apps/photoshop/proscenio_import.jsx
-#    Pick examples/doll/doll.photoshop_manifest.json.
-#    Output: examples/doll/photoshop/doll.psd
+#    Pick examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json.
+#    Output: examples/authored/doll/02_from_photoshop/doll.psd
 
 # 4. (optional) Roundtrip-test by running the JSX exporter on the PSD:
 #    File > Scripts > Browse... > apps/photoshop/proscenio_export.jsx
-#    Output: examples/doll/photoshop/export/ (gitignored)
+#    Output: examples/authored/doll/02_from_photoshop/export/ (gitignored)
 #       - doll.photoshop_exported.json
 #       - images/<layer>.png
 
 # 5. Generate the golden .proscenio at the fixture root (used by run_tests.py).
-blender --background examples/doll/doll.blend \
+blender --background examples/authored/doll/doll.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 
@@ -115,8 +119,12 @@ Each top-level mesh in `doll.blend` becomes one PNG layer when `render_layers.py
 | polygon, multi-bone weights | spine-region meshes (`chest` / `belly` / `waist`), pelvic mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R` | Demonstrates **multi-bone weights** + falloff distribution. |
 | polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (SPEC 004 + 5.1.d). |
 | sprite_frame | `eye.L` / `eye.R` | Hframes=4 spritesheet, animated by the `blink` action. |
-| polygon, slot-bound (SPEC 004 ✅) | `brow.L` + `brow.L.up` under `brow.L.swap` slot Empty; same for the right side | Two slots driven by the `brow_raise` action keyframing `proscenio_slot_index` 0 → 1 → 0. End-to-end slot demo on a comprehensive rig; complements `examples/slot_cycle/` (isolated test). Re-author via `scripts/fixtures/doll/promote_brows_to_slots.py` (idempotent). |
 | polygon, single primary bone | everything else | Standard parented sprites. |
+
+> The brow slot variant (`brow.L.swap` / `brow.R.swap`) was retired together
+> with the `doll_slots.blend` fixture -- slot system coverage now lives in
+> [`examples/slot_swap/`](../../slot_swap/) (single slot, bone swing) and
+> [`examples/slot_cycle/`](../../slot_cycle/) (cycle pattern, 3 attachments).
 
 ## Visual style
 
@@ -130,7 +138,6 @@ Each mesh in `doll.blend` carries a flat-color material; `render_layers.py` read
 | `wave` | 30 | upper_arm.R + forearm.R rotation | demonstrates IK-friendly chain (no IK constraint exported, but Blender-side Toggle IK works) |
 | `blink` | 12 | eye.L + eye.R `proscenio.frame` 0→1→2→3→2→1→0 | exercises sprite_frame track type |
 | `walk` | 30, loop | thigh.L/R + shin.L/R rotation, spine sway | full-body coordination |
-| `brow_raise` | 30 | `brow.L.swap` + `brow.R.swap` slot index 0 → 1 → 0 | exercises slot_attachment track (writer expands to per-attachment visibility tracks at import) |
 
 Future actions land as future SPECs require.
 
@@ -146,8 +153,8 @@ Future actions land as future SPECs require.
 
 | When | Adds |
 | --- | --- |
-| SPEC 004 (slots) shipped ✅ | Brow swap (`brow.L.swap` / `brow.R.swap`) slots + `brow_raise` action live now. Future: slot on `hand.L.attachment` (sword vs bow swap). |
-| SPEC 006 importer ships fully | A `doll.psd` round-trip test using `photoshop_import/doll.psd` as input. |
+| SPEC 004 (slots) -- coverage moved out | Slot system tests live in `examples/slot_swap/` + `examples/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
+| SPEC 006 importer ships fully | A `doll.psd` round-trip test using `02_from_photoshop/doll.psd` as input. |
 | SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
 | Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |
 

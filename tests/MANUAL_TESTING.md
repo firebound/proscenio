@@ -61,10 +61,10 @@ Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
 
 Active Sprite > Drive from bone box:
 
-- [ ] Picker `Armature` filtra só ARMATURE objects
-- [ ] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
-- [ ] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
-- [ ] Bone rotation R+Z em pose mode: driver value muda live
+- [x] Picker `Armature` filtra só ARMATURE objects
+- [x] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
+- [x] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
+- [!] Bone rotation R+Z em pose mode: driver value muda live. **Defaults quebram:** LOCAL_SPACE retorna 0 pra bone vertical, keyframes residuais limitam output. Workaround: trocar transform_space pra WORLD_SPACE manual + deletar keyframes do fcurve. 3 bugs em BUGS_FOUND.md.
 - [ ] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
 - [ ] F9 redo panel: trocar `target_property` re-wires driver
 - [ ] Custom expression `var * 0.5 + 0.3`: mid-region scroll funciona

@@ -32,12 +32,23 @@ def _ensure_single_driver(
     sprite: bpy.types.Object,
     data_path: str,
 ) -> bpy.types.FCurve:
-    """Idempotent: drop any existing driver on ``data_path`` first, then add fresh."""
+    """Idempotent: drop any existing driver on ``data_path`` first, then add fresh.
+
+    After ``driver_add`` Blender seeds the fcurve with default keyframes
+    around the property's current value, with constant extrapolation.
+    Those keyframes act as an output remap that clamps every driver
+    expression result to the [first_key, last_key] range -- silently
+    breaking the feature for property values outside that band. Strip
+    them so the driver expression result passes through 1:1.
+    """
     if sprite.animation_data is not None:
         existing = sprite.animation_data.drivers.find(data_path)
         if existing is not None:
             sprite.driver_remove(data_path)
-    return sprite.driver_add(data_path)
+    fcurve = sprite.driver_add(data_path)
+    while fcurve.keyframe_points:
+        fcurve.keyframe_points.remove(fcurve.keyframe_points[0])
+    return fcurve
 
 
 class PROSCENIO_OT_create_driver(bpy.types.Operator):
@@ -137,8 +148,16 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         target.id = armature
         target.bone_target = self.bone_name
         target.transform_type = self.source_axis
-        target.transform_space = "LOCAL_SPACE"
-        target.rotation_mode = "AUTO"
+        # WORLD_SPACE matches 2D-cutout convention: rotation around the
+        # world Z (or Y for front-ortho rigs) is what the animator means
+        # when they R Z 45 in pose mode, regardless of the bone's local
+        # axis orientation. LOCAL_SPACE returns 0 when the bone axis
+        # happens to align with the rotation axis (e.g. vertical bones
+        # rotated around world Z).
+        target.transform_space = "WORLD_SPACE"
+        # XYZ Euler keeps the variable in radians instead of returning
+        # quaternion components (sin(angle/2)) that confuse expressions.
+        target.rotation_mode = "XYZ"
 
         # Mirror redo-panel overrides back to the PropertyGroup.
         props.driver_target = self.target_property

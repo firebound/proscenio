@@ -27,8 +27,8 @@ from _draw import Canvas, rect  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LAYERS_DIR = REPO_ROOT / "examples" / "slot_swap" / "pillow_layers"
 
-ARM_W = 16
-ARM_H = 32
+ARM_W = 32
+ARM_H = 16
 WEAPON_W = 32
 WEAPON_H = 32
 
@@ -54,7 +54,13 @@ def main() -> None:
 
 
 def _draw_arm() -> None:
-    """Tall thin pixel-art arm: skin fill + dark outline."""
+    """Horizontal pixel-art arm: skin rectangle + dark outline.
+
+    32 px wide x 16 px tall -- a forearm extending sideways from the
+    body. The slot Empty sits at the bone tip (right side after the
+    swing rotation) so the weapon attachment naturally comes out of
+    the wrist.
+    """
     canvas = Canvas.empty(ARM_W, ARM_H)
     rect(canvas, 0, 0, ARM_W, ARM_H, OUTLINE)
     rect(canvas, 1, 1, ARM_W - 2, ARM_H - 2, SKIN_OUTLINE)
@@ -63,27 +69,48 @@ def _draw_arm() -> None:
 
 
 def _draw_axe() -> None:
-    """Single-bladed axe: vertical wood handle with steel head on the right."""
+    """Battle axe: vertical wood handle with broad single-edge blade on the right.
+
+    Layout (32x32):
+
+    - Handle: 2 px wide vertical brown column down the middle
+    - Pommel cap: small steel ferrule at the bottom of the handle
+    - Blade: stepped silhouette to the right of the handle, broader
+      at the top, recessed toward the bottom (classic single-bit axe)
+    - Cheek (back of blade): thin steel sliver to the left of the
+      handle near the top, gives the axe head visual weight
+    """
     canvas = Canvas.empty(WEAPON_W, WEAPON_H)
 
-    # Wood handle (vertical center column).
     handle_x = 14
-    rect(canvas, handle_x, 4, 4, WEAPON_H - 8, OUTLINE)
-    rect(canvas, handle_x + 1, 5, 2, WEAPON_H - 10, WOOD)
-    rect(canvas, handle_x + 1, 5, 1, WEAPON_H - 10, WOOD_DARK)
 
-    # Pommel ring at top + bottom.
-    rect(canvas, handle_x - 1, 3, 6, 2, OUTLINE)
-    rect(canvas, handle_x, 4, 4, 1, STEEL)
-    rect(canvas, handle_x - 1, WEAPON_H - 5, 6, 2, OUTLINE)
-    rect(canvas, handle_x, WEAPON_H - 4, 4, 1, STEEL)
+    # Handle: tall thin wood column, with outline.
+    rect(canvas, handle_x - 1, 1, 5, 30, OUTLINE)
+    rect(canvas, handle_x, 2, 3, 28, WOOD)
+    rect(canvas, handle_x, 2, 1, 28, WOOD_DARK)
 
-    # Axe head: trapezoid bulge to the right of the handle.
-    head_x0 = handle_x + 4
-    rect(canvas, head_x0, 8, 12, 16, OUTLINE)
-    rect(canvas, head_x0, 10, 10, 12, STEEL)
-    rect(canvas, head_x0, 10, 10, 1, STEEL_DARK)
+    # Pommel cap (steel ring at the bottom of the handle).
+    rect(canvas, handle_x - 2, 28, 7, 4, OUTLINE)
+    rect(canvas, handle_x - 1, 29, 5, 2, STEEL)
+    rect(canvas, handle_x - 1, 29, 5, 1, STEEL_DARK)
 
+    # Cheek (small steel back-of-head to the LEFT of the handle, near top).
+    rect(canvas, handle_x - 4, 4, 4, 6, OUTLINE)
+    rect(canvas, handle_x - 3, 5, 2, 4, STEEL)
+    rect(canvas, handle_x - 3, 5, 2, 1, STEEL_DARK)
+
+    # Blade: stepped trapezoid to the RIGHT of the handle.
+    # Top step: broad blade (12 px wide).
+    rect(canvas, handle_x + 3, 1, 12, 7, OUTLINE)
+    rect(canvas, handle_x + 3, 2, 11, 5, STEEL)
+    rect(canvas, handle_x + 3, 2, 11, 1, STEEL_DARK)
+    # Mid step: medium blade (10 px wide).
+    rect(canvas, handle_x + 3, 8, 10, 4, OUTLINE)
+    rect(canvas, handle_x + 3, 8, 9, 3, STEEL)
+    rect(canvas, handle_x + 3, 8, 9, 1, STEEL_DARK)
+    # Lower edge tapers back to the handle.
+    rect(canvas, handle_x + 3, 11, 5, 3, OUTLINE)
+    rect(canvas, handle_x + 3, 11, 4, 2, STEEL)
 
     canvas.save(LAYERS_DIR / "axe.png")
 

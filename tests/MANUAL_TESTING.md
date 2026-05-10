@@ -61,10 +61,10 @@ Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
 
 Active Sprite > Drive from bone box:
 
-- [ ] Picker `Armature` filtra só ARMATURE objects
-- [ ] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
-- [ ] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
-- [ ] Bone rotation R+Z em pose mode: driver value muda live
+- [x] Picker `Armature` filtra só ARMATURE objects
+- [x] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
+- [x] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
+- [x] Bone rotation R+Z em pose mode: driver value muda live. (Defaults antigos -- LOCAL_SPACE + AUTO Quaternion + seed keyframes -- mascaravam o feature; PR #39 trocou pra WORLD_SPACE / XYZ Euler / strip keyframes pra ROT_*. Aguarda re-teste pós-merge.)
 - [ ] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
 - [ ] F9 redo panel: trocar `target_property` re-wires driver
 - [ ] Custom expression `var * 0.5 + 0.3`: mid-region scroll funciona

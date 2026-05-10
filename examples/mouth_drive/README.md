@@ -1,15 +1,27 @@
 # mouth_drive fixture
 
-Minimal isolation fixture for the **Drive from Bone** feature:
+End-to-end fixture for the **Drive from Bone** feature, structured to
+match the typical 2D cutout authoring layout:
 
 - 1 sprite_frame mesh `mouth` (4 cells, 32x32 each, 128x32 spritesheet)
-- 1 armature `mouth_rig` with bone `mouth_drive`
-- Mesh parented to the bone (`parent_type=BONE`)
-- **No driver pre-installed** -- the fixture is meant to be opened and
-  the user manually invokes the "Drive from Bone" panel operator on
-  the Blender side. After authoring, the round-trip emits a
-  `bone_transform` track that the Godot importer expands into an
-  AnimationPlayer track on the imported scene.
+- 1 armature `mouth_rig` with **two horizontal bones** (lying along
+  world X, the front-ortho 2D plane):
+  - `mouth_pos` -- positions the mouth in 2D space; the sprite mesh
+    is parented to it.
+  - `mouth_drive` -- driver source; rotation around its Z axis is
+    wired (via a pre-installed Scripted driver) to
+    `mouth.proscenio.frame`.
+- 1 action `mouth_drive_anim` keyframing `mouth_drive` rotation
+  -pi/2 -> +pi/2 -> 0 over 24 frames, cycling the sprite through
+  all 4 mouth shapes via the driver. `mouth_pos` exists structurally
+  (the sprite is parented to it) but currently stays at rest --
+  see tests/BUGS_FOUND.md for the writer-side issue that drops
+  pose-location Z for horizontal bones.
+
+The driver mirrors what the **Drive from Bone** panel operator
+produces: `transform_space=WORLD_SPACE`, `rotation_mode=XYZ`,
+expression `var * 2 + 2`. Re-running the operator on this fixture
+should be idempotent (replaces the existing driver, same wiring).
 
 ## Directory layout
 
@@ -63,12 +75,15 @@ passing.
 1. Open `mouth_drive.blend` in Blender (after enabling the addon).
 2. **Save As** `mouth_drive_workbench.blend` to keep the canonical
    fixture untouched.
-3. Select the `mouth` mesh in Object mode.
-4. In the Active Sprite panel, scroll to **Drive from Bone**:
-   - Pick `mouth_rig` as the Armature.
-   - Pick `mouth_drive` as the Bone.
-   - Pick `Region X` (or `Frame index`) as the Target.
-   - Click **Drive from Bone**.
-5. Switch to Pose mode on the armature, rotate `mouth_drive` around Z,
-   and watch the sprite cell update live (with `Setup Preview` enabled
-   on the mesh).
+3. Press play on the timeline -- the action should drive both
+   `mouth_pos` (vertical bob) and `mouth_drive` (rotation), and the
+   sprite cell should cycle through frames 0..3 as `mouth_drive`
+   rotates.
+4. Stop playback. Select the `mouth` mesh, click **Setup Preview**
+   in the Active Sprite panel to see the slicer shader in viewport.
+5. Enter Pose mode on `mouth_rig`, select `mouth_drive`, R Z to
+   rotate manually -- watch the sprite cell change live.
+6. Re-author the driver: select `mouth` mesh, in Active Sprite >
+   Drive from Bone, click **Drive from Bone** with the panel's
+   pre-filled values. Should be idempotent: same wiring, sprite
+   keeps responding to bone rotation.

@@ -5,18 +5,32 @@
   "skeleton": {
     "bones": [
       {
-        "name": "mouth_drive",
+        "name": "mouth_pos",
         "parent": null,
         "position": [
           0.0,
           -0.0
         ],
-        "rotation": -1.570796,
+        "rotation": -0.0,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 50.0
+        "length": 30.000001
+      },
+      {
+        "name": "mouth_drive",
+        "parent": null,
+        "position": [
+          50.0,
+          -0.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 30.000001
       }
     ]
   },
@@ -24,12 +38,43 @@
     {
       "type": "sprite_frame",
       "name": "mouth",
-      "bone": "mouth_drive",
+      "bone": "mouth_pos",
       "hframes": 4,
       "vframes": 1,
       "frame": 0,
       "centered": true
     }
   ],
-  "atlas": "mouth_spritesheet.png"
+  "atlas": "mouth_spritesheet.png",
+  "animations": [
+    {
+      "name": "mouth_drive_anim",
+      "length": 0.958333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "bone_transform",
+          "target": "mouth_drive",
+          "keys": [
+            {
+              "time": 0.0,
+              "rotation": 0.0
+            },
+            {
+              "time": 0.291667,
+              "rotation": 1.570796
+            },
+            {
+              "time": 0.625,
+              "rotation": -1.570796
+            },
+            {
+              "time": 0.958333,
+              "rotation": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

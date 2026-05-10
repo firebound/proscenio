@@ -32,20 +32,20 @@
       ],
       "polygon": [
         [
-          9.856406,
-          14.928204
+          11.856407,
+          11.464101
         ],
         [
-          -17.856407,
-          -1.071797
+          -15.856406,
+          -4.535898
         ],
         [
-          -9.856406,
-          -14.928204
+          -11.856407,
+          -11.464101
         ],
         [
-          17.856407,
-          1.071797
+          15.856406,
+          4.535898
         ]
       ],
       "uv": [
@@ -68,7 +68,7 @@
       ]
     },
     {
-      "name": "axe",
+      "name": "club",
       "bone": "",
       "texture_region": [
         0.0,
@@ -164,11 +164,11 @@
     {
       "name": "weapon",
       "attachments": [
-        "axe",
+        "club",
         "sword"
       ],
       "bone": "arm",
-      "default": "axe"
+      "default": "club"
     }
   ],
   "atlas": "arm.png",
@@ -207,7 +207,7 @@
             {
               "time": 0.0,
               "interp": "constant",
-              "attachment": "axe"
+              "attachment": "club"
             },
             {
               "time": 0.458333,
@@ -217,7 +217,7 @@
             {
               "time": 0.958333,
               "interp": "constant",
-              "attachment": "axe"
+              "attachment": "club"
             }
           ]
         }

@@ -6,8 +6,8 @@ Run with::
 
 Pure Python -- no Blender required. Produces:
 
-- ``examples/slot_swap/pillow_layers/arm.png``    16x32 -- pseudo-arm
-- ``examples/slot_swap/pillow_layers/axe.png``    32x32 -- axe attachment
+- ``examples/slot_swap/pillow_layers/arm.png``    32x8  -- horizontal forearm
+- ``examples/slot_swap/pillow_layers/club.png``   32x32 -- club attachment
 - ``examples/slot_swap/pillow_layers/sword.png``  32x32 -- sword attachment
 
 Each attachment is a separate PNG (no spritesheet) -- the slot system
@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 LAYERS_DIR = REPO_ROOT / "examples" / "slot_swap" / "pillow_layers"
 
 ARM_W = 32
-ARM_H = 16
+ARM_H = 8
 WEAPON_W = 32
 WEAPON_H = 32
 
@@ -48,7 +48,7 @@ OUTLINE = (0.05, 0.05, 0.05, 1.0)
 def main() -> None:
     LAYERS_DIR.mkdir(parents=True, exist_ok=True)
     _draw_arm()
-    _draw_axe()
+    _draw_club()
     _draw_sword()
     print(f"[draw_slot_swap] wrote 3 attachments under {LAYERS_DIR}")
 
@@ -68,58 +68,45 @@ def _draw_arm() -> None:
     canvas.save(LAYERS_DIR / "arm.png")
 
 
-def _draw_axe() -> None:
-    """Upright battle-axe: vertical handle + broad blade head at top.
+def _draw_club() -> None:
+    """Upright wooden club: thicker head on top, narrower grip below.
 
-    Mirrors the sword's structure (head -> grip -> pommel, all stacked
-    vertically) so both attachments read at a glance as 'weapon held
-    upright in hand'. Coordinate system has Y=0 at the TOP.
+    Two solid wood rectangles stacked: the head (broader) and the
+    grip (narrower). Same vertical layout as the sword so both
+    attachments read as 'weapon held upright'. Coordinate system has
+    Y=0 at the TOP.
 
-    - Y 0..15  blade head: stepped trapezoid, broader in the middle
-               with a flat top edge. Centered horizontally.
-    - Y 15..28 vertical wood handle, 4 px wide, brown with darker
-               shadow column on the left.
-    - Y 28..32 steel pommel cap.
+    - Y 0..18   club head: 14 px wide brown rectangle with outline,
+                slightly darker shading on the left edge.
+    - Y 18..29  grip: 6 px wide brown column.
+    - Y 29..32  pommel cap.
     """
     canvas = Canvas.empty(WEAPON_W, WEAPON_H)
 
-    handle_x = 14
+    # Club head (top, broader).
+    head_x = 9
+    head_w = 14
+    head_y = 1
+    head_h = 17
+    rect(canvas, head_x - 1, head_y - 1, head_w + 2, head_h + 2, OUTLINE)
+    rect(canvas, head_x, head_y, head_w, head_h, WOOD)
+    rect(canvas, head_x, head_y, 2, head_h, WOOD_DARK)
 
-    # Blade silhouette (top half). Each tuple is (y, x_start, width).
-    # Outline + steel fill + dark shadow band on the top edge.
-    blade_steps = (
-        (1, 9, 14),
-        (2, 8, 16),
-        (3, 7, 18),
-        (4, 6, 20),
-        (5, 6, 20),
-        (6, 6, 20),
-        (7, 7, 18),
-        (8, 8, 16),
-        (9, 9, 14),
-        (10, 10, 12),
-        (11, 11, 10),
-        (12, 12, 8),
-    )
-    for y, x_start, width in blade_steps:
-        rect(canvas, x_start, y, width, 1, OUTLINE)
-    for y, x_start, width in blade_steps:
-        if width > 2:
-            rect(canvas, x_start + 1, y, width - 2, 1, STEEL)
-    # Top dark band along the upper rows of the blade.
-    rect(canvas, 7, 1, 18, 1, STEEL_DARK)
+    # Grip (narrower, below head).
+    grip_x = 13
+    grip_w = 6
+    grip_y = 18
+    grip_h = 11
+    rect(canvas, grip_x - 1, grip_y, grip_w + 2, grip_h, OUTLINE)
+    rect(canvas, grip_x, grip_y, grip_w, grip_h, WOOD)
+    rect(canvas, grip_x, grip_y, 1, grip_h, WOOD_DARK)
 
-    # Handle (bottom half).
-    rect(canvas, handle_x - 1, 13, 5, 16, OUTLINE)
-    rect(canvas, handle_x, 14, 3, 14, WOOD)
-    rect(canvas, handle_x, 14, 1, 14, WOOD_DARK)
+    # Pommel cap (small steel ring at the very bottom).
+    rect(canvas, grip_x - 2, 28, grip_w + 4, 4, OUTLINE)
+    rect(canvas, grip_x - 1, 29, grip_w + 2, 2, STEEL)
+    rect(canvas, grip_x - 1, 29, grip_w + 2, 1, STEEL_DARK)
 
-    # Pommel.
-    rect(canvas, handle_x - 2, 28, 7, 4, OUTLINE)
-    rect(canvas, handle_x - 1, 29, 5, 2, STEEL)
-    rect(canvas, handle_x - 1, 29, 5, 1, STEEL_DARK)
-
-    canvas.save(LAYERS_DIR / "axe.png")
+    canvas.save(LAYERS_DIR / "club.png")
 
 
 def _draw_sword() -> None:

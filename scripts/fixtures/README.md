@@ -20,7 +20,7 @@ scripts/fixtures/
 │   ├── draw_layers.py              Pillow -> pillow_layers/mouth_0..3.png + mouth_spritesheet.png
 │   └── build_blend.py              Bpy: 2-bone armature (mouth_pos + mouth_drive) + driver + action -> mouth_drive.blend
 ├── slot_swap/
-│   ├── draw_layers.py              Pillow -> pillow_layers/arm.png + axe.png + sword.png
+│   ├── draw_layers.py              Pillow -> pillow_layers/arm.png + club.png + sword.png
 │   └── build_blend.py              Bpy: 1-bone armature + arm mesh + slot Empty + 2 attachments + swing+swap actions -> slot_swap.blend
 ├── shared_atlas/
 │   ├── draw_atlas.py               Pillow -> atlas.png (256x256, three colored quadrants)
@@ -47,7 +47,7 @@ scripts/fixtures/
 | mouth_drive | `mouth_drive/draw_layers.py` | (Pillow primitives) | `examples/mouth_drive/pillow_layers/mouth_0..3.png` + `mouth_spritesheet.png` |
 | mouth_drive | `mouth_drive/build_blend.py` | `examples/mouth_drive/pillow_layers/mouth_spritesheet.png` | `examples/mouth_drive/mouth_drive.blend` |
 | mouth_drive | `_shared/export_proscenio.py` | `examples/mouth_drive/mouth_drive.blend` | `examples/mouth_drive/mouth_drive.expected.proscenio` |
-| slot_swap | `slot_swap/draw_layers.py` | (Pillow primitives) | `examples/slot_swap/pillow_layers/arm.png` + `axe.png` + `sword.png` |
+| slot_swap | `slot_swap/draw_layers.py` | (Pillow primitives) | `examples/slot_swap/pillow_layers/arm.png` + `club.png` + `sword.png` |
 | slot_swap | `slot_swap/build_blend.py` | `examples/slot_swap/pillow_layers/*.png` | `examples/slot_swap/slot_swap.blend` |
 | slot_swap | `_shared/export_proscenio.py` | `examples/slot_swap/slot_swap.blend` | `examples/slot_swap/slot_swap.expected.proscenio` |
 | shared_atlas | `shared_atlas/draw_atlas.py` | (Pillow primitives) | `examples/shared_atlas/atlas.png` |

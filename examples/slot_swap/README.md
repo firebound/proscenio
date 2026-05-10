@@ -7,16 +7,16 @@ swings while its weapon attachment swaps mid-animation.
 - 1 armature `arm_rig` with bone `arm` (perpendicular to the XZ
   picture plane, tail toward the Front Ortho camera)
 - 1 slot Empty `weapon` parented to the bone tip;
-  `proscenio.is_slot=True`, `proscenio.slot_default="axe"`
+  `proscenio.is_slot=True`, `proscenio.slot_default="club"`
 - 2 attachments parented to the slot Empty:
-  - `axe` (32x32 polygon mesh, axe.png)
+  - `club` (32x32 polygon mesh, club.png)
   - `sword` (32x32 polygon mesh, sword.png)
 - 2 actions named `swing` (one on the armature, one on the slot
   Empty -- Blender renames the second to `swing.001` due to the
   global uniqueness constraint):
   - Arm bone: Y rotation -pi/6 -> +pi/6 -> -pi/6 over 24 frames
-  - Slot Empty: `proscenio_slot_index` 0 (axe) -> 1 (sword) -> 0
-    (axe), constant interpolation
+  - Slot Empty: `proscenio_slot_index` 0 (club) -> 1 (sword) -> 0
+    (club), constant interpolation
 
 ## Directory layout
 
@@ -25,8 +25,8 @@ examples/slot_swap/
 ├── slot_swap.blend                       [SOURCE -- built by build_blend.py]
 ├── slot_swap.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
 ├── pillow_layers/                        [DERIVED -- Pillow draws the 3 attachments]
-│   ├── arm.png        16x32 -- pseudo-arm
-│   ├── axe.png        32x32 -- axe attachment
+│   ├── arm.png        32x8  -- horizontal forearm
+│   ├── club.png       32x32 -- club attachment
 │   └── sword.png      32x32 -- sword attachment
 └── godot/
     ├── SlotSwap.tscn                     Godot wrapper
@@ -57,10 +57,10 @@ After rebuilding, regenerate the golden via the writer so
 2. **Save As** `slot_swap_workbench.blend` to keep the canonical
    fixture untouched.
 3. Press play on the timeline -- arm should swing left/right, and
-   the weapon attachment should swap from axe to sword at the apex
+   the weapon attachment should swap from club to sword at the apex
    of the swing.
 4. Select the `weapon` Empty -- the **Active Slot** subpanel should
-   appear with `axe` and `sword` listed as attachments, axe marked
+   appear with `club` and `sword` listed as attachments, club marked
    as the default.
 5. (Optional) Toggle the default attachment to `sword` via the
    star icon on the panel; re-play to see the new starting state.

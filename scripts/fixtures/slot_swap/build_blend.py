@@ -54,14 +54,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "slot_swap"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 ARM_PATH = LAYERS_DIR / "arm.png"
-AXE_PATH = LAYERS_DIR / "axe.png"
+CLUB_PATH = LAYERS_DIR / "club.png"
 SWORD_PATH = LAYERS_DIR / "sword.png"
 BLEND_PATH = FIXTURE_DIR / "slot_swap.blend"
 
 PIXELS_PER_UNIT = 100.0
 
 ARM_W_PX = 32
-ARM_H_PX = 16
+ARM_H_PX = 8
 WEAPON_W_PX = 32
 WEAPON_H_PX = 32
 
@@ -70,7 +70,7 @@ SLOT_NAME = "weapon"
 
 
 def main() -> None:
-    for path in (ARM_PATH, AXE_PATH, SWORD_PATH):
+    for path in (ARM_PATH, CLUB_PATH, SWORD_PATH):
         if not path.exists():
             print(
                 f"[build_slot_swap] missing {path} -- run draw_layers.py first",
@@ -83,7 +83,7 @@ def main() -> None:
     slot_empty = _build_slot_empty(armature_obj)
     # 1mm of stagger between attachments along bone-Y so Eevee never
     # has to disambiguate coplanar quads if both end up visible.
-    _build_attachment("axe", AXE_PATH, slot_empty, is_default=True, depth_offset=-0.001)
+    _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, depth_offset=-0.001)
     _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, depth_offset=-0.002)
     _build_swing_action(armature_obj)
     _build_swap_action(slot_empty)
@@ -207,9 +207,9 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
-        empty.proscenio.slot_default = "axe"
+        empty.proscenio.slot_default = "club"
     empty["proscenio_is_slot"] = True
-    empty["proscenio_slot_default"] = "axe"
+    empty["proscenio_slot_default"] = "club"
     empty["proscenio_slot_index"] = 0
     return empty
 

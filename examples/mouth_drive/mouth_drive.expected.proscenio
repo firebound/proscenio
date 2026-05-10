@@ -8,7 +8,7 @@
         "name": "mouth_pos",
         "parent": null,
         "position": [
-          0.0,
+          -20.0,
           -0.0
         ],
         "rotation": -0.0,
@@ -22,7 +22,7 @@
         "name": "mouth_drive",
         "parent": null,
         "position": [
-          50.0,
+          20.0,
           -0.0
         ],
         "rotation": -0.0,
@@ -41,7 +41,7 @@
       "bone": "mouth_pos",
       "hframes": 4,
       "vframes": 1,
-      "frame": 0,
+      "frame": 2,
       "centered": true
     }
   ],
@@ -57,20 +57,16 @@
           "target": "mouth_drive",
           "keys": [
             {
-              "time": 0.0,
-              "rotation": 0.0
+              "time": 0.0
             },
             {
-              "time": 0.291667,
-              "rotation": 1.570796
+              "time": 0.291667
             },
             {
-              "time": 0.625,
-              "rotation": -1.570796
+              "time": 0.625
             },
             {
-              "time": 0.958333,
-              "rotation": 0.0
+              "time": 0.958333
             }
           ]
         }

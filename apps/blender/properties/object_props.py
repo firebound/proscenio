@@ -188,7 +188,7 @@ class ProscenioObjectProps(PropertyGroup):
         name="Driver axis",
         description="Pose bone transform channel feeding the driver",
         items=DRIVER_SOURCE_AXIS_ITEMS,
-        default="ROT_Z",
+        default="ROT_Y",
     )
     driver_expression: StringProperty(  # type: ignore[valid-type]
         name="Driver expression",

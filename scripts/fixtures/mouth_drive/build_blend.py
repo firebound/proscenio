@@ -100,7 +100,19 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Two horizontal bones in the XZ plane (front-ortho 2D convention)."""
+    """Two bones perpendicular to the XZ picture plane.
+
+    Blender's Front Orthographic view looks along world -Y; the picture
+    plane is XZ. Bones laid along the Y axis appear as small octahedral
+    dots in front-ortho -- the Spine / 2D-cutout convention -- and a
+    pose-mode R Y rotates the bone around the camera axis, which is the
+    visible "rotation in the picture" that animators expect. Reading
+    the rotation back via WORLD_SPACE + ROT_Y on a driver picks up the
+    same value the animator just authored.
+
+    Bones are spaced apart on world X so they remain selectable
+    individually from front-ortho even though they overlap visually.
+    """
     arm_data = bpy.data.armatures.new("mouth_rig")
     arm_obj = bpy.data.objects.new("mouth_rig", arm_data)
     bpy.context.scene.collection.objects.link(arm_obj)
@@ -108,12 +120,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.ops.object.mode_set(mode="EDIT")
 
     pos = arm_data.edit_bones.new(POS_BONE)
-    pos.head = (0.0, 0.0, 0.0)
-    pos.tail = (0.3, 0.0, 0.0)
+    pos.head = (-0.2, 0.0, 0.0)
+    pos.tail = (-0.2, 0.3, 0.0)
 
     drive = arm_data.edit_bones.new(DRIVE_BONE)
-    drive.head = (0.5, 0.0, 0.0)
-    drive.tail = (0.8, 0.0, 0.0)
+    drive.head = (0.2, 0.0, 0.0)
+    drive.tail = (0.2, 0.3, 0.0)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
@@ -201,7 +213,7 @@ def _install_driver(sprite_obj: bpy.types.Object, armature_obj: bpy.types.Object
     target = var.targets[0]
     target.id = armature_obj
     target.bone_target = DRIVE_BONE
-    target.transform_type = "ROT_Z"
+    target.transform_type = "ROT_Y"
     target.transform_space = "WORLD_SPACE"
     target.rotation_mode = "XYZ"
 
@@ -209,7 +221,7 @@ def _install_driver(sprite_obj: bpy.types.Object, armature_obj: bpy.types.Object
         sprite_obj.proscenio.driver_target = "frame"
         sprite_obj.proscenio.driver_source_armature = armature_obj
         sprite_obj.proscenio.driver_source_bone = DRIVE_BONE
-        sprite_obj.proscenio.driver_source_axis = "ROT_Z"
+        sprite_obj.proscenio.driver_source_axis = "ROT_Y"
         sprite_obj.proscenio.driver_expression = "var * 2 + 2"
 
 
@@ -241,8 +253,8 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
     )
     for frame, value in drive_keys:
         bpy.context.scene.frame_set(frame)
-        drive_pose.rotation_euler = (0.0, 0.0, value)
-        drive_pose.keyframe_insert(data_path="rotation_euler", frame=frame, index=2)
+        drive_pose.rotation_euler = (0.0, value, 0.0)
+        drive_pose.keyframe_insert(data_path="rotation_euler", frame=frame, index=1)
 
 
 def _save_blend() -> None:

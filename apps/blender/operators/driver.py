@@ -19,9 +19,9 @@ _DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
     ("region_h", "Region H", "Texture region height (0..1)"),
 )
 _DRIVER_SOURCE_AXES: tuple[tuple[str, str, str], ...] = (
-    ("ROT_Z", "Bone Rot Z", "Pose bone local rotation around Z (typical 2D plane)"),
-    ("ROT_X", "Bone Rot X", "Pose bone local rotation around X"),
-    ("ROT_Y", "Bone Rot Y", "Pose bone local rotation around Y"),
+    ("ROT_Y", "Bone Rot Y", "Rotation around world Y -- front-ortho camera axis (visible 2D)"),
+    ("ROT_Z", "Bone Rot Z", "Rotation around world Z -- vertical (spin in plan view)"),
+    ("ROT_X", "Bone Rot X", "Rotation around world X -- horizontal (tilt out of plane)"),
     ("LOC_X", "Bone Loc X", "Pose bone local translation X"),
     ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y"),
     ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z"),
@@ -73,7 +73,7 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         name="Source",
         description="Pose bone transform channel feeding the driver",
         items=_DRIVER_SOURCE_AXES,
-        default="ROT_Z",
+        default="ROT_Y",
     )
     expression: StringProperty(  # type: ignore[valid-type]
         name="Expression",
@@ -150,11 +150,12 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         target.transform_type = self.source_axis
         if self.source_axis.startswith("ROT_"):
             # WORLD_SPACE matches 2D-cutout convention for rotations:
-            # animators rotate "in the picture" via R Z (or R Y in
-            # front-ortho), independent of the bone's local axis
-            # orientation. LOCAL_SPACE returns 0 when the bone axis
-            # happens to align with the rotation axis (e.g. vertical
-            # bones rotated around world Z).
+            # the animator's R Y in pose mode (Blender Front Orthographic
+            # looks along world -Y, so world Y is the camera axis and
+            # rotation around it is what reads as "rotating in the
+            # picture") writes the same value WORLD_SPACE reads back.
+            # LOCAL_SPACE returns 0 when the bone's local axis happens
+            # to coincide with the world rotation axis.
             target.transform_space = "WORLD_SPACE"
             # XYZ Euler keeps the variable in radians instead of
             # returning quaternion components (sin(angle/2)) that

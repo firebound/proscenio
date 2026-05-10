@@ -4,24 +4,27 @@ End-to-end fixture for the **Drive from Bone** feature, structured to
 match the typical 2D cutout authoring layout:
 
 - 1 sprite_frame mesh `mouth` (4 cells, 32x32 each, 128x32 spritesheet)
-- 1 armature `mouth_rig` with **two horizontal bones** (lying along
-  world X, the front-ortho 2D plane):
+- 1 armature `mouth_rig` with **two bones perpendicular to the XZ
+  picture plane** (Blender Front Ortho looks along world -Y, so bones
+  laid along Y appear as small octahedral dots from the front --
+  Spine / 2D-cutout convention):
   - `mouth_pos` -- positions the mouth in 2D space; the sprite mesh
     is parented to it.
-  - `mouth_drive` -- driver source; rotation around its Z axis is
-    wired (via a pre-installed Scripted driver) to
-    `mouth.proscenio.frame`.
-- 1 action `mouth_drive_anim` keyframing `mouth_drive` rotation
+  - `mouth_drive` -- driver source; rotation around world Y (the
+    camera axis, which reads as "rotation in the picture") is wired
+    via a pre-installed Scripted driver to `mouth.proscenio.frame`.
+- 1 action `mouth_drive_anim` keyframing `mouth_drive` Y rotation
   -pi/2 -> +pi/2 -> 0 over 24 frames, cycling the sprite through
   all 4 mouth shapes via the driver. `mouth_pos` exists structurally
-  (the sprite is parented to it) but currently stays at rest --
-  see tests/BUGS_FOUND.md for the writer-side issue that drops
-  pose-location Z for horizontal bones.
+  (the sprite is parented to it) but currently stays at rest -- see
+  tests/BUGS_FOUND.md for the writer-side issue that drops part of
+  the pose-location vector for non-vertical bones.
 
 The driver mirrors what the **Drive from Bone** panel operator
-produces: `transform_space=WORLD_SPACE`, `rotation_mode=XYZ`,
-expression `var * 2 + 2`. Re-running the operator on this fixture
-should be idempotent (replaces the existing driver, same wiring).
+produces: `transform_type=ROT_Y`, `transform_space=WORLD_SPACE`,
+`rotation_mode=XYZ`, expression `var * 2 + 2`. Re-running the
+operator on this fixture should be idempotent (replaces the
+existing driver, same wiring).
 
 ## Directory layout
 
@@ -81,8 +84,8 @@ passing.
    rotates.
 4. Stop playback. Select the `mouth` mesh, click **Setup Preview**
    in the Active Sprite panel to see the slicer shader in viewport.
-5. Enter Pose mode on `mouth_rig`, select `mouth_drive`, R Z to
-   rotate manually -- watch the sprite cell change live.
+5. Enter Pose mode on `mouth_rig`, select `mouth_drive`, R Y to
+   rotate around the camera axis -- watch the sprite cell change live.
 6. Re-author the driver: select `mouth` mesh, in Active Sprite >
    Drive from Bone, click **Drive from Bone** with the panel's
    pre-filled values. Should be idempotent: same wiring, sprite

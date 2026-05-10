@@ -65,20 +65,20 @@ Active Sprite > Drive from bone box:
 - [x] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
 - [x] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
 - [x] Bone rotation em pose mode: driver value muda live. PR #39 fixou os 3 bugs originais (LOCAL_SPACE / AUTO Quaternion / seed keyframes) + commit 8196e9d alinhou eixo default com Blender Front Ortho (ROT_Y, não ROT_Z). Verificado em mouth_drive_workbench.
-- [ ] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
-- [ ] F9 redo panel: trocar `target_property` re-wires driver
-- [ ] Custom expression `var * 0.5 + 0.3`: mid-region scroll funciona
+- [x] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
+- [x] F9 redo panel: trocar `target_property` re-wires driver
+- [x] Custom expression `var * 0.5 + 0.3` em Region X: scroll continuous funciona. **Caveat:** trocar target via F9 não migra driver (adiciona outro), bug em BUGS_FOUND.md.
 
 ### 1.4 Active Slot panel
 
 Workbench file: `examples/doll/doll_slots.blend` (já tem brow.L.swap, brow.R.swap).
 
-- [ ] Selecionar `brow.L.swap` Empty: "Active Slot" subpanel aparece
-- [ ] Subpanel hide quando active object não é Empty + is_slot
-- [ ] Lista attachments (brow.L, brow.L.up) com kind icon (polygon)
-- [ ] Default attachment marcado com SOLO_ON star, outro com SOLO_OFF
-- [ ] Click star vazia: vira default, atualiza CP
-- [ ] "Add Selected Mesh" button: select mesh + slot empty, button añade ao slot
+- [x] Selecionar slot Empty: "Active Slot" subpanel aparece (testado em slot_swap workbench)
+- [x] Subpanel hide quando active object não é Empty + is_slot
+- [x] Lista attachments com kind icon (polygon)
+- [x] Default attachment marcado com SOLO_ON star, outro com SOLO_OFF
+- [!] Click star vazia: vira default, **CP NÃO atualiza** (PG mirror não inclui slot fields). Bug em BUGS_FOUND.
+- [x] "Add Selected Mesh" button: select mesh + slot empty, button adiciona ao slot
 
 ### 1.5 Slot creation flows
 

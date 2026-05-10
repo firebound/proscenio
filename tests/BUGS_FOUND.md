@@ -58,6 +58,67 @@ Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y 
 
 **Severity:** medium -- afeta qualquer rig 2D com bones horizontais (front-ortho convention). Bones verticais (típicos de rigs body-aligned) funcionam por acidente. Não causa crash, só silenciosamente perde translation tracks.
 
+### Slot fields: PG <-> CP mirror não dispara (`is_slot`, `slot_default`, `is_outliner_favorite`)
+
+**Repro:** Active Slot panel, click star vazia em attachment não-default. PG `slot_default` muda visualmente (star toggle), mas Custom Property `proscenio_slot_default` no Properties editor continua mostrando valor anterior.
+
+**Causa:** dois bugs combinados:
+
+1. `apps/blender/properties/object_props.py:220-227` (`slot_default`), `:239-247` (`is_slot`), `:230-237` (`is_outliner_favorite`) -- nenhum desses 3 fields tem `update=on_any_update` no IntProperty/StringProperty/BoolProperty. Os outros 11 fields têm.
+2. `apps/blender/core/mirror.py:24-36` (`OBJECT_MIRROR_MAP`) -- mapping não inclui entries pros 3 fields acima. Mesmo se update callback disparasse, `mirror_all_fields` não saberia mirror eles.
+
+Resultado: PG e CP divergem assim que usuário toca esses fields. Headless writer (sem addon) lê CP stale -> slot_default errado, is_slot errado.
+
+**Fix proposto:**
+
+1. Adicionar `update=on_any_update` nas 3 declarações em object_props.py.
+2. Adicionar 3 tuplas em `OBJECT_MIRROR_MAP`:
+
+   ```python
+   ("proscenio_is_slot", "is_slot", bool),
+   ("proscenio_slot_default", "slot_default", str),
+   ("proscenio_outliner_favorite", "is_outliner_favorite", bool),
+   ```
+
+**Severity:** high -- afeta correctness do round-trip slot. Bug-of-omission no SPEC 005.1.c.1 (fix do mirror cobriu sprite fields, esqueceu slot fields que vieram em SPEC 004 depois).
+
+### Drive from Bone: F9 redo trocando target NÃO migra driver, adiciona outro
+
+**Repro:**
+
+1. Active Sprite > Drive from Bone > Target=Frame index, click "Drive from Bone"
+2. Driver criado em `mouth.proscenio.frame`
+3. F9 redo > troca Target pra `Region X` (mesmo bone, mesma expression)
+4. Operator re-roda
+
+**Esperado:** driver migra de `proscenio.frame` pra `proscenio.region_x` (1 driver só, no novo target).
+
+**Atual:** driver **adicionado** em `proscenio.region_x`, driver antigo em `proscenio.frame` permanece. Sprite mesh fica com 2 drivers em proscenio.* properties.
+
+**Causa:** `apps/blender/operators/driver.py:_ensure_single_driver` só remove driver no `data_path` que está sendo escrito. Mudar target_property muda data_path, então drivers em outros proscenio.* properties não são tocados.
+
+**Fix proposto:** quando re-rodando o operator no mesmo sprite + mesma armature/bone source com target diferente, remover drivers existentes em outros `proscenio.*` paths (que tenham o mesmo source bone).
+
+Pseudocódigo:
+
+```python
+# Antes do driver_add:
+if sprite.animation_data is not None:
+    for fcurve in list(sprite.animation_data.drivers):
+        if fcurve.data_path.startswith("proscenio.") and fcurve.data_path != data_path:
+            # check se o source bone bate
+            for var in fcurve.driver.variables:
+                if any(t.id == armature and t.bone_target == self.bone_name for t in var.targets):
+                    sprite.driver_remove(fcurve.data_path)
+                    break
+```
+
+OR adicionar `replace_existing: BoolProperty(default=True)` na operator props pra permitir opt-out (caso usuário queira múltiplos drivers do mesmo bone).
+
+**Arquivo:** `apps/blender/operators/driver.py:31-51` (`_ensure_single_driver` precisa virar mais esperto, ou execute() deve fazer cleanup adicional).
+
+**Severity:** medium -- F9 redo é workflow esperado de "tweak parameters", behavior atual viola princípio de menos surpresa.
+
 ### Drive from Bone: transform_space LOCAL retorna 0 pra rotação world Z
 
 **Repro:** Active Sprite > Drive from bone com Target=Frame index, Axis=Bone Rot Z, expression=`var * 2 + 2`. Click "Drive from Bone". Em pose mode, R Z 45 no bone. Initial frame fica 2 (não muda da rotação 0). Driver Variable Value mostra 0.0° apesar do bone estar rotacionado 45°.

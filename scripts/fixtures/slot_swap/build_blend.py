@@ -178,6 +178,13 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
     obj.parent = armature_obj
     obj.parent_type = "BONE"
     obj.parent_bone = ARM_BONE
+    # Shift the arm sprite half its width to the LEFT so the right
+    # edge aligns with the bone tip. Weapons (parented to the slot
+    # Empty at the bone tip) then sit just off the right end of the
+    # arm rather than dead-center over it -- reads as 'hand at the
+    # tip of the arm holding the weapon'.
+    arm_world_w = ARM_W_PX / PIXELS_PER_UNIT
+    obj.location = (-arm_world_w / 2.0, 0.0, 0.0)
     mat = _build_material("arm.mat", ARM_PATH)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)

@@ -23,12 +23,12 @@ Recomendação: comece pelos smoke tests. Se quebrar lá, não adianta ir adiant
 Validam que addon carrega + workflow básico funciona.
 
 - [x] **Addon load**: Edit > Preferences > Add-ons > "proscenio" check. Sem warnings de import.
-- [ ] **Addon reload**: Edit > Preferences > addon disable + enable. Sem erro de re-registration.
-- [ ] **Reload Scripts** (F3 > "Reload Scripts" ou Code editor): nenhuma exception no console.
+- [x] **Addon reload**: Edit > Preferences > addon disable + enable. Após pycache clear + restart, registra limpo em cena fresh, doll.blend, doll_workbench.blend.
+- [x] **Reload Scripts** (F3 > "Reload Scripts" ou Code editor): nenhuma exception no console.
 - [x] **Operator dispatch**: Diagnostics panel > "Run Smoke Test" -> INFO bar mostra "Proscenio smoke test OK", console imprime mesma string.
-- [ ] **Properties registered**: abrir `examples/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
-- [ ] **Scene props**: Scene > Properties > scroll pra "Proscenio" Custom Properties section, ver `last_export_path` field.
-- [ ] **PG hydration**: abrir um .blend antigo (legacy) com Custom Properties manuais (`proscenio_type=sprite_frame`) -- PG inicializa com mesmo valor.
+- [x] **Properties registered**: abrir `examples/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
+- [x] **Scene props**: Scene PG não espelha pra CPs (by design). Verificar via panel surface: Export panel mostra `pixels_per_unit` field + `last_export_path` text; Atlas panel mostra pack settings.
+- [~] **PG hydration**: abrir um .blend antigo (legacy) com Custom Properties manuais (`proscenio_type=sprite_frame`) -- PG inicializa com mesmo valor. Deferred -- testar quando produzir cena from-scratch e validar populate.
 
 ---
 
@@ -38,24 +38,24 @@ Workbench file recomendado: `examples/doll/doll_workbench.blend` (clone do basel
 
 ### 1.1 Active Sprite panel
 
-- [ ] sprite_type dropdown: polygon <-> sprite_frame muda body do panel
-- [ ] hframes/vframes/frame fields: edit -> Custom Property mirror atualiza
-- [ ] Region mode auto: hint label "computed from UV bounds at export"
-- [ ] Region mode manual: 4 floats (region_x/y/w/h) editáveis
-- [ ] "Snap to UV bounds" button (polygon, manual mode): preenche os 4 floats baseado em UV
-- [ ] "Reproject UV" button (polygon): reprojeta UV active layer
-- [ ] material_isolated checkbox: salva no PG + CP
+- [x] sprite_type dropdown: polygon <-> sprite_frame muda body do panel
+- [x] hframes/vframes/frame fields: edit -> Custom Property mirror atualiza
+- [x] Region mode auto: hint label "computed from UV bounds at export"
+- [x] Region mode manual: 4 floats (region_x/y/w/h) editáveis
+- [!] "Snap to UV bounds" button (polygon, manual mode): preenche os 4 floats baseado em UV. **Bug**: edit mode crasha (`IndexError` em `uv_layer.data[li]`, faltam guards de poll/contexto). Object mode funciona se UVs forem válidas. (Doll baseline tem UVs degeneradas em (0,0) -- esperado para snap retornar bbox vazio nesse caso.)
+- [x] "Reproject UV" button (polygon): reprojeta UV active layer. Caveats em BUGS_FOUND.md (perf da segunda call, V invertido em meshes 3D-ish).
+- [x] material_isolated checkbox: salva no PG + CP
 
 ### 1.2 Sprite Frame preview shader
 
 Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
 
-- [ ] "Setup Preview" button: quad em Material Preview mostra cell 0 do spritesheet
-- [ ] Mudar `obj.proscenio.frame` 0->1->2->3 manualmente: cell visível atualiza live
-- [ ] Animar `frame` via keyframes: scrub timeline cicla cells
-- [ ] "Remove Preview": quad volta a mostrar atlas inteiro
-- [ ] Re-Setup idempotente: clicar 2x não duplica nodes
-- [ ] Solid shading mode: flat diffuse (slicer invisível, esperado)
+- [x] "Setup Preview" button: quad em Material Preview mostra cell ativo do spritesheet (testado em blink_eyes com frame=2)
+- [x] Mudar `obj.proscenio.frame` 0->1->2->3 manualmente: cell visível atualiza live
+- [x] Animar `frame` via keyframes: scrub timeline cicla cells
+- [x] "Remove Preview": quad volta a mostrar atlas inteiro
+- [x] Re-Setup idempotente: clicar 2x não duplica nodes (verificado no shader graph: 1× node group "Proscenio Sprite Frame")
+- [x] Solid shading mode: flat diffuse (slicer invisível, esperado)
 
 ### 1.3 Drive from bone
 

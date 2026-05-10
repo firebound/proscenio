@@ -178,13 +178,8 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
     obj.parent = armature_obj
     obj.parent_type = "BONE"
     obj.parent_bone = ARM_BONE
-    # Shift the arm sprite half its width to the RIGHT so the left
-    # edge aligns with the bone tip. Weapons (parented to the slot
-    # Empty at the bone tip) then sit just off the left end of the
-    # arm rather than dead-center over it -- reads as 'hand at the
-    # tip of the arm holding the weapon'.
-    arm_world_w = ARM_W_PX / PIXELS_PER_UNIT
-    obj.location = (arm_world_w / 2.0, 0.0, 0.0)
+    # Hard-coded offset dialled in by hand and verified visually.
+    obj.location = (-0.16, 0.0, 0.0)
     mat = _build_material("arm.mat", ARM_PATH)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)
@@ -194,16 +189,8 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     """Empty parented to the arm bone tip; flagged as a slot.
 
-    Positioning matches the manual layout the user dialled in:
-
-    - X = -arm_w: 32 px shift to the LEFT in bone-local X. Combined
-      with the arm's +arm_w/2 right-shift, this puts the weapon
-      stack hovering just off the LEFT end of the arm.
-    - Y = -0.05: in front of the arm on the picture-plane stack
-      (avoid z-fight with the arm at Y=0).
-    - Z = +0.20: weapon bottom meets arm top with no gap.
+    Hard-coded offset dialled in by hand: weapon at (-0.3, 0, 0.2).
     """
-    arm_world_w = ARM_W_PX / PIXELS_PER_UNIT
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
@@ -211,7 +198,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent = armature_obj
     empty.parent_type = "BONE"
     empty.parent_bone = ARM_BONE
-    empty.location = (-arm_world_w, -0.05, 0.20)
+    empty.location = (-0.3, 0.0, 0.2)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True

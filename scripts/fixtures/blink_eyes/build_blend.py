@@ -70,12 +70,13 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Bone perpendicular to the XZ picture plane (Blender Front Ortho
-    # looks along world -Y, Spine / 2D-cutout convention -- bones
-    # appear as small octahedral dots from the front).
+    # Bone perpendicular to the XZ picture plane, pointing TOWARD the
+    # camera (Front Ortho looks along world -Y, so tail at -Y means the
+    # bone points at the viewer). Spine / 2D-cutout convention --
+    # bones appear as small octahedral dots from the front.
     bone = arm_data.edit_bones.new("head")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.5, 0.0)
+    bone.tail = (0.0, -0.5, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

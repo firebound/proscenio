@@ -100,15 +100,16 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Two bones perpendicular to the XZ picture plane.
+    """Two bones perpendicular to the XZ picture plane, pointing
+    TOWARD the Front Ortho camera.
 
-    Blender's Front Orthographic view looks along world -Y; the picture
-    plane is XZ. Bones laid along the Y axis appear as small octahedral
-    dots in front-ortho -- the Spine / 2D-cutout convention -- and a
-    pose-mode R Y rotates the bone around the camera axis, which is the
-    visible "rotation in the picture" that animators expect. Reading
-    the rotation back via WORLD_SPACE + ROT_Y on a driver picks up the
-    same value the animator just authored.
+    Blender's Front Orthographic view looks along world -Y, so the
+    camera sits at +Y. Bones with tail at -Y from the head point at
+    the viewer -- the Spine / 2D-cutout convention -- and appear as
+    small octahedral dots from the front. A pose-mode R Y rotates the
+    bone around the camera axis, the visible "rotation in the picture"
+    that animators expect; reading it back via WORLD_SPACE + ROT_Y on
+    a driver picks up the same value.
 
     Bones are spaced apart on world X so they remain selectable
     individually from front-ortho even though they overlap visually.
@@ -121,11 +122,11 @@ def _build_armature() -> bpy.types.Object:
 
     pos = arm_data.edit_bones.new(POS_BONE)
     pos.head = (-0.2, 0.0, 0.0)
-    pos.tail = (-0.2, 0.3, 0.0)
+    pos.tail = (-0.2, -0.3, 0.0)
 
     drive = arm_data.edit_bones.new(DRIVE_BONE)
     drive.head = (0.2, 0.0, 0.0)
-    drive.tail = (0.2, 0.3, 0.0)
+    drive.tail = (0.2, -0.3, 0.0)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

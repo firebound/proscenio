@@ -187,9 +187,11 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     """Empty parented to the arm bone tip; flagged as a slot.
 
-    Offset slightly toward the Front Ortho camera (-Y) so attachments
-    sit in front of the arm sprite when both are rendered, instead of
-    z-fighting at Y=0.
+    - Offset along -Y so attachments sit in front of the arm on the
+      picture plane stack (no z-fight with the arm at Y=0).
+    - Offset along +Z so the weapon visually sits ABOVE the
+      horizontal arm sprite -- the arm reads as the "hand" gripping
+      the weapon from below.
     """
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
@@ -198,7 +200,10 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent = armature_obj
     empty.parent_type = "BONE"
     empty.parent_bone = ARM_BONE
-    empty.location = (0.0, -0.05, 0.0)
+    # 16 px above arm center along world Z (arm is 16 px tall, weapon
+    # 32 px tall -> 8 + 16 = 24 px gap. Use 0.20 in world units to
+    # leave a 4 px breathing space).
+    empty.location = (0.0, -0.05, 0.20)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True

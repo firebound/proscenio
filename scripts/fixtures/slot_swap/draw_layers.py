@@ -93,8 +93,8 @@ def _draw_club() -> None:
     rect(canvas, head_x, head_y, 2, head_h, WOOD_DARK)
 
     # Grip (narrower, below head).
-    grip_x = 13
-    grip_w = 6
+    grip_x = 14
+    grip_w = 3
     grip_y = 18
     grip_h = 11
     rect(canvas, grip_x - 1, grip_y, grip_w + 2, grip_h, OUTLINE)

@@ -194,16 +194,16 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     """Empty parented to the arm bone tip; flagged as a slot.
 
-    - X = 0: slot Empty stays at the bone tip horizontally. Combined
-      with the arm's local X shift (arm.location.x = +arm_w/2,
-      placing the arm's LEFT edge at the bone), this puts the weapon
-      directly above the arm's left end -- 'hand at the wrist
-      gripping the weapon'.
+    Positioning matches the manual layout the user dialled in:
+
+    - X = -arm_w: 32 px shift to the LEFT in bone-local X. Combined
+      with the arm's +arm_w/2 right-shift, this puts the weapon
+      stack hovering just off the LEFT end of the arm.
     - Y = -0.05: in front of the arm on the picture-plane stack
       (avoid z-fight with the arm at Y=0).
-    - Z = +0.20: weapon's bottom edge meets the arm's top edge
-      with no visible gap.
+    - Z = +0.20: weapon bottom meets arm top with no gap.
     """
+    arm_world_w = ARM_W_PX / PIXELS_PER_UNIT
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
@@ -211,7 +211,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent = armature_obj
     empty.parent_type = "BONE"
     empty.parent_bone = ARM_BONE
-    empty.location = (0.0, -0.05, 0.20)
+    empty.location = (-arm_world_w, -0.05, 0.20)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True

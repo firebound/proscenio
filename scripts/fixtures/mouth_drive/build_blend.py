@@ -168,6 +168,7 @@ def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Objec
     bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
     tex = nt.nodes.new(type="ShaderNodeTexImage")
     tex.image = bpy.data.images.load(str(SHEET_PATH), check_existing=True)
+    tex.interpolation = "Closest"  # pixel-art: nearest-neighbor, no bilinear blur
     nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])

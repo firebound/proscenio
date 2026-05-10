@@ -81,8 +81,10 @@ def main() -> None:
     armature_obj = _build_armature()
     _build_arm_mesh(armature_obj)
     slot_empty = _build_slot_empty(armature_obj)
-    _build_attachment("axe", AXE_PATH, slot_empty, is_default=True)
-    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False)
+    # 1mm of stagger between attachments along bone-Y so Eevee never
+    # has to disambiguate coplanar quads if both end up visible.
+    _build_attachment("axe", AXE_PATH, slot_empty, is_default=True, depth_offset=-0.001)
+    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, depth_offset=-0.002)
     _build_swing_action(armature_obj)
     _build_swap_action(slot_empty)
     _save_blend()
@@ -213,6 +215,7 @@ def _build_attachment(
     slot_empty: bpy.types.Object,
     *,
     is_default: bool,
+    depth_offset: float,
 ) -> bpy.types.Object:
     """Polygon mesh attachment parented to the slot Empty.
 
@@ -220,12 +223,19 @@ def _build_attachment(
     Blender preview matches the slot's runtime semantics (only one
     attachment visible at a time). Animation tracks toggle visibility
     at runtime via the slot_attachment track in the .proscenio output.
+
+    ``depth_offset`` shifts the attachment a sub-millimeter along the
+    bone-Y axis so attachments never exactly share the picture plane
+    -- protects against Eevee z-fight if multiple attachments end up
+    visible simultaneously (e.g. the user manually unhides one for
+    inspection).
     """
     mesh = _quad_mesh(name, WEAPON_W_PX, WEAPON_H_PX)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
+    obj.location = (0.0, depth_offset, 0.0)
     mat = _build_material(f"{name}.mat", image_path)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)

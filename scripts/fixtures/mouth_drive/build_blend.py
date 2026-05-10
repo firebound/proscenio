@@ -216,8 +216,13 @@ def _install_driver(sprite_obj: bpy.types.Object, armature_obj: bpy.types.Object
 def _build_action(armature_obj: bpy.types.Object) -> None:
     """Animate ``mouth_drive`` Z rotation -pi/2 -> +pi/2 -> 0 over 24 frames.
 
-    Plus a tiny translation cycle on ``mouth_pos`` to make it visually
-    obvious that the two bones have independent roles.
+    Only the driver bone is animated. ``mouth_pos`` exists to demonstrate
+    the position-vs-driver split structurally (sprite is parented to it),
+    but it stays at rest -- the writer's pose-location channel currently
+    drops the Z component for bones whose Y axis is not aligned with
+    world Z (see tests/BUGS_FOUND.md), so a translation here would not
+    round-trip into the .proscenio golden. Once that writer fix lands,
+    keyframes on ``mouth_pos`` can be added back.
     """
     armature_obj.animation_data_create()
     action = bpy.data.actions.new(name="mouth_drive_anim")
@@ -226,7 +231,6 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
     bpy.context.scene.frame_end = 24
 
     drive_pose = armature_obj.pose.bones[DRIVE_BONE]
-    pos_pose = armature_obj.pose.bones[POS_BONE]
     drive_pose.rotation_mode = "XYZ"
 
     drive_keys = (
@@ -239,16 +243,6 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
         bpy.context.scene.frame_set(frame)
         drive_pose.rotation_euler = (0.0, 0.0, value)
         drive_pose.keyframe_insert(data_path="rotation_euler", frame=frame, index=2)
-
-    pos_keys = (
-        (1, 0.0),
-        (12, 0.05),
-        (24, 0.0),
-    )
-    for frame, dz in pos_keys:
-        bpy.context.scene.frame_set(frame)
-        pos_pose.location = (0.0, 0.0, dz)
-        pos_pose.keyframe_insert(data_path="location", frame=frame, index=2)
 
 
 def _save_blend() -> None:

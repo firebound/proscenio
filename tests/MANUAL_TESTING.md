@@ -64,7 +64,7 @@ Active Sprite > Drive from bone box:
 - [x] Picker `Armature` filtra só ARMATURE objects
 - [x] Picker `Bone` dropdown lista bones do armature escolhido (vazio se nenhum)
 - [x] Click "Drive from Bone" cria fcurve em `proscenio.<target_property>`
-- [!] Bone rotation R+Z em pose mode: driver value muda live. **Defaults quebram:** LOCAL_SPACE retorna 0 pra bone vertical, keyframes residuais limitam output. Workaround: trocar transform_space pra WORLD_SPACE manual + deletar keyframes do fcurve. 3 bugs em BUGS_FOUND.md.
+- [x] Bone rotation R+Z em pose mode: driver value muda live. (Defaults antigos -- LOCAL_SPACE + AUTO Quaternion + seed keyframes -- mascaravam o feature; PR #39 trocou pra WORLD_SPACE / XYZ Euler / strip keyframes pra ROT_*. Aguarda re-teste pós-merge.)
 - [ ] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
 - [ ] F9 redo panel: trocar `target_property` re-wires driver
 - [ ] Custom expression `var * 0.5 + 0.3`: mid-region scroll funciona

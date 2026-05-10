@@ -34,6 +34,30 @@ IndexError: bpy_prop_collection[index]: index 0 out of range, size 0
 
 **Severity:** medium -- crash de operator não pode acontecer; usuário em edit mode é caso comum.
 
+### Writer: pose-location Z (bone-local) descartado pra bones horizontais
+
+**Repro:** action keyframa `pose.bones["mouth_pos"].location[2] = 0.05` (bone com rest pose horizontal, head=(0,0,0) tail=(0.3,0,0)). Roda writer. .proscenio output mostra position track com `[0.0, -0.0]` em vez do esperado `[0.0, -5.0]` (0.05 world Z * 100 ppu, com Y inversion).
+
+**Causa:** `apps/blender/exporters/godot/writer/animations.py:138-144`:
+
+```python
+if "location" in entry:
+    loc = entry["location"]
+    bx = float(loc.get(0, 0.0))
+    by = float(loc.get(1, 0.0))
+    bz = float(loc.get(2, 0.0))
+    if max(abs(bx), abs(by), abs(bz)) > 1e-6:
+        position = [round(by * ppu, 6), round(-bx * ppu, 6)]
+```
+
+Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y axis = world X), bone-local Z = world Z, mas formula descarta `bz`. Position track sempre vira (0, 0).
+
+**Fix proposto:** converter `(bx, by, bz)` pose location pra world delta usando matrix do rest pose do bone, depois aplicar `world_to_godot_xy`. Lida com qualquer orientação de bone.
+
+**Arquivo:** `apps/blender/exporters/godot/writer/animations.py:138-144` (`_resolve_pose_entry`).
+
+**Severity:** medium -- afeta qualquer rig 2D com bones horizontais (front-ortho convention). Bones verticais (típicos de rigs body-aligned) funcionam por acidente. Não causa crash, só silenciosamente perde translation tracks.
+
 ### Drive from Bone: transform_space LOCAL retorna 0 pra rotação world Z
 
 **Repro:** Active Sprite > Drive from bone com Target=Frame index, Axis=Bone Rot Z, expression=`var * 2 + 2`. Click "Drive from Bone". Em pose mode, R Z 45 no bone. Initial frame fica 2 (não muda da rotação 0). Driver Variable Value mostra 0.0° apesar do bone estar rotacionado 45°.

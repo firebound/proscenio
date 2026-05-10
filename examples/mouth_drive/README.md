@@ -11,10 +11,12 @@ match the typical 2D cutout authoring layout:
   - `mouth_drive` -- driver source; rotation around its Z axis is
     wired (via a pre-installed Scripted driver) to
     `mouth.proscenio.frame`.
-- 1 action `mouth_drive_anim` keyframing both bones over 24 frames
-  to demonstrate position-vs-driver separation -- `mouth_pos`
-  bobs up and down, `mouth_drive` rotates -pi/2 -> +pi/2 -> 0,
-  cycling the sprite through all 4 mouth shapes.
+- 1 action `mouth_drive_anim` keyframing `mouth_drive` rotation
+  -pi/2 -> +pi/2 -> 0 over 24 frames, cycling the sprite through
+  all 4 mouth shapes via the driver. `mouth_pos` exists structurally
+  (the sprite is parented to it) but currently stays at rest --
+  see tests/BUGS_FOUND.md for the writer-side issue that drops
+  pose-location Z for horizontal bones.
 
 The driver mirrors what the **Drive from Bone** panel operator
 produces: `transform_space=WORLD_SPACE`, `rotation_mode=XYZ`,

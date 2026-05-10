@@ -148,16 +148,25 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         target.id = armature
         target.bone_target = self.bone_name
         target.transform_type = self.source_axis
-        # WORLD_SPACE matches 2D-cutout convention: rotation around the
-        # world Z (or Y for front-ortho rigs) is what the animator means
-        # when they R Z 45 in pose mode, regardless of the bone's local
-        # axis orientation. LOCAL_SPACE returns 0 when the bone axis
-        # happens to align with the rotation axis (e.g. vertical bones
-        # rotated around world Z).
-        target.transform_space = "WORLD_SPACE"
-        # XYZ Euler keeps the variable in radians instead of returning
-        # quaternion components (sin(angle/2)) that confuse expressions.
-        target.rotation_mode = "XYZ"
+        if self.source_axis.startswith("ROT_"):
+            # WORLD_SPACE matches 2D-cutout convention for rotations:
+            # animators rotate "in the picture" via R Z (or R Y in
+            # front-ortho), independent of the bone's local axis
+            # orientation. LOCAL_SPACE returns 0 when the bone axis
+            # happens to align with the rotation axis (e.g. vertical
+            # bones rotated around world Z).
+            target.transform_space = "WORLD_SPACE"
+            # XYZ Euler keeps the variable in radians instead of
+            # returning quaternion components (sin(angle/2)) that
+            # confuse expressions.
+            target.rotation_mode = "XYZ"
+        else:
+            # LOC_* drivers measure the pose offset from rest, which is
+            # what authors mean by "bone moved by N units" in pose mode.
+            # WORLD_SPACE on translations would re-introduce the
+            # armature object's own transform into the driver, breaking
+            # rigs that get repositioned at instance time.
+            target.transform_space = "LOCAL_SPACE"
 
         # Mirror redo-panel overrides back to the PropertyGroup.
         props.driver_target = self.target_property

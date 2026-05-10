@@ -73,33 +73,6 @@
               "rotation": 0.0
             }
           ]
-        },
-        {
-          "type": "bone_transform",
-          "target": "mouth_pos",
-          "keys": [
-            {
-              "time": 0.0,
-              "position": [
-                0.0,
-                0.0
-              ]
-            },
-            {
-              "time": 0.458333,
-              "position": [
-                0.0,
-                -0.0
-              ]
-            },
-            {
-              "time": 0.958333,
-              "position": [
-                0.0,
-                0.0
-              ]
-            }
-          ]
         }
       ]
     }

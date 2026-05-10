@@ -103,9 +103,7 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
             orphans.append(expected)
     if orphans:
         listing = "\n".join(f"  - {p}" for p in orphans)
-        raise RuntimeError(
-            "orphan golden(s) with no matching .blend sibling:\n" + listing
-        )
+        raise RuntimeError("orphan golden(s) with no matching .blend sibling:\n" + listing)
     return pairs
 
 

@@ -116,23 +116,18 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Severity:** medium -- wrapper scenes não funcionam out-of-the-box; usuário precisa fix manual ao copiar pra projeto Godot.
 
-### blink_eyes fixture: image path absoluto bake'a no .blend
+### ~~blink_eyes fixture: image path absoluto bake'a no .blend~~ FIXED
 
-**Repro:** abrir `examples/blink_eyes/blink_eyes.blend` em outra máquina ou após mover o repo -- material reporta image not found.
+Fixed inline. `scripts/fixtures/blink_eyes/build_blend.py` agora chama
+`bpy.path.relpath` após `save_as_mainfile` + salva de novo, persistindo
+`//pillow_layers/eye_spritesheet.png` em vez do path absoluto. Aproveitada
+a passagem para reorientar o bone ao longo de world Y (perpendicular ao
+plano XZ), alinhando com a convenção do `mouth_drive` (Spine-style:
+bones aparecem como pontos no Front Ortho).
 
-**Causa:** `scripts/fixtures/blink_eyes/build_blend.py:113`:
-
-```python
-tex.image = bpy.data.images.load(str(SHEET_PATH), check_existing=True)
-```
-
-`SHEET_PATH` é `Path` absoluto (REPO/examples/...). Blender salva absolute filepath no .blend datablock. Outro path = quebra.
-
-**Fix proposto:** após `load()`, chamar `tex.image.filepath = bpy.path.relpath(str(SHEET_PATH))`. Ou load direto com `//pillow_layers/eye_spritesheet.png` se BLEND já estiver salvo.
-
-**Severity:** medium -- fixture quebra cross-machine. CI passa porque o golden test não renderiza, só compara writer output.
-
-**Provável que o mesmo problema afete:** `simple_psd/build_blend.py`, `slot_cycle/build_blend.py`. Auditar.
+**Provável que `simple_psd/build_blend.py` e `slot_cycle/build_blend.py`
+ainda tenham o mesmo bug de path absoluto** -- auditar quando rodar
+testes manuais nessas fixtures.
 
 ### (slot) Reproject UV: segunda chamada lenta + Y invertido
 

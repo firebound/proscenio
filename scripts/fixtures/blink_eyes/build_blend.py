@@ -37,7 +37,7 @@ PIXELS_PER_UNIT = 100.0
 def main() -> None:
     if not SHEET_PATH.exists():
         print(
-            f"[build_blink_eyes] missing {SHEET_PATH} — run draw_blink_eyes.py first",
+            f"[build_blink_eyes] missing {SHEET_PATH} -- run draw_blink_eyes.py first",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -46,6 +46,8 @@ def main() -> None:
     _build_sprite_frame_plane(armature_obj)
     _build_blink_action()
     _save_blend()
+    _rewrite_image_to_relpath()
+    bpy.ops.wm.save_mainfile()
     print(f"[build_blink_eyes] wrote {BLEND_PATH}")
 
 
@@ -68,9 +70,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
+    # Bone perpendicular to the XZ picture plane (Blender Front Ortho
+    # looks along world -Y, Spine / 2D-cutout convention -- bones
+    # appear as small octahedral dots from the front).
     bone = arm_data.edit_bones.new("head")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.0, 0.5)
+    bone.tail = (0.0, 0.5, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -162,6 +167,21 @@ def _build_blink_action() -> None:
 def _save_blend() -> None:
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), check_existing=False)
+
+
+def _rewrite_image_to_relpath() -> None:
+    """After save_as, rewrite image filepath to ``//pillow_layers/...``.
+
+    ``bpy.path.relpath`` needs the .blend to already be on disk so its
+    filepath can serve as the base; the first ``save_as`` sets that
+    base, this helper rewrites + the caller saves again. Cross-machine
+    safe (the previous absolute path baked the dev's local repo root
+    into the .blend, breaking on any other machine).
+    """
+    rel = bpy.path.relpath(str(SHEET_PATH))
+    for img in bpy.data.images:
+        if img.filepath:
+            img.filepath = rel
 
 
 if __name__ == "__main__":

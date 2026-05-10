@@ -38,7 +38,14 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 
 ## Active Slot panel
 
-- (vazio)
+- **Falta overview de todos os slots na cena.** Active Slot só mostra UM slot por vez (o ativo na seleção). Pra ver "quais slots existem? quem é parent de quem? onde estão?", usuário precisa caçar os Empties no outliner um por um. Sugestões:
+  - Subpanel novo `Slots` (ou seção dentro de `Outliner` panel) listando todos os Empties com `is_slot=True`, mostrando nome + parent (bone/object/unparented) + número de attachments.
+  - Click numa linha = seleciona o slot Empty + foca câmera nele.
+- **Path A vs Path B unclear:** "Create Slot" no Skeleton panel parece o mesmo botão pros 2 fluxos, mas comportamento depende do contexto (modo + seleção). Usuário não sabe qual modo usar pra qual resultado. Sugestões:
+  - Disable button + tooltip "select a bone in pose mode OR meshes in object mode" quando contexto inválido.
+  - Hint inline antes do botão: "Pose Mode + bone selected: BONE-parented slot. Object Mode + N meshes: OBJECT slot wrapping selection".
+- **Mesh repositioning quando vira attachment de slot novo é confuso.** Path B reparenteia meshes sem feedback visual ("ué, por que minha espada pulou pra outro canto da cena?"). Idealmente o operator deve preservar world position SEMPRE (bug em BUGS_FOUND.md), e o panel deve mostrar transform delta se inevitável.
+- **Slot vinculado a quê?** Quando slot é criado sem bone (Path B sem seed parented a bone), Empty fica solto na cena -- usuário não sabe que precisa parentear depois. Active Slot panel mostra "bone: (unparented)" mas nem todos vão entender o significado. Sugestão: warning amarelo no panel "slot has no parent -- attachments will not follow any bone" + botão "Parent to Bone..." para fix rápido.
 
 ## Skeleton panel
 
@@ -65,7 +72,8 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 
 ## Validation panel
 
-- (a testar)
+- **Botão "Validate" mora no Export panel, não no Validation panel.** Confunde o usuário -- ele expande Validation, vê só "run Validate to see issues", sem onde clicar; precisa caçar o botão em outro panel. Mover (ou duplicar) o botão Validate pro próprio Validation panel é trivial e mais intuitivo. Export pode manter cópia pra gating, mas Validation deve poder rodar sozinho.
+- **Click em issue de objeto hidden seleciona no outliner mas viewport não reflete.** Comportamento Blender padrão, mas confuso pro usuário que clica achando que vai ver o offending object destacado. Sugestão: `proscenio.select_issue_object` operator deve também `hide_viewport=False` + frame view na target (View > Frame Selected). Workaround: usuário precisa unhide manual antes da seleção fazer sentido visual.
 
 ## Export panel
 

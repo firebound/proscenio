@@ -3,10 +3,10 @@
 Run with::
 
     blender --background examples/authored/doll/doll.blend \\
-        --python scripts/fixtures/render_doll_layers.py
+        --python scripts/fixtures/doll/render_layers.py
 
 Walks every ``MESH`` object in the scene and renders each to
-``examples/authored/doll/layers/<object_name>.png`` from a front-orthographic
+``examples/authored/doll/01_to_photoshop/render_layers/<object_name>.png`` from a front-orthographic
 camera, with transparent background and Workbench flat shading. The
 result is a stack of 2D layers — one per mesh — that the rest of the
 pipeline (preview composite, .proscenio export) consumes the same way

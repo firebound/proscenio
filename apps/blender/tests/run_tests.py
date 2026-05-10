@@ -93,11 +93,19 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
     Returns a sorted list of ``(blend_path, expected_path)`` tuples.
     """
     pairs: list[tuple[Path, Path]] = []
+    orphans: list[Path] = []
     for expected in sorted(EXAMPLES_DIR.rglob("*.expected.proscenio")):
         name = expected.name[: -len(".expected.proscenio")]
         blend = expected.parent / f"{name}.blend"
         if blend.exists():
             pairs.append((blend, expected))
+        else:
+            orphans.append(expected)
+    if orphans:
+        listing = "\n".join(f"  - {p}" for p in orphans)
+        raise RuntimeError(
+            "orphan golden(s) with no matching .blend sibling:\n" + listing
+        )
     return pairs
 
 

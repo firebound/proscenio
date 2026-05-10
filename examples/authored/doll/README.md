@@ -85,7 +85,7 @@ blender --background examples/authored/doll/doll.blend \
     --python scripts/fixtures/doll/render_layers.py
 python scripts/fixtures/doll/preview_pieces.py
 
-# 2. Emit the SPEC 006 manifest at the fixture root.
+# 2. Emit the SPEC 006 manifest under 01_to_photoshop/.
 blender --background examples/authored/doll/doll.blend \
     --python scripts/fixtures/doll/export_psd_manifest.py
 # -> writes examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json
@@ -154,7 +154,7 @@ Future actions land as future SPECs require.
 | When | Adds |
 | --- | --- |
 | SPEC 004 (slots) -- coverage moved out | Slot system tests live in `examples/slot_swap/` + `examples/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
-| SPEC 006 importer ships fully | A `doll.psd` round-trip test using `photoshop_import/doll.psd` as input. |
+| SPEC 006 importer ships fully | A `doll.psd` round-trip test using `02_from_photoshop/doll.psd` as input. |
 | SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
 | Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |
 

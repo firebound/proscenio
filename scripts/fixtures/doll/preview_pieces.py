@@ -2,13 +2,13 @@
 
 Run with::
 
-    python scripts/fixtures/preview_doll_pieces.py
+    python scripts/fixtures/doll/preview_pieces.py
 
-Pure Pillow. Walks ``examples/authored/doll/layers/`` and tiles every PNG into
-a single sheet with name labels — handy for eyeballing each piece in
-isolation alongside the full-body composite preview.
+Pure Pillow. Walks ``examples/authored/doll/01_to_photoshop/render_layers/`` and
+tiles every PNG into a single sheet with name labels - handy for eyeballing
+each piece in isolation alongside the full-body composite preview.
 
-Output: ``examples/authored/doll/doll_pieces_sheet.png``.
+Output: ``examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png``.
 """
 
 from __future__ import annotations

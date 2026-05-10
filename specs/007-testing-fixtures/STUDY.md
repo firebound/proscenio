@@ -164,25 +164,27 @@ Each fixture is split into subfolders by **role in the pipeline**: the source-of
 
 ```text
 examples/
-├── doll/
-│   ├── README.md
-│   ├── doll.blend                          [SOURCE — authored Blender]
-│   ├── doll.expected.proscenio             [GOLDEN — CI-diffed validation]
-│   ├── render_layers/                      Workbench-rendered PNGs, one per mesh
-│   │   ├── head.png / chest.png / belly.png / waist.png
-│   │   ├── arm.L/R, forearm.L/R, hand.L/R
-│   │   ├── leg.L/R, thigh.L/R, foot.L/R
-│   │   ├── eye.L/R, brow.L/R, ear.L/R
-│   │   └── pieces_sheet.png                contact sheet (visual debug)
-│   ├── photoshop_import/                   Inputs to + output of the JSX importer
-│   │   ├── doll.psd_manifest.json          bpy → SPEC 006 v1 manifest
-│   │   └── doll.psd                        JSX importer output (PSD)
-│   ├── photoshop_export/                   JSX exporter output (gitignored — roundtrip artifact)
-│   │   ├── doll.json                       re-exported manifest
-│   │   └── images/                         re-exported per-layer PNGs
-│   └── godot/                              Godot wrapper artifacts
-│       ├── Doll.tscn
-│       └── Doll.gd
+├── authored/
+│   └── doll/                                   [tier 0 -- hand-authored .blend, no build script]
+│       ├── README.md
+│       ├── doll.blend                          [SOURCE -- authored Blender]
+│       ├── doll.expected.proscenio             [GOLDEN -- CI-diffed validation]
+│       ├── 01_to_photoshop/                    bpy outputs going INTO Photoshop
+│       │   ├── doll.photoshop_manifest.json    bpy -> SPEC 006 v1 manifest
+│       │   └── render_layers/                  Workbench-rendered PNGs, one per mesh
+│       │       ├── head.png / chest.png / belly.png / waist.png
+│       │       ├── arm.L/R, forearm.L/R, hand.L/R
+│       │       ├── leg.L/R, thigh.L/R, foot.L/R
+│       │       ├── eye.L/R, brow.L/R, ear.L/R
+│       │       └── pieces_sheet.png            contact sheet (visual debug)
+│       ├── 02_from_photoshop/                  outputs coming BACK from Photoshop
+│       │   ├── doll.psd                        JSX importer output (PSD)
+│       │   └── export/                         JSX exporter output (gitignored -- roundtrip)
+│       │       ├── doll.photoshop_exported.json   re-exported manifest
+│       │       └── images/                     re-exported per-layer PNGs
+│       └── godot/                              Godot wrapper artifacts
+│           ├── Doll.tscn
+│           └── Doll.gd
 ├── blink_eyes/
 │   ├── README.md
 │   ├── blink_eyes.blend                    [SOURCE — built by build_blend.py]
@@ -207,9 +209,9 @@ scripts/fixtures/
 │   ├── _draw.py                            Pillow rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py                 bpy — open <fixture>.blend → write <fixture>.expected.proscenio
 ├── doll/
-│   ├── render_layers.py                    bpy — doll.blend → render_layers/*.png (Workbench flat)
-│   ├── export_psd_manifest.py              bpy — doll.blend → photoshop_import/doll.psd_manifest.json
-│   └── preview_pieces.py                   Pillow — render_layers/*.png → render_layers/pieces_sheet.png
+│   ├── render_layers.py                    bpy — doll.blend → 01_to_photoshop/render_layers/*.png (Workbench flat)
+│   ├── export_psd_manifest.py              bpy — doll.blend → 01_to_photoshop/doll.photoshop_manifest.json
+│   └── preview_pieces.py                   Pillow — 01_to_photoshop/render_layers/*.png → .../pieces_sheet.png
 ├── blink_eyes/
 │   ├── draw_layers.py                      Pillow → pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py                      bpy — load spritesheet, build blink_eyes.blend

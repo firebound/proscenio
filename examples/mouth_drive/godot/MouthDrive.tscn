@@ -1,0 +1,22 @@
+; Documentation-by-example wrapper scene for the Proscenio mouth_drive fixture.
+;
+; Minimal "Drive from Bone" authoring fixture: one sprite_frame mouth mesh
+; with a 4-cell spritesheet, parented to a single bone (`mouth_drive`) on
+; the `mouth_rig` armature. The fixture ships WITHOUT a driver wired --
+; on the Blender side, the user invokes the "Drive from Bone" panel
+; operator to author it. On the Godot side, this wrapper lets you preview
+; the imported result and verify that bone-driven property tracks survive
+; the export -> import round-trip.
+;
+; Drop `examples/mouth_drive/` at `res://mouth_drive/` in your Godot
+; project, or adjust paths to match your layout.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://mouth_drive/mouth_drive.proscenio" id="1_mouth"]
+[ext_resource type="Script" path="res://mouth_drive/godot/MouthDrive.gd" id="2_mouth"]
+
+[node name="MouthDrive" type="Node2D"]
+script = ExtResource("2_mouth")
+
+[node name="MouthDriveCharacter" parent="." instance=ExtResource("1_mouth")]

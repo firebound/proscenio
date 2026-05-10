@@ -14,7 +14,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://mouth_drive/mouth_drive.proscenio" id="1_mouth"]
-[ext_resource type="Script" path="res://mouth_drive/MouthDrive.gd" id="2_mouth"]
+[ext_resource type="Script" path="res://mouth_drive/godot/MouthDrive.gd" id="2_mouth"]
 
 [node name="MouthDrive" type="Node2D"]
 script = ExtResource("2_mouth")

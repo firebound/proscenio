@@ -34,6 +34,22 @@ IndexError: bpy_prop_collection[index]: index 0 out of range, size 0
 
 **Severity:** medium -- crash de operator não pode acontecer; usuário em edit mode é caso comum.
 
+### Wrapper .tscn: script path falta `/godot/` em fixtures legacy
+
+**Repro:** copiar `examples/<fixture>/` para `res://<fixture>/` em projeto Godot, abrir `*.tscn` -- script ext_resource quebra com "file not found".
+
+**Causa:** `BlinkEyes.tscn`, `Doll.tscn`, `SharedAtlas.tscn` declaram `Script path="res://<fixture>/<File>.gd"`, mas o `.gd` mora em `<fixture>/godot/<File>.gd`. Path correto seria `res://<fixture>/godot/<File>.gd` (como faz `SimplePSD.tscn`).
+
+**Fix:** trocar 3 paths nos `.tscn` afetados:
+
+- `examples/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
+- `examples/doll/godot/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd`
+- `examples/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
+
+`mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.
+
+**Severity:** medium -- wrapper scenes não funcionam out-of-the-box; usuário precisa fix manual ao copiar pra projeto Godot.
+
 ### blink_eyes fixture: image path absoluto bake'a no .blend
 
 **Repro:** abrir `examples/blink_eyes/blink_eyes.blend` em outra máquina ou após mover o repo -- material reporta image not found.

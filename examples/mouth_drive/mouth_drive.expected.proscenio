@@ -1,0 +1,35 @@
+{
+  "format_version": 1,
+  "name": "mouth_drive",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "mouth_drive",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      }
+    ]
+  },
+  "sprites": [
+    {
+      "type": "sprite_frame",
+      "name": "mouth",
+      "bone": "mouth_drive",
+      "hframes": 4,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true
+    }
+  ],
+  "atlas": "mouth_spritesheet.png"
+}

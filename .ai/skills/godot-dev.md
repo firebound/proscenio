@@ -87,8 +87,8 @@ generated `.scn`). Scripts attach to the wrapper root, not to the imported
 scene's children. Extra nodes (collisions, particles, AI controllers)
 parent to the wrapper.
 
-See [`examples/doll/godot/Doll.tscn`](../../examples/doll/godot/Doll.tscn) and
-[`examples/doll/godot/Doll.gd`](../../examples/doll/godot/Doll.gd) for the worked
+See [`examples/authored/doll/godot/Doll.tscn`](../../examples/authored/doll/godot/Doll.tscn) and
+[`examples/authored/doll/godot/Doll.gd`](../../examples/authored/doll/godot/Doll.gd) for the worked
 documentation-by-example.
 
 ### Bone rename caveat
@@ -119,7 +119,7 @@ A slot is a sprite-swap group: one named anchor with N alternate attachments, on
 
 **Schema shape**:
 
-`bone` is **optional** -- the writer emits it only when the slot Empty is bone-parented (`parent_type == "BONE"`); object-parented slot Empties (like the doll fixture's brow swaps, which use `parent_type == "OBJECT"` to avoid the bone Y-axis rotating its attachments) omit `bone` and the importer anchors the slot directly under `Skeleton2D`. The example below shows the bone-parented variant; see `examples/doll/doll.expected.proscenio` for the object-parented golden.
+`bone` is **optional** -- the writer emits it only when the slot Empty is bone-parented (`parent_type == "BONE"`); object-parented slot Empties (like the doll fixture's brow swaps, which use `parent_type == "OBJECT"` to avoid the bone Y-axis rotating its attachments) omit `bone` and the importer anchors the slot directly under `Skeleton2D`. The example below shows the bone-parented variant; see `examples/authored/doll/doll.expected.proscenio` for the object-parented golden.
 
 ```json
 {
@@ -189,7 +189,7 @@ for child in slot.get_children():
 
 User-authored animations on the wrapper's own AnimationPlayer can hook the same `:visible` track shape; the imported AnimationLibrary stays untouched on reimport.
 
-**See also**: `examples/slot_cycle/` (isolated minimal slot fixture), `examples/doll/` brow swap (slot on a comprehensive rig).
+**See also**: `examples/slot_cycle/` (isolated minimal slot fixture), `examples/authored/doll/` brow swap (slot on a comprehensive rig).
 
 ## Coding rules
 

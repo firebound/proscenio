@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background examples/doll/doll.blend \\
+    blender --background examples/authored/doll/doll.blend \\
         --python scripts/fixtures/export_doll_psd_manifest.py
 
 Walks every ``MESH`` object in ``doll.blend``, projects its world XZ
@@ -10,8 +10,8 @@ bounding box onto a Photoshop-style top-left canvas at
 ``PIXELS_PER_UNIT``, and emits a manifest matching
 ``schemas/psd_manifest.schema.json`` (format_version=1, kind=polygon
 for every mesh). Output sits at
-``examples/doll/doll.psd_manifest.json`` and references the existing
-``examples/doll/layers/<name>.png`` files (rendered by
+``examples/authored/doll/doll.psd_manifest.json`` and references the existing
+``examples/authored/doll/layers/<name>.png`` files (rendered by
 ``render_doll_layers.py``).
 
 Pipeline role: the Wave 6.0.5 roundtrip-tooling deliverable. The
@@ -52,9 +52,10 @@ import bpy
 from mathutils import Vector
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "doll"
-LAYERS_DIR = FIXTURE_DIR / "render_layers"
-MANIFEST_OUT = FIXTURE_DIR / "doll.photoshop_manifest.json"
+FIXTURE_DIR = REPO_ROOT / "examples" / "authored" / "doll"
+PHOTOSHOP_OUT_DIR = FIXTURE_DIR / "01_to_photoshop"
+LAYERS_DIR = PHOTOSHOP_OUT_DIR / "render_layers"
+MANIFEST_OUT = PHOTOSHOP_OUT_DIR / "doll.photoshop_manifest.json"
 
 PIXELS_PER_UNIT = 100.0
 CANVAS_PADDING_PX = 32

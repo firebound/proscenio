@@ -65,7 +65,7 @@ Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blen
 
 ### Visual style
 
-Each mesh in `doll.blend` carries a flat-color material. `scripts/fixtures/doll/render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background) under `examples/doll/render_layers/`. Region colors are the artist's choice in the `.blend` — change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
+Each mesh in `doll.blend` carries a flat-color material. `scripts/fixtures/doll/render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background) under `examples/authored/doll/01_to_photoshop/render_layers/`. Region colors are the artist's choice in the `.blend` — change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
 
 ### Actions
 

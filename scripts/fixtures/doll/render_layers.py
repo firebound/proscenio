@@ -2,11 +2,11 @@
 
 Run with::
 
-    blender --background examples/doll/doll.blend \\
+    blender --background examples/authored/doll/doll.blend \\
         --python scripts/fixtures/render_doll_layers.py
 
 Walks every ``MESH`` object in the scene and renders each to
-``examples/doll/layers/<object_name>.png`` from a front-orthographic
+``examples/authored/doll/layers/<object_name>.png`` from a front-orthographic
 camera, with transparent background and Workbench flat shading. The
 result is a stack of 2D layers — one per mesh — that the rest of the
 pipeline (preview composite, .proscenio export) consumes the same way
@@ -50,7 +50,9 @@ import bpy
 from mathutils import Vector
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-LAYERS_DIR = REPO_ROOT / "examples" / "doll" / "render_layers"
+LAYERS_DIR = (
+    REPO_ROOT / "examples" / "authored" / "doll" / "01_to_photoshop" / "render_layers"
+)
 
 PIXELS_PER_UNIT = 100.0
 PADDING_UNITS = 0.02  # 2 px @ ppu=100 — keeps outline anti-aliasing safe

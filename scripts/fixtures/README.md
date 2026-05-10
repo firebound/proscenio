@@ -37,10 +37,10 @@ scripts/fixtures/
 
 | Fixture | Script | Input | Output |
 | --- | --- | --- | --- |
-| doll | `doll/render_layers.py` | `examples/doll/doll.blend` | `examples/doll/render_layers/*.png` |
-| doll | `doll/preview_pieces.py` | `examples/doll/render_layers/*.png` | `examples/doll/render_layers/pieces_sheet.png` |
-| doll | `doll/export_psd_manifest.py` | `examples/doll/doll.blend` | `examples/doll/doll.photoshop_manifest.json` |
-| doll | `_shared/export_proscenio.py` | `examples/doll/doll.blend` | `examples/doll/doll.expected.proscenio` |
+| doll | `doll/render_layers.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` |
+| doll | `doll/preview_pieces.py` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` | `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png` |
+| doll | `doll/export_psd_manifest.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` |
+| doll | `_shared/export_proscenio.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/doll.expected.proscenio` |
 | blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
 | blink_eyes | `blink_eyes/build_blend.py` | `examples/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/blink_eyes/blink_eyes.blend` |
 | blink_eyes | `_shared/export_proscenio.py` | `examples/blink_eyes/blink_eyes.blend` | `examples/blink_eyes/blink_eyes.expected.proscenio` |

@@ -204,12 +204,14 @@ Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com 
 
 ### 1.18 Writer (export -- via UI ou headless)
 
-- [ ] `doll.blend` -> `.proscenio`: sem warnings (exceto bone weights de meshes sem matching bone)
-- [ ] `doll_slots.blend` -> `.proscenio`: contém `slots[]` + `brow_raise` animation com `slot_attachment` tracks
-- [ ] Re-export bytes idênticos (determinístico, sorted)
-- [ ] Slot sem bone parent: campo `bone` omitted no JSON
-- [ ] hide_viewport / hide_render não filtram meshes (esperado -- writer ignora)
-- [ ] Atlas auto-discovery: encontra `<blend_stem>.atlas.png` próximo ao .blend
+- [x] `doll.blend` -> `.proscenio` writer roda limpo. Únicos warnings: `belly/chest/waist vertex group has no matching bone -- dropping from weights` (3 warnings esperados; vertex groups dessas spine-region meshes não batem nome de bone porque doll usa weighted distribution ao longo da spine chain). Golden regenerated successfully.
+- [x] Slot fixture (`slot_swap.blend` substitui `doll_slots.blend` retirado em PR #40) -> `.proscenio` contém `"slots": [...]` com 2 attachments + bone field + default + 1 action `swing` (que merge swing + weapon swap). slot_cycle adiciona cobertura adicional do cycle pattern.
+- [x] Re-export bytes idênticos. 2 runs consecutivos de `export_proscenio.py` sobre `doll.blend` produzem bytes-por-bytes idênticos (`diff` retorna 0). Sprites sorted by name (`scene_discovery.py:24`), output via `json.dumps(sort_keys=True, indent=2)` no `_normalize`.
+- [x] Slot sem bone parent: campo `bone` omitted no JSON. Confirmado: slot_swap (bone=`arm`) tem `"bone": "arm"` no JSON; slot_cycle (sem parent_bone no Empty) tem zero `"bone":` field no slot entry.
+- [x] hide_viewport / hide_render não filtram meshes. Validado headless: mesh `arm` em slot_swap com `hide_viewport=True+hide_render=True` ainda aparece na lista de sprites do `.proscenio` output. `find_sprite_meshes` (`scene_discovery.py:18-25`) itera todos MESH sem checar hide flags.
+- [x] Atlas auto-discovery: 2 paths verificados.
+  - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` -- filename do primeiro Image Texture node descoberto.
+  - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
 ---
 

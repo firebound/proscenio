@@ -206,4 +206,65 @@ testes manuais nessas fixtures.
 
 **Severity:** low -- operacional, não crash. UV invertida é workaround manual ou parameter.
 
+### Outliner panel: filtro nativo da UIList (campo de baixo) não filtra
+
+**Repro:** Proscenio > subpanel Outliner > expandir filtro nativo do UIList (seta `▼` no rodapé) > digitar substring (ex: `brow.L`) no campo "Filter by Name".
+
+**Sintoma:** lista não filtra. Continua mostrando todos objetos. Só funciona o campo do **topo** (com ícone `VIEWZOOM`), que é `scene_props.outliner_filter`.
+
+**Causa:** `PROSCENIO_UL_sprite_outliner.filter_items` (apps/blender/panels/outliner.py:93-127) sobrescreve a lógica de filtro completa e ignora `self.filter_name` (o campo nativo do UIList). Só consulta `scene_props.outliner_filter`. Resultado: 2 search bars visíveis (1 nossa, 1 nativa) e só uma funciona -- confuso pro usuário.
+
+**Fix proposto (opção A, simples):** em `filter_items`, OR o substring filter com `self.filter_name`:
+
+```python
+flt_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
+native_text = (self.filter_name or "").lower()
+combined = flt_text or native_text  # nossa tem prioridade; cai pra nativa
+...
+if combined and combined not in obj.name.lower():
+    continue
+```
+
+**Fix proposto (opção B, mais limpo):** desabilitar o filtro nativo do UIList (`use_filter_show=False` no draw_filter override) e deixar só nosso search no topo, que já tem ícone próprio e está consistente com o style do panel.
+
+**Arquivo:** `apps/blender/panels/outliner.py:93-127`.
+
+**Severity:** medium -- não crash, mas duplicidade engana usuário e parece bug de filtro quebrado.
+
+### Skeleton panel: row click no UIList não seleciona bone no viewport
+
+**Repro:** doll_workbench.blend > Pose Mode > deselect all (`Alt+A`) > Proscenio > subpanel Skeleton > click row `upper_arm.L` no UIList de bones.
+
+**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete -- nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela MANUAL_TESTING.md item 1.8.2: click row -> seleciona bone correspondente em pose mode.
+
+**Causa:** `apps/blender/properties/scene_props.py:54` define `active_bone_index` como `IntProperty` puro, sem `update=` callback. `apps/blender/panels/skeleton.py:73-80` usa `template_list` apontando pra esse PG, que só armazena o índice; não há operator no row draw nem update hook que sincronize com `armature.data.bones.active` ou `armature.pose.bones[...].bone.select`.
+
+**Comparação:** Outliner panel resolve o mesmo problema com operator dedicado (`proscenio.select_outliner_object`) clicado via row draw_item. Skeleton panel não tem equivalente.
+
+**Fix proposto (opção A):** novo operator `proscenio.select_bone_by_index` chamado de dentro de `PROSCENIO_UL_bones.draw_item`. Operator entra em pose mode (se preciso), set `armature.data.bones.active` + `pose_bone.bone.select = True`.
+
+**Fix proposto (opção B, mais simples):** adicionar `update=` callback ao `active_bone_index` que faz a sincronização. Risco: callback dispara em todos os redraws e pode causar feedback loop com modos não-pose.
+
+**Arquivo:** `apps/blender/properties/scene_props.py:54-59`, `apps/blender/panels/skeleton.py:12-31`.
+
+**Severity:** medium -- panel oferece UX de selector de bone, mas não cumpre. Usuário precisa selecionar bone no viewport manualmente.
+
+### Animation panel: row click não atribui action ao armature
+
+**Repro:** doll_workbench.blend > Proscenio > Animation > click row `wave` no UIList > scrubar timeline.
+
+**Sintoma:** doll não anima. Selection do row só atualiza `active_action_index`; `doll.rig.animation_data.action` continua o que tava antes (provavelmente `None` ou outra action). Pra animar, usuário precisa abrir Dope Sheet > Action Editor > assignar manualmente.
+
+**Causa:** `apps/blender/properties/scene_props.py:48` define `active_action_index` como IntProperty sem `update=`. `apps/blender/panels/animation.py:53-61` usa `template_list` apontando pra esse PG sem operator que sincronize.
+
+**Padrão repetido:** mesma família dos bugs "Skeleton panel row click não seleciona bone" e "Active Sprite Drive-from-Bone selectors" -- UI selectors do Proscenio armazenam índice mas não dirigem viewport / armature state. Vale considerar fix consolidado.
+
+**Fix proposto:** novo operator `proscenio.set_active_action` chamado de dentro de `PROSCENIO_UL_actions.draw_item`. Operator atribui `action` ao `armature.animation_data.action` (criando `animation_data` se preciso) + opcionalmente reseta timeline pra `action.frame_range[0]`. Variante mais segura: só aplica se exatamente 1 armature na cena (heurística mesma do Skeleton panel `armatures[0]`).
+
+**Feedback usuário (10-mai-2026):** "o swap de animação pelo seletor do proscenio seria bem útil".
+
+**Arquivo:** `apps/blender/properties/scene_props.py:48-53`, `apps/blender/panels/animation.py:12-30`.
+
+**Severity:** medium -- panel parece broken pro usuário (selecionou mas nada acontece). Funcionalidade óbvia que falta.
+
 ---

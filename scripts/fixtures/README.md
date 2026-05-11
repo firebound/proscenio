@@ -28,9 +28,12 @@ scripts/fixtures/
 ├── simple_psd/
 │   ├── draw_layers.py              Pillow -> pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
 │   └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json -> simple_psd.blend
-└── slot_cycle/
-    ├── draw_layers.py              Pillow -> pillow_layers/attachment_red|green|blue.png (32x32 each)
-    └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action -> slot_cycle.blend
+├── slot_cycle/
+│   ├── draw_layers.py              Pillow -> pillow_layers/attachment_red|green|blue.png (32x32 each)
+│   └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action -> slot_cycle.blend
+└── atlas_pack/
+    ├── draw_layers.py              Pillow -> pillow_layers/sprite_1..9.png (32x32 each, distinct color + digit)
+    └── build_blend.py              Bpy: 1-bone armature + 9 quads + 9 materials/textures (3x3 grid) -> atlas_pack.blend
 ```
 
 ## Script -> output map
@@ -59,6 +62,9 @@ scripts/fixtures/
 | slot_cycle | `slot_cycle/draw_layers.py` | (Pillow primitives) | `examples/slot_cycle/pillow_layers/attachment_red.png` + `_green.png` + `_blue.png` |
 | slot_cycle | `slot_cycle/build_blend.py` | `examples/slot_cycle/pillow_layers/*.png` | `examples/slot_cycle/slot_cycle.blend` |
 | slot_cycle | `_shared/export_proscenio.py` | `examples/slot_cycle/slot_cycle.blend` | `examples/slot_cycle/slot_cycle.expected.proscenio` |
+| atlas_pack | `atlas_pack/draw_layers.py` | (Pillow primitives) | `examples/atlas_pack/pillow_layers/sprite_1..9.png` |
+| atlas_pack | `atlas_pack/build_blend.py` | `examples/atlas_pack/pillow_layers/*.png` | `examples/atlas_pack/atlas_pack.blend` |
+| atlas_pack | `_shared/export_proscenio.py` | `examples/atlas_pack/atlas_pack.blend` | `examples/atlas_pack/atlas_pack.expected.proscenio` |
 
 ## Run modes
 
@@ -98,6 +104,28 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
           if img.filepath:
               img.filepath = rel
   ```
+
+- **UV layout for asymmetric content**: in Blender's Front Orthographic view, the camera convention maps world `+X` to screen LEFT. A naive UV mapping (`uv[v0] = (0,0)` at vertex `(-w/2, 0, -h/2)`) renders the PIL image MIRRORED horizontally on screen. Symmetric sprites (`blink_eyes` eye, `mouth_drive` mouth, `slot_swap` arm with horizontally-symmetric club / sword) hide this. Asymmetric content (digits, text, anything with handedness) needs the U axis flipped:
+
+  ```python
+  # Standard quad with face normal toward camera (-Y):
+  vertices = [
+      (-w/2, 0, -h/2),  # v0
+      (+w/2, 0, -h/2),  # v1
+      (+w/2, 0, +h/2),  # v2
+      (-w/2, 0, +h/2),  # v3
+  ]
+  faces = [(0, 1, 2, 3)]
+  # U flipped (1.0 / 0.0 swapped) so PIL image renders unmirrored
+  # in Front Ortho. See atlas_pack/build_blend.py for the canonical
+  # example.
+  uv.data[0].uv = (1.0, 0.0)
+  uv.data[1].uv = (0.0, 0.0)
+  uv.data[2].uv = (0.0, 1.0)
+  uv.data[3].uv = (1.0, 1.0)
+  ```
+
+  The existing symmetric fixtures keep the un-flipped UVs because regenerating their goldens for a cosmetic-only fix is busywork. New fixtures should adopt the flipped layout by default.
 
 - **Image Texture interpolation**: set `tex.interpolation = "Closest"` on every `ShaderNodeTexImage`. Blender defaults to bilinear (`"Linear"`), which smears 32x32 pixel-art cells in Eevee's Material Preview. Closest (nearest-neighbor) keeps edges crisp:
 

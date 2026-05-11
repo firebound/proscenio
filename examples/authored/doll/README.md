@@ -1,6 +1,6 @@
 # doll fixture (SPEC 007)
 
-The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights, sprite_frame eyes, and authored actions. Demonstrates everything the addon supports today; grows feature-by-feature as future SPECs ship.
+The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights and authored actions. Demonstrates polygon meshes + multi-bone weights + multi-action authoring end-to-end. Originally planned to also cover `sprite_frame` via animated eyes, but the current `.blend` has all meshes as `sprite_type=polygon` (including `eye.L`/`eye.R`) -- sprite_frame coverage lives in `examples/blink_eyes/` and `examples/mouth_drive/` instead.
 
 ## Directory layout
 
@@ -118,7 +118,7 @@ Each top-level mesh in `doll.blend` becomes one PNG layer when `render_layers.py
 | --- | --- | --- |
 | polygon, multi-bone weights | spine-region meshes (`chest` / `belly` / `waist`), pelvic mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R` | Demonstrates **multi-bone weights** + falloff distribution. |
 | polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (SPEC 004 + 5.1.d). |
-| sprite_frame | `eye.L` / `eye.R` | Hframes=4 spritesheet, animated by the `blink` action. |
+| (planned) sprite_frame | (not present in current doll.blend; eye.L/R são polygon hoje. Cobertura sprite_frame em `blink_eyes/` + `mouth_drive/`.) | -- |
 | polygon, single primary bone | everything else | Standard parented sprites. |
 
 > The brow slot variant (`brow.L.swap` / `brow.R.swap`) was retired together
@@ -136,16 +136,16 @@ Each mesh in `doll.blend` carries a flat-color material; `render_layers.py` read
 | --- | --- | --- | --- |
 | `idle` | 30, loop | spine.001 + spine.002 vertical bob (breath) | bone_transform tracks across multiple bones |
 | `wave` | 30 | upper_arm.R + forearm.R rotation | demonstrates IK-friendly chain (no IK constraint exported, but Blender-side Toggle IK works) |
-| `blink` | 12 | eye.L + eye.R `proscenio.frame` 0→1→2→3→2→1→0 | exercises sprite_frame track type |
+| `blink` | 12 | (planned: eye.L + eye.R `proscenio.frame` 0→1→2→3→2→1→0) | sprite_frame track type test atualmente em `blink_eyes/` -- doll.blend ainda não tem eye animation enquanto eyes forem polygon |
 | `walk` | 30, loop | thigh.L/R + shin.L/R rotation, spine sway | full-body coordination |
 
 Future actions land as future SPECs require.
 
 ## What this fixture catches when broken
 
-- Anything end-to-end touching polygon meshes + weights + actions + sprite_frame.
+- Anything end-to-end touching polygon meshes + weights + actions.
 - Multi-bone weight export regression (pelvic mesh, spine-region meshes, `forearm.L/R`).
-- sprite_frame eye animation regression.
+- (planned) sprite_frame eye animation regression -- cobertura atual via `blink_eyes/` enquanto doll eyes forem polygon.
 - Multi-action authoring regression.
 - Schema bumps that affect more than one feature at once.
 

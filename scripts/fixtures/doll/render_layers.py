@@ -54,8 +54,8 @@ LAYERS_DIR = (
     REPO_ROOT / "examples" / "authored" / "doll" / "01_to_photoshop" / "render_layers"
 )
 
-PIXELS_PER_UNIT = 100.0
-PADDING_UNITS = 0.02  # 2 px @ ppu=100 — keeps outline anti-aliasing safe
+PIXELS_PER_UNIT = 1000.0
+PADDING_UNITS = 0.02  # 20 px @ ppu=1000 -- keeps outline anti-aliasing safe
 CAMERA_DISTANCE = 10.0
 
 SKIP_MESHES: set[str] = {"joints"}
@@ -84,15 +84,19 @@ def main() -> None:
 
 
 def _configure_render(scene: bpy.types.Scene) -> None:
-    """Workbench + flat material colour + transparent background."""
+    """Workbench + flat material colour + transparent background + no AA."""
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.compression = 15
+    scene.render.dither_intensity = 0.0
     scene.display.shading.light = "FLAT"
     scene.display.shading.color_type = "MATERIAL"
     scene.display.shading.show_specular_highlight = False
+    # Disable anti-aliasing -- Workbench defaults to 8x AA, which blurs
+    # pixel-art edges. "OFF" gives nearest-neighbor crisp output.
+    scene.display.render_aa = "OFF"
 
 
 def _sync_material_viewport_colors() -> None:

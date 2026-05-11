@@ -190,21 +190,29 @@ bones aparecem como pontos no Front Ortho).
 ainda tenham o mesmo bug de path absoluto** -- auditar quando rodar
 testes manuais nessas fixtures.
 
-### (slot) Reproject UV: segunda chamada lenta + Y invertido
+### Reproject UV: segunda chamada lenta + UV resultante rotacionada/flipada
 
-**Repro:** Active Sprite > polygon mode > "Reproject UV" duas vezes seguidas.
+**Repro:** Active Sprite > polygon mode > "Reproject UV". Sintomas em primeira E segunda chamadas.
 
-**Sintoma 1 (perf):** segunda chamada demora vários segundos como se fosse crashar.
+**Sintoma 1 (perf):** segunda chamada demora vários segundos como se fosse crashar (testes anteriores em doll).
 
-**Sintoma 2 (orientação):** UV resultante fica de cabeça pra baixo no UV editor (V invertido).
+**Sintoma 2 (orientação):** UV resultante fica rotacionada 90° + horizontalmente invertida. Confirmado em atlas_pack_workbench sprite_1 (11-mai-2026): após Reproject UV, layout precisou de `R -90 S X -1` (rotate -90° + scale X = -1 no UV editor) pra voltar ao mapeamento original.
 
-**Suspeita 1:** mode_set OBJECT<->EDIT chained com smart_project + restore loop pode estar deselecionando todo mundo + reselecionando, causando spike de cost. Ou `bpy.ops.uv.smart_project` cacheia algo problematico.
+**Suspeita 1:** mode_set OBJECT<->EDIT chained com smart_project + restore loop pode estar deselecionando todo mundo + reselecionando, causando spike de cost. Ou `bpy.ops.uv.smart_project` cacheia algo problemático.
 
-**Suspeita 2:** smart_project usa face normal como projeção; head do doll tem normal apontando "pra cima" (Y axis no Blender 2D plane vira V invertido em UV space).
+**Suspeita 2:** `bpy.ops.uv.smart_project` (uv_authoring.py:53) usa face normal pra escolher projeção. Para um quad no plano XZ (Front Ortho convention), a normal aponta -Y -- smart_project pode estar interpretando isso como "back side" e flipar U + rotacionar 90° pra alinhar. UVs originais (autorados manualmente em build_blend.py com layout específico pra evitar mirror em Front Ortho) são SOBRESCRITAS por essa projeção automática que não respeita o setup original.
+
+**Fix proposto:**
+
+- Substituir `bpy.ops.uv.smart_project` por reprojeção manual: detectar plano do mesh (X, Y ou Z aligned), mapear UVs naive (face vertices em world space -> UV [0..1] baseado em bounding box no plano detectado), respeitando o flip-U-pra-Front-Ortho que `build_blend.py` faz.
+- Alternativa: `bpy.ops.uv.unwrap` (cube/cylinder/sphere projection explícita) em vez de smart_project, com config determinística.
+- Mínimo: documentar limitação no help topic do Reproject UV ("re-roda Smart UV Project, pode mudar orientação de UVs autoradas manualmente").
 
 **Arquivo:** `apps/blender/operators/uv_authoring.py:39-66` (`PROSCENIO_OT_reproject_sprite_uv`).
 
-**Severity:** low -- operacional, não crash. UV invertida é workaround manual ou parameter.
+**Severity:** medium -- operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art).
+
+---
 
 ### Outliner panel: filtro nativo da UIList (campo de baixo) não filtra
 
@@ -266,5 +274,153 @@ if combined and combined not in obj.name.lower():
 **Arquivo:** `apps/blender/properties/scene_props.py:48-53`, `apps/blender/panels/animation.py:12-30`.
 
 **Severity:** medium -- panel parece broken pro usuário (selecionou mas nada acontece). Funcionalidade óbvia que falta.
+
+### Atlas Apply: skipped N sprites quando alguma mesh em Edit Mode (suspeita)
+
+**Repro (tentativa):** atlas_pack_workbench.blend > Pack Atlas (OK, packed 9 sprites 256x256) > Apply Packed Atlas. Operator reporta "applied packed atlas to 0 sprite(s); skipped 9 (no UV layer)".
+
+**Sintoma post-mortem (via inspect headless):**
+
+- `sprite_N.data.uv_layers["UVMap"]` ainda existe mas `len(data) == 0` (UV loop data wiped).
+- Nenhuma layer `.pre_pack` criada.
+- `proscenio_pre_pack` CP setada com `uv_layer_snapshot == ""` -- prova que `duplicate_active_uv_layer` retornou early porque `len(active.data) == 0` (apps/blender/operators/atlas_pack/_paths.py:35).
+
+**Headless repro falhou em reproduzir:** rodar `duplicate_active_uv_layer` isoladamente em fresh `atlas_pack.blend` mantém `uv_layers.active.data` com len=4. Bug aparece só no interativo.
+
+**Suspeita:** mesh em Edit Mode quando Apply roda. Em edit mode, `mesh.uv_layers.active.data` reporta zero entries -- precisa de BMesh access. Mesmo padrão do bug logado anteriormente "Snap to UV bounds: IndexError em edit mode" (apps/blender/operators/uv_authoring.py:102).
+
+**Outras hipóteses não descartadas:**
+
+- Operator wipa UV data inadvertidamente em algum path interno (`read_manifest`, `_ensure_shared_material`).
+- `uv_layers.new(do_init=False)` no Blender 5.1.1 invalida active reference em condições específicas (não reproduzido headless).
+- Multi-object edit mode em todos os sprites simultaneamente.
+
+**Fix proposto:**
+
+- `apply.py` deve adicionar guard em poll(): `return ... and context.mode == "OBJECT"` -- previne run em edit mode.
+- `apply.py:execute` + `duplicate_active_uv_layer` precisam logar warning explícito (não apenas skipped count) quando data len=0 detectado: pode ser edit mode, mesh corrompido, ou mesh sem UV.
+- Considerar BMesh fallback em apps/blender/operators/atlas_pack/* análogo ao que uv_authoring.py precisa.
+
+**Arquivo:** `apps/blender/operators/atlas_pack/apply.py:148-159`, `apps/blender/operators/atlas_pack/_paths.py:24-46`.
+
+**Severity:** medium-high -- operator silenciosamente wipa UV data + relata "skipped" sem indicar a causa. Usuário fica preso sem clue. Pode ser causa pre-existente do "actual UV data already empty" cenário.
+
+**CONFIRMADO (10-mai-2026):** root cause é Edit Mode. Usuário tinha todos os 9 sprites selecionados em Edit Mode quando clicou Apply. Em Object Mode o operator funciona normalmente. Fix definitivo: adicionar poll() check `context.mode == "OBJECT"` em PROSCENIO_OT_apply_packed_atlas + PROSCENIO_OT_pack_atlas + PROSCENIO_OT_unpack_atlas (mesma família).
+
+### Atlas Apply: re-click NÃO é idempotente -- UVs encolhem a cada click
+
+**Repro:** atlas_pack_workbench.blend > Object Mode > Pack Atlas > Apply Packed Atlas (OK, viewport correto) > **Apply Packed Atlas** denovo.
+
+**Sintoma:** UVs encolhem dentro do slot do atlas. Cada Apply remapeia as UVs como se elas estivessem em "source image space" (0..1 do PNG original), mas após primeiro Apply elas já estão em atlas space (ex: 0..0.125 pra sprite 32px em atlas 256px). Segundo Apply trata 0..0.125 como source-image 0..1 e re-empacota dentro do já-pequeno slot. Repetir N vezes -> UVs convergem pra ponto único no canto do slot.
+
+**Causa:** `apply.py:148-173` (`_rewrite_uvs`):
+
+```python
+src_px_x = u * src_w
+src_px_y = v * src_h
+new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
+new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
+```
+
+Lê UV atual + transforma assumindo que `u, v` estão em source space. Sem flag detectando "já foi aplicado".
+
+**Fix proposto:**
+
+- Opção A (defensive): no _snapshot_pre_pack, se o CP `proscenio_pre_pack` já existe + layer `.pre_pack` ainda presente, restaurar UVs do `.pre_pack` antes de re-aplicar. Garante que Apply sempre parte do source-image space.
+- Opção B (block): poll() detecta presença de pre_pack snapshot + retorna False, com hint "Apply already applied -- Unpack first to reapply" ou similar. Forço re-flow Unpack > Pack > Apply.
+- Opção C (auto-unpack): segundo Apply detecta snapshot existente e auto-Unpack antes de re-Apply. Transparente mas pode surpreender se usuário queria layering.
+
+Recomendação: Opção A é mais robusta + invisível ao usuário; Opção B é mais explícita mas adiciona fricção.
+
+**Arquivo:** `apps/blender/operators/atlas_pack/apply.py:80-97` (_snapshot_pre_pack), `apply.py:148-173` (_rewrite_uvs).
+
+**Severity:** medium-high -- quebra silenciosamente o estado da fixture; usuário não tem warning. Se Pack for re-executado e Apply rodar de novo (ciclo natural), UVs vão drift cada iteração.
+
+### Atlas Unpack: rename de material entre Apply e Unpack quebra restauração silenciosamente
+
+**Repro:** atlas_pack_workbench.blend > Pack > Apply (com `sprite_5` `material_isolated=True`) > Properties > Material > renomear `sprite_5.mat` pra `foo.mat` > Unpack Atlas.
+
+**Sintoma:** `sprite_5` continua com `foo.mat` (renomeado) ao invés de voltar pro material original. Sem warning. INFO bar reporta "unpacked N sprite(s)" mesmo com o restore parcial.
+
+**Causa:** `unpack.py:70-79`:
+
+```python
+mat_name = str(snapshot.get("material", ""))
+mat = bpy.data.materials.get(mat_name)  # lookup BY NAME
+if mat is None:
+    return  # <-- silent early return
+materials[0] = mat
+```
+
+Snapshot guarda nome (string) do material no momento do Apply. Se nome mudou depois, `bpy.data.materials.get(name)` retorna None e a função retorna sem reportar.
+
+Mesmo bug aplica ao shared material -- se `Proscenio.PackedAtlas` for renomeado, próximo Apply cria um novo (re-discovery falha + cria) deixando o renomeado órfão.
+
+**Fix proposto:**
+
+- Snapshot deveria guardar referência por pointer (não por nome): usar `bpy.types.PropertyGroup` com `PointerProperty(type=bpy.types.Material)` em vez de CP string. Blender atualiza pointer automaticamente quando datablock renomeia.
+- Alternativa low-effort: na restauração, se `materials.get(name)` falha, escanear materials por algum marker (CP `proscenio_original_for: "sprite_5"`) que cada material carrega depois do Apply.
+- Mínimo aceitável: warning explícito no INFO bar quando snapshot.material name não acha (ex: "sprite_5: original material 'sprite_5.mat' not found -- maybe renamed; restored UVs only").
+
+**Arquivo:** `apps/blender/operators/atlas_pack/apply.py:80-97` (snapshot escrita), `apps/blender/operators/atlas_pack/unpack.py:70-83` (restauração).
+
+**Severity:** medium -- não trava, mas perde estado original sem avisar. Usuário descobre só ao olhar Properties > Material.
+
+### Help topic `sprite_frame_preview` é orphan -- sem entry point na UI
+
+**Repro:** abre fixture com sprite_frame mesh (ex: `examples/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
+
+**Sintoma:** sub-box "Sprite frame" tem só label header + fields (hframes / vframes / frame / centered) + Setup/Remove Preview buttons. **NÃO tem ícone `?`** pra abrir help topic. Visual confirmado em screenshot do usuário (10-mai-2026 sessão 1.13 item 9).
+
+**Causa:** `apps/blender/panels/_draw_sprite_frame.py:26` desenha `box.label(text="Sprite frame", icon="IMAGE_DATA")` -- label puro, sem operator. Não chama `draw_subpanel_header` nem invoca `proscenio.help` com `topic="sprite_frame_preview"`. Help topic está definido em `apps/blender/core/help_topics.py:432` + tem FeatureStatus entry em `apps/blender/core/feature_status.py:115`, mas inacessível via UI -- só dá pra abrir programaticamente via `bpy.ops.proscenio.help(topic="sprite_frame_preview")`.
+
+**Fix proposto:**
+
+- Em `_draw_sprite_frame.py:24-26`, trocar `box.label(text="Sprite frame", icon="IMAGE_DATA")` por header row com label + status icon + help button análogo a `draw_subpanel_header(layout, feature_id, help_topic)`. Adicionar helper `_helpers.draw_subbox_header()` pra reuso (Active Sprite sub-boxes não são panels, headers funcionam diferente).
+- Mesma família de gap aplica a outras sub-boxes (Sprite frame / Polygon body / Texture region / Drive from Bone). Inventário: confirmar quais tópicos já têm entry visível e quais são orphan.
+
+**Arquivo:** `apps/blender/panels/_draw_sprite_frame.py:24-26`, e provavelmente outros `_draw_*.py`.
+
+**Severity:** low-medium -- não é crash, mas help topic existe e foi documentado/testado como acessível via UI; checklist 1.13 item 9 falha por causa disso. Indica que o pattern de "help button per sub-box" está incompleto.
+
+### Quick Armature: bones criados sempre no plano Z=0 (horizontais), nunca no plano Y=0 do Proscenio
+
+**Repro:** atlas_pack_workbench.blend > Skeleton panel > Quick Armature > Front Ortho (numpad 1) > drag de cima pra baixo no viewport.
+
+**Sintoma:** bone criado fica horizontal (head.Z == tail.Z == 0), independente de pra onde o mouse vai no eixo Z visualizado. Drag vertical no Front Ortho resulta em bone horizontal -- aparenta colapsar Z=0 silenciosamente.
+
+**Causa:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51` (`mouse_event_to_z0_point`) projeta ray do mouse no plano **Z=0** (XY plane, "ground plane"). Em Front Ortho o `view_vec.z ≈ 0` (câmera olha ao longo de Y) -> linha 39 cai no fallback -> linha 41 chama `region_2d_to_location_3d(..., Vector((0,0,0)))` -> linha 43 retorna `(x, y, 0.0)` forçando Z=0.
+
+Proscenio é workflow XZ (Spine / 2D cutout convention -- bones no plano Y=0 visíveis em Front Ortho). Helper foi escrito assumindo top-down (Z=0 plane), incompatível com a convention principal do addon.
+
+**Fix proposto:**
+
+- Renomear helper pra `mouse_event_to_plane_point(plane_axis)` ou similar; deixar caller especificar plano.
+- Em `quick_armature.py:70` + `:79`, passar `plane_axis="Y"` pra projetar em Y=0 (XZ plane) -- combina com Front Ortho.
+- Considerar detectar a view atual automaticamente: Top Ortho -> Z=0, Front Ortho -> Y=0, Right Ortho -> X=0. Mas complica UX (bone muda de plano se user gira camera). Simpler: hardcode Y=0 pra Proscenio uso.
+
+**Arquivo:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51`, `apps/blender/operators/quick_armature.py:70,79`.
+
+**Severity:** high -- inviabiliza o operator pro workflow primário do addon. Bones quick-rigged não funcionam em Front Ortho (a vista padrão de 2D cutout). Combinado com falta de preview (UI_FEEDBACK), torna Quick Armature inusável hoje.
+
+### Save Pose to Library: `Unexpected library type` sem orientação ao usuário
+
+**Repro:** doll_workbench.blend > Pose Mode > select bones + aplicar pose > N-panel > Proscenio > Skeleton > Save Pose to Library.
+
+**Sintoma:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Operator falha sem indicar o que fazer.
+
+**Causa:** Blender 4.x+ removeu defaults writable do Pose Library. `bpy.ops.poselib.create_pose_asset` recusa quando nenhuma asset library destino configurada em Preferences > File Paths > Asset Libraries (com path acessível pra escrita). Erro propagado vem do Blender core; `pose_library.py:68-70` só repassa via `report_error(self, f"pose library refused: {exc}")`.
+
+Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando uma área pra Asset Browser não resolve -- precisa adicionar library destino nas Preferences.
+
+**Fix proposto:**
+
+- Pré-check em `execute()`: detectar se existe asset library writable (`bpy.context.preferences.filepaths.asset_libraries` -- iterar + checar `path` exists + writable).
+- Se nenhuma: `report_error(self, "no writable asset library configured. Add one in Preferences > File Paths > Asset Libraries.")` com instrução acionável.
+- Ainda melhor: botão "Open Preferences" no panel próximo ao Save Pose, ou auto-criar asset library default em `~/Documents/Blender/Proscenio Pose Library/`.
+
+**Arquivo:** `apps/blender/operators/pose_library.py:23-73` (PROSCENIO_OT_save_pose_asset).
+
+**Severity:** medium -- não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do MANUAL_TESTING.
 
 ---

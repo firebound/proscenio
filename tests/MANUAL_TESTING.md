@@ -178,9 +178,9 @@ Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com 
 
 ### 1.15 Pose library
 
-- [ ] "Save Pose to Library": com armature em pose mode, pose name -> action criada
-- [ ] Action salva apenas keyframes do current pose
-- [ ] "Bake Current Pose": atual pose vira keyframe @ frame 1
+- [!] "Save Pose to Library": com armature em pose mode, pose name -> action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em BUGS_FOUND.md.
+- [ ] Action salva apenas keyframes do current pose. **Bloqueado pelo item 1** -- impossível inspecionar action que nunca foi criada.
+- [x] "Bake Current Pose": atual pose vira keyframe no frame_current. Confirmado: `baked pose at frame 16 for 65 bone(s)` -- todos os 65 bones do doll.rig keyframados em location/rotation_quaternion/rotation_euler/scale. Não é "@ frame 1" como checklist diz; é o frame_current da timeline (mais útil). Texto da checklist poderia ser ajustado.
 
 ### 1.16 Auxiliares
 

@@ -395,4 +395,24 @@ Proscenio é workflow XZ (Spine / 2D cutout convention -- bones no plano Y=0 vis
 
 **Severity:** high -- inviabiliza o operator pro workflow primário do addon. Bones quick-rigged não funcionam em Front Ortho (a vista padrão de 2D cutout). Combinado com falta de preview (UI_FEEDBACK), torna Quick Armature inusável hoje.
 
+### Save Pose to Library: `Unexpected library type` sem orientação ao usuário
+
+**Repro:** doll_workbench.blend > Pose Mode > select bones + aplicar pose > N-panel > Proscenio > Skeleton > Save Pose to Library.
+
+**Sintoma:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Operator falha sem indicar o que fazer.
+
+**Causa:** Blender 4.x+ removeu defaults writable do Pose Library. `bpy.ops.poselib.create_pose_asset` recusa quando nenhuma asset library destino configurada em Preferences > File Paths > Asset Libraries (com path acessível pra escrita). Erro propagado vem do Blender core; `pose_library.py:68-70` só repassa via `report_error(self, f"pose library refused: {exc}")`.
+
+Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando uma área pra Asset Browser não resolve -- precisa adicionar library destino nas Preferences.
+
+**Fix proposto:**
+
+- Pré-check em `execute()`: detectar se existe asset library writable (`bpy.context.preferences.filepaths.asset_libraries` -- iterar + checar `path` exists + writable).
+- Se nenhuma: `report_error(self, "no writable asset library configured. Add one in Preferences > File Paths > Asset Libraries.")` com instrução acionável.
+- Ainda melhor: botão "Open Preferences" no panel próximo ao Save Pose, ou auto-criar asset library default em `~/Documents/Blender/Proscenio Pose Library/`.
+
+**Arquivo:** `apps/blender/operators/pose_library.py:23-73` (PROSCENIO_OT_save_pose_asset).
+
+**Severity:** medium -- não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do MANUAL_TESTING.
+
 ---

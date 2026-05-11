@@ -184,17 +184,23 @@ Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com 
 
 ### 1.16 Auxiliares
 
-- [ ] "Create Ortho Camera": camera Top + ortho positioned, scene ready pra render
-- [ ] "Toggle IK Chain": pose bone selected -> IK constraint added; re-toggle remove
-- [ ] "Reproject Sprite UV": reprojeta UV do sprite ativo
+- [x] "Create Ortho Camera": cria `Proscenio.PreviewCam` em (0, -10, 0) com rotação (π/2, 0, 0), type ORTHO, ortho_scale=19.2 (= max(1920,1080)/PPU=100). Setada como scene.camera. Re-click "updated" (sem duplicar). Confirmado via headless inspect.
+- [x] "Toggle IK Chain": add IK constraint "Proscenio IK" com chain_count=2, sem target (target wiring manual). Re-toggle remove a constraint. INFO bar reporta `added IK to '<bone>'` e `removed IK from '<bone>'` corretamente. Confirmado em hand.L do doll.rig. Workflow gap (auto-bake action antes do export) loggado em UI_FEEDBACK.md.
+- [~] "Reproject Sprite UV": reprojeta UVs via Smart UV Project. Funciona (INFO bar `reprojected UVs on 'sprite_1'`), mas UV resultante fica rotacionada 90° + flipada horizontalmente. Confirmado em atlas_pack sprite_1: precisou `R -90 S X -1` no UV editor pra voltar ao layout original. Bug atualizado em BUGS_FOUND.md (mesma família do já reportado V invertido + perf 2ª call).
 
 ### 1.17 Photoshop import
 
-- [ ] "Import Photoshop Manifest" operator: file picker abre
-- [ ] `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json`: stamp polygon + sprite_frame meshes corretamente
-- [ ] `examples/simple_psd/simple_psd.photoshop_manifest.json`: stamp simples funciona
-- [ ] Imported scene tem stub armature root + meshes parented
-- [ ] PSD layer names viram object names (sem colisão)
+- [x] "Import Photoshop Manifest" operator: ImportHelper file picker abre, filter `.json`, sidebar com `Placement` (default "Landed") + `Root Bone Name` (default "root").
+- [x] `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` E `02_from_photoshop/export/doll.photoshop_exported.json` (PS-roundtrip) ambos stamp OK -- INFO bar `Proscenio: stamped 22 mesh(es) (armature: doll.rig)`. Doll só tem polygon (sprite_frame eyes são planned, não real); sprite_frame path validado via simple_psd no item seguinte.
+- [x] `examples/simple_psd/simple_psd.photoshop_manifest.json` stamp -- INFO bar inclui "composed M spritesheet(s)" indicando sprite_frame layers detectados (arrow_0..3 grouping).
+- [x] Imported scene tem stub armature (`doll.rig` com bone `root`) + 22 meshes parented `parent_type=OBJECT` ao armature object. Por design (`importers/photoshop/planes.py`) -- evita bone-direction rotation flip que poria meshes em XY ao invés de XZ.
+- [x] PSD layer names = object names sem colisão. 22 meshes nomeados conforme `manifest.layers[].name` sem sufixos `.001/.002`.
+
+**Cross-app roundtrip diff (01_to vs 02_from):** drift esperado registrado:
+
+- size: +2px em ambos eixos em todas as 22 layers -- PSD export captura bbox alpha-aware com 1px edge padding cada lado.
+- path: `render_layers/<name>.png` -> `images/<name_underscored>.png`. Folder convention difere (bpy vs JSX) + `.` em layer name vira `_` (PSD não permite `.`).
+- position, z_order, kind, canvas size, format_version, layer count, layer names: **zero drift**.
 
 ### 1.18 Writer (export -- via UI ou headless)
 

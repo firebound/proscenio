@@ -24,10 +24,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 (function () {
-    var manifestFile = File.openDialog(
-        "Select a Proscenio PSD manifest (.json)",
-        "JSON files:*.json,All:*.*"
+    // Start the picker at the doll fixture manifest relative to this
+    // script -- saves the user from navigating up the repo tree every
+    // run. Falls back to the dialog's default location when the path
+    // does not resolve (e.g. script copied outside the repo).
+    var scriptFile = new File($.fileName);
+    var repoRoot = scriptFile.parent.parent; // apps/photoshop/ -> repo root
+    var defaultManifest = new File(
+        repoRoot.fsName +
+            "/examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json"
     );
+    var manifestFile;
+    if (defaultManifest.exists) {
+        manifestFile = defaultManifest.openDlg(
+            "Select a Proscenio PSD manifest (.json)",
+            "JSON files:*.json,All:*.*"
+        );
+    } else {
+        manifestFile = File.openDialog(
+            "Select a Proscenio PSD manifest (.json)",
+            "JSON files:*.json,All:*.*"
+        );
+    }
     if (manifestFile === null) return;
     if (!manifestFile.exists) {
         alert("Manifest not found: " + manifestFile.fsName);

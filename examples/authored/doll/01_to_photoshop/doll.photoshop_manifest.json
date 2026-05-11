@@ -2,22 +2,22 @@
   "format_version": 1,
   "doc": "doll.psd",
   "size": [
-    1378,
-    2896
+    837,
+    1731
   ],
-  "pixels_per_unit": 100.0,
+  "pixels_per_unit": 1000.0,
   "layers": [
     {
       "kind": "polygon",
       "name": "brow.L",
       "path": "render_layers/brow.L.png",
       "position": [
-        729,
-        197
+        442,
+        129
       ],
       "size": [
-        84,
-        26
+        49,
+        15
       ],
       "z_order": 0
     },
@@ -26,12 +26,12 @@
       "name": "brow.R",
       "path": "render_layers/brow.R.png",
       "position": [
-        567,
-        197
+        346,
+        129
       ],
       "size": [
-        84,
-        26
+        49,
+        15
       ],
       "z_order": 1
     },
@@ -40,12 +40,12 @@
       "name": "eye.L",
       "path": "render_layers/eye.L.png",
       "position": [
-        732,
-        225
+        444,
+        146
       ],
       "size": [
-        51,
-        42
+        30,
+        25
       ],
       "z_order": 2
     },
@@ -54,26 +54,26 @@
       "name": "eye.R",
       "path": "render_layers/eye.R.png",
       "position": [
-        597,
-        225
+        365,
+        146
       ],
       "size": [
-        51,
-        42
+        30,
+        25
       ],
       "z_order": 3
     },
     {
       "kind": "polygon",
-      "name": "belly",
-      "path": "render_layers/belly.png",
+      "name": "arm.R",
+      "path": "render_layers/arm.R.png",
       "position": [
-        525,
-        914
+        154,
+        340
       ],
       "size": [
-        328,
-        323
+        145,
+        254
       ],
       "z_order": 4
     },
@@ -82,26 +82,26 @@
       "name": "ear.L",
       "path": "render_layers/ear.L.png",
       "position": [
-        817,
-        214
+        494,
+        139
       ],
       "size": [
-        57,
-        102
+        34,
+        60
       ],
       "z_order": 5
     },
     {
       "kind": "polygon",
-      "name": "ear.R",
-      "path": "render_layers/ear.R.png",
+      "name": "belly",
+      "path": "render_layers/belly.png",
       "position": [
-        505,
-        214
+        322,
+        551
       ],
       "size": [
-        57,
-        102
+        193,
+        190
       ],
       "z_order": 6
     },
@@ -110,110 +110,110 @@
       "name": "chest",
       "path": "render_layers/chest.png",
       "position": [
-        483,
-        475
+        298,
+        292
       ],
       "size": [
-        413,
-        517
+        243,
+        304
       ],
       "z_order": 7
     },
     {
       "kind": "polygon",
-      "name": "head",
-      "path": "render_layers/head.png",
+      "name": "ear.R",
+      "path": "render_layers/ear.R.png",
       "position": [
-        549,
-        32
+        311,
+        139
       ],
       "size": [
-        282,
-        416
+        34,
+        60
       ],
       "z_order": 8
-    },
-    {
-      "kind": "polygon",
-      "name": "thigh.L",
-      "path": "render_layers/thigh.L.png",
-      "position": [
-        708,
-        1312
-      ],
-      "size": [
-        279,
-        703
-      ],
-      "z_order": 9
-    },
-    {
-      "kind": "polygon",
-      "name": "thigh.R",
-      "path": "render_layers/thigh.R.png",
-      "position": [
-        393,
-        1312
-      ],
-      "size": [
-        279,
-        703
-      ],
-      "z_order": 10
     },
     {
       "kind": "polygon",
       "name": "waist",
       "path": "render_layers/waist.png",
       "position": [
-        474,
-        1091
+        292,
+        656
       ],
       "size": [
-        433,
-        293
+        255,
+        173
+      ],
+      "z_order": 9
+    },
+    {
+      "kind": "polygon",
+      "name": "head",
+      "path": "render_layers/head.png",
+      "position": [
+        336,
+        32
+      ],
+      "size": [
+        166,
+        245
+      ],
+      "z_order": 10
+    },
+    {
+      "kind": "polygon",
+      "name": "thigh.R",
+      "path": "render_layers/thigh.R.png",
+      "position": [
+        244,
+        785
+      ],
+      "size": [
+        164,
+        414
       ],
       "z_order": 11
     },
     {
       "kind": "polygon",
-      "name": "leg.L",
-      "path": "render_layers/leg.L.png",
+      "name": "thigh.L",
+      "path": "render_layers/thigh.L.png",
       "position": [
-        780,
-        2021
+        430,
+        785
       ],
       "size": [
-        172,
-        667
+        164,
+        414
       ],
       "z_order": 12
     },
     {
       "kind": "polygon",
-      "name": "leg.R",
-      "path": "render_layers/leg.R.png",
+      "name": "shin.R",
+      "path": "render_layers/shin.R.png",
       "position": [
-        428,
-        2021
+        265,
+        1203
       ],
       "size": [
-        172,
-        667
+        101,
+        393
       ],
       "z_order": 13
     },
     {
       "kind": "polygon",
-      "name": "foot.L",
-      "path": "render_layers/foot.L.png",
+      "name": "shin.L",
+      "path": "render_layers/shin.L.png",
       "position": [
-        828,
-        2695
+        473,
+        1203
       ],
       "size": [
-        210,
-        170
+        101,
+        393
       ],
       "z_order": 14
     },
@@ -222,84 +222,70 @@
       "name": "foot.R",
       "path": "render_layers/foot.R.png",
       "position": [
-        342,
-        2695
+        214,
+        1599
       ],
       "size": [
-        210,
-        170
+        124,
+        100
       ],
       "z_order": 15
     },
     {
       "kind": "polygon",
-      "name": "arm.L",
-      "path": "render_layers/arm.L.png",
+      "name": "foot.L",
+      "path": "render_layers/foot.L.png",
       "position": [
-        894,
-        555
+        501,
+        1599
       ],
       "size": [
-        247,
-        432
+        124,
+        100
       ],
       "z_order": 16
-    },
-    {
-      "kind": "polygon",
-      "name": "arm.R",
-      "path": "render_layers/arm.R.png",
-      "position": [
-        239,
-        555
-      ],
-      "size": [
-        247,
-        432
-      ],
-      "z_order": 17
     },
     {
       "kind": "polygon",
       "name": "forearm.L",
       "path": "render_layers/forearm.L.png",
       "position": [
-        1042,
-        975
+        626,
+        587
       ],
       "size": [
-        175,
-        367
+        103,
+        216
       ],
-      "z_order": 18
+      "z_order": 17
     },
     {
       "kind": "polygon",
       "name": "forearm.R",
       "path": "render_layers/forearm.R.png",
       "position": [
-        163,
-        975
+        109,
+        587
       ],
       "size": [
-        175,
-        367
+        103,
+        216
       ],
-      "z_order": 19
+      "z_order": 18
     },
     {
       "kind": "polygon",
       "name": "hand.L",
       "path": "render_layers/hand.L.png",
       "position": [
-        1115,
-        1326
+        670,
+        794
       ],
       "size": [
-        231,
-        319
+        136,
+        188
       ],
-      "z_order": 20
+      "z_order": 19
     },
     {
       "kind": "polygon",
@@ -307,11 +293,25 @@
       "path": "render_layers/hand.R.png",
       "position": [
         32,
-        1326
+        794
       ],
       "size": [
-        231,
-        319
+        136,
+        188
+      ],
+      "z_order": 20
+    },
+    {
+      "kind": "polygon",
+      "name": "arm.L",
+      "path": "render_layers/arm.L.png",
+      "position": [
+        539,
+        340
+      ],
+      "size": [
+        145,
+        254
       ],
       "z_order": 21
     }

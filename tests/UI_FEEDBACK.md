@@ -55,6 +55,18 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
   - Click no bone na lista deveria selecionar o bone no Blender (3D viewport / pose mode)
   - Ou permitir rename inline
 - Hoje o panel é só inspect read-only, não serve de muito
+- **Warning "2 armatures -- writer uses the first only" precisa contexto.** `apps/blender/panels/skeleton.py:60` pega `armatures[0]` (scene order), não active object. Quando cena tem 2+ armatures (ex: usar Quick Armature numa cena que já tem atlas_pack.armature -> cria Proscenio.QuickRig em paralelo), o panel mostra warning mas:
+  - "the first" sem indicar QUAL armature está sendo usada -- usuário tem que adivinhar pela scene order.
+  - Sem botão pra trocar a armature ativa do panel.
+  - Sugestões: (a) mostrar nome da armature usada no warning: `2 armatures present -- writer uses 'atlas_pack.armature'`. (b) Dropdown selector no panel pra escolher qual armature trabalhar (Scene PG `active_armature_name`). (c) Sincronizar com active object se for armature, fallback pra scene order só se nenhuma armature ativa.
+
+## Quick Armature operator
+
+- **Sem preview durante o drag.** Operator captura head no PRESS, tail no RELEASE. Entre os dois cliques, viewport não mostra nada -- usuário não consegue ver "de onde até onde" o bone vai. Só vê o resultado depois de criar. Sugestões: (a) preview line + circle entre head capturado e mouse atual durante o drag (gpu.draw via SpaceView3D.draw_handler_add). (b) atualizar a edit_bone.tail em real-time durante o move (mais pesado, mas zero código de draw).
+- **Falta de feedback visual sobre estado modal.** Status bar mostra hint texto, mas viewport não dá pista de que o modal tá ativo. Sugestões: highlight do viewport border, ou overlay text in-viewport tipo "Quick Armature: drag to draw | Shift = chain | Esc = exit".
+- **Falta atalhos pra connect/disconnect parent.** Hoje só tem `Shift` pra parent ao último bone (sem connect). Faltam: Ctrl+Shift pra parent connected (extends naturally); modifier pra escolher um parent específico (não só o último); operador "unparent" sem sair do modal.
+- **Saída do modal não óbvia.** Esc / right-click funcionam mas user que não viu o status bar fica preso. Sugestões: (a) botão "Confirm" / "Cancel" floating na viewport. (b) header bar com mensagem destacada. (c) ESC sempre mostra confirm dialog "Discard / Keep" pra evitar perda acidental.
+- **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (BUGS_FOUND.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
 
 ## Outliner panel
 
@@ -68,7 +80,43 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 
 ## Atlas panel
 
-- (a testar)
+- **Faltam controles de packing comparado a TexturePacker / Spine.** Proscenio hoje expõe só `pack_padding_px`, `pack_max_size`, `pack_pot`. Spine / TexturePacker oferecem (em ordem decrescente de utilidade):
+  - **Strip whitespace X/Y + Alpha threshold:** corta pixels transparentes em volta de cada sprite antes de empacotar. Reduz drasticamente tamanho do atlas com sprites de fundo transparente (típico em 2D cutout).
+  - **Rotation:** permite girar sprites 90 graus pra packing mais denso. Trade-off: runtime precisa rotacionar UVs.
+  - **Min width/height + Square + Divisible by 4:** restrições de shape do atlas (alguns GPUs antigos exigem POT ou divisível por 4; mobile às vezes prefere square).
+  - **Edge padding vs Duplicate padding:** edge replica borda do sprite no padding pra evitar bleeding (linhas brancas em zoom-out por bilinear sampling pegando o vizinho). Crítico pra atlas bem feito.
+  - **Premultiply alpha + Bleed:** alpha workflow correto pra blending sem halos.
+  - **Scale + multi-resolution suffixes (`@2x`):** gera atlas em múltiplas resoluções (HD/SD) numa só passada.
+  - **Pretty print JSON:** debug-friendly manifest output.
+  - **Pages (multi-atlas):** quando sprites não cabem num único atlas, gera page1/page2/... automaticamente.
+  - **Filter min/mag + Wrap X/Y:** metadata runtime (Linear vs Nearest, ClampToEdge vs Repeat) que vai pro manifest.
+  
+  Hoje todos esses defaultam ao implícito (no whitespace strip, no rotation, no bleed). Pra um pipeline de produção 2D, vários desses são *table stakes*. Não precisa de tudo de uma vez; priorizar **Edge padding + Strip whitespace** primeiro (maior impacto visual + tamanho).
+- **Falta visibility sobre PPU (pixels per unit) através do pipeline.** Hoje PPU vive como Scene-prop / parâmetro CLI no writer (`pixels_per_unit=100`), mas:
+  - PSD manifest tem `pixels_per_unit` no schema -- vira *implicit* depois que o importer carrega.
+  - Blender não tem UI mostrando o PPU efetivo da scene (usuário tem que olhar Export panel ou CLI).
+  - Atlas pack hoje preserva pixel resolution 1:1 (sprite 32x32 vira slot 32x32 no atlas), então PPU se mantém. **Mas:** se no futuro adicionar `Scale` (0.5x, 2x, multi-res), a relação PPU vs atlas pixel quebra silenciosamente.
+  - **Sugestão:** Atlas panel mostrar header com `Source PPU: 100 / Atlas PPU: 100 (1.0x)` quando packed. Se um dia `Scale` for adicionado, vira `Atlas PPU: 50 (0.5x scale)` com warning amarelo "world position bookkeeping needed". Idem mostrar PPU no Export panel + ler PPU do PSD manifest no importer (warning se mismatch).
+- **Atlas image picker label** mostra `atlas_pack_workbench.atlas.png` (filename do atlas packed) -- útil. Mas se o Pack ainda não rodou, mostra `sprite_1.png` (primeiro discovered). Sugestão: header explícito tipo `Discovered source atlas: <name>` vs `Packed atlas: <name>` pra deixar claro qual é qual estado.
+- **Visibility sobre estado de pack/unpack por objeto está ausente.** Setup pode ser híbrido (alguns objetos packed, outros não, ou múltiplos atlases na mesma cena). Hoje:
+  - O botão `Unpack Atlas` aparece sempre que QUALQUER objeto da scene tem snapshot, mesmo se o objeto selecionado não está packed. Comportamento `scene_has_pre_pack_snapshot(scene)` em `_paths.py:61-63`.
+  - Sem indicador per-objeto "este sprite está packed em `<atlas X>`" no Active Sprite panel.
+  - Sem lista global de atlases ativos na cena (quantos atlases foram packed? qual cada sprite usa?).
+  - **Sugestão:** novo subpanel ou sub-box "Packed atlases" no Atlas panel, listando: `<atlas_name>: N sprite(s) -- Pack date / Apply state`. Filtrar por seleção quando relevante. Per-sprite no Active Sprite: mostrar badge `packed in: <atlas_name>` quando objeto tem snapshot.
+- **Material identity é por nome (string), não por pointer.** Documentar limitação no Atlas panel UI (ou no help popup): "Renaming materials between Apply and Unpack will silently break restoration. Use Unpack first, then rename." Idealmente Proscenio expõe rename op próprio que atualiza snapshot junto, mas é overkill -- documentação na UI já reduz pegadinha. Bug em BUGS_FOUND.md detalha o fix técnico.
+- **MaxRects-BSSF heurística é greedy, não global-optimal.** Pro fixture atlas_pack (9 sprites 32x32, padding=2), o packer escolheu layout 7+2 colunas (footprint ~74x252) ao invés de 3x3 grid ótimo (108x108). Não afeta atlas size final (sempre 256 por start_size minimum), só density visual. Improvement possível: tentar múltiplas heurísticas (BSSF + BLSF + AreaFit) e escolher menor resultado. Prioridade baixa.
+- **Atlas não shrinka pra fit tight; start_size 256 hardcoded.** `apps/blender/core/atlas_packer.py:82` -- `size = max(start_size, ...)`. Independente de quantos sprites tem, atlas mínimo é 256x256. Pra fixtures pequenas, atlas tem 80%+ de waste. Sugestão: expor `start_size` como Scene PG (default 256, configurável). Ou modo "shrink to fit" -- pós-pack, recalcula bounding box dos placements e gera atlas no tamanho exato. Trade-off: pior pra reuso de atlas entre runs (size flutua) mas melhor pra storage.
+
+## Pipeline cross-tool
+
+- **Per-asset PPU end-to-end (gap real).** Pipeline atual usa **um único PPU global** (Scene PG, default 100). Schema PSD manifest tem campo `pixels_per_unit` mas:
+  - Importer PSD não respeita por-layer / por-asset.
+  - Writer Blender exporta sempre com PPU global.
+  - Godot import respeita PPU mas o que receber é o global.
+  - **Consequência:** dois personagens entregues em pixels diferentes (1280px vs 1920px) viram meshes de tamanhos diferentes no Blender (12.8m vs 19.2m com PPU=100), violando "same in-game height" mesmo que o artista intencionalmente trabalhou nesses pixels pra ter mesmo detail level.
+  - **Workaround hoje:** artista normaliza assets pra mesma resolução antes do pipeline; OR designer manualmente escala meshes no Blender pós-import.
+  - **Solução certa (futuro):** PSD manifest carrega `pixels_per_unit` per-layer (ou per-asset group); importer Blender escala mesh proporcionalmente na criação (`world_size = px / asset_ppu`); writer exporta per-mesh world_size derivada do per-asset PPU; Godot import usa world_size direto sem assumir global. Atlas pack pode opcionalmente downsample o maior pra resolução do menor (Spine Scale-style) com warning sobre detail loss.
+  - Discussão completa rolou na sessão de manual testing 1.10 (10-mai-2026).
 
 ## Validation panel
 
@@ -84,6 +132,11 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 - Help panel completamente inútil e ilegível como tá -- substituir por botão único que abre popup
 - Versão (Pipeline v0.1.0) poderia ficar aqui no Help panel
 - Adicionar botão "GitHub" / link pro repo
+- **See-also references nos popups de help NÃO são clickáveis.** `help_dispatch.py:88-89` rendera cada ref como `layout.label(text="  " + ref)` puro -- sem operator, sem hyperlink. Header da seção mostra ícone URL induzindo expectativa de click. Usuário só consegue ler os paths e abrir manual fora do Blender. Sugestões (em ordem de impacto):
+  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` -- abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, `specs/004-slot-system/` (abre file manager) etc. Mínimo viável.
+  - **B. wm.url_open** se ref começa com `http`. Mistura A+B detectando prefixo.
+  - **C. Copy to clipboard button** próximo de cada ref -- alternativa baixa-fricção.
+  - **D. Ícone visual:** se decidir não fazer A/B, ao menos trocar ícone URL no header da seção pra algo menos clicky (DOT, INFO), pra não enganar.
 
 ## Diagnostics panel
 

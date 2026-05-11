@@ -59,7 +59,7 @@ Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blen
 | --- | --- | --- |
 | polygon, single primary bone | `head`, `chest`, `belly`, `waist`, `arm.L/R`, `forearm.L/R`, `hand.L/R`, `leg.L/R`, `thigh.L/R`, `foot.L/R`, `brow.L/R`, `ear.L/R` | Standard parented sprites. |
 | polygon, multi-bone weights | `chest` / `belly` / `waist` (weighted across the spine chain), pelvic meshes weighted across `pelvis.L`/`pelvis.R` | Demonstrates weight-paint distribution + falloff. |
-| sprite_frame | `eye.L`, `eye.R` | 4 frames (open / mid / closing / closed). Driven by the `blink` action. |
+| (planned) sprite_frame | `eye.L`, `eye.R` (atualmente polygon no doll.blend) | Originalmente planejado: 4 frames open/mid/closing/closed + `blink` action. Cobertura sprite_frame movida pra `blink_eyes/` + `mouth_drive/` -- doll mantém eyes polygon até autoring deliberado. |
 | polygon, slot-ready | `brow.L`, `brow.R` | Future home for the slot system (SPEC 004) swapping brow-up / brow-down. |
 | polygon, driver-driven texture swap | `forearm.L`, `forearm.R` | Driver on `forearm` rotation flips front/back forearm sprite. Lands when SPEC 004 + driver shortcut (5.1.d) ship. |
 
@@ -75,7 +75,7 @@ Built into the `.blend` initially:
 | --- | --- | --- | --- |
 | `idle` | 30, loop | spine bob + breath | tests bone_transform tracks across multiple bones |
 | `wave` | 30 | shoulder.R + upper_arm.R + forearm.R rotation | demonstrates IK chain (target on hand.R) |
-| `blink` | 12 | `eye.L.proscenio.frame` + `eye.R.proscenio.frame` | exercises sprite_frame track |
+| (planned) `blink` | 12 | `eye.L.proscenio.frame` + `eye.R.proscenio.frame` | sprite_frame track test atualmente em `blink_eyes/` -- doll precisaria converter eyes pra sprite_frame antes de adicionar essa action |
 | `walk` | 30, loop | thigh / shin / foot rotation, spine sway | full-body coordination test |
 
 Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).

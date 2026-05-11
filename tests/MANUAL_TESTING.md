@@ -48,7 +48,7 @@ Workbench file recomendado: `examples/authored/doll/doll_workbench.blend` (clone
 
 ### 1.2 Sprite Frame preview shader
 
-Em sprite_frame mesh com material image-textured (eye.L, eye.R no doll):
+Em sprite_frame mesh com material image-textured (ex: `eye` em blink_eyes; `mouth` em mouth_drive. **Não testar em doll** -- meshes do doll são todas polygon, eyes incluídas):
 
 - [x] "Setup Preview" button: quad em Material Preview mostra cell ativo do spritesheet (testado em blink_eyes com frame=2)
 - [x] Mudar `obj.proscenio.frame` 0->1->2->3 manualmente: cell visível atualiza live
@@ -125,54 +125,56 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 
 Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com PNG próprio 32x32 + material próprio + cor + dígito 1..9 pra identificar visualmente onde cada um caiu no atlas packed).
 
-- [ ] "Pack Atlas" button: gera `atlas_pack.atlas.png` (atlas único 9-em-1) + `atlas_pack.atlas.json` (sprite -> placement map)
-- [ ] Pack idempotente: re-roda sem duplicar (atlas.png/atlas.json não mudam byte a byte na segunda run)
-- [ ] Pack após Apply: usa atlas existente como source, idempotente
-- [ ] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite (prova que UV remap não embaralhou)
-- [ ] material_isolated=True: sprite mantém material próprio (`sprite_N.mat`), swap só substitui Image Texture pelo atlas packed
-- [ ] "Unpack": restaura UVs originais (snapshot via UV layer `<active>.pre_pack`) + materiais originais voltam
-- [ ] Ciclo Pack > Apply > Pack > Apply: estado idempotente (atlas.png byte-identical, sem rotation de placements)
-- [ ] pack_padding_px setting respeitado (sprites no atlas têm gap N px entre si)
-- [ ] pack_max_size: cap pequeno (ex: 64 px) com 9 sprites de 32x32 não cabe -- pack falha graciosamente com warning, não crash
-- [ ] pack_pot=True: dimensões round-up pra power of 2 (com 9x32x32 = ~96x96 footprint, atlas vira 128x128 POT)
+- [x] "Pack Atlas" button: gera `atlas_pack_workbench.atlas.png` (256x256, 9 sprites empacotados) + `atlas_pack_workbench.atlas.json` (schema format_version=2: atlas_w/h, padding, placements dict com x/y/w/h + source_w/h + slice_x/y/w/h por sprite). INFO bar: "packed 9 sprite(s) into 256x256 px atlas".
+- [x] Pack idempotente: re-roda sem duplicar. JSON segunda run idêntico em atlas_w/h, padding, placements (cada sprite na mesma x,y).
+- [~] Pack após Apply: usa atlas existente como source, idempotente. Não testado isoladamente; coberto indiretamente pelos items 8/9/10 (várias execuções de Pack após estado pós-Apply mexendo em padding/max_size/pot). Pack opera sem crash mas semântica do "atlas existente como source" merece teste dedicado quando shape pipeline evoluir.
+- [x] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite. **Pré-condição obrigatória:** Object Mode -- em Edit Mode silenciosamente skip todos os sprites (bug em BUGS_FOUND.md). Operator deveria ter poll() guard.
+- [x] material_isolated=True: sprite_5 manteve `sprite_5.mat` (não foi trocado pelo shared); Image Texture do material trocou pra atlas packed; outros 8 sprites linkados a `Proscenio.PackedAtlas` shared (8 users). Confirmado via Material Slots dropdown: shared mostra 8 users, sprite_5.mat sem prefixo "0" (ainda em uso), outros sprite_N.mat com prefixo "0" (órfãos).
+- [x] "Unpack": restaura UVs originais (consome + remove layer `<active>.pre_pack`) + cada sprite_N volta pra `sprite_N.mat`. `Proscenio.PackedAtlas` fica orphan (0 users) -- esperado. `proscenio_pre_pack` CP deletada.
+- [!] Ciclo Pack > Apply > Pack > Apply: estado **NÃO idempotente**. Cada Apply consecutivo remapeia UVs como se estivessem em source-image space, mas após primeiro Apply elas já estão em atlas space -> shrink iterativo (UVs convergem pra ponto único no slot). Pack em si é idempotente (item 2); a quebra é no Apply re-clickado. Bug em BUGS_FOUND.md.
+- [x] pack_padding_px setting respeitado. pack_padding_px=8 -> atlas.json `"padding": 8`, stride entre sprites na mesma coluna passa de 36 (padding=2) pra 48 px (padding=8). Gap visível no atlas.png.
+- [x] pack_max_size: cap=64 com 9 sprites 32x32 -- pack falha graciosamente. ERROR bar: `Proscenio: pack failed -- 9 sprite(s) do not fit in 64x64 px atlas.` Sem crash. Atlas files do item 8 ficam intactos.
+- [x] pack_pot=True: atlas resultante 256x256 (POT, 2^8). Coincide com tamanho pot=False porque packer não shrinka start_size pra fit tight -- 9 sprites caberiam em ~96x96, mas start_size default é 256. POT semântica preservada (atlas é POT); para ver round-up real precisaria de mais sprites empurrando além de start_size.
 
 ### 1.11 Validation panel
 
-- [ ] "Validate" button: roda toda validação
-- [ ] Errors em vermelho, warnings em amarelo
-- [ ] Click issue: seleciona objeto offending
-- [ ] Validation results sticky entre saves
-- [ ] `validation_ran` flag bloqueia export até primeira run
+- [x] "Validate" button: roda `validation.validate_export(scene)`, popula `validation_results`, seta `validation_ran=True`. Botão mora no Export panel (já loggado em UI_FEEDBACK como reposicionar pra Validation panel).
+- [x] Errors em vermelho (`row.alert = True`), warnings em cinza (icon INFO). Confirmado: vertex_group inválido em sprite_1 -> row vermelho; sprite_2 unparented -> row cinza com icon INFO.
+- [x] Click issue: row click invoca `proscenio.select_issue_object` -> sprite offending vira active object no 3D viewport. Validado em ambos error e warning rows.
+- [x] Validation results sticky entre saves (`validation_ran` + `validation_results` são Scene PG, persistem no .blend).
+- [x] Export auto-roda validação inline ([export_flow.py:42-53](../apps/blender/operators/export_flow.py#L42-L53) `_gate_on_validation`). Bloqueia **apenas se houver issues com severity=="error"**; warnings passam. `validation_ran` flag é estado de UI (mostra "run Validate" vs results), **não é gate**. Item original ("flag bloqueia export até primeira run") era descrição errada; corrigido para refletir código real.
 
 ### 1.12 Export panel
 
-- [ ] "Export Godot" button: file picker abre, escolhe path -> escreve .proscenio
-- [ ] Last export path sticky no `Scene.proscenio.last_export_path`
-- [ ] "Re-export Godot" usa sticky path sem prompt
-- [ ] Pixels per unit setting respeitada no output
-- [ ] Validation gate bloqueia export se errors críticos não resolvidos
+- [x] "Export Godot" button: ExportHelper file picker abre, sidebar tem field `Pixels per unit`. Path escolhido -> .proscenio escrito. INFO bar `wrote <name>.proscenio`.
+- [x] Last export path sticky em `Scene.proscenio.last_export_path` (campo visível no panel; persiste no .blend após save/reload).
+- [x] "Re-export" usa sticky path sem prompt (botão visível só se `last_export_path` non-empty; sem dialog; INFO bar `re-exported -> <name>.proscenio`).
+- [x] Pixels per unit setting respeitado. PPU=50 no Scene PG -> .proscenio header `"pixels_per_unit": 50.0` + polygon vertices em 16x16 px (vs 32x32 px com PPU=100; mesh 0.32m * 50 = 16 px). Re-export usa Scene PG `props.pixels_per_unit`. **Caveat código:** `PROSCENIO_OT_export_godot` tem operator-local `pixels_per_unit` FloatProperty (default 100) que sobrescreve no file dialog -- divergência potencial vs Scene PG. Worth investigar se export do file dialog também respeita Scene PG ou só Re-export.
+- [x] Validation gate bloqueia export se errors críticos não resolvidos. Confirmado: vertex_group `bogus` em sprite_1 -> Export blocked com ERROR bar exata `Proscenio: export blocked by 1 validation error(s) -- see Validation panel.` Operator retorna `{CANCELLED}`, file dialog não abre. Mesmo gate vale pra Re-export.
 
 ### 1.13 Help + status badges
 
-- [ ] Cada subpanel mostra ícone status + ? alinhados à direita do header
-- [ ] Hover ícone -> tooltip per-band (godot-ready / blender-only / planned / out-of-scope)
-- [ ] Click ícone -> abre `status_legend` popup
-- [ ] Click ? em cada subpanel -> abre topic-specific help popup
-- [ ] Pipeline overview popup (root ?) renderiza todos sections + see-also
-- [ ] Drive-from-bone help topic conteúdo confere
-- [ ] See-also links resolvem em paths reais
-- [ ] `slot_system` topic abre via Active Slot ? button
-- [ ] `sprite_frame_preview` topic abre via Active Sprite ? button (sprite_frame mode)
+- [x] Cada subpanel mostra ícone status + `?` alinhados à direita do header. Active Sprite/Skeleton/Animation/Atlas/Validation/Export = CHECKMARK; Outliner = TOOL_SETTINGS.
+- [x] Hover ícone -> tooltip per-band. CHECKMARK -> `Exports to .proscenio...`; TOOL_SETTINGS -> `Authoring shortcut. Lives entirely on the Blender side...`.
+- [x] Click ícone status -> abre popup `status_legend` (title "Status badges" + 5 sections + see-also STATUS.md).
+- [x] Click `?` em cada subpanel -> abre help popup topic-specific (topic id == feature_id).
+- [x] Pipeline overview popup (root `?`) renderiza topic `pipeline_overview` com sections + see-also.
+- [x] Drive-from-bone help topic conteúdo confere (sections What it does / How to use it presentes).
+- [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, specs/000-initial-plan, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
+- [x] `slot_system` topic abre via Active Slot `?` button. Confirmado em slot_swap_workbench (slot Empty chamado `weapon`).
+- [!] `sprite_frame_preview` topic abre via Active Sprite `?` button (sprite_frame mode). **Bug:** topic existe em `help_topics.py:432` + `feature_status.py:115` mas nenhuma sub-box do panel renderiza `?` button pra ele. `_draw_sprite_frame.py:26` mostra só label puro `box.label(text="Sprite frame", icon="IMAGE_DATA")` -- orphan help topic. Bug em BUGS_FOUND.md.
 
 ### 1.14 Quick Armature
 
-- [ ] "Quick Armature" operator: 3D viewport, click-drag head -> tail desenha bone
-- [ ] Bone aparece em armature `Proscenio.QuickRig`
-- [ ] Multiple drags em sequência: cria chain
-- [ ] Shift hold no press: bone novo parented ao anterior
-- [ ] ESC ou RIGHTMOUSE: sai do modal
-- [ ] Cancel sem nenhum bone criado: armature vazio removido (não polui scene)
-- [ ] Drag muito curto (< 1e-4): skip, não cria bone
+- [~] "Quick Armature" operator: 3D viewport, click-drag head -> tail desenha bone. Funciona mas com bug crítico: bones sempre criados no plano Z=0 (horizontais) mesmo em Front Ortho -- inviabiliza uso pro workflow Proscenio XZ. Bug em BUGS_FOUND.md.
+- [x] Bone aparece em armature `Proscenio.QuickRig` (criada no invoke se não existir). Confirmado: qbone.000..004 listados.
+- [x] Multiple drags em sequência: cria múltiplos bones na mesma QuickRig (sem parent automático).
+- [x] Shift hold no PRESS: bone novo parented ao anterior (sem connect). Confirmado: relations.parent setado.
+- [x] ESC ou RIGHTMOUSE: sai do modal. Confirmado funcional (apesar de UX confusa -- não tem feedback visual claro do modal).
+- [!] Cancel sem nenhum bone criado: armature vazio NÃO removido. Operator `_finish` (quick_armature.py:141) só limpa status text + `_drag_head`; deixa `Proscenio.QuickRig` orphan na cena com zero bones. Polui workspace a cada cancel acidental. Checklist espera cleanup que não existe.
+- [x] Drag muito curto (< 1e-4): skip funciona. INFO bar `bone too short, skipped` reportado várias vezes durante a sessão.
+
+**Sessão 1.14 (10-mai-2026):** vários problemas de UX impedem teste cabal. Bug do plano Z=0 + falta de preview + falta de feedback visual modal + sem control de connect/disconnect parent durante o drag. Refator grande necessário antes do operator virar útil. Caveats e sugestões loggados em UI_FEEDBACK.md "Quick Armature operator" + "Skeleton panel". Usuário escolheu **skipar tests restantes** e mover pra próxima seção. Voltar quando refator estiver feita.
 
 ### 1.15 Pose library
 

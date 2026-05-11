@@ -1,0 +1,15 @@
+# Canonical fixtures synced from examples/<name>/ by
+# scripts/godot/sync_fixtures.py. Treated as derived; regenerated on
+# demand. Wrapper .tscn / .gd + texture PNGs + the runtime .proscenio
+# live here as the Godot dev project's res:// view of each fixture.
+/atlas_pack/
+/blink_eyes/
+/doll/
+/mouth_drive/
+/shared_atlas/
+/simple_psd/
+/slot_cycle/
+/slot_swap/
+
+# Godot per-import cache + per-build state -- never committed.
+.godot/

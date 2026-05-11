@@ -15,7 +15,22 @@ When you ship the plugin, only `addons/proscenio/` goes in the zip.
 
 ## Run the dev project
 
-Open `godot-plugin/` in Godot 4.3 or newer. The plugin is auto-enabled in `project.godot`.
+Open `apps/godot/` in Godot 4.3 or newer. The plugin is auto-enabled in `project.godot`.
+
+Before opening for the first time (or after `git pull` that touches `examples/`), sync the canonical fixtures into the project so the wrapper scenes and `.proscenio` files become reachable from `res://`:
+
+```sh
+python scripts/godot/sync_fixtures.py
+```
+
+The script links each `examples/<name>/<name>.expected.proscenio` -> `apps/godot/<name>/<name>.proscenio`, plus the wrapper `.tscn`/`.gd` and texture PNGs. It tries symlinks first, falls back to hardlinks (Windows without Developer Mode), and finally to plain copies if neither is available. Output dirs (`apps/godot/<name>/`) are gitignored -- never commit them.
+
+Cross-platform notes:
+
+- **Linux / macOS:** symlinks work out of the box. Edits in `examples/` propagate live to `apps/godot/`.
+- **Windows with Developer Mode ON** (Settings > Privacy & security > For developers): same as Linux/macOS.
+- **Windows without Developer Mode:** falls back to hardlinks. Edits propagate, but if `git pull` replaces a source file the hardlink becomes stale -- re-run the sync.
+- **Cross-volume (rare):** the script copies. Re-run after any source edit.
 
 ## Run tests
 

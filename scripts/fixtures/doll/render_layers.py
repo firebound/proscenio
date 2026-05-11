@@ -55,7 +55,7 @@ LAYERS_DIR = (
 )
 
 PIXELS_PER_UNIT = 1000.0
-PADDING_UNITS = 0.02  # 2 px @ ppu=100 — keeps outline anti-aliasing safe
+PADDING_UNITS = 0.02  # 20 px @ ppu=1000 -- keeps outline anti-aliasing safe
 CAMERA_DISTANCE = 10.0
 
 SKIP_MESHES: set[str] = {"joints"}

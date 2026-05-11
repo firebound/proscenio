@@ -16,6 +16,7 @@ Fixtures rebuilt from a script under [`scripts/fixtures/<name>/`](../scripts/fix
 
 | Fixture | Feature exercised |
 |---|---|
+| [`atlas_pack/`](atlas_pack/) | atlas packer (Pack / Apply / Unpack), 9 distinct sprites with own textures |
 | [`blink_eyes/`](blink_eyes/) | `sprite_frame` animation track type |
 | [`mouth_drive/`](mouth_drive/) | `sprite_frame` + Drive-from-Bone (driver-driven frame index) |
 | [`shared_atlas/`](shared_atlas/) | multi-sprite shared atlas, region slicing |

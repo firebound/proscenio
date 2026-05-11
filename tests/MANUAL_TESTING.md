@@ -84,56 +84,57 @@ Workbench file: `examples/slot_swap/slot_swap.blend` (arm + slot Empty + club/sw
 
 Em workbench limpo:
 
-- [ ] **Path A**: pose mode + bone selecionado -> "Create Slot" -> Empty `<bone>.slot` parent_type=BONE
-- [ ] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes, parent herdado do seed mesh
-- [ ] DnD mesh -> slot Empty no outliner: reparenteia, attachment aparece no panel
+- [x] **Path A**: pose mode + bone selecionado -> "Create Slot" -> Empty `<bone>.slot` parent_type=BONE. Validado em slot_swap_workbench.
+- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes. **Bug:** posição do slot fica errada quando seed mesh tem parent (mesh "pula" pra outro canto da cena ao virar attachment). Bug em BUGS_FOUND.md.
+- [x] DnD mesh -> slot Empty no outliner reparenteia (Blender 5.1 suporta DnD reparent no outliner -- confirmado via docs oficiais). Também funciona via `Ctrl+P` ou shift modifier. Attachment aparece no panel após reparent.
 
 ### 1.6 Slot validation
 
-Em doll_slots.blend ou cenário custom:
+Em slot_swap_workbench / scenario custom (doll_slots retired):
 
-- [ ] Slot sem children: erro vermelho "no MESH children"
-- [ ] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child"
-- [ ] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo
-- [ ] Bone-transform keys em slot child (animar location/rotation no child): warning "carries bone-transform keyframes"
-- [ ] Validate button -> resultados aparecem no Validation subpanel
-- [ ] Click issue na Validation panel -> seleciona objeto offending
+- [ ] Slot sem children: erro vermelho "no MESH children" (não testado explicitamente nesta sessão)
+- [!] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child". **Bug:** validator lê PG only, edits direto na CP não são detectados. Bug em BUGS_FOUND.md.
+- [ ] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo (não testado)
+- [!] Bone-transform keys em slot child (`club` com `club.action` keyframando location): warning "carries bone-transform keyframes". **Bug:** validator não dispara warning -- `club.action` com keys de location passou silencioso. Bug em BUGS_FOUND.md.
+- [!] Slot attachments flaggadas como "no parent bone" (false positive). **Bug:** validator dispara em attachment que tá legitimamente parented ao slot Empty (que por sua vez é parented ao bone). Bug em BUGS_FOUND.md.
+- [~] Validate button -> resultados aparecem no Validation subpanel. **UI feedback:** botão Validate mora no Export panel, não no Validation panel -- confunde usuário. Feedback em UI_FEEDBACK.md.
+- [~] Click issue na Validation panel -> seleciona objeto offending. Funciona via outliner, mas viewport não reflete se objeto está com `hide_viewport=True` (caso comum em slot non-default attachments). Feedback em UI_FEEDBACK.md.
 
 ### 1.7 Outliner panel
 
-- [ ] Lista todos sprite meshes (não bones, não Empties não-slot)
-- [ ] Filtro substring funciona (digita "brow" -> só brow meshes)
-- [ ] Favorites toggle (star) persiste no save
-- [ ] "Show favorites only" filtra corretamente
-- [ ] Click linha -> seleciona no scene + active object troca
-- [ ] Categorização visual (sprite_frame vs polygon ícones distintos)
+- [x] Lista todos sprite meshes + armatures + slot Empties + attachments (não bones, não Empties não-slot, não cameras/lights). Label `<name> @ <parent_bone>` só aparece com `parent_type=BONE` rígido -- doll usa skinning então label só mostra nome. Coverage gap registrado em `specs/007-testing-fixtures/TODO.md` (falta fixture `rigid_prop/`).
+- [!] Filtro substring funciona. **Bug:** campo nativo do UIList (rodapé `▼`) não filtra -- só o campo do topo (ícone VIEWZOOM, `scene_props.outliner_filter`) funciona. `filter_items` ignora `self.filter_name`. Bug em BUGS_FOUND.md.
+- [x] Favorites toggle (star) persiste no save (`is_outliner_favorite` é Object PG)
+- [x] "Show favorites only" filtra corretamente (botão SOLO_ON ao lado do search no header)
+- [x] Click linha -> seleciona no scene + active object troca (`proscenio.select_outliner_object` operator dispara no row click)
+- [x] Categorização visual via ícones distintos: `LINK_BLEND` (slot), `OBJECT_DATAMODE` (attachment indent `-> name`), `MESH_DATA` (sprite -- polygon e sprite_frame com mesmo ícone, sem diferenciação interna), `ARMATURE_DATA` (armature, prefixo `[arm]`). Validado criando slot em workbench dedicado.
 
 ### 1.8 Skeleton panel
 
-- [ ] Lista bones do active armature
-- [ ] Click bone -> seleciona em pose mode
-- [ ] Active bone index sticky entre saves
+- [x] Lista bones do active armature (header `Armature 'doll.rig' -- N bone(s)` + UIList com nome / parent / length). Pega `armatures[0]` da scene (não active object); cena com >1 armature mostra warning.
+- [!] Click bone -> seleciona em pose mode. **Gap:** `active_bone_index` é IntProperty puro sem `update=` callback; row click só atualiza index do PG, não sincroniza viewport selection. Bug em BUGS_FOUND.md.
+- [x] Active bone index sticky entre saves (Scene PG persiste no .blend)
 
 ### 1.9 Animation panel
 
-- [ ] Lista actions da scene
-- [ ] Active action sticky
-- [ ] Scrub timeline com action selected funciona
+- [x] Lista actions do .blend (`bpy.data.actions`, com frame range), footer com count total
+- [~] Active action sticky entre saves (funciona, mas utilidade nula até o selector drive algo -- ver gap abaixo)
+- [!] Scrub timeline com action selected funciona. **Gap:** row click só atualiza `active_action_index`; não atribui action ao `armature.animation_data.action`. Scrub mostra rest pose ou action que já estava assignada via Dope Sheet. Bug em BUGS_FOUND.md. Feedback do usuário: "o swap de animação pelo seletor do proscenio seria bem útil".
 
 ### 1.10 Atlas panel
 
-Em workbench com N sprites de PNGs separados:
+Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com PNG próprio 32x32 + material próprio + cor + dígito 1..9 pra identificar visualmente onde cada um caiu no atlas packed).
 
-- [ ] "Pack Atlas" button: gera `<blend_stem>.atlas.png` + `<blend_stem>.atlas.json`
-- [ ] Pack idempotente: re-roda sem duplicar
+- [ ] "Pack Atlas" button: gera `atlas_pack.atlas.png` (atlas único 9-em-1) + `atlas_pack.atlas.json` (sprite -> placement map)
+- [ ] Pack idempotente: re-roda sem duplicar (atlas.png/atlas.json não mudam byte a byte na segunda run)
 - [ ] Pack após Apply: usa atlas existente como source, idempotente
-- [ ] "Apply Packed Atlas": UVs reescritas, sprites linkados a `Proscenio.PackedAtlas` material
-- [ ] material_isolated=True: sprite mantém material próprio, swap só image
-- [ ] "Unpack": restaura UVs originais (snapshot via UV layer `<active>.pre_pack`)
-- [ ] Ciclo Pack > Apply > Pack > Apply: estado idempotente
-- [ ] pack_padding_px setting respeitado
-- [ ] pack_max_size: pack falha graciosamente quando sprites não cabem
-- [ ] pack_pot=True: dimensões round-up pra power of 2
+- [ ] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite (prova que UV remap não embaralhou)
+- [ ] material_isolated=True: sprite mantém material próprio (`sprite_N.mat`), swap só substitui Image Texture pelo atlas packed
+- [ ] "Unpack": restaura UVs originais (snapshot via UV layer `<active>.pre_pack`) + materiais originais voltam
+- [ ] Ciclo Pack > Apply > Pack > Apply: estado idempotente (atlas.png byte-identical, sem rotation de placements)
+- [ ] pack_padding_px setting respeitado (sprites no atlas têm gap N px entre si)
+- [ ] pack_max_size: cap pequeno (ex: 64 px) com 9 sprites de 32x32 não cabe -- pack falha graciosamente com warning, não crash
+- [ ] pack_pot=True: dimensões round-up pra power of 2 (com 9x32x32 = ~96x96 footprint, atlas vira 128x128 POT)
 
 ### 1.11 Validation panel
 

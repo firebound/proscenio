@@ -70,6 +70,12 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 - [x] `apps/blender/tests/run_tests.py` no longer hardcodes the dummy path — auto-discovery handles every fixture.
 - [x] CI `validate-schema` glob (`examples/**/*.proscenio`) keeps working post-delete; importer-only goldens under `apps/godot/tests/fixtures/` stay (Type B fixtures).
 
+## Coverage gaps (closed in this branch)
+
+- [x] **Direct bone-parented mesh** (`obj.parent_type = "BONE"` + `obj.parent_bone = "<bone>"`, no Armature modifier, no vertex weights). Closed by `examples/atlas_pack/` -- 9 quad sprites each rigidly parented to a single `root` bone, with their own per-sprite materials / textures. Exercises:
+  - `apps/blender/panels/outliner.py:70` label branch `<name> @ <parent_bone>` (visible as `sprite_1 @ root` etc in the Outliner panel).
+  - Writer path emitting `parent_bone` without `vertex_weights` (atlas_pack golden diffs cover this end-to-end).
+
 ## Out of scope (deferred)
 
 - Slot fixture for `doll/`'s `hand.L.attachment` — lands with SPEC 004.

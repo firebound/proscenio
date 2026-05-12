@@ -23,10 +23,12 @@ def build_root_armature(
 ) -> bpy.types.Object:
     """Create a fresh armature with a single root-level bone, return the object.
 
-    When ``anchor_world`` is provided the armature object is placed at
-    that location (SPEC 011 D6 PSD-guide anchor). The bone stays at
-    the armature's local origin so child meshes inherit the anchor
-    offset via parenting.
+    When ``anchor_world`` is provided the *root bone* head sits at that
+    location while the armature object itself stays at the world
+    origin (SPEC 011 D6 PSD-guide anchor). Meshes parented to the
+    armature object therefore keep their canvas-relative world
+    positions; only the rig's grab handle (the bone) moves to the
+    artist-chosen pivot.
     """
     arm_data = bpy.data.armatures.new(name)
     arm_obj = bpy.data.objects.new(name, arm_data)
@@ -34,9 +36,8 @@ def build_root_armature(
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new(root_bone_name)
-    bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.0, ROOT_BONE_LENGTH)
+    head = (0.0, 0.0, 0.0) if anchor_world is None else anchor_world
+    bone.head = head
+    bone.tail = (head[0], head[1], head[2] + ROOT_BONE_LENGTH)
     bpy.ops.object.mode_set(mode="OBJECT")
-    if anchor_world is not None:
-        arm_obj.location = anchor_world
     return arm_obj

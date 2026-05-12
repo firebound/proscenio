@@ -1,65 +1,92 @@
-// @ts-nocheck - Adobe React Starter scaffold; will be deleted/replaced in Wave 10.2+ when Proscenio panels land.
+// UXP panel host adapter. Bridges between Adobe's `entrypoints.setup`
+// contract (`create`, `show`, `hide`, `destroy`, `invokeMenu`) and a
+// React function component.
+//
+// Replaces the Adobe React Starter scaffold's untyped JS version
+// (which used Symbol-keyed private fields and `@ts-nocheck`) with a
+// minimal typed equivalent. The only behaviour we use is: render the
+// component into a div on `create`, attach / detach on `show` / `hide`,
+// dispatch menu invocations.
+
+import React from "react";
 import ReactDOM from "react-dom";
 
-const _id = Symbol("_id");
-const _root = Symbol("_root");
-const _attachment = Symbol("_attachment");
-const _Component = Symbol("_Component");
-const _menuItems = Symbol("_menuItems");
+export interface PanelMenuItem {
+    id: string;
+    label: string;
+    enabled?: boolean;
+    checked?: boolean;
+    oninvoke: () => void;
+}
+
+export interface PanelControllerOptions {
+    id: string;
+    menuItems?: PanelMenuItem[];
+}
+
+export interface PanelMenuDescriptor {
+    id: string;
+    label: string;
+    enabled: boolean;
+    checked: boolean;
+}
 
 export class PanelController {
+    public readonly id: string;
+    public readonly menuItems: PanelMenuDescriptor[];
 
-    constructor(Component, { id, menuItems } = {}) {
-        this[_root] = null;
-        this[_attachment] = null;
-        this[_Component] = Component;
-        this[_id] = id;
-        this[_menuItems] = menuItems || [];
-        this.menuItems = this[_menuItems].map(menuItem => ({
-            id: menuItem.id,
-            label: menuItem.label,
-            enabled: menuItem.enabled || true,
-            checked: menuItem.checked || false
+    private root: HTMLDivElement | null = null;
+    private attachment: HTMLElement | null = null;
+    private readonly Component: React.FC;
+    private readonly menuHandlers: Map<string, () => void>;
+
+    constructor(Component: React.FC, opts: PanelControllerOptions) {
+        this.id = opts.id;
+        this.Component = Component;
+        const items = opts.menuItems ?? [];
+        this.menuItems = items.map((item) => ({
+            id: item.id,
+            label: item.label,
+            enabled: item.enabled ?? true,
+            checked: item.checked ?? false,
         }));
-
-        [ "create", "show", "hide", "destroy", "invokeMenu" ].forEach(fn => this[fn] = this[fn].bind(this));
+        this.menuHandlers = new Map(items.map((item) => [item.id, item.oninvoke]));
+        this.create = this.create.bind(this);
+        this.show = this.show.bind(this);
+        this.hide = this.hide.bind(this);
+        this.destroy = this.destroy.bind(this);
+        this.invokeMenu = this.invokeMenu.bind(this);
     }
 
-    create() {
-        this[_root] = document.createElement("div");
-        this[_root].style.height = "100vh";
-        this[_root].style.overflow = "auto";
-        this[_root].style.padding = "8px";
-
-        ReactDOM.render(this[_Component]({panel: this}), this[_root]);
-
-        return this[_root];
+    public create(): HTMLDivElement {
+        this.root = document.createElement("div");
+        this.root.style.height = "100vh";
+        this.root.style.overflow = "auto";
+        const Component = this.Component;
+        ReactDOM.render(<Component />, this.root);
+        return this.root;
     }
 
-    show(event)  {
-        if (!this[_root]) this.create();
-        this[_attachment] = event;
-        this[_attachment].appendChild(this[_root]);
+    public show(event: HTMLElement): void {
+        if (this.root === null) this.create();
+        this.attachment = event;
+        if (this.root !== null) event.appendChild(this.root);
     }
 
-    hide() {
-        if (this[_attachment] && this[_root]) {
-            this[_root].remove();
-            this[_attachment] = null;
+    public hide(): void {
+        if (this.attachment !== null && this.root !== null) {
+            this.root.remove();
+            this.attachment = null;
         }
     }
 
-    destroy() {
-        // Adobe React UXP starter scaffold leaves this empty; lifecycle teardown will be added during the SPEC 010 TypeScript port if needed.
+    public destroy(): void {
+        // No lifecycle teardown beyond the implicit unmount when the
+        // host destroys the panel; React state goes with the DOM tree.
     }
 
-    invokeMenu(id) {
-        const menuItem = this[_menuItems].find(c => c.id === id);
-        if (menuItem) {
-            const handler = menuItem.oninvoke;
-            if (handler) {
-                handler();
-            }
-        }
+    public invokeMenu(id: string): void {
+        const handler = this.menuHandlers.get(id);
+        if (handler !== undefined) handler();
     }
 }

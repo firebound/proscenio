@@ -25,7 +25,7 @@
 // - Names join through groups with `__`. The manifest entry `name`
 //   keeps the joined human form; `path` uses the sanitized form.
 
-import type { ArtLayer, Layer, LayerBounds, LayerSet } from "../types/layer";
+import type { ArtLayer, Layer, LayerBounds, LayerSet } from "./layer";
 import {
     DEFAULT_PIXELS_PER_UNIT,
     MANIFEST_FORMAT_VERSION,
@@ -34,7 +34,7 @@ import {
     type ManifestEntry,
     type PolygonEntry,
     type SpriteFrameEntry,
-} from "../types/manifest";
+} from "./manifest";
 
 export interface ExportOptions {
     skipHidden: boolean;

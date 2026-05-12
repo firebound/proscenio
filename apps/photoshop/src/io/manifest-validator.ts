@@ -18,7 +18,7 @@ import Ajv2020 from "ajv/dist/2020";
 import type { ErrorObject } from "ajv";
 
 import schema from "../../../../schemas/psd_manifest.schema.json";
-import type { Manifest } from "../types/manifest";
+import type { Manifest } from "../domain/manifest";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validate = ajv.compile(schema);

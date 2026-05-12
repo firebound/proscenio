@@ -14,7 +14,7 @@ import type { UxpFile, UxpFolder } from "uxp";
 
 import { moveLayerIntoGroup, placePngAt } from "../io/png-placer";
 import { savePsd } from "../io/psd-writer";
-import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../types/manifest";
+import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../domain/manifest";
 
 export interface ImportFlowResult {
     kind: "ok" | "failed";

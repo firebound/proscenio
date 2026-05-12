@@ -11,7 +11,7 @@ import { storage } from "uxp";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import { validateManifest } from "./manifest-validator";
-import type { Manifest } from "../types/manifest";
+import type { Manifest } from "../domain/manifest";
 
 export interface PickedManifest {
     file: UxpFile;

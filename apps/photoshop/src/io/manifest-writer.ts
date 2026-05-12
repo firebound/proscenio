@@ -7,7 +7,7 @@
 
 import type { UxpFolder } from "uxp";
 
-import type { Manifest } from "../types/manifest";
+import type { Manifest } from "../domain/manifest";
 
 export async function writeManifest(
     folder: UxpFolder,

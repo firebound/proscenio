@@ -16,7 +16,7 @@ import { app, core } from "photoshop";
 import type { UxpFolder } from "uxp";
 
 import { adaptDocument } from "../adapters/photoshop-layer";
-import { buildExportPlan, type ExportOptions } from "./exporter";
+import { buildExportPlan, type ExportOptions } from "../domain/planner";
 import { validateManifest } from "../io/manifest-validator";
 import { writeManifest } from "../io/manifest-writer";
 import { runWrites, type PngWriteResult } from "../io/png-writer";

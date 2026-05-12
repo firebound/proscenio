@@ -69,10 +69,10 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.4 - React panel
 
-- [ ] Panel layout: doc info, folder picker, export button, validation result, roundtrip button.
-- [ ] React state for export progress, errors, last-export summary.
-- [ ] Plugin manifest entrypoints in `plugin/manifest.json` register the panel.
-- [ ] Live reload via `npm run uxp:watch` documented in skill.
+- [x] Panel layout: doc info section + folder picker section + export button + validation result. Roundtrip button parked for Wave 10.5 (lands with the importer port).
+- [x] React state for export progress, errors, last-export summary. Folder is persisted across plugin reloads via `storage.localFileSystem.createPersistentToken` + `localStorage`.
+- [x] Plugin manifest entrypoints in `plugin/manifest.json` register the panel. (Wired in Wave 10.3.)
+- [ ] Live reload via `pnpm run uxp:watch` documented in skill.
 
 ## Wave 10.5 - Roundtrip (manifest → PSD)
 

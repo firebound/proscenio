@@ -2,6 +2,10 @@
 # Regenerable from 01_to_photoshop/doll.photoshop_manifest.json + 02_from_photoshop/doll.psd.
 02_from_photoshop/export/
 
+# UXP exporter output (running the Proscenio Exporter panel on the same PSD).
+# Regenerable; used as Wave 10.3 parity oracle target.
+02_from_photoshop/uxp_export/
+
 # Blender file produced when re-importing the photoshop manifest into Blender
 # (proscenio.import_photoshop run during manual testing 1.17). Regenerable
 # from 01_to_photoshop/doll.photoshop_manifest.json or 02_from_photoshop/export/.

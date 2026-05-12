@@ -28,6 +28,11 @@ declare module "uxp" {
     export interface LocalFileSystem {
         getFolder(): Promise<UxpFolder>;
         createSessionToken(entry: UxpEntry): string;
+        // Persistent tokens survive plugin reloads / Photoshop restarts.
+        // Persist the returned string in localStorage; resolve back to
+        // the folder via getEntryForPersistentToken on next session.
+        createPersistentToken(entry: UxpEntry): Promise<string>;
+        getEntryForPersistentToken(token: string): Promise<UxpEntry>;
     }
 
     export interface UxpEntry {

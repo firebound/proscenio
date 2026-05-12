@@ -4,39 +4,43 @@
 .proscenio-panel {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     padding: 12px;
 }
 
-.proscenio-panel sp-action-button {
-    margin-top: 4px;
+.proscenio-panel .section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.proscenio-panel .result {
-    padding: 8px;
-    border-radius: 4px;
-    background-color: rgba(255, 255, 255, 0.06);
+.proscenio-panel .row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.proscenio-panel .result.ok {
-    border-left: 3px solid #4caf50;
+.proscenio-panel .muted {
+    opacity: 0.6;
 }
 
-.proscenio-panel .result.error {
-    border-left: 3px solid #ef5350;
-}
-
-.proscenio-panel .result p {
-    margin: 0 0 2px 0;
-}
-
-.proscenio-panel .result .folder {
-    opacity: 0.7;
+.proscenio-panel .folder-path {
     font-family: monospace;
     font-size: 11px;
     word-break: break-all;
 }
 
+.proscenio-panel .result {
+    padding: 6px 8px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid #4caf50;
+}
+
+.proscenio-panel .result.error {
+    border-left-color: #ef5350;
+}
+
 .proscenio-panel .result-row.warn {
-    color: #ff9800;
+    color: #ffb74d;
 }

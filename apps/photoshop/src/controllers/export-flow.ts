@@ -7,9 +7,12 @@
 // rather than one per layer. ajv validation runs first, before any
 // modal opens; an invalid manifest never reaches disk and surfaces in
 // the panel as a list of strings.
+//
+// Folder management lives in `src/io/folder-storage.ts`; this module
+// only consumes a pre-resolved `UxpFolder` so the panel can show /
+// reset the active folder independently of an export run.
 
 import { app, core } from "photoshop";
-import { storage } from "uxp";
 import type { UxpFolder } from "uxp";
 
 import { adaptDocument } from "../adapters/photoshop-layer";
@@ -19,7 +22,7 @@ import { writeManifest } from "../io/manifest-writer";
 import { runWrites, type PngWriteResult } from "../io/png-writer";
 
 export interface ExportFlowResult {
-    kind: "ok" | "validation-failed" | "no-document" | "no-folder" | "failed";
+    kind: "ok" | "validation-failed" | "no-document" | "failed";
     folder?: string;
     manifestFile?: string;
     entryCount?: number;
@@ -27,14 +30,13 @@ export interface ExportFlowResult {
     errors?: string[];
 }
 
-export async function runExport(opts: ExportOptions): Promise<ExportFlowResult> {
+export async function runExport(
+    opts: ExportOptions,
+    folder: UxpFolder,
+): Promise<ExportFlowResult> {
     const doc = app.activeDocument;
     if (doc === null) {
         return { kind: "no-document", errors: ["No document is open."] };
-    }
-    const folder = await pickFolder();
-    if (folder === null) {
-        return { kind: "no-folder", errors: ["No output folder selected."] };
     }
 
     const adapted = adaptDocument(doc);
@@ -73,27 +75,4 @@ export async function runExport(opts: ExportOptions): Promise<ExportFlowResult> 
 function manifestFileName(docName: string): string {
     const stem = docName.replace(/\.[^.]+$/, "");
     return `${stem}.photoshop_exported.json`;
-}
-
-// Cache the folder picked in this plugin session so repeat exports
-// do not pop the OS folder picker every time. Reset by reloading the
-// plugin or by `clearCachedFolder` (Wave 10.4 wires this to a panel
-// "Change folder" button). A persistent token survives across plugin
-// reloads via `storage.localFileSystem.createPersistentToken` - parked
-// for Wave 10.4 alongside the panel polish.
-let cachedFolder: UxpFolder | null = null;
-
-export function clearCachedFolder(): void {
-    cachedFolder = null;
-}
-
-async function pickFolder(): Promise<UxpFolder | null> {
-    if (cachedFolder !== null) return cachedFolder;
-    try {
-        const folder = await storage.localFileSystem.getFolder();
-        cachedFolder = folder;
-        return folder;
-    } catch {
-        return null;
-    }
 }

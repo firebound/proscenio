@@ -7,6 +7,7 @@
 import React from "react";
 
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
+import { useDocumentChanges } from "../hooks/useDocumentChanges";
 import { useExportFlow } from "../hooks/useExportFlow";
 import { useFolderCache } from "../hooks/useFolderCache";
 import { useImportFlow } from "../hooks/useImportFlow";
@@ -20,6 +21,13 @@ export const ProscenioExporter: React.FC = () => {
     const { doc, refresh: refreshDoc } = useDocSnapshot();
     const exportFlow = useExportFlow();
     const importFlow = useImportFlow();
+    const version = useDocumentChanges();
+
+    // Re-read the active doc whenever PS fires a notification.
+    React.useEffect(() => {
+        void refreshDoc();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [version]);
 
     const exportDisabled = exportFlow.busy || folder === null || doc === null;
 

@@ -69,7 +69,17 @@ declare module "photoshop" {
     export const constants: PhotoshopConstants;
     export const action: {
         batchPlay(commands: unknown[], options?: unknown): Promise<unknown>;
+        /** Subscribe to PS notification events. Returns a listener
+         *  handle with `.remove()` for teardown. */
+        addNotificationListener(
+            events: ReadonlyArray<{ event: string }>,
+            callback: (event: { event: string }, descriptor: unknown) => void,
+        ): Promise<PsNotificationListener>;
     };
+
+    export interface PsNotificationListener {
+        remove(): void;
+    }
 
     export interface PhotoshopApp {
         activeDocument: PsDocument | null;

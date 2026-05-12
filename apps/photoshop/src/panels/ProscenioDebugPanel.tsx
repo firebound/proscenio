@@ -11,6 +11,7 @@
 import React from "react";
 
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
+import { useDocumentChanges } from "../hooks/useDocumentChanges";
 import { useExportPreview } from "../hooks/useExportPreview";
 import { DebugSection } from "./sections/DebugSection";
 import { DocSection } from "./sections/DocSection";
@@ -20,15 +21,20 @@ const PREVIEW_OPTS = { skipHidden: true };
 export const ProscenioDebugPanel: React.FC = () => {
     const { doc, refresh: refreshDoc } = useDocSnapshot();
     const preview = useExportPreview();
+    const version = useDocumentChanges();
 
     const onRefresh = React.useCallback(() => {
         preview.refresh(PREVIEW_OPTS);
     }, [preview]);
 
+    // Re-run preview + doc snapshot whenever a PS notification fires
+    // (debounced via `useDocumentChanges`). Click-Refresh stays
+    // available as a force path.
     React.useEffect(() => {
+        void refreshDoc();
         preview.refresh(PREVIEW_OPTS);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [doc]);
+    }, [version]);
 
     return (
         <div className="proscenio-panel">

@@ -44,27 +44,27 @@ scripts/fixtures/
 | doll | `doll/preview_pieces.py` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` | `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png` |
 | doll | `doll/export_psd_manifest.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` |
 | doll | `_shared/export_proscenio.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/doll.expected.proscenio` |
-| blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
-| blink_eyes | `blink_eyes/build_blend.py` | `examples/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/blink_eyes/blink_eyes.blend` |
-| blink_eyes | `_shared/export_proscenio.py` | `examples/blink_eyes/blink_eyes.blend` | `examples/blink_eyes/blink_eyes.expected.proscenio` |
-| mouth_drive | `mouth_drive/draw_layers.py` | (Pillow primitives) | `examples/mouth_drive/pillow_layers/mouth_0..3.png` + `mouth_spritesheet.png` |
-| mouth_drive | `mouth_drive/build_blend.py` | `examples/mouth_drive/pillow_layers/mouth_spritesheet.png` | `examples/mouth_drive/mouth_drive.blend` |
-| mouth_drive | `_shared/export_proscenio.py` | `examples/mouth_drive/mouth_drive.blend` | `examples/mouth_drive/mouth_drive.expected.proscenio` |
-| slot_swap | `slot_swap/draw_layers.py` | (Pillow primitives) | `examples/slot_swap/pillow_layers/arm.png` + `club.png` + `sword.png` |
-| slot_swap | `slot_swap/build_blend.py` | `examples/slot_swap/pillow_layers/*.png` | `examples/slot_swap/slot_swap.blend` |
-| slot_swap | `_shared/export_proscenio.py` | `examples/slot_swap/slot_swap.blend` | `examples/slot_swap/slot_swap.expected.proscenio` |
-| shared_atlas | `shared_atlas/draw_atlas.py` | (Pillow primitives) | `examples/shared_atlas/atlas.png` |
-| shared_atlas | `shared_atlas/build_blend.py` | `examples/shared_atlas/atlas.png` | `examples/shared_atlas/shared_atlas.blend` |
-| shared_atlas | `_shared/export_proscenio.py` | `examples/shared_atlas/shared_atlas.blend` | `examples/shared_atlas/shared_atlas.expected.proscenio` |
-| simple_psd | `simple_psd/draw_layers.py` | (Pillow primitives) | `examples/simple_psd/pillow_layers/square.png` + `arrow_0..3.png` + `arrow_spritesheet.png` |
-| simple_psd | `simple_psd/build_blend.py` | `examples/simple_psd/simple_psd.photoshop_manifest.json` | `examples/simple_psd/simple_psd.blend` |
-| simple_psd | `_shared/export_proscenio.py` | `examples/simple_psd/simple_psd.blend` | `examples/simple_psd/simple_psd.expected.proscenio` |
-| slot_cycle | `slot_cycle/draw_layers.py` | (Pillow primitives) | `examples/slot_cycle/pillow_layers/attachment_red.png` + `_green.png` + `_blue.png` |
-| slot_cycle | `slot_cycle/build_blend.py` | `examples/slot_cycle/pillow_layers/*.png` | `examples/slot_cycle/slot_cycle.blend` |
-| slot_cycle | `_shared/export_proscenio.py` | `examples/slot_cycle/slot_cycle.blend` | `examples/slot_cycle/slot_cycle.expected.proscenio` |
-| atlas_pack | `atlas_pack/draw_layers.py` | (Pillow primitives) | `examples/atlas_pack/pillow_layers/sprite_1..9.png` |
-| atlas_pack | `atlas_pack/build_blend.py` | `examples/atlas_pack/pillow_layers/*.png` | `examples/atlas_pack/atlas_pack.blend` |
-| atlas_pack | `_shared/export_proscenio.py` | `examples/atlas_pack/atlas_pack.blend` | `examples/atlas_pack/atlas_pack.expected.proscenio` |
+| blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/generated/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
+| blink_eyes | `blink_eyes/build_blend.py` | `examples/generated/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/generated/blink_eyes/blink_eyes.blend` |
+| blink_eyes | `_shared/export_proscenio.py` | `examples/generated/blink_eyes/blink_eyes.blend` | `examples/generated/blink_eyes/blink_eyes.expected.proscenio` |
+| mouth_drive | `mouth_drive/draw_layers.py` | (Pillow primitives) | `examples/generated/mouth_drive/pillow_layers/mouth_0..3.png` + `mouth_spritesheet.png` |
+| mouth_drive | `mouth_drive/build_blend.py` | `examples/generated/mouth_drive/pillow_layers/mouth_spritesheet.png` | `examples/generated/mouth_drive/mouth_drive.blend` |
+| mouth_drive | `_shared/export_proscenio.py` | `examples/generated/mouth_drive/mouth_drive.blend` | `examples/generated/mouth_drive/mouth_drive.expected.proscenio` |
+| slot_swap | `slot_swap/draw_layers.py` | (Pillow primitives) | `examples/generated/slot_swap/pillow_layers/arm.png` + `club.png` + `sword.png` |
+| slot_swap | `slot_swap/build_blend.py` | `examples/generated/slot_swap/pillow_layers/*.png` | `examples/generated/slot_swap/slot_swap.blend` |
+| slot_swap | `_shared/export_proscenio.py` | `examples/generated/slot_swap/slot_swap.blend` | `examples/generated/slot_swap/slot_swap.expected.proscenio` |
+| shared_atlas | `shared_atlas/draw_atlas.py` | (Pillow primitives) | `examples/generated/shared_atlas/atlas.png` |
+| shared_atlas | `shared_atlas/build_blend.py` | `examples/generated/shared_atlas/atlas.png` | `examples/generated/shared_atlas/shared_atlas.blend` |
+| shared_atlas | `_shared/export_proscenio.py` | `examples/generated/shared_atlas/shared_atlas.blend` | `examples/generated/shared_atlas/shared_atlas.expected.proscenio` |
+| simple_psd | `simple_psd/draw_layers.py` | (Pillow primitives) | `examples/generated/simple_psd/pillow_layers/square.png` + `arrow_0..3.png` + `arrow_spritesheet.png` |
+| simple_psd | `simple_psd/build_blend.py` | `examples/generated/simple_psd/simple_psd.photoshop_manifest.json` | `examples/generated/simple_psd/simple_psd.blend` |
+| simple_psd | `_shared/export_proscenio.py` | `examples/generated/simple_psd/simple_psd.blend` | `examples/generated/simple_psd/simple_psd.expected.proscenio` |
+| slot_cycle | `slot_cycle/draw_layers.py` | (Pillow primitives) | `examples/generated/slot_cycle/pillow_layers/attachment_red.png` + `_green.png` + `_blue.png` |
+| slot_cycle | `slot_cycle/build_blend.py` | `examples/generated/slot_cycle/pillow_layers/*.png` | `examples/generated/slot_cycle/slot_cycle.blend` |
+| slot_cycle | `_shared/export_proscenio.py` | `examples/generated/slot_cycle/slot_cycle.blend` | `examples/generated/slot_cycle/slot_cycle.expected.proscenio` |
+| atlas_pack | `atlas_pack/draw_layers.py` | (Pillow primitives) | `examples/generated/atlas_pack/pillow_layers/sprite_1..9.png` |
+| atlas_pack | `atlas_pack/build_blend.py` | `examples/generated/atlas_pack/pillow_layers/*.png` | `examples/generated/atlas_pack/atlas_pack.blend` |
+| atlas_pack | `_shared/export_proscenio.py` | `examples/generated/atlas_pack/atlas_pack.blend` | `examples/generated/atlas_pack/atlas_pack.expected.proscenio` |
 
 ## Run modes
 

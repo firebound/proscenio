@@ -54,7 +54,7 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "mouth_drive"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "mouth_drive"
 SHEET_PATH = FIXTURE_DIR / "pillow_layers" / "mouth_spritesheet.png"
 BLEND_PATH = FIXTURE_DIR / "mouth_drive.blend"
 

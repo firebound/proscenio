@@ -151,7 +151,7 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 ### mouth_drive fixture: bone vertical força LOCAL_SPACE bug acima
 
-**Repro:** abrir `examples/mouth_drive/mouth_drive.blend` e tentar usar Drive from Bone pra controlar mouth via bone rotation Z em pose mode.
+**Repro:** abrir `examples/generated/mouth_drive/mouth_drive.blend` e tentar usar Drive from Bone pra controlar mouth via bone rotation Z em pose mode.
 
 **Causa:** o fixture `scripts/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` -> `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
 
@@ -169,9 +169,9 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Fix:** trocar 3 paths nos `.tscn` afetados:
 
-- `examples/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
+- `examples/generated/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
 - `examples/authored/doll/godot/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd`
-- `examples/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
+- `examples/generated/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
 
 `mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.
 
@@ -368,7 +368,7 @@ Mesmo bug aplica ao shared material -- se `Proscenio.PackedAtlas` for renomeado,
 
 ### Help topic `sprite_frame_preview` é orphan -- sem entry point na UI
 
-**Repro:** abre fixture com sprite_frame mesh (ex: `examples/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
+**Repro:** abre fixture com sprite_frame mesh (ex: `examples/generated/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
 
 **Sintoma:** sub-box "Sprite frame" tem só label header + fields (hframes / vframes / frame / centered) + Setup/Remove Preview buttons. **NÃO tem ícone `?`** pra abrir help topic. Visual confirmado em screenshot do usuário (10-mai-2026 sessão 1.13 item 9).
 

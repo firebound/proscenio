@@ -1,0 +1,8 @@
+# Canonical fixtures synced from examples/<tier>/<name>/ by
+# scripts/godot/sync_fixtures.py. Treated as derived; regenerated on
+# demand. Wrapper .tscn / .gd + texture PNGs + the runtime .proscenio
+# live here as the Godot dev project's res:// view of each fixture.
+/examples/
+
+# Godot per-import cache + per-build state -- never committed.
+.godot/

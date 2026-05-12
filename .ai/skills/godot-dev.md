@@ -189,7 +189,7 @@ for child in slot.get_children():
 
 User-authored animations on the wrapper's own AnimationPlayer can hook the same `:visible` track shape; the imported AnimationLibrary stays untouched on reimport.
 
-**See also**: `examples/slot_cycle/` (isolated minimal slot fixture), `examples/authored/doll/` brow swap (slot on a comprehensive rig).
+**See also**: `examples/generated/slot_cycle/` (isolated minimal slot fixture), `examples/authored/doll/` brow swap (slot on a comprehensive rig).
 
 ## Coding rules
 

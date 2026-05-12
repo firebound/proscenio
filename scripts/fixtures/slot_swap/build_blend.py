@@ -51,7 +51,7 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "slot_swap"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_swap"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 ARM_PATH = LAYERS_DIR / "arm.png"
 CLUB_PATH = LAYERS_DIR / "club.png"

@@ -1,0 +1,18 @@
+; Documentation-by-example wrapper scene for the Proscenio shared_atlas fixture.
+;
+; Three quads referencing one shared atlas PNG with partial UV bounds.
+; Isolation test for the sliced atlas packer (SPEC 005.1.c.2.1). No
+; animation — purely the polygon + sliced-UV path.
+;
+; Drop `examples/generated/shared_atlas/` at `res://examples/shared_atlas/` in your Godot
+; project, or adjust paths to match your layout.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://examples/shared_atlas/shared_atlas.proscenio" id="1_sa"]
+[ext_resource type="Script" path="res://examples/shared_atlas/SharedAtlas.gd" id="2_sa"]
+
+[node name="SharedAtlas" type="Node2D"]
+script = ExtResource("2_sa")
+
+[node name="SharedAtlasCharacter" parent="." instance=ExtResource("1_sa")]

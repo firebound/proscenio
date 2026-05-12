@@ -6,8 +6,8 @@ Run with::
 
 Pure Python -- no Blender required. Produces:
 
-- ``examples/mouth_drive/pillow_layers/mouth_0.png`` ... ``mouth_3.png`` (32x32 each)
-- ``examples/mouth_drive/pillow_layers/mouth_spritesheet.png`` (128x32, 4 frames horizontal)
+- ``examples/generated/mouth_drive/pillow_layers/mouth_0.png`` ... ``mouth_3.png`` (32x32 each)
+- ``examples/generated/mouth_drive/pillow_layers/mouth_spritesheet.png`` (128x32, 4 frames horizontal)
 
 Frames: 0=open, 1=mid-open, 2=closed line, 3=open-talking.
 Stylized, just enough visual diff between cells to validate
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, capsule, circle, rect  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "mouth_drive"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "mouth_drive"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 SHEET_PATH = LAYERS_DIR / "mouth_spritesheet.png"
 

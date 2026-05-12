@@ -1,0 +1,230 @@
+{
+  "format_version": 1,
+  "name": "slot_swap",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "arm",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 30.000001
+      }
+    ]
+  },
+  "sprites": [
+    {
+      "name": "arm",
+      "bone": "arm",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          25.712812,
+          19.464102
+        ],
+        [
+          -2.0,
+          3.464102
+        ],
+        [
+          2.0,
+          -3.464102
+        ],
+        [
+          29.712814,
+          12.535898
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "arm.png"
+    },
+    {
+      "name": "club",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          41.837166,
+          19.5359
+        ],
+        [
+          14.124354,
+          3.5359
+        ],
+        [
+          30.124355,
+          -24.176914
+        ],
+        [
+          57.837166,
+          -8.176914
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "club.png"
+    },
+    {
+      "name": "sword",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          -16.0,
+          16.0
+        ],
+        [
+          16.0,
+          16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ],
+        [
+          -16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "sword.png"
+    }
+  ],
+  "slots": [
+    {
+      "name": "weapon",
+      "attachments": [
+        "club",
+        "sword"
+      ],
+      "bone": "arm",
+      "default": "club"
+    }
+  ],
+  "atlas": "arm.png",
+  "animations": [
+    {
+      "name": "swing",
+      "length": 0.958333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "bone_transform",
+          "target": "arm",
+          "keys": [
+            {
+              "time": 0.0
+            },
+            {
+              "time": 0.458333
+            },
+            {
+              "time": 0.958333
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "swing.001",
+      "length": 0.958333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "slot_attachment",
+          "target": "weapon",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "attachment": "club"
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "attachment": "sword"
+            },
+            {
+              "time": 0.958333,
+              "interp": "constant",
+              "attachment": "club"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

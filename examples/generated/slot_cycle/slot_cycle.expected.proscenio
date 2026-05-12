@@ -1,0 +1,213 @@
+{
+  "format_version": 1,
+  "name": "slot_cycle",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "root",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      }
+    ]
+  },
+  "sprites": [
+    {
+      "name": "attachment_blue",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          -16.0,
+          16.0
+        ],
+        [
+          16.0,
+          16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ],
+        [
+          -16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "attachment_blue.png"
+    },
+    {
+      "name": "attachment_green",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          -16.0,
+          16.0
+        ],
+        [
+          16.0,
+          16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ],
+        [
+          -16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "attachment_green.png"
+    },
+    {
+      "name": "attachment_red",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          -16.0,
+          16.0
+        ],
+        [
+          16.0,
+          16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ],
+        [
+          -16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "attachment_red.png"
+    }
+  ],
+  "slots": [
+    {
+      "name": "cycle.slot",
+      "attachments": [
+        "attachment_blue",
+        "attachment_green",
+        "attachment_red"
+      ],
+      "default": "attachment_red"
+    }
+  ],
+  "atlas": "attachment_blue.png",
+  "animations": [
+    {
+      "name": "cycle",
+      "length": 0.958333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "slot_attachment",
+          "target": "cycle.slot",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "attachment": "attachment_blue"
+            },
+            {
+              "time": 0.291667,
+              "interp": "constant",
+              "attachment": "attachment_green"
+            },
+            {
+              "time": 0.625,
+              "interp": "constant",
+              "attachment": "attachment_red"
+            },
+            {
+              "time": 0.958333,
+              "interp": "constant",
+              "attachment": "attachment_blue"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

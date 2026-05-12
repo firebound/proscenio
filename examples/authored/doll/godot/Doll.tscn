@@ -5,14 +5,14 @@
 ; root. Scripts and extra nodes stay on the wrapper and survive every
 ; reimport — see SPEC 001 (specs/001-reimport-merge/STUDY.md).
 ;
-; The `path="res://doll/..."` references assume you drop `examples/authored/doll/`
-; into your Godot project at `res://doll/`. Adjust paths for your layout.
+; The `path="res://examples/doll/..."` references assume you drop `examples/authored/doll/`
+; into your Godot project at `res://examples/doll/`. Adjust paths for your layout.
 ; UIDs regenerate the first time Godot opens the scene in your project.
 
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://doll/doll.proscenio" id="1_doll"]
-[ext_resource type="Script" path="res://doll/Doll.gd" id="2_doll"]
+[ext_resource type="PackedScene" path="res://examples/doll/doll.proscenio" id="1_doll"]
+[ext_resource type="Script" path="res://examples/doll/Doll.gd" id="2_doll"]
 
 [node name="Doll" type="Node2D"]
 script = ExtResource("2_doll")

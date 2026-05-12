@@ -98,7 +98,7 @@ Adobe UXP Developer Tool (UDT) must be installed and connected. Documentation: <
 
 Headless plugin testing is limited. Manual flow:
 
-1. Open a sample `.psd` (use `examples/simple_psd/source.psd`).
+1. Open a sample `.psd` (use `examples/generated/simple_psd/source.psd`).
 2. Run the plugin.
 3. Verify the manifest JSON validates against `psd_manifest.schema.json` (use `check-jsonschema` from CI).
 4. Verify PNG sidecars exist with expected names and sizes.

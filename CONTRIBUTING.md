@@ -51,7 +51,7 @@ For attachments that toggle between N variants - sword/staff/empty hand, brow up
 
 1. Select the meshes you want to wrap. **Skeleton → Create Slot** anchors a slot Empty under the active bone and parents the selected meshes as attachments.
 2. In **Active Slot**, pick which attachment is the default at scene load (SOLO icon).
-3. Animate `proscenio_slot_index` on the slot to flip attachments per keyframe - Godot expands this into per-attachment visibility tracks at import time. See [`examples/slot_cycle/`](examples/slot_cycle/) for the minimal fixture.
+3. Animate `proscenio_slot_index` on the slot to flip attachments per keyframe - Godot expands this into per-attachment visibility tracks at import time. See [`examples/generated/slot_cycle/`](examples/generated/slot_cycle/) for the minimal fixture.
 
 ### 5. Find things in big rigs
 
@@ -62,7 +62,7 @@ Big rigs (the doll fixture has 64 bones + 22 sprite meshes) drown Blender's nati
 - **Export → Validate** - checks every sprite against the armature, the atlas, and required fields. Errors block export.
 - **Export → Export Proscenio** writes a `.proscenio` JSON + the atlas next to it. **Re-export** silently re-uses the sticky path on subsequent saves.
 - Drop the `.proscenio` into your Godot project - the `EditorImportPlugin` regenerates a `.scn` automatically.
-- **Wrap the imported scene** - instance the generated `.scn` in your own `.tscn` and attach scripts there. Scripts and extra nodes on the wrapper survive every re-export from Blender; the imported scene itself is regenerated each time. See [`examples/authored/doll/`](examples/authored/doll/) for the comprehensive showcase, plus [`examples/blink_eyes/`](examples/blink_eyes/) (sprite_frame isolation test) and [`examples/shared_atlas/`](examples/shared_atlas/) (sliced atlas isolation test) for feature-focused fixtures.
+- **Wrap the imported scene** - instance the generated `.scn` in your own `.tscn` and attach scripts there. Scripts and extra nodes on the wrapper survive every re-export from Blender; the imported scene itself is regenerated each time. See [`examples/authored/doll/`](examples/authored/doll/) for the comprehensive showcase, plus [`examples/generated/blink_eyes/`](examples/generated/blink_eyes/) (sprite_frame isolation test) and [`examples/generated/shared_atlas/`](examples/generated/shared_atlas/) (sliced atlas isolation test) for feature-focused fixtures.
 
 ### 7. Iterate
 

@@ -71,7 +71,7 @@ Active Sprite > Drive from bone box:
 
 ### 1.4 Active Slot panel
 
-Workbench file: `examples/slot_swap/slot_swap.blend` (arm + slot Empty + club/sword attachments). `doll_slots.blend` foi retirado -- slot coverage agora em `slot_swap/` e `slot_cycle/`.
+Workbench file: `examples/generated/slot_swap/slot_swap.blend` (arm + slot Empty + club/sword attachments). `doll_slots.blend` foi retirado -- slot coverage agora em `slot_swap/` e `slot_cycle/`.
 
 - [x] Selecionar slot Empty: "Active Slot" subpanel aparece (testado em slot_swap workbench)
 - [x] Subpanel hide quando active object não é Empty + is_slot
@@ -123,7 +123,7 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 
 ### 1.10 Atlas panel
 
-Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com PNG próprio 32x32 + material próprio + cor + dígito 1..9 pra identificar visualmente onde cada um caiu no atlas packed).
+Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com PNG próprio 32x32 + material próprio + cor + dígito 1..9 pra identificar visualmente onde cada um caiu no atlas packed).
 
 - [x] "Pack Atlas" button: gera `atlas_pack_workbench.atlas.png` (256x256, 9 sprites empacotados) + `atlas_pack_workbench.atlas.json` (schema format_version=2: atlas_w/h, padding, placements dict com x/y/w/h + source_w/h + slice_x/y/w/h por sprite). INFO bar: "packed 9 sprite(s) into 256x256 px atlas".
 - [x] Pack idempotente: re-roda sem duplicar. JSON segunda run idêntico em atlas_w/h, padding, placements (cada sprite na mesma x,y).
@@ -192,7 +192,7 @@ Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com 
 
 - [x] "Import Photoshop Manifest" operator: ImportHelper file picker abre, filter `.json`, sidebar com `Placement` (default "Landed") + `Root Bone Name` (default "root").
 - [x] `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` E `02_from_photoshop/export/doll.photoshop_exported.json` (PS-roundtrip) ambos stamp OK -- INFO bar `Proscenio: stamped 22 mesh(es) (armature: doll.rig)`. Doll só tem polygon (sprite_frame eyes são planned, não real); sprite_frame path validado via simple_psd no item seguinte.
-- [x] `examples/simple_psd/simple_psd.photoshop_manifest.json` stamp -- INFO bar inclui "composed M spritesheet(s)" indicando sprite_frame layers detectados (arrow_0..3 grouping).
+- [x] `examples/generated/simple_psd/simple_psd.photoshop_manifest.json` stamp -- INFO bar inclui "composed M spritesheet(s)" indicando sprite_frame layers detectados (arrow_0..3 grouping).
 - [x] Imported scene tem stub armature (`doll.rig` com bone `root`) + 22 meshes parented `parent_type=OBJECT` ao armature object. Por design (`importers/photoshop/planes.py`) -- evita bone-direction rotation flip que poria meshes em XY ao invés de XZ.
 - [x] PSD layer names = object names sem colisão. 22 meshes nomeados conforme `manifest.layers[].name` sem sufixos `.001/.002`.
 
@@ -204,12 +204,14 @@ Workbench file: `examples/atlas_pack/atlas_pack.blend` (9 sprites 3x3, cada com 
 
 ### 1.18 Writer (export -- via UI ou headless)
 
-- [ ] `doll.blend` -> `.proscenio`: sem warnings (exceto bone weights de meshes sem matching bone)
-- [ ] `doll_slots.blend` -> `.proscenio`: contém `slots[]` + `brow_raise` animation com `slot_attachment` tracks
-- [ ] Re-export bytes idênticos (determinístico, sorted)
-- [ ] Slot sem bone parent: campo `bone` omitted no JSON
-- [ ] hide_viewport / hide_render não filtram meshes (esperado -- writer ignora)
-- [ ] Atlas auto-discovery: encontra `<blend_stem>.atlas.png` próximo ao .blend
+- [x] `doll.blend` -> `.proscenio` writer roda limpo. Únicos warnings: `belly/chest/waist vertex group has no matching bone -- dropping from weights` (3 warnings esperados; vertex groups dessas spine-region meshes não batem nome de bone porque doll usa weighted distribution ao longo da spine chain). Golden regenerated successfully.
+- [x] Slot fixture (`slot_swap.blend` substitui `doll_slots.blend` retirado em PR #40) -> `.proscenio` contém `"slots": [...]` com 2 attachments + bone field + default + 1 action `swing` (que merge swing + weapon swap). slot_cycle adiciona cobertura adicional do cycle pattern.
+- [x] Re-export bytes idênticos. 2 runs consecutivos de `export_proscenio.py` sobre `doll.blend` produzem bytes-por-bytes idênticos (`diff` retorna 0). Sprites sorted by name (`scene_discovery.py:24`), output via `json.dumps(sort_keys=True, indent=2)` no `_normalize`.
+- [x] Slot sem bone parent: campo `bone` omitted no JSON. Confirmado: slot_swap (bone=`arm`) tem `"bone": "arm"` no JSON; slot_cycle (sem parent_bone no Empty) tem zero `"bone":` field no slot entry.
+- [x] hide_viewport / hide_render não filtram meshes. Validado headless: mesh `arm` em slot_swap com `hide_viewport=True+hide_render=True` ainda aparece na lista de sprites do `.proscenio` output. `find_sprite_meshes` (`scene_discovery.py:18-25`) itera todos MESH sem checar hide flags.
+- [x] Atlas auto-discovery: 2 paths verificados.
+  - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` -- filename do primeiro Image Texture node descoberto.
+  - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
 ---
 

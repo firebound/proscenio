@@ -1,6 +1,6 @@
 # doll fixture (SPEC 007)
 
-The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights and authored actions. Demonstrates polygon meshes + multi-bone weights + multi-action authoring end-to-end. Originally planned to also cover `sprite_frame` via animated eyes, but the current `.blend` has all meshes as `sprite_type=polygon` (including `eye.L`/`eye.R`) -- sprite_frame coverage lives in `examples/blink_eyes/` and `examples/mouth_drive/` instead.
+The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored by hand in `doll.blend` (~22 mesh objects + `doll.rig` armature) with multi-bone weights and authored actions. Demonstrates polygon meshes + multi-bone weights + multi-action authoring end-to-end. Originally planned to also cover `sprite_frame` via animated eyes, but the current `.blend` has all meshes as `sprite_type=polygon` (including `eye.L`/`eye.R`) -- sprite_frame coverage lives in `examples/generated/blink_eyes/` and `examples/generated/mouth_drive/` instead.
 
 ## Directory layout
 
@@ -123,8 +123,8 @@ Each top-level mesh in `doll.blend` becomes one PNG layer when `render_layers.py
 
 > The brow slot variant (`brow.L.swap` / `brow.R.swap`) was retired together
 > with the `doll_slots.blend` fixture -- slot system coverage now lives in
-> [`examples/slot_swap/`](../../slot_swap/) (single slot, bone swing) and
-> [`examples/slot_cycle/`](../../slot_cycle/) (cycle pattern, 3 attachments).
+> [`examples/generated/slot_swap/`](../../slot_swap/) (single slot, bone swing) and
+> [`examples/generated/slot_cycle/`](../../slot_cycle/) (cycle pattern, 3 attachments).
 
 ## Visual style
 
@@ -153,7 +153,7 @@ Future actions land as future SPECs require.
 
 | When | Adds |
 | --- | --- |
-| SPEC 004 (slots) -- coverage moved out | Slot system tests live in `examples/slot_swap/` + `examples/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
+| SPEC 004 (slots) -- coverage moved out | Slot system tests live in `examples/generated/slot_swap/` + `examples/generated/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
 | SPEC 006 importer ships fully | A `doll.psd` round-trip test using `02_from_photoshop/doll.psd` as input. |
 | SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
 | Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |

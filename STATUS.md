@@ -22,7 +22,7 @@ For older history see `git log --oneline`.
 
 ## Fixtures in CI
 
-Five Type A fixtures auto-walked by `run_tests.py`: [`doll`](examples/authored/doll/), [`blink_eyes`](examples/blink_eyes/), [`shared_atlas`](examples/shared_atlas/), [`simple_psd`](examples/simple_psd/), [`slot_cycle`](examples/slot_cycle/).
+Five Type A fixtures auto-walked by `run_tests.py`: [`doll`](examples/authored/doll/), [`blink_eyes`](examples/generated/blink_eyes/), [`shared_atlas`](examples/generated/shared_atlas/), [`simple_psd`](examples/generated/simple_psd/), [`slot_cycle`](examples/generated/slot_cycle/).
 
 ## Open work
 

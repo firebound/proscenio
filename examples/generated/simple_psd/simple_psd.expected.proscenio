@@ -1,0 +1,82 @@
+{
+  "format_version": 1,
+  "name": "simple_psd",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "root",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 5.0
+      }
+    ]
+  },
+  "sprites": [
+    {
+      "type": "sprite_frame",
+      "name": "arrow",
+      "bone": "",
+      "hframes": 4,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true
+    },
+    {
+      "name": "square",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          -112.0,
+          32.0
+        ],
+        [
+          -48.0,
+          32.0
+        ],
+        [
+          -48.0,
+          -32.0
+        ],
+        [
+          -112.0,
+          -32.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "square.png"
+    }
+  ],
+  "atlas": "arrow.png"
+}

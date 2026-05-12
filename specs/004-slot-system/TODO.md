@@ -69,18 +69,18 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 
 - [x] `scripts/fixtures/slot_cycle/draw_layers.py` — Pillow renders 3 colored 32x32 squares (red/green/blue) into `pillow_layers/`.
 - [x] `scripts/fixtures/slot_cycle/build_blend.py` — bpy assembles 1-bone armature + slot Empty (parent_type=OBJECT to armature, `is_slot=True`, `slot_default="attachment_red"`) + 3 polygon attachments + `cycle` action keyframing `proscenio_slot_index` 0/1/2 across 24 frames. Empty is object-parented (not bone-parented) so the XZ-plane attachments are not rotated by Blender's bone Y-axis alignment -- mirrors the doll fixture's parenting pattern.
-- [x] `examples/slot_cycle/slot_cycle.blend` — generated.
-- [x] `examples/slot_cycle/slot_cycle.expected.proscenio` — golden (3 sprites + 1 slot + 1 cycle animation with `slot_attachment` track).
-- [x] `examples/slot_cycle/godot/SlotCycle.tscn` + `.gd` — wrapper per SPEC 001 with autoplay defaulting to `cycle`.
-- [x] `examples/slot_cycle/.gitignore` — ignores `*.actual.proscenio`.
-- [x] `examples/slot_cycle/README.md` — fixture overview + slot setup table + build instructions.
+- [x] `examples/generated/slot_cycle/slot_cycle.blend` — generated.
+- [x] `examples/generated/slot_cycle/slot_cycle.expected.proscenio` — golden (3 sprites + 1 slot + 1 cycle animation with `slot_attachment` track).
+- [x] `examples/generated/slot_cycle/godot/SlotCycle.tscn` + `.gd` — wrapper per SPEC 001 with autoplay defaulting to `cycle`.
+- [x] `examples/generated/slot_cycle/.gitignore` — ignores `*.actual.proscenio`.
+- [x] `examples/generated/slot_cycle/README.md` — fixture overview + slot setup table + build instructions.
 - [x] `apps/blender/tests/run_tests.py` auto-discovers it (5/5 fixtures pass).
 
 **Docs**:
 
 - [x] `STATUS.md` — flip SPEC 004 row to shipped + bump fixture count to 5.
 - [x] `scripts/fixtures/README.md` — `slot_cycle/` entry in the layout + script-output map.
-- [x] Update `examples/authored/doll/README.md` brow row from "future home for slots" to a forward-looking note pointing at `examples/slot_cycle/` for the live slot demo.
+- [x] Update `examples/authored/doll/README.md` brow row from "future home for slots" to a forward-looking note pointing at `examples/generated/slot_cycle/` for the live slot demo.
 
 ## Wave 4.4 — close-out (planned)
 

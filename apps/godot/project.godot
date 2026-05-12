@@ -19,13 +19,9 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [debug]
 
-gdscript/warnings/treat_warnings_as_errors=true
 gdscript/warnings/untyped_declaration=2
 gdscript/warnings/return_value_discarded=1
-gdscript/warnings/unsafe_property_access=0
-gdscript/warnings/unsafe_method_access=0
-gdscript/warnings/unsafe_cast=0
-gdscript/warnings/unsafe_call_argument=0
+gdscript/warnings/treat_warnings_as_errors=true
 
 [dotnet]
 

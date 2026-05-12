@@ -10,8 +10,12 @@ static func build(skeleton_data: Dictionary) -> Skeleton2D:
 	var bones: Dictionary = {}
 
 	for bone_data in bones_data:
+		var json_name: String = bone_data.get("name", "bone")
 		var bone := Bone2D.new()
-		bone.name = bone_data.get("name", "bone")
+		# Setting Node.name normalizes special chars (dots become underscores)
+		# in Godot 4 -- we still key the lookup dict by the original JSON name
+		# so the parent-resolution pass below uses the unmodified string.
+		bone.name = json_name
 		var pos: Array = bone_data.get("position", [0.0, 0.0])
 		bone.position = Vector2(pos[0], pos[1])
 		bone.rotation = float(bone_data.get("rotation", 0.0))
@@ -25,7 +29,7 @@ static func build(skeleton_data: Dictionary) -> Skeleton2D:
 			bone.set_autocalculate_length_and_angle(false)
 		# Capture authored pose as the rest pose so animations replace it cleanly.
 		bone.set_rest(bone.transform)
-		bones[bone.name] = bone
+		bones[json_name] = bone
 
 	for bone_data in bones_data:
 		var bone_name: String = bone_data.get("name", "")

@@ -24,19 +24,19 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 - [x] `scripts/fixtures/blink_eyes/draw_layers.py` — Pillow only: generates `pillow_layers/eye_0.png` … `eye_3.png` (32×32) + 128×32 `pillow_layers/eye_spritesheet.png`.
 - [x] `scripts/fixtures/blink_eyes/build_blend.py` — bpy only: loads spritesheet, builds 1-bone armature + 1 sprite_frame mesh + `blink` action animating `proscenio.frame` 0→1→2→3→2→1→0 over 12 frames.
-- [x] Run both → `examples/blink_eyes/pillow_layers/*.png` + `blink_eyes.blend` produced.
-- [x] `examples/blink_eyes/blink_eyes.expected.proscenio` golden (schema-valid).
-- [x] `examples/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
-- [x] `examples/blink_eyes/README.md`.
+- [x] Run both → `examples/generated/blink_eyes/pillow_layers/*.png` + `blink_eyes.blend` produced.
+- [x] `examples/generated/blink_eyes/blink_eyes.expected.proscenio` golden (schema-valid).
+- [x] `examples/generated/blink_eyes/BlinkEyes.tscn` + `BlinkEyes.gd`.
+- [x] `examples/generated/blink_eyes/README.md`.
 
 ## Step 2 — `shared_atlas/` (validates sliced packer)
 
 - [x] `scripts/fixtures/shared_atlas/draw_atlas.py` — Pillow only: generates 256×256 `atlas.png` with three colored shapes in three quadrants (red circle / green triangle / blue square), bottom-right left transparent.
 - [x] `scripts/fixtures/shared_atlas/build_blend.py` — bpy only: loads `atlas.png`, builds 3 polygon meshes with per-quadrant UV bounds, single `root` bone, no animation.
-- [x] Run both → `examples/shared_atlas/atlas.png` + `shared_atlas.blend` produced. Commit pending.
-- [x] `examples/shared_atlas/shared_atlas.expected.proscenio` golden (schema-valid).
-- [x] `examples/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
-- [x] `examples/shared_atlas/README.md`.
+- [x] Run both → `examples/generated/shared_atlas/atlas.png` + `shared_atlas.blend` produced. Commit pending.
+- [x] `examples/generated/shared_atlas/shared_atlas.expected.proscenio` golden (schema-valid).
+- [x] `examples/generated/shared_atlas/SharedAtlas.tscn` + `SharedAtlas.gd`.
+- [x] `examples/generated/shared_atlas/README.md`.
 
 ## Step 3 — `doll/` (full showcase)
 
@@ -70,9 +70,17 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 - [x] `apps/blender/tests/run_tests.py` no longer hardcodes the dummy path — auto-discovery handles every fixture.
 - [x] CI `validate-schema` glob (`examples/**/*.proscenio`) keeps working post-delete; importer-only goldens under `apps/godot/tests/fixtures/` stay (Type B fixtures).
 
+## Coverage gaps (open)
+
+- **Doll-from-Photoshop fixture missing.** `examples/authored/doll/doll.blend` é sandbox de autoria PRA o Photoshop roundtrip -- materiais usam flat Base Color (sem Image Texture node). Resultado: writer não emite `"texture"` per-sprite + nenhum `"atlas"` global. Importer Godot precisa cair no fallback `<sprite_name>.png` pra renderizar. Mas isso só funciona porque o sync mirroreia os PNGs do render_layers junto. Pra testar o **caminho real "Photoshop -> Blender -> Godot"**, precisa fixture derivada:
+  - Nome sugerido: `doll_from_psd.blend` ou `doll.imported.blend`.
+  - Gerado rodando `proscenio.import_photoshop` em headless contra `doll.photoshop_manifest.json` (ou roundtrip do `02_from_photoshop/doll.photoshop_exported.json`).
+  - Resultado: meshes com Image Texture nodes -> writer emite `"texture"` per-sprite -> Godot renderiza direto sem fallback.
+  - Cobre o pipeline end-to-end como o usuário real experimentaria.
+
 ## Coverage gaps (closed in this branch)
 
-- [x] **Direct bone-parented mesh** (`obj.parent_type = "BONE"` + `obj.parent_bone = "<bone>"`, no Armature modifier, no vertex weights). Closed by `examples/atlas_pack/` -- 9 quad sprites each rigidly parented to a single `root` bone, with their own per-sprite materials / textures. Exercises:
+- [x] **Direct bone-parented mesh** (`obj.parent_type = "BONE"` + `obj.parent_bone = "<bone>"`, no Armature modifier, no vertex weights). Closed by `examples/generated/atlas_pack/` -- 9 quad sprites each rigidly parented to a single `root` bone, with their own per-sprite materials / textures. Exercises:
   - `apps/blender/panels/outliner.py:70` label branch `<name> @ <parent_bone>` (visible as `sprite_1 @ root` etc in the Outliner panel).
   - Writer path emitting `parent_bone` without `vertex_weights` (atlas_pack golden diffs cover this end-to-end).
 

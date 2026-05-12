@@ -6,8 +6,8 @@ Run with::
 
 Pure Python — no Blender required. Produces:
 
-- ``examples/blink_eyes/layers/eye_0.png`` … ``eye_3.png`` (32×32 each)
-- ``examples/blink_eyes/eye_spritesheet.png`` (128×32, 4 frames horizontal)
+- ``examples/generated/blink_eyes/layers/eye_0.png`` … ``eye_3.png`` (32×32 each)
+- ``examples/generated/blink_eyes/eye_spritesheet.png`` (128×32, 4 frames horizontal)
 
 The accompanying ``build_blink_eyes.py`` runs in headless Blender,
 loads these PNGs from disk, and assembles the ``.blend``.
@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, circle, rect  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "blink_eyes"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "blink_eyes"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 SHEET_PATH = FIXTURE_DIR / "pillow_layers" / "eye_spritesheet.png"
 

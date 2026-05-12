@@ -219,31 +219,31 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 ### 2.1 Plugin core
 
-- [ ] Plugin enables limpo no Project Settings > Plugins
-- [ ] EditorImportPlugin reconhece `.proscenio` files (re-import seta no FileSystem)
-- [ ] Re-import preserva customizações no wrapper scene
+- [x] Plugin enables limpo no Project Settings > Plugins (auto-enabled via project.godot, sem warnings).
+- [x] EditorImportPlugin reconhece `.proscenio` files. Painel Import mostra "Proscenio Character" importer, right-click oferece Reimport, gera `.scn` no `.godot/imported/`.
+- [x] Re-import preserva customizações no wrapper scene. Confirmado em SlotSwap.tscn: adicionado `MyCustom` Sprite2D child do root, save, Reimport `slot_swap.proscenio`, reabre tscn -> MyCustom intacto. Wrapper pattern SPEC 001 Option A funciona.
 
 ### 2.2 Importer
 
-- [ ] `doll.proscenio` -> `doll.scn` com Skeleton2D + Polygon2D children
-- [ ] `doll_slots.proscenio` -> Slots viram Node2D parent + visible-toggled children
-- [ ] sprite_frame meshes -> Sprite2D com hframes/vframes
-- [ ] polygon meshes -> Polygon2D com UV + vertex weights
-- [ ] Animations -> AnimationPlayer com bone tracks (position/rotation/scale)
-- [ ] slot_attachment tracks -> visible toggle keyframes constant interpolation
-- [ ] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D
+- [x] `slot_swap.proscenio` -> Skeleton2D + Polygon2D children (substitui doll, que ficou skipped no canonical Godot sync por ser authoring-only PS roundtrip). SlotSwapCharacter root contém Skeleton2D + slot Node2D + Polygon2D `arm`.
+- [x] `slot_swap.proscenio` -> Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
+- [x] sprite_frame meshes -> Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
+- [~] polygon meshes -> Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project -- zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (specs/007 Coverage gaps) chegar.
+- [!] Animations -> AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per scripts/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
+- [~] slot_attachment tracks -> visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 -- 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em BUGS_FOUND.md.
+- [x] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D. Validado em shared_atlas: 3 Polygon2D (red_circle/green_triangle/blue_square) compartilham mesma CompressedTexture2D (`atlas.png`) com UV por quadrante.
 
 ### 2.3 Wrapper scene pattern
 
-- [ ] Instance `doll.scn` em wrapper `Doll.tscn`, attach script -> playback OK
-- [ ] Re-import `.proscenio` não sobrescreve wrapper customizations
-- [ ] Wrapper script acessa AnimationPlayer + dispara animações
+- [x] Instance `.scn` em wrapper, attach script -> playback OK. Validado em SlotSwap.tscn: F6 play runtime sem crash.
+- [x] Re-import `.proscenio` não sobrescreve wrapper customizations. Já validado em 2.1.3 (MyCustom Sprite2D persistiu pós-reimport).
+- [x] Wrapper script acessa AnimationPlayer + dispara animações. SlotSwap.gd com `@onready var animation_player: AnimationPlayer = $SlotSwapCharacter/AnimationPlayer` + `play("swing.001")` em `_ready()` (guard `Engine.is_editor_hint()`). Runtime: visibility de club/sword flipa em loop, animação tocando.
 
 ### 2.4 Plugin uninstall test (regra "no GDExtension")
 
-- [ ] Generate `.scn` com plugin enabled
-- [ ] Disable plugin no Project Settings
-- [ ] Reload project -> abrir scene -> roda sem erros (Skeleton2D/Polygon2D são core nodes)
+- [x] Generate `.scn` com plugin enabled (importer auto-rodou ao primeiro open do project, .scn cached em `.godot/imported/`).
+- [x] Disable plugin no Project Settings (Project > Project Settings > Plugins > uncheck Proscenio).
+- [x] Reload project -> abrir scene -> roda sem erros. `.proscenio` source files somem do FileSystem dock (extensão não-reconhecida sem plugin), mas SlotSwap.tscn ainda abre e F6 roda normalmente -- TSCN ext_resource resolve via UID/.import sidecar pro `.scn` cached. Skeleton2D / Bone2D / Polygon2D / AnimationPlayer / Sprite2D todos core nodes; zero dependency em GDExtension/runtime addon code. Plugin = importer-only por design.
 
 ---
 

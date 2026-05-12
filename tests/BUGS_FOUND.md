@@ -214,6 +214,54 @@ testes manuais nessas fixtures.
 
 ---
 
+### Writer emits identity matrix for hidden mesh objects (hide_viewport=True)
+
+**Repro:** `apps/blender/tests/run_tests.py` against slot_swap (or any fixture with `hide_viewport=True` attachments). Inspect sword sprite in the .proscenio output.
+
+**Sintoma:** non-default slot attachments (e.g. slot_swap's `sword` with `hide_viewport=True`) emit polygon vertices in world (0,0,0) instead of at the slot Empty's world position. In Godot, the imported Polygon2D renders at world origin overlapping the rig rather than tracking the slot.
+
+Headless inspect:
+
+- club (hide_viewport=False): `mw.translation=(0.36, -0.30, 0.02)` -- correct world position.
+- sword (hide_viewport=True): `mw.translation=(0.0, 0.0, 0.0)` -- stale identity.
+
+**Causa:** Blender drops `hide_viewport=True` objects from the active depsgraph; their `matrix_world` is not evaluated. `apps/blender/exporters/godot/writer/sprites.py:42` reads `mesh_world = obj.matrix_world` directly without forcing an evaluation, so hidden meshes return identity / stale matrices.
+
+**Fix proposto:**
+
+- Use `obj.evaluated_get(context.evaluated_depsgraph_get()).matrix_world` after temporarily un-hiding every mesh writer cares about.
+- OR: scene-level pass before iteration that un-hides every sprite mesh, captures matrix_world, and restores hide_viewport state. Save/restore is fragile but localised to the writer.
+- OR: don't use `hide_viewport` for slot attachments -- rely on the runtime visibility flip baked into the slot system + depth_offset z-fighting prevention.
+
+**Arquivo:** `apps/blender/exporters/godot/writer/sprites.py:42` (read of `obj.matrix_world`).
+
+**Severity:** medium-high -- breaks visual correctness in Godot for every slot attachment authored with hide_viewport=True (current convention in slot_swap fixture). Workaround: un-hide attachments in Blender before export.
+
+### Writer reads `rotation_euler[2]` (Z) but bones keyframe `rotation_euler[1]` (Y)
+
+**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis -- camera-axis rotation in Front Ortho, per `scripts/fixtures/README.md` convention). Run the writer -> inspect emitted bone_transform track.
+
+**Sintoma:** swing track in the .proscenio has 3 keyframes with only `{"time": ...}` -- no `position`/`rotation`/`scale` data. Godot imports an empty track and the arm doesn't animate.
+
+**Causa:** `apps/blender/exporters/godot/writer/animations.py:147`:
+
+```python
+if "rotation_euler" in entry:
+    rz = float(entry["rotation_euler"].get(2, 0.0))  # <-- reads Z (index 2)
+    if abs(rz) > 1e-6:
+        rotation = round(-rz, 6)
+```
+
+Hardcoded to read Z (index 2). The project convention (codified in `scripts/fixtures/README.md` "Bone orientation" + slot_swap's build_blend.py:276) keyframes Y (index 1) because Y is the camera-axis rotation in Front Ortho. Writer never sees the Y keys → `rotation` stays None → `has["rotation"] = False` → emitted keys carry only `{time}`.
+
+**Fix proposto:** read Y, not Z (for the XZ-plane 2D rig convention). Possibly also support Z fallback for legacy fixtures with the older convention. Sign adjustment may also need attention (Godot's 2D rotation positive = clockwise in screen; Blender Y rotation positive = depends on camera-facing).
+
+**Arquivo:** `apps/blender/exporters/godot/writer/animations.py:146-149`.
+
+**Severity:** high -- all rotation animations on bones keyframed via the project's documented Y-axis convention produce dead tracks. Affects slot_swap (swing action), mouth_drive (likely), and any future fixture following the README's bone orientation guidance.
+
+---
+
 ### Outliner panel: filtro nativo da UIList (campo de baixo) não filtra
 
 **Repro:** Proscenio > subpanel Outliner > expandir filtro nativo do UIList (seta `▼` no rodapé) > digitar substring (ex: `brow.L`) no campo "Filter by Name".

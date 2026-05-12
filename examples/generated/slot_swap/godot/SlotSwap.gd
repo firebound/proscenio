@@ -11,6 +11,10 @@ extends Node2D
 ##
 ## See [code].ai/skills/godot-dev.md[/code] for the full wrapper pattern.
 
+@onready var animation_player: AnimationPlayer = $SlotSwapCharacter/AnimationPlayer
+
 
 func _ready() -> void:
-	pass
+	if Engine.is_editor_hint():
+		return
+	animation_player.play("swing.001")

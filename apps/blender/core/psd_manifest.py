@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 MANIFEST_FORMAT_VERSION = 2
 
@@ -264,7 +264,7 @@ def _optional_blend_mode(entry: dict[str, Any], label: str) -> BlendMode | None:
         raise ManifestError(
             f"{label}.blend_mode must be one of {sorted(_BLEND_MODES)}, got {value!r}"
         )
-    return value  # type: ignore[return-value]
+    return cast("BlendMode", value)
 
 
 def _parse_frame(entry: Any, label: str) -> FrameRef:

@@ -118,7 +118,7 @@ function walkLayers(
         if (parsed.tags.originMarker) continue;
         const entry = buildPolygonEntry(
             parsed.raw,
-            joinName(prefix, parsed.displayName),
+            joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
             childPath,
             zCounter.value,
             parsed.tags,
@@ -189,7 +189,7 @@ function buildSpriteFrameEntry(
     layerPath: string[],
     zOrder: number,
 ): PlannedSpriteFrame | null {
-    const meshName = joinName(prefix, group.displayName);
+    const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
     const folder = group.tags.folder;
     const safeName = group.tags.path ?? sanitize(meshName);
     const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
@@ -309,7 +309,22 @@ function optionalBlend(blend: BlendMode | undefined): { blend_mode?: BlendMode }
 }
 
 function joinName(prefix: string, name: string): string {
-    return prefix === "" ? name : `${prefix}__${name}`;
+    // Empty parts (layer / group named only with bracket tags, e.g.
+    // `[spritesheet]`) are skipped: the chain just inherits its
+    // parent's prefix so children do not pick up an empty segment.
+    if (name === "") return prefix;
+    if (prefix === "") return name;
+    return `${prefix}__${name}`;
+}
+
+function fallbackName(displayName: string, raw: Layer): string {
+    // Last-ditch guard for manifest entries: when a leaf or group is
+    // named only with bracket tags, the display name strips to "" and
+    // would violate the schema's `minLength: 1` on `name`. Falling
+    // back to the raw (still-bracketed) name keeps the entry valid and
+    // makes the issue visible to the artist - the brackets show up in
+    // the importer too.
+    return displayName.length > 0 ? displayName : raw.name;
 }
 
 function toManifestEntry(entry: PlannedEntry): ManifestEntry {

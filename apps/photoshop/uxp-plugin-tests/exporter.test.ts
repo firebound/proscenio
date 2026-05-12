@@ -207,6 +207,28 @@ describe("bracket tags", () => {
         expect(sf.frames).toHaveLength(2);
     });
 
+    it("group named only with a tag passes through without polluting child names", () => {
+        // User names a top-level group literally `[spritesheet]` but
+        // the children are not numeric. buildSpriteFrameEntry returns
+        // null; the fall-through must NOT prefix children with the
+        // empty display name (would collide with manifest schema).
+        const layers: Layer[] = [
+            set("[spritesheet]", [art("brow.L"), art("brow.R")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        expect(m.layers.map((e) => e.name)).toEqual(["brow.L", "brow.R"]);
+    });
+
+    it("leaf layer named only with a tag falls back to the raw name (manifest stays valid)", () => {
+        const layers: Layer[] = [art("[ignore-not-applied]")];
+        const m = buildManifest(doc, layers, opts);
+        // Tag `[ignore-not-applied]` is not in the recognised
+        // vocabulary, so it stays in the display name (unknown
+        // brackets pass through). The entry name is the raw name.
+        expect(m.layers).toHaveLength(1);
+        expect(m.layers[0].name).toBe("[ignore-not-applied]");
+    });
+
     it("unknown brackets pass through as part of the display name", () => {
         const layers: Layer[] = [art("torso [OLD]")];
         const m = buildManifest(doc, layers, opts);

@@ -54,12 +54,20 @@ export interface ExportPlan {
     manifest: Manifest;
     writes: PngWrite[];
     skipped: SkippedLayer[];
+    warnings: PlanWarning[];
 }
 
 export interface SkippedLayer {
     layerPath: string[];
     name: string;
     reason: "ignore-tag" | "hidden" | "empty-bounds" | "origin-marker";
+}
+
+export interface PlanWarning {
+    layerPath: string[];
+    name: string;
+    code: "duplicate-path" | "conflicting-tags" | "sprite-frame-malformed";
+    message: string;
 }
 
 interface ParsedLayer {
@@ -84,6 +92,7 @@ export function buildExportPlan(
     const ctx: WalkContext = {
         out: [],
         skipped: [],
+        warnings: [],
         zCounter: { value: 0 },
         opts,
     };
@@ -96,14 +105,73 @@ export function buildExportPlan(
         ...(opts.anchor === undefined ? {} : { anchor: opts.anchor }),
         layers: ctx.out.map(toManifestEntry),
     };
-    return { manifest, writes: ctx.out.flatMap(toWrites), skipped: ctx.skipped };
+    detectDuplicatePaths(ctx);
+    return {
+        manifest,
+        writes: ctx.out.flatMap(toWrites),
+        skipped: ctx.skipped,
+        warnings: ctx.warnings,
+    };
 }
 
 interface WalkContext {
     out: PlannedEntry[];
     skipped: SkippedLayer[];
+    warnings: PlanWarning[];
     zCounter: { value: number };
     opts: ExportOptions;
+}
+
+function emitTagConflicts(
+    parsed: ParsedLayer,
+    layerPath: string[],
+    displayName: string,
+    ctx: WalkContext,
+): void {
+    const t = parsed.tags;
+    const conflicts: string[] = [];
+    if (t.merge === true && t.kind === "sprite_frame") {
+        conflicts.push("[merge] and [spritesheet] are mutually exclusive");
+    }
+    if (t.originMarker === true && t.origin !== undefined) {
+        conflicts.push("[origin] marker and [origin:x,y] cannot both be set");
+    }
+    if (t.kind === "mesh" && parsed.raw.kind === "set" && t.merge !== true) {
+        conflicts.push("[mesh] applies to a layer (or a [merge] group); plain groups are walked");
+    }
+    if (conflicts.length === 0) return;
+    ctx.warnings.push({
+        layerPath,
+        name: displayName,
+        code: "conflicting-tags",
+        message: conflicts.join("; "),
+    });
+}
+
+function detectDuplicatePaths(ctx: WalkContext): void {
+    const byPath = new Map<string, PlannedEntry[]>();
+    for (const entry of ctx.out) {
+        const path = entry.kind === "sprite_frame"
+            ? `images/${sanitize(entry.subfolder ?? "")}/${entry.name}/*`
+            : entry.path;
+        const list = byPath.get(path);
+        if (list === undefined) byPath.set(path, [entry]);
+        else list.push(entry);
+    }
+    for (const [path, entries] of byPath) {
+        if (entries.length < 2) continue;
+        for (const entry of entries) {
+            const layerPath = entry.kind === "sprite_frame"
+                ? entry._frameSources[0]?.layerPath ?? []
+                : entry._source.layerPath;
+            ctx.warnings.push({
+                layerPath,
+                name: entry.name,
+                code: "duplicate-path",
+                message: `${entries.length} entries resolve to the same output path '${path}'. Sanitisation collapses different layer names to the same on-disk file; rename or use [path:...] to disambiguate.`,
+            });
+        }
+    }
 }
 
 interface PngWriteSource {
@@ -147,6 +215,7 @@ function walkLayers(
     for (const parsed of children) {
         const childPath = [...layerPath, parsed.raw.name];
         const displayName = fallbackName(parsed.displayName, parsed.raw);
+        emitTagConflicts(parsed, childPath, displayName, ctx);
         if (parsed.tags.ignore === true) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
             continue;
@@ -209,6 +278,17 @@ function handleGroup(
             ctx.out.push(entry);
             ctx.zCounter.value += 1;
             return;
+        }
+        if (explicitSpriteFrame) {
+            // Tagged `[spritesheet]` but no contiguous-from-zero frames
+            // landed (mixed kinds, gaps, all bounds-empty). Surface so
+            // the artist can fix the children before re-export.
+            ctx.warnings.push({
+                layerPath,
+                name: fallbackName(parsed.displayName, parsed.raw),
+                code: "sprite-frame-malformed",
+                message: "[spritesheet] group has no valid contiguous frames; falling back to passthrough recursion",
+            });
         }
     }
     if (parsed.tags.merge === true) {

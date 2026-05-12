@@ -410,6 +410,44 @@ describe("origin marker inside [merge] group", () => {
     });
 });
 
+describe("plan warnings (SPEC 011.4)", () => {
+    it("flags duplicate sanitised paths", () => {
+        // `arm.L` and `arm_L` both sanitise to `arm_L`.
+        const layers: Layer[] = [art("arm.L"), art("arm_L")];
+        const plan = buildExportPlan(doc, layers, opts);
+        const dup = plan.warnings.filter((w) => w.code === "duplicate-path");
+        expect(dup.length).toBeGreaterThan(0);
+        expect(dup[0].message).toMatch(/same output path/);
+    });
+
+    it("flags conflicting tags ([merge] + [spritesheet])", () => {
+        const layers: Layer[] = [
+            set("brow [merge] [spritesheet]", [art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const conflicts = plan.warnings.filter((w) => w.code === "conflicting-tags");
+        expect(conflicts.length).toBe(1);
+        expect(conflicts[0].message).toMatch(/mutually exclusive/);
+    });
+
+    it("flags a malformed [spritesheet] group (no contiguous frames)", () => {
+        const layers: Layer[] = [
+            set("blink [spritesheet]", [art("brow.L"), art("brow.R")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const malformed = plan.warnings.filter((w) => w.code === "sprite-frame-malformed");
+        expect(malformed.length).toBe(1);
+    });
+
+    it("does not warn when a valid [spritesheet] group succeeds", () => {
+        const layers: Layer[] = [
+            set("blink [spritesheet]", [art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.warnings).toEqual([]);
+    });
+});
+
 describe("buildExportPlan writes", () => {
     it("emits one PngWrite per polygon with the source layerPath", () => {
         const layers: Layer[] = [

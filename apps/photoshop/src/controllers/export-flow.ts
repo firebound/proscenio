@@ -20,6 +20,7 @@ import {
     buildExportPlan,
     type ExportOptions,
     type ExportPlan,
+    type PlanWarning,
     type SkippedLayer,
 } from "../domain/planner";
 import type { Manifest } from "../domain/manifest";
@@ -40,6 +41,7 @@ export interface ExportPreview {
     kind: "ok" | "no-document" | "validation-failed";
     manifest?: Manifest;
     skipped?: SkippedLayer[];
+    warnings?: PlanWarning[];
     writes?: ExportPlan["writes"];
     errors?: string[];
 }
@@ -59,11 +61,18 @@ export function previewExport(opts: ExportOptions): ExportPreview {
                 kind: "validation-failed",
                 manifest: plan.manifest,
                 skipped: plan.skipped,
+                warnings: plan.warnings,
                 writes: plan.writes,
                 errors,
             };
         }
-        return { kind: "ok", manifest: plan.manifest, skipped: plan.skipped, writes: plan.writes };
+        return {
+            kind: "ok",
+            manifest: plan.manifest,
+            skipped: plan.skipped,
+            warnings: plan.warnings,
+            writes: plan.writes,
+        };
     } catch (err) {
         return {
             kind: "validation-failed",

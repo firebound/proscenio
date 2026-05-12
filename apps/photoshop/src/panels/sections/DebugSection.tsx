@@ -2,7 +2,8 @@ import React from "react";
 
 import type { ExportPreview } from "../../controllers/export-flow";
 import type { ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../../domain/manifest";
-import type { SkippedLayer } from "../../domain/planner";
+import type { PlanWarning, SkippedLayer } from "../../domain/planner";
+import { selectLayerByPath } from "../../io/ps-selection";
 
 interface Props {
     preview: ExportPreview | null;
@@ -33,13 +34,14 @@ const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
     }
     const manifest = preview.manifest;
     const skipped = preview.skipped ?? [];
+    const warnings = preview.warnings ?? [];
     return (
         <>
             <sp-body size="XS">
                 Anchor: {manifest?.anchor === undefined ? "(canvas centre)" : `${manifest.anchor[0]}, ${manifest.anchor[1]} px`}
             </sp-body>
             <sp-body size="XS">
-                Entries: {manifest?.layers.length ?? 0} | Skipped: {skipped.length}
+                Entries: {manifest?.layers.length ?? 0} | Skipped: {skipped.length} | Warnings: {warnings.length}
             </sp-body>
             {preview.kind === "validation-failed" && (
                 <div className="result error">
@@ -51,6 +53,15 @@ const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
                     ))}
                 </div>
             )}
+            {warnings.length > 0 && (
+                <>
+                    <sp-heading size="XS">Warnings</sp-heading>
+                    {warnings.map((w, i) => (
+                        <WarningRow key={`${w.code}-${w.name}-${i}`} warning={w} />
+                    ))}
+                </>
+            )}
+            <sp-heading size="XS">Entries</sp-heading>
             {(manifest?.layers ?? []).map((entry, i) => (
                 <EntryRow key={`${entry.name}-${i}`} entry={entry} />
             ))}
@@ -91,8 +102,24 @@ function badges(entry: ManifestEntry): string {
     return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }
 
-const SkippedRow: React.FC<{ skipped: SkippedLayer }> = ({ skipped }) => (
-    <sp-body size="XS" className="preview-row muted">
-        {skipped.name} ({skipped.reason})
-    </sp-body>
-);
+const SkippedRow: React.FC<{ skipped: SkippedLayer }> = ({ skipped }) => {
+    const onClick = React.useCallback(() => {
+        void selectLayerByPath(skipped.layerPath);
+    }, [skipped.layerPath]);
+    return (
+        <sp-body size="XS" className="preview-row muted clickable" onClick={onClick}>
+            {skipped.name} ({skipped.reason})
+        </sp-body>
+    );
+};
+
+const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
+    const onClick = React.useCallback(() => {
+        void selectLayerByPath(warning.layerPath);
+    }, [warning.layerPath]);
+    return (
+        <sp-body size="XS" className="preview-row warn clickable" onClick={onClick}>
+            [{warning.code}] {warning.name}: {warning.message}
+        </sp-body>
+    );
+};

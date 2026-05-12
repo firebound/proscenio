@@ -24,9 +24,7 @@ export const FolderSection: React.FC<Props> = ({ folder, onPick, onClear }) => (
                 {folder === null ? "Pick folder" : "Change folder"}
             </sp-action-button>
             {folder !== null && (
-                <sp-action-button quiet="true" onClick={onClear}>
-                    Forget
-                </sp-action-button>
+                <sp-action-button onClick={onClear}>Forget</sp-action-button>
             )}
         </div>
     </section>

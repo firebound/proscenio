@@ -19,8 +19,6 @@ export const DocSection: React.FC<Props> = ({ doc, onRefresh }) => (
                 {doc.name} - {doc.width} x {doc.height} px
             </sp-body>
         )}
-        <sp-action-button quiet="true" onClick={onRefresh}>
-            Refresh
-        </sp-action-button>
+        <sp-action-button onClick={onRefresh}>Refresh</sp-action-button>
     </section>
 );

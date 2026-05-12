@@ -108,7 +108,7 @@ def stamp_sprite_frame(
 
 @dataclass(frozen=True)
 class _Placement:
-    """Output of `_layer_placement`: where to put the object and what offset to bake into the quad geometry."""
+    """Output of `_layer_placement`: where to put the object and what offset to bake into the quad."""
 
     location: tuple[float, float, float]
     size: tuple[float, float]

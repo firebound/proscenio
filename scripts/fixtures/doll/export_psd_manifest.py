@@ -1,4 +1,4 @@
-"""Export the doll fixture as a SPEC 006 v1 PSD manifest (roundtrip tooling).
+"""Export the doll fixture as a SPEC 011 v2 PSD manifest (roundtrip tooling).
 
 Run with::
 
@@ -8,19 +8,18 @@ Run with::
 Walks every ``MESH`` object in ``doll.blend``, projects its world XZ
 bounding box onto a Photoshop-style top-left canvas at
 ``PIXELS_PER_UNIT``, and emits a manifest matching
-``schemas/psd_manifest.schema.json`` (format_version=1, kind=polygon
+``schemas/psd_manifest.schema.json`` (format_version=2, kind=polygon
 for every mesh). Output sits at
 ``examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json``
 and references the existing
 ``examples/authored/doll/01_to_photoshop/render_layers/<name>.png`` files
 (rendered by ``scripts/fixtures/doll/render_layers.py``).
 
-Pipeline role: the Wave 6.0.5 roundtrip-tooling deliverable. The
-generated manifest feeds the new JSX importer
-(``apps/photoshop/proscenio_import.jsx``) so the doll fixture can
-be opened as a real PSD with every body part placed at the correct
-position. That PSD then drives the SPEC 006 PSD → Blender importer
-(Wave 6.3) end-to-end, closing the loop.
+Pipeline role: roundtrip-tooling deliverable. The generated manifest
+feeds the Proscenio Photoshop UXP plugin importer so the doll fixture
+can be opened as a real PSD with every body part placed at the
+correct position. That PSD then drives the Blender importer
+end-to-end, closing the loop.
 
 Conventions
 -----------
@@ -38,7 +37,7 @@ Conventions
   to camera = frontmost = z_order 0). Ties broken by mesh name.
 - Skipped: meshes whose bounding box is empty (or whose name is in
   ``SKIP_MESHES``, mirroring ``scripts/fixtures/doll/render_layers.py``).
-- Sprite_frame: not emitted in v1. The doll's eye meshes are single
+- Sprite_frame: not emitted by this generator. The doll's eye meshes are single
   polygon quads; if a future authored ``.blend`` carries hframed eyes
   the script will need extending.
 """

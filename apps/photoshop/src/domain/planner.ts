@@ -281,6 +281,12 @@ function buildSpriteFrameEntry(
         });
     }
     if (maxBounds === null || frames.length < 2) return null;
+    // After bound-based filtering the indices that landed in `frames`
+    // can have gaps or duplicates (auto-detect screens for that on
+    // displayName, but `[spritesheet]` explicit groups + zero-bounds
+    // drops slip past). Re-validate before emitting; bail out so the
+    // group falls through to passthrough recursion instead.
+    if (!indicesAreContiguousFromZero(frames.map((f) => f.index))) return null;
 
     const originFromMarker = pickOriginMarker(children);
     return {

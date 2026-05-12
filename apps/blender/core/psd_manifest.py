@@ -174,7 +174,11 @@ def _parse_layer(entry: Any, idx: int) -> Layer:
     )
 
 
-def _parse_polygon(entry: dict[str, Any], label: str, kind: Literal["polygon", "mesh"]) -> PolygonLayer:
+def _parse_polygon(
+    entry: dict[str, Any],
+    label: str,
+    kind: Literal["polygon", "mesh"],
+) -> PolygonLayer:
     name = _require_str(entry, "name", label)
     path = _require_str(entry, "path", label)
     position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")

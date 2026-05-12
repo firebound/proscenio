@@ -62,13 +62,12 @@ async function writeLayerPng(
     });
     try {
         await layer.duplicate(work);
-        await work.trim({
-            trimType: constants.TrimType.TRANSPARENT,
-            top: true,
-            bottom: true,
-            left: true,
-            right: true,
-        });
+        // UXP Document.trim takes positional args, not an options bag:
+        // trim(trimType, top, bottom, left, right). Passing an object
+        // surfaces as "Invalid value of '{...}' for the type
+        // 'Constants.TrimType'" since the whole object lands on the
+        // first parameter.
+        await work.trim(constants.TrimType.TRANSPARENT, true, true, true, true);
         await work.saveAs.png(file, { compression: 9, interlaced: false }, true);
         return true;
     } finally {

@@ -137,7 +137,7 @@ declare module "photoshop" {
         readonly layers: PsLayer[];
         readonly saved: boolean;
         readonly path: string | null;
-        trim(opts: { trimType: number; top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }): Promise<void>;
+        trim(trimType: number, top?: boolean, bottom?: boolean, left?: boolean, right?: boolean): Promise<void>;
         closeWithoutSaving(): Promise<void>;
         saveAs: {
             png(file: unknown, options?: { compression?: number; interlaced?: boolean }, copy?: boolean): Promise<void>;

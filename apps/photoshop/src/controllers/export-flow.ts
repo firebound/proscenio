@@ -40,7 +40,10 @@ export async function runExport(
     }
 
     const adapted = adaptDocument(doc);
-    const plan = buildExportPlan(adapted.info, adapted.layers, opts);
+    const plan = buildExportPlan(adapted.info, adapted.layers, {
+        ...opts,
+        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+    });
 
     const errors = validateManifest(plan.manifest);
     if (errors.length > 0) {

@@ -50,11 +50,16 @@ def stamp_polygon(
     if not image_path.exists():
         print(f"[psd_import] missing PNG for {layer.name}: {image_path}")
         return None
-    center, size = _layer_world_rect(
-        layer.position, layer.size, manifest.size, manifest.pixels_per_unit, layer.z_order
+    placement = _layer_placement(
+        layer.position,
+        layer.size,
+        manifest.size,
+        manifest.pixels_per_unit,
+        layer.z_order,
+        layer.origin,
     )
-    obj = _ensure_mesh(layer.name, size)
-    _set_world_position(obj, center)
+    obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
+    _set_world_position(obj, placement.location)
     _attach_material(obj, image_path)
     _parent_to_root(obj, armature_obj)
     _tag_origin(obj, layer.name)
@@ -82,11 +87,16 @@ def stamp_sprite_frame(
     # The spritesheet image's tile_size matches that bbox in pixels (the
     # composer pads smaller frames in-place), so the displayed-frame
     # quad has the right world dimensions.
-    center, size = _layer_world_rect(
-        layer.position, layer.size, manifest.size, manifest.pixels_per_unit, layer.z_order
+    placement = _layer_placement(
+        layer.position,
+        layer.size,
+        manifest.size,
+        manifest.pixels_per_unit,
+        layer.z_order,
+        layer.origin,
     )
-    obj = _ensure_mesh(layer.name, size)
-    _set_world_position(obj, center)
+    obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
+    _set_world_position(obj, placement.location)
     _attach_material(obj, sheet_path)
     _parent_to_root(obj, armature_obj)
     _tag_origin(obj, layer.name)
@@ -94,33 +104,68 @@ def stamp_sprite_frame(
     return StampedSpriteFrame(mesh_obj=obj, spritesheet_path=sheet_path)
 
 
-def _layer_world_rect(
+@dataclass(frozen=True)
+class _Placement:
+    """Output of `_layer_placement`: where to put the object and what offset to bake into the quad geometry."""
+
+    location: tuple[float, float, float]
+    size: tuple[float, float]
+    # Geometry offset baked into the quad's local-space vertices so
+    # the visible texture sits where the manifest says (`position +
+    # size/2` in PSD pixels) even when the object's location was
+    # shifted to an explicit `origin`. Zero when no origin is set.
+    geometry_offset: tuple[float, float]
+
+
+def _layer_placement(
     position_px: tuple[int, int],
     size_px: tuple[int, int],
     doc_size_px: tuple[int, int],
     pixels_per_unit: float,
     z_order: int,
-) -> tuple[tuple[float, float, float], tuple[float, float]]:
-    """PSD layer rect → Blender mesh (world centre, world XZ size)."""
+    origin_px: tuple[int, int] | None,
+) -> _Placement:
+    """Translate PSD pixel coords + optional origin into Blender world placement."""
     px_x, px_y = position_px
     px_w, px_h = size_px
     doc_w, doc_h = doc_size_px
-    cx = (px_x + px_w / 2.0 - doc_w / 2.0) / pixels_per_unit
-    cz = (doc_h / 2.0 - px_y - px_h / 2.0) / pixels_per_unit
+    bbox_cx = (px_x + px_w / 2.0 - doc_w / 2.0) / pixels_per_unit
+    bbox_cz = (doc_h / 2.0 - px_y - px_h / 2.0) / pixels_per_unit
     cy = z_order * Z_EPSILON
     sx = px_w / pixels_per_unit
     sz = px_h / pixels_per_unit
-    return (cx, cy, cz), (sx, sz)
+    if origin_px is None:
+        return _Placement(
+            location=(bbox_cx, cy, bbox_cz),
+            size=(sx, sz),
+            geometry_offset=(0.0, 0.0),
+        )
+    origin_x, origin_y = origin_px
+    ox = (origin_x - doc_w / 2.0) / pixels_per_unit
+    oz = (doc_h / 2.0 - origin_y) / pixels_per_unit
+    return _Placement(
+        location=(ox, cy, oz),
+        size=(sx, sz),
+        geometry_offset=(bbox_cx - ox, bbox_cz - oz),
+    )
 
 
-def _ensure_mesh(name: str, size: tuple[float, float]) -> bpy.types.Object:
+def _ensure_mesh(
+    name: str,
+    size: tuple[float, float],
+    geometry_offset: tuple[float, float] = (0.0, 0.0),
+) -> bpy.types.Object:
     """Reuse an existing mesh by ``proscenio.import_origin`` tag, else create.
 
     Mesh data + UVs are rewritten on every import so size changes
-    propagate. Material gets refreshed by the caller.
+    propagate. ``geometry_offset`` shifts the quad in local space so
+    that an object placed at a non-bbox-centre location (e.g. the
+    SPEC 011 ``origin`` pivot) still displays the texture at the
+    bbox-centre world position. Material gets refreshed by the caller.
     """
     obj = _find_existing(name)
     width, height = size
+    ox, oz = geometry_offset
     if obj is None:
         mesh = bpy.data.meshes.new(name)
         obj = bpy.data.objects.new(name, mesh)
@@ -131,10 +176,10 @@ def _ensure_mesh(name: str, size: tuple[float, float]) -> bpy.types.Object:
     half_h = height / 2.0
     mesh.from_pydata(
         vertices=[
-            (-half_w, 0.0, -half_h),
-            (half_w, 0.0, -half_h),
-            (half_w, 0.0, half_h),
-            (-half_w, 0.0, half_h),
+            (ox - half_w, 0.0, oz - half_h),
+            (ox + half_w, 0.0, oz - half_h),
+            (ox + half_w, 0.0, oz + half_h),
+            (ox - half_w, 0.0, oz + half_h),
         ],
         edges=[],
         faces=[(0, 1, 2, 3)],

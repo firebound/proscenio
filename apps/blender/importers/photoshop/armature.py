@@ -19,8 +19,15 @@ ROOT_BONE_LENGTH = 0.05
 def build_root_armature(
     name: str,
     root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
+    anchor_world: tuple[float, float, float] | None = None,
 ) -> bpy.types.Object:
-    """Create a fresh armature with a single root-level bone, return the object."""
+    """Create a fresh armature with a single root-level bone, return the object.
+
+    When ``anchor_world`` is provided the armature object is placed at
+    that location (SPEC 011 D6 PSD-guide anchor). The bone stays at
+    the armature's local origin so child meshes inherit the anchor
+    offset via parenting.
+    """
     arm_data = bpy.data.armatures.new(name)
     arm_obj = bpy.data.objects.new(name, arm_data)
     bpy.context.scene.collection.objects.link(arm_obj)
@@ -30,4 +37,6 @@ def build_root_armature(
     bone.head = (0.0, 0.0, 0.0)
     bone.tail = (0.0, 0.0, ROOT_BONE_LENGTH)
     bpy.ops.object.mode_set(mode="OBJECT")
+    if anchor_world is not None:
+        arm_obj.location = anchor_world
     return arm_obj

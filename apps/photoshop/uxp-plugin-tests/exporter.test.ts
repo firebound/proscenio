@@ -343,6 +343,46 @@ describe("bracket tags", () => {
     });
 });
 
+describe("document-level anchor (PSD guides)", () => {
+    it("emits anchor field when opts.anchor is set", () => {
+        const layers: Layer[] = [art("torso")];
+        const m = buildManifest(doc, layers, { ...opts, anchor: [100, 200] });
+        expect(m.anchor).toEqual([100, 200]);
+    });
+
+    it("omits anchor when opts.anchor is not provided", () => {
+        const layers: Layer[] = [art("torso")];
+        const m = buildManifest(doc, layers, opts);
+        expect(m.anchor).toBeUndefined();
+    });
+});
+
+describe("origin marker inside [merge] group", () => {
+    it("uses [origin] marker child as polygon origin when no explicit tag", () => {
+        const layers: Layer[] = [
+            set("hair [merge]", [
+                art("front", { x: 0, y: 0, w: 50, h: 50 }),
+                art("pivot [origin]", { x: 10, y: 20, w: 4, h: 4 }),
+            ]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        const entry = m.layers[0] as PolygonEntry;
+        expect(entry.kind).toBe("polygon");
+        expect(entry.origin).toEqual([12, 22]); // marker center
+    });
+
+    it("explicit [origin:x,y] on the group beats the inner marker", () => {
+        const layers: Layer[] = [
+            set("hair [merge] [origin:99,88]", [
+                art("front", { x: 0, y: 0, w: 50, h: 50 }),
+                art("pivot [origin]", { x: 10, y: 20, w: 4, h: 4 }),
+            ]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        expect(m.layers[0].origin).toEqual([99, 88]);
+    });
+});
+
 describe("buildExportPlan writes", () => {
     it("emits one PngWrite per polygon with the source layerPath", () => {
         const layers: Layer[] = [

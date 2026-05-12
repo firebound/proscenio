@@ -354,6 +354,11 @@ function buildPolygonEntry(
     const safeName = source.tags.path ?? sanitize(name);
     const path = folder === undefined ? `images/${safeName}.png` : `images/${sanitize(folder)}/${safeName}.png`;
     const kind: "polygon" | "mesh" = source.tags.kind === "mesh" ? "mesh" : "polygon";
+    // For `[merge]` groups, an inner `[origin]` marker layer provides
+    // the pivot when no explicit `[origin:x,y]` is set on the group.
+    const originFromMarker = source.raw.kind === "set"
+        ? pickOriginMarker(parseChildren(source.raw.layers))
+        : undefined;
     return {
         kind,
         name,
@@ -361,7 +366,7 @@ function buildPolygonEntry(
         position: [Math.round(bounds.x), Math.round(bounds.y)],
         size: [Math.round(bounds.w), Math.round(bounds.h)],
         z_order: zOrder,
-        ...optionalOrigin(source.tags.origin),
+        ...optionalOrigin(source.tags.origin ?? originFromMarker),
         ...optionalBlend(blend),
         ...(folder === undefined ? {} : { subfolder: folder }),
         _source: {

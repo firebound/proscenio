@@ -39,11 +39,11 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Wave 11.2 - origin / pivot semantics
 
-- [ ] `[origin]` marker layer inside a group: planner skips its PNG, records the layer's bbox-center as the group's `origin`.
-- [ ] `[origin:x,y]` on the group itself: planner reads the explicit coords, no marker needed.
-- [ ] Document-level anchor from PSD guides: read the first horizontal + first vertical guide via UXP; write `anchor: [px, px]` at the manifest root.
-- [ ] Blender importer companion: read `anchor` -> place root bone at that position; read per-entry `origin` -> use as the mesh's `Object.location` instead of the bbox center.
-- [ ] Fixture: a small PSD with one `[origin]` marker layer per body part, golden-diffed against the manifest the importer expects.
+- [x] `[origin]` marker layer inside a sprite_frame OR `[merge]` group: planner skips its PNG output and records the marker's bbox-center as the entry's `origin`.
+- [x] `[origin:x,y]` on the layer / group itself: planner reads the explicit coords, no marker needed; wins over an inner marker.
+- [x] Document-level anchor from PSD guides: adapter reads `doc.guides`, picks first vertical + first horizontal, surfaces as `anchor` at the manifest root.
+- [x] Blender importer companion: armature object placed at the manifest `anchor` (world-space conversion in `_anchor_world`); per-entry `origin` becomes the mesh's `Object.location` with a baked geometry offset so the visible texture stays where the bbox says.
+- [ ] Fixture: a small PSD with one `[origin]` marker layer per body part, golden-diffed against the manifest the importer expects. (Deferred to a follow-up; the smoke test against the user's doll PSD covers the planner + writer paths.)
 
 ## Wave 11.3 - tags UI mini-app (Tags tab)
 

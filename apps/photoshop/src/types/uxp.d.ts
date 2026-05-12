@@ -160,6 +160,13 @@ declare module "photoshop" {
         move(parent: PsLayer | PsDocument, placement: number): Promise<void>;
     }
 
+    export interface PsGuide {
+        // UXP exposes guides as `{ direction: "horizontal" | "vertical", coordinate: number }`.
+        // `coordinate` is in document pixels.
+        readonly direction: "horizontal" | "vertical";
+        readonly coordinate: number;
+    }
+
     export interface PsDocument {
         readonly name: string;
         readonly width: number;
@@ -168,6 +175,7 @@ declare module "photoshop" {
         readonly layerTree?: PsLayer[];
         readonly saved: boolean;
         readonly path: string | null;
+        readonly guides?: PsGuide[];
         trim(trimType: number, top?: boolean, bottom?: boolean, left?: boolean, right?: boolean): Promise<void>;
         closeWithoutSaving(): Promise<void>;
         // Create an empty layer group at the top of the stack.

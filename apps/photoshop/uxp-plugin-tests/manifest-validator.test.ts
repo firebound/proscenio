@@ -1,6 +1,6 @@
 // ajv contract test for v1 PSD manifest. Mirrors the schema at the
 // repo root so any breaking change to the contract fails here before
-// the Blender importer breaks.
+// it can break a downstream consumer of the manifest.
 
 import { describe, expect, it } from "vitest";
 

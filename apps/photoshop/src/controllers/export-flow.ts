@@ -50,13 +50,30 @@ export async function runExport(
     const manifestFile = manifestFileName(adapted.info.name);
 
     try {
-        const pngResults = await core.executeAsModal(
+        // PNG writes happen first; the manifest is only persisted if
+        // every PNG landed. Otherwise the manifest on disk would point
+        // at files that do not exist, which surfaces as a broken
+        // import on the downstream side hours later. Both steps share
+        // a single executeAsModal so PS shows one modal banner.
+        const { pngResults, manifestWritten } = await core.executeAsModal(
             async () => {
-                await writeManifest(folder, plan.manifest, manifestFile);
-                return runWrites(doc, folder, plan.writes);
+                const results = await runWrites(doc, folder, plan.writes);
+                const allOk = results.every((r) => r.ok);
+                if (allOk) await writeManifest(folder, plan.manifest, manifestFile);
+                return { pngResults: results, manifestWritten: allOk };
             },
             { commandName: "Proscenio export" },
         );
+        if (!manifestWritten) {
+            const failed = pngResults.filter((r) => !r.ok);
+            return {
+                kind: "failed",
+                pngResults,
+                errors: failed.map(
+                    (r) => `${r.outputPath}: ${r.skippedReason ?? "failed"}`,
+                ),
+            };
+        }
         return {
             kind: "ok",
             folder: folder.nativePath,

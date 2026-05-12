@@ -90,13 +90,27 @@ async function ensureOutputFile(folder: UxpFolder, outputPath: string): Promise<
     const segments = outputPath.split("/").filter((s) => s.length > 0);
     let dir = folder;
     for (let i = 0; i < segments.length - 1; i++) {
-        dir = await dir.createFolder(segments[i], { overwrite: false }).catch(async () =>
-            (await dir.getEntry(segments[i])) as UxpFolder,
-        );
+        dir = await ensureSubfolder(dir, segments[i]);
     }
     const leaf = segments.at(-1);
     if (leaf === undefined) {
         throw new Error(`empty output path: ${outputPath}`);
     }
     return dir.createFile(leaf, { overwrite: true });
+}
+
+async function ensureSubfolder(parent: UxpFolder, name: string): Promise<UxpFolder> {
+    try {
+        return await parent.createFolder(name, { overwrite: false });
+    } catch {
+        // Folder already exists - look it up and confirm it really is
+        // a folder. A file at the same path collides with our output
+        // layout and must surface as a hard error rather than be
+        // silently cast to UxpFolder.
+        const entry = await parent.getEntry(name);
+        if (!entry.isFolder) {
+            throw new Error(`output path collides with a non-folder entry: ${name}`);
+        }
+        return entry as UxpFolder;
+    }
 }

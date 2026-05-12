@@ -59,14 +59,10 @@ export async function readManifestFromPicker(): Promise<ReadManifestResult> {
 }
 
 async function resolveParentFolder(file: UxpFile): Promise<UxpFolder | null> {
-    // UXP UxpEntry exposes `nativePath` but not a typed parent
-    // accessor. The localFileSystem call below works in PS via the
-    // session-token mechanism: `createSessionToken` on a sibling
-    // entry plus `getEntryWithUrl` is the canonical hop. Simpler:
-    // strip the trailing filename from nativePath, then re-resolve
-    // via getEntryWithUrl. UXP also exposes `file.parent` in modern
-    // builds; we try that first, fall back to manual reconstruction
-    // if the runtime does not expose it.
+    // Modern UXP exposes `file.parent` directly on the picked entry.
+    // If a target runtime stops shipping it, this helper is the spot
+    // to add a fallback that reconstructs the folder from
+    // `file.nativePath` via `getEntryWithUrl`.
     interface FileWithParent {
         parent?: UxpFolder;
     }

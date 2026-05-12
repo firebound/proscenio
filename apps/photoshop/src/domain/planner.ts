@@ -149,8 +149,13 @@ function walkLayers(
                 if (entry !== null) {
                     out.push(entry);
                     zCounter.value += 1;
+                    continue;
                 }
-                continue;
+                // Group qualified as sprite_frame but the entry came
+                // back null (all frames had invalid / zero bounds).
+                // Fall through to the regular recursion so the group
+                // is still walked - otherwise a single empty frame
+                // would silently drop every valid sibling underneath.
             }
             const nested = prefix === "" ? layer.name : `${prefix}__${layer.name}`;
             walkLayers(layer.layers, nested, childLayerPath, out, zCounter, opts);

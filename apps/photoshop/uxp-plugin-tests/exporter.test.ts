@@ -17,7 +17,7 @@ import {
     sanitize,
 } from "../src/domain/planner";
 import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import type { ManifestEntry } from "../src/domain/manifest";
+import type { ManifestEntry, PolygonEntry } from "../src/domain/manifest";
 
 const DEFAULT_BOUNDS = { x: 0, y: 0, w: 10, h: 10 };
 

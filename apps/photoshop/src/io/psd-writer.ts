@@ -31,6 +31,13 @@ async function ensureSubfolder(parent: UxpFolder, name: string): Promise<UxpFold
     try {
         return await parent.createFolder(name, { overwrite: false });
     } catch {
-        return (await parent.getEntry(name)) as UxpFolder;
+        // Folder already exists - look it up and confirm it really is
+        // a folder. A file at the same path would otherwise be cast
+        // to UxpFolder and break downstream calls.
+        const entry = await parent.getEntry(name);
+        if (!entry.isFolder) {
+            throw new Error(`output path collides with a non-folder entry: ${name}`);
+        }
+        return entry as UxpFolder;
     }
 }

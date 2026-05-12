@@ -197,7 +197,6 @@ Plan: implement the Tags tab first (most value), then Validate, then the Reveal-
 - `[skin]` and full skin variant export. Different output topology (multi-manifest); separate SPEC if a real character demands it.
 - `[bone]` / `[slot]`. Proscenio's Blender side already owns the rig; tagging bones in PSD duplicates that responsibility. If a future "PSD-first rigger" SPEC lands, revisit.
 - `[overlay]` clipping masks. Tied to Spine's render model; Blender's render is different.
-- Pattern macros (`[name:pre*suf]`). Power-user feature; one-pass rename in PS does the same thing.
 - Pseudo-keyword auto-tagging (`Head`, `Mouth`, ...). Tight coupling to a specific rig template; harder to generalise across project types.
 - Head-turner view groups. Specific to face puppetry; out of Proscenio's stated 2D-cutout scope.
 

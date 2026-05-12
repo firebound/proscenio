@@ -10,7 +10,7 @@
   },
   "requiredPermissions": {
     "allowCodeGenerationFromStrings": true,
-    "localFileSystem": "fullAccess"
+    "localFileSystem": "request"
   },
   "entrypoints": [
     {

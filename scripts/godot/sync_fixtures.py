@@ -58,12 +58,27 @@ _TEXTURE_SUBDIRS: tuple[str, ...] = (
     "_spritesheets",
 )
 
+# Fixtures intentionally excluded from the Godot sync. ``doll`` is an
+# authoring sandbox for the Photoshop roundtrip: materials carry flat
+# Base Color only (no Image Texture node), polygon vertices live in
+# world coordinates instead of being centred per-mesh, and the rest
+# pose was never authored for direct Godot consumption. The proper
+# Godot-target fixture is the future ``doll-from-photoshop`` derived
+# .blend documented in specs/007-testing-fixtures/TODO.md.
+_GODOT_SKIP: frozenset[str] = frozenset({"doll"})
+
 
 def discover_fixtures() -> list[tuple[str, Path]]:
-    """Return ``(short_name, fixture_root)`` for every fixture with a golden."""
+    """Return ``(short_name, fixture_root)`` for every fixture with a golden.
+
+    Skips entries listed in ``_GODOT_SKIP`` so authoring-only fixtures
+    (doll today) stay out of the Godot dev project.
+    """
     out: list[tuple[str, Path]] = []
     for golden in sorted(EXAMPLES_DIR.rglob("*.expected.proscenio")):
         short = golden.name[: -len(".expected.proscenio")]
+        if short in _GODOT_SKIP:
+            continue
         out.append((short, golden.parent))
     return out
 

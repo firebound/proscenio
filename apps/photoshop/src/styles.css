@@ -1,22 +1,60 @@
-.tabbar {
+/* Proscenio panel styles. UXP renders this with the Spectrum theme as
+   the host; we only style our own scoped elements. */
+
+.proscenio-panel {
     display: flex;
-    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px;
-    background-color: rgba(0,0,0,.25);
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
-    flex-wrap: wrap;
-}
-.tabsection {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-}
-.tabsection:nth-of-type(2) {
-    justify-content: flex-end;
+    font-size: 12px;
 }
 
-.tabsection * {
-    margin: 0 4px;
+.proscenio-panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.proscenio-panel .hint {
+    opacity: 0.75;
+    margin: 0;
+}
+
+.proscenio-panel .toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.proscenio-panel button {
+    margin-top: 4px;
+}
+
+.proscenio-panel .result {
+    padding: 8px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.proscenio-panel .result.ok {
+    border-left: 3px solid #4caf50;
+}
+
+.proscenio-panel .result.error {
+    border-left: 3px solid #ef5350;
+}
+
+.proscenio-panel .result p {
+    margin: 0 0 2px 0;
+}
+
+.proscenio-panel .result .folder {
+    opacity: 0.7;
+    font-family: monospace;
+    font-size: 11px;
+    word-break: break-all;
+}
+
+.proscenio-panel .result-row.warn {
+    color: #ff9800;
 }

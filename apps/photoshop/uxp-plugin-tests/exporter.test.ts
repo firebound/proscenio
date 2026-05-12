@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    aggregateFlatSpriteFrames,
+    buildExportPlan,
     buildManifest,
     indicesAreContiguousFromZero,
     matchIndexedFrame,
@@ -17,9 +17,15 @@ import {
     sanitize,
 } from "../src/controllers/exporter";
 import type { ArtLayer, Layer, LayerSet } from "../src/types/layer";
-import type { ManifestEntry, PolygonEntry } from "../src/types/manifest";
+import type { ManifestEntry } from "../src/types/manifest";
 
-function art(name: string, bounds = { x: 0, y: 0, w: 10, h: 10 }, visible = true): ArtLayer {
+const DEFAULT_BOUNDS = { x: 0, y: 0, w: 10, h: 10 };
+
+function art(
+    name: string,
+    bounds: ArtLayer["bounds"] = DEFAULT_BOUNDS,
+    visible = true,
+): ArtLayer {
     return { kind: "art", name, visible, bounds };
 }
 
@@ -240,40 +246,60 @@ describe("buildManifest", () => {
     });
 });
 
-describe("aggregateFlatSpriteFrames", () => {
-    it("leaves non-matching polygons alone", () => {
-        const input: ManifestEntry[] = [
-            {
-                kind: "polygon",
-                name: "torso",
-                path: "images/torso.png",
-                position: [0, 0],
-                size: [10, 10],
-                z_order: 0,
-            },
-        ];
-        const out = aggregateFlatSpriteFrames(input);
-        expect(out).toHaveLength(1);
-        expect(out[0].kind).toBe("polygon");
+describe("flat-sibling sprite_frame aggregation (via buildManifest)", () => {
+    it("does not aggregate when indices skip zero", () => {
+        const layers: Layer[] = [art("walk_1"), art("walk_2")];
+        const m = buildManifest(doc, layers, fullOpts);
+        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
     });
 
-    it("does not aggregate when indices are not contiguous from zero", () => {
-        const input: ManifestEntry[] = [
-            mkPoly("walk_1", 0),
-            mkPoly("walk_2", 1),
-        ];
-        const out = aggregateFlatSpriteFrames(input);
-        expect(out.every((e) => e.kind === "polygon")).toBe(true);
+    it("does not aggregate when only one matching sibling exists", () => {
+        const layers: Layer[] = [art("walk_0"), art("torso")];
+        const m = buildManifest(doc, layers, fullOpts);
+        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
     });
 });
 
-function mkPoly(name: string, z: number): PolygonEntry {
-    return {
-        kind: "polygon",
-        name,
-        path: `images/${name}.png`,
-        position: [0, 0],
-        size: [10, 10],
-        z_order: z,
-    };
-}
+describe("buildExportPlan", () => {
+    it("emits one PngWrite per polygon with layerPath rooted at doc layers", () => {
+        const layers: Layer[] = [
+            set("body", [set("upper", [art("torso")])]),
+            art("head"),
+        ];
+        const plan = buildExportPlan(doc, layers, fullOpts);
+        expect(plan.writes).toHaveLength(2);
+        expect(plan.writes[0]).toEqual({
+            layerPath: ["body", "upper", "torso"],
+            outputPath: "images/body__upper__torso.png",
+        });
+        expect(plan.writes[1]).toEqual({
+            layerPath: ["head"],
+            outputPath: "images/head.png",
+        });
+    });
+
+    it("emits one PngWrite per frame for nested sprite_frame groups", () => {
+        const layers: Layer[] = [
+            set("blink", [art("0"), art("1"), art("2")]),
+        ];
+        const plan = buildExportPlan(doc, layers, fullOpts);
+        expect(plan.writes).toHaveLength(3);
+        expect(plan.writes[0]).toEqual({
+            layerPath: ["blink", "0"],
+            outputPath: "images/blink/0.png",
+        });
+        expect(plan.writes[2].layerPath).toEqual(["blink", "2"]);
+    });
+
+    it("emits one PngWrite per flat-aggregated sibling, preserving source names", () => {
+        const layers: Layer[] = [
+            art("walk_0"),
+            art("walk_1"),
+        ];
+        const plan = buildExportPlan(doc, layers, fullOpts);
+        expect(plan.writes).toHaveLength(2);
+        expect(plan.writes[0].layerPath).toEqual(["walk_0"]);
+        expect(plan.writes[0].outputPath).toBe("images/walk_0.png");
+        expect(plan.writes[1].layerPath).toEqual(["walk_1"]);
+    });
+});

@@ -10,147 +10,39 @@
   },
   "requiredPermissions": {
     "allowCodeGenerationFromStrings": true,
+    "localFileSystem": "fullAccess",
     "launchProcess": {
-      "schemes": [
-        "http",
-        "https"
-      ],
-      "extensions": [
-        ".svg",
-        ".png"
-      ]
-    },
-    "webview": {
-      "allow": "yes",
-      "domains": [
-        "https://*.adobe.com",
-        "https://*.google.com"
-      ]
+      "schemes": ["http", "https"],
+      "extensions": [".svg", ".png", ".json"]
     }
   },
   "entrypoints": [
     {
-      "type": "command",
-      "id": "showAbout",
-      "label": {
-        "default": "About React Demo"
-      },
-      "shortcut": {
-        "mac": "shift+cmd+A",
-        "win": "ctrl+alt+A"
-      }
-    },
-    {
       "type": "panel",
-      "id": "demos",
+      "id": "proscenioExporter",
       "label": {
-        "default": "Demo Panel"
+        "default": "Proscenio Exporter"
       },
-      "minimumSize": {
-        "width": 230,
-        "height": 200
-      },
-      "maximumSize": {
-        "width": 2000,
-        "height": 2000
-      },
-      "preferredDockedSize": {
-        "width": 230,
-        "height": 300
-      },
-      "preferredFloatingSize": {
-        "width": 230,
-        "height": 300
-      },
+      "minimumSize": { "width": 260, "height": 240 },
+      "maximumSize": { "width": 2000, "height": 2000 },
+      "preferredDockedSize": { "width": 280, "height": 360 },
+      "preferredFloatingSize": { "width": 280, "height": 360 },
       "icons": [
         {
           "width": 32,
           "height": 32,
           "path": "icons/icon_D.png",
-          "scale": [
-            1,
-            2
-          ],
-          "theme": [
-            "dark",
-            "darkest"
-          ],
-          "species": [
-            "generic"
-          ]
+          "scale": [1, 2],
+          "theme": ["dark", "darkest"],
+          "species": ["generic"]
         },
         {
           "width": 32,
           "height": 32,
           "path": "icons/icon_N.png",
-          "scale": [
-            1,
-            2
-          ],
-          "theme": [
-            "lightest",
-            "light"
-          ],
-          "species": [
-            "generic"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "id": "moreDemos",
-      "label": {
-        "default": "Demo Panel 2"
-      },
-      "minimumSize": {
-        "width": 230,
-        "height": 200
-      },
-      "maximumSize": {
-        "width": 2000,
-        "height": 2000
-      },
-      "preferredDockedSize": {
-        "width": 230,
-        "height": 300
-      },
-      "preferredFloatingSize": {
-        "width": 230,
-        "height": 300
-      },
-      "icons": [
-        {
-          "width": 32,
-          "height": 32,
-          "path": "icons/icon_D.png",
-          "scale": [
-            1,
-            2
-          ],
-          "theme": [
-            "dark",
-            "darkest"
-          ],
-          "species": [
-            "generic"
-          ]
-        },
-        {
-          "width": 32,
-          "height": 32,
-          "path": "icons/icon_N.png",
-          "scale": [
-            1,
-            2
-          ],
-          "theme": [
-            "lightest",
-            "light"
-          ],
-          "species": [
-            "generic"
-          ]
+          "scale": [1, 2],
+          "theme": ["lightest", "light"],
+          "species": ["generic"]
         }
       ]
     }
@@ -160,33 +52,17 @@
       "width": 32,
       "height": 32,
       "path": "icons/icon_D.png",
-      "scale": [
-        1,
-        2
-      ],
-      "theme": [
-        "dark",
-        "darkest"
-      ],
-      "species": [
-        "generic"
-      ]
+      "scale": [1, 2],
+      "theme": ["dark", "darkest"],
+      "species": ["generic"]
     },
     {
       "width": 32,
       "height": 32,
       "path": "icons/icon_N.png",
-      "scale": [
-        1,
-        2
-      ],
-      "theme": [
-        "lightest",
-        "light"
-      ],
-      "species": [
-        "generic"
-      ]
+      "scale": [1, 2],
+      "theme": ["lightest", "light"],
+      "species": ["generic"]
     }
   ]
 }

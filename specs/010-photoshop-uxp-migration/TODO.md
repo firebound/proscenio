@@ -61,11 +61,11 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.3 - File system + PNG export
 
-- [ ] UXP storage API: pick folder once, cache in component state + `localStorage`.
-- [ ] Per-layer PNG export via `saveAs.png` writing into `<folder>/layers/`.
-- [ ] Manifest JSON written at `<folder>/manifest.json`.
-- [ ] Schema validation with `ajv` before write; surface errors in panel UI.
-- [ ] Manual test: byte-equality check against captured JSX output for `examples/generated/simple_psd/source.psd`.
+- [x] UXP storage API: pick folder once. (Module-level in-memory cache via `cachedFolder` in `export-flow.ts`; survives within plugin session. Persistent token across reloads parked for Wave 10.4 alongside panel polish.)
+- [x] Per-layer PNG export via `saveAs.png` writing into `<folder>/images/<name>.png` (folder layout matches JSX exporter, not the originally-spec'd `<folder>/layers/`, so the same parity oracle works).
+- [x] Manifest JSON written at `<folder>/<doc>.photoshop_exported.json` (filename matches JSX exporter for byte-equality comparisons).
+- [x] Schema validation with `ajv` before write; surface errors in panel UI.
+- [ ] Manual test: byte-equality check against captured JSX output for `examples/authored/doll/02_from_photoshop/doll.psd` (oracle captured Wave 10.1.x pre-impl; rerun once the panel ships in UDT).
 
 ## Wave 10.4 - React panel
 

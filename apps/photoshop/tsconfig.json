@@ -18,6 +18,6 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../../schemas/psd_manifest.schema.json"],
   "exclude": ["node_modules", "dist", "out", "uxp-plugin-tests"]
 }

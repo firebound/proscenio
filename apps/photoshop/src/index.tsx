@@ -1,38 +1,37 @@
-// @ts-nocheck - Adobe React Starter scaffold; will be deleted/replaced in Wave 10.2+ when Proscenio panels land.
+// Plugin entrypoint. Registers the single Proscenio exporter panel
+// (10.3+). Wave 10.5 adds an importer panel alongside; until then
+// this is the only entrypoint the manifest exposes.
+
 import React from "react";
+import { entrypoints } from "uxp";
 
 import "./styles.css";
 import { PanelController } from "./controllers/PanelController";
-import { CommandController } from "./controllers/CommandController";
-import { About } from "./components/About";
-import { Demos } from "./panels/Demos";
-import { MoreDemos } from "./panels/MoreDemos";
+import { ProscenioExporter } from "./panels/ProscenioExporter";
 
-import { entrypoints } from "uxp";
-
-const aboutController = new CommandController(({ dialog }) => <About dialog={dialog}/>, { id: "showAbout", title: "React Starter Plugin Demo", size: { width: 480, height: 480 } });
-const demosController =  new PanelController(() => <Demos/>, {id: "demos", menuItems: [
-    { id: "reload1", label: "Reload Plugin", enabled: true, checked: false, oninvoke: () => location.reload() },
-    { id: "dialog1", label: "About this Plugin", enabled: true, checked: false, oninvoke: () => aboutController.run() },
-] });
-const moreDemosController =  new PanelController(() => <MoreDemos/>, { id: "moreDemos", menuItems: [
-    { id: "reload2", label: "Reload Plugin", enabled: true, checked: false, oninvoke: () => location.reload() }
-] });
+const exporterController = new PanelController(() => <ProscenioExporter />, {
+    id: "proscenioExporter",
+    menuItems: [
+        {
+            id: "reload",
+            label: "Reload Plugin",
+            enabled: true,
+            checked: false,
+            oninvoke: () => location.reload(),
+        },
+    ],
+});
 
 entrypoints.setup({
     plugin: {
-        create(plugin) {
-            /* optional */ console.log("created", plugin);
+        create() {
+            console.log("Proscenio panel created");
         },
         destroy() {
-            /* optional */ console.log("destroyed");
-        }
-    },
-    commands: {
-        showAbout: aboutController
+            console.log("Proscenio panel destroyed");
+        },
     },
     panels: {
-        demos: demosController,
-        moreDemos: moreDemosController
-    }
+        proscenioExporter: exporterController,
+    },
 });

@@ -96,6 +96,22 @@ function parseChildren(children: Layer[]): ParsedLayer[] {
     });
 }
 
+// Tags inherited from ancestor groups onto descendants. `[folder]`
+// and `[blend]` on a group apply to every descendant unless that
+// descendant declares its own override. Local tags on the child
+// always win.
+interface InheritedTags {
+    folder?: string;
+    blend?: BlendMode;
+}
+
+function inherit(parent: InheritedTags, child: TagBag): InheritedTags {
+    return {
+        folder: child.folder ?? parent.folder,
+        blend: child.blend ?? parent.blend,
+    };
+}
+
 function walkLayers(
     children: ParsedLayer[],
     prefix: string,
@@ -103,25 +119,24 @@ function walkLayers(
     out: PlannedEntry[],
     zCounter: { value: number },
     opts: ExportOptions,
+    inherited: InheritedTags = {},
 ): void {
     for (const parsed of children) {
-        if (parsed.tags.ignore) continue;
+        if (parsed.tags.ignore === true) continue;
         if (opts.skipHidden && !parsed.raw.visible) continue;
         const childPath = [...layerPath, parsed.raw.name];
         if (parsed.raw.kind === "set") {
-            handleGroup(parsed, prefix, childPath, out, zCounter, opts);
+            handleGroup(parsed, prefix, childPath, out, zCounter, opts, inherited);
             continue;
         }
-        // Origin marker layers contribute the parent group's pivot
-        // (handled when iterating set children); a marker at the top
-        // level has no parent group, so it is dropped silently.
-        if (parsed.tags.originMarker) continue;
+        if (parsed.tags.originMarker === true) continue;
         const entry = buildPolygonEntry(
             parsed.raw,
             joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
             childPath,
             zCounter.value,
             parsed.tags,
+            inherit(inherited, parsed.tags),
         );
         if (entry !== null) {
             out.push(entry);
@@ -137,11 +152,13 @@ function handleGroup(
     out: PlannedEntry[],
     zCounter: { value: number },
     opts: ExportOptions,
+    inherited: InheritedTags,
 ): void {
     const group = parsed.raw as LayerSet;
     const parsedChildren = parseChildren(group.layers);
     const tagKind = parsed.tags.kind;
     const explicitSpriteFrame = tagKind === "sprite_frame";
+    const groupInherited = inherit(inherited, parsed.tags);
 
     if (explicitSpriteFrame || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren))) {
         const entry = buildSpriteFrameEntry(
@@ -150,17 +167,16 @@ function handleGroup(
             prefix,
             layerPath,
             zCounter.value,
+            groupInherited,
         );
         if (entry !== null) {
             out.push(entry);
             zCounter.value += 1;
             return;
         }
-        // Group qualified but no valid frames materialised; fall
-        // through to regular recursion so children are not lost.
     }
     const nested = joinName(prefix, parsed.displayName);
-    walkLayers(parsedChildren, nested, layerPath, out, zCounter, opts);
+    walkLayers(parsedChildren, nested, layerPath, out, zCounter, opts, groupInherited);
 }
 
 function autoDetectSpriteFrame(children: ParsedLayer[]): boolean {
@@ -188,9 +204,11 @@ function buildSpriteFrameEntry(
     prefix: string,
     layerPath: string[],
     zOrder: number,
+    inherited: InheritedTags,
 ): PlannedSpriteFrame | null {
     const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
-    const folder = group.tags.folder;
+    const folder = group.tags.folder ?? inherited.folder;
+    const blend = group.tags.blend ?? inherited.blend;
     const safeName = group.tags.path ?? sanitize(meshName);
     const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
 
@@ -223,7 +241,7 @@ function buildSpriteFrameEntry(
         z_order: zOrder,
         frames,
         ...optionalOrigin(group.tags.origin ?? originFromMarker),
-        ...optionalBlend(group.tags.blend),
+        ...optionalBlend(blend),
         ...(folder === undefined ? {} : { subfolder: folder }),
         _frameSources: sources,
     };
@@ -267,10 +285,12 @@ function buildPolygonEntry(
     layerPath: string[],
     zOrder: number,
     tags: TagBag,
+    inherited: InheritedTags,
 ): PlannedPolygon | null {
     const bounds = scaledBounds(layer.bounds, tags.scale);
     if (bounds === null) return null;
-    const folder = tags.folder;
+    const folder = inherited.folder;
+    const blend = inherited.blend;
     const safeName = tags.path ?? sanitize(name);
     const path = folder === undefined ? `images/${safeName}.png` : `images/${sanitize(folder)}/${safeName}.png`;
     const kind: "polygon" | "mesh" = tags.kind === "mesh" ? "mesh" : "polygon";
@@ -282,7 +302,7 @@ function buildPolygonEntry(
         size: [Math.round(bounds.w), Math.round(bounds.h)],
         z_order: zOrder,
         ...optionalOrigin(tags.origin),
-        ...optionalBlend(tags.blend),
+        ...optionalBlend(blend),
         ...(folder === undefined ? {} : { subfolder: folder }),
         _layerPath: layerPath,
     };

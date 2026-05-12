@@ -235,6 +235,42 @@ describe("bracket tags", () => {
         expect(m.layers[0].name).toBe("torso [OLD]");
     });
 
+    it("[folder:eyes] on a parent group propagates to descendant polygons", () => {
+        const layers: Layer[] = [
+            set("[folder:eyes]", [art("eye.L"), art("eye.R")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        expect(m.layers).toHaveLength(2);
+        const e0 = m.layers[0] as PolygonEntry;
+        const e1 = m.layers[1] as PolygonEntry;
+        expect(e0.subfolder).toBe("eyes");
+        expect(e0.path).toBe("images/eyes/eye_L.png");
+        expect(e1.subfolder).toBe("eyes");
+        expect(e1.path).toBe("images/eyes/eye_R.png");
+    });
+
+    it("child [folder:other] overrides inherited folder", () => {
+        const layers: Layer[] = [
+            set("[folder:eyes]", [art("eye.L [folder:special]"), art("eye.R")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        const eL = m.layers.find((e) => e.name === "eye.L") as PolygonEntry;
+        const eR = m.layers.find((e) => e.name === "eye.R") as PolygonEntry;
+        expect(eL.subfolder).toBe("special");
+        expect(eR.subfolder).toBe("eyes");
+    });
+
+    it("inherited [blend] applies to descendants when child has no blend tag", () => {
+        const layers: Layer[] = [
+            set("[blend:multiply]", [art("a"), art("b [blend:screen]")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        const a = m.layers.find((e) => e.name === "a") as PolygonEntry;
+        const b = m.layers.find((e) => e.name === "b") as PolygonEntry;
+        expect(a.blend_mode).toBe("multiply");
+        expect(b.blend_mode).toBe("screen");
+    });
+
     it("[ignore] inside a sprite_frame group does NOT count toward the frame contiguity check", () => {
         const layers: Layer[] = [
             set("blink", [

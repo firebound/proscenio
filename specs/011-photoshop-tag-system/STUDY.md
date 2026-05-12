@@ -114,7 +114,7 @@ Rationale: pre-1.0 PoC, no production users to break. Reserving `_` as a prefix 
 
 Removed. Sprite_frame groups must be either:
 
-1. A LayerSet tagged `[spritesheet]` (or `[sprite_frame]` - alias TBD in implementation) whose children are valid frame names.
+1. A LayerSet tagged `[spritesheet]` whose children are valid frame names. The tag name `[spritesheet]` is the industry-recognised term (Aseprite, Unity, Spine all use it); the parser maps the tag value to `kind: "sprite_frame"` in the manifest at emit time.
 2. Auto-detected from a LayerSet whose all-visible children are pure-digit (`0`, `1`, `2`, ...) - the only auto-detection path that survives.
 
 Top-level siblings `eye_0`, `eye_1` no longer collapse. Rationale: the fallback is responsible for half the "why did this layer get treated as a sprite_frame?" confusion and never composes well with explicit tags.
@@ -146,7 +146,7 @@ Out of scope permanently: `[scale]+trim` Spine wobble bug class (we use determin
 ### D6 - Document-level conventions
 
 - **First horizontal + first vertical PSD guide** define the document anchor (origin). Manifest gains a top-level `anchor: [px, px]` field; Blender importer translates the root bone position. (D2 in the v1 list above, but document-level rather than layer-level - keeping numbering consistent with the master tag taxonomy.)
-- **Layer color labels** (red / orange / yellow / green / blue / violet / gray) are read as a parallel tagging channel. The panel exposes a configurable map (color -> tag). Default map: red = `[ignore]`, green = `[merge]`, blue = `[origin]`. Stored per-plugin in `localStorage`.
+- **Layer color labels are NOT a tagging channel.** Dropped from SPEC 011 v1. Single source of truth = bracket tag (canonical, visible in the Layers panel and grep-able) + XMP mirror written by the panel. Letting a layer color also drive tag inference would split the source of truth between two channels and let them disagree silently. Color labels can still be inspected by the panel as a passive badge in a future iteration, but they never set tag semantics in this SPEC.
 
 ### D7 - Manifest schema bump to v2
 
@@ -202,11 +202,11 @@ Plan: implement the Tags tab first (most value), then Validate, then the Reveal-
 
 ## Open questions
 
-- **Tag spelling**. `[spritesheet]` vs `[sprite_frame]` for the spritesheet group kind. The manifest already says `sprite_frame`; aligning the tag avoids one translation layer. Lean: `[sprite_frame]`. Decide at implementation.
+- **Tag spelling**. Locked at `[spritesheet]` - industry-recognised term (Aseprite, Unity, Spine). The parser performs a one-line lookup at emit time to translate to the `kind: "sprite_frame"` manifest field. The translation cost is one dict entry, vastly outweighed by artist familiarity.
 - **Polygon vs Sprite**. Should `[polygon]` (group) and `[sprite]` (layer) be aliases for the same kind? The manifest only has `polygon` today. Decide at implementation - probably yes, both write `kind: "polygon"`, the tag name is just a hint for the panel UI.
-- **Color label conflict resolution**. If a layer has both `[ignore]` in the name and a color label mapped to `[merge]`, which wins? Lean: name wins (D9).
-- **XMP support floor**. UXP `xmp` module ships in Photoshop 2024+. Below that version, the plugin falls back to bracket-tags only - the panel UI rewrites layer names but cannot persist tag intent across deletes. Acceptable for PoC.
-- **Validator severity**. Pre-export validator: should it block export on errors, or just warn? Lean: warn, never block. Same posture as `pnpm run typecheck` (informational gate).
+- **Color label conflict resolution**. Resolved by D6: color labels are not a tagging channel in this SPEC, so there is no conflict.
+- **XMP support floor**. Resolved by SPEC 010 Wave 10.7 bump (PS 25 / CC 2024+). `uxp.xmp` ships there; no fallback needed for the plugin's minimum-supported PS.
+- **Validator severity**. Locked at warn-never-block (D13). Errors render inline in the Validate tab, the Export button stays enabled. Same posture as `pnpm run typecheck`.
 
 ## Sequencing relative to other work
 

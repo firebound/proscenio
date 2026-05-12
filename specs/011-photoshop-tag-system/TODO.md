@@ -11,15 +11,15 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] D3 - drop the `_<name>` skip convention; `[ignore]` replaces it.
 - [x] D4 - drop the `<base>_<index>` flat-aggregation fallback for sprite_frame.
 - [x] D5 - v1 tag taxonomy: `[ignore]`, `[merge]`, `[folder:name]`, `[polygon]`, `[sprite]`, `[spritesheet]`, `[mesh]`, `[origin]`, `[origin:x,y]`, `[scale:n]`, `[blend:mode]`, `[path:name]`, `[name:pre*suf]`. Plus a panel-level filename template setting (per-export, no per-layer override needed - layer-level override is `[path:name]`).
-- [x] D6 - document-level: PSD guides set anchor; layer color labels map to tags.
+- [x] D6 - document-level: PSD guides set anchor. Layer color labels NOT a tagging channel in v1 (see D12).
 - [x] D7 - schema bump to v2 with `anchor`, `origin`, `blend_mode`, `subfolder`, `is_mesh` fields, `kind: "mesh"` superset.
 - [x] D8 - panel grows Tags / Validate / Export tabs.
 - [x] D9 - tag authoring: bracket tags in name OR click in panel; both kept in sync; bracket wins on conflict.
 - [x] D10 - mini-app stays single React panel, no new deps.
-- [ ] D11 - tag spelling: `[spritesheet]` vs `[sprite_frame]`. Lock at implementation start.
-- [ ] D12 - color label default map (red = `[ignore]`, green = `[merge]`, blue = `[origin]` proposed). Confirm or change.
-- [ ] D13 - validator severity. Lean warn-never-block. Confirm.
-- [ ] D14 - XMP support floor. UXP 2024+ for full path; below = bracket-tag-only fallback. Confirm acceptable.
+- [x] D11 - tag spelling locked at `[spritesheet]` (artist-recognised term; parser does a one-line lookup to translate to `kind: "sprite_frame"` at emit time).
+- [x] D12 - color labels dropped as a tagging channel. Bracket tag + XMP mirror are the single source of truth; color labels may resurface as a passive badge in a later SPEC but never set semantics here.
+- [x] D13 - validator severity locked at warn-never-block.
+- [x] D14 - XMP support floor resolved by SPEC 010 Wave 10.7 PS minimum bump to PS 25 / CC 2024+; `uxp.xmp` ships there, no fallback needed.
 
 ## Pre-implementation
 
@@ -47,11 +47,10 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 ## Wave 11.3 - tags UI mini-app (Tags tab)
 
 - [ ] React tree component listing the active document's layer hierarchy. Lazy-render below 100 visible nodes; virtualise above.
-- [ ] Row per layer: thumbnail, name (bracket tags as badges), kind override dropdown, `[ignore]` checkbox, `[merge]` checkbox, color-label dot.
+- [ ] Row per layer: thumbnail, name (bracket tags as badges), kind override dropdown, `[ignore]` checkbox, `[merge]` checkbox.
 - [ ] "Set origin from selection" button: reads `app.activeDocument.selection` bounds, writes `[origin:x,y]` on the active layer.
 - [ ] Subscribe to `action.addNotificationListener` for `select`, `make`, `delete`, `set`; refresh affected sub-tree only.
 - [ ] Writing a tag from the UI: edit both the layer name AND the XMP record under `proscenio:v1`. Read path: XMP first, name fallback.
-- [ ] Color-label map: `localStorage`-persisted dict color -> tag-name. Default red = ignore, green = merge, blue = origin. Editable in a small Settings sub-panel.
 
 ## Wave 11.4 - Validate tab
 
@@ -68,10 +67,9 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [ ] Quick "Re-export this layer only" path that runs the modal flow against a single entry (debugging aid; not part of the canonical export).
 - [ ] Filename template setting (F6). Persist in `localStorage` per plugin. Tokens: `{name}`, `{group}`, `{layer}`, `{kind}`, `{index}`. Default: `{name}.png` polygons / `{name}/{index}.png` sprite_frame frames (matches SPEC 010 layout). Reveal-output preview updates live as the template changes.
 
-## Wave 11.6 - Color label & XMP polish
+## Wave 11.6 - XMP polish + legacy migration
 
-- [ ] Confirm color labels round-trip cleanly: setting a color in the panel writes the PS color label; reading external PSDs with author-set color labels reflects in the panel.
-- [ ] XMP write path: handle the no-XMP case gracefully (PS < 2024). Plugin downgrades to bracket-tag-only mode and surfaces a one-line notice in the panel header.
+- [ ] XMP write path: surface a clear error if `uxp.xmp` is unavailable (PS < 25 / CC 2024). The plugin's `host.minVersion` already enforces 25.0, so this is a defensive guard, not a fallback mode.
 - [ ] Migration helper: "Convert `_` prefixes to `[ignore]`" button in the Tags tab. One-shot rewrite of all layer names with `_` prefix to `[ignore]` + strip the prefix.
 
 ## Wave 11.7 - Blender importer companion

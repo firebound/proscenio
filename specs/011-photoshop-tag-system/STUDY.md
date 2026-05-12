@@ -135,8 +135,11 @@ Top-level siblings `eye_0`, `eye_1` no longer collapse. Rationale: the fallback 
 | `[scale:n]` | both | per-layer scale override at export; the manifest carries the resulting size | E1 |
 | `[blend:mode]` | layer | blend mode override emitted in manifest (`normal`, `multiply`, `screen`, `additive`) | D3 |
 | `[path:name]` | layer | filename override on disk (different from manifest entry `name`) | A1 |
+| `[name:pre*suf]` | group | pattern macro: rewrites every child's `name` field with `*` substituting the original child name. E.g. `[name:hero_*]` on a group with children `arm`, `leg` -> manifest names `hero_arm`, `hero_leg` | F5 |
 
-Deferred to a follow-up SPEC: `[skin:name]`, `[rotate:n]`, `[overlay]`, `[trim:*]`, `[bone]`, `[slot]`, `[bones]`, `[slots]`, `[name:pre*suf]`, `[!*]` escapes, `[slice:l,t,r,b]` (Cocos 9-slice), `+`-warp-independent (Character Animator), pseudo-keyword recognition (`Head`, `Mouth`, ...), head-turner view groups.
+Filename templating is exposed as a panel-level setting, not as a tag (one setting affects the entire export, no per-layer override needed). See D8.
+
+Deferred to a follow-up SPEC or `specs/backlog.md`: `[skin:name]`, `[rotate:n]`, `[overlay]`, `[trim:*]`, `[bone]`, `[slot]`, `[bones]`, `[slots]`, `[!*]` escapes, `[slice:l,t,r,b]` (Cocos 9-slice), `[isolated]` (Character Animator's `+` warp-independent), pseudo-keyword recognition (`Head`, `Mouth`, ...), head-turner view groups.
 
 Out of scope permanently: `[scale]+trim` Spine wobble bug class (we use deterministic scale-before-trim - E1).
 
@@ -168,7 +171,9 @@ The exporter panel grows three new tabs (or sections - implementation choice):
    - "Set origin from selection" button (uses the currently selected pixels' center as `[origin:x,y]`).
    - Color-label indicator (synced with the configured color-map).
 2. **Validate** - list of warnings before export: duplicate names after sanitize, sprite_frame index gaps, unrelated tags on the same layer, empty bbox layers, etc. Each row clickable -> selects the offending layer in PS.
-3. **Export** - the current 10.4 panel, plus a "Reveal output for selected layer" button that shows the path / kind that would result from the current state.
+3. **Export** - the current 10.4 panel, plus:
+   - "Reveal output for selected layer" button that shows the path / kind that would result from the current state.
+   - **Filename template** setting (F6) controlling the on-disk path under `images/`. Tokens: `{name}` (sanitized entry name), `{group}` (parent group path joined by `/`), `{layer}` (raw leaf layer name), `{kind}` (`polygon` / `sprite_frame` / `mesh`), `{index}` (frame index for sprite_frame frames only). Default template: `{name}.png` for polygons, `{name}/{index}.png` for sprite_frame frames - matches the SPEC 010 layout. Stored in `localStorage` per plugin. Per-layer override available via the `[path:name]` tag.
 
 The tree refreshes on PS notifications (`select`, `make`, `delete` document events) so the panel stays live as the artist works.
 

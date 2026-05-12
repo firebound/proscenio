@@ -10,7 +10,7 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] D2 - XMP per-layer as secondary canonical store; bracket-tag wins on conflict.
 - [x] D3 - drop the `_<name>` skip convention; `[ignore]` replaces it.
 - [x] D4 - drop the `<base>_<index>` flat-aggregation fallback for sprite_frame.
-- [x] D5 - v1 tag taxonomy: `[ignore]`, `[merge]`, `[folder:name]`, `[polygon]`, `[sprite]`, `[spritesheet]`, `[mesh]`, `[origin]`, `[origin:x,y]`, `[scale:n]`, `[blend:mode]`, `[path:name]`.
+- [x] D5 - v1 tag taxonomy: `[ignore]`, `[merge]`, `[folder:name]`, `[polygon]`, `[sprite]`, `[spritesheet]`, `[mesh]`, `[origin]`, `[origin:x,y]`, `[scale:n]`, `[blend:mode]`, `[path:name]`, `[name:pre*suf]`. Plus a panel-level filename template setting (per-export, no per-layer override needed - layer-level override is `[path:name]`).
 - [x] D6 - document-level: PSD guides set anchor; layer color labels map to tags.
 - [x] D7 - schema bump to v2 with `anchor`, `origin`, `blend_mode`, `subfolder`, `is_mesh` fields, `kind: "mesh"` superset.
 - [x] D8 - panel grows Tags / Validate / Export tabs.
@@ -29,8 +29,8 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Wave 11.1 - bracket tag parser + schema v2
 
-- [ ] Bracket-tag parser in `src/controllers/exporter.ts`. Lex tag tokens out of layer / group names, return both the stripped display name and a tag bag (`{ ignore?: true, merge?: true, folder?: string, kind?: string, origin?: [n,n] | "marker", scale?: number, blend?: string, path?: string }`).
-- [ ] Update planner to consume the tag bag: `[ignore]` short-circuits, `[merge]` flattens, `[folder:name]` rewrites paths, `[polygon]` / `[sprite]` / `[spritesheet]` / `[mesh]` override `kind`, `[path:name]` overrides filename, `[scale:n]` adjusts bounds, `[blend:mode]` writes the new manifest field.
+- [ ] Bracket-tag parser in `src/controllers/exporter.ts`. Lex tag tokens out of layer / group names, return both the stripped display name and a tag bag (`{ ignore?: true, merge?: true, folder?: string, kind?: string, origin?: [n,n] | "marker", scale?: number, blend?: string, path?: string, namePattern?: string }`). Unknown brackets pass through as part of the display name (artist-friendly).
+- [ ] Update planner to consume the tag bag: `[ignore]` short-circuits, `[merge]` flattens, `[folder:name]` rewrites paths, `[polygon]` / `[sprite]` / `[spritesheet]` / `[mesh]` override `kind`, `[path:name]` overrides filename, `[scale:n]` adjusts bounds, `[blend:mode]` writes the new manifest field, `[name:pre*suf]` (group only) rewrites every child's manifest `name` via `*` substitution.
 - [ ] Drop the `_<name>` skip path entirely. Drop the `<base>_<index>` flat-aggregation pass.
 - [ ] Schema bump to v2 in `schemas/psd_manifest.schema.json` (additive fields: `anchor`, `origin`, `blend_mode`, `subfolder`, `is_mesh`; `kind` accepts `"mesh"`).
 - [ ] Bump TypeScript types in `src/types/manifest.ts` and the ajv validator. Tests cover every new field path.
@@ -60,12 +60,13 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [ ] Each warning row clickable -> selects the offending layer in PS via batchPlay.
 - [ ] Validate tab runs continuously when the panel is visible (refreshed on the same notifications as Tags), so warnings update live.
 
-## Wave 11.5 - Reveal-output helper
+## Wave 11.5 - Reveal-output helper + filename template
 
 - [ ] In the Export tab, after a layer is selected in PS, show:
   - The manifest entry that would be emitted (kind, name, path, position, size, origin).
   - The output PNG path on disk under the current chosen folder.
 - [ ] Quick "Re-export this layer only" path that runs the modal flow against a single entry (debugging aid; not part of the canonical export).
+- [ ] Filename template setting (F6). Persist in `localStorage` per plugin. Tokens: `{name}`, `{group}`, `{layer}`, `{kind}`, `{index}`. Default: `{name}.png` polygons / `{name}/{index}.png` sprite_frame frames (matches SPEC 010 layout). Reveal-output preview updates live as the template changes.
 
 ## Wave 11.6 - Color label & XMP polish
 

@@ -22,10 +22,10 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 ## Pre-implementation
 
-- [ ] Confirm `examples/generated/simple_psd/source.psd` exists and exports a valid v1 manifest (use as parity oracle).
-- [ ] Verify the React scaffold builds: `cd apps/photoshop && npm install && npm run build`.
-- [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT.
-- [ ] Capture current JSX output for `examples/generated/simple_psd/source.psd` as the byte-equality target.
+- [ ] Author `examples/generated/simple_psd/source.psd` (256x128, layer `square` + group `arrow` with children `0..3`, layouts per `simple_psd.photoshop_manifest.json`). Parity oracle for the UXP exporter.
+- [x] Verify the React scaffold builds: `cd apps/photoshop && pnpm install && pnpm run build`. (Build green on Wave 10.1.x.)
+- [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT. (Manual; needs the user's PS.)
+- [ ] Capture current JSX output for `examples/generated/simple_psd/source.psd` as the byte-equality target. (Depends on the first item.)
 
 ## Wave 10.1 - TypeScript foundation
 
@@ -34,9 +34,9 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 - [x] Webpack config handles `.ts` / `.tsx` / `.js` / `.jsx` via `@babel/preset-typescript`.
 - [x] `pnpm run typecheck` script (`tsc --noEmit`).
 - [x] Replace deprecated `@babel/plugin-proposal-object-rest-spread` with `@babel/plugin-transform-object-rest-spread`.
-- [ ] Add UXP types (Adobe ships a typings package - confirm exact name).
-- [ ] Rename `src/index.jsx` → `src/index.tsx`.
-- [ ] CI: `lint-photoshop` job stub running typecheck only.
+- [x] Add UXP types. (Adobe does not publish to npm; local shim in `src/types/uxp.d.ts` covers what the plugin consumes - tighten member-by-member as the surface grows.)
+- [x] Rename `src/index.jsx` -> `src/index.tsx`.
+- [x] CI: `lint-photoshop` job runs typecheck (and, since Wave 10.2, vitest).
 
 ## Wave 10.1.x - Adobe scaffold modernization (follow-up)
 

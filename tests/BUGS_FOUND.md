@@ -472,3 +472,49 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 **Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do MANUAL_TESTING.
 
 ---
+
+## apps/photoshop
+
+### JSX exporter: `pixels_per_unit` não roundtripa (hardcoded 100)
+
+**Repro:** Roundtrip oracle SPEC 010:
+
+1. Blender escreve `01_to_photoshop/doll.photoshop_manifest.json` com `pixels_per_unit = 1000.0` (PPU do `render_layers.py`).
+2. `proscenio_import.jsx` lê manifest, popula `02_from_photoshop/doll.psd` (não persiste PPU em metadado).
+3. `proscenio_export.jsx` re-exporta o PSD -> `02_from_photoshop/export/doll.photoshop_exported.json` com `pixels_per_unit = 100`.
+
+Diff esperado byte-equal contra a (1) falha só nesse campo (+ paths esperados por design).
+
+**Causa:** `proscenio_export.jsx:54` declara `DEFAULT_PIXELS_PER_UNIT = 100` e usa direto no manifest sem nada pra ler do PSD. `proscenio_import.jsx` não grava o PPU original em XMP/custom metadata, então export.jsx não tem fonte de verdade.
+
+**Fix proposto:**
+
+- `proscenio_import.jsx`: gravar `pixels_per_unit` em `doc.info` ou XMP custom namespace (`http://proscenio.spacewizard.studios/v1/`) ao popular o PSD.
+- `proscenio_export.jsx`: ler de volta o XMP/custom field; fallback pra 100 quando ausente.
+- Aplicar mesmo padrão no porte UXP (10.3 export + 10.5 import).
+
+**Arquivo:** `apps/photoshop/proscenio_export.jsx:54,100`; `apps/photoshop/proscenio_import.jsx` (no write site).
+
+**Severity:** medium - quebra parity oracle. UXP exporter (10.2) reproduz o mesmo bug por enquanto (default 100); só foi descoberto agora porque a wave 10.1.x rodou o roundtrip pela primeira vez. Bloquearia retirement da JSX (Wave 10.7) sem fix porque importer roundtrip falha em escala.
+
+### JSX exporter: `waist` size difere 1px entre Blender bbox e Photoshop layer.bounds
+
+**Repro:** Roundtrip doll oracle, diff em `waist`:
+
+- Blender manifest: `size = [255, 173]`.
+- JSX re-export: `size = [255, 172]`.
+
+Layers vizinhos com PNG do mesmo render_layers source casam exato; só `waist` difere.
+
+**Causa suspeita:** rounding diferente entre `Pillow.getbbox()` no exporter Python e `layer.bounds` no Photoshop após PNG ser placed. Pode ser pixel anti-aliased na borda inferior do `waist.png` que Photoshop conta como transparente e Pillow conta como visível (ou vice-versa).
+
+**Fix proposto:**
+
+- Investigar: abrir `render_layers/waist.png` em PS, conferir bbox visível direto na ferramenta de medida vs Pillow `getbbox()`.
+- Decisão depende do achado: ajustar threshold de transparência num dos lados, ou aceitar como ruído sub-pixel e arredondar consistente (round-half-up em ambos).
+
+**Arquivo:** `apps/photoshop/proscenio_export.jsx:269-295` (`exportLayerToFile` lê `layer.bounds`); cross-ref com `scripts/fixtures/_shared/` ou onde o Blender computa size.
+
+**Severity:** low - 1px de diferença num único asset, não bloqueia funcionalmente. Log + investigar quando 10.7 estiver perto.
+
+---

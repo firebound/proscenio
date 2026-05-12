@@ -24,7 +24,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 - [x] Verify the React scaffold builds: `cd apps/photoshop && pnpm install && pnpm run build`. (Build green on Wave 10.1.x.)
 - [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT. (Manual; needs the user's PS.)
-- [ ] Capture JSX baseline for the parity oracle: run `apps/photoshop/proscenio_export.jsx` against `examples/authored/doll/02_from_photoshop/doll.psd`, diff `02_from_photoshop/export/doll.photoshop_exported.json` against `01_to_photoshop/doll.photoshop_manifest.json`. Byte equality is the target for the UXP exporter; diff != 0 means a JSX legacy bug to log before retirement. (D11 oracle - replaces the planned `simple_psd/source.psd` author step; doll already ships a `.psd` so no manual PSD authoring is needed.)
+- [x] Capture JSX baseline for the parity oracle: run `apps/photoshop/proscenio_export.jsx` against `examples/authored/doll/02_from_photoshop/doll.psd`, diff `02_from_photoshop/export/doll.photoshop_exported.json` against `01_to_photoshop/doll.photoshop_manifest.json`. 22/22 layers, names match. 2 legacy JSX bugs surfaced (logged in `tests/BUGS_FOUND.md`): `pixels_per_unit` not round-tripped (defaults to 100), `waist.size` off by 1 px. UXP exporter target = current JSX output (B); the PPU bug rides along until Wave 10.5 fixes the import path.
 
 ## Wave 10.1 - TypeScript foundation
 

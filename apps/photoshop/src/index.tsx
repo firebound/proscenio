@@ -16,7 +16,7 @@ const exporterController = new PanelController(() => <ProscenioExporter />, {
     id: "proscenioExporter",
     menuItems: [
         {
-            id: "reload",
+            id: "exporter.reload",
             label: "Reload Plugin",
             enabled: true,
             checked: false,
@@ -29,7 +29,7 @@ const debugController = new PanelController(() => <ProscenioDebugPanel />, {
     id: "proscenioDebug",
     menuItems: [
         {
-            id: "reload",
+            id: "debug.reload",
             label: "Reload Plugin",
             enabled: true,
             checked: false,

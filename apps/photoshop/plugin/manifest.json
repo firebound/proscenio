@@ -10,11 +10,7 @@
   },
   "requiredPermissions": {
     "allowCodeGenerationFromStrings": true,
-    "localFileSystem": "fullAccess",
-    "launchProcess": {
-      "schemes": ["http", "https"],
-      "extensions": [".svg", ".png", ".json"]
-    }
+    "localFileSystem": "fullAccess"
   },
   "entrypoints": [
     {

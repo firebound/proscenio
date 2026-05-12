@@ -16,5 +16,8 @@ export async function writeManifest(
 ): Promise<void> {
     const file = await folder.createFile(fileName, { overwrite: true });
     const body = JSON.stringify(manifest, null, 2);
-    await file.write(body, { format: "utf8" });
+    // No `{ format: "utf8" }` here - UXP's storage API rejects a bare
+    // string and wants `storage.formats.utf8`. The default for string
+    // content already is utf8, so omitting the option is the safe path.
+    await file.write(body);
 }

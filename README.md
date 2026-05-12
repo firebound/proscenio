@@ -35,7 +35,7 @@ What Proscenio gives you:
 | **Engine-native output** | Shipped game runs without Proscenio installed. | `.scn` uses Godot core nodes only. No GDExtension, no custom runtime. |
 | **Each tool to its strength** | No proprietary editor in the chain. | Open-source pipeline (Blender, Godot, schemas, addons); no Spine-style DCC license. |
 | **Direct manipulation in the DCC** | No proprietary modes layered on top of Blender. | Shortcuts (Quick Armature, Drive from Bone, Create Slot) sit on top of native operators - never replace them. |
-| **Predictable contract** | What leaves Blender is what arrives in Godot, byte-checked. | Versioned JSON contract validated at 5 gates (IDE, pre-commit, CI lint, CI Blender, CI Godot). Strong typing across the pipeline. Format bumps require explicit migrators. |
+| **Predictable contract** | What leaves Blender is what arrives in Godot, byte-checked. | Versioned JSON contract validated at 6 gates (IDE, pre-commit, CI Python lint, CI Photoshop lint, CI Blender, CI Godot). Strong typing across the pipeline: Python on the Blender side, TypeScript on the Photoshop UXP plugin, GDScript on the Godot importer. Format bumps require explicit migrators. |
 
 ## Components
 

@@ -83,9 +83,9 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.6 - CI completion
 
-- [ ] `lint-photoshop` job runs typecheck + unit tests + manifest schema check on fixtures.
-- [ ] Document `lint-photoshop` in [`docs/DECISIONS.md`](../../docs/DECISIONS.md) "Validation gates" (5 → 6).
-- [ ] Update README "Predictable contract" pillar to mention typed Photoshop side.
+- [x] `lint-photoshop` job runs typecheck + unit tests. PSD manifest schema check on fixtures landed in `validate-schema` (covers `*.photoshop_manifest.json` and `*.photoshop_exported.json` under `examples/`).
+- [x] Document `lint-photoshop` in [`docs/DECISIONS.md`](../../docs/DECISIONS.md) "Validation gates" (5 -> 6).
+- [x] Update README "Predictable contract" pillar to mention typed Photoshop side.
 
 ## Wave 10.7 - JSX retirement
 

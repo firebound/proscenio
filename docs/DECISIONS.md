@@ -18,15 +18,16 @@ Architectural and per-SPEC decisions that are locked. ADR-light: each entry reco
 
 ## Validation gates
 
-Five gates, each catching errors earlier than the next:
+Six gates, each catching errors earlier than the next:
 
 1. **IDE.** Pylance + SonarLint + cspell + gdtoolkit live.
 2. **pre-commit.** `ruff` + `mypy` + `gdformat` + `gdlint` + `cspell` + `check-jsonschema`.
 3. **CI lint-python.** `ruff` + `mypy --strict` + `pytest`.
-4. **CI test-blender.** Walks `examples/*/.blend`, diffs against golden `.proscenio`.
-5. **CI test-godot.** Importer fixtures + idempotency check.
+4. **CI lint-photoshop.** `tsc --noEmit` + `vitest run` against the UXP plugin in `apps/photoshop/`.
+5. **CI test-blender.** Walks `examples/*/.blend`, diffs against golden `.proscenio`.
+6. **CI test-godot.** Importer fixtures + idempotency check.
 
-Schema validated at three points: writer output (test runner runs `check-jsonschema` in-process), importer input (`format_version` guard + per-field `push_error`), CI fixtures.
+Schema validated at three points: writer output (test runner runs `check-jsonschema` in-process), importer input (`format_version` guard + per-field `push_error`), CI fixtures (`validate-schema` covers both the runtime `.proscenio` files and the SPEC 006 PSD manifests via `psd_manifest.schema.json`).
 
 ## Per-SPEC tradeoffs
 

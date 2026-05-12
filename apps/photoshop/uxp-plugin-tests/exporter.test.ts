@@ -329,6 +329,33 @@ describe("bracket tags", () => {
         expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
     });
 
+    it("skipHidden false includes hidden frames in a sprite_frame group", () => {
+        const layers: Layer[] = [
+            set("blink", [
+                art("0", { x: 0, y: 0, w: 16, h: 16 }),
+                art("1", { x: 0, y: 0, w: 16, h: 16 }, false),
+                art("2", { x: 0, y: 0, w: 16, h: 16 }),
+            ]),
+        ];
+        const m = buildManifest(doc, layers, { skipHidden: false });
+        expect(m.layers).toHaveLength(1);
+        expect(m.layers[0].kind).toBe("sprite_frame");
+        expect((m.layers[0] as SpriteFrameEntry).frames.map((f) => f.index)).toEqual([0, 1, 2]);
+    });
+
+    it("skipHidden true drops a hidden frame and disqualifies the sprite_frame (gap detected)", () => {
+        const layers: Layer[] = [
+            set("blink", [
+                art("0", { x: 0, y: 0, w: 16, h: 16 }),
+                art("1", { x: 0, y: 0, w: 16, h: 16 }, false),
+                art("2", { x: 0, y: 0, w: 16, h: 16 }),
+            ]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        // sprite_frame falls through because [0, 2] is not contiguous.
+        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
+    });
+
     it("[ignore] inside a sprite_frame group does NOT count toward the frame contiguity check", () => {
         const layers: Layer[] = [
             set("blink", [

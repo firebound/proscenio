@@ -106,6 +106,20 @@ describe("parseLayerName - scale / blend / path / folder", () => {
         expect(parseLayerName("x [path:custom_file]").tags.path).toBe("custom_file");
     });
 
+    it("[path:...] rejects path separators and parent-dir segments", () => {
+        expect(parseLayerName("x [path:../foo]").tags.path).toBeUndefined();
+        expect(parseLayerName("x [path:a/b]").tags.path).toBeUndefined();
+        expect(parseLayerName(String.raw`x [path:a\b]`).tags.path).toBeUndefined();
+        expect(parseLayerName("x [path:.]").tags.path).toBeUndefined();
+        expect(parseLayerName("x [path:..]").tags.path).toBeUndefined();
+    });
+
+    it("[scale:1abc] is rejected (strict numeric)", () => {
+        const r = parseLayerName("x [scale:1abc]");
+        expect(r.tags.scale).toBeUndefined();
+        expect(r.displayName).toBe("x [scale:1abc]");
+    });
+
     it("[folder:name] parses verbatim", () => {
         expect(parseLayerName("x [folder:body]").tags.folder).toBe("body");
     });

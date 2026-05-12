@@ -192,7 +192,10 @@ function handleGroup(
     const explicitSpriteFrame = tagKind === "sprite_frame";
     const groupInherited = inherit(inherited, parsed.tags);
 
-    if (explicitSpriteFrame || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren))) {
+    if (
+        explicitSpriteFrame
+        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.opts.skipHidden))
+    ) {
         const entry = buildSpriteFrameEntry(
             parsed,
             parsedChildren,
@@ -200,6 +203,7 @@ function handleGroup(
             layerPath,
             ctx.zCounter.value,
             groupInherited,
+            ctx.opts.skipHidden,
         );
         if (entry !== null) {
             ctx.out.push(entry);
@@ -225,11 +229,11 @@ function handleGroup(
     walkLayers(parsedChildren, nested, layerPath, groupInherited, ctx);
 }
 
-function autoDetectSpriteFrame(children: ParsedLayer[]): boolean {
+function autoDetectSpriteFrame(children: ParsedLayer[], skipHidden: boolean): boolean {
     const candidates: ParsedLayer[] = [];
     for (const child of children) {
         if (child.tags.ignore === true) continue;
-        if (!child.raw.visible) continue;
+        if (skipHidden && !child.raw.visible) continue;
         if (child.tags.originMarker === true) continue;
         // A child is a valid frame source if it is either an art
         // layer with a digit name, or a `[merge]` group with a digit
@@ -254,6 +258,7 @@ function buildSpriteFrameEntry(
     layerPath: string[],
     zOrder: number,
     inherited: InheritedTags,
+    skipHidden: boolean,
 ): PlannedSpriteFrame | null {
     const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
     const folder = group.tags.folder ?? inherited.folder;
@@ -261,7 +266,7 @@ function buildSpriteFrameEntry(
     const safeName = group.tags.path ?? sanitize(meshName);
     const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
 
-    const sortedFrames = collectFrameChildren(children);
+    const sortedFrames = collectFrameChildren(children, skipHidden);
     if (sortedFrames.length < 2) return null;
 
     let maxBounds: LayerBounds | null = null;
@@ -303,11 +308,11 @@ function buildSpriteFrameEntry(
     };
 }
 
-function collectFrameChildren(children: ParsedLayer[]): ParsedLayer[] {
+function collectFrameChildren(children: ParsedLayer[], skipHidden: boolean): ParsedLayer[] {
     const pairs: { index: number; child: ParsedLayer }[] = [];
     for (const child of children) {
         if (child.tags.ignore === true) continue;
-        if (!child.raw.visible) continue;
+        if (skipHidden && !child.raw.visible) continue;
         if (child.tags.originMarker === true) continue;
         // Accept art layers OR `[merge]` groups; reject regular groups.
         if (child.raw.kind === "set" && child.tags.merge !== true) continue;

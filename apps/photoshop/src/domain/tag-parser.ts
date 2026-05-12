@@ -92,7 +92,18 @@ function consumeToken(body: string, tags: TagBag): boolean {
         case "blend":
             return consumeBlend(value, tags);
         case "path":
-            if (value.length === 0) return false;
+            // Reject anything with path separators or parent-dir
+            // segments so a malicious / careless tag cannot escape
+            // the chosen output folder via `[path:../foo]` or carve
+            // unintended subdirectories via `[path:a/b]` (the
+            // dedicated `[folder:name]` tag owns subfolders).
+            if (
+                value.length === 0
+                || value.includes("/")
+                || value.includes("\\")
+                || value === ".."
+                || value === "."
+            ) return false;
             tags.path = value;
             return true;
         case "name":

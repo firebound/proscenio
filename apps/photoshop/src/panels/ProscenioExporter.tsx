@@ -8,8 +8,10 @@ import React from "react";
 
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
 import { useExportFlow } from "../hooks/useExportFlow";
+import { useExportPreview } from "../hooks/useExportPreview";
 import { useFolderCache } from "../hooks/useFolderCache";
 import { useImportFlow } from "../hooks/useImportFlow";
+import { DebugSection } from "./sections/DebugSection";
 import { DocSection } from "./sections/DocSection";
 import { ExportSection } from "./sections/ExportSection";
 import { FolderSection } from "./sections/FolderSection";
@@ -20,12 +22,17 @@ export const ProscenioExporter: React.FC = () => {
     const { doc, refresh: refreshDoc } = useDocSnapshot();
     const exportFlow = useExportFlow();
     const importFlow = useImportFlow();
+    const preview = useExportPreview();
 
     const exportDisabled = exportFlow.busy || folder === null || doc === null;
 
     const onExport = React.useCallback(() => {
         if (folder !== null) void exportFlow.run(folder);
     }, [exportFlow, folder]);
+
+    const onRefreshPreview = React.useCallback(() => {
+        preview.refresh(exportFlow.opts);
+    }, [preview, exportFlow.opts]);
 
     return (
         <div className="proscenio-panel">
@@ -45,6 +52,7 @@ export const ProscenioExporter: React.FC = () => {
                 manifestErrors={importFlow.manifestErrors}
                 onImport={importFlow.run}
             />
+            <DebugSection preview={preview.preview} onRefresh={onRefreshPreview} />
         </div>
     );
 };

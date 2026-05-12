@@ -53,6 +53,13 @@ export interface PngWrite {
 export interface ExportPlan {
     manifest: Manifest;
     writes: PngWrite[];
+    skipped: SkippedLayer[];
+}
+
+export interface SkippedLayer {
+    layerPath: string[];
+    name: string;
+    reason: "ignore-tag" | "hidden" | "empty-bounds" | "origin-marker";
 }
 
 interface ParsedLayer {
@@ -74,18 +81,29 @@ export function buildExportPlan(
     layers: Layer[],
     opts: ExportOptions,
 ): ExportPlan {
-    const planned: PlannedEntry[] = [];
-    const zCounter = { value: 0 };
-    walkLayers(parseChildren(layers), "", [], planned, zCounter, opts);
+    const ctx: WalkContext = {
+        out: [],
+        skipped: [],
+        zCounter: { value: 0 },
+        opts,
+    };
+    walkLayers(parseChildren(layers), "", [], {}, ctx);
     const manifest: Manifest = {
         format_version: MANIFEST_FORMAT_VERSION,
         doc: doc.name,
         size: [doc.width, doc.height],
         pixels_per_unit: opts.pixelsPerUnit ?? DEFAULT_PIXELS_PER_UNIT,
         ...(opts.anchor === undefined ? {} : { anchor: opts.anchor }),
-        layers: planned.map(toManifestEntry),
+        layers: ctx.out.map(toManifestEntry),
     };
-    return { manifest, writes: planned.flatMap(toWrites) };
+    return { manifest, writes: ctx.out.flatMap(toWrites), skipped: ctx.skipped };
+}
+
+interface WalkContext {
+    out: PlannedEntry[];
+    skipped: SkippedLayer[];
+    zCounter: { value: number };
+    opts: ExportOptions;
 }
 
 interface PngWriteSource {
@@ -123,31 +141,41 @@ function walkLayers(
     children: ParsedLayer[],
     prefix: string,
     layerPath: string[],
-    out: PlannedEntry[],
-    zCounter: { value: number },
-    opts: ExportOptions,
-    inherited: InheritedTags = {},
+    inherited: InheritedTags,
+    ctx: WalkContext,
 ): void {
     for (const parsed of children) {
-        if (parsed.tags.ignore === true) continue;
-        if (opts.skipHidden && !parsed.raw.visible) continue;
         const childPath = [...layerPath, parsed.raw.name];
-        if (parsed.raw.kind === "set") {
-            handleGroup(parsed, prefix, childPath, out, zCounter, opts, inherited);
+        const displayName = fallbackName(parsed.displayName, parsed.raw);
+        if (parsed.tags.ignore === true) {
+            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
             continue;
         }
-        if (parsed.tags.originMarker === true) continue;
+        if (ctx.opts.skipHidden && !parsed.raw.visible) {
+            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "hidden" });
+            continue;
+        }
+        if (parsed.raw.kind === "set") {
+            handleGroup(parsed, prefix, childPath, inherited, ctx);
+            continue;
+        }
+        if (parsed.tags.originMarker === true) {
+            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
+            continue;
+        }
         const entry = buildPolygonEntry(
             parsed,
-            joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
+            joinName(prefix, displayName),
             childPath,
-            zCounter.value,
+            ctx.zCounter.value,
             inherit(inherited, parsed.tags),
         );
-        if (entry !== null) {
-            out.push(entry);
-            zCounter.value += 1;
+        if (entry === null) {
+            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
+            continue;
         }
+        ctx.out.push(entry);
+        ctx.zCounter.value += 1;
     }
 }
 
@@ -155,10 +183,8 @@ function handleGroup(
     parsed: ParsedLayer,
     prefix: string,
     layerPath: string[],
-    out: PlannedEntry[],
-    zCounter: { value: number },
-    opts: ExportOptions,
     inherited: InheritedTags,
+    ctx: WalkContext,
 ): void {
     const group = parsed.raw as LayerSet;
     const parsedChildren = parseChildren(group.layers);
@@ -172,34 +198,31 @@ function handleGroup(
             parsedChildren,
             prefix,
             layerPath,
-            zCounter.value,
+            ctx.zCounter.value,
             groupInherited,
         );
         if (entry !== null) {
-            out.push(entry);
-            zCounter.value += 1;
+            ctx.out.push(entry);
+            ctx.zCounter.value += 1;
             return;
         }
     }
-    // `[merge]` on a non-sprite_frame group flattens its descendants
-    // into a single polygon entry (the writer composes the PNG by
-    // duplicating the group into a temp doc and merging it).
     if (parsed.tags.merge === true) {
         const entry = buildPolygonEntry(
             parsed,
             joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
             layerPath,
-            zCounter.value,
+            ctx.zCounter.value,
             groupInherited,
         );
         if (entry !== null) {
-            out.push(entry);
-            zCounter.value += 1;
+            ctx.out.push(entry);
+            ctx.zCounter.value += 1;
             return;
         }
     }
     const nested = joinName(prefix, parsed.displayName);
-    walkLayers(parsedChildren, nested, layerPath, out, zCounter, opts, groupInherited);
+    walkLayers(parsedChildren, nested, layerPath, groupInherited, ctx);
 }
 
 function autoDetectSpriteFrame(children: ParsedLayer[]): boolean {

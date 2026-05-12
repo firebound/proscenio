@@ -57,7 +57,7 @@ async function writeLayerPng(
         width: sourceDoc.width,
         height: sourceDoc.height,
         name: "proscenio_export_tmp",
-        fill: constants.DocumentFill.transparent,
+        fill: constants.DocumentFill.TRANSPARENT,
         mode: constants.NewDocumentMode.RGB,
     });
     try {

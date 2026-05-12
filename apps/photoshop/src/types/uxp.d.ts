@@ -106,9 +106,9 @@ declare module "photoshop" {
             [key: string]: number;
         };
         DocumentFill: {
-            transparent: number;
-            white: number;
-            backgroundColor: number;
+            TRANSPARENT: number;
+            WHITE: number;
+            BACKGROUND_COLOR: number;
             [key: string]: number;
         };
     }

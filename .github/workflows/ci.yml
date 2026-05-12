@@ -37,6 +37,9 @@ jobs:
       - name: Typecheck
         working-directory: apps/photoshop
         run: pnpm run typecheck
+      - name: Unit tests
+        working-directory: apps/photoshop
+        run: pnpm test
 
   lint-gdscript:
     runs-on: ubuntu-latest

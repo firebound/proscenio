@@ -8,6 +8,7 @@
     "watch": "nodemon -w src -e ts,tsx,js,jsx,json,css,html -w webpack.config.js -x pnpm run build",
     "build": "webpack --mode development",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "uxp:load": "cd dist && uxp plugin load",
     "uxp:reload": "cd dist && uxp plugin reload",
     "uxp:watch": "cd dist && nodemon --exec \"uxp plugin reload\" -e js,css,html",
@@ -28,6 +29,7 @@
     "nodemon": "^3.1.7",
     "style-loader": "^4.0.0",
     "typescript": "^5.4.0",
+    "vitest": "^4.1.6",
     "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4"
   },

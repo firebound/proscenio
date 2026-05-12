@@ -54,11 +54,11 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.2 - Layer walk + manifest builder
 
-- [ ] Port `proscenio_export.jsx` layer recursion to TypeScript in `src/controllers/exporter.ts`.
-- [ ] Manifest builder produces shape matching `psd_manifest.schema.json` v1.
-- [ ] Sprite-frame group detection: numeric children primary + `<name>_<index>` fallback.
-- [ ] Hidden layers skipped; `_` prefix excluded.
-- [ ] Unit tests in `uxp-plugin-tests/` for pure functions (recursion, name sanitization, manifest builder against fixtures).
+- [x] Port `proscenio_export.jsx` layer recursion to TypeScript in `src/controllers/exporter.ts`.
+- [x] Manifest builder produces shape matching `psd_manifest.schema.json` v1. (Schema file lands with ajv in Wave 10.3; types in `src/types/manifest.ts` encode the contract.)
+- [x] Sprite-frame group detection: numeric children primary + `<name>_<index>` fallback.
+- [x] Hidden layers skipped; `_` prefix excluded.
+- [x] Unit tests in `uxp-plugin-tests/` for pure functions (recursion, name sanitization, manifest builder against fixtures). 24 tests via vitest; wired into `lint-photoshop` CI job.
 
 ## Wave 10.3 - File system + PNG export
 

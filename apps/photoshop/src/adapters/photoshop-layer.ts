@@ -7,13 +7,13 @@
 // PSD. Nothing in here touches the file system or schedules an
 // export; it only reads.
 //
-// The mapping is intentionally narrow: only the fields the planner
-// reads (`name`, `visible`, `bounds`, children, set vs art) cross the
-// boundary. The Photoshop layer kind enum is exposed via
-// `constants.LayerKind`; group layers (LayerSet) report
-// `LayerKind.group` and surface their children via `layer.layers`.
+// Group detection uses the duck-typed shape (presence of a `.layers`
+// array) rather than `layer.kind === constants.LayerKind.group`. The
+// enum value differs across UXP / PS versions (some return numbers,
+// some return strings, some swap the casing); the `.layers` array is
+// the universal signal that a layer is a LayerSet.
 
-import { constants, type PsBounds, type PsDocument, type PsLayer } from "photoshop";
+import { type PsDocument, type PsLayer, type PsBounds } from "photoshop";
 
 import type { DocumentInfo } from "../domain/planner";
 import type { Layer, LayerBounds } from "../domain/layer";
@@ -36,12 +36,11 @@ export function adaptDocument(doc: PsDocument): AdaptedDocument {
 
 export function adaptLayer(layer: PsLayer): Layer {
     if (isGroup(layer)) {
-        const children = layer.layers ?? [];
         return {
             kind: "set",
             name: layer.name,
             visible: layer.visible,
-            layers: children.map(adaptLayer),
+            layers: (layer.layers ?? []).map(adaptLayer),
         };
     }
     return {
@@ -53,7 +52,7 @@ export function adaptLayer(layer: PsLayer): Layer {
 }
 
 function isGroup(layer: PsLayer): boolean {
-    return layer.kind === constants.LayerKind.group;
+    return Array.isArray(layer.layers);
 }
 
 function toBounds(raw: PsBounds | null | undefined): LayerBounds | null {

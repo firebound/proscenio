@@ -21,6 +21,23 @@ jobs:
       - name: Pytest (validation unit tests, no Blender)
         run: uvx --with pytest pytest tests/
 
+  lint-photoshop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install
+        working-directory: apps/photoshop
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        working-directory: apps/photoshop
+        run: pnpm run typecheck
+
   lint-gdscript:
     runs-on: ubuntu-latest
     steps:

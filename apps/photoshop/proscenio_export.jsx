@@ -1,5 +1,5 @@
 #target photoshop
-// Proscenio -- Photoshop exporter
+// Proscenio - Photoshop exporter
 // Exports visible layers as PNG plus a position JSON manifest (v1) suitable
 // for the Proscenio Blender importer (SPEC 006).
 //
@@ -45,7 +45,7 @@
 //   aggregated post-walk into sprite_frame entries (fallback for users
 //   who do not group their frames).
 //
-// Compatible with Photoshop CC 2015 and later -- uses `var`, string
+// Compatible with Photoshop CC 2015 and later - uses `var`, string
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later

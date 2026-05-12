@@ -1,5 +1,5 @@
 #target photoshop
-// Proscenio -- Photoshop importer
+// Proscenio - Photoshop importer
 // Reads a SPEC 006 v1 PSD manifest (matches schemas/psd_manifest.schema.json)
 // and stamps every layer into a fresh PSD document at its declared
 // `position` and `size`. Used to bootstrap test PSDs from existing
@@ -13,19 +13,19 @@
 //   layers named by frame index (matches the Wave 6.1 exporter D9
 //   primary mechanism).
 // - Layers stamped in z_order DESCENDING (so the lowest z_order ends up
-//   on top in the Photoshop layer stack -- matches the export-side
+//   on top in the Photoshop layer stack - matches the export-side
 //   convention where z_order 0 is the front layer).
 // - Hidden layers in the source manifest are still emitted but left
 //   visible (manifest does not carry visibility metadata).
 //
-// Compatible with Photoshop CC 2015 and later -- uses `var`, string
+// Compatible with Photoshop CC 2015 and later - uses `var`, string
 // concatenation, no arrow functions or template literals.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 (function () {
     // Start the picker at the doll fixture manifest relative to this
-    // script -- saves the user from navigating up the repo tree every
+    // script - saves the user from navigating up the repo tree every
     // run. Falls back to the dialog's default location when the path
     // does not resolve (e.g. script copied outside the repo).
     var scriptFile = new File($.fileName);
@@ -118,7 +118,7 @@
             } else if (entry.kind === "sprite_frame") {
                 if (stampSpriteFrame(doc, entry, manifestDir)) stamped += 1;
             } else {
-                // Unknown kind -- skip rather than abort, so a partial import
+                // Unknown kind - skip rather than abort, so a partial import
                 // still surfaces every layer the importer does understand.
             }
         }
@@ -146,7 +146,7 @@
             manifestDir.execute();
         }
     } finally {
-        // Restore PS preferences regardless of outcome -- otherwise an
+        // Restore PS preferences regardless of outcome - otherwise an
         // exception leaves rulerUnits / typeUnits stuck on PIXELS until
         // the user manually resets them or restarts Photoshop.
         app.preferences.rulerUnits = savedRulerUnits;
@@ -272,7 +272,7 @@
                     "[proscenio_import] " + pngFile.name +
                     " bounds " + srcW + "x" + srcH +
                     " differ from manifest " + expectedW + "x" + expectedH +
-                    " -- using PNG bounds for placement."
+                    " - using PNG bounds for placement."
                 );
             }
 
@@ -285,7 +285,7 @@
         } finally {
             // Close srcDoc regardless of whether bounds / duplicate threw.
             // Without this, an exception leaves srcDoc orphaned in
-            // Photoshop's open-document list -- catastrophic on a 22-layer
+            // Photoshop's open-document list - catastrophic on a 22-layer
             // batch import where every leak compounds.
             srcDoc.close(SaveOptions.DONOTSAVECHANGES);
         }

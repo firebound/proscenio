@@ -1,6 +1,7 @@
+// @ts-nocheck - Adobe React Starter scaffold; will be deleted/replaced in Wave 10.2+ when Proscenio panels land.
 import React, { useRef, useState } from "react";
 
-import { WebComponent } from "../components/WebComponent.jsx";
+import { WebComponent } from "../components/WebComponent";
 
 import "./ColorPicker.css";
 

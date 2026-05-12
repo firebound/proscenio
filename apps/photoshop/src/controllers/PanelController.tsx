@@ -1,3 +1,4 @@
+// @ts-nocheck - Adobe React Starter scaffold; will be deleted/replaced in Wave 10.2+ when Proscenio panels land.
 import ReactDOM from "react-dom";
 
 const _id = Symbol("_id");

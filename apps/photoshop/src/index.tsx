@@ -1,11 +1,12 @@
+// @ts-nocheck - Adobe React Starter scaffold; will be deleted/replaced in Wave 10.2+ when Proscenio panels land.
 import React from "react";
 
 import "./styles.css";
-import { PanelController } from "./controllers/PanelController.jsx";
-import { CommandController } from "./controllers/CommandController.jsx";
-import { About } from "./components/About.jsx";
-import { Demos } from "./panels/Demos.jsx";
-import { MoreDemos } from "./panels/MoreDemos.jsx";
+import { PanelController } from "./controllers/PanelController";
+import { CommandController } from "./controllers/CommandController";
+import { About } from "./components/About";
+import { Demos } from "./panels/Demos";
+import { MoreDemos } from "./panels/MoreDemos";
 
 import { entrypoints } from "uxp";
 

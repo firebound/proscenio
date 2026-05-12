@@ -85,6 +85,10 @@
         },
         "name": { "type": "string", "minLength": 1 },
         "bone": { "type": "string" },
+        "texture": {
+          "type": "string",
+          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each sprite picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent."
+        },
         "texture_region": { "$ref": "#/$defs/Rect" },
         "polygon": {
           "type": "array",
@@ -123,6 +127,10 @@
         },
         "name": { "type": "string", "minLength": 1 },
         "bone": { "type": "string" },
+        "texture": {
+          "type": "string",
+          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Mirrors the polygon-sprite field. Importers fall back to the top-level `atlas` field when absent."
+        },
         "texture_region": {
           "$ref": "#/$defs/Rect",
           "description": "Optional sub-rectangle within the atlas where the spritesheet lives. Absent → use the full atlas."

@@ -2,11 +2,12 @@
 // semantics in TypeScript, decoupled from the Photoshop API surface so
 // it can be unit-tested against synthetic layer trees.
 //
-// Wave 10.3 will add the Photoshop -> Layer adapter and the PNG writer
-// that materialises the paths emitted by `buildManifest`. The paths in
-// the manifest are deterministic functions of the (sanitized) entry
-// name, so the writer can drive its filesystem layout straight from
-// the manifest produced here.
+// `buildExportPlan` returns the manifest plus a parallel list of PNG
+// writes - each one carries the chain of layer names from the document
+// root down to the source art layer. The Photoshop adapter walks that
+// chain in the live PsDocument to find the layer to duplicate + save.
+// Keeping the chain out of the manifest itself preserves the v1
+// contract while letting the materialiser stay declarative.
 //
 // Convention parity with the JSX exporter:
 //
@@ -24,7 +25,7 @@
 // - Names join through groups with `__`. The manifest entry `name`
 //   keeps the joined human form; `path` uses the sanitized form.
 
-import type { ArtLayer, Layer, LayerBounds, LayerSet } from "../types/layer";
+import type { ArtLayer, Layer, LayerBounds, LayerSet } from "./layer";
 import {
     DEFAULT_PIXELS_PER_UNIT,
     MANIFEST_FORMAT_VERSION,
@@ -33,7 +34,7 @@ import {
     type ManifestEntry,
     type PolygonEntry,
     type SpriteFrameEntry,
-} from "../types/manifest";
+} from "./manifest";
 
 export interface ExportOptions {
     skipHidden: boolean;
@@ -47,49 +48,121 @@ export interface DocumentInfo {
     height: number;
 }
 
+// One PNG the materialiser must write. `layerPath` is the chain of
+// layer names from the document root down to the leaf art layer
+// (e.g. ["body", "upper", "torso"]); the adapter walks this in the
+// live PsDocument to find the source layer. `outputPath` is the
+// manifest-relative path the materialiser writes to - matches the
+// `path` field on the corresponding polygon or frame entry.
+export interface PngWrite {
+    layerPath: string[];
+    outputPath: string;
+}
+
+export interface ExportPlan {
+    manifest: Manifest;
+    writes: PngWrite[];
+}
+
 export function buildManifest(
     doc: DocumentInfo,
     layers: Layer[],
     opts: ExportOptions,
 ): Manifest {
-    const out: ManifestEntry[] = [];
+    return buildExportPlan(doc, layers, opts).manifest;
+}
+
+export function buildExportPlan(
+    doc: DocumentInfo,
+    layers: Layer[],
+    opts: ExportOptions,
+): ExportPlan {
+    const planned: PlannedEntry[] = [];
     const zCounter = { value: 0 };
-    walkLayers(layers, "", out, zCounter, opts);
-    const aggregated = aggregateFlatSpriteFrames(out);
-    return {
+    walkLayers(layers, "", [], planned, zCounter, opts);
+    const aggregated = aggregateFlatSpriteFrames(planned);
+    const manifest: Manifest = {
         format_version: MANIFEST_FORMAT_VERSION,
         doc: doc.name,
         size: [doc.width, doc.height],
         pixels_per_unit: opts.pixelsPerUnit ?? DEFAULT_PIXELS_PER_UNIT,
-        layers: aggregated,
+        layers: aggregated.map(toManifestEntry),
     };
+    const writes = aggregated.flatMap(toWrites);
+    return { manifest, writes };
+}
+
+// Planner-internal entry. Mirrors the manifest entry shape but keeps
+// the source `layerPath` for each PNG so the materialiser can map back
+// to the live PsLayer. Stripped at the manifest boundary - never
+// serialised.
+type PlannedPolygon = PolygonEntry & { _layerPath: string[] };
+type PlannedSpriteFrame = SpriteFrameEntry & { _frameSources: string[][] };
+type PlannedEntry = PlannedPolygon | PlannedSpriteFrame;
+
+function toManifestEntry(entry: PlannedEntry): ManifestEntry {
+    if (entry.kind === "polygon") {
+        return {
+            kind: "polygon",
+            name: entry.name,
+            path: entry.path,
+            position: entry.position,
+            size: entry.size,
+            z_order: entry.z_order,
+        };
+    }
+    return {
+        kind: "sprite_frame",
+        name: entry.name,
+        position: entry.position,
+        size: entry.size,
+        z_order: entry.z_order,
+        frames: entry.frames,
+    };
+}
+
+function toWrites(entry: PlannedEntry): PngWrite[] {
+    if (entry.kind === "polygon") {
+        return [{ layerPath: entry._layerPath, outputPath: entry.path }];
+    }
+    return entry.frames.map((frame, i) => ({
+        layerPath: entry._frameSources[i],
+        outputPath: frame.path,
+    }));
 }
 
 function walkLayers(
     layers: Layer[],
     prefix: string,
-    out: ManifestEntry[],
+    layerPath: string[],
+    out: PlannedEntry[],
     zCounter: { value: number },
     opts: ExportOptions,
 ): void {
     for (const layer of layers) {
         if (opts.skipHidden && !layer.visible) continue;
         if (opts.skipUnderscorePrefix && layer.name.charAt(0) === "_") continue;
+        const childLayerPath = [...layerPath, layer.name];
         if (layer.kind === "set") {
             if (qualifiesAsSpriteFrameGroup(layer)) {
-                const entry = buildSpriteFrameEntry(layer, prefix, zCounter.value);
+                const entry = buildSpriteFrameEntry(layer, prefix, childLayerPath, zCounter.value);
                 if (entry !== null) {
                     out.push(entry);
                     zCounter.value += 1;
+                    continue;
                 }
-                continue;
+                // Group qualified as sprite_frame but the entry came
+                // back null (all frames had invalid / zero bounds).
+                // Fall through to the regular recursion so the group
+                // is still walked - otherwise a single empty frame
+                // would silently drop every valid sibling underneath.
             }
             const nested = prefix === "" ? layer.name : `${prefix}__${layer.name}`;
-            walkLayers(layer.layers, nested, out, zCounter, opts);
+            walkLayers(layer.layers, nested, childLayerPath, out, zCounter, opts);
             continue;
         }
         const name = prefix === "" ? layer.name : `${prefix}__${layer.name}`;
-        const poly = buildPolygonEntry(layer, name, zCounter.value);
+        const poly = buildPolygonEntry(layer, name, childLayerPath, zCounter.value);
         if (poly !== null) {
             out.push(poly);
             zCounter.value += 1;
@@ -129,8 +202,9 @@ export function qualifiesAsSpriteFrameGroup(group: LayerSet): boolean {
 function buildSpriteFrameEntry(
     group: LayerSet,
     prefix: string,
+    groupLayerPath: string[],
     zOrder: number,
-): SpriteFrameEntry | null {
+): PlannedSpriteFrame | null {
     const pairs: { index: number; layer: ArtLayer }[] = [];
     for (const child of group.layers) {
         if (!child.visible) continue;
@@ -147,6 +221,7 @@ function buildSpriteFrameEntry(
 
     let maxBounds: LayerBounds | null = null;
     const frames: FrameEntry[] = [];
+    const sources: string[][] = [];
     for (const pair of pairs) {
         const b = pair.layer.bounds;
         if (b === null || b.w <= 0 || b.h <= 0) continue;
@@ -157,6 +232,7 @@ function buildSpriteFrameEntry(
             index: pair.index,
             path: `images/${safeName}/${pair.index}.png`,
         });
+        sources.push([...groupLayerPath, pair.layer.name]);
     }
     if (maxBounds === null || frames.length < 2) return null;
     return {
@@ -166,14 +242,16 @@ function buildSpriteFrameEntry(
         size: [Math.round(maxBounds.w), Math.round(maxBounds.h)],
         z_order: zOrder,
         frames,
+        _frameSources: sources,
     };
 }
 
 function buildPolygonEntry(
     layer: ArtLayer,
     name: string,
+    layerPath: string[],
     zOrder: number,
-): PolygonEntry | null {
+): PlannedPolygon | null {
     const b = layer.bounds;
     if (b === null || b.w <= 0 || b.h <= 0) return null;
     const safeName = sanitize(name);
@@ -184,6 +262,7 @@ function buildPolygonEntry(
         position: [Math.round(b.x), Math.round(b.y)],
         size: [Math.round(b.w), Math.round(b.h)],
         z_order: zOrder,
+        _layerPath: layerPath,
     };
 }
 
@@ -199,18 +278,18 @@ export interface FrameMatch {
 export function matchIndexedFrame(name: string): FrameMatch | null {
     const pure = /^(\d+)$/.exec(name);
     if (pure !== null) {
-        return { convention: "digit", base: "", index: parseInt(pure[1], 10) };
+        return { convention: "digit", base: "", index: Number.parseInt(pure[1], 10) };
     }
     const framed = /^frame[_-](\d+)$/i.exec(name);
     if (framed !== null) {
-        return { convention: "frame_prefix", base: "", index: parseInt(framed[1], 10) };
+        return { convention: "frame_prefix", base: "", index: Number.parseInt(framed[1], 10) };
     }
     const grouped = /^([A-Za-z][A-Za-z0-9]*)[_-](\d+)$/.exec(name);
     if (grouped !== null) {
         return {
             convention: "group_prefix",
             base: grouped[1],
-            index: parseInt(grouped[2], 10),
+            index: Number.parseInt(grouped[2], 10),
         };
     }
     return null;
@@ -228,64 +307,86 @@ export function indicesAreContiguousFromZero(indices: number[]): boolean {
 // Post-walk pass: collapse top-level polygons whose names follow the
 // flat `<base>_<n>` convention into a single sprite_frame entry. D9
 // fallback for users who do not nest frames in a group.
-export function aggregateFlatSpriteFrames(input: ManifestEntry[]): ManifestEntry[] {
-    const bucket = new Map<string, { index: number; entry: PolygonEntry }[]>();
-    const leftover: ManifestEntry[] = [];
-    for (const entry of input) {
-        if (entry.kind !== "polygon") {
-            leftover.push(entry);
-            continue;
-        }
-        const match = /^([A-Za-z][A-Za-z0-9]*)[_-](\d+)$/.exec(entry.name);
-        if (match === null) {
-            leftover.push(entry);
-            continue;
-        }
-        const base = match[1];
-        const idx = parseInt(match[2], 10);
-        const list = bucket.get(base);
-        if (list === undefined) {
-            bucket.set(base, [{ index: idx, entry }]);
+function aggregateFlatSpriteFrames(input: PlannedEntry[]): PlannedEntry[] {
+    const { leftover, buckets } = bucketize(input);
+    for (const [base, pairs] of buckets) {
+        const merged = mergeFlatBucket(base, pairs);
+        if (merged.kind === "merged") {
+            leftover.push(merged.entry);
         } else {
-            list.push({ index: idx, entry });
+            for (const p of merged.pairs) leftover.push(p.entry);
         }
-    }
-    for (const [base, pairs] of bucket) {
-        if (pairs.length < 2) {
-            for (const p of pairs) leftover.push(p.entry);
-            continue;
-        }
-        pairs.sort((a, b) => a.index - b.index);
-        const indices = pairs.map((p) => p.index);
-        if (!indicesAreContiguousFromZero(indices)) {
-            for (const p of pairs) leftover.push(p.entry);
-            continue;
-        }
-        let maxBounds: { x: number; y: number; w: number; h: number } | null = null;
-        const frames: FrameEntry[] = [];
-        const zOrder = pairs[0].entry.z_order;
-        for (const p of pairs) {
-            const e = p.entry;
-            const w = e.size[0];
-            const h = e.size[1];
-            if (maxBounds === null || w * h > maxBounds.w * maxBounds.h) {
-                maxBounds = { x: e.position[0], y: e.position[1], w, h };
-            }
-            frames.push({ index: p.index, path: e.path });
-        }
-        if (maxBounds === null) continue;
-        leftover.push({
-            kind: "sprite_frame",
-            name: base,
-            position: [maxBounds.x, maxBounds.y],
-            size: [maxBounds.w, maxBounds.h],
-            z_order: zOrder,
-            frames,
-        });
     }
     leftover.sort((a, b) => a.z_order - b.z_order);
     for (let i = 0; i < leftover.length; i++) leftover[i].z_order = i;
     return leftover;
+}
+
+interface BucketPair {
+    index: number;
+    entry: PlannedPolygon;
+}
+
+function bucketize(input: PlannedEntry[]): {
+    leftover: PlannedEntry[];
+    buckets: Map<string, BucketPair[]>;
+} {
+    const buckets = new Map<string, BucketPair[]>();
+    const leftover: PlannedEntry[] = [];
+    for (const entry of input) {
+        const match = entry.kind === "polygon"
+            ? /^([A-Za-z][A-Za-z0-9]*)[_-](\d+)$/.exec(entry.name)
+            : null;
+        if (entry.kind !== "polygon" || match === null) {
+            leftover.push(entry);
+            continue;
+        }
+        const base = match[1];
+        const idx = Number.parseInt(match[2], 10);
+        const list = buckets.get(base);
+        if (list === undefined) buckets.set(base, [{ index: idx, entry }]);
+        else list.push({ index: idx, entry });
+    }
+    return { leftover, buckets };
+}
+
+type MergeResult =
+    | { kind: "merged"; entry: PlannedSpriteFrame }
+    | { kind: "kept"; pairs: BucketPair[] };
+
+function mergeFlatBucket(base: string, pairs: BucketPair[]): MergeResult {
+    if (pairs.length < 2) return { kind: "kept", pairs };
+    pairs.sort((a, b) => a.index - b.index);
+    const indices = pairs.map((p) => p.index);
+    if (!indicesAreContiguousFromZero(indices)) return { kind: "kept", pairs };
+    const merged = packFrames(base, pairs);
+    if (merged === null) return { kind: "kept", pairs };
+    return { kind: "merged", entry: merged };
+}
+
+function packFrames(base: string, pairs: BucketPair[]): PlannedSpriteFrame | null {
+    let maxBounds: { x: number; y: number; w: number; h: number } | null = null;
+    const frames: FrameEntry[] = [];
+    const sources: string[][] = [];
+    for (const p of pairs) {
+        const e = p.entry;
+        const [w, h] = e.size;
+        if (maxBounds === null || w * h > maxBounds.w * maxBounds.h) {
+            maxBounds = { x: e.position[0], y: e.position[1], w, h };
+        }
+        frames.push({ index: p.index, path: e.path });
+        sources.push(e._layerPath);
+    }
+    if (maxBounds === null) return null;
+    return {
+        kind: "sprite_frame",
+        name: base,
+        position: [maxBounds.x, maxBounds.y],
+        size: [maxBounds.w, maxBounds.h],
+        z_order: pairs[0].entry.z_order,
+        frames,
+        _frameSources: sources,
+    };
 }
 
 export function sanitize(name: string): string {

@@ -62,7 +62,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install check-jsonschema
-      - name: Validate examples and fixtures
+      - name: Validate .proscenio fixtures
         shell: bash
         run: |
           shopt -s globstar nullglob
@@ -72,6 +72,16 @@ jobs:
             exit 0
           fi
           check-jsonschema --schemafile schemas/proscenio.schema.json "${files[@]}"
+      - name: Validate PSD manifest fixtures
+        shell: bash
+        run: |
+          shopt -s globstar nullglob
+          files=(examples/**/*.photoshop_manifest.json examples/**/*.photoshop_exported.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No PSD manifest fixtures yet - skipping."
+            exit 0
+          fi
+          check-jsonschema --schemafile schemas/psd_manifest.schema.json "${files[@]}"
 
   test-blender:
     runs-on: ubuntu-latest

@@ -28,7 +28,7 @@ The MVP is in progress. Full quickstart will land with the first end-to-end samp
 
 Pick whichever entry point matches your asset:
 
-- **Photoshop authored** - open the source `.psd` and run the JSX exporter (see [`apps/photoshop/`](apps/photoshop/)). It writes a manifest JSON + per-layer PNGs. In Blender, click **Import Photoshop Manifest** (Active Sprite subpanel) and point at the manifest. Each layer lands as a quad sprite with the right pivot, atlas region, and naming convention pre-populated.
+- **Photoshop authored** - open the source `.psd`, open the **Proscenio Exporter** panel (Plugins menu, loaded via the UXP plugin in [`apps/photoshop/`](apps/photoshop/)), pick an output folder, click **Export manifest + PNGs**. The plugin writes a v1 manifest JSON + per-layer PNGs. In Blender, click **Import Photoshop Manifest** (Active Sprite subpanel) and point at the manifest. Each layer lands as a quad sprite with the right pivot, atlas region, and naming convention pre-populated.
 - **Hand authored in Blender** - model your meshes directly. The panel still applies; just skip the manifest import.
 
 ### 2. Rig and weight

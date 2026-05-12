@@ -101,6 +101,30 @@ Port `coa_tools2/Photoshop/coa_export.jsx` forward into `apps/photoshop/prosceni
 
 `coa_tools2` has a GIMP path. Lower priority - fewer 2D animation users on GIMP.
 
+### Deferred Photoshop tags (post SPEC 011)
+
+Tags evaluated during the SPEC 011 research pass that did not make the v1 taxonomy. Each was deferred for a documented reason. Promote into SPEC 011.x or a successor SPEC when a real workflow surfaces the need.
+
+#### `[slice:l,t,r,b]` - Cocos-style 9-slice
+
+Encodes 4 corner insets so a single sprite scales as a 9-slice tile (UI panels, scalable backgrounds). Cocos Creator and Unity ship this. **Why deferred**: Proscenio's current consumer set is rigged characters, not UI; no real workflow surfaces 9-slice today. Trigger to revisit: first UI-focused fixture lands.
+
+#### Head-turner view groups (Adobe Character Animator)
+
+Groups named `Frontal` / `Left Profile` / `Left Quarter` / `Right Quarter` / `Right Profile` collapse into a single mesh with swappable view variants. Specific to face puppetry. **Why deferred**: deep coupling to a face-rig template; harder to generalise across project types than the tag system in SPEC 011.
+
+#### Pseudo-keyword auto-tagging (`Head`, `Mouth`, `Eye_Open`, ...)
+
+Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (SPEC 011 D1) is cleaner and ships first.
+
+#### `[isolated]` warp-independent flag (Character Animator's `+` prefix)
+
+Marks a layer as "animated separately from its parent group" so the rig generator emits a dedicated pose key for it. **Why deferred**: Proscenio's rig model has no concept of "warp pose keys"; bones already encode separability. Reserved tag name: `[isolated]` (the `+` prefix from Character Animator is rejected as non-idiomatic for this project). Trigger to revisit: if SPEC 005 / 008 grow a "per-layer pose channel" concept.
+
+#### Stable layer identity in `PngWrite.layerPath`
+
+`PngWrite.layerPath` (and the parallel `_frameSources` on planned sprite_frame entries) is a chain of layer names. Photoshop allows siblings with duplicate names; if a user authors two children named `arm` inside the same group, the materialiser would resolve whichever appears first in `layer.layers` and silently write the wrong PNG. **Why deferred**: the doll oracle and every shipped fixture have unique names per group; ajv catches name collisions at the sanitize level for manifest entries. **Trigger to revisit**: a user reports a wrong-PNG export, or SPEC 011's tag inspector starts addressing layers by stable handle. Implementation hint: replace `string[]` with `Array<{ name: string; index: number }>` so the adapter can tie-break by position when two siblings share a name.
+
 ## Tests and CI
 
 ### Blender headless test - multi-version matrix

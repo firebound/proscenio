@@ -7,38 +7,42 @@ description: UXP plugin for Photoshop - layer slicing and manifest JSON via Type
 
 ## Stack
 
-- **UXP** (Unified Extensibility Platform). Adobe's modern plugin runtime; replaces ExtendScript.
-- **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc. `tsconfig.json` ships in `apps/photoshop/` with `strict: true`; `allowJs: true` lets the existing `.jsx` scaffold continue to import while the port to `.tsx` proceeds.
-- **React** for the panel UI.
-- **webpack + babel** bundle into the UXP plugin format. Webpack is **locked** as the bundler (per [SPEC 010](../../specs/010-photoshop-uxp-migration/STUDY.md) D15) - Adobe's officially supported path. Vite was evaluated and rejected; UXP runtime needs CommonJS output and Vite's ESM-first defaults fight it.
-- **pnpm** as the package manager (per SPEC 010 D14). `package.json` declares `packageManager: pnpm@9.x`.
-- **Photoshop CC 2021+ (PS 22+)** minimum requirement.
-
-ExtendScript / JSX is no longer the target. Legacy `proscenio_export.jsx` and `proscenio_import.jsx` stay as historical reference until the UXP plugin reaches feature parity, then retire.
+- **UXP** (Unified Extensibility Platform). Adobe's modern plugin runtime.
+- **TypeScript** for all source. `tsconfig.json` ships in `apps/photoshop/` with `strict: true`.
+- **React** for the panel UI; Spectrum web components for native theming.
+- **webpack + babel** bundle into the UXP plugin format (per SPEC 010 D15).
+- **pnpm** as the package manager (per SPEC 010 D14).
+- **ajv** for runtime schema validation against `schemas/psd_manifest.schema.json` (Ajv2020 build; the schema declares draft 2020-12).
+- **vitest** for unit tests covering the pure planner / validator.
+- **Photoshop CC 2024 (PS 25+)** minimum requirement. UXP `xmp` module support and modern panel APIs require this floor.
 
 ## Folder layout
 
 ```text
 apps/photoshop/
-├── package.json          # pnpm; webpack + babel + react + TypeScript devDeps
-├── tsconfig.json         # strict TypeScript config; allowJs for the JSX scaffold
-├── webpack.config.js     # build config; @babel/preset-typescript handles .ts/.tsx + .jsx
-├── plugin/               # UXP package output target
-│   ├── manifest.json     # plugin manifest (host, entrypoints, permissions)
-│   ├── index.html        # panel root
-│   └── icons/
-├── src/
-│   ├── index.jsx         # plugin entry (will become index.tsx)
-│   ├── components/       # React UI
-│   ├── controllers/      # PS DOM operations (layer walk, export)
-│   ├── panels/           # panel registrations
-│   └── styles.css
-└── uxp-plugin-tests/
+|-- package.json         # pnpm; webpack + babel + react + TypeScript + ajv + vitest
+|-- tsconfig.json        # strict TypeScript
+|-- webpack.config.js    # build config; @babel/preset-typescript
+|-- plugin/              # UXP package source (copied by webpack into dist/)
+|   |-- manifest.json    # plugin manifest (host, entrypoints, permissions)
+|   |-- index.html       # panel root
+|   `-- icons/
+|-- src/
+|   |-- domain/          # pure logic + types (planner, layer, manifest)
+|   |-- adapters/        # PS DOM -> domain mappers
+|   |-- io/              # UXP filesystem + ajv + manifest IO
+|   |-- controllers/     # orchestrators (export-flow, import-flow) + PanelController
+|   |-- hooks/           # React state-management hooks
+|   |-- panels/          # panel + section components
+|   |-- types/           # ambient type shims (uxp.d.ts, spectrum.d.ts)
+|   |-- index.tsx        # plugin entry
+|   `-- styles.css
+`-- uxp-plugin-tests/    # vitest unit tests; excluded from tsconfig include
 ```
 
 ## Output format
 
-The plugin emits a manifest JSON that conforms to [`schemas/psd_manifest.schema.json`](../../schemas/psd_manifest.schema.json) v1, alongside per-layer PNGs in a sibling folder. Schema is unchanged from the JSX era - only the implementation moves.
+The plugin emits a manifest JSON conforming to [`schemas/psd_manifest.schema.json`](../../schemas/psd_manifest.schema.json) v1, alongside per-layer PNGs under `images/`.
 
 ```json
 {
@@ -50,7 +54,7 @@ The plugin emits a manifest JSON that conforms to [`schemas/psd_manifest.schema.
     {
       "kind": "polygon",
       "name": "torso",
-      "path": "dummy/torso.png",
+      "path": "images/torso.png",
       "position": [120, 340],
       "size": [180, 240],
       "z_order": 0
@@ -61,60 +65,53 @@ The plugin emits a manifest JSON that conforms to [`schemas/psd_manifest.schema.
 
 This JSON is consumed by [`apps/blender/importers/photoshop_json.py`](../../apps/blender/importers/photoshop_json.py).
 
-## Conventions
+## Conventions (current; SPEC 011 replaces with explicit tags)
 
-- Layer groups become folders in the output structure.
-- Hidden layers are skipped.
-- Layer name prefix `_` excludes the layer (artist annotation).
-- Trim alpha by default; configurable via the panel.
-- Sprite-frame group detection: numeric children inside a layer group (primary) + `<name>_<index>` flat-naming fallback.
+- Layer groups become folders in the output structure (names join with `__`).
+- Hidden layers are skipped (toggleable).
+- Layer name prefix `_` excludes the layer (toggleable). SPEC 011 retires this in favour of `[ignore]`.
+- Sprite-frame group detection: numeric children inside a layer group (primary) plus `<name>_<index>` flat-naming fallback. SPEC 011 retires the flat fallback in favour of explicit `[spritesheet]` group tags.
 
 ## File system in UXP
 
 UXP sandboxes file system access. Use the `require("uxp").storage` API:
 
 - `localFileSystem.getFolder()` opens the user-picked output folder.
-- `entry.createFile(name, { overwrite: true })` writes a sibling PNG or the manifest JSON.
-- Direct `File` constructor from ExtendScript is **not** available.
+- `localFileSystem.getFileForOpening({ types: ["json"] })` opens a single file (used for the manifest import path).
+- `localFileSystem.createPersistentToken(entry)` + `localStorage` lets the folder survive plugin reloads.
+- `entry.createFile(name, { overwrite: true })` writes a PNG or the manifest JSON.
 
-The user picks an export folder once per session; the plugin writes the manifest + PNGs as siblings inside it.
+Required permission: `"localFileSystem": "request"` in `plugin/manifest.json` is sufficient as long as every write happens inside a folder the user picked. `"fullAccess"` is not needed for this plugin.
 
 ## Dev loop
 
 ```sh
 pnpm install
-pnpm run typecheck   # tsc --noEmit; gates IDE + CI before bundling
+pnpm run typecheck   # tsc --noEmit
+pnpm run test        # vitest run
 pnpm run build       # webpack into dist/
 pnpm run uxp:load    # load plugin into Photoshop via UDT
 pnpm run uxp:watch   # rebuild + reload on src changes
 pnpm run uxp:debug   # open Chrome DevTools attached to the plugin
 ```
 
-`npm run ...` works as a fallback if a contributor has not installed pnpm; the lockfile shape will diverge but the build is the same.
-
 Adobe UXP Developer Tool (UDT) must be installed and connected. Documentation: <https://developer.adobe.com/photoshop/uxp/2022/guides/>.
+
+When pointing UDT at the plugin, target the built `dist/manifest.json`, not the source `plugin/manifest.json` - the source manifest references files that only exist after webpack runs (the bundled `index.js`, the copied `index.html`).
+
+## UXP gotchas (collected during the SPEC 010 port)
+
+- `app.documents.add({ mode, fill })` rejects bare strings - pass `constants.NewDocumentMode.RGB` and `constants.DocumentFill.TRANSPARENT` (uppercase keys).
+- `Document.trim(trimType, top, bottom, left, right)` takes positional args, not an options bag.
+- `file.write(string)` defaults to utf8. Passing `{ format: "utf8" }` errors with "Format must be storage.formats.utf8 or storage.formats.binary" - drop the option.
+- `manifestVersion: 5` with `launchProcess` declared but unused makes the plugin Validate but fail Load. Declare only the permissions the plugin actually uses.
+- The HTML `<script>` injection at the top of `plugin/index.html` (`globalThis.screen = {}` and `WebSocket.prototype.OPEN`) is required by the React + UXP combination; do not remove.
 
 ## Testing
 
-Headless plugin testing is limited. Manual flow:
+Unit tests for the pure planner + validator live under `uxp-plugin-tests/` and run via vitest. PS DOM operations stay manual.
 
-1. Open a sample `.psd` (use `examples/generated/simple_psd/source.psd`).
-2. Run the plugin.
-3. Verify the manifest JSON validates against `psd_manifest.schema.json` (use `check-jsonschema` from CI).
-4. Verify PNG sidecars exist with expected names and sizes.
-
-Add unit tests under `uxp-plugin-tests/` for pure functions (layer-tree walk, name sanitization, manifest builder). DOM operations stay manual.
-
-## Migration from JSX (historical)
-
-`proscenio_export.jsx` and `proscenio_import.jsx` implement the v1 manifest contract. The port forward:
-
-- Layer walk recursion: TypeScript with proper types.
-- `app.activeDocument.layers`: `require("photoshop").app.activeDocument.layers` (UXP DOM).
-- `File` writes: UXP storage API.
-- Dialogs: React panel.
-
-The schema does not change. A successful port produces byte-identical manifest output for the same `.psd`.
+Manual smoke test: load the plugin in UDT, run the exporter against `examples/authored/doll/02_from_photoshop/doll.psd`, diff the output against the captured oracle baseline under `examples/authored/doll/02_from_photoshop/uxp_export/` (gitignored; regenerable per the SPEC 010 Wave 10.3 procedure).
 
 ## Reference prior art
 
@@ -122,4 +119,3 @@ The schema does not change. A successful port produces byte-identical manifest o
 - UXP Photoshop API reference: <https://developer.adobe.com/photoshop/uxp/2022/ps_reference/>
 - UXP storage (file system): <https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/Modules/uxp/Persistent%20File%20Storage/>
 - Adobe UXP plugin samples (React starter): <https://github.com/AdobeDocs/uxp-photoshop-plugin-samples>
-- `coa_tools2/Photoshop/coa_export.jsx` historical JSX prior art only - do not port forward; schema target differs.

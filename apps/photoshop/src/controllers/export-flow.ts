@@ -45,18 +45,31 @@ export interface ExportPreview {
 }
 
 export function previewExport(opts: ExportOptions): ExportPreview {
-    const doc = app.activeDocument;
-    if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
-    const adapted = adaptDocument(doc);
-    const plan = buildExportPlan(adapted.info, adapted.layers, {
-        ...opts,
-        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
-    });
-    const errors = validateManifest(plan.manifest);
-    if (errors.length > 0) {
-        return { kind: "validation-failed", manifest: plan.manifest, skipped: plan.skipped, writes: plan.writes, errors };
+    try {
+        const doc = app.activeDocument;
+        if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
+        const adapted = adaptDocument(doc);
+        const plan = buildExportPlan(adapted.info, adapted.layers, {
+            ...opts,
+            ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+        });
+        const errors = validateManifest(plan.manifest);
+        if (errors.length > 0) {
+            return {
+                kind: "validation-failed",
+                manifest: plan.manifest,
+                skipped: plan.skipped,
+                writes: plan.writes,
+                errors,
+            };
+        }
+        return { kind: "ok", manifest: plan.manifest, skipped: plan.skipped, writes: plan.writes };
+    } catch (err) {
+        return {
+            kind: "validation-failed",
+            errors: [`preview failed: ${err instanceof Error ? err.message : String(err)}`],
+        };
     }
-    return { kind: "ok", manifest: plan.manifest, skipped: plan.skipped, writes: plan.writes };
 }
 
 export async function runExport(

@@ -34,8 +34,18 @@ export function adaptDocument(doc: PsDocument): AdaptedDocument {
             height: doc.height,
         },
         layers: doc.layers.map(adaptLayer),
-        ...optionalAnchor(extractAnchor(doc.guides)),
+        ...optionalAnchor(safeAnchor(doc)),
     };
+}
+
+function safeAnchor(doc: PsDocument): [number, number] | undefined {
+    try {
+        return extractAnchor(doc.guides);
+    } catch {
+        // Some PS / UXP builds throw on `doc.guides` access instead of
+        // returning undefined. Treat any failure as "no anchor".
+        return undefined;
+    }
 }
 
 function optionalAnchor(anchor: [number, number] | undefined): { anchor?: [number, number] } {

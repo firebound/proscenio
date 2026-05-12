@@ -68,7 +68,6 @@ def import_manifest(
     armature_obj = build_root_armature(
         name=_armature_name(manifest),
         root_bone_name=root_bone_name,
-        anchor_world=_anchor_world(manifest),
     )
     result = ImportResult(armature=armature_obj)
     for layer in manifest.layers:
@@ -88,25 +87,6 @@ def import_manifest(
     if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
-
-
-def _anchor_world(manifest: psd_manifest.Manifest) -> tuple[float, float, float] | None:
-    """Convert manifest's ``anchor`` (PSD pixels) to a world position.
-
-    Mirrors the PSD-pixels-to-world transform used by `_layer_placement`
-    in `planes.py`: ``(anchor_x - doc_w/2) / ppu`` on X, ``(doc_h/2 -
-    anchor_y) / ppu`` on Z, zero on Y (no per-layer Z_EPSILON offset
-    for the armature root). Returns ``None`` when the manifest has no
-    anchor so the armature stays at the world origin.
-    """
-    anchor = manifest.anchor
-    if anchor is None:
-        return None
-    doc_w, doc_h = manifest.size
-    ppu = manifest.pixels_per_unit
-    ax = (anchor[0] - doc_w / 2.0) / ppu
-    az = (doc_h / 2.0 - anchor[1]) / ppu
-    return (ax, 0.0, az)
 
 
 def _anchor_meshes_at_feet(

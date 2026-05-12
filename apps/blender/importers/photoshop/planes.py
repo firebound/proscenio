@@ -57,6 +57,7 @@ def stamp_polygon(
         manifest.pixels_per_unit,
         layer.z_order,
         layer.origin,
+        manifest.anchor,
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
     _set_world_position(obj, placement.location)
@@ -94,6 +95,7 @@ def stamp_sprite_frame(
         manifest.pixels_per_unit,
         layer.z_order,
         layer.origin,
+        manifest.anchor,
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
     _set_world_position(obj, placement.location)
@@ -124,13 +126,26 @@ def _layer_placement(
     pixels_per_unit: float,
     z_order: int,
     origin_px: tuple[int, int] | None,
+    anchor_px: tuple[int, int] | None,
 ) -> _Placement:
-    """Translate PSD pixel coords + optional origin into Blender world placement."""
+    """Translate PSD pixel coords + optional origin / anchor into Blender world placement.
+
+    The Spine-style ``anchor`` (when set) becomes the world origin
+    (0, 0, 0): every layer's PSD pixel position is re-zeroed against
+    it. Without an anchor the importer falls back to canvas-centered
+    placement (legacy behaviour for fixtures authored before SPEC 011).
+    """
     px_x, px_y = position_px
     px_w, px_h = size_px
     doc_w, doc_h = doc_size_px
-    bbox_cx = (px_x + px_w / 2.0 - doc_w / 2.0) / pixels_per_unit
-    bbox_cz = (doc_h / 2.0 - px_y - px_h / 2.0) / pixels_per_unit
+    if anchor_px is None:
+        ref_x = doc_w / 2.0
+        ref_y = doc_h / 2.0
+    else:
+        ref_x = float(anchor_px[0])
+        ref_y = float(anchor_px[1])
+    bbox_cx = (px_x + px_w / 2.0 - ref_x) / pixels_per_unit
+    bbox_cz = (ref_y - px_y - px_h / 2.0) / pixels_per_unit
     cy = z_order * Z_EPSILON
     sx = px_w / pixels_per_unit
     sz = px_h / pixels_per_unit
@@ -141,8 +156,8 @@ def _layer_placement(
             geometry_offset=(0.0, 0.0),
         )
     origin_x, origin_y = origin_px
-    ox = (origin_x - doc_w / 2.0) / pixels_per_unit
-    oz = (doc_h / 2.0 - origin_y) / pixels_per_unit
+    ox = (origin_x - ref_x) / pixels_per_unit
+    oz = (ref_y - origin_y) / pixels_per_unit
     return _Placement(
         location=(ox, cy, oz),
         size=(sx, sz),

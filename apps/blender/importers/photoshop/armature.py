@@ -19,16 +19,12 @@ ROOT_BONE_LENGTH = 0.05
 def build_root_armature(
     name: str,
     root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
-    anchor_world: tuple[float, float, float] | None = None,
 ) -> bpy.types.Object:
-    """Create a fresh armature with a single root-level bone, return the object.
+    """Create a fresh armature with a single root-level bone at the world origin.
 
-    When ``anchor_world`` is provided the *root bone* head sits at that
-    location while the armature object itself stays at the world
-    origin (SPEC 011 D6 PSD-guide anchor). Meshes parented to the
-    armature object therefore keep their canvas-relative world
-    positions; only the rig's grab handle (the bone) moves to the
-    artist-chosen pivot.
+    Under the SPEC 011 Spine-style anchor model the manifest's anchor
+    re-zeros every layer's world position, so the bone always sits at
+    (0, 0, 0) and represents the artist-chosen pivot.
     """
     arm_data = bpy.data.armatures.new(name)
     arm_obj = bpy.data.objects.new(name, arm_data)
@@ -36,8 +32,7 @@ def build_root_armature(
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new(root_bone_name)
-    head = (0.0, 0.0, 0.0) if anchor_world is None else anchor_world
-    bone.head = head
-    bone.tail = (head[0], head[1], head[2] + ROOT_BONE_LENGTH)
+    bone.head = (0.0, 0.0, 0.0)
+    bone.tail = (0.0, 0.0, ROOT_BONE_LENGTH)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

@@ -152,9 +152,19 @@ declare module "photoshop" {
         // also accepts plain numbers as pixels.
         translate(deltaX: number, deltaY: number): Promise<void>;
         delete(): Promise<void>;
+        // Flatten a LayerSet's children into a single pixel layer.
+        // No-op / error on art layers; we only call it on groups.
+        merge(): Promise<PsLayer>;
         // Move into a different parent (group / document). Used to drop
         // a duplicated layer inside a LayerSet during sprite_frame import.
         move(parent: PsLayer | PsDocument, placement: number): Promise<void>;
+    }
+
+    export interface PsGuide {
+        // UXP exposes guides as `{ direction: "horizontal" | "vertical", coordinate: number }`.
+        // `coordinate` is in document pixels.
+        readonly direction: "horizontal" | "vertical";
+        readonly coordinate: number;
     }
 
     export interface PsDocument {
@@ -165,6 +175,7 @@ declare module "photoshop" {
         readonly layerTree?: PsLayer[];
         readonly saved: boolean;
         readonly path: string | null;
+        readonly guides?: PsGuide[];
         trim(trimType: number, top?: boolean, bottom?: boolean, left?: boolean, right?: boolean): Promise<void>;
         closeWithoutSaving(): Promise<void>;
         // Create an empty layer group at the top of the stack.

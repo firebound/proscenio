@@ -10,7 +10,6 @@ import type { ExportOptions } from "../domain/planner";
 
 const DEFAULT_OPTS: ExportOptions = {
     skipHidden: true,
-    skipUnderscorePrefix: true,
 };
 
 export interface UseExportFlow {

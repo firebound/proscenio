@@ -16,7 +16,13 @@ import { app, core } from "photoshop";
 import type { UxpFolder } from "uxp";
 
 import { adaptDocument } from "../adapters/photoshop-layer";
-import { buildExportPlan, type ExportOptions } from "../domain/planner";
+import {
+    buildExportPlan,
+    type ExportOptions,
+    type ExportPlan,
+    type SkippedLayer,
+} from "../domain/planner";
+import type { Manifest } from "../domain/manifest";
 import { validateManifest } from "../io/manifest-validator";
 import { writeManifest } from "../io/manifest-writer";
 import { runWrites, type PngWriteResult } from "../io/png-writer";
@@ -30,6 +36,42 @@ export interface ExportFlowResult {
     errors?: string[];
 }
 
+export interface ExportPreview {
+    kind: "ok" | "no-document" | "validation-failed";
+    manifest?: Manifest;
+    skipped?: SkippedLayer[];
+    writes?: ExportPlan["writes"];
+    errors?: string[];
+}
+
+export function previewExport(opts: ExportOptions): ExportPreview {
+    try {
+        const doc = app.activeDocument;
+        if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
+        const adapted = adaptDocument(doc);
+        const plan = buildExportPlan(adapted.info, adapted.layers, {
+            ...opts,
+            ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+        });
+        const errors = validateManifest(plan.manifest);
+        if (errors.length > 0) {
+            return {
+                kind: "validation-failed",
+                manifest: plan.manifest,
+                skipped: plan.skipped,
+                writes: plan.writes,
+                errors,
+            };
+        }
+        return { kind: "ok", manifest: plan.manifest, skipped: plan.skipped, writes: plan.writes };
+    } catch (err) {
+        return {
+            kind: "validation-failed",
+            errors: [`preview failed: ${err instanceof Error ? err.message : String(err)}`],
+        };
+    }
+}
+
 export async function runExport(
     opts: ExportOptions,
     folder: UxpFolder,
@@ -40,7 +82,10 @@ export async function runExport(
     }
 
     const adapted = adaptDocument(doc);
-    const plan = buildExportPlan(adapted.info, adapted.layers, opts);
+    const plan = buildExportPlan(adapted.info, adapted.layers, {
+        ...opts,
+        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+    });
 
     const errors = validateManifest(plan.manifest);
     if (errors.length > 0) {

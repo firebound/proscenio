@@ -31,7 +31,7 @@ from core.psd_manifest import (  # noqa: E402
 
 def _valid_doc() -> dict:
     return {
-        "format_version": 1,
+        "format_version": 2,
         "doc": "doll.psd",
         "size": [1024, 1024],
         "pixels_per_unit": 100,
@@ -62,7 +62,7 @@ def _valid_doc() -> dict:
 def test_parse_returns_manifest_with_typed_layers() -> None:
     manifest = psd_manifest.parse(_valid_doc())
     assert isinstance(manifest, Manifest)
-    assert manifest.format_version == 1
+    assert manifest.format_version == 2
     assert manifest.doc == "doll.psd"
     assert manifest.size == (1024, 1024)
     assert manifest.pixels_per_unit == pytest.approx(100.0)
@@ -113,7 +113,7 @@ def test_load_invalid_json_raises(tmp_path: Path) -> None:
 
 def test_reject_unsupported_format_version() -> None:
     doc = _valid_doc()
-    doc["format_version"] = 2
+    doc["format_version"] = 99
     with pytest.raises(ManifestError, match="format_version"):
         psd_manifest.parse(doc)
 

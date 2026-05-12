@@ -71,7 +71,7 @@ def import_manifest(
     )
     result = ImportResult(armature=armature_obj)
     for layer in manifest.layers:
-        if layer.kind == "polygon":
+        if layer.kind == "polygon" or layer.kind == "mesh":
             obj = stamp_polygon(layer, manifest, armature_obj)
             if obj is not None:
                 result.meshes.append(obj)

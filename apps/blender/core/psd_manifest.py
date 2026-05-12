@@ -27,13 +27,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
-MANIFEST_FORMAT_VERSION = 1
+MANIFEST_FORMAT_VERSION = 2
 
 _ROOT = "<root>"
 
-LayerKind = Literal["polygon", "sprite_frame"]
+LayerKind = Literal["polygon", "sprite_frame", "mesh"]
 
 
 @dataclass(frozen=True)
@@ -44,16 +44,22 @@ class FrameRef:
     path: str  # relative to the manifest file
 
 
+BlendMode = Literal["normal", "multiply", "screen", "additive"]
+
+
 @dataclass(frozen=True)
 class PolygonLayer:
-    """Single PNG → single quad mesh."""
+    """Single PNG → single quad mesh. ``mesh`` is a deformable polygon hint."""
 
-    kind: Literal["polygon"]
+    kind: Literal["polygon", "mesh"]
     name: str
     path: str
     position: tuple[int, int]
     size: tuple[int, int]
     z_order: int
+    origin: tuple[int, int] | None = None
+    blend_mode: BlendMode | None = None
+    subfolder: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +72,9 @@ class SpriteFrameLayer:
     size: tuple[int, int]
     z_order: int
     frames: tuple[FrameRef, ...]
+    origin: tuple[int, int] | None = None
+    blend_mode: BlendMode | None = None
+    subfolder: str | None = None
 
 
 Layer = PolygonLayer | SpriteFrameLayer
@@ -81,6 +90,7 @@ class Manifest:
     pixels_per_unit: float
     layers: tuple[Layer, ...]
     source_path: Path  # the manifest file itself; used to resolve relative paths
+    anchor: tuple[int, int] | None = None
 
 
 class ManifestError(Exception):
@@ -121,6 +131,9 @@ def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     if not isinstance(layers_raw, list):
         raise ManifestError(f"{_ROOT}.layers must be an array, got {type(layers_raw).__name__}")
     layers = tuple(_parse_layer(entry, idx) for idx, entry in enumerate(layers_raw))
+    anchor = None
+    if "anchor" in raw:
+        anchor = _parse_uint_pair(raw["anchor"], f"{_ROOT}.anchor")
     return Manifest(
         format_version=fv,
         doc=doc,
@@ -128,6 +141,7 @@ def parse(raw: Any, source_path: Path | None = None) -> Manifest:
         pixels_per_unit=float(ppu),
         layers=layers,
         source_path=Path(source_path) if source_path is not None else Path("."),
+        anchor=anchor,
     )
 
 
@@ -136,33 +150,69 @@ def resolve_path(manifest: Manifest, relative: str) -> Path:
     return (manifest.source_path.parent / relative).resolve()
 
 
+_BLEND_MODES: frozenset[str] = frozenset(("normal", "multiply", "screen", "additive"))
+_POLYGON_KEYS: frozenset[str] = frozenset(
+    (
+        "kind",
+        "name",
+        "path",
+        "position",
+        "size",
+        "z_order",
+        "origin",
+        "blend_mode",
+        "subfolder",
+    )
+)
+_SPRITE_FRAME_KEYS: frozenset[str] = frozenset(
+    (
+        "kind",
+        "name",
+        "position",
+        "size",
+        "z_order",
+        "frames",
+        "origin",
+        "blend_mode",
+        "subfolder",
+    )
+)
+
+
 def _parse_layer(entry: Any, idx: int) -> Layer:
     label = f"<root>.layers[{idx}]"
     _require_dict(entry, label)
     kind = _require_field(entry, "kind", label)
-    if kind == "polygon":
-        return _parse_polygon(entry, label)
+    if kind == "polygon" or kind == "mesh":
+        return _parse_polygon(entry, label, kind)
     if kind == "sprite_frame":
         return _parse_sprite_frame(entry, label)
-    raise ManifestError(f"{label}.kind must be 'polygon' or 'sprite_frame', got {kind!r}")
+    raise ManifestError(f"{label}.kind must be 'polygon', 'mesh', or 'sprite_frame', got {kind!r}")
 
 
-def _parse_polygon(entry: dict[str, Any], label: str) -> PolygonLayer:
+def _parse_polygon(
+    entry: dict[str, Any],
+    label: str,
+    kind: Literal["polygon", "mesh"],
+) -> PolygonLayer:
     name = _require_str(entry, "name", label)
     path = _require_str(entry, "path", label)
     position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")
     size = _parse_uint_pair(_require_field(entry, "size", label), f"{label}.size")
     z_order = _require_uint(entry, "z_order", label)
-    extra = set(entry) - {"kind", "name", "path", "position", "size", "z_order"}
+    extra = set(entry) - _POLYGON_KEYS
     if extra:
         raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
     return PolygonLayer(
-        kind="polygon",
+        kind=kind,
         name=name,
         path=path,
         position=position,
         size=size,
         z_order=z_order,
+        origin=_optional_uint_pair(entry, "origin", label),
+        blend_mode=_optional_blend_mode(entry, label),
+        subfolder=_optional_str(entry, "subfolder", label),
     )
 
 
@@ -175,7 +225,7 @@ def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
     if not isinstance(frames_raw, list) or len(frames_raw) < 2:
         raise ManifestError(f"{label}.frames must be an array of >= 2 entries, got {frames_raw!r}")
     frames = tuple(_parse_frame(f, f"{label}.frames[{i}]") for i, f in enumerate(frames_raw))
-    extra = set(entry) - {"kind", "name", "position", "size", "z_order", "frames"}
+    extra = set(entry) - _SPRITE_FRAME_KEYS
     if extra:
         raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
     return SpriteFrameLayer(
@@ -185,7 +235,36 @@ def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
         size=size,
         z_order=z_order,
         frames=frames,
+        origin=_optional_uint_pair(entry, "origin", label),
+        blend_mode=_optional_blend_mode(entry, label),
+        subfolder=_optional_str(entry, "subfolder", label),
     )
+
+
+def _optional_uint_pair(entry: dict[str, Any], key: str, label: str) -> tuple[int, int] | None:
+    if key not in entry:
+        return None
+    return _parse_uint_pair(entry[key], f"{label}.{key}")
+
+
+def _optional_str(entry: dict[str, Any], key: str, label: str) -> str | None:
+    if key not in entry:
+        return None
+    value = entry[key]
+    if not isinstance(value, str) or not value:
+        raise ManifestError(f"{label}.{key} must be a non-empty string, got {value!r}")
+    return value
+
+
+def _optional_blend_mode(entry: dict[str, Any], label: str) -> BlendMode | None:
+    if "blend_mode" not in entry:
+        return None
+    value = entry["blend_mode"]
+    if value not in _BLEND_MODES:
+        raise ManifestError(
+            f"{label}.blend_mode must be one of {sorted(_BLEND_MODES)}, got {value!r}"
+        )
+    return cast("BlendMode", value)
 
 
 def _parse_frame(entry: Any, label: str) -> FrameRef:

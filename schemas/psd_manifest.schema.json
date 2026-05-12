@@ -2,15 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json",
   "title": "Proscenio PSD manifest",
-  "description": "Output of the Proscenio Photoshop JSX exporter; input of the Proscenio Blender importer (SPEC 006).",
+  "description": "Output of the Proscenio Photoshop UXP exporter; input of the Proscenio Blender importer.",
   "type": "object",
   "required": ["format_version", "doc", "size", "pixels_per_unit", "layers"],
   "additionalProperties": false,
   "properties": {
     "format_version": {
       "type": "integer",
-      "const": 1,
-      "description": "Bump on any breaking change to the shape of this document."
+      "const": 2,
+      "description": "Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in SPEC 011 (anchor, per-entry origin, blend_mode, subfolder, kind: mesh)."
     },
     "doc": {
       "type": "string",
@@ -24,7 +24,11 @@
     "pixels_per_unit": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Blender pixels-per-unit factor; importer divides PSD pixels by this when stamping mesh size and position."
+      "description": "Importer divides PSD pixels by this when stamping mesh size and position."
+    },
+    "anchor": {
+      "$ref": "#/$defs/uint_pair",
+      "description": "Document anchor in PSD pixels. Set by the first horizontal + vertical PSD guide; importer places the root bone here. Omitted when no guides were authored."
     },
     "layers": {
       "type": "array",
@@ -48,14 +52,20 @@
       "minItems": 2,
       "maxItems": 2
     },
+    "blend_mode": {
+      "type": "string",
+      "enum": ["normal", "multiply", "screen", "additive"],
+      "description": "Layer blend mode emitted from the PSD; importer maps to material blend mode."
+    },
     "polygon_layer": {
       "type": "object",
       "required": ["kind", "name", "path", "position", "size", "z_order"],
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "const": "polygon",
-          "description": "Single PNG, single quad mesh."
+          "type": "string",
+          "enum": ["polygon", "mesh"],
+          "description": "polygon = single PNG, single quad mesh. mesh = polygon flagged as deformable mesh source (SPEC 002 / 008 hint; renders as polygon when no rig is bound)."
         },
         "name": { "type": "string", "minLength": 1 },
         "path": {
@@ -74,6 +84,18 @@
         "z_order": {
           "$ref": "#/$defs/uint",
           "description": "Stack index, 0 = top."
+        },
+        "origin": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "Optional pivot in PSD pixels. Set by the [origin:x,y] tag or by an [origin] marker layer inside the group. Importer uses this as the mesh's Object.location when present; falls back to bbox center otherwise."
+        },
+        "blend_mode": {
+          "$ref": "#/$defs/blend_mode"
+        },
+        "subfolder": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional output sub-folder under images/, set by the [folder:name] tag. Importer ignores; this is purely a disk-layout hint reflected in `path`."
         }
       }
     },
@@ -84,7 +106,7 @@
       "properties": {
         "kind": {
           "const": "sprite_frame",
-          "description": "N frames, single quad mesh, animated via proscenio.frame."
+          "description": "N frames, single quad mesh, animated via proscenio.frame. Authored as a LayerSet tagged [spritesheet]."
         },
         "name": { "type": "string", "minLength": 1 },
         "position": {
@@ -96,6 +118,17 @@
           "description": "Largest frame bbox size in pixels (importer pads smaller frames to match)."
         },
         "z_order": { "$ref": "#/$defs/uint" },
+        "origin": {
+          "$ref": "#/$defs/uint_pair",
+          "description": "Optional pivot in PSD pixels (see polygon_layer.origin)."
+        },
+        "blend_mode": {
+          "$ref": "#/$defs/blend_mode"
+        },
+        "subfolder": {
+          "type": "string",
+          "minLength": 1
+        },
         "frames": {
           "type": "array",
           "minItems": 2,

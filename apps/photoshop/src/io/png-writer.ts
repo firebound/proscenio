@@ -38,7 +38,7 @@ export async function runWrites(
             continue;
         }
         const file = await ensureOutputFile(folder, write.outputPath);
-        const wrote = await writeLayerPng(sourceDoc, layer, file);
+        const wrote = await writeLayerPng(sourceDoc, layer, file, write.merge === true);
         results.push({ outputPath: write.outputPath, ok: wrote });
     }
     return results;
@@ -48,6 +48,7 @@ async function writeLayerPng(
     sourceDoc: PsDocument,
     layer: PsLayer,
     file: UxpFile,
+    merge: boolean,
 ): Promise<boolean> {
     // UXP rejects bare string mode / fill names ("RGB", "transparent")
     // with "Invalid constant. Expected 'RGB' to be one of
@@ -61,12 +62,15 @@ async function writeLayerPng(
         mode: constants.NewDocumentMode.RGB,
     });
     try {
-        await layer.duplicate(work);
-        // UXP Document.trim takes positional args, not an options bag:
-        // trim(trimType, top, bottom, left, right). Passing an object
-        // surfaces as "Invalid value of '{...}' for the type
-        // 'Constants.TrimType'" since the whole object lands on the
-        // first parameter.
+        const duplicated = await layer.duplicate(work);
+        if (merge) {
+            // `[merge]` group: flatten the duplicated group into a
+            // single pixel layer inside the temp doc. PS surfaces this
+            // as `Layer.merge()` on a group layer; the result is one
+            // pixel layer occupying the union of the descendants.
+            await duplicated.merge();
+        }
+        // UXP Document.trim takes positional args, not an options bag.
         await work.trim(constants.TrimType.TRANSPARENT, true, true, true, true);
         await work.saveAs.png(file, { compression: 9, interlaced: false }, true);
         return true;

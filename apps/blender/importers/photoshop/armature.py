@@ -20,7 +20,12 @@ def build_root_armature(
     name: str,
     root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
 ) -> bpy.types.Object:
-    """Create a fresh armature with a single root-level bone, return the object."""
+    """Create a fresh armature with a single root-level bone at the world origin.
+
+    Under the SPEC 011 Spine-style anchor model the manifest's anchor
+    re-zeros every layer's world position, so the bone always sits at
+    (0, 0, 0) and represents the artist-chosen pivot.
+    """
     arm_data = bpy.data.armatures.new(name)
     arm_obj = bpy.data.objects.new(name, arm_data)
     bpy.context.scene.collection.objects.link(arm_obj)

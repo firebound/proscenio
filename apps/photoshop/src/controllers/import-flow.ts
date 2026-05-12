@@ -78,10 +78,10 @@ async function stampEntry(
     folder: UxpFolder,
     warnings: string[],
 ): Promise<boolean> {
-    if (entry.kind === "polygon") {
-        return stampPolygon(doc, entry, folder, warnings);
+    if (entry.kind === "sprite_frame") {
+        return stampSpriteFrame(doc, entry, folder, warnings);
     }
-    return stampSpriteFrame(doc, entry, folder, warnings);
+    return stampPolygon(doc, entry, folder, warnings);
 }
 
 async function stampPolygon(

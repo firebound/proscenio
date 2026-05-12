@@ -61,7 +61,7 @@ MANIFEST_OUT = PHOTOSHOP_OUT_DIR / "doll.photoshop_manifest.json"
 PIXELS_PER_UNIT = 1000.0
 CANVAS_PADDING_PX = 32
 SKIP_MESHES: set[str] = {"joints"}
-MANIFEST_FORMAT_VERSION = 1
+MANIFEST_FORMAT_VERSION = 2
 
 
 def main() -> None:

@@ -27,13 +27,6 @@ export const ExportSection: React.FC<Props> = ({
         [onToggleOption],
     );
 
-    const onSkipUnderscore = React.useCallback(
-        (e: React.SyntheticEvent) => {
-            onToggleOption("skipUnderscorePrefix", (e.target as HTMLInputElement).checked);
-        },
-        [onToggleOption],
-    );
-
     return (
         <>
             <section className="section">
@@ -41,12 +34,9 @@ export const ExportSection: React.FC<Props> = ({
                 <sp-checkbox checked={opts.skipHidden ? true : undefined} onChange={onSkipHidden}>
                     Skip hidden layers
                 </sp-checkbox>
-                <sp-checkbox
-                    checked={opts.skipUnderscorePrefix ? true : undefined}
-                    onChange={onSkipUnderscore}
-                >
-                    Skip layers starting with _
-                </sp-checkbox>
+                <sp-body size="XS" className="muted">
+                    Use the [ignore] tag in a layer or group name to exclude it from the export.
+                </sp-body>
             </section>
             <sp-action-button onClick={onExport} disabled={disabled ? true : undefined}>
                 {busy ? "Exporting..." : "Export manifest + PNGs"}

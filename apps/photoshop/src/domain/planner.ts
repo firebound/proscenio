@@ -1,45 +1,39 @@
-// Pure manifest builder. Mirrors `apps/photoshop/proscenio_export.jsx`
-// semantics in TypeScript, decoupled from the Photoshop API surface so
-// it can be unit-tested against synthetic layer trees.
+// Pure manifest builder (SPEC 011 v2).
 //
-// `buildExportPlan` returns the manifest plus a parallel list of PNG
-// writes - each one carries the chain of layer names from the document
-// root down to the source art layer. The Photoshop adapter walks that
-// chain in the live PsDocument to find the layer to duplicate + save.
-// Keeping the chain out of the manifest itself preserves the v1
-// contract while letting the materialiser stay declarative.
+// Drives the layer walk through the bracket-tag parser:
 //
-// Convention parity with the JSX exporter:
+// - `[ignore]` removes a layer / group from the export.
+// - `[spritesheet]` marks a group as a sprite_frame source explicitly;
+//   auto-detection still triggers for groups whose children are all
+//   pure digits (`0`, `1`, ...).
+// - `[polygon]` / `[sprite]` / `[mesh]` override `kind` on the entry.
+// - `[folder:name]` and `[path:name]` rewrite the on-disk PNG path.
+// - `[scale:n]` rescales the bounds before they reach the manifest.
+// - `[blend:mode]` writes the v2 `blend_mode` field.
+// - `[origin:x,y]` sets an explicit pivot in PSD pixels.
 //
-// - Hidden layers and `_`-prefixed names are skipped when the matching
-//   option is set (`skipHidden` / `skipUnderscorePrefix`).
-// - A LayerSet whose visible non-set children all match a uniform
-//   indexed-frame convention (digits, `frame_<n>`, or `<base>_<n>`)
-//   collapses into a single `sprite_frame` entry. Sprite-frame child
-//   filtering ignores the `skipUnderscorePrefix` toggle - it is always
-//   on inside a frame group, otherwise users would lose `_underscore`
-//   helper frames silently.
-// - Top-level siblings matching the flat `<base>_<n>` convention are
-//   aggregated post-walk via `aggregateFlatSpriteFrames` (D9 fallback
-//   for authors who do not nest their frames in a group).
-// - Names join through groups with `__`. The manifest entry `name`
-//   keeps the joined human form; `path` uses the sanitized form.
+// The legacy v1 paths are gone (no `_` prefix skip, no flat
+// `<base>_<index>` sprite_frame aggregation). Buildchain tested
+// against the synthetic Layer fixture set in
+// `uxp-plugin-tests/planner.test.ts`.
 
 import type { ArtLayer, Layer, LayerBounds, LayerSet } from "./layer";
 import {
     DEFAULT_PIXELS_PER_UNIT,
     MANIFEST_FORMAT_VERSION,
+    type BlendMode,
     type FrameEntry,
     type Manifest,
     type ManifestEntry,
     type PolygonEntry,
     type SpriteFrameEntry,
 } from "./manifest";
+import { parseLayerName, type TagBag } from "./tag-parser";
 
 export interface ExportOptions {
     skipHidden: boolean;
-    skipUnderscorePrefix: boolean;
     pixelsPerUnit?: number;
+    anchor?: [number, number];
 }
 
 export interface DocumentInfo {
@@ -48,12 +42,6 @@ export interface DocumentInfo {
     height: number;
 }
 
-// One PNG the materialiser must write. `layerPath` is the chain of
-// layer names from the document root down to the leaf art layer
-// (e.g. ["body", "upper", "torso"]); the adapter walks this in the
-// live PsDocument to find the source layer. `outputPath` is the
-// manifest-relative path the materialiser writes to - matches the
-// `path` field on the corresponding polygon or frame entry.
 export interface PngWrite {
     layerPath: string[];
     outputPath: string;
@@ -62,6 +50,12 @@ export interface PngWrite {
 export interface ExportPlan {
     manifest: Manifest;
     writes: PngWrite[];
+}
+
+interface ParsedLayer {
+    raw: Layer;
+    displayName: string;
+    tags: TagBag;
 }
 
 export function buildManifest(
@@ -79,162 +73,148 @@ export function buildExportPlan(
 ): ExportPlan {
     const planned: PlannedEntry[] = [];
     const zCounter = { value: 0 };
-    walkLayers(layers, "", [], planned, zCounter, opts);
-    const aggregated = aggregateFlatSpriteFrames(planned);
+    walkLayers(parseChildren(layers), "", [], planned, zCounter, opts);
     const manifest: Manifest = {
         format_version: MANIFEST_FORMAT_VERSION,
         doc: doc.name,
         size: [doc.width, doc.height],
         pixels_per_unit: opts.pixelsPerUnit ?? DEFAULT_PIXELS_PER_UNIT,
-        layers: aggregated.map(toManifestEntry),
+        ...(opts.anchor === undefined ? {} : { anchor: opts.anchor }),
+        layers: planned.map(toManifestEntry),
     };
-    const writes = aggregated.flatMap(toWrites);
-    return { manifest, writes };
+    return { manifest, writes: planned.flatMap(toWrites) };
 }
 
-// Planner-internal entry. Mirrors the manifest entry shape but keeps
-// the source `layerPath` for each PNG so the materialiser can map back
-// to the live PsLayer. Stripped at the manifest boundary - never
-// serialised.
 type PlannedPolygon = PolygonEntry & { _layerPath: string[] };
 type PlannedSpriteFrame = SpriteFrameEntry & { _frameSources: string[][] };
 type PlannedEntry = PlannedPolygon | PlannedSpriteFrame;
 
-function toManifestEntry(entry: PlannedEntry): ManifestEntry {
-    if (entry.kind === "polygon") {
-        return {
-            kind: "polygon",
-            name: entry.name,
-            path: entry.path,
-            position: entry.position,
-            size: entry.size,
-            z_order: entry.z_order,
-        };
-    }
-    return {
-        kind: "sprite_frame",
-        name: entry.name,
-        position: entry.position,
-        size: entry.size,
-        z_order: entry.z_order,
-        frames: entry.frames,
-    };
-}
-
-function toWrites(entry: PlannedEntry): PngWrite[] {
-    if (entry.kind === "polygon") {
-        return [{ layerPath: entry._layerPath, outputPath: entry.path }];
-    }
-    return entry.frames.map((frame, i) => ({
-        layerPath: entry._frameSources[i],
-        outputPath: frame.path,
-    }));
+function parseChildren(children: Layer[]): ParsedLayer[] {
+    return children.map((raw) => {
+        const parsed = parseLayerName(raw.name);
+        return { raw, displayName: parsed.displayName, tags: parsed.tags };
+    });
 }
 
 function walkLayers(
-    layers: Layer[],
+    children: ParsedLayer[],
     prefix: string,
     layerPath: string[],
     out: PlannedEntry[],
     zCounter: { value: number },
     opts: ExportOptions,
 ): void {
-    for (const layer of layers) {
-        if (opts.skipHidden && !layer.visible) continue;
-        if (opts.skipUnderscorePrefix && layer.name.charAt(0) === "_") continue;
-        const childLayerPath = [...layerPath, layer.name];
-        if (layer.kind === "set") {
-            if (qualifiesAsSpriteFrameGroup(layer)) {
-                const entry = buildSpriteFrameEntry(layer, prefix, childLayerPath, zCounter.value);
-                if (entry !== null) {
-                    out.push(entry);
-                    zCounter.value += 1;
-                    continue;
-                }
-                // Group qualified as sprite_frame but the entry came
-                // back null (all frames had invalid / zero bounds).
-                // Fall through to the regular recursion so the group
-                // is still walked - otherwise a single empty frame
-                // would silently drop every valid sibling underneath.
-            }
-            const nested = prefix === "" ? layer.name : `${prefix}__${layer.name}`;
-            walkLayers(layer.layers, nested, childLayerPath, out, zCounter, opts);
+    for (const parsed of children) {
+        if (parsed.tags.ignore) continue;
+        if (opts.skipHidden && !parsed.raw.visible) continue;
+        const childPath = [...layerPath, parsed.raw.name];
+        if (parsed.raw.kind === "set") {
+            handleGroup(parsed, prefix, childPath, out, zCounter, opts);
             continue;
         }
-        const name = prefix === "" ? layer.name : `${prefix}__${layer.name}`;
-        const poly = buildPolygonEntry(layer, name, childLayerPath, zCounter.value);
-        if (poly !== null) {
-            out.push(poly);
+        // Origin marker layers contribute the parent group's pivot
+        // (handled when iterating set children); a marker at the top
+        // level has no parent group, so it is dropped silently.
+        if (parsed.tags.originMarker) continue;
+        const entry = buildPolygonEntry(
+            parsed.raw,
+            joinName(prefix, parsed.displayName),
+            childPath,
+            zCounter.value,
+            parsed.tags,
+        );
+        if (entry !== null) {
+            out.push(entry);
             zCounter.value += 1;
         }
     }
 }
 
-export function qualifiesAsSpriteFrameGroup(group: LayerSet): boolean {
-    const visibleChildren: ArtLayer[] = [];
-    for (const child of group.layers) {
-        if (!child.visible) continue;
-        if (child.name.charAt(0) === "_") continue;
-        if (child.kind === "set") return false;
-        visibleChildren.push(child);
-    }
-    if (visibleChildren.length < 2) return false;
+function handleGroup(
+    parsed: ParsedLayer,
+    prefix: string,
+    layerPath: string[],
+    out: PlannedEntry[],
+    zCounter: { value: number },
+    opts: ExportOptions,
+): void {
+    const group = parsed.raw as LayerSet;
+    const parsedChildren = parseChildren(group.layers);
+    const tagKind = parsed.tags.kind;
+    const explicitSpriteFrame = tagKind === "sprite_frame";
 
-    let convention: FrameConvention | null = null;
-    let sharedBase: string | null = null;
-    const indices: number[] = [];
-    for (const child of visibleChildren) {
-        const match = matchIndexedFrame(child.name);
-        if (match === null) return false;
-        if (convention === null) {
-            convention = match.convention;
-            sharedBase = match.base;
-        } else if (convention !== match.convention) {
-            return false;
-        } else if (sharedBase !== match.base) {
-            return false;
+    if (explicitSpriteFrame || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren))) {
+        const entry = buildSpriteFrameEntry(
+            parsed,
+            parsedChildren,
+            prefix,
+            layerPath,
+            zCounter.value,
+        );
+        if (entry !== null) {
+            out.push(entry);
+            zCounter.value += 1;
+            return;
         }
-        indices.push(match.index);
+        // Group qualified but no valid frames materialised; fall
+        // through to regular recursion so children are not lost.
+    }
+    const nested = joinName(prefix, parsed.displayName);
+    walkLayers(parsedChildren, nested, layerPath, out, zCounter, opts);
+}
+
+function autoDetectSpriteFrame(children: ParsedLayer[]): boolean {
+    const visibleArt: ParsedLayer[] = [];
+    for (const child of children) {
+        if (child.tags.ignore) continue;
+        if (!child.raw.visible) continue;
+        if (child.raw.kind === "set") return false;
+        if (child.tags.originMarker) continue;
+        visibleArt.push(child);
+    }
+    if (visibleArt.length < 2) return false;
+    const indices: number[] = [];
+    for (const child of visibleArt) {
+        const match = /^(\d+)$/.exec(child.displayName);
+        if (match === null) return false;
+        indices.push(Number.parseInt(match[1], 10));
     }
     return indicesAreContiguousFromZero(indices);
 }
 
 function buildSpriteFrameEntry(
-    group: LayerSet,
+    group: ParsedLayer,
+    children: ParsedLayer[],
     prefix: string,
-    groupLayerPath: string[],
+    layerPath: string[],
     zOrder: number,
 ): PlannedSpriteFrame | null {
-    const pairs: { index: number; layer: ArtLayer }[] = [];
-    for (const child of group.layers) {
-        if (!child.visible) continue;
-        if (child.name.charAt(0) === "_") continue;
-        if (child.kind !== "art") continue;
-        const match = matchIndexedFrame(child.name);
-        if (match === null) continue;
-        pairs.push({ index: match.index, layer: child });
-    }
-    pairs.sort((a, b) => a.index - b.index);
+    const meshName = joinName(prefix, group.displayName);
+    const folder = group.tags.folder;
+    const safeName = group.tags.path ?? sanitize(meshName);
+    const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
 
-    const meshName = prefix === "" ? group.name : `${prefix}__${group.name}`;
-    const safeName = sanitize(meshName);
+    const sortedFrames = collectFrameChildren(children);
+    if (sortedFrames.length < 2) return null;
 
     let maxBounds: LayerBounds | null = null;
     const frames: FrameEntry[] = [];
     const sources: string[][] = [];
-    for (const pair of pairs) {
-        const b = pair.layer.bounds;
-        if (b === null || b.w <= 0 || b.h <= 0) continue;
-        if (maxBounds === null || b.w * b.h > maxBounds.w * maxBounds.h) {
-            maxBounds = b;
+    for (const child of sortedFrames) {
+        const layer = child.raw;
+        if (layer.kind !== "art") continue;
+        const bounds = scaledBounds(layer.bounds, child.tags.scale);
+        if (bounds === null) continue;
+        if (maxBounds === null || bounds.w * bounds.h > maxBounds.w * maxBounds.h) {
+            maxBounds = bounds;
         }
-        frames.push({
-            index: pair.index,
-            path: `images/${safeName}/${pair.index}.png`,
-        });
-        sources.push([...groupLayerPath, pair.layer.name]);
+        const index = frameIndex(child.displayName);
+        frames.push({ index, path: `${dirPath}/${index}.png` });
+        sources.push([...layerPath, layer.name]);
     }
     if (maxBounds === null || frames.length < 2) return null;
+
+    const originFromMarker = pickOriginMarker(children);
     return {
         kind: "sprite_frame",
         name: meshName,
@@ -242,8 +222,43 @@ function buildSpriteFrameEntry(
         size: [Math.round(maxBounds.w), Math.round(maxBounds.h)],
         z_order: zOrder,
         frames,
+        ...optionalOrigin(group.tags.origin ?? originFromMarker),
+        ...optionalBlend(group.tags.blend),
+        ...(folder === undefined ? {} : { subfolder: folder }),
         _frameSources: sources,
     };
+}
+
+function collectFrameChildren(children: ParsedLayer[]): ParsedLayer[] {
+    const pairs: { index: number; child: ParsedLayer }[] = [];
+    for (const child of children) {
+        if (child.tags.ignore) continue;
+        if (!child.raw.visible) continue;
+        if (child.raw.kind !== "art") continue;
+        if (child.tags.originMarker) continue;
+        const idx = frameIndex(child.displayName);
+        if (Number.isNaN(idx)) continue;
+        pairs.push({ index: idx, child });
+    }
+    pairs.sort((a, b) => a.index - b.index);
+    return pairs.map((p) => p.child);
+}
+
+function frameIndex(name: string): number {
+    const match = /^(\d+)$/.exec(name);
+    return match === null ? Number.NaN : Number.parseInt(match[1], 10);
+}
+
+function pickOriginMarker(children: ParsedLayer[]): [number, number] | undefined {
+    for (const child of children) {
+        if (child.tags.originMarker !== true) continue;
+        const layer = child.raw;
+        if (layer.kind !== "art") continue;
+        const bounds = layer.bounds;
+        if (bounds === null) continue;
+        return [Math.round(bounds.x + bounds.w / 2), Math.round(bounds.y + bounds.h / 2)];
+    }
+    return undefined;
 }
 
 function buildPolygonEntry(
@@ -251,48 +266,87 @@ function buildPolygonEntry(
     name: string,
     layerPath: string[],
     zOrder: number,
+    tags: TagBag,
 ): PlannedPolygon | null {
-    const b = layer.bounds;
-    if (b === null || b.w <= 0 || b.h <= 0) return null;
-    const safeName = sanitize(name);
+    const bounds = scaledBounds(layer.bounds, tags.scale);
+    if (bounds === null) return null;
+    const folder = tags.folder;
+    const safeName = tags.path ?? sanitize(name);
+    const path = folder === undefined ? `images/${safeName}.png` : `images/${sanitize(folder)}/${safeName}.png`;
+    const kind: "polygon" | "mesh" = tags.kind === "mesh" ? "mesh" : "polygon";
     return {
-        kind: "polygon",
+        kind,
         name,
-        path: `images/${safeName}.png`,
-        position: [Math.round(b.x), Math.round(b.y)],
-        size: [Math.round(b.w), Math.round(b.h)],
+        path,
+        position: [Math.round(bounds.x), Math.round(bounds.y)],
+        size: [Math.round(bounds.w), Math.round(bounds.h)],
         z_order: zOrder,
+        ...optionalOrigin(tags.origin),
+        ...optionalBlend(tags.blend),
+        ...(folder === undefined ? {} : { subfolder: folder }),
         _layerPath: layerPath,
     };
 }
 
-export type FrameConvention = "digit" | "frame_prefix" | "group_prefix";
-
-export interface FrameMatch {
-    convention: FrameConvention;
-    base: string;
-    index: number;
+function scaledBounds(bounds: LayerBounds | null, scale: number | undefined): LayerBounds | null {
+    if (bounds === null || bounds.w <= 0 || bounds.h <= 0) return null;
+    if (scale === undefined || scale === 1) return bounds;
+    return {
+        x: bounds.x * scale,
+        y: bounds.y * scale,
+        w: bounds.w * scale,
+        h: bounds.h * scale,
+    };
 }
 
-// Mirrors apps/blender/core/psd_naming.py:match_indexed_frame.
-export function matchIndexedFrame(name: string): FrameMatch | null {
-    const pure = /^(\d+)$/.exec(name);
-    if (pure !== null) {
-        return { convention: "digit", base: "", index: Number.parseInt(pure[1], 10) };
-    }
-    const framed = /^frame[_-](\d+)$/i.exec(name);
-    if (framed !== null) {
-        return { convention: "frame_prefix", base: "", index: Number.parseInt(framed[1], 10) };
-    }
-    const grouped = /^([A-Za-z][A-Za-z0-9]*)[_-](\d+)$/.exec(name);
-    if (grouped !== null) {
+function optionalOrigin(origin: [number, number] | undefined): { origin?: [number, number] } {
+    if (origin === undefined) return {};
+    return { origin: [Math.round(origin[0]), Math.round(origin[1])] };
+}
+
+function optionalBlend(blend: BlendMode | undefined): { blend_mode?: BlendMode } {
+    return blend === undefined ? {} : { blend_mode: blend };
+}
+
+function joinName(prefix: string, name: string): string {
+    return prefix === "" ? name : `${prefix}__${name}`;
+}
+
+function toManifestEntry(entry: PlannedEntry): ManifestEntry {
+    if (entry.kind === "sprite_frame") {
         return {
-            convention: "group_prefix",
-            base: grouped[1],
-            index: Number.parseInt(grouped[2], 10),
+            kind: "sprite_frame",
+            name: entry.name,
+            position: entry.position,
+            size: entry.size,
+            z_order: entry.z_order,
+            frames: entry.frames,
+            ...(entry.origin === undefined ? {} : { origin: entry.origin }),
+            ...(entry.blend_mode === undefined ? {} : { blend_mode: entry.blend_mode }),
+            ...(entry.subfolder === undefined ? {} : { subfolder: entry.subfolder }),
         };
     }
-    return null;
+    return {
+        kind: entry.kind,
+        name: entry.name,
+        path: entry.path,
+        position: entry.position,
+        size: entry.size,
+        z_order: entry.z_order,
+        ...(entry.origin === undefined ? {} : { origin: entry.origin }),
+        ...(entry.blend_mode === undefined ? {} : { blend_mode: entry.blend_mode }),
+        ...(entry.subfolder === undefined ? {} : { subfolder: entry.subfolder }),
+    };
+}
+
+function toWrites(entry: PlannedEntry): PngWrite[] {
+    if (entry.kind === "sprite_frame") {
+        return entry.frames.map((frame, i) => ({
+            layerPath: entry._frameSources[i],
+            outputPath: frame.path,
+        }));
+    }
+    return [{ layerPath: entry._layerPath, outputPath: entry.path }];
 }
 
 export function indicesAreContiguousFromZero(indices: number[]): boolean {
@@ -302,91 +356,6 @@ export function indicesAreContiguousFromZero(indices: number[]): boolean {
         if (sorted[i] !== i) return false;
     }
     return true;
-}
-
-// Post-walk pass: collapse top-level polygons whose names follow the
-// flat `<base>_<n>` convention into a single sprite_frame entry. D9
-// fallback for users who do not nest frames in a group.
-function aggregateFlatSpriteFrames(input: PlannedEntry[]): PlannedEntry[] {
-    const { leftover, buckets } = bucketize(input);
-    for (const [base, pairs] of buckets) {
-        const merged = mergeFlatBucket(base, pairs);
-        if (merged.kind === "merged") {
-            leftover.push(merged.entry);
-        } else {
-            for (const p of merged.pairs) leftover.push(p.entry);
-        }
-    }
-    leftover.sort((a, b) => a.z_order - b.z_order);
-    for (let i = 0; i < leftover.length; i++) leftover[i].z_order = i;
-    return leftover;
-}
-
-interface BucketPair {
-    index: number;
-    entry: PlannedPolygon;
-}
-
-function bucketize(input: PlannedEntry[]): {
-    leftover: PlannedEntry[];
-    buckets: Map<string, BucketPair[]>;
-} {
-    const buckets = new Map<string, BucketPair[]>();
-    const leftover: PlannedEntry[] = [];
-    for (const entry of input) {
-        const match = entry.kind === "polygon"
-            ? /^([A-Za-z][A-Za-z0-9]*)[_-](\d+)$/.exec(entry.name)
-            : null;
-        if (entry.kind !== "polygon" || match === null) {
-            leftover.push(entry);
-            continue;
-        }
-        const base = match[1];
-        const idx = Number.parseInt(match[2], 10);
-        const list = buckets.get(base);
-        if (list === undefined) buckets.set(base, [{ index: idx, entry }]);
-        else list.push({ index: idx, entry });
-    }
-    return { leftover, buckets };
-}
-
-type MergeResult =
-    | { kind: "merged"; entry: PlannedSpriteFrame }
-    | { kind: "kept"; pairs: BucketPair[] };
-
-function mergeFlatBucket(base: string, pairs: BucketPair[]): MergeResult {
-    if (pairs.length < 2) return { kind: "kept", pairs };
-    pairs.sort((a, b) => a.index - b.index);
-    const indices = pairs.map((p) => p.index);
-    if (!indicesAreContiguousFromZero(indices)) return { kind: "kept", pairs };
-    const merged = packFrames(base, pairs);
-    if (merged === null) return { kind: "kept", pairs };
-    return { kind: "merged", entry: merged };
-}
-
-function packFrames(base: string, pairs: BucketPair[]): PlannedSpriteFrame | null {
-    let maxBounds: { x: number; y: number; w: number; h: number } | null = null;
-    const frames: FrameEntry[] = [];
-    const sources: string[][] = [];
-    for (const p of pairs) {
-        const e = p.entry;
-        const [w, h] = e.size;
-        if (maxBounds === null || w * h > maxBounds.w * maxBounds.h) {
-            maxBounds = { x: e.position[0], y: e.position[1], w, h };
-        }
-        frames.push({ index: p.index, path: e.path });
-        sources.push(e._layerPath);
-    }
-    if (maxBounds === null) return null;
-    return {
-        kind: "sprite_frame",
-        name: base,
-        position: [maxBounds.x, maxBounds.y],
-        size: [maxBounds.w, maxBounds.h],
-        z_order: pairs[0].entry.z_order,
-        frames,
-        _frameSources: sources,
-    };
 }
 
 export function sanitize(name: string): string {

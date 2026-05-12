@@ -29,12 +29,13 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Wave 11.1 - bracket tag parser + schema v2
 
-- [ ] Bracket-tag parser in `src/controllers/exporter.ts`. Lex tag tokens out of layer / group names, return both the stripped display name and a tag bag (`{ ignore?: true, merge?: true, folder?: string, kind?: string, origin?: [n,n] | "marker", scale?: number, blend?: string, path?: string, namePattern?: string }`). Unknown brackets pass through as part of the display name (artist-friendly).
-- [ ] Update planner to consume the tag bag: `[ignore]` short-circuits, `[merge]` flattens, `[folder:name]` rewrites paths, `[polygon]` / `[sprite]` / `[spritesheet]` / `[mesh]` override `kind`, `[path:name]` overrides filename, `[scale:n]` adjusts bounds, `[blend:mode]` writes the new manifest field, `[name:pre*suf]` (group only) rewrites every child's manifest `name` via `*` substitution.
-- [ ] Drop the `_<name>` skip path entirely. Drop the `<base>_<index>` flat-aggregation pass.
-- [ ] Schema bump to v2 in `schemas/psd_manifest.schema.json` (additive fields: `anchor`, `origin`, `blend_mode`, `subfolder`, `is_mesh`; `kind` accepts `"mesh"`).
-- [ ] Bump TypeScript types in `src/types/manifest.ts` and the ajv validator. Tests cover every new field path.
-- [ ] Unit tests: each tag in isolation, then a few cross-tag interactions (`[ignore]` wins over `[merge]`; `[folder:x]` + `[path:y]` co-exist; `[origin:1,2]` is a no-op for `[ignore]`'d layers).
+- [x] Bracket-tag parser at `apps/photoshop/src/domain/tag-parser.ts`. Lexes `[tag]` / `[tag:value]` tokens from layer / group names; returns stripped display name + tag bag. Unknown brackets pass through.
+- [x] Planner consumes the tag bag: `[ignore]`, `[spritesheet]`, `[polygon]` / `[sprite]` / `[mesh]`, `[folder:name]`, `[path:name]`, `[scale:n]`, `[blend:mode]`, `[origin:x,y]`, `[origin]` marker layer. `[merge]` and `[name:pre*suf]` parsed but not yet wired (deferred to follow-up waves; the parser tolerates them).
+- [x] Dropped the legacy `_<name>` skip path AND the `<base>_<index>` flat-aggregation pass.
+- [x] Schema bumped to v2 at `schemas/psd_manifest.schema.json`. New fields: top-level `anchor`; per-entry `origin`, `blend_mode`, `subfolder`; `kind` accepts `"mesh"`.
+- [x] TypeScript types in `src/domain/manifest.ts` and the ajv validator updated. Blender-side `apps/blender/core/psd_manifest.py` parser bumped to accept v2 (`anchor`, `origin`, `blend_mode`, `subfolder`, `kind: "mesh"`); the importer's downstream semantics still need wiring (Wave 11.7).
+- [x] Existing fixtures bumped to `format_version: 2` (additive change; the v1 shape is a strict subset of v2).
+- [x] Unit tests: 18 cases on the tag parser, 12 cases on the planner against synthetic Layer trees, 4 ajv contract cases. All v2.
 
 ## Wave 11.2 - origin / pivot semantics
 

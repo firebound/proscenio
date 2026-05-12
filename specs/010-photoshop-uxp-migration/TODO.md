@@ -5,7 +5,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 ## Decisions to lock
 
 - [x] D1 - cut-over vs coexistence (locked: cut over; JSX retires at parity)
-- [x] D2 - Photoshop minimum version (locked: PS 22 / CC 2021+)
+- [x] D2 - Photoshop minimum version (originally locked: PS 22 / CC 2021+; bumped during Wave 10.7 to PS 25 / CC 2024+ - the floor where every UXP API the plugin uses is documented stable. Older PS versions fall off support.)
 - [x] D3 - TypeScript vs plain JS (locked: TypeScript; `tsconfig.json` shipped)
 - [x] D4 - React vs Adobe Spectrum UXP (locked: React; Spectrum revisitable later)
 - [x] D5 - schema validation library (locked: `ajv` consuming `schemas/psd_manifest.schema.json`)
@@ -89,11 +89,11 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.7 - JSX retirement
 
-- [ ] Confirm parity manually on `examples/generated/simple_psd/` and any other PSD fixtures.
-- [ ] Delete `apps/photoshop/proscenio_export.jsx`.
-- [ ] Delete `apps/photoshop/proscenio_import.jsx`.
-- [ ] Remove JSX porting notes from `photoshop-uxp-dev` skill.
-- [ ] Bump README minimum Photoshop version note.
+- [x] Confirm parity manually. Wave 10.3 ran the doll roundtrip oracle (`examples/authored/doll/02_from_photoshop/doll.psd`): manifest 22/22 semantic-equal, PNGs 22/22 pixel-byte-equal vs the JSX baseline. `examples/generated/simple_psd/` has no PSD source (manifest-first fixture), so doll is the canonical retirement gate.
+- [x] Delete `apps/photoshop/proscenio_export.jsx`.
+- [x] Delete `apps/photoshop/proscenio_import.jsx`.
+- [x] Remove JSX porting notes from `photoshop-uxp-dev` skill.
+- [x] Bump README minimum Photoshop version note (PS 22 -> PS 25 / CC 2024+). `plugin/manifest.json` `host.minVersion` also bumped.
 
 ## Wave 10.8 - Documentation polish
 
@@ -104,7 +104,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Risks
 
-- **UXP API drift across PS versions.** Mitigation: pin minimum at PS 22; smoke-test on latest stable + minimum version manually.
+- **UXP API drift across PS versions.** Mitigation: pin minimum at PS 25 (post-Wave 10.7 bump); smoke-test on latest stable + minimum version manually.
 - **Webpack + Babel + tsc interaction.** Scaffold uses Babel; layering tsc on top can introduce config friction. Keep tsc as type-only check (`--noEmit`); let Babel keep transpiling.
 - **Sandbox file permissions.** UXP requires user to grant folder write each session unless cached. Document the one-time pick UX clearly so users do not assume the plugin is broken.
 - **Roundtrip layer reconstruction.** PSD format is rich; the import path must not corrupt source PSDs. Always work on a copy; never overwrite the source.

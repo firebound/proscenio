@@ -151,14 +151,32 @@ def resolve_path(manifest: Manifest, relative: str) -> Path:
 
 
 _BLEND_MODES: frozenset[str] = frozenset(("normal", "multiply", "screen", "additive"))
-_POLYGON_KEYS: frozenset[str] = frozenset((
-    "kind", "name", "path", "position", "size", "z_order",
-    "origin", "blend_mode", "subfolder",
-))
-_SPRITE_FRAME_KEYS: frozenset[str] = frozenset((
-    "kind", "name", "position", "size", "z_order", "frames",
-    "origin", "blend_mode", "subfolder",
-))
+_POLYGON_KEYS: frozenset[str] = frozenset(
+    (
+        "kind",
+        "name",
+        "path",
+        "position",
+        "size",
+        "z_order",
+        "origin",
+        "blend_mode",
+        "subfolder",
+    )
+)
+_SPRITE_FRAME_KEYS: frozenset[str] = frozenset(
+    (
+        "kind",
+        "name",
+        "position",
+        "size",
+        "z_order",
+        "frames",
+        "origin",
+        "blend_mode",
+        "subfolder",
+    )
+)
 
 
 def _parse_layer(entry: Any, idx: int) -> Layer:
@@ -169,9 +187,7 @@ def _parse_layer(entry: Any, idx: int) -> Layer:
         return _parse_polygon(entry, label, kind)
     if kind == "sprite_frame":
         return _parse_sprite_frame(entry, label)
-    raise ManifestError(
-        f"{label}.kind must be 'polygon', 'mesh', or 'sprite_frame', got {kind!r}"
-    )
+    raise ManifestError(f"{label}.kind must be 'polygon', 'mesh', or 'sprite_frame', got {kind!r}")
 
 
 def _parse_polygon(

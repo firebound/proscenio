@@ -23,14 +23,14 @@ class SlotInfo:
 	var default: String  # already sanitized (Godot-name shape)
 
 
-# Godot's Node sanitizes ``.``, ``/``, ``:``, ``@`` (and a few other reserved
-# chars) out of node names on assignment, replacing them with ``_``. The
-# Blender side authors slot + sprite names like ``face.state`` /
-# ``face.neutral`` (Blender's stock convention). We sanitize the same way
-# so slot_map keys, find_child targets, and visibility comparisons all
-# converge on the Godot-shaped name.
+const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
+
+
+# Re-export of the shared sanitiser so existing callers
+# (``SlotBuilder.sanitize(...)``) keep compiling. See
+# ``node_name_util.gd`` for the dot/slash/colon/at replacement rules.
 static func sanitize(name: String) -> String:
-	return name.replace(".", "_").replace("/", "_").replace(":", "_").replace("@", "_")
+	return NodeNameUtil.sanitize(name)
 
 
 static func build(skeleton: Skeleton2D, slots_data: Array) -> Dictionary:

@@ -94,6 +94,7 @@ func _import(
 	root.add_child(skeleton)
 
 	var atlas := _load_atlas(source_file, data.get("atlas", ""))
+	var source_dir := source_file.get_base_dir()
 	# Slots build BEFORE sprites so the sprite builders can route attachment
 	# children under the slot Node2D parent (SPEC 004 Wave 4.2). Empty slots[]
 	# leaves the map empty and sprite routing falls back to bone-parented.
@@ -101,8 +102,8 @@ func _import(
 	# Each builder discriminator-filters its own sprite kind; calling both is
 	# cheap and keeps the dispatch table flat. Order does not matter.
 	var sprites_data: Array = data.get("sprites", [])
-	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map)
-	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map)
+	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map, source_dir)
+	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map, source_dir)
 
 	var animation_player := AnimationPlayer.new()
 	animation_player.name = "AnimationPlayer"

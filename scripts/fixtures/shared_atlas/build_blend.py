@@ -77,9 +77,14 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
+    # Bone tail along -Y (toward Front Ortho camera at +Y looking -Y).
+    # Matches the Spine / 2D-cutout convention used by every other
+    # procedural fixture; pre-fix this bone pointed +Z which made the
+    # writer emit a -90deg-rotated bone in Godot, collapsing each
+    # polygon to a degenerate line on import.
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.0, 0.5)
+    bone.tail = (0.0, -0.5, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

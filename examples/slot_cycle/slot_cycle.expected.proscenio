@@ -65,7 +65,8 @@
           0.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "attachment_blue.png"
     },
     {
       "name": "attachment_green",
@@ -111,7 +112,8 @@
           0.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "attachment_green.png"
     },
     {
       "name": "attachment_red",
@@ -157,7 +159,8 @@
           0.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "attachment_red.png"
     }
   ],
   "slots": [

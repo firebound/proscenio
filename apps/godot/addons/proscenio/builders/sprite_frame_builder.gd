@@ -5,12 +5,35 @@ extends RefCounted
 # .proscenio document. Companion of polygon_builder.gd — each builder
 # discriminator-filters its own kind so importer.gd can call both blindly.
 
+const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
+
+
+static func _resolve_sprite_texture(
+	sprite_data: Dictionary,
+	fallback_atlas: Texture2D,
+	source_dir: String,
+) -> Texture2D:
+	# Mirror of polygon_builder._resolve_sprite_texture -- see that file for
+	# the resolution order rationale (per-sprite `texture` field ->
+	# `<sprite.name>.png` next to source -> fallback atlas).
+	var per_sprite: String = sprite_data.get("texture", "")
+	if per_sprite != "" and source_dir != "":
+		var path := source_dir.path_join(per_sprite)
+		if ResourceLoader.exists(path):
+			return ResourceLoader.load(path, "Texture2D") as Texture2D
+	if source_dir != "":
+		var by_name := source_dir.path_join("%s.png" % sprite_data.get("name", ""))
+		if ResourceLoader.exists(by_name):
+			return ResourceLoader.load(by_name, "Texture2D") as Texture2D
+	return fallback_atlas
+
 
 static func attach_sprites(
 	skeleton: Skeleton2D,
 	sprites_data: Array,
 	atlas: Texture2D,
 	slot_map: Dictionary = {},
+	source_dir: String = "",
 ) -> void:
 	for sprite_data in sprites_data:
 		var sprite_type: String = sprite_data.get("type", "polygon")
@@ -20,8 +43,9 @@ static func attach_sprites(
 		var sprite := Sprite2D.new()
 		sprite.name = sprite_data.get("name", "sprite")
 
-		if atlas != null:
-			sprite.texture = atlas
+		var sprite_tex := _resolve_sprite_texture(sprite_data, atlas, source_dir)
+		if sprite_tex != null:
+			sprite.texture = sprite_tex
 
 		sprite.hframes = int(sprite_data.get("hframes", 1))
 		sprite.vframes = int(sprite_data.get("vframes", 1))
@@ -39,7 +63,7 @@ static func attach_sprites(
 			sprite.region_enabled = true
 			sprite.region_rect = Rect2(region[0], region[1], region[2], region[3])
 
-		var bone_name: String = sprite_data.get("bone", "")
+		var bone_name: String = NodeNameUtil.sanitize(sprite_data.get("bone", ""))
 		# Slot routing (SPEC 004 D6): sprite_frame attachments compose with
 		# polygon attachments under the same slot Node2D. Default-attachment
 		# starts visible, others start hidden -- the slot_attachment track

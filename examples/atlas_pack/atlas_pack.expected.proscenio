@@ -65,7 +65,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_1.png"
     },
     {
       "name": "sprite_2",
@@ -111,7 +112,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_2.png"
     },
     {
       "name": "sprite_3",
@@ -157,7 +159,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_3.png"
     },
     {
       "name": "sprite_4",
@@ -203,7 +206,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_4.png"
     },
     {
       "name": "sprite_5",
@@ -249,7 +253,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_5.png"
     },
     {
       "name": "sprite_6",
@@ -295,7 +300,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_6.png"
     },
     {
       "name": "sprite_7",
@@ -341,7 +347,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_7.png"
     },
     {
       "name": "sprite_8",
@@ -387,7 +394,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_8.png"
     },
     {
       "name": "sprite_9",
@@ -433,7 +441,8 @@
           1.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "sprite_9.png"
     }
   ],
   "atlas": "sprite_1.png"

@@ -55,6 +55,7 @@ _TEXTURE_SUBDIRS: tuple[str, ...] = (
     "pillow_layers",
     "render_layers",
     "01_to_photoshop/render_layers",
+    "_spritesheets",
 )
 
 
@@ -102,16 +103,20 @@ def _link_pngs(fixture_root: Path, dest: Path) -> int:
 
 
 def _link_wrappers(fixture_root: Path, dest: Path) -> int:
-    """Link ``examples/<name>/godot/*.{tscn,gd}`` into ``dest/godot/``."""
+    """Link ``examples/<name>/godot/*.{tscn,gd}`` flat into ``dest/``.
+
+    The wrapper TSCNs reference ``res://<name>/<Name>.gd`` (root, not
+    ``res://<name>/godot/<Name>.gd``) -- the convention is "drop
+    examples/<name>/godot/<wrapper> directly into res://<name>/", so
+    the sync flattens the godot/ subdir at the destination.
+    """
     wrapper_src = fixture_root / "godot"
     if not wrapper_src.is_dir():
         return 0
-    wrapper_dst = dest / "godot"
-    wrapper_dst.mkdir(exist_ok=True)
     linked = 0
     for item in sorted(wrapper_src.iterdir()):
         if item.suffix in {".tscn", ".gd"}:
-            _link_file(item, wrapper_dst / item.name)
+            _link_file(item, dest / item.name)
             linked += 1
     return linked
 

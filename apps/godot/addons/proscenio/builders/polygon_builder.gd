@@ -1,6 +1,31 @@
 @tool
 extends RefCounted
 
+const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
+
+
+static func _resolve_sprite_texture(
+	sprite_data: Dictionary,
+	fallback_atlas: Texture2D,
+	source_dir: String,
+) -> Texture2D:
+	# Per-sprite texture resolution order:
+	# 1. sprite.texture field (writer emits it when the mesh has an Image
+	#    Texture on its material) -- load <source_dir>/<filename>.
+	# 2. <sprite.name>.png next to the .proscenio -- filename-by-convention
+	#    fallback for fixtures (doll) whose materials carry flat colors but
+	#    whose body parts ship as separate PNGs alongside the document.
+	# 3. fallback_atlas -- the scene-wide single-image case.
+	var per_sprite: String = sprite_data.get("texture", "")
+	if per_sprite != "":
+		var path := source_dir.path_join(per_sprite)
+		if ResourceLoader.exists(path):
+			return ResourceLoader.load(path, "Texture2D") as Texture2D
+	var by_name := source_dir.path_join("%s.png" % sprite_data.get("name", ""))
+	if ResourceLoader.exists(by_name):
+		return ResourceLoader.load(by_name, "Texture2D") as Texture2D
+	return fallback_atlas
+
 
 static func _apply_skinning(
 	poly: Polygon2D,
@@ -14,7 +39,7 @@ static func _apply_skinning(
 	poly.skeleton = poly.get_path_to(skeleton)
 	poly.clear_bones()
 	for weight_entry in weights_data:
-		var bone_name: String = weight_entry.get("bone", "")
+		var bone_name: String = NodeNameUtil.sanitize(weight_entry.get("bone", ""))
 		var bone_node := skeleton.find_child(bone_name, true, false)
 		if bone_node == null:
 			push_error(
@@ -37,6 +62,7 @@ static func attach_sprites(
 	sprites_data: Array,
 	atlas: Texture2D,
 	slot_map: Dictionary = {},
+	source_dir: String = "",
 ) -> void:
 	for sprite_data in sprites_data:
 		# Discriminator dispatch: this builder only handles polygon sprites.
@@ -54,25 +80,28 @@ static func attach_sprites(
 			pts.append(Vector2(p[0], p[1]))
 		poly.polygon = pts
 
+		var sprite_tex := _resolve_sprite_texture(sprite_data, atlas, source_dir)
+
 		var uv_pts: Array = sprite_data.get("uv", [])
 		var uvs := PackedVector2Array()
 		# .proscenio stores UVs normalized [0, 1] — engine-agnostic. Godot's
-		# Polygon2D expects UVs in texture pixel space, so multiply by atlas
-		# size at import time. Sprites without an atlas keep raw UVs.
+		# Polygon2D expects UVs in texture pixel space, so multiply by the
+		# resolved texture's size at import time. Sprites without a texture
+		# keep raw UVs.
 		var uv_scale := Vector2.ONE
-		if atlas != null:
-			uv_scale = atlas.get_size()
+		if sprite_tex != null:
+			uv_scale = sprite_tex.get_size()
 		for u in uv_pts:
 			uvs.append(Vector2(u[0] * uv_scale.x, u[1] * uv_scale.y))
 		poly.uv = uvs
 
-		if atlas != null:
-			poly.texture = atlas
+		if sprite_tex != null:
+			poly.texture = sprite_tex
 
 		var weights_data: Array = sprite_data.get("weights", [])
 		var is_skinned: bool = not weights_data.is_empty()
 
-		var bone_name: String = sprite_data.get("bone", "")
+		var bone_name: String = NodeNameUtil.sanitize(sprite_data.get("bone", ""))
 		# Slot routing (SPEC 004 D6): sprites whose name appears in a slot's
 		# attachments[] reparent under the slot Node2D and inherit visibility
 		# from the slot's default. Otherwise: skinned polygons live under the

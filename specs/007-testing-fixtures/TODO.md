@@ -70,6 +70,14 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 - [x] `apps/blender/tests/run_tests.py` no longer hardcodes the dummy path — auto-discovery handles every fixture.
 - [x] CI `validate-schema` glob (`examples/**/*.proscenio`) keeps working post-delete; importer-only goldens under `apps/godot/tests/fixtures/` stay (Type B fixtures).
 
+## Coverage gaps (open)
+
+- **Doll-from-Photoshop fixture missing.** `examples/authored/doll/doll.blend` é sandbox de autoria PRA o Photoshop roundtrip -- materiais usam flat Base Color (sem Image Texture node). Resultado: writer não emite `"texture"` per-sprite + nenhum `"atlas"` global. Importer Godot precisa cair no fallback `<sprite_name>.png` pra renderizar. Mas isso só funciona porque o sync mirroreia os PNGs do render_layers junto. Pra testar o **caminho real "Photoshop -> Blender -> Godot"**, precisa fixture derivada:
+  - Nome sugerido: `doll_from_psd.blend` ou `doll.imported.blend`.
+  - Gerado rodando `proscenio.import_photoshop` em headless contra `doll.photoshop_manifest.json` (ou roundtrip do `02_from_photoshop/doll.photoshop_exported.json`).
+  - Resultado: meshes com Image Texture nodes -> writer emite `"texture"` per-sprite -> Godot renderiza direto sem fallback.
+  - Cobre o pipeline end-to-end como o usuário real experimentaria.
+
 ## Coverage gaps (closed in this branch)
 
 - [x] **Direct bone-parented mesh** (`obj.parent_type = "BONE"` + `obj.parent_bone = "<bone>"`, no Armature modifier, no vertex weights). Closed by `examples/atlas_pack/` -- 9 quad sprites each rigidly parented to a single `root` bone, with their own per-sprite materials / textures. Exercises:

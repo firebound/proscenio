@@ -74,7 +74,8 @@
           0.0,
           0.0
         ]
-      ]
+      ],
+      "texture": "square.png"
     }
   ],
   "atlas": "arrow.png"

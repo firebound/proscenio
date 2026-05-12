@@ -30,6 +30,11 @@ declare module "uxp" {
         // Single-file picker. `types` accepts an array of accepted
         // extensions like `["json"]`; UXP filters the OS dialog.
         getFileForOpening(options?: { types?: string[]; allowMultiple?: false }): Promise<UxpFile | null>;
+        // Resolves a filesystem path (or `file://` URL) to an entry.
+        // Requires `localFileSystem: "fullAccess"` to read arbitrary
+        // paths. The manifest reader uses it as a fallback when
+        // `file.parent` is absent on the picked entry.
+        getEntryWithUrl(url: string): Promise<UxpEntry>;
         createSessionToken(entry: UxpEntry): string;
         // Persistent tokens survive plugin reloads / Photoshop restarts.
         // Persist the returned string in localStorage; resolve back to

@@ -23,8 +23,8 @@ export class PanelController {
         this.menuItems = this[_menuItems].map((menuItem) => ({
             id: menuItem.id,
             label: menuItem.label,
-            enabled: menuItem.enabled || true,
-            checked: menuItem.checked || false,
+            enabled: menuItem.enabled ?? true,
+            checked: menuItem.checked ?? false,
         }));
 
         ["create", "show", "hide", "destroy", "invokeMenu"].forEach(

@@ -60,13 +60,23 @@ export async function readManifestFromPicker(): Promise<ReadManifestResult> {
 
 async function resolveParentFolder(file: UxpFile): Promise<UxpFolder | null> {
     // Modern UXP exposes `file.parent` directly on the picked entry.
-    // If a target runtime stops shipping it, this helper is the spot
-    // to add a fallback that reconstructs the folder from
-    // `file.nativePath` via `getEntryWithUrl`.
+    // Older builds (and a few host-version regressions) drop it; fall
+    // back to reconstructing the parent path from `nativePath` and
+    // re-resolving via `getEntryWithUrl`.
     interface FileWithParent {
         parent?: UxpFolder;
     }
     const direct = (file as unknown as FileWithParent).parent;
-    if (direct !== undefined && direct.isFolder) return direct;
-    return null;
+    if (direct?.isFolder) return direct;
+
+    const native = file.nativePath;
+    if (native === undefined || native.length === 0) return null;
+    const parentPath = native.replace(/[\\/][^\\/]+$/, "");
+    if (parentPath.length === 0 || parentPath === native) return null;
+    try {
+        const entry = await storage.localFileSystem.getEntryWithUrl(parentPath);
+        return entry.isFolder ? (entry as UxpFolder) : null;
+    } catch {
+        return null;
+    }
 }

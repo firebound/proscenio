@@ -42,14 +42,15 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.1 lands, sweep these:
 
-- [ ] `babel-loader` 8 → 10
-- [ ] `clean-webpack-plugin` 2 → 4
-- [ ] `copy-webpack-plugin` 5 → 14 (large API change; rewrite the `CopyPlugin` block in `webpack.config.js`)
-- [ ] `css-loader` 6 → 7
-- [ ] `style-loader` 1 → 4
-- [ ] `nodemon` 2 → 3
-- [ ] Replace `file-loader` with webpack 5 asset modules (file-loader is deprecated)
-- [ ] Audit `resolutions` for `acorn-with-stage3`: webpack 5.88+ ships modern acorn natively; the override may be obsolete and removable. Convert to `pnpm.overrides` if still needed.
+- [x] `babel-loader` 8 → 10
+- [x] `clean-webpack-plugin` 2 → 4
+- [x] `copy-webpack-plugin` 5 → 14 (large API change; rewrite the `CopyPlugin` block in `webpack.config.js`)
+- [x] `css-loader` 6 → 7
+- [x] `style-loader` 1 → 4
+- [x] `nodemon` 2 → 3
+- [x] Replace `file-loader` with webpack 5 asset modules (file-loader is deprecated)
+- [x] Audit `resolutions` for `acorn-with-stage3`: webpack 5.88+ ships modern acorn natively; the override may be obsolete and removable. Convert to `pnpm.overrides` if still needed. (Removed - no longer needed.)
+- [x] Declare `node:os` external alongside `os` so webpack 5's URI scheme handling does not break the build.
 
 ## Wave 10.2 - Layer walk + manifest builder
 

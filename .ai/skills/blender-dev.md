@@ -7,7 +7,7 @@ description: Develop, install, lint, and test the Blender addon
 
 ## Target versions
 
-- **Minimum:** Blender 4.2 LTS — required for the Extensions system (`blender_manifest.toml`).
+- **Minimum:** Blender 4.2 LTS - required for the Extensions system (`blender_manifest.toml`).
 - **Tested:** Blender 4.5 LTS, latest 5.x.
 - **Python:** 3.11 (bundled with Blender 4.x).
 
@@ -18,7 +18,7 @@ Post SPEC 009 (May 2026). Every package below is multi-file: the `__init__.py` o
 ```text
 apps/blender/
 ├── blender_manifest.toml          Blender Extensions system manifest
-├── __init__.py                    addon entry — chains submodule register() / unregister()
+├── __init__.py                    addon entry - chains submodule register() / unregister()
 ├── pyproject.toml                 ruff + mypy strict config
 ├── core/                          bpy-free helpers
 │   ├── __init__.py                package contract docstring
@@ -119,10 +119,10 @@ Reload via **Preferences → Get Extensions → Reload**, or restart Blender.
 Two suites, two runners:
 
 ```sh
-# Pure Python (validation, future utility tests) — no Blender needed.
+# Pure Python (validation, future utility tests) - no Blender needed.
 pytest tests/
 
-# Blender round-trip — walks every fixture under examples/<name>/<name>.blend,
+# Blender round-trip - walks every fixture under examples/<name>/<name>.blend,
 # re-exports each, diffs against examples/<name>/<name>.expected.proscenio.
 blender --background --python apps/blender/tests/run_tests.py
 ```
@@ -137,7 +137,7 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 4. Add `<Name>.tscn` + `<Name>.gd` wrapper following the SPEC 001 pattern (see `examples/authored/doll/Doll.gd` for the canonical template).
 5. Verify locally: `blender --background --python apps/blender/tests/run_tests.py`. The runner auto-discovers the new fixture.
 
-For **procedural pixel-art fixtures** (Pillow-drawn spritesheets feeding a single-feature `.blend`), follow the conventions in [`scripts/fixtures/README.md`](../../scripts/fixtures/README.md) -- bone tail along world -Y, image filepath relative (`//pillow_layers/...`), `tex.interpolation = "Closest"`, driver wiring matches the panel operator's defaults, etc. Copy from `mouth_drive/build_blend.py` (newest, follows every convention) rather than older builders.
+For **procedural pixel-art fixtures** (Pillow-drawn spritesheets feeding a single-feature `.blend`), follow the conventions in [`scripts/fixtures/README.md`](../../scripts/fixtures/README.md) - bone tail along world -Y, image filepath relative (`//pillow_layers/...`), `tex.interpolation = "Closest"`, driver wiring matches the panel operator's defaults, etc. Copy from `mouth_drive/build_blend.py` (newest, follows every convention) rather than older builders.
 
 ## Coding rules
 
@@ -146,7 +146,7 @@ For **procedural pixel-art fixtures** (Pillow-drawn spritesheets feeding a singl
 - Operators must be undoable: `bl_options = {'REGISTER', 'UNDO'}`.
 - Lint: `ruff check apps/blender/`. Format: `ruff format apps/blender/`.
 - Lazy-import inside operator methods if a top-level import would break Blender's reload cycle.
-- Always `unregister()` cleanly — leaked classes break reload.
+- Always `unregister()` cleanly - leaked classes break reload.
 
 ## Manifest
 
@@ -154,22 +154,22 @@ For **procedural pixel-art fixtures** (Pillow-drawn spritesheets feeding a singl
 
 ## Authoring sprites in the panel (SPEC 005)
 
-The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob. Every subpanel header carries two icons on the right: a **status badge** (`godot-ready` / `blender-only` / `planned` / `out-of-scope` — hover for the band-specific tooltip) and a **`?` button** that opens a topic-specific in-panel help popup. The full topic dispatch lives in [`apps/blender/core/help_topics.py`](../../apps/blender/core/help_topics.py).
+The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with N). Inside, child panels expose every Proscenio-relevant knob. Every subpanel header carries two icons on the right: a **status badge** (`godot-ready` / `blender-only` / `planned` / `out-of-scope` - hover for the band-specific tooltip) and a **`?` button** that opens a topic-specific in-panel help popup. The full topic dispatch lives in [`apps/blender/core/help_topics.py`](../../apps/blender/core/help_topics.py).
 
-- **Active sprite** — sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata (`hframes`, `vframes`, `frame`, `centered`), texture region (auto / manual + Snap-to-UV), in-viewport sprite_frame preview slicer (5.1.d.5), polygon vertex-group summary, **Drive from Bone** picker (5.1.d.1), **Import Photoshop Manifest** button (5.1.b → 6.x integration), and inline validation icons next to broken rows. Active Slot subpanel surfaces when an Empty with `is_slot=True` is selected — pick the default attachment via SOLO icons.
-- **Skeleton** — armature bone count + warnings (no armature, multiple armatures), pose-mode helpers (**Bake Current Pose**, **Toggle IK**, **Save Pose to Library** — 5.1.d.2 wraps `POSELIB_OT_create_pose_asset`), **Quick Armature** modal (5.1.d.3 — click-drag bone draw on z=0), **Create Slot** (5.1.b SPEC 004 — wraps selected meshes into an Empty as attachments).
-- **Outliner** (5.1.d.4) — sprite-centric flat list of slots, attachments, sprite meshes, armatures. Substring filter + favorites toggle. Click a row to activate the target object. SOLO icon next to each row pins it as a favorite.
-- **Animation** — read-only summary of every Action that the writer would emit.
-- **Atlas** — read-only atlas filename discovered from materials, **Pack Atlas / Apply Packed Atlas / Unpack Atlas** flow.
-- **Validation** — populated by the Validate button. Lists every issue the export-time checker found (errors block export, warnings inform). Click a row to activate the offending object.
-- **Export** — sticky `last_export_path`, `pixels_per_unit`, **Preview Camera** (orthographic camera matching `pixels_per_unit`), **Validate / Export / Re-export** buttons.
-- **Diagnostics** — smoke test + future addon-health buttons.
+- **Active sprite** - sprite type dropdown (`polygon` / `sprite_frame`), sprite_frame metadata (`hframes`, `vframes`, `frame`, `centered`), texture region (auto / manual + Snap-to-UV), in-viewport sprite_frame preview slicer (5.1.d.5), polygon vertex-group summary, **Drive from Bone** picker (5.1.d.1), **Import Photoshop Manifest** button (5.1.b → 6.x integration), and inline validation icons next to broken rows. Active Slot subpanel surfaces when an Empty with `is_slot=True` is selected - pick the default attachment via SOLO icons.
+- **Skeleton** - armature bone count + warnings (no armature, multiple armatures), pose-mode helpers (**Bake Current Pose**, **Toggle IK**, **Save Pose to Library** - 5.1.d.2 wraps `POSELIB_OT_create_pose_asset`), **Quick Armature** modal (5.1.d.3 - click-drag bone draw on z=0), **Create Slot** (5.1.b SPEC 004 - wraps selected meshes into an Empty as attachments).
+- **Outliner** (5.1.d.4) - sprite-centric flat list of slots, attachments, sprite meshes, armatures. Substring filter + favorites toggle. Click a row to activate the target object. SOLO icon next to each row pins it as a favorite.
+- **Animation** - read-only summary of every Action that the writer would emit.
+- **Atlas** - read-only atlas filename discovered from materials, **Pack Atlas / Apply Packed Atlas / Unpack Atlas** flow.
+- **Validation** - populated by the Validate button. Lists every issue the export-time checker found (errors block export, warnings inform). Click a row to activate the offending object.
+- **Export** - sticky `last_export_path`, `pixels_per_unit`, **Preview Camera** (orthographic camera matching `pixels_per_unit`), **Validate / Export / Re-export** buttons.
+- **Diagnostics** - smoke test + future addon-health buttons.
 
-The panel widgets read and write `bpy.types.Object.proscenio` (a `PropertyGroup` registered by SPEC 005). The PropertyGroup mirrors the legacy raw Custom Properties (`proscenio_type`, `proscenio_hframes`, etc.) so power users can keep editing raw data — both paths round-trip.
+The panel widgets read and write `bpy.types.Object.proscenio` (a `PropertyGroup` registered by SPEC 005). The PropertyGroup mirrors the legacy raw Custom Properties (`proscenio_type`, `proscenio_hframes`, etc.) so power users can keep editing raw data - both paths round-trip.
 
 ### One-click re-export
 
-After the first **File → Export → Proscenio** (or panel **Export** button) the path is stored on the Scene PropertyGroup. The **Re-export** button silently re-runs the writer to that path — no file dialog. Saved with the `.blend` so the document carries its export target.
+After the first **File → Export → Proscenio** (or panel **Export** button) the path is stored on the Scene PropertyGroup. The **Re-export** button silently re-runs the writer to that path - no file dialog. Saved with the `.blend` so the document carries its export target.
 
 ### Validate before export
 
@@ -180,16 +180,16 @@ Both Export and Re-export gate on `validate_export(scene)`. If any issue carries
 The writer turns Blender vertex groups into the `weights` array on a `polygon`-typed sprite. To author a skinned sprite:
 
 1. Parent the mesh to the armature with `Set Parent → Armature Deform` (or skip the modifier and create vertex groups manually).
-2. Create one vertex group per bone you want to influence the mesh. **The group name must match the bone name exactly** — that is the writer's only matching rule (D7 of [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
-3. Enter Weight Paint mode and paint per-bone influence on the mesh. The writer normalizes per-vertex sums to `1.0` (D1), so additive painting is safe — paint where you want it, no need to manually subtract elsewhere.
-4. Vertices left with zero total weight fall back to the sprite's resolved bone (D2). A mesh with vertex groups but **no** matching bones raises a `RuntimeError` at export time — fix the names or remove the groups.
+2. Create one vertex group per bone you want to influence the mesh. **The group name must match the bone name exactly** - that is the writer's only matching rule (D7 of [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
+3. Enter Weight Paint mode and paint per-bone influence on the mesh. The writer normalizes per-vertex sums to `1.0` (D1), so additive painting is safe - paint where you want it, no need to manually subtract elsewhere.
+4. Vertices left with zero total weight fall back to the sprite's resolved bone (D2). A mesh with vertex groups but **no** matching bones raises a `RuntimeError` at export time - fix the names or remove the groups.
 5. Vertex groups whose names do not match any armature bone are dropped with a console warning per group (D3). Useful when you keep auxiliary groups for selection or unrelated tooling.
 
-A sprite without any vertex groups stays rigid-attached (current Phase 1 behavior). `sprite_frame` sprites ignore weights entirely — Godot's `Sprite2D` has no skinning concept.
+A sprite without any vertex groups stays rigid-attached (current Phase 1 behavior). `sprite_frame` sprites ignore weights entirely - Godot's `Sprite2D` has no skinning concept.
 
 ## Common pitfalls
 
-- Reloading addons leaks registered classes — always `unregister()` cleanly.
-- `bpy.context` differs between operator and panel scope — read it carefully.
+- Reloading addons leaks registered classes - always `unregister()` cleanly.
+- `bpy.context` differs between operator and panel scope - read it carefully.
 - File paths: use `bpy.path.abspath()` to resolve `//` relative paths.
 - Driver and handler registration must clean up in `unregister()`.

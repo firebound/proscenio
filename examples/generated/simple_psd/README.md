@@ -9,17 +9,17 @@ PSD manifest. Use this fixture when debugging the manifest -> stamper
 
 ```text
 examples/generated/simple_psd/
-├── simple_psd.blend                       [SOURCE -- built by build_blend.py from the manifest]
-├── simple_psd.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
-├── simple_psd.photoshop_manifest.json     [INPUT -- hand-authored SPEC 006 v1 manifest]
-├── pillow_layers/                         [INPUT -- per-layer PNGs the manifest references]
-│   ├── square.png                64x64 -- polygon layer
-│   ├── arrow_0.png               32x32 -- sprite_frame, frame 0 (up)
-│   ├── arrow_1.png               32x32 -- sprite_frame, frame 1 (right)
-│   ├── arrow_2.png               32x32 -- sprite_frame, frame 2 (down)
-│   ├── arrow_3.png               32x32 -- sprite_frame, frame 3 (left)
-│   └── arrow_spritesheet.png    128x32 -- preview (importer composes its own internal sheet)
-├── _spritesheets/                         [DERIVED -- composed by the importer; gitignored]
+├── simple_psd.blend                       [SOURCE - built by build_blend.py from the manifest]
+├── simple_psd.expected.proscenio          [GOLDEN - CI-diffed validation midpoint]
+├── simple_psd.photoshop_manifest.json     [INPUT - hand-authored SPEC 006 v1 manifest]
+├── pillow_layers/                         [INPUT - per-layer PNGs the manifest references]
+│   ├── square.png                64x64 - polygon layer
+│   ├── arrow_0.png               32x32 - sprite_frame, frame 0 (up)
+│   ├── arrow_1.png               32x32 - sprite_frame, frame 1 (right)
+│   ├── arrow_2.png               32x32 - sprite_frame, frame 2 (down)
+│   ├── arrow_3.png               32x32 - sprite_frame, frame 3 (left)
+│   └── arrow_spritesheet.png    128x32 - preview (importer composes its own internal sheet)
+├── _spritesheets/                         [DERIVED - composed by the importer; gitignored]
 │   └── arrow.png
 └── godot/
     ├── SimplePSD.tscn                     Godot wrapper

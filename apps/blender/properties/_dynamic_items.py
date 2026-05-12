@@ -49,7 +49,7 @@ def driver_bone_items(
 
     Walks the picked ``driver_source_armature`` and lists every bone by
     name. Falls back to a sentinel placeholder when no armature is
-    picked or the armature has no bones -- keeps the dropdown clickable
+    picked or the armature has no bones - keeps the dropdown clickable
     instead of vanishing the whole row.
     """
     armature = self.driver_source_armature
@@ -67,7 +67,7 @@ def on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> Non
     """Mirror every field on any panel edit.
 
     Bug fix (post-005.1.c.1): individual per-field callbacks left the
-    CP set partial -- defaults never fired their callback, so Reload
+    CP set partial - defaults never fired their callback, so Reload
     Scripts restored only the field the user touched. Mirroring all 10
     fields on every update keeps the CP snapshot complete after the
     first interaction.

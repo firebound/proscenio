@@ -1,9 +1,9 @@
 """PSD manifest v1 parser (SPEC 006 Wave 6.0).
 
 Reads the JSON document emitted by the Photoshop JSX exporter and
-returns typed records. Pure Python — no bpy, no Pillow, no jsonschema
+returns typed records. Pure Python - no bpy, no Pillow, no jsonschema
 required at runtime (validation falls back to a minimal in-process
-shape check when ``jsonschema`` is absent — Blender's bundled Python
+shape check when ``jsonschema`` is absent - Blender's bundled Python
 typically does not ship it; the dedicated CI ``validate-schema`` job
 covers strict schema validation).
 

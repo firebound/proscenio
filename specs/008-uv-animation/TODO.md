@@ -1,4 +1,4 @@
-# SPEC 008 — TODO
+# SPEC 008 - TODO
 
 Stub. Greenlit only when a concrete use case appears. See [STUDY.md](STUDY.md).
 
@@ -14,11 +14,11 @@ If the use case is "swap whole image" → SPEC 004 (slots) covers it. If "swap f
 
 ## Decisions to lock when SPEC opens
 
-- [ ] D1 — track type name: `texture_region` vs `uv_animation`
-- [ ] D2 — scope: sprite_frame only or polygon too
-- [ ] D3 — interp options
-- [ ] D4 — schema bump path (format v2 vs additive v1)
-- [ ] D5 — authoring UX
+- [ ] D1 - track type name: `texture_region` vs `uv_animation`
+- [ ] D2 - scope: sprite_frame only or polygon too
+- [ ] D3 - interp options
+- [ ] D4 - schema bump path (format v2 vs additive v1)
+- [ ] D5 - authoring UX
 
 ## Implementation (pending greenlight)
 

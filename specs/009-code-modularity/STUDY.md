@@ -1,8 +1,8 @@
-# SPEC 009 — Code modularity audit
+# SPEC 009 - Code modularity audit
 
 Audit of structural quality across the Proscenio codebase. Scope: identify god-modules, mixed-responsibility files, DRY/SRP violations, and pragmatic reorganizations that fit the project's actual constraints (Blender addon register cycle, mypy strict, GDScript typed).
 
-Out of scope: reformatting (ruff handles it), behavioral changes, public API breaks, performance work. Goal is structure-only — tests pass before and after, every function lands in a more honest location.
+Out of scope: reformatting (ruff handles it), behavioral changes, public API breaks, performance work. Goal is structure-only - tests pass before and after, every function lands in a more honest location.
 
 This document analyses the current state. The accompanying TODO.md plans the reorganization in waves.
 
@@ -32,7 +32,7 @@ Other languages:
 | `scripts/fixtures/` + `scripts/maintenance/` | 14 fixture builders + helpers | 2423 |
 | `apps/photoshop/` | 2 JSX scripts (export, import) | 911 |
 
-The size disparity is the headline. Two files (`operators/__init__.py` and `panels/__init__.py`) carry ~37% of all addon LOC. Every other file in the addon is under 540 LOC — most under 200. The two oversized ones are the immediate restructure target.
+The size disparity is the headline. Two files (`operators/__init__.py` and `panels/__init__.py`) carry ~37% of all addon LOC. Every other file in the addon is under 540 LOC - most under 200. The two oversized ones are the immediate restructure target.
 
 ## 2. Package structure
 
@@ -40,7 +40,7 @@ Current addon layout:
 
 ```text
 apps/blender/
-  __init__.py             20 LOC — registers properties, operators, panels (clean)
+  __init__.py             20 LOC - registers properties, operators, panels (clean)
   blender_manifest.toml
   pyproject.toml
   core/                   bpy-free helpers (mostly)
@@ -83,17 +83,17 @@ Three modules exceed reasonable sizing for the addon's complexity:
 
 ### 3.1 `operators/__init__.py` (1755 LOC, 25 operator classes, 13 helpers)
 
-This file mixes every operator in the addon — export, validation, selection, IK, UV, slots, atlas pack, atlas apply, drivers, pose library, quick armature, sprite-frame preview shader, ortho camera — plus 13 file-private helpers that span four unrelated concerns (validation reporting, packed-atlas filesystem layout, mouse projection, material image inspection). Adding any new operator forces a reader to scroll past the others and gets caught in helper sprawl that might or might not apply.
+This file mixes every operator in the addon - export, validation, selection, IK, UV, slots, atlas pack, atlas apply, drivers, pose library, quick armature, sprite-frame preview shader, ortho camera - plus 13 file-private helpers that span four unrelated concerns (validation reporting, packed-atlas filesystem layout, mouse projection, material image inspection). Adding any new operator forces a reader to scroll past the others and gets caught in helper sprawl that might or might not apply.
 
 The top-level `__init__.py` is also where `_classes` is defined and `register()` runs. That coupling between operator definition and registration is the only thing currently keeping the file together.
 
 ### 3.2 `panels/__init__.py` (1002 LOC, 11 panels + 3 UILists + 19 helpers)
 
-The panel module mixes nine subpanels with overlapping concerns. Worse than operators, the helpers are not local to one panel — `_draw_region_box` is shared between active-sprite and active-slot, `_outliner_category_rank` serves only the outliner UIList but lives in the module body, and `_draw_subpanel_header` is the cross-cutting shared utility. UIList subclasses (bones, actions, sprite_outliner) are interleaved between panel definitions rather than grouped.
+The panel module mixes nine subpanels with overlapping concerns. Worse than operators, the helpers are not local to one panel - `_draw_region_box` is shared between active-sprite and active-slot, `_outliner_category_rank` serves only the outliner UIList but lives in the module body, and `_draw_subpanel_header` is the cross-cutting shared utility. UIList subclasses (bones, actions, sprite_outliner) are interleaved between panel definitions rather than grouped.
 
 ### 3.3 `exporters/godot/writer.py` (869 LOC, 33 functions)
 
-The writer's structure is more disciplined — every function has a clear name and a docstring — but the file mixes seven distinct concerns: top-level export entry, scene discovery, slot emission, slot animation emission, skeleton building, sprite/weights building, action emission + fcurve helpers. Each concern is independently testable; bundled together they make the file hard to navigate when chasing a single bug.
+The writer's structure is more disciplined - every function has a clear name and a docstring - but the file mixes seven distinct concerns: top-level export entry, scene discovery, slot emission, slot animation emission, skeleton building, sprite/weights building, action emission + fcurve helpers. Each concern is independently testable; bundled together they make the file hard to navigate when chasing a single bug.
 
 ## 4. Operators module audit
 
@@ -128,7 +128,7 @@ Map of `operators/__init__.py` content by lines:
 | 1708–1746 | `_swap_image_in_materials` | Atlas pack helper |
 | 1748–1755 | `_classes`, `register`, `unregister` | Registration |
 
-Eleven distinct concerns crammed into one file. Five concerns alone — slots, atlas pack, drivers, validation, quick armature — together dominate ~1100 of the 1755 LOC and could each ship as their own module without breaking anything.
+Eleven distinct concerns crammed into one file. Five concerns alone - slots, atlas pack, drivers, validation, quick armature - together dominate ~1100 of the 1755 LOC and could each ship as their own module without breaking anything.
 
 ## 5. Panels module audit
 
@@ -162,7 +162,7 @@ Eleven distinct concerns crammed into one file. Five concerns alone — slots, a
 | 961–989 | `PROSCENIO_PT_diagnostics` | Diagnostics panel |
 | 991–1002 | `_classes`, `register`, `unregister` | Registration |
 
-The active-sprite section alone (lines 68–360) is 290 LOC of helpers plus the panel — bigger than most standalone modules in the project. Slots, outliner, and atlas similarly cluster their own helper bundles. Each cluster is a candidate for its own module.
+The active-sprite section alone (lines 68–360) is 290 LOC of helpers plus the panel - bigger than most standalone modules in the project. Slots, outliner, and atlas similarly cluster their own helper bundles. Each cluster is a candidate for its own module.
 
 `_scene_has_pre_pack_snapshot` is duplicated as both an operator helper and a panel helper (operators line 1439 + panels line 806). Same logic, two homes.
 
@@ -170,7 +170,7 @@ The active-sprite section alone (lines 68–360) is 290 LOC of helpers plus the 
 
 `core/` is the most mature part of the addon. Most modules already respect SRP and ship under 250 LOC. Two outliers:
 
-- `help_topics.py` at 539 LOC. Of those, ~470 are dictionary literals for the 13 topic entries. The dispatch logic is small (~70 LOC). The file is long but cohesive — every line is content. This is acceptable for a content registry; an alternative is one-topic-per-file with a registry that imports them all, but the readability gain is marginal.
+- `help_topics.py` at 539 LOC. Of those, ~470 are dictionary literals for the 13 topic entries. The dispatch logic is small (~70 LOC). The file is long but cohesive - every line is content. This is acceptable for a content registry; an alternative is one-topic-per-file with a registry that imports them all, but the readability gain is marginal.
 - `validation.py` at 361 LOC mixing four validators (active-sprite, active-slot, export, atlas). Each pair (active-X + private helpers) could land in its own submodule under `core/validation/`.
 
 Also worth flagging: `core/` advertises itself as bpy-free in the package docstring, but `atlas_io.py`, `psd_spritesheet.py`, `sprite_frame_shader.py` all import `bpy` at module top. The inconsistency confuses readers who rely on the convention to decide where to add new code. Honest fix: rename `core/` to drop the bpy-free implication, OR move the bpy-bound modules to a sibling subpackage (`core/bpy_helpers/` or `engine/`).
@@ -239,7 +239,7 @@ The doll panel select-issue, outliner row-click, ortho camera focus, reproject U
 - `PROSCENIO_OT_apply_packed_atlas` (320+ LOC) reads manifest, mutates UV layers per object, swaps materials, restores from snapshot if re-applied, reports. The flow control is dense.
 - `PROSCENIO_OT_quick_armature` (185 LOC) is a modal operator with five helpers (mouse projection, ensure-armature, create-bone, finish, and the modal dispatch itself). The helpers are operator-internal but testable independently.
 
-These are not blockers — they work — but each is a candidate for a small dedicated module that extracts the pure logic and leaves the operator as a thin shell.
+These are not blockers - they work - but each is a candidate for a small dedicated module that extracts the pure logic and leaves the operator as a thin shell.
 
 ### 9.2 Panels that orchestrate too much
 
@@ -260,11 +260,11 @@ panels -> operators -> core -> schema
 properties -> core
 ```
 
-Verified by grep: panels do not import operators directly (good — operators are invoked via bl_idname strings). Operators import from core. Core does not import from operators or panels. Properties imports from core. No cycles.
+Verified by grep: panels do not import operators directly (good - operators are invoked via bl_idname strings). Operators import from core. Core does not import from operators or panels. Properties imports from core. No cycles.
 
 ### 10.2 bpy-free claim drift
 
-`core/` advertises itself as bpy-free. `core/atlas_io.py`, `core/sprite_frame_shader.py`, `core/psd_spritesheet.py` import bpy at module level. This isn't broken — they're useful helpers — but it weakens the "bpy-free core" rule that the rest of `core/` follows. Two paths to honesty: (a) move the bpy-bound modules elsewhere; (b) update the package docstring to acknowledge the mixed nature.
+`core/` advertises itself as bpy-free. `core/atlas_io.py`, `core/sprite_frame_shader.py`, `core/psd_spritesheet.py` import bpy at module level. This isn't broken - they're useful helpers - but it weakens the "bpy-free core" rule that the rest of `core/` follows. Two paths to honesty: (a) move the bpy-bound modules elsewhere; (b) update the package docstring to acknowledge the mixed nature.
 
 ### 10.3 Lazy-import pattern
 
@@ -282,7 +282,7 @@ Underscore-prefixed (`_draw_*`, `_build_*`, `_resolve_*`). Consistent. The conve
 
 ### 11.3 Constant naming
 
-`_PRE_PACK_CP_KEY`, `_PACKED_ATLAS_MAT_NAME`, `_PREVIEW_CAM_NAME`, `_IK_CONSTRAINT_NAME`, `_QUICK_RIG_NAME`, `_HELP_OP_IDNAME`, `_STATUS_OP_IDNAME` — module-private constants, underscore-prefixed SCREAMING_CASE. Consistent. Their scattering across operator and panel modules suggests a shared `constants.py` or per-feature submodule constants block.
+`_PRE_PACK_CP_KEY`, `_PACKED_ATLAS_MAT_NAME`, `_PREVIEW_CAM_NAME`, `_IK_CONSTRAINT_NAME`, `_QUICK_RIG_NAME`, `_HELP_OP_IDNAME`, `_STATUS_OP_IDNAME` - module-private constants, underscore-prefixed SCREAMING_CASE. Consistent. Their scattering across operator and panel modules suggests a shared `constants.py` or per-feature submodule constants block.
 
 ### 11.4 Idname / bl_idname strings
 
@@ -290,11 +290,11 @@ Underscore-prefixed (`_draw_*`, `_build_*`, `_resolve_*`). Consistent. The conve
 
 ## 12. Public API surface
 
-`apps/blender/__init__.py` re-exports nothing — only `register()` / `unregister()`. Submodule `__init__.py` files behave inconsistently:
+`apps/blender/__init__.py` re-exports nothing - only `register()` / `unregister()`. Submodule `__init__.py` files behave inconsistently:
 
 - `operators/__init__.py`, `panels/__init__.py`, `properties/__init__.py` define everything in the file itself (god-modules).
 - `core/__init__.py` is empty.
-- `importers/photoshop/__init__.py` defines `import_manifest` + helpers inline AND has sibling files (`armature.py`, `planes.py`) — mixed pattern, the package's main API lives in `__init__.py`.
+- `importers/photoshop/__init__.py` defines `import_manifest` + helpers inline AND has sibling files (`armature.py`, `planes.py`) - mixed pattern, the package's main API lives in `__init__.py`.
 
 For test imports, the addon exposes via `from core.help_topics import ...` and `from core.validation import ...`. The split between "what is imported by tests" and "what is internal" is currently informal.
 
@@ -304,14 +304,14 @@ Consistent: every function and class is type-annotated. Mypy strict runs clean a
 
 `# type: ignore` density:
 
-- `operators/__init__.py`: 26 (mostly `valid-type` on `StringProperty` / etc descriptors and `import-not-found` on relative imports — both are bpy stub limitations, not user errors)
+- `operators/__init__.py`: 26 (mostly `valid-type` on `StringProperty` / etc descriptors and `import-not-found` on relative imports - both are bpy stub limitations, not user errors)
 - `properties/__init__.py`: 38 (same pattern, denser because PropertyGroups have many descriptor fields)
 - `panels/__init__.py`: 3
 - `writer.py`: 2
 
-The ignores are concentrated where bpy descriptor magic forces them. A small helper module exposing typed wrappers could eliminate the `valid-type` ignores at the cost of an indirection — likely not worth the trade today.
+The ignores are concentrated where bpy descriptor magic forces them. A small helper module exposing typed wrappers could eliminate the `valid-type` ignores at the cost of an indirection - likely not worth the trade today.
 
-`ClassVar` usage: every operator uses `bl_options: ClassVar[set[str]]` correctly. `_drag_head: ClassVar[...]` on the modal operator is a workaround for Blender re-creating operator instances per modal session — flagged as deviation in a comment, acceptable.
+`ClassVar` usage: every operator uses `bl_options: ClassVar[set[str]]` correctly. `_drag_head: ClassVar[...]` on the modal operator is a workaround for Blender re-creating operator instances per modal session - flagged as deviation in a comment, acceptable.
 
 ## 14. Cross-cutting concerns
 
@@ -354,10 +354,10 @@ Re-modularization must preserve every existing import path. Because tests target
 
 Sources:
 
-- [Blender Add-on Guidelines — Code Structure](https://jlampel.github.io/blender_add-on_guidelines/06_code-structure.html)
-- [Multi-File addon for Blender — B3D Interplanety](https://b3d.interplanety.org/en/creating-multifile-add-on-for-blender/)
-- [Multi-File Packages — BlenderWiki archive](https://archive.blender.org/wiki/2015/index.php/Dev:Py/Scripts/Cookbook/Code_snippets/Multi-File_packages/)
-- [Tips for Coding Scalable Addons — Superhive](https://superhivemarket.com/posts/tips-for-coding-scalable-addons)
+- [Blender Add-on Guidelines - Code Structure](https://jlampel.github.io/blender_add-on_guidelines/06_code-structure.html)
+- [Multi-File addon for Blender - B3D Interplanety](https://b3d.interplanety.org/en/creating-multifile-add-on-for-blender/)
+- [Multi-File Packages - BlenderWiki archive](https://archive.blender.org/wiki/2015/index.php/Dev:Py/Scripts/Cookbook/Code_snippets/Multi-File_packages/)
+- [Tips for Coding Scalable Addons - Superhive](https://superhivemarket.com/posts/tips-for-coding-scalable-addons)
 
 Consensus across sources:
 
@@ -374,9 +374,9 @@ Proscenio already follows (1), (2) at the addon root, and (3) at the submodule l
 
 Sources:
 
-- [Hitchhiker's Guide to Python — Structuring Your Project](https://docs.python-guide.org/writing/structure/)
-- [Real Python — Application Layouts](https://realpython.com/python-application-layouts/)
-- [Real Python — SOLID Principles](https://realpython.com/solid-principles-python/)
+- [Hitchhiker's Guide to Python - Structuring Your Project](https://docs.python-guide.org/writing/structure/)
+- [Real Python - Application Layouts](https://realpython.com/python-application-layouts/)
+- [Real Python - SOLID Principles](https://realpython.com/solid-principles-python/)
 - [God Object Anti-Pattern in Python](https://softwarepatternslexicon.com/patterns-python/11/2/4/)
 
 Consensus:
@@ -437,17 +437,17 @@ Already factored. No file exceeds 160 LOC. The builder pattern is clean: `builde
 | `proscenio_export.jsx` | 513 | Export everything |
 | `proscenio_import.jsx` | 398 | Import everything |
 
-Two large monoliths, each one concern (export, import). ExtendScript doesn't support modern module systems, so multi-file is awkward. The existing structure is acceptable given the language constraint, but internal sectioning via top-of-file commentary plus consistent helper naming would help readability. Not a SPEC 009 priority — flag for a separate housekeeping pass if the JSX grows further.
+Two large monoliths, each one concern (export, import). ExtendScript doesn't support modern module systems, so multi-file is awkward. The existing structure is acceptable given the language constraint, but internal sectioning via top-of-file commentary plus consistent helper naming would help readability. Not a SPEC 009 priority - flag for a separate housekeeping pass if the JSX grows further.
 
 ---
 
 Sources used:
 
-- [Blender Add-on Guidelines — Code Structure](https://jlampel.github.io/blender_add-on_guidelines/06_code-structure.html)
-- [B3D Interplanety — multi-file addon](https://b3d.interplanety.org/en/creating-multifile-add-on-for-blender/)
-- [Hitchhiker's Guide — Structuring Your Project](https://docs.python-guide.org/writing/structure/)
-- [Real Python — SOLID Principles](https://realpython.com/solid-principles-python/)
-- [Real Python — Application Layouts](https://realpython.com/python-application-layouts/)
+- [Blender Add-on Guidelines - Code Structure](https://jlampel.github.io/blender_add-on_guidelines/06_code-structure.html)
+- [B3D Interplanety - multi-file addon](https://b3d.interplanety.org/en/creating-multifile-add-on-for-blender/)
+- [Hitchhiker's Guide - Structuring Your Project](https://docs.python-guide.org/writing/structure/)
+- [Real Python - SOLID Principles](https://realpython.com/solid-principles-python/)
+- [Real Python - Application Layouts](https://realpython.com/python-application-layouts/)
 - [God Object Anti-Pattern in Python](https://softwarepatternslexicon.com/patterns-python/11/2/4/)
 - [Single Responsibility Principle in Python](https://renanmf.com/single-responsibility-principle-in-python/)
 - [Tips for Coding Scalable Addons](https://superhivemarket.com/posts/tips-for-coding-scalable-addons)

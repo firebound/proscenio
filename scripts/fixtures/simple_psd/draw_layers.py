@@ -4,13 +4,13 @@ Run with::
 
     python scripts/fixtures/simple_psd/draw_layers.py
 
-Pure Python -- no Blender required. Produces:
+Pure Python - no Blender required. Produces:
 
 - ``examples/generated/simple_psd/pillow_layers/square.png`` (64x64 polygon layer)
 - ``examples/generated/simple_psd/pillow_layers/arrow_0.png`` ... ``arrow_3.png``
   (32x32 each, sprite_frame rotation cycle)
 - ``examples/generated/simple_psd/pillow_layers/arrow_spritesheet.png``
-  (preview only -- the importer composes its own internal sheet)
+  (preview only - the importer composes its own internal sheet)
 
 The accompanying ``build_blend.py`` runs in headless Blender, calls the
 addon's ``import_manifest()`` on the committed manifest, and saves

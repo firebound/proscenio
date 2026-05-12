@@ -10,7 +10,7 @@ Builds the smallest possible slot fixture:
 - 1 slot Empty ``cycle.slot`` parented to the bone, ``is_slot=True``.
 - 3 polygon meshes (red / green / blue) parented to the Empty as
   attachments. Each is a 32x32 quad weight-mapped to the root bone.
-- ``slot_default = "attachment_red"`` -- red shows at scene load.
+- ``slot_default = "attachment_red"`` - red shows at scene load.
 - An action ``cycle`` keyframing each attachment per second
   (Wave 4.2 imports as one visibility track per attachment in Godot).
 
@@ -43,7 +43,7 @@ def main() -> None:
     for name in ATTACHMENT_NAMES:
         if not (LAYERS_DIR / f"{name}.png").exists():
             print(
-                f"[build_slot_cycle] missing {name}.png -- run draw_layers.py first",
+                f"[build_slot_cycle] missing {name}.png - run draw_layers.py first",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -89,7 +89,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     Parented to the armature object via ``parent_type='OBJECT'`` (NOT
     ``BONE``). Bone-parenting rotates child meshes to align with the
     bone's local Y axis, which would tilt our XZ-plane attachments out
-    of the screen plane. This matches the doll fixture pattern -- bone
+    of the screen plane. This matches the doll fixture pattern - bone
     binding via vertex groups, not via parent_type='BONE'. Slot's
     ``bone`` field falls out empty in the writer's output.
     """

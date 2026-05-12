@@ -6,8 +6,8 @@ Tests the **sliced atlas packer** end-to-end (SPEC 005.1.c.2.1). Three polygon m
 
 ```text
 examples/generated/shared_atlas/
-├── shared_atlas.blend              [SOURCE — 3 polygon meshes referencing atlas.png with partial UVs]
-├── shared_atlas.expected.proscenio [GOLDEN — CI-diffed validation midpoint]
+├── shared_atlas.blend              [SOURCE - 3 polygon meshes referencing atlas.png with partial UVs]
+├── shared_atlas.expected.proscenio [GOLDEN - CI-diffed validation midpoint]
 ├── atlas.png                       256x256, three colored shapes in three quadrants
 └── godot/
     ├── SharedAtlas.tscn            Godot wrapper (SPEC 001)
@@ -18,9 +18,9 @@ examples/generated/shared_atlas/
 
 | Name | Shape | Color | UV bounds |
 | --- | --- | --- | --- |
-| `red_circle` | circle | red | (0.0, 0.5)–(0.5, 1.0) — top-left |
-| `green_triangle` | triangle | green | (0.5, 0.5)–(1.0, 1.0) — top-right |
-| `blue_square` | square | blue | (0.0, 0.0)–(0.5, 0.5) — bottom-left |
+| `red_circle` | circle | red | (0.0, 0.5)–(0.5, 1.0) - top-left |
+| `green_triangle` | triangle | green | (0.5, 0.5)–(1.0, 1.0) - top-right |
+| `blue_square` | square | blue | (0.0, 0.0)–(0.5, 0.5) - bottom-left |
 
 The bottom-right quadrant is intentionally transparent so any regression that re-packs the whole atlas instead of slicing surfaces as visible empty space.
 
@@ -48,6 +48,6 @@ Output is committed to the repo. Re-run whenever the fixture spec changes.
 
 ## What this fixture catches when broken
 
-- Sliced packer regression — if the slicer fails to honor UV bounds, the packed atlas will contain copies of the entire shared atlas instead of the per-sprite quadrant.
-- UV remap regression — if Apply Packed Atlas writes wrong UV coordinates, sprites will sample the wrong quadrant in the packed atlas (visible misalignment).
-- Manifest format regression — `slot` + `slice` + `source_w/h` round-tripping.
+- Sliced packer regression - if the slicer fails to honor UV bounds, the packed atlas will contain copies of the entire shared atlas instead of the per-sprite quadrant.
+- UV remap regression - if Apply Packed Atlas writes wrong UV coordinates, sprites will sample the wrong quadrant in the packed atlas (visible misalignment).
+- Manifest format regression - `slot` + `slice` + `source_w/h` round-tripping.

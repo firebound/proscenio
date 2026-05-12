@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 009 wave 9.1 -- core.props_access helpers.
+"""Unit tests for SPEC 009 wave 9.1 - core.props_access helpers.
 
 Pure pytest, no Blender. Uses SimpleNamespace mocks shaped to mirror
 the real Blender Context/Object/PropertyGroup so the helpers exercise

@@ -1,4 +1,4 @@
-"""Full pre-export validation pass -- walks the scene + atlas files."""
+"""Full pre-export validation pass - walks the scene + atlas files."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def validate_export(scene: Any) -> list[Issue]:
 
     armatures = [o for o in scene_objects if getattr(o, "type", None) == "ARMATURE"]
     if not armatures:
-        issues.append(Issue("error", "scene has no Armature -- Proscenio export requires one"))
+        issues.append(Issue("error", "scene has no Armature - Proscenio export requires one"))
         return issues
 
     available_bones = armature_bone_names(armatures[0])
@@ -71,7 +71,7 @@ def _validate_sprite_against_armature(obj: Any, bones: set[str]) -> list[Issue]:
         issues.append(
             Issue(
                 "warning",
-                "sprite has no parent bone and no vertex groups matching armature bones -- "
+                "sprite has no parent bone and no vertex groups matching armature bones - "
                 "writer will fall back to empty bone field",
                 obj.name,
             )
@@ -81,7 +81,7 @@ def _validate_sprite_against_armature(obj: Any, bones: set[str]) -> list[Issue]:
         issues.append(
             Issue(
                 "error",
-                "sprite has vertex groups but none resolve to bones -- "
+                "sprite has vertex groups but none resolve to bones - "
                 "writer will raise RuntimeError at export",
                 obj.name,
             )
@@ -98,7 +98,7 @@ def _validate_atlas_files(scene_objects: list[Any]) -> list[Issue]:
         for image, fp_raw in _iter_object_atlas_images(obj, seen):
             if not _atlas_path_resolves(fp_raw):
                 issues.append(_atlas_missing_issue(obj, fp_raw))
-            del image  # silence "unused" -- kept available for future checks
+            del image  # silence "unused" - kept available for future checks
     return issues
 
 
@@ -136,6 +136,6 @@ def _atlas_path_resolves(fp_raw: str) -> bool:
 def _atlas_missing_issue(obj: Any, fp_raw: str) -> Issue:
     return Issue(
         "warning",
-        f"atlas image {fp_raw!r} not found on disk -- Godot will warn at import",
+        f"atlas image {fp_raw!r} not found on disk - Godot will warn at import",
         getattr(obj, "name", None),
     )

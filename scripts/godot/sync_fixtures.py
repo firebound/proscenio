@@ -18,12 +18,12 @@ canonical source under ``examples/``. No duplication on disk: edits in
    into the same dest directory so the Godot importer + Sprite2D / Polygon2D
    builders can find them via filename lookup.
 3. Link ``examples/<name>/godot/<Name>.tscn`` + ``<Name>.gd`` (the wrapper
-   scene pattern -- SPEC 001 Option A) into ``apps/godot/<name>/godot/``.
+   scene pattern - SPEC 001 Option A) into ``apps/godot/<name>/godot/``.
 
 Link strategy:
 - Try ``os.symlink`` first (works on POSIX always; Windows needs Developer
   Mode or admin).
-- Fallback to ``os.link`` (hardlink) on permission error -- Windows NTFS
+- Fallback to ``os.link`` (hardlink) on permission error - Windows NTFS
   honors hardlinks without elevation; cross-volume hardlinks fail, but
   examples/ + apps/godot/ live on the same volume here.
 - If both fail, falls back to ``shutil.copy2`` and prints a warning. Edits
@@ -127,7 +127,7 @@ def _link_wrappers(fixture_root: Path, dest: Path) -> int:
     """Link ``examples/<name>/godot/*.{tscn,gd}`` flat into ``dest/``.
 
     The wrapper TSCNs reference ``res://<name>/<Name>.gd`` (root, not
-    ``res://<name>/godot/<Name>.gd``) -- the convention is "drop
+    ``res://<name>/godot/<Name>.gd``) - the convention is "drop
     examples/<name>/godot/<wrapper> directly into res://<name>/", so
     the sync flattens the godot/ subdir at the destination.
     """

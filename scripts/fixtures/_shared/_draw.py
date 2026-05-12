@@ -1,11 +1,11 @@
 """Pillow-based shape rasterizer used by the SPEC 007 fixture PNG draws.
 
-Pure Python — runs **without Blender** (just Python + Pillow). The
+Pure Python - runs **without Blender** (just Python + Pillow). The
 fixture builders are split into two stages:
 
-1. ``draw_<fixture>.py`` (this layer) — generates PNGs via Pillow.
+1. ``draw_<fixture>.py`` (this layer) - generates PNGs via Pillow.
    Run with ``python scripts/fixtures/draw_<fixture>.py``.
-2. ``build_<fixture>.py`` — assembles the ``.blend`` via bpy, loading
+2. ``build_<fixture>.py`` - assembles the ``.blend`` via bpy, loading
    the PNGs from disk. Run with ``blender --background --python ...``.
 
 This split lets a developer iterate on visuals without booting Blender
@@ -14,16 +14,16 @@ and lets the PNG generation be exercised in plain pytest if needed.
 Coordinate convention
 ---------------------
 Matches Pillow native: ``y = 0`` is the **top** row of the canvas.
-Saved PNGs preserve this orientation — opening the file in Photoshop
+Saved PNGs preserve this orientation - opening the file in Photoshop
 or a browser shows pixel ``(0, 0)`` at the top-left, which is also
 how Blender's UV editor displays the image once loaded.
 
 API surface
 -----------
-- :class:`Canvas` — wraps ``PIL.Image`` + ``ImageDraw``. Construct with
+- :class:`Canvas` - wraps ``PIL.Image`` + ``ImageDraw``. Construct with
   ``Canvas(width, height)``; saved via ``canvas.save(path)``.
 - Free functions ``fill``, ``rect``, ``border``, ``circle``,
-  ``triangle``, ``trapezoid`` — operate on a Canvas.
+  ``triangle``, ``trapezoid`` - operate on a Canvas.
 
 Colors are RGBA float tuples ``(r, g, b, a)`` in ``[0, 1]``, matching
 the rest of the codebase. Pillow internally wants ``(0..255, ..., 0..255)``;
@@ -114,7 +114,7 @@ def triangle(
 
 
 def capsule(canvas: Canvas, color: RGBA, padding: int = 1) -> None:
-    """Capsule filling the canvas — rounded rect with semicircle caps.
+    """Capsule filling the canvas - rounded rect with semicircle caps.
 
     Auto-orients: vertical capsule when ``height >= width``, horizontal
     otherwise. Caps are drawn on the short axis. Padding leaves a 1px

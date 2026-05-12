@@ -6,7 +6,7 @@ Every operator in the addon reports user-facing messages through
 report helpers centralise it and let call sites focus on the actual
 message.
 
-Pure Python -- ``op.report`` is the only interaction and it's typed
+Pure Python - ``op.report`` is the only interaction and it's typed
 loosely so tests can pass a ``SimpleNamespace`` with a ``report``
 attribute.
 """

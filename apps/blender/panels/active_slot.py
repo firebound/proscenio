@@ -23,7 +23,7 @@ def _attachment_icon_for(kind: str) -> str:
 
 
 class PROSCENIO_PT_active_slot(bpy.types.Panel):
-    """Slot authoring -- visible when the active Empty is flagged as a slot (SPEC 004)."""
+    """Slot authoring - visible when the active Empty is flagged as a slot (SPEC 004)."""
 
     bl_label = "Active Slot"
     bl_idname = "PROSCENIO_PT_active_slot"
@@ -69,7 +69,7 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         if not children:
             row = layout.row()
             row.alert = True
-            row.label(text="empty slot -- add child meshes", icon="INFO")
+            row.label(text="empty slot - add child meshes", icon="INFO")
 
         current_default = props.slot_default or (children[0].name if children else "")
         for child in children:

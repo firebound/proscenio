@@ -36,7 +36,7 @@ def test_explicit_default_overrides_sorted_fallback() -> None:
 
 def test_invalid_default_falls_back_to_sorted_first() -> None:
     """Dangling slot_default (names a child that no longer exists) does not
-    block emission -- the writer still ships a usable default; the panel
+    block emission - the writer still ships a usable default; the panel
     surfaces the broken reference via the validation pass."""
     slot = build_slot_dict(
         SlotInput(name="s", bone="", slot_default="zzz_missing", attachments=("b", "a"))
@@ -86,7 +86,7 @@ def test_build_slots_empty_input_yields_empty_list() -> None:
 
 
 def test_kind_agnostic_attachments_emit_unchanged() -> None:
-    """D14: attachments[] is just string[] -- the kind lives on each Sprite,
+    """D14: attachments[] is just string[] - the kind lives on each Sprite,
     not on the slot. Confirm slot emission ignores any kind hint."""
     slot = build_slot_dict(
         SlotInput(

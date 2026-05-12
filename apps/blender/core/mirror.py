@@ -1,7 +1,7 @@
 """PropertyGroup → Custom Property mirror logic (post-005.1.c.1 fix).
 
 Lives outside ``properties/__init__.py`` so the unit tests can exercise
-the mirror without dragging in ``bpy``. Pure Python — only requires
+the mirror without dragging in ``bpy``. Pure Python - only requires
 ``obj`` to support ``__setitem__`` (Blender Object does, ``SimpleNamespace``
 mocks in tests do too).
 
@@ -41,7 +41,7 @@ def mirror_all_fields(props: Any, obj: Any) -> None:
 
     Type-cast through ``caster`` to coerce Blender's typed property values
     into plain Python primitives the Custom Property dict accepts. Caster
-    failures are skipped silently — a malformed value should never break
+    failures are skipped silently - a malformed value should never break
     the mirror flush for the rest of the fields.
     """
     for cp_key, attr, caster in OBJECT_MIRROR_MAP:

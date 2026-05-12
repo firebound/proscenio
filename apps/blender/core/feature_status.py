@@ -1,7 +1,7 @@
 """Feature-readiness taxonomy for Proscenio panels (SPEC 005.1.d.5).
 
 Source of truth for the small status badges the sidebar shows next to
-every subpanel + every operator row. Pure Python -- no bpy imports --
+every subpanel + every operator row. Pure Python - no bpy imports --
 so the dispatch table can be exercised under plain pytest, and so the
 addon UI module can read the human-facing label/icon/tooltip without
 re-deriving them per draw tick.
@@ -57,7 +57,7 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
         icon="TOOL_SETTINGS",
         short_label="blender-only",
         tooltip=(
-            "Authoring shortcut. Lives entirely on the Blender side -- "
+            "Authoring shortcut. Lives entirely on the Blender side - "
             "does NOT alter the .proscenio export."
         ),
     ),
@@ -107,17 +107,17 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "apply_packed_atlas": FeatureStatus.GODOT_READY,
     "unpack_atlas": FeatureStatus.BLENDER_ONLY,
     "import_photoshop": FeatureStatus.BLENDER_ONLY,
-    # SPEC 004 Wave 4.1 -- slot system (Blender side: writer + panel + preview shader).
+    # SPEC 004 Wave 4.1 - slot system (Blender side: writer + panel + preview shader).
     # Stays GODOT_READY because the writer emits slots[] in the .proscenio
-    # output even before the Godot importer (Wave 4.2) ships -- the entry
+    # output even before the Godot importer (Wave 4.2) ships - the entry
     # is then a documented no-op on the Godot side until that wave lands.
     "slot_system": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
-    # SPEC 005.1.d.2 -- pose library shim. Tiny wrapper around Blender's
+    # SPEC 005.1.d.2 - pose library shim. Tiny wrapper around Blender's
     # native poselib.create_pose_asset; pose assets live in the Asset
     # Browser, never reach the .proscenio. Pure authoring shortcut.
     "pose_library": FeatureStatus.BLENDER_ONLY,
-    # Future / planned -- placeholder rows ready for the SPECs that ship them.
+    # Future / planned - placeholder rows ready for the SPECs that ship them.
     "uv_animation": FeatureStatus.PLANNED,
     "live_link": FeatureStatus.PLANNED,
     # Out-of-scope sentinels (not currently rendered, but available for
@@ -131,7 +131,7 @@ def status_for(feature_id: str) -> FeatureStatus:
     """Return the status band for a known feature id.
 
     Unknown feature ids fall back to ``BLENDER_ONLY`` so a row always
-    renders some badge instead of crashing the panel during draw -- a
+    renders some badge instead of crashing the panel during draw - a
     missing entry is a documentation bug, not a fatal one.
     """
     return FEATURE_STATUS.get(feature_id, FeatureStatus.BLENDER_ONLY)

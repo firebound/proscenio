@@ -2,11 +2,11 @@
 
 This repository ships three components that bridge Blender → Godot 4 for 2D cutout animation:
 
-- `apps/photoshop/` — Photoshop UXP plugin (TypeScript + React; PSD layers + manifest JSON)
-- `apps/blender/` — Blender 4.2+ addon (sprite import, rigging, animation, `.proscenio` export)
-- `apps/godot/` — Godot 4.3+ editor plugin (`.proscenio` → native `.tscn`)
+- `apps/photoshop/` - Photoshop UXP plugin (TypeScript + React; PSD layers + manifest JSON)
+- `apps/blender/` - Blender 4.2+ addon (sprite import, rigging, animation, `.proscenio` export)
+- `apps/godot/` - Godot 4.3+ editor plugin (`.proscenio` → native `.tscn`)
 
-For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`](.ai/skills/README.md). Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in [`.ai/conventions.md`](.ai/conventions.md) — read those first.
+For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`](.ai/skills/README.md). Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in [`.ai/conventions.md`](.ai/conventions.md) - read those first.
 
 ## Skills index
 
@@ -26,7 +26,7 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 
 1. **Format is contract.** Any change to the `.proscenio` shape requires a `format_version` bump in [schemas/proscenio.schema.json](schemas/proscenio.schema.json) and a migration note. CI validates every example and fixture against the schema.
 2. **Blender addon is GPL-3.0-or-later.** No relicensing. Repo is GPL-3.0 throughout for simplicity.
-3. **No GDExtension. No native runtime.** The Godot plugin runs only at editor import time. Generated scenes use built-in nodes (`Skeleton2D`, `Bone2D`, `Polygon2D`, `AnimationPlayer`, `AnimationLibrary`). Verify by opening a generated `.tscn` in a stock Godot project without the plugin installed — it must work.
+3. **No GDExtension. No native runtime.** The Godot plugin runs only at editor import time. Generated scenes use built-in nodes (`Skeleton2D`, `Bone2D`, `Polygon2D`, `AnimationPlayer`, `AnimationLibrary`). Verify by opening a generated `.tscn` in a stock Godot project without the plugin installed - it must work.
 4. **Strict dependency direction.** Photoshop knows nothing of Blender. Blender knows nothing of Godot internals. Godot knows only `.proscenio`. The schema is the only shared artifact.
 5. **One component per PR** unless the change is a format bump (which by definition crosses components).
 6. **Conventional Commits.** Squash merge.
@@ -36,7 +36,7 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 
 ```text
 .
-├── AGENTS.md                  # this file — entry point
+├── AGENTS.md                  # this file - entry point
 ├── README.md                  # user-facing
 ├── LICENSE                    # GPL-3.0
 ├── CONTRIBUTING.md
@@ -52,4 +52,4 @@ For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`
 
 ## Status
 
-Pre-alpha. Format unstable. Not for production. The current planning spec is [`specs/000-initial-plan/`](specs/000-initial-plan/) — read [`STUDY.md`](specs/000-initial-plan/STUDY.md) for the rationale and [`TODO.md`](specs/000-initial-plan/TODO.md) for the actionable plan.
+Pre-alpha. Format unstable. Not for production. The current planning spec is [`specs/000-initial-plan/`](specs/000-initial-plan/) - read [`STUDY.md`](specs/000-initial-plan/STUDY.md) for the rationale and [`TODO.md`](specs/000-initial-plan/TODO.md) for the actionable plan.

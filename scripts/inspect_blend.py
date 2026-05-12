@@ -4,7 +4,7 @@ Run via:
 
     blender --background examples/dummy/dummy.blend --python scripts/inspect_blend.py
 
-Output is written to scripts/inspect_blend.out next to this script — Blender
+Output is written to scripts/inspect_blend.out next to this script - Blender
 headless on Windows is unreliable about flushing stdout to pipes.
 """
 
@@ -19,7 +19,7 @@ OUT_PATH = Path(__file__).parent / "inspect_blend.out"
 _LINES: list[str] = []
 
 
-def print(*args, **kwargs):  # noqa: A001 — shadow built-in deliberately
+def print(*args, **kwargs):  # noqa: A001 - shadow built-in deliberately
     _LINES.append(" ".join(str(a) for a in args))
 
 
@@ -84,7 +84,7 @@ def _dump_meshes() -> None:
 
 
 def _dump_vertex_groups() -> None:
-    _section("MESH OBJECTS — VERTEX GROUPS")
+    _section("MESH OBJECTS - VERTEX GROUPS")
     for obj in bpy.data.objects:
         if obj.type != "MESH":
             continue

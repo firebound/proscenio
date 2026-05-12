@@ -164,7 +164,7 @@ Most pain points users hit (events, effects, AI, materials, colliders) have wrap
 
 ## See also
 
-- [SPEC 001 — Reimport without losing user work](../specs/001-reimport-merge/STUDY.md): full design rationale and option matrix.
+- [SPEC 001 - Reimport without losing user work](../specs/001-reimport-merge/STUDY.md): full design rationale and option matrix.
 - [`.ai/skills/godot-dev.md`](../.ai/skills/godot-dev.md): plugin internals (importer, builders, slot system).
 - [`docs/DECISIONS.md`](DECISIONS.md): cross-cutting architectural decisions.
 - [`docs/DEFERRED.md`](DEFERRED.md): future SPECs that will reduce wrapper-pattern friction.

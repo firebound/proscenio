@@ -20,7 +20,7 @@ from .validation_issue import ProscenioValidationIssue
 
 
 class ProscenioSceneProps(PropertyGroup):
-    """Scene-level Proscenio settings -- sticky export path, default ppu."""
+    """Scene-level Proscenio settings - sticky export path, default ppu."""
 
     last_export_path: StringProperty(  # type: ignore[valid-type]
         name="Last export path",

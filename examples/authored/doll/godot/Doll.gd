@@ -7,8 +7,8 @@ extends Node2D
 ## The Proscenio importer regenerates [code]doll.scn[/code] from
 ## [code]doll.proscenio[/code] on every reimport (SPEC 001 Option A).
 ## Scripts and extra nodes attached directly to the generated scene are
-## clobbered. Wrap the imported scene in a separate [code].tscn[/code] —
-## like this one — and customize there. The wrapper is yours; reimport
+## clobbered. Wrap the imported scene in a separate [code].tscn[/code] -
+## like this one - and customize there. The wrapper is yours; reimport
 ## never touches it.
 ##
 ## See [code].ai/skills/godot-dev.md[/code] for the full pattern.

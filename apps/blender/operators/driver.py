@@ -12,16 +12,16 @@ from ..core.report import report_error, report_info  # type: ignore[import-not-f
 
 _DRIVER_VAR_NAME = "var"
 _DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
-    ("frame", "Frame index", "Sprite-frame index -- driven 0..hframes*vframes"),
+    ("frame", "Frame index", "Sprite-frame index - driven 0..hframes*vframes"),
     ("region_x", "Region X", "Texture region origin X (0..1)"),
     ("region_y", "Region Y", "Texture region origin Y (0..1)"),
     ("region_w", "Region W", "Texture region width (0..1)"),
     ("region_h", "Region H", "Texture region height (0..1)"),
 )
 _DRIVER_SOURCE_AXES: tuple[tuple[str, str, str], ...] = (
-    ("ROT_Y", "Bone Rot Y", "Rotation around world Y -- front-ortho camera axis (visible 2D)"),
-    ("ROT_Z", "Bone Rot Z", "Rotation around world Z -- vertical (spin in plan view)"),
-    ("ROT_X", "Bone Rot X", "Rotation around world X -- horizontal (tilt out of plane)"),
+    ("ROT_Y", "Bone Rot Y", "Rotation around world Y - front-ortho camera axis (visible 2D)"),
+    ("ROT_Z", "Bone Rot Z", "Rotation around world Z - vertical (spin in plan view)"),
+    ("ROT_X", "Bone Rot X", "Rotation around world X - horizontal (tilt out of plane)"),
     ("LOC_X", "Bone Loc X", "Pose bone local translation X"),
     ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y"),
     ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z"),
@@ -37,7 +37,7 @@ def _ensure_single_driver(
     After ``driver_add`` Blender seeds the fcurve with default keyframes
     around the property's current value, with constant extrapolation.
     Those keyframes act as an output remap that clamps every driver
-    expression result to the [first_key, last_key] range -- silently
+    expression result to the [first_key, last_key] range - silently
     breaking the feature for property values outside that band. Strip
     them so the driver expression result passes through 1:1.
     """

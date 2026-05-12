@@ -7,24 +7,24 @@ description: Develop, lint, and test the Godot editor plugin
 
 ## Target versions
 
-- **Minimum:** Godot 4.3 — `AnimationLibrary` is stable and `EditorImportPlugin` is mature.
+- **Minimum:** Godot 4.3 - `AnimationLibrary` is stable and `EditorImportPlugin` is mature.
 - **Tested:** Godot 4.4, latest 4.x.
 
 ## Project layout
 
 ```text
 apps/godot/
-├── project.godot           # dev project — kept inline for easy testing
+├── project.godot           # dev project - kept inline for easy testing
 ├── addons/proscenio/
 │   ├── plugin.cfg
-│   ├── plugin.gd           # EditorPlugin entry — registers importer
+│   ├── plugin.gd           # EditorPlugin entry - registers importer
 │   ├── importer.gd         # EditorImportPlugin
 │   ├── reimporter.gd       # reimport orchestration (Option A full overwrite)
 │   └── builders/
 │       ├── skeleton_builder.gd
-│       ├── polygon_builder.gd        # type: "polygon" sprites — Polygon2D
-│       ├── sprite_frame_builder.gd   # type: "sprite_frame" sprites — Sprite2D
-│       ├── slot_builder.gd           # SPEC 004 — Node2D anchors + visible toggling
+│       ├── polygon_builder.gd        # type: "polygon" sprites - Polygon2D
+│       ├── sprite_frame_builder.gd   # type: "sprite_frame" sprites - Sprite2D
+│       ├── slot_builder.gd           # SPEC 004 - Node2D anchors + visible toggling
 │       └── animation_builder.gd
 └── tests/                  # GUT
 ```
@@ -48,23 +48,23 @@ The `.proscenio` schema uses a `type` discriminator per sprite (see [SPEC 002](.
 
 | Use case | Pick | Why |
 | --- | --- | --- |
-| Cutout-style character with deformable mesh (Spine / COA Tools target audience) | `polygon` | `Polygon2D` carries vertices + UV; with a `weights` array, the importer wires `Polygon2D.skeleton` + `add_bone()` and the mesh deforms with the rig (SPEC 003 — shipped) |
+| Cutout-style character with deformable mesh (Spine / COA Tools target audience) | `polygon` | `Polygon2D` carries vertices + UV; with a `weights` array, the importer wires `Polygon2D.skeleton` + `add_bone()` and the mesh deforms with the rig (SPEC 003 - shipped) |
 | Frame-by-frame pixel art animation | `sprite_frame` | `Sprite2D` with `hframes`/`vframes`/`frame` is the native idiom |
 | Particles, hit flashes, sparkles, simple effects | `sprite_frame` | cheapest, no per-vertex geometry |
 | Simple sprite that only translates/rotates with no deformation | either | `sprite_frame` is lighter when no skinning is on the horizon |
 | Static atlas region (one frame, no animation) | `polygon` quad | UV is explicit; no need to invent a 1×1 frame grid |
 
-Mixing both kinds inside the same character is supported and idiomatic — a cutout body with a spritesheet face is a common pattern.
+Mixing both kinds inside the same character is supported and idiomatic - a cutout body with a spritesheet face is a common pattern.
 
 ## The "no GDExtension" rule
 
-This plugin runs **only** at editor import time. Generated scenes use built-in nodes only. To verify: open a generated `.tscn` in another Godot project that does not have Proscenio installed — it must work.
+This plugin runs **only** at editor import time. Generated scenes use built-in nodes only. To verify: open a generated `.tscn` in another Godot project that does not have Proscenio installed - it must work.
 
 ## Reimport behavior
 
 Reimport **always overwrites** the previous output. The importer rebuilds the
 scene from scratch from the current `.proscenio`. This is the resolution of
-[SPEC 001](../../specs/001-reimport-merge/STUDY.md) — Option A. Marker-based
+[SPEC 001](../../specs/001-reimport-merge/STUDY.md) - Option A. Marker-based
 merge (Option B) is deferred unless concrete demand emerges.
 
 The importer logs a single `print_verbose` line when overwriting an existing
@@ -77,8 +77,8 @@ reimport, **wrap the imported scene in your own `.tscn`**:
 
 ```text
 res://characters/dummy/
-├── dummy.proscenio                    # source — DCC-authored
-├── Dummy.tscn                         # wrapper — yours, never touched
+├── dummy.proscenio                    # source - DCC-authored
+├── Dummy.tscn                         # wrapper - yours, never touched
 └── Dummy.gd                           # script attached to the wrapper root
 ```
 
@@ -106,7 +106,7 @@ authored in Godot:
 
 1. Give the wrapper its **own** `AnimationPlayer`, separate from the imported one.
 2. Create a second `AnimationLibrary`, e.g. `"user"`.
-3. Both libraries can play under the wrapper's logic — call
+3. Both libraries can play under the wrapper's logic - call
    `AnimationPlayer.play("user/my_attack")` for the user-authored library
    or `imported_player.play("idle")` for the DCC-authored one.
 
@@ -119,7 +119,7 @@ A slot is a sprite-swap group: one named anchor with N alternate attachments, on
 
 **Schema shape**:
 
-`bone` is **optional** -- the writer emits it only when the slot Empty is bone-parented (`parent_type == "BONE"`); object-parented slot Empties (like the doll fixture's brow swaps, which use `parent_type == "OBJECT"` to avoid the bone Y-axis rotating its attachments) omit `bone` and the importer anchors the slot directly under `Skeleton2D`. The example below shows the bone-parented variant; see `examples/authored/doll/doll.expected.proscenio` for the object-parented golden.
+`bone` is **optional** - the writer emits it only when the slot Empty is bone-parented (`parent_type == "BONE"`); object-parented slot Empties (like the doll fixture's brow swaps, which use `parent_type == "OBJECT"` to avoid the bone Y-axis rotating its attachments) omit `bone` and the importer anchors the slot directly under `Skeleton2D`. The example below shows the bone-parented variant; see `examples/authored/doll/doll.expected.proscenio` for the object-parented golden.
 
 ```json
 {
@@ -171,7 +171,7 @@ AnimationPlayer
 
 - `slot_attachment` track expands to N `:visible` tracks (one per attachment child of the slot Node2D).
 - At each key time, the named attachment gets `visible=true`, siblings get `visible=false`.
-- `INTERPOLATION_NEAREST` -- attachment swaps are hard cuts (no in-between).
+- `INTERPOLATION_NEAREST` - attachment swaps are hard cuts (no in-between).
 
 **Name sanitization caveat**:
 
@@ -179,7 +179,7 @@ Godot's `Node.name` setter strips `.` / `/` / `:` / `@` and replaces them with `
 
 **Customizing slot behavior in the wrapper**:
 
-Slots are pure-data Node2Ds — wrappers can drive them via:
+Slots are pure-data Node2Ds - wrappers can drive them via:
 
 ```gdscript
 var slot := $Skeleton2D/.../brow_L_swap  # note sanitized "_"
@@ -196,7 +196,7 @@ User-authored animations on the wrapper's own AnimationPlayer can hook the same 
 - GDScript 2.0 syntax. Use static typing wherever possible (`var x: int = 0`).
 - One class per file. Filename matches the class concept.
 - Format: `gdformat addons/proscenio/`. Lint: `gdlint addons/proscenio/`.
-- No `@tool` scripts in user-facing scenes — only inside the plugin.
+- No `@tool` scripts in user-facing scenes - only inside the plugin.
 
 ## Testing
 

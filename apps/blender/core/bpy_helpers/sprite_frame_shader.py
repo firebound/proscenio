@@ -6,7 +6,7 @@ onto the matching shader inputs. Invoked from the SPEC 004 panel
 operator.
 
 The pure-Python cell math (``cell_size``, ``cell_offset_x``,
-``cell_offset_y``) lives in ``core.sprite_frame_math`` -- bpy-free and
+``cell_offset_y``) lives in ``core.sprite_frame_math`` - bpy-free and
 exercised by pytest directly. Wave 9.10 moved it out so this module
 stays focused on the bpy node tree.
 """
@@ -232,7 +232,7 @@ def _resolve_uv_source(node_tree: Any, tex_node: Any) -> Any:
     """Find the socket currently feeding the ImageTexture's Vector input."""
     vec_input = tex_node.inputs.get("Vector")
     if vec_input is None or not vec_input.is_linked:
-        # No prior UV source -- create a TexCoord node and wire its UV.
+        # No prior UV source - create a TexCoord node and wire its UV.
         tex_coord = node_tree.nodes.new("ShaderNodeTexCoord")
         tex_coord.location = (-450, 100)
         return tex_coord.outputs["UV"]

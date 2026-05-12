@@ -1,4 +1,4 @@
-# Pre-commit hooks — single gate that mirrors CI locally.
+# Pre-commit hooks - single gate that mirrors CI locally.
 #
 # Install once:  pip install pre-commit && pre-commit install
 # Run on demand: pre-commit run --all-files

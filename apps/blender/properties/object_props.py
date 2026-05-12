@@ -3,7 +3,7 @@
 Holds every typed setting that lives on a mesh / Empty: sprite type,
 sprite-frame metadata, texture region, slot flags, driver picker.
 
-The EnumProperty items tuples live here too -- they are used by exactly
+The EnumProperty items tuples live here too - they are used by exactly
 one PropertyGroup, so colocation keeps the Enum value <-> label mapping
 next to the field that consumes it.
 """
@@ -24,11 +24,11 @@ from bpy.types import PropertyGroup
 from ._dynamic_items import driver_bone_items, is_armature, on_any_update
 
 SPRITE_TYPE_ITEMS = (
-    ("polygon", "Polygon", "Cutout-style sprite -- Polygon2D vertices + UV (default)", 0),
+    ("polygon", "Polygon", "Cutout-style sprite - Polygon2D vertices + UV (default)", 0),
     (
         "sprite_frame",
         "Sprite Frame",
-        "Spritesheet sprite -- Sprite2D with hframes x vframes grid",
+        "Spritesheet sprite - Sprite2D with hframes x vframes grid",
         1,
     ),
 )
@@ -49,7 +49,7 @@ REGION_MODE_ITEMS = (
 )
 
 DRIVER_TARGET_ITEMS = (
-    ("frame", "Frame index", "Sprite-frame cell -- driven 0..hframes*vframes-1", 0),
+    ("frame", "Frame index", "Sprite-frame cell - driven 0..hframes*vframes-1", 0),
     ("region_x", "Region X", "Texture region origin X (0..1)", 1),
     ("region_y", "Region Y", "Texture region origin Y (0..1)", 2),
     ("region_w", "Region W", "Texture region width (0..1)", 3),
@@ -67,11 +67,11 @@ DRIVER_SOURCE_AXIS_ITEMS = (
 
 
 class ProscenioObjectProps(PropertyGroup):
-    """Per-Object Proscenio settings -- one PropertyGroup per mesh."""
+    """Per-Object Proscenio settings - one PropertyGroup per mesh."""
 
     sprite_type: EnumProperty(  # type: ignore[valid-type]
         name="Sprite type",
-        description="Rendering path for this sprite -- see SPEC 002",
+        description="Rendering path for this sprite - see SPEC 002",
         items=SPRITE_TYPE_ITEMS,
         default="polygon",
         update=on_any_update,
@@ -211,7 +211,7 @@ class ProscenioObjectProps(PropertyGroup):
     is_slot: BoolProperty(  # type: ignore[valid-type]
         name="Is slot anchor",
         description=(
-            "When True on an Empty object, marks it as the parent of a slot -- "
+            "When True on an Empty object, marks it as the parent of a slot - "
             "child meshes become attachments, the writer emits a slots[] entry, "
             "and the Godot importer wires a Node2D parent + visible-toggled children."
         ),

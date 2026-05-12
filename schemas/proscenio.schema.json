@@ -76,7 +76,7 @@
       "type": "object",
       "required": ["name", "texture_region", "polygon", "uv"],
       "additionalProperties": false,
-      "description": "Cutout-style sprite rendered as a Godot Polygon2D — vertices + UV. Default sprite kind when `type` is omitted (backwards-compatible with v1 documents).",
+      "description": "Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV. Default sprite kind when `type` is omitted (backwards-compatible with v1 documents).",
       "properties": {
         "type": {
           "const": "polygon",
@@ -119,7 +119,7 @@
       "type": "object",
       "required": ["type", "name", "bone", "hframes", "vframes"],
       "additionalProperties": false,
-      "description": "Spritesheet sprite rendered as a Godot Sprite2D — `frame` indexes into an `hframes` × `vframes` grid carved out of the atlas (or out of `texture_region` when present).",
+      "description": "Spritesheet sprite rendered as a Godot Sprite2D - `frame` indexes into an `hframes` × `vframes` grid carved out of the atlas (or out of `texture_region` when present).",
       "properties": {
         "type": {
           "const": "sprite_frame",

@@ -1,6 +1,6 @@
 """Viewport math helpers (SPEC 009 wave 9.2).
 
-bpy-bound -- imports ``bpy_extras.view3d_utils`` and ``mathutils``.
+bpy-bound - imports ``bpy_extras.view3d_utils`` and ``mathutils``.
 Lives in ``core/`` for now so the operator that uses it can stay a
 thin shell; will join the rest of the bpy-bound modules under
 ``core/bpy_helpers/`` once wave 9.6 lands.
@@ -21,7 +21,7 @@ def mouse_event_to_z0_point(
     (no region or no region_data). When the view direction is parallel
     to z=0 (orthographic top view edge case) or when the plane
     intersection lies behind the camera, the helper falls back to
-    ``region_2d_to_location_3d`` at depth 0 -- it never returns
+    ``region_2d_to_location_3d`` at depth 0 - it never returns
     ``None`` for those cases. Callers that want to distinguish "viewport
     missing" from "fallback used" should treat the fallback as a normal
     success path.

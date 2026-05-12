@@ -1,4 +1,4 @@
-# SPEC 010 — Photoshop UXP migration
+# SPEC 010 - Photoshop UXP migration
 
 **Status**: scaffolded. UXP plugin template already in [`apps/photoshop/`](../../apps/photoshop/) (React + webpack + Babel). Decisions to lock + implementation pending.
 
@@ -16,7 +16,7 @@ This blocks the **Predictable contract** pillar: the Photoshop side is the only 
 
 ## Solution
 
-Replace the JSX exporter with a UXP plugin written in TypeScript + React. Schema (`psd_manifest.schema.json` v1) does not change — the wire format stays byte-identical. Only the implementation moves.
+Replace the JSX exporter with a UXP plugin written in TypeScript + React. Schema (`psd_manifest.schema.json` v1) does not change - the wire format stays byte-identical. Only the implementation moves.
 
 The scaffold is already in [`apps/photoshop/`](../../apps/photoshop/):
 
@@ -172,7 +172,7 @@ Brings the validation count from 5 gates to 6.
 ## Out of scope
 
 - Schema bump. v1 contract is preserved byte-for-byte.
-- Krita / GIMP UXP-equivalents. Tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). Krita has its own plugin SDK; GIMP is Python — different surfaces.
+- Krita / GIMP UXP-equivalents. Tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). Krita has its own plugin SDK; GIMP is Python - different surfaces.
 - Adobe Marketplace publication. Distributable via UDT load + `.ccx` direct install for now.
 - Photoshop versions before CC 2021. Documented bump.
 

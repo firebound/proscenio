@@ -48,7 +48,7 @@ def main() -> None:
     if missing:
         names = ", ".join(str(p.name) for p in missing)
         print(
-            f"[build_atlas_pack] missing PNG(s): {names} -- run draw_layers.py first",
+            f"[build_atlas_pack] missing PNG(s): {names} - run draw_layers.py first",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -175,7 +175,7 @@ def _rewrite_image_to_relpath() -> None:
         try:
             img.filepath = bpy.path.relpath(img.filepath)
         except ValueError:
-            # Different drive on Windows -- leave the absolute path.
+            # Different drive on Windows - leave the absolute path.
             pass
 
 

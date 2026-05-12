@@ -4,7 +4,7 @@ Run with::
 
     python scripts/fixtures/draw_blink_eyes.py
 
-Pure Python — no Blender required. Produces:
+Pure Python - no Blender required. Produces:
 
 - ``examples/generated/blink_eyes/layers/eye_0.png`` … ``eye_3.png`` (32×32 each)
 - ``examples/generated/blink_eyes/eye_spritesheet.png`` (128×32, 4 frames horizontal)
@@ -37,7 +37,7 @@ WHITE = (0.95, 0.95, 0.95, 1.0)
 PUPIL = (0.10, 0.10, 0.10, 1.0)
 TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
 
-# (frame_index, eye_open_height_ratio) — 1.0 fully open, 0.0 fully closed.
+# (frame_index, eye_open_height_ratio) - 1.0 fully open, 0.0 fully closed.
 FRAMES: tuple[tuple[int, float], ...] = (
     (0, 1.0),
     (1, 0.6),

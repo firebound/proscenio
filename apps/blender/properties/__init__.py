@@ -20,10 +20,10 @@ Submodules per concern (wave 9.10 split):
 - ``object_props.py``     ``ProscenioObjectProps`` + EnumProperty items
                           tuples (sprite type, region mode, driver target,
                           driver source axis).
-- ``scene_props.py``      ``ProscenioSceneProps`` -- sticky export path,
+- ``scene_props.py``      ``ProscenioSceneProps`` - sticky export path,
                           atlas packer params, outliner state, validation
                           results collection.
-- ``validation_issue.py`` ``ProscenioValidationIssue`` -- one element of
+- ``validation_issue.py`` ``ProscenioValidationIssue`` - one element of
                           the scene-level validation results collection.
 - ``_handlers.py``        persistent ``bpy.app.handlers`` (load_post,
                           save_pre) + the deferred-hydrate timer job.

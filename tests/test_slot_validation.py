@@ -116,7 +116,7 @@ def test_attachments_with_divergent_parent_bone_warn() -> None:
 
 def test_attachments_with_no_parent_bone_skip_bone_check() -> None:
     """Attachment with parent_type='OBJECT' (no bone parent) does not trigger
-    the divergent-bone warning -- only mismatched bone parents do."""
+    the divergent-bone warning - only mismatched bone parents do."""
     empty = _empty(
         "forearm.swap",
         parent_bone="forearm.L",
@@ -144,7 +144,7 @@ def test_slot_child_with_bone_transform_keys_warns() -> None:
 
 
 def test_slot_child_with_proscenio_only_keys_does_not_warn() -> None:
-    """An animated proscenio.frame fcurve is fine -- the warning only fires
+    """An animated proscenio.frame fcurve is fine - the warning only fires
     on location/rotation/scale paths."""
     empty = _empty(
         "eye.swap",
@@ -159,7 +159,7 @@ def test_slot_child_with_proscenio_only_keys_does_not_warn() -> None:
 
 def test_slot_with_no_bone_skips_bone_mismatch_check() -> None:
     """When the slot Empty has no bone parent, attachments are free to
-    parent however the user wants -- no divergent-bone warning."""
+    parent however the user wants - no divergent-bone warning."""
     empty = _empty(
         "free.swap",
         children=[

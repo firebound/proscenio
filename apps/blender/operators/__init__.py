@@ -7,18 +7,18 @@ reverse order on ``unregister()``.
 
 Submodules:
 
-- help_dispatch     -- status badge proxy, help popup, smoke test
-- export_flow       -- Validate, Export, Re-export
-- selection         -- select issue, select outliner, toggle favorite
-- authoring_camera  -- Preview Camera (ortho)
-- authoring_ik      -- Toggle IK chain
-- uv_authoring      -- Reproject UV, Snap region to UV
-- driver            -- Drive sprite from bone (5.1.d.1)
-- pose_library      -- Save Pose to Library, Bake Current Pose
-- quick_armature    -- Quick Armature modal (5.1.d.3)
-- slot              -- Create Slot, Add Attachment, Set Default, preview shader
-- atlas_pack        -- Pack, Apply, Unpack
-- import_photoshop  -- single-operator file (Import Photoshop Manifest)
+- help_dispatch     - status badge proxy, help popup, smoke test
+- export_flow       - Validate, Export, Re-export
+- selection         - select issue, select outliner, toggle favorite
+- authoring_camera  - Preview Camera (ortho)
+- authoring_ik      - Toggle IK chain
+- uv_authoring      - Reproject UV, Snap region to UV
+- driver            - Drive sprite from bone (5.1.d.1)
+- pose_library      - Save Pose to Library, Bake Current Pose
+- quick_armature    - Quick Armature modal (5.1.d.3)
+- slot              - Create Slot, Add Attachment, Set Default, preview shader
+- atlas_pack        - Pack, Apply, Unpack
+- import_photoshop  - single-operator file (Import Photoshop Manifest)
 """
 
 from __future__ import annotations

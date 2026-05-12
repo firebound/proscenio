@@ -22,7 +22,7 @@ from core.help_topics import (  # noqa: E402
 
 
 def test_pipeline_overview_is_present() -> None:
-    """Required topic id -- the main panel button targets it."""
+    """Required topic id - the main panel button targets it."""
     assert "pipeline_overview" in HELP_TOPICS
 
 
@@ -69,7 +69,7 @@ def test_panel_topic_ids_present() -> None:
 def test_see_also_references_exist_on_disk() -> None:
     """Cross-references must point at real spec directories or files.
 
-    Catches drift -- if a spec dir is renamed or removed, the help topic
+    Catches drift - if a spec dir is renamed or removed, the help topic
     surfaces a broken pointer.
     """
     for topic_id, topic in HELP_TOPICS.items():

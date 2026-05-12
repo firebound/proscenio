@@ -10,7 +10,7 @@ from ._helpers import draw_subpanel_header
 
 
 class PROSCENIO_UL_actions(bpy.types.UIList):
-    """List view for ``bpy.data.actions`` -- Animation subpanel uses this."""
+    """List view for ``bpy.data.actions`` - Animation subpanel uses this."""
 
     bl_idname = "PROSCENIO_UL_actions"
 

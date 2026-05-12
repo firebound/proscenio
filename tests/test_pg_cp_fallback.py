@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 009 wave 9.1 -- core.pg_cp_fallback helpers.
+"""Unit tests for SPEC 009 wave 9.1 - core.pg_cp_fallback helpers.
 
 Pure pytest, no Blender. The fallback contract: PropertyGroup field
 wins, Custom Property literal as legacy fallback, ``default`` as last

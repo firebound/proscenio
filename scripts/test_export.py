@@ -7,7 +7,7 @@ Run via:
 Loads the writer directly from apps/blender/ (no extension install needed),
 emits the result to apps/godot/test_dummy/dummy_from_blend.proscenio, and
 mirrors the source-side atlas next to the output so the Godot dev project
-finds it on reimport. The atlas-mirror step is dev-loop polish only —
+finds it on reimport. The atlas-mirror step is dev-loop polish only -
 production exports through the addon operator do not touch sibling files.
 """
 
@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Add ``apps/`` to sys.path so the blender addon imports as the top-level
 # package ``blender``. The writer submodules use relative imports
 # (``from ....core``) that only resolve when ``blender`` is a real package
-# on sys.path -- inserting ``apps/blender`` directly would put ``exporters``
+# on sys.path - inserting ``apps/blender`` directly would put ``exporters``
 # at the top level and the relative imports would walk past it.
 sys.path.insert(0, str(REPO_ROOT / "apps"))
 

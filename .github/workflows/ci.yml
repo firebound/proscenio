@@ -48,7 +48,7 @@ jobs:
           shopt -s globstar nullglob
           files=(examples/**/*.proscenio apps/godot/tests/fixtures/**/*.proscenio apps/blender/tests/fixtures/**/*.proscenio)
           if [ ${#files[@]} -eq 0 ]; then
-            echo "No .proscenio files yet — skipping."
+            echo "No .proscenio files yet - skipping."
             exit 0
           fi
           check-jsonschema --schemafile schemas/proscenio.schema.json "${files[@]}"

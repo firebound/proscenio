@@ -4,7 +4,7 @@ Run with::
 
     python scripts/fixtures/atlas_pack/draw_layers.py
 
-Pure Python -- no Blender required. Produces 9 distinct 32x32 PNGs
+Pure Python - no Blender required. Produces 9 distinct 32x32 PNGs
 under ``examples/generated/atlas_pack/pillow_layers/`` (``sprite_1.png`` ..
 ``sprite_9.png``). Each PNG is a flat-colored square with a bold digit
 centered in it so packed-atlas placement is visually verifiable.
@@ -35,7 +35,7 @@ FRAME_W = 32
 FRAME_H = 32
 SPRITE_COUNT = 9
 
-# Distinct flat colors -- 9 entries, 1-indexed match the digit overlay.
+# Distinct flat colors - 9 entries, 1-indexed match the digit overlay.
 COLORS: tuple[tuple[float, float, float, float], ...] = (
     (0.85, 0.20, 0.20, 1.0),  # 1 red
     (0.95, 0.55, 0.20, 1.0),  # 2 orange

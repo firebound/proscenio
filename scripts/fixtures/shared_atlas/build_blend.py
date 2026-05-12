@@ -46,7 +46,7 @@ SPRITES = (
 def main() -> None:
     if not ATLAS_PATH.exists():
         print(
-            f"[build_shared_atlas] missing {ATLAS_PATH} — run draw_shared_atlas.py first",
+            f"[build_shared_atlas] missing {ATLAS_PATH} - run draw_shared_atlas.py first",
             file=sys.stderr,
         )
         sys.exit(1)

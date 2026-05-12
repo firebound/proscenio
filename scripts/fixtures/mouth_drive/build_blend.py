@@ -10,10 +10,10 @@ Loads PNGs produced by ``draw_layers.py`` and builds:
   authoring (front-ortho view, bones lying along world X so their
   local Y axis sits in the camera plane and a pose-mode R Y rotation
   feels like rotating "in the picture"):
-  - ``mouth_pos`` -- positions the mouth in 2D space; sprite mesh is
+  - ``mouth_pos`` - positions the mouth in 2D space; sprite mesh is
     parented to this bone, so translating / rotating it moves the
     mouth without affecting which sprite cell is shown.
-  - ``mouth_drive`` -- driver source bone; rotation around its local
+  - ``mouth_drive`` - driver source bone; rotation around its local
     Z axis (which equals world Z viewed from front-ortho) is wired to
     ``mouth.proscenio.frame``. Animating its Z rotation cycles through
     the 4-frame mouth spritesheet.
@@ -25,7 +25,7 @@ Loads PNGs produced by ``draw_layers.py`` and builds:
   ``var * 2 + 2`` reading ``mouth_drive`` Z rotation in world space.
   - World space + XYZ Euler so ``var`` is radians, not quaternion
     components.
-  - The expression maps [-pi/2, +pi/2] rad -> [1, 5] -- with the
+  - The expression maps [-pi/2, +pi/2] rad -> [1, 5] - with the
     IntProperty's [0, hframes*vframes-1] = [0, 3] clamp, that yields
     a clean cell sweep across the rotation range.
 - **Action** ``mouth_drive_anim`` keyframing ``mouth_drive`` Z rotation
@@ -71,7 +71,7 @@ DRIVE_BONE = "mouth_drive"
 def main() -> None:
     if not SHEET_PATH.exists():
         print(
-            f"[build_mouth_drive] missing {SHEET_PATH} -- run draw_layers.py first",
+            f"[build_mouth_drive] missing {SHEET_PATH} - run draw_layers.py first",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -105,7 +105,7 @@ def _build_armature() -> bpy.types.Object:
 
     Blender's Front Orthographic view looks along world -Y, so the
     camera sits at +Y. Bones with tail at -Y from the head point at
-    the viewer -- the Spine / 2D-cutout convention -- and appear as
+    the viewer - the Spine / 2D-cutout convention - and appear as
     small octahedral dots from the front. A pose-mode R Y rotates the
     bone around the camera axis, the visible "rotation in the picture"
     that animators expect; reading it back via WORLD_SPACE + ROT_Y on
@@ -232,7 +232,7 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
 
     Only the driver bone is animated. ``mouth_pos`` exists to demonstrate
     the position-vs-driver split structurally (sprite is parented to it),
-    but it stays at rest -- the writer's pose-location channel currently
+    but it stays at rest - the writer's pose-location channel currently
     drops the Z component for bones whose Y axis is not aligned with
     world Z (see tests/BUGS_FOUND.md), so a translation here would not
     round-trip into the .proscenio golden. Once that writer fix lands,

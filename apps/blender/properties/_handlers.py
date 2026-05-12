@@ -62,7 +62,7 @@ def deferred_hydrate() -> None:
     """Run hydration one tick after register().
 
     Blender's PointerProperty wiring is not fully established the
-    moment register() returns -- assigning to the PropertyGroup inside
+    moment register() returns - assigning to the PropertyGroup inside
     register sometimes writes to a stub that is dropped before the
     data block is materialized. A zero-interval timer schedules the
     hydration for after the addon-enable cycle completes, when the

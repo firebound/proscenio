@@ -23,7 +23,7 @@ class PROSCENIO_OT_status_info(bpy.types.Operator):
 
     band: StringProperty(  # type: ignore[valid-type]
         name="Band",
-        description="FeatureStatus enum value -- 'godot-ready', 'blender-only', etc.",
+        description="FeatureStatus enum value - 'godot-ready', 'blender-only', etc.",
         default="godot-ready",
     )
 
@@ -90,7 +90,7 @@ class PROSCENIO_OT_help(bpy.types.Operator):
 
 
 class PROSCENIO_OT_smoke_test(bpy.types.Operator):
-    """Smoke test operator -- confirms the addon registers and dispatches."""
+    """Smoke test operator - confirms the addon registers and dispatches."""
 
     bl_idname = "proscenio.smoke_test"
     bl_label = "Proscenio: Smoke Test"

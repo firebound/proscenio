@@ -11,11 +11,11 @@ static func _resolve_sprite_texture(
 ) -> Texture2D:
 	# Per-sprite texture resolution order:
 	# 1. sprite.texture field (writer emits it when the mesh has an Image
-	#    Texture on its material) -- load <source_dir>/<filename>.
-	# 2. <sprite.name>.png next to the .proscenio -- filename-by-convention
+	#    Texture on its material) - load <source_dir>/<filename>.
+	# 2. <sprite.name>.png next to the .proscenio - filename-by-convention
 	#    fallback for fixtures (doll) whose materials carry flat colors but
 	#    whose body parts ship as separate PNGs alongside the document.
-	# 3. fallback_atlas -- the scene-wide single-image case.
+	# 3. fallback_atlas - the scene-wide single-image case.
 	var per_sprite: String = sprite_data.get("texture", "")
 	if per_sprite != "" and source_dir != "":
 		var path := source_dir.path_join(per_sprite)
@@ -36,7 +36,7 @@ static func _apply_skinning(
 	# Wire Polygon2D.skeleton + per-bone weight arrays. Each entry in
 	# weights_data is `{bone, values[]}` from the .proscenio document.
 	# Bones whose name does not resolve under the skeleton are reported
-	# and skipped — the rest of the rig still imports.
+	# and skipped - the rest of the rig still imports.
 	poly.skeleton = poly.get_path_to(skeleton)
 	poly.clear_bones()
 	for weight_entry in weights_data:
@@ -45,7 +45,7 @@ static func _apply_skinning(
 		if bone_node == null:
 			push_error(
 				(
-					"Proscenio: sprite '%s' weight entry references missing bone '%s' — skipping."
+					"Proscenio: sprite '%s' weight entry references missing bone '%s' - skipping."
 					% [poly.name, bone_name]
 				)
 			)
@@ -85,7 +85,7 @@ static func attach_sprites(
 
 		var uv_pts: Array = sprite_data.get("uv", [])
 		var uvs := PackedVector2Array()
-		# .proscenio stores UVs normalized [0, 1] — engine-agnostic. Godot's
+		# .proscenio stores UVs normalized [0, 1] - engine-agnostic. Godot's
 		# Polygon2D expects UVs in texture pixel space, so multiply by the
 		# resolved texture's size at import time. Sprites without a texture
 		# keep raw UVs.

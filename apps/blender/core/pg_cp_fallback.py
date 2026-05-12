@@ -23,7 +23,7 @@ def read_field(obj: Any, *, pg_field: str, cp_key: str, default: Any) -> Any:
     """Read a Proscenio field, PropertyGroup first, Custom Property fallback.
 
     Returns ``default`` when neither path is available. The PG path
-    wins even when the field's value equals the type default -- callers
+    wins even when the field's value equals the type default - callers
     that want "explicit override only" semantics should test the PG
     presence themselves.
     """

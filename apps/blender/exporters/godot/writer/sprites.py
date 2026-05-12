@@ -128,7 +128,7 @@ def _image_filename(image: bpy.types.Image) -> str | None:
 def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     """Return the filename of the first Image Texture on this object's material.
 
-    Multi-PNG fixtures (one PNG per body part -- the doll convention) need
+    Multi-PNG fixtures (one PNG per body part - the doll convention) need
     per-sprite texture metadata so the Godot importer can resolve a unique
     image per Polygon2D / Sprite2D. Single-atlas fixtures already get their
     image via the top-level ``atlas`` field; ``texture`` here adds a
@@ -187,7 +187,7 @@ def _resolve_known_groups(
     for name in skipped:
         print(
             f"  WARN: sprite {obj.name!r} vertex group {name!r} has no "
-            f"matching bone -- dropping from weights"
+            f"matching bone - dropping from weights"
         )
     return known
 
@@ -221,7 +221,7 @@ def build_sprite_weights(
     if not known_groups:
         raise RuntimeError(
             f"Proscenio: sprite {obj.name!r} has vertex groups but none "
-            f"resolve to bones in the armature -- fix the group names or "
+            f"resolve to bones in the armature - fix the group names or "
             f"remove them so the sprite can use rigid attach."
         )
 

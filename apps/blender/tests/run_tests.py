@@ -38,7 +38,7 @@ def _load_addon_as_package() -> None:
 
     The addon's submodules use relative imports rooted at the package
     name declared in its manifest (``proscenio``). The folder on disk
-    is named ``blender`` -- valid as identifier, but mounting it under
+    is named ``blender`` - valid as identifier, but mounting it under
     the manifest name keeps the package path identical to what the
     extension loader produces.
     """
@@ -66,7 +66,7 @@ def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
 
     Falls back gracefully if ``jsonschema`` is not in Blender's bundled
     Python (it usually is not). Returns ``[]`` with a stderr note in
-    that case so the test still proves the writer round-trip — schema
+    that case so the test still proves the writer round-trip - schema
     enforcement happens in the dedicated ``validate-schema`` CI job.
     """
     try:
@@ -88,7 +88,7 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
     ``examples/authored/<name>/`` are discovered alongside the
     procedural ones at the root (``examples/<name>/``). A single
     fixture dir may host multiple ``(blend, golden)`` pairs (e.g.
-    a baseline + a derived variant) -- one pair per golden.
+    a baseline + a derived variant) - one pair per golden.
 
     Returns a sorted list of ``(blend_path, expected_path)`` tuples.
     """

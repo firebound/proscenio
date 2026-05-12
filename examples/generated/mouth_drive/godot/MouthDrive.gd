@@ -6,7 +6,7 @@ extends Node2D
 ##
 ## Minimal isolation test for [b]Drive from Bone[/b]: one sprite_frame mouth
 ## mesh + one bone ([code]mouth_drive[/code]) on the [code]mouth_rig[/code]
-## armature. The fixture ships without a driver wired -- the user adds one
+## armature. The fixture ships without a driver wired - the user adds one
 ## via the Blender panel operator and the round-trip should preserve the
 ## driver as a bone_transform track on the AnimationPlayer.
 ##

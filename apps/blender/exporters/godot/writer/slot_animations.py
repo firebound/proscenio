@@ -16,7 +16,7 @@ def build_slot_animations(scene: bpy.types.Scene) -> list[dict[str, Any]]:
 
     Each fcurve key maps an integer index to one of the slot's
     ``attachments[]``, expanded into a ``slot_attachment`` track
-    targeting the slot's name. Constant interpolation -- D5 hard-cut.
+    targeting the slot's name. Constant interpolation - D5 hard-cut.
     Returns one animation entry per (slot, action) pair; the merge
     helper consolidates entries that share an action name.
     """

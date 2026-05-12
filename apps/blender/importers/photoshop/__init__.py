@@ -49,7 +49,7 @@ def import_manifest(
     ``placement`` chooses where the figure sits relative to the world:
 
     - ``"landed"`` (default): every stamped mesh is shifted so the
-      lowest point of the figure lands on world Z=0 — matches the
+      lowest point of the figure lands on world Z=0 - matches the
       Godot / game-engine convention of placing a character's pivot
       at the feet.
     - ``"centered"``: figure stays centred around the manifest canvas

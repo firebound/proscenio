@@ -18,7 +18,7 @@ def _outliner_category_rank(obj: bpy.types.Object) -> int:
     1 = slot attachment mesh (rendered indented under its slot).
     2 = sprite mesh (Proscenio polygon / sprite_frame, parented to bone or floating).
     3 = armature.
-    9 = irrelevant for Proscenio (cameras, lights, etc.) -- hidden by ``filter_items``.
+    9 = irrelevant for Proscenio (cameras, lights, etc.) - hidden by ``filter_items``.
     """
     obj_props = getattr(obj, "proscenio", None)
     if obj.type == "EMPTY" and obj_props is not None and bool(getattr(obj_props, "is_slot", False)):
@@ -40,7 +40,7 @@ def _outliner_category_rank(obj: bpy.types.Object) -> int:
 
 
 class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
-    """Sprite-centric outliner -- slots, attachments, sprite meshes, armatures (5.1.d.4)."""
+    """Sprite-centric outliner - slots, attachments, sprite meshes, armatures (5.1.d.4)."""
 
     bl_idname = "PROSCENIO_UL_sprite_outliner"
 
@@ -128,7 +128,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
 
 
 class PROSCENIO_PT_outliner(bpy.types.Panel):
-    """Sprite-centric outliner -- replaces Blender's outliner for big rigs (5.1.d.4)."""
+    """Sprite-centric outliner - replaces Blender's outliner for big rigs (5.1.d.4)."""
 
     bl_label = "Outliner"
     bl_idname = "PROSCENIO_PT_outliner"

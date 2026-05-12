@@ -30,24 +30,24 @@ Schema validated at three points: writer output (test runner runs `check-jsonsch
 
 ## Per-SPEC tradeoffs
 
-### SPEC 000 — Phase 1 MVP
+### SPEC 000 - Phase 1 MVP
 
 - **Rest+delta absolute, not relative, in animation tracks.** Exporter resolves into absolute values; importer just reads. Simpler at consumer side.
 
-### SPEC 001 — Reimport-merge
+### SPEC 001 - Reimport-merge
 
 - **Option A (full overwrite + wrapper) chosen over Option B (marker-merge).** Option B deferred without concrete demand. Wrapper pattern is simpler to reason about and easier to test (idempotency).
 
-### SPEC 002 — Spritesheet / Sprite2D
+### SPEC 002 - Spritesheet / Sprite2D
 
 - **`type` discriminator additive in schema, not a v2 bump.** New `sprite_frame` variant lives alongside `polygon` under a `type` field. Default `"polygon"` keeps pre-discriminator fixtures backwards-compatible.
 
-### SPEC 003 — Skinning weights
+### SPEC 003 - Skinning weights
 
 - **Skinned polygons parented to `Skeleton2D`, not to a single bone.** Weights drive vertex deformation; rigid sprites remain bone-parented. Two parenting strategies coexist by design.
 - **Validation is user-driven (paint weights + observe deformation).** No programmable check covers visual quality.
 
-### SPEC 004 — Slot system (D1 to D14)
+### SPEC 004 - Slot system (D1 to D14)
 
 Selected highlights (full list in [`specs/004-slot-system/STUDY.md`](../specs/004-slot-system/STUDY.md)):
 
@@ -57,26 +57,26 @@ Selected highlights (full list in [`specs/004-slot-system/STUDY.md`](../specs/00
 - **D13: Material-Preview shader for spritesheet cells.** Drivers wire frame index into Math nodes that slice the UV. Workbench shading mode ignores this and shows the full atlas - documented caveat.
 - **D14: Slot is kind-agnostic.** Polygon meshes and sprite_frame attachments compose freely inside the same slot.
 
-### SPEC 005 — Blender authoring panel
+### SPEC 005 - Blender authoring panel
 
 - **D2: PropertyGroup canonical.** Writer reads PG first, Custom Properties only as legacy fallback. Defaults flow through cleanly without forcing the user to touch them.
 - **D6: Validation lazy + inline.** Lazy via the **Validate** button (heavy schema check); inline status badges per subpanel are O(1) checks per redraw.
 
-### SPEC 006 — Photoshop → Blender importer
+### SPEC 006 - Photoshop → Blender importer
 
 - **D1: Manifest v1 emits `format_version`, `kind`, `pixels_per_unit`, `z_order`, `frames[]`.** `MANIFEST_FORMAT_VERSION` constant in `core/psd_manifest.py` bumps lockstep with schema.
 - **D7: JSX manifest only.** Direct `.psd` parsing inside Blender deferred - fragile across PSD versions, duplicates JSX work.
 - **D9: Sprite-frame detection has two paths.** Primary: PSD layer group with numeric children. Fallback: flat `<name>_<index>` naming. Both detected JSX-side.
 
-### SPEC 007 — Testing fixtures (design-only)
+### SPEC 007 - Testing fixtures (design-only)
 
 - **Five Type A fixtures cover orthogonal feature isolation.** `doll` (comprehensive showcase, grows with SPECs), `blink_eyes` (sprite_frame isolation), `shared_atlas` (sliced atlas isolation), `simple_psd` (SPEC 006 roundtrip), `slot_cycle` (SPEC 004 isolation).
 - **Type B fixtures (importer-only, under `apps/godot/tests/fixtures/`) retired in favor of Type A.** Type A drives both writer goldens and importer regenerations from one source.
 
-### SPEC 008 — UV animation (design-only)
+### SPEC 008 - UV animation (design-only)
 
 - **`texture_region` track type targets iris-scroll / hframe-cycling.** Closes the cutout playbook: gradual region (008) + hard swap (004) + frame index (002) + driver shortcut (5.1.d.1) cover all 2D animation cases. Decisions D1-Dn not yet locked.
 
-### SPEC 009 — Code modularity (in flight)
+### SPEC 009 - Code modularity (in flight)
 
 - **Refactor into packages without behavior change.** Waves 9.1 to 9.9 split monolithic modules (writer, panels, operators, validation) into focused subpackages. No format change, no user-facing change. Behavior tests carry the proof.

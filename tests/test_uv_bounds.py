@@ -29,7 +29,7 @@ def test_empty_uvs_returns_full_image_fallback() -> None:
 def test_full_cover_uvs_yield_full_image_minus_clamp() -> None:
     uvs = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
     bbox = uv_bbox_to_pixels(uvs, 100, 100, expand=0)
-    # Floor of 0.0 = 0, ceil of 1.0 = 100 — the full image.
+    # Floor of 0.0 = 0, ceil of 1.0 = 100 - the full image.
     assert bbox == (0, 0, 100, 100)
 
 

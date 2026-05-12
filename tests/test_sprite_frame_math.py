@@ -51,7 +51,7 @@ def test_cell_offset_x_walks_columns() -> None:
 
 
 def test_cell_offset_x_wraps_modulo_hframes() -> None:
-    """Frame index past the end of a row wraps -- lets the y-offset advance."""
+    """Frame index past the end of a row wraps - lets the y-offset advance."""
     assert cell_offset_x(4, hframes=4) == pytest.approx(0.0)
     assert cell_offset_x(5, hframes=4) == pytest.approx(0.25)
 
@@ -73,7 +73,7 @@ def test_cell_offset_y_single_row_pins_top() -> None:
 
 
 def test_cell_offset_y_wraps_when_frame_exceeds_grid() -> None:
-    """frame >= hframes*vframes wraps via modulo on rows -- defensive,
+    """frame >= hframes*vframes wraps via modulo on rows - defensive,
     matches the validation pass which surfaces the out-of-range error
     but does not block the shader from rendering something."""
     # 2x2 grid, frame 4 wraps to row 0

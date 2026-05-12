@@ -12,14 +12,14 @@ Layout:
 
 - **Armature** ``arm_rig`` with a single bone ``arm`` perpendicular
   to the XZ picture plane (tail along -Y, toward the Front Ortho
-  camera -- Spine convention).
-- **Polygon mesh** ``arm`` parented to the bone -- the visible 16x32
+  camera - Spine convention).
+- **Polygon mesh** ``arm`` parented to the bone - the visible 16x32
   arm sprite.
 - **Empty** ``weapon`` parented to the bone tip; flagged
   ``proscenio.is_slot = True`` with default attachment ``axe``.
 - **Two attachment meshes** parented to the slot Empty:
-  - ``axe`` -- 32x32 polygon mesh with axe.png material
-  - ``sword`` -- 32x32 polygon mesh with sword.png material
+  - ``axe`` - 32x32 polygon mesh with axe.png material
+  - ``sword`` - 32x32 polygon mesh with sword.png material
 - **Two actions named ``swing``** that share a name so the writer
   merges them into a single animation with two tracks:
   - On the armature: keyframes the arm bone's local Y rotation
@@ -73,7 +73,7 @@ def main() -> None:
     for path in (ARM_PATH, CLUB_PATH, SWORD_PATH):
         if not path.exists():
             print(
-                f"[build_slot_swap] missing {path} -- run draw_layers.py first",
+                f"[build_slot_swap] missing {path} - run draw_layers.py first",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -226,7 +226,7 @@ def _build_attachment(
 
     ``depth_offset`` shifts the attachment a sub-millimeter along the
     bone-Y axis so attachments never exactly share the picture plane
-    -- protects against Eevee z-fight if multiple attachments end up
+    - protects against Eevee z-fight if multiple attachments end up
     visible simultaneously (e.g. the user manually unhides one for
     inspection).
     """

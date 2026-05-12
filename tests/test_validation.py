@@ -1,6 +1,6 @@
 """Unit tests for the SPEC 005 validation surface.
 
-Runs under plain ``pytest`` — no Blender required. Mocks `bpy` objects via
+Runs under plain ``pytest`` - no Blender required. Mocks `bpy` objects via
 :class:`SimpleNamespace` so the validation module is exercised in isolation
 from the editor.
 

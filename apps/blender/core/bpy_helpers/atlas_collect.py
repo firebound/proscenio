@@ -31,7 +31,7 @@ class SourceImage:
     """
 
     obj_name: str
-    image: Any  # bpy.types.Image -- Any here so the module imports without bpy
+    image: Any  # bpy.types.Image - Any here so the module imports without bpy
     width: int
     height: int
     slice_px: tuple[int, int, int, int]
@@ -41,11 +41,11 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
     """Walk ``objects`` and gather their first image-textured material.
 
     Each entry carries a ``slice_px`` rect derived from the mesh's UV
-    bounds -- for 1-sprite-per-PNG sources this covers the whole image;
+    bounds - for 1-sprite-per-PNG sources this covers the whole image;
     for shared-atlas sources it picks out just the sprite's sub-region.
 
     Objects with no image-textured material or no UV layer are silently
-    skipped -- the caller's validation pass should surface that as a
+    skipped - the caller's validation pass should surface that as a
     warning.
     """
     out: list[SourceImage] = []
@@ -73,7 +73,7 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
 def _collect_mesh_uvs(obj: Any) -> list[tuple[float, float]]:
     """Flatten the active UV layer's loop coords into ``[(u, v), ...]``.
 
-    Defensive against partially-initialized meshes -- Blender 5.x can
+    Defensive against partially-initialized meshes - Blender 5.x can
     have a UV layer marker whose ``.data`` collection is empty (seen
     after the apply operator on certain shared-material objects), which
     previously crashed with ``IndexError`` on the second Pack Atlas run.

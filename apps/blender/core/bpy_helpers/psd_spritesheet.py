@@ -1,6 +1,6 @@
 """Spritesheet composer for sprite_frame layers (SPEC 006 D10).
 
-Uses ``bpy.types.Image`` + ``numpy`` -- both ship with Blender. Pillow
+Uses ``bpy.types.Image`` + ``numpy`` - both ship with Blender. Pillow
 is intentionally avoided here because it is a dev-only fixture
 dependency (SPEC 007 D2 lock) and is not bundled with the addon.
 

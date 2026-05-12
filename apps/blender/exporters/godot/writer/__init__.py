@@ -15,7 +15,7 @@ Rotations: the angle from the Godot +X axis to the bone direction is
 computed in Godot space directly (CW positive when Y is down). Bone
 local rotation is the world angle minus the parent's world angle.
 
-UVs are written normalized [0, 1] of the atlas image -- engine-agnostic.
+UVs are written normalized [0, 1] of the atlas image - engine-agnostic.
 The Godot importer multiplies by atlas size at attach time.
 
 Vertex Y in mesh local space is dropped: sprite planes are assumed to
@@ -32,7 +32,7 @@ Module organization (SPEC 009 wave 9.4):
 - ``slot_animations.py`` SPEC 004 D5 slot_attachment track emission
 - ``animations.py``      bone_transform track emission
 
-Public API: ``export(filepath, *, pixels_per_unit)`` -- the only
+Public API: ``export(filepath, *, pixels_per_unit)`` - the only
 function consumers should call.
 """
 

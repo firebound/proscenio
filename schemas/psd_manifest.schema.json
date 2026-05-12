@@ -15,7 +15,7 @@
     "doc": {
       "type": "string",
       "minLength": 1,
-      "description": "Original PSD filename. Display only — not a resolvable path."
+      "description": "Original PSD filename. Display only - not a resolvable path."
     },
     "size": {
       "$ref": "#/$defs/uint_pair",

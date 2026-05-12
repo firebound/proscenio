@@ -1,4 +1,4 @@
-"""Help subpanel -- shortcut cheat-sheet for F3 search."""
+"""Help subpanel - shortcut cheat-sheet for F3 search."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
 
 
 class PROSCENIO_PT_help(bpy.types.Panel):
-    """Shortcut cheat-sheet -- every Proscenio operator with its idname."""
+    """Shortcut cheat-sheet - every Proscenio operator with its idname."""
 
     bl_label = "Help"
     bl_idname = "PROSCENIO_PT_help"

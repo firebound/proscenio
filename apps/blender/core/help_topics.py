@@ -3,7 +3,7 @@
 Powers the ``?`` button surfaced next to every Proscenio subpanel.
 Each topic carries a title + ordered sections of plain-text content
 that the help operator renders inside a ``invoke_popup`` window. Pure
-Python -- no bpy imports -- so the dispatch can be unit-tested + so
+Python - no bpy imports - so the dispatch can be unit-tested + so
 the panel module can read content without a draw-time import cycle.
 
 Adding a new help topic:
@@ -15,12 +15,12 @@ Adding a new help topic:
 Content guidelines:
 
 - Lead with "What it does" so the user gets the answer in 1 line.
-- Follow with "How to use it" -- click order, expected selection state.
+- Follow with "How to use it" - click order, expected selection state.
 - Close with "Where it fits" mapping the feature to the
   Photoshop -> Blender -> Godot pipeline.
 - Optionally "Caveats" for known foot-guns.
 
-Plain-text only. No Markdown -- Blender's UILayout renders one line
+Plain-text only. No Markdown - Blender's UILayout renders one line
 per ``layout.label``. Bullet lists are emulated with leading ``- ``.
 """
 
@@ -75,7 +75,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "blender-only (TOOL_SETTINGS)",
-                "Authoring shortcut. Lives entirely on the Blender side -- the",
+                "Authoring shortcut. Lives entirely on the Blender side - the",
                 ".proscenio export ignores these. Useful for posing, IK chains,",
                 "preview cameras, driver shortcuts.",
             ),
@@ -88,7 +88,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "out-of-scope (CANCEL)",
                 "Intentionally not exported (see SPEC 000). Authored in Blender",
-                "for the user's own workflow only -- IK constraints, shape keys,",
+                "for the user's own workflow only - IK constraints, shape keys,",
                 "anything Godot does not consume.",
             ),
             _section(
@@ -106,7 +106,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "The pipeline",
                 "1. Photoshop authors layered art (or skip + author meshes in Blender).",
-                "2. JSX exporter writes a manifest (SPEC 006) -- Blender importer stamps planes.",
+                "2. JSX exporter writes a manifest (SPEC 006) - Blender importer stamps planes.",
                 "3. Blender authors armature, weights, actions, regions.",
                 "4. Proscenio writer emits .proscenio (JSON Schema v1).",
                 "5. Godot EditorImportPlugin reads .proscenio -> .scn",
@@ -121,10 +121,10 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "Status badges",
-                "godot-ready  -- exports to .proscenio + ships in the Godot importer.",
-                "blender-only -- editor authoring shortcut, never reaches the .proscenio.",
-                "planned      -- SPEC on paper, UI placeholder, not yet implemented.",
-                "out-of-scope -- intentionally not exported (see SPEC 000).",
+                "godot-ready  - exports to .proscenio + ships in the Godot importer.",
+                "blender-only - editor authoring shortcut, never reaches the .proscenio.",
+                "planned      - SPEC on paper, UI placeholder, not yet implemented.",
+                "out-of-scope - intentionally not exported (see SPEC 000).",
             ),
         ),
         see_also=(
@@ -135,7 +135,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
     ),
     "active_sprite": HelpTopic(
         title="Active Sprite",
-        summary="Per-sprite Proscenio settings -- drives writer behavior + Godot node choice.",
+        summary="Per-sprite Proscenio settings - drives writer behavior + Godot node choice.",
         sections=(
             _section(
                 _SECTION_WHAT,
@@ -146,12 +146,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Sprite type",
                 "Polygon      -> Polygon2D (cutout, deformable mesh, weight paint).",
                 "Sprite Frame -> Sprite2D (spritesheet, hframes x vframes grid + frame index).",
-                "Pick by use case -- see SPEC 002 for the full decision matrix.",
+                "Pick by use case - see SPEC 002 for the full decision matrix.",
             ),
             _section(
                 "Texture region",
-                "Auto   -- writer computes from the mesh UV bounds at export time.",
-                "Manual -- writer reads region_x/y/w/h verbatim. Use for atlas slicing.",
+                "Auto   - writer computes from the mesh UV bounds at export time.",
+                "Manual - writer reads region_x/y/w/h verbatim. Use for atlas slicing.",
                 "Snap to UV bounds populates the manual fields from the current UV.",
             ),
             _section(
@@ -186,7 +186,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Toggle IK",
                 "Adds (or removes) a 'Proscenio IK' constraint on the active pose bone",
                 "so you can pose-test with IK while authoring. The constraint never",
-                "reaches the .proscenio -- IK in Godot is added post-import via",
+                "reaches the .proscenio - IK in Godot is added post-import via",
                 "Skeleton2DIK (per SPEC 000).",
             ),
         ),
@@ -230,7 +230,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "Unpack Atlas",
                 "Reverts a previous Apply by reading the snapshot back. Survives",
-                ".blend save/reload -- Ctrl+Z does not. Use this when you need to",
+                ".blend save/reload - Ctrl+Z does not. Use this when you need to",
                 "edit a source image and re-pack from scratch.",
             ),
         ),
@@ -262,18 +262,18 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_WHAT,
                 "Runs the writer, validates against schemas/proscenio.schema.json,",
-                "writes the result. Sticky -- the path is remembered next to the",
+                "writes the result. Sticky - the path is remembered next to the",
                 ".blend so Re-export skips the file dialog.",
             ),
             _section(
                 "Pixels per unit",
                 "Conversion ratio between Blender world units and Godot pixels.",
-                "Default 100 -- 1 m in Blender = 100 px in Godot.",
+                "Default 100 - 1 m in Blender = 100 px in Godot.",
             ),
             _section(
                 "What lands in Godot",
                 "The .proscenio is read by the EditorImportPlugin. A .scn is generated",
-                "with Skeleton2D + Bone2D + Polygon2D/Sprite2D + AnimationPlayer -- all",
+                "with Skeleton2D + Bone2D + Polygon2D/Sprite2D + AnimationPlayer - all",
                 "native nodes, no GDExtension, no plugin runtime dependency.",
             ),
         ),
@@ -287,7 +287,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 _SECTION_WHAT,
                 "Adds a TRANSFORMS driver variable that feeds the picked bone channel",
                 "into the chosen proscenio.* property. Re-running on the same",
-                "(sprite, target) pair replaces the existing driver -- no duplicates.",
+                "(sprite, target) pair replaces the existing driver - no duplicates.",
             ),
             _section(
                 _SECTION_HOW,
@@ -300,14 +300,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "Caveats",
                 "Driver expression defaults to 'var' (raw radians/units). FloatProperty",
-                "fields like region_x are clamped [0,1] -- bone rotation > 1 rad will",
+                "fields like region_x are clamped [0,1] - bone rotation > 1 rad will",
                 "saturate. Edit the expression in the Drivers Editor for scaling/offsets.",
             ),
             _section(
                 "Hard swap vs gradual",
                 "This shortcut is for GRADUAL parameter mapping (iris scroll, region",
                 "nudge). For HARD texture swaps (forearm front/back), the slot system",
-                "(SPEC 004, planned) is the right primitive -- the threshold expression",
+                "(SPEC 004, planned) is the right primitive - the threshold expression",
                 "'1 if var > 1.5 else 0' works as a workaround until SPEC 004 ships.",
             ),
         ),
@@ -332,7 +332,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "1. Click 'Quick Armature' in the Skeleton subpanel.",
                 "2. Click-drag in the 3D viewport: press = head, release = tail.",
                 "3. Hold Shift on press to auto-parent the new bone to the previous",
-                "   one in the chain (use_connect=False -- head stays where you",
+                "   one in the chain (use_connect=False - head stays where you",
                 "   clicked rather than snapping onto the parent's tail).",
                 "4. Esc or right-click exits the modal session.",
             ),
@@ -341,7 +341,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Bones are flat on the z=0 plane (this is a 2D pipeline). Drags",
                 "shorter than 1e-4 world units are skipped to avoid degenerate",
                 "zero-length bones. The QuickRig armature is identical to any",
-                "hand-built one -- rename, parent meshes, weight-paint, or merge",
+                "hand-built one - rename, parent meshes, weight-paint, or merge",
                 "into your main rig as usual.",
             ),
         ),
@@ -358,12 +358,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "then sprite meshes, then armatures), and lets you click a row",
                 "to make that object active. Replaces / supplements Blender's",
                 "native outliner for big rigs (the doll fixture has 64 bones +",
-                "22 sprite meshes + several slots -- finding 'brow.L mesh' in",
+                "22 sprite meshes + several slots - finding 'brow.L mesh' in",
                 "the native outliner requires scroll + expand every time).",
             ),
             _section(
                 _SECTION_HOW,
-                "1. Type a substring into the filter input -- live filter on object",
+                "1. Type a substring into the filter input - live filter on object",
                 "   names. Empty string shows everything Proscenio-relevant.",
                 "2. Click a row -> object becomes active + selected (the active",
                 "   sprite / skeleton subpanels populate accordingly).",
@@ -379,7 +379,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "Where it fits",
-                "Pure authoring shortcut -- edits to favorites or filter state",
+                "Pure authoring shortcut - edits to favorites or filter state",
                 "live entirely on the Blender side. The .proscenio export is",
                 "untouched.",
             ),
@@ -393,7 +393,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_WHAT,
                 "A slot presents one of N attachment meshes at a time. Use it for",
-                "hard texture swaps -- forearm front/back, sword/staff/empty, brow",
+                "hard texture swaps - forearm front/back, sword/staff/empty, brow",
                 "up/down, expression swap. Different from the driver shortcut",
                 "(SPEC 005.1.d.1) which is for gradual parameter mapping.",
             ),
@@ -407,14 +407,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "3. Pick which attachment is visible at scene load (default) by",
                 "   clicking the SOLO icon next to its row.",
                 "4. Animate slot_attachment by keyframing the slot's attachment",
-                "   value in the Action editor (Wave 4.2 -- Godot side -- ships",
+                "   value in the Action editor (Wave 4.2 - Godot side - ships",
                 "   the runtime; Wave 4.1 just emits the data into .proscenio).",
             ),
             _section(
                 "Mixing polygon + sprite_frame attachments",
                 "Slots are kind-agnostic. A single slot can hold polygon",
                 "(weight-painted) AND sprite_frame (texture-sliced) children",
-                "freely -- e.g. an eye slot with two polygon attachments",
+                "freely - e.g. an eye slot with two polygon attachments",
                 "(open / closed) plus one sprite_frame attachment (4-cell glow",
                 "cycle). The Photoshop import flow that produced each child",
                 "(layer stack vs sprite_frame group) does not matter.",
@@ -445,14 +445,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 _SECTION_HOW,
                 "1. Select a sprite_frame mesh.",
                 "2. Click 'Setup Preview' in the Active Sprite panel.",
-                "3. Z-key cycles to Material Preview mode -- the active cell",
+                "3. Z-key cycles to Material Preview mode - the active cell",
                 "   shows on the quad, updating live as 'frame' animates.",
                 "4. 'Remove Preview' un-wires the slicer + drops the drivers,",
                 "   restoring the full-atlas render.",
             ),
             _section(
                 "Caveats",
-                "- Solid / Workbench engines only honor diffuse_color -- the",
+                "- Solid / Workbench engines only honor diffuse_color - the",
                 "  slicer is invisible there. The render_layers fixture script",
                 "  uses Workbench so its output is unchanged.",
                 "- Atlases with padding between cells are not yet supported;",
@@ -477,7 +477,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_HOW,
                 "1. Enter Pose Mode on the active armature.",
-                "2. Set the desired pose -- rotate / translate / scale bones.",
+                "2. Set the desired pose - rotate / translate / scale bones.",
                 "3. Click 'Save Pose to Library' in the Skeleton panel.",
                 "4. The pose lands in the Asset Browser as '<action>.<frame>'",
                 "   (or '<armature>.<frame>' when no action is active).",
@@ -485,7 +485,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "Where it fits",
-                "Pose assets live entirely on the Blender side -- they never",
+                "Pose assets live entirely on the Blender side - they never",
                 "reach the .proscenio export. Use them to library + reuse poses",
                 "across animations, characters, or projects. Animation tracks",
                 "still drive the runtime; pose assets are an authoring shortcut.",
@@ -493,7 +493,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "Caveats",
                 "- Requires Blender 3.5+ (poselib operator availability).",
-                "- The shim does not curate the Asset Browser layout -- pose",
+                "- The shim does not curate the Asset Browser layout - pose",
                 "  assets land in the active asset library; configure that via",
                 "  Edit > Preferences > File Paths > Asset Libraries.",
             ),
@@ -520,7 +520,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "Idempotent re-import",
                 "Meshes carry a proscenio_import_origin = 'psd:<layer>' tag. Re-running",
-                "on the same manifest reuses existing meshes -- user-set rotation,",
+                "on the same manifest reuses existing meshes - user-set rotation,",
                 "parenting, and weights survive the round trip.",
             ),
         ),

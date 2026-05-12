@@ -8,15 +8,15 @@ match the typical 2D cutout authoring layout:
   picture plane** (Blender Front Ortho looks along world -Y, so bones
   laid along Y appear as small octahedral dots from the front --
   Spine / 2D-cutout convention):
-  - `mouth_pos` -- positions the mouth in 2D space; the sprite mesh
+  - `mouth_pos` - positions the mouth in 2D space; the sprite mesh
     is parented to it.
-  - `mouth_drive` -- driver source; rotation around world Y (the
+  - `mouth_drive` - driver source; rotation around world Y (the
     camera axis, which reads as "rotation in the picture") is wired
     via a pre-installed Scripted driver to `mouth.proscenio.frame`.
 - 1 action `mouth_drive_anim` keyframing `mouth_drive` Y rotation
   -pi/2 -> +pi/2 -> 0 over 24 frames, cycling the sprite through
   all 4 mouth shapes via the driver. `mouth_pos` exists structurally
-  (the sprite is parented to it) but currently stays at rest -- see
+  (the sprite is parented to it) but currently stays at rest - see
   tests/BUGS_FOUND.md for the writer-side issue that drops part of
   the pose-location vector for non-vertical bones.
 
@@ -35,14 +35,14 @@ script).
 
 ```text
 examples/generated/mouth_drive/
-├── mouth_drive.blend                       [SOURCE -- built by build_blend.py from pillow_layers/]
-├── mouth_drive.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
-├── pillow_layers/                          [DERIVED -- Pillow draws each frame + spritesheet]
-│   ├── mouth_0.png        32x32 -- mouth open
-│   ├── mouth_1.png        32x32 -- mid-open with tongue
-│   ├── mouth_2.png        32x32 -- closed (lip line)
-│   ├── mouth_3.png        32x32 -- talking shape
-│   └── mouth_spritesheet.png   128x32 -- concatenation, the texture the mesh references
+├── mouth_drive.blend                       [SOURCE - built by build_blend.py from pillow_layers/]
+├── mouth_drive.expected.proscenio          [GOLDEN - CI-diffed validation midpoint]
+├── pillow_layers/                          [DERIVED - Pillow draws each frame + spritesheet]
+│   ├── mouth_0.png        32x32 - mouth open
+│   ├── mouth_1.png        32x32 - mid-open with tongue
+│   ├── mouth_2.png        32x32 - closed (lip line)
+│   ├── mouth_3.png        32x32 - talking shape
+│   └── mouth_spritesheet.png   128x32 - concatenation, the texture the mesh references
 └── godot/
     ├── MouthDrive.tscn                     Godot wrapper (instances the imported scene)
     └── MouthDrive.gd                       empty stub
@@ -78,14 +78,14 @@ passing.
 1. Open `mouth_drive.blend` in Blender (after enabling the addon).
 2. **Save As** `mouth_drive_workbench.blend` to keep the canonical
    fixture untouched.
-3. Press play on the timeline -- the action should drive both
+3. Press play on the timeline - the action should drive both
    `mouth_pos` (vertical bob) and `mouth_drive` (rotation), and the
    sprite cell should cycle through frames 0..3 as `mouth_drive`
    rotates.
 4. Stop playback. Select the `mouth` mesh, click **Setup Preview**
    in the Active Sprite panel to see the slicer shader in viewport.
 5. Enter Pose mode on `mouth_rig`, select `mouth_drive`, R Y to
-   rotate around the camera axis -- watch the sprite cell change live.
+   rotate around the camera axis - watch the sprite cell change live.
 6. Re-author the driver: select `mouth` mesh, in Active Sprite >
    Drive from Bone, click **Drive from Bone** with the panel's
    pre-filled values. Should be idempotent: same wiring, sprite

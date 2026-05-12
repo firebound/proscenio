@@ -1,4 +1,4 @@
-# SPEC 006 — Photoshop → Blender importer
+# SPEC 006 - Photoshop → Blender importer
 
 ## Problem
 
@@ -11,13 +11,13 @@ This SPEC closes the loop. The Blender addon gains an "Import Photoshop Manifest
 
 ## Reference: similar tools
 
-- **COA Tools 2** — "Sprite import from JSON" operator that reads its own JSON format and stamps planes.
-- **DUIK Auto-Rig** — auto-generates a rig from layered PSD names (After Effects, but the pattern transfers).
-- **Spine** — imports `.psd` directly via Photoshop bridge or `.json` manifest from the bundled PSD-to-Spine script.
+- **COA Tools 2** - "Sprite import from JSON" operator that reads its own JSON format and stamps planes.
+- **DUIK Auto-Rig** - auto-generates a rig from layered PSD names (After Effects, but the pattern transfers).
+- **Spine** - imports `.psd` directly via Photoshop bridge or `.json` manifest from the bundled PSD-to-Spine script.
 
 The shared pattern: "manifest tells the importer where each layer goes, what its naming convention implies, and how it relates to other layers".
 
-## JSX exporter manifest contract — current shape (v0)
+## JSX exporter manifest contract - current shape (v0)
 
 The JSX exporter today writes:
 
@@ -38,7 +38,7 @@ Convention: hidden layers skipped, layer names prefixed `_` skipped, layer group
 
 SPEC 006 evolves this schema to v1 (D1) and bumps the JSX exporter to emit it (Wave 6.1).
 
-## JSX exporter manifest contract — locked v1 (D1)
+## JSX exporter manifest contract - locked v1 (D1)
 
 ```json
 {
@@ -72,13 +72,13 @@ Schema lives at `schemas/psd_manifest.schema.json`. Validated by `check-jsonsche
 
 Field semantics:
 
-- `format_version` — integer, currently `1`. Bump when manifest shape changes.
-- `doc` — original PSD filename (display only).
-- `size` — `[doc_width_px, doc_height_px]`.
-- `pixels_per_unit` — Blender pixels-per-unit factor; importer divides PSD pixels by this when stamping mesh size and position. Default 100 (matches existing addon convention).
-- `layers[]` — z-ordered, top-to-bottom. Each entry has a discriminator `kind`.
-  - `polygon` — single PNG, single quad mesh.
-  - `sprite_frame` — N frames, single quad mesh sized to the bbox of the largest frame, animated via `proscenio.frame`.
+- `format_version` - integer, currently `1`. Bump when manifest shape changes.
+- `doc` - original PSD filename (display only).
+- `size` - `[doc_width_px, doc_height_px]`.
+- `pixels_per_unit` - Blender pixels-per-unit factor; importer divides PSD pixels by this when stamping mesh size and position. Default 100 (matches existing addon convention).
+- `layers[]` - z-ordered, top-to-bottom. Each entry has a discriminator `kind`.
+  - `polygon` - single PNG, single quad mesh.
+  - `sprite_frame` - N frames, single quad mesh sized to the bbox of the largest frame, animated via `proscenio.frame`.
 
 The `kind` discriminator is the **single source of truth**: the importer obeys it without re-deriving from layer names. JSX has all the information at export time, so it emits the explicit kind.
 
@@ -86,7 +86,7 @@ The `kind` discriminator is the **single source of truth**: the importer obeys i
 
 Two mechanisms for the artist to mark a layer set as a sprite_frame, primary + fallback:
 
-### Primary — PSD layer group with numeric children
+### Primary - PSD layer group with numeric children
 
 Natural Photoshop workflow. The artist puts frames inside a Photoshop group:
 
@@ -107,11 +107,11 @@ JSX detection rule:
 
 If both rules pass, JSX emits the LayerSet as a single `sprite_frame` manifest entry, with frames sorted by extracted index. The group name becomes the mesh name; child names contribute only an index.
 
-### Fallback — flat `<name>_<index>` naming
+### Fallback - flat `<name>_<index>` naming
 
 Already locked in SPEC 007 D4. Top-level layers `eye_0`, `eye_1`, `eye_2`, `eye_3` get grouped by stripping the `_<index>` suffix and aggregating frames in index order. Used for users who do not group their frames in Photoshop.
 
-The fallback is implemented at the **JSX side**, not the importer: JSX walks layers and groups them itself, emits a single `sprite_frame` manifest entry. The importer never has to pattern-match — it trusts the explicit `kind`.
+The fallback is implemented at the **JSX side**, not the importer: JSX walks layers and groups them itself, emits a single `sprite_frame` manifest entry. The importer never has to pattern-match - it trusts the explicit `kind`.
 
 ## Frame size mismatch (D10)
 
@@ -127,9 +127,9 @@ JSX continues to emit raw per-frame PNGs untouched. Importer composes the sprite
 2. **For each layer entry**:
    - `kind: polygon` → stamp a quad mesh sized to `size_px / pixels_per_unit`, position derived from PSD top-left to Blender XZ centre via the conversion below. Material with `ShaderNodeTexImage` pointing at the layer's PNG. Tag `proscenio.sprite_type = "polygon"`.
    - `kind: sprite_frame` → load each frame PNG, pad each to the bbox of the largest frame (transparent fill), concatenate horizontally into one spritesheet PNG, write to `_spritesheets/<name>.png`. Stamp a single quad mesh sized to the largest tile; material points at the spritesheet. Tag `proscenio.sprite_type = "sprite_frame"`, `hframes = N`, `vframes = 1`, `frame = 0`.
-3. **Build a stub armature** (D3) — single `root` bone at the world origin. Parent every stamped mesh to `root` via `parent_type = 'BONE'`. User adds the rest of the rig manually.
-4. **Optionally pack atlas** — leave per-PNG by default (D2). User clicks the existing Pack Atlas operator (SPEC 005.1.c.2) when ready.
-5. **Surface UI** — operator `PROSCENIO_OT_import_photoshop` + sidebar button "Import Photoshop Manifest" + file picker.
+3. **Build a stub armature** (D3) - single `root` bone at the world origin. Parent every stamped mesh to `root` via `parent_type = 'BONE'`. User adds the rest of the rig manually.
+4. **Optionally pack atlas** - leave per-PNG by default (D2). User clicks the existing Pack Atlas operator (SPEC 005.1.c.2) when ready.
+5. **Surface UI** - operator `PROSCENIO_OT_import_photoshop` + sidebar button "Import Photoshop Manifest" + file picker.
 
 ### Coordinate conversion (D6)
 
@@ -173,24 +173,24 @@ Idempotent: meshes are identified by their manifest `name`. Re-import replaces t
 
 ## Successor considerations
 
-- **SPEC 007** gains a `simple_psd/` fixture after this SPEC lands — a tiny PSD source + JSX-exported manifest + expected post-import `.blend`. Locked in SPEC 007 STUDY.md "Successor considerations".
+- **SPEC 007** gains a `simple_psd/` fixture after this SPEC lands - a tiny PSD source + JSX-exported manifest + expected post-import `.blend`. Locked in SPEC 007 STUDY.md "Successor considerations".
 - **SPEC 004 (slots)** can use PSD layer groups as slot hints once both SPECs ship. Group naming convention TBD when SPEC 004 opens.
 
 ## Surface (LOC estimate)
 
 | Wave | LOC | Files |
 | --- | --- | --- |
-| 6.0 — manifest schema + parser | ~150 | `schemas/psd_manifest.schema.json`, `apps/blender/core/psd_manifest.py`, `apps/blender/tests/test_psd_manifest.py` |
-| 6.1 — JSX exporter v1 | ~80 | bump `apps/photoshop/proscenio_export.jsx` to emit format_version + kind + frames |
-| 6.2 — naming convention parser | ~120 | `apps/blender/core/psd_naming.py`, `apps/blender/tests/test_psd_naming.py` |
-| 6.3 — importer core | ~250 | `apps/blender/importers/photoshop/__init__.py` (manifest reader, plane stamper, material builder, spritesheet composer) |
-| 6.4 — operator + panel | ~100 | `apps/blender/operators/import_photoshop.py`, panel button in `apps/blender/panels/__init__.py` |
-| 6.5 — fixture `simple_psd/` | ~60 | tiny PSD source + JSX manifest + expected post-import `.blend` (and golden `.proscenio` via `export_proscenio.py`) |
+| 6.0 - manifest schema + parser | ~150 | `schemas/psd_manifest.schema.json`, `apps/blender/core/psd_manifest.py`, `apps/blender/tests/test_psd_manifest.py` |
+| 6.1 - JSX exporter v1 | ~80 | bump `apps/photoshop/proscenio_export.jsx` to emit format_version + kind + frames |
+| 6.2 - naming convention parser | ~120 | `apps/blender/core/psd_naming.py`, `apps/blender/tests/test_psd_naming.py` |
+| 6.3 - importer core | ~250 | `apps/blender/importers/photoshop/__init__.py` (manifest reader, plane stamper, material builder, spritesheet composer) |
+| 6.4 - operator + panel | ~100 | `apps/blender/operators/import_photoshop.py`, panel button in `apps/blender/panels/__init__.py` |
+| 6.5 - fixture `simple_psd/` | ~60 | tiny PSD source + JSX manifest + expected post-import `.blend` (and golden `.proscenio` via `export_proscenio.py`) |
 
 Total: ~760 LOC + manifest schema lock-in.
 
 PR strategy:
 
-1. **PR-A — foundation**: Wave 6.0 + 6.1 + 6.2. Branch `feat/spec-006.0-foundation`. Deliverable: schema lockdown, JSX bumped, naming parser tested.
-2. **PR-B — importer**: Wave 6.3 + 6.4. Branch `feat/spec-006.1-importer`. Deliverable: working operator end-to-end.
-3. **PR-C — fixture**: Wave 6.5. Branch `feat/spec-006.2-simple-psd-fixture`. Deliverable: `examples/generated/simple_psd/` end-to-end test.
+1. **PR-A - foundation**: Wave 6.0 + 6.1 + 6.2. Branch `feat/spec-006.0-foundation`. Deliverable: schema lockdown, JSX bumped, naming parser tested.
+2. **PR-B - importer**: Wave 6.3 + 6.4. Branch `feat/spec-006.1-importer`. Deliverable: working operator end-to-end.
+3. **PR-C - fixture**: Wave 6.5. Branch `feat/spec-006.2-simple-psd-fixture`. Deliverable: `examples/generated/simple_psd/` end-to-end test.

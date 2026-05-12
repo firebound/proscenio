@@ -34,7 +34,7 @@ def hydrate_object(
     """Copy legacy Custom Properties on ``obj`` into ``obj.proscenio``.
 
     Type-mismatched values (e.g. a string in an int slot) are skipped
-    silently — the writer's RuntimeError catches genuine invalid data
+    silently - the writer's RuntimeError catches genuine invalid data
     at export time.
     """
     props = getattr(obj, "proscenio", None)

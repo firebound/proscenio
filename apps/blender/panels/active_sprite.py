@@ -36,7 +36,7 @@ def _draw_active_sprite_body(
 
 
 class PROSCENIO_PT_active_sprite(bpy.types.Panel):
-    """Per-sprite settings -- sprite type dropdown + sprite_frame metadata."""
+    """Per-sprite settings - sprite type dropdown + sprite_frame metadata."""
 
     bl_label = "Active Sprite"
     bl_idname = "PROSCENIO_PT_active_sprite"

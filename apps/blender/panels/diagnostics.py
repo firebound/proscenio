@@ -1,4 +1,4 @@
-"""Diagnostics subpanel -- smoke test + future addon-health buttons."""
+"""Diagnostics subpanel - smoke test + future addon-health buttons."""
 
 from __future__ import annotations
 

@@ -91,7 +91,7 @@ def main() -> None:
     if missing_names:
         names = ", ".join(missing_names)
         print(
-            f"[export_doll_psd_manifest] WARNING -- missing layer PNG(s): {names}\n"
+            f"[export_doll_psd_manifest] WARNING - missing layer PNG(s): {names}\n"
             f"  Run scripts/fixtures/doll/render_layers.py first to regenerate.",
             file=sys.stderr,
         )
@@ -126,7 +126,7 @@ def _collect_meshes() -> list[bpy.types.Object]:
 def _world_bbox(obj: bpy.types.Object) -> tuple[Vector, Vector] | None:
     """Return (min, max) of the object's world-space axis-aligned bbox.
 
-    Returns ``None`` for degenerate (zero-volume) bboxes — the caller
+    Returns ``None`` for degenerate (zero-volume) bboxes - the caller
     skips them so empty meshes do not poison the manifest.
     """
     corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]

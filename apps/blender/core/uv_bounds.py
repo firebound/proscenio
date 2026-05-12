@@ -3,11 +3,11 @@
 Used by the atlas packer to figure out which sub-region of a source image
 each sprite actually needs. When 1 sprite = 1 source PNG (Photoshop-first
 workflow), UV bounds cover the whole image and the slice equals the
-source — no behavior change vs the un-sliced packer. When the source is
+source - no behavior change vs the un-sliced packer. When the source is
 a shared atlas (dummy fixture), UV bounds cover only the sprite's region
 and the packer extracts just that slice.
 
-Pure Python — extracted from the bpy-side operators so pytest exercises
+Pure Python - extracted from the bpy-side operators so pytest exercises
 the math without spinning up Blender.
 """
 

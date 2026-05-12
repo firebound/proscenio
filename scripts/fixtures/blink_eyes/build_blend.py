@@ -37,7 +37,7 @@ PIXELS_PER_UNIT = 100.0
 def main() -> None:
     if not SHEET_PATH.exists():
         print(
-            f"[build_blink_eyes] missing {SHEET_PATH} -- run draw_blink_eyes.py first",
+            f"[build_blink_eyes] missing {SHEET_PATH} - run draw_blink_eyes.py first",
             file=sys.stderr,
         )
         sys.exit(1)

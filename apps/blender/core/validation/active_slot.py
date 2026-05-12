@@ -1,4 +1,4 @@
-"""Active-slot validation (SPEC 004 D9 + D10) -- cheap, runs every redraw."""
+"""Active-slot validation (SPEC 004 D9 + D10) - cheap, runs every redraw."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def validate_active_slot(obj: Any) -> list[Issue]:
     Validates: (1) at least one child mesh, (2) ``slot_default`` resolves
     to an existing child, (3) child meshes share the Empty's
     ``parent_bone`` if any, (4) no slot child carries a
-    ``bone_transform``-shaped fcurve (warning -- visibility toggling
+    ``bone_transform``-shaped fcurve (warning - visibility toggling
     makes bone keys silent unless the child is the visible attachment
     at that frame).
     """

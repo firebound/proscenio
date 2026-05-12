@@ -8,7 +8,7 @@ Run with::
 Walks every ``MESH`` object in the scene and renders each to
 ``examples/authored/doll/01_to_photoshop/render_layers/<object_name>.png`` from a front-orthographic
 camera, with transparent background and Workbench flat shading. The
-result is a stack of 2D layers — one per mesh — that the rest of the
+result is a stack of 2D layers - one per mesh - that the rest of the
 pipeline (preview composite, .proscenio export) consumes the same way
 it consumed the previous Pillow-drawn PNGs.
 
@@ -55,7 +55,7 @@ LAYERS_DIR = (
 )
 
 PIXELS_PER_UNIT = 1000.0
-PADDING_UNITS = 0.02  # 20 px @ ppu=1000 -- keeps outline anti-aliasing safe
+PADDING_UNITS = 0.02  # 20 px @ ppu=1000 - keeps outline anti-aliasing safe
 CAMERA_DISTANCE = 10.0
 
 SKIP_MESHES: set[str] = {"joints"}
@@ -94,7 +94,7 @@ def _configure_render(scene: bpy.types.Scene) -> None:
     scene.display.shading.light = "FLAT"
     scene.display.shading.color_type = "MATERIAL"
     scene.display.shading.show_specular_highlight = False
-    # Disable anti-aliasing -- Workbench defaults to 8x AA, which blurs
+    # Disable anti-aliasing - Workbench defaults to 8x AA, which blurs
     # pixel-art edges. "OFF" gives nearest-neighbor crisp output.
     scene.display.render_aa = "OFF"
 
@@ -105,7 +105,7 @@ def _sync_material_viewport_colors() -> None:
     Workbench's ``MATERIAL`` color mode reads ``material.diffuse_color``
     (the *viewport display* color), not the surface shader. Authors set
     Base Color when they paint a material, so we mirror that into the
-    viewport slot before rendering — gives flat-shaded layers in the
+    viewport slot before rendering - gives flat-shaded layers in the
     color the artist intended without forcing them to fill in two
     fields per material.
     """
@@ -180,7 +180,7 @@ def _render_one(
     width = (bbox_max.x - bbox_min.x) + 2.0 * PADDING_UNITS
     height = (bbox_max.z - bbox_min.z) + 2.0 * PADDING_UNITS
     if width <= 0.0 or height <= 0.0:
-        print(f"[render_doll_layers] {target.name} has zero bbox — skipped")
+        print(f"[render_doll_layers] {target.name} has zero bbox - skipped")
         return
     cam_obj.location = (cx, -CAMERA_DISTANCE, cz)
     cam_obj.data.ortho_scale = max(width, height)

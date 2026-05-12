@@ -1,4 +1,4 @@
-# SPEC 010 — TODO
+# SPEC 010 - TODO
 
 UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md).
 

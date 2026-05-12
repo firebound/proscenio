@@ -4,14 +4,14 @@ Run with::
 
     python scripts/fixtures/slot_cycle/draw_layers.py
 
-Pure Python -- no Blender required. Produces three 32x32 PNGs under
+Pure Python - no Blender required. Produces three 32x32 PNGs under
 ``examples/generated/slot_cycle/pillow_layers/``: a red square, a green square,
 and a blue square. The accompanying ``build_blend.py`` runs in
 headless Blender, builds an armature with one bone, wraps the three
 quads as slot attachments under a single Empty, and adds an action
 that cycles the active attachment per keyframe.
 
-Smallest possible slot fixture -- mirrors the simple_psd / blink_eyes
+Smallest possible slot fixture - mirrors the simple_psd / blink_eyes
 shape (SPEC 007 layout, Pillow + bpy two-stage).
 """
 

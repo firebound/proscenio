@@ -46,7 +46,7 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
             node_groups=bpy.data.node_groups,
         )
         if not applied:
-            report_warn(self, "material has no Image Texture node -- cannot slice")
+            report_warn(self, "material has no Image Texture node - cannot slice")
             return {"CANCELLED"}
         report_info(
             self,

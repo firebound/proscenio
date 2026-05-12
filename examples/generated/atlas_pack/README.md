@@ -1,15 +1,15 @@
 # atlas_pack fixture (SPEC 005.1.c)
 
-Workbench for the **atlas packer** -- Pack / Apply / Unpack flow on the Atlas subpanel. Nine distinct sprite meshes, nine distinct PNGs, nine materials. The fixture exists so the panel has something to chew on with enough variety to make padding / POT / max-size behavior visible.
+Workbench for the **atlas packer** - Pack / Apply / Unpack flow on the Atlas subpanel. Nine distinct sprite meshes, nine distinct PNGs, nine materials. The fixture exists so the panel has something to chew on with enough variety to make padding / POT / max-size behavior visible.
 
-Each PNG is a flat-colored 32x32 square with a bold black digit (1..9) centered on it -- digit lets you eyeball where each sprite landed inside the packed atlas after Pack.
+Each PNG is a flat-colored 32x32 square with a bold black digit (1..9) centered on it - digit lets you eyeball where each sprite landed inside the packed atlas after Pack.
 
 ## Directory layout
 
 ```text
 examples/generated/atlas_pack/
-├── atlas_pack.blend             [SOURCE -- built by build_blend.py]
-├── atlas_pack.expected.proscenio [GOLDEN -- CI-diffed validation]
+├── atlas_pack.blend             [SOURCE - built by build_blend.py]
+├── atlas_pack.expected.proscenio [GOLDEN - CI-diffed validation]
 ├── pillow_layers/
 │   ├── sprite_1.png .. sprite_9.png   32x32, distinct color + digit
 └── godot/
@@ -54,12 +54,12 @@ blender --background examples/generated/atlas_pack/atlas_pack.blend \
 
 ## Testing the Atlas panel (manual)
 
-See [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.md) section 1.10 -- this fixture is the workbench used there.
+See [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.md) section 1.10 - this fixture is the workbench used there.
 
 Quick smoke (high level):
 
 1. Open `atlas_pack.blend` in Blender.
 2. N-panel > Proscenio > Atlas > **Pack Atlas**. Output: `atlas_pack.atlas.png` (single PNG with 9 sub-images) + `atlas_pack.atlas.json` (sprite -> (x,y,w,h) map).
 3. **Apply Packed Atlas**. UVs rewritten; sprite materials swapped to `Proscenio.PackedAtlas` (or kept per-sprite if `material_isolated=True`).
-4. Scrub viewport. Each sprite still shows its digit on its color -- proof Apply did not scramble UVs.
+4. Scrub viewport. Each sprite still shows its digit on its color - proof Apply did not scramble UVs.
 5. **Unpack**. UVs back to original 0..1; original materials restored.

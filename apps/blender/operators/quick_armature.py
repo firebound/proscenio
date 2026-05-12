@@ -25,7 +25,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO", "BLOCKING"}
 
-    # Modal state -- set in invoke, mutated in modal. Class-level defaults
+    # Modal state - set in invoke, mutated in modal. Class-level defaults
     # exist so mypy can resolve the attributes; per-invoke assignment in
     # invoke() ensures every modal session starts clean.
     _drag_head: ClassVar[tuple[float, float, float] | None] = None

@@ -2,7 +2,7 @@
 
 Single root-level bone at the world origin. Default name is ``root``,
 but rigs that prefer ``spine`` (or any other identifier) can pass a
-custom name -- the importer surfaces this via the operator's
+custom name - the importer surfaces this via the operator's
 ``root_bone_name`` property. Every stamped mesh is parented to the
 armature object (``parent_type='OBJECT'``); per-bone weights for
 posing land in a future wave.

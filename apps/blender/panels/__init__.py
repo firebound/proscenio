@@ -7,17 +7,17 @@ users can fold individually. Subpanels poll on the active selection
 
 Submodules per concern:
 
-- _helpers.py        -- cross-cutting (header drawer, mode predicates)
-- active_sprite.py   -- PROSCENIO_PT_active_sprite + 9 helpers
-- active_slot.py     -- PROSCENIO_PT_active_slot + attachment helpers
-- skeleton.py        -- PROSCENIO_PT_skeleton + UL_bones
-- outliner.py        -- PROSCENIO_PT_outliner + UL_sprite_outliner
-- animation.py       -- PROSCENIO_PT_animation + UL_actions
-- atlas.py           -- PROSCENIO_PT_atlas + packer box
-- validation.py      -- PROSCENIO_PT_validation
-- export.py          -- PROSCENIO_PT_export
-- help.py            -- PROSCENIO_PT_help
-- diagnostics.py     -- PROSCENIO_PT_diagnostics
+- _helpers.py        - cross-cutting (header drawer, mode predicates)
+- active_sprite.py   - PROSCENIO_PT_active_sprite + 9 helpers
+- active_slot.py     - PROSCENIO_PT_active_slot + attachment helpers
+- skeleton.py        - PROSCENIO_PT_skeleton + UL_bones
+- outliner.py        - PROSCENIO_PT_outliner + UL_sprite_outliner
+- animation.py       - PROSCENIO_PT_animation + UL_actions
+- atlas.py           - PROSCENIO_PT_atlas + packer box
+- validation.py      - PROSCENIO_PT_validation
+- export.py          - PROSCENIO_PT_export
+- help.py            - PROSCENIO_PT_help
+- diagnostics.py     - PROSCENIO_PT_diagnostics
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ from . import (
 
 
 class PROSCENIO_PT_main(bpy.types.Panel):
-    """Sidebar root -- version banner; child panels do the work."""
+    """Sidebar root - version banner; child panels do the work."""
 
     bl_label = "Proscenio"
     bl_idname = "PROSCENIO_PT_main"

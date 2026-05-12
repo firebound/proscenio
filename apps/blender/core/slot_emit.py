@@ -12,7 +12,7 @@ Conventions
 - ``bone`` is the Empty's ``parent_bone`` when ``parent_type == "BONE"``,
   empty string otherwise (per D3).
 - ``attachments`` ordered by the Empty's child list as the bpy walker
-  feeds it in -- the writer can sort or preserve outliner order. The
+  feeds it in - the writer can sort or preserve outliner order. The
   writer side currently feeds in ``children`` order; D12 z-order
   follows that.
 - ``default`` resolves to the explicit ``slot_default`` field when
@@ -60,7 +60,7 @@ def _resolve_default(slot_default: str, attachments: tuple[str, ...]) -> str:
 
     Empty attachments list yields ``""`` (no default emitted). An invalid
     ``slot_default`` (names a child that does not exist) silently falls
-    through to the sorted-first fallback -- the panel's validation pass
+    through to the sorted-first fallback - the panel's validation pass
     surfaces it as an error so the user sees the broken reference, but
     the writer keeps emitting a usable default in the meantime.
     """

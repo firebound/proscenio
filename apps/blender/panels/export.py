@@ -1,4 +1,4 @@
-"""Export subpanel -- sticky path, ppu, validate, export, re-export."""
+"""Export subpanel - sticky path, ppu, validate, export, re-export."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from ._helpers import draw_subpanel_header
 
 
 class PROSCENIO_PT_export(bpy.types.Panel):
-    """Export panel -- sticky path, ppu, validate, export, re-export."""
+    """Export panel - sticky path, ppu, validate, export, re-export."""
 
     bl_label = "Export"
     bl_idname = "PROSCENIO_PT_export"

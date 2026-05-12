@@ -1,4 +1,4 @@
-# SPEC 000 — TODO
+# SPEC 000 - TODO
 
 Closes the Phase 0 (foundation) work and primes Phase 1 (MVP). Each item is concrete, ordered roughly by dependency.
 
@@ -25,7 +25,7 @@ The first end-to-end test bypasses the Blender exporter entirely and hand-writes
 - [x] Add a tiny placeholder `examples/dummy/atlas.png` (commit as LFS via `.gitattributes` rule already in place).
 - [x] Run `check-jsonschema --schemafile schemas/proscenio.schema.json examples/dummy/dummy.proscenio` and fix any failures.
 
-## Godot importer — make MVP work end-to-end
+## Godot importer - make MVP work end-to-end
 
 Order matters. Each step must produce a visible result before moving on.
 
@@ -36,27 +36,27 @@ Order matters. Each step must produce a visible result before moving on.
 - [x] **Animation playback.** Press Play in Godot, confirm the head rotates as authored.
 - [x] **Plugin-uninstall test.** Move `addons/proscenio/` out of the project. Confirm the imported scene still opens and plays. Critical no-GDExtension verification. *Verified: with the plugin disabled, a wrapper scene instancing the imported dummy still renders with the correct atlas regions and plays the idle animation. The generated `.scn` is self-contained.*
 
-## Blender exporter — minimal path
+## Blender exporter - minimal path
 
 Once the importer is proven against the hand-written fixture, write the smallest possible exporter that reproduces the same fixture from Blender data.
 
 - [x] Build a tiny `dummy.blend` with: 3 sprite planes, an armature with 3 bones, one animation action that rotates the head bone.
-- [x] Implement `apps/blender/exporters/godot/writer.py` — walks the active scene, emits `.proscenio` JSON conforming to the schema.
+- [x] Implement `apps/blender/exporters/godot/writer.py` - walks the active scene, emits `.proscenio` JSON conforming to the schema.
 - [x] Add an operator `proscenio.export_godot` that opens a file picker and writes the result.
 - [x] Replace the smoke-test panel button with the export button.
 - [x] Round-trip test: export `dummy.blend` → `.proscenio` → import in Godot → animation plays.
 
 ## Tests
 
-- [x] Add `apps/blender/tests/fixtures/dummy/` with the expected `.proscenio` fixture (the source `.blend` lives at `examples/dummy/dummy.blend` — single source of truth).
+- [x] Add `apps/blender/tests/fixtures/dummy/` with the expected `.proscenio` fixture (the source `.blend` lives at `examples/dummy/dummy.blend` - single source of truth).
 - [x] Replace the placeholder body of `apps/blender/tests/run_tests.py`: re-export `dummy.blend` and diff the result against `tests/fixtures/dummy/expected.proscenio` (normalized via `json.dumps(sort_keys=True)`).
 - [x] Add `apps/godot/tests/test_importer.gd`: headless smoke test that exercises the builders and asserts node hierarchy, bone count and names, sprite count, animation library and length. No GUT dependency.
 - [x] Wire both into `.github/workflows/ci.yml` as `test-blender` and `test-godot` jobs (Blender 5.1.1, Godot 4.6.2-stable; matrix expansion in backlog).
 
 ## Photoshop exporter
 
-- [x] Port `coa_tools2/Photoshop/coa_export.jsx` into `apps/photoshop/proscenio_export.jsx`. Layer walk (with group recursion), per-layer PNG export, and JSON manifest matching [`.ai/skills/photoshop-jsx-dev.md`](../../.ai/skills/photoshop-jsx-dev.md). Untested against real PSD in CI — no headless Photoshop available.
-- [x] Document the expected layer convention in [`apps/photoshop/README.md`](../../apps/photoshop/README.md). PSD example deferred — requires a real Photoshop session to author.
+- [x] Port `coa_tools2/Photoshop/coa_export.jsx` into `apps/photoshop/proscenio_export.jsx`. Layer walk (with group recursion), per-layer PNG export, and JSON manifest matching [`.ai/skills/photoshop-jsx-dev.md`](../../.ai/skills/photoshop-jsx-dev.md). Untested against real PSD in CI - no headless Photoshop available.
+- [x] Document the expected layer convention in [`apps/photoshop/README.md`](../../apps/photoshop/README.md). PSD example deferred - requires a real Photoshop session to author.
 
 Phase 1 ends once the dummy round-trip passes and the photoshop exporter produces the per-sprite PNGs + position JSON for the same dummy.
 
@@ -70,8 +70,8 @@ Phase 1 ends once the dummy round-trip passes and the photoshop exporter produce
 
 These belong to follow-up specs, listed only so they are not lost:
 
-- Reimport-with-merge — SPEC 001.
-- Spritesheets and `Sprite2D` path — SPEC 002.
-- Full skinning weights — SPEC 003.
-- Slot system — SPEC 004.
-- Blender authoring panel — SPEC 005.
+- Reimport-with-merge - SPEC 001.
+- Spritesheets and `Sprite2D` path - SPEC 002.
+- Full skinning weights - SPEC 003.
+- Slot system - SPEC 004.
+- Blender authoring panel - SPEC 005.

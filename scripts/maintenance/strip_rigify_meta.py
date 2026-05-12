@@ -8,7 +8,7 @@ Removes Rigify-specific custom properties + widget orphans + the
 ``metarig*`` data-block name that the metarig template adds, plus the
 addon-registered ``rigify_type`` / ``rigify_parameters`` on pose bones.
 Targets armatures where the rig was authored from a Rigify metarig
-but ``Generate Rig`` was never run -- so the metarig sample data still
+but ``Generate Rig`` was never run - so the metarig sample data still
 hangs around even though Proscenio's writer ignores it.
 
 Idempotent. Saves the .blend in place when changes happen; no-op +
@@ -20,14 +20,14 @@ single object name.
 
 Optional flags (env vars, ``"1"`` enables):
 
-- ``PROSCENIO_STRIP_BONE_COLLECTIONS`` -- remove every bone collection
+- ``PROSCENIO_STRIP_BONE_COLLECTIONS`` - remove every bone collection
   from the targeted armatures (Rigify Human Meta-Rig leaves 20
   visual-only collections like Face / Torso / Arm.L (IK)). Default off
-  -- destructive when the user keeps the rig in active authoring.
-- ``PROSCENIO_STRIP_DRIVERS`` -- delete every driver whose data path
+  - destructive when the user keeps the rig in active authoring.
+- ``PROSCENIO_STRIP_DRIVERS`` - delete every driver whose data path
   starts with ``proscenio.`` from every Object. Default off. Useful
   to clear smoke-test residues without re-saving the .blend by hand.
-- ``PROSCENIO_STRIP_AUTOKEYED_ACTIONS`` -- unlink + remove actions
+- ``PROSCENIO_STRIP_AUTOKEYED_ACTIONS`` - unlink + remove actions
   whose name matches Blender's autokey pattern (``<Object>Action``)
   and that have a single user. Authored actions (``blink``, ``walk``,
   ``idle``) keep their non-autokey names and are untouched. Default
@@ -53,7 +53,7 @@ def main() -> None:
     targets = _collect_target_armatures()
     if not targets:
         scope = f"object {OBJECT_FILTER!r}" if OBJECT_FILTER else "any"
-        print(f"[strip_rigify_meta] no armature matched ({scope}) -- skipping", file=sys.stderr)
+        print(f"[strip_rigify_meta] no armature matched ({scope}) - skipping", file=sys.stderr)
         sys.exit(0)
 
     changes = 0
@@ -74,7 +74,7 @@ def main() -> None:
         changes += _strip_autokeyed_actions()
 
     if changes == 0:
-        print("[strip_rigify_meta] already clean -- no changes")
+        print("[strip_rigify_meta] already clean - no changes")
         return
 
     bpy.ops.wm.save_mainfile()
@@ -98,7 +98,7 @@ def _rename_metarig_data(arm_obj: bpy.types.Object, arm_data: bpy.types.Armature
         return 0
     new_name = arm_obj.name
     if new_name in bpy.data.armatures and bpy.data.armatures[new_name] is not arm_data:
-        return 0  # collision -- leave alone
+        return 0  # collision - leave alone
     old = arm_data.name
     arm_data.name = new_name
     print(f"[strip_rigify_meta] renamed armature data {old!r} -> {new_name!r}")
@@ -193,7 +193,7 @@ def _strip_pose_bone_rigify(arm_obj: bpy.types.Object) -> int:
     total = 0
     cleared_names: list[str] = []
     for pose_bone in pose.bones:
-        # Only ``rigify_type`` carries meaningful state -- non-empty means
+        # Only ``rigify_type`` carries meaningful state - non-empty means
         # the user assigned a Rigify module to this bone. ``rigify_parameters``
         # is a PointerProperty group that always exists when the addon is
         # loaded, so checking its existence is not a meaningful signal;
@@ -241,7 +241,7 @@ def _strip_autokeyed_actions() -> int:
     actions deliberately drop the ``Action`` suffix (``blink``, ``walk``,
     ``idle``), so the heuristic safely targets only the autokey residue.
     Skips actions referenced by NLA strips or shared between multiple
-    objects (use_count > 1) -- those are deliberate.
+    objects (use_count > 1) - those are deliberate.
     """
     total = 0
     removed_names: list[str] = []
@@ -283,7 +283,7 @@ def _strip_proscenio_drivers() -> int:
     for obj in bpy.data.objects:
         if obj.animation_data is None:
             continue
-        # Capture paths BEFORE removal -- the FCurve handle goes stale and
+        # Capture paths BEFORE removal - the FCurve handle goes stale and
         # ``d.data_path`` returns "" once driver_remove unlinks it.
         paths = [
             d.data_path

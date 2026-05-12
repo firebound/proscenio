@@ -1,10 +1,10 @@
-# Conventions — Proscenio
+# Conventions - Proscenio
 
 ## Branches
 
 ```text
-feat/<slug>                   # Feature — outside a SPEC
-feat/spec-<NNN>-<slug>        # Feature — implementation of a numbered SPEC
+feat/<slug>                   # Feature - outside a SPEC
+feat/spec-<NNN>-<slug>        # Feature - implementation of a numbered SPEC
 fix/<slug>                    # Bug fix
 fix/spec-<NNN>-<slug>         # Bug fix tied to a SPEC
 docs/<slug>                   # Documentation only
@@ -25,7 +25,7 @@ When an issue exists, reference it in the commit body (`Refs: #42`), not in the 
 - **`feat/spec-<NNN>-<slug>`** (or `fix/`, `chore/` if the SPEC's nature warrants) holds the implementation of a numbered SPEC. Branch from `main` once the SPEC's STUDY/TODO are reviewed. Commit gradually as TODO items close. Open a PR back to `main` when the TODO is satisfied.
 - **Branches without the `spec-NNN-` infix** are for work that does not belong to a numbered SPEC.
 
-Prefer many small commits on the working branch over a single squashed lump — the merge can squash if needed, but the branch history is the audit trail while work is in flight.
+Prefer many small commits on the working branch over a single squashed lump - the merge can squash if needed, but the branch history is the audit trail while work is in flight.
 
 ## Files and folders
 
@@ -33,8 +33,8 @@ Prefer many small commits on the working branch over a single squashed lump — 
 | --- | --- |
 | `snake_case.py` | Python modules |
 | `PascalCase` | Python class names |
-| `PROSCENIO_OT_*` / `PROSCENIO_PT_*` | Blender operator and panel class names (Blender requirement — `bpy.utils.register_class` validates the `CATEGORY_OT_name` / `CATEGORY_PT_name` shape; ruff `N801` and Sonar `python:S101` are silenced) |
-| `snake_case.gd` | GDScript files — one class per file |
+| `PROSCENIO_OT_*` / `PROSCENIO_PT_*` | Blender operator and panel class names (Blender requirement - `bpy.utils.register_class` validates the `CATEGORY_OT_name` / `CATEGORY_PT_name` shape; ruff `N801` and Sonar `python:S101` are silenced) |
+| `snake_case.gd` | GDScript files - one class per file |
 | `PascalCase` | GDScript `class_name` |
 | `kebab-case` | Config and workflow file names (`.editorconfig`, `release.yml`) |
 | `lower-case-no-spaces.proscenio` | Asset files |
@@ -48,14 +48,14 @@ The `.proscenio` format uses `snake_case` keys throughout (`format_version`, `pi
 
 Every concern lives in its own module; `__init__.py` orchestrates registration only.
 
-- `apps/blender/__init__.py` — addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
-- `operators/`, `panels/`, `properties/` — packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
+- `apps/blender/__init__.py` - addon root. Imports `properties`, `operators`, `panels` packages and chains their `register()` / `unregister()` in dependency order (properties first; panels last).
+- `operators/`, `panels/`, `properties/` - packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
 - One submodule per topical concern. Examples: `operators/export_flow.py`, `operators/quick_armature.py`, `operators/slot/create.py`, `panels/active_sprite.py`, `panels/outliner.py`. Aim for under ~300 LOC per submodule.
 - Cross-cutting helpers shared by multiple sibling submodules go in `_helpers.py` (panels) or `_paths.py` / `_handlers.py` / `_dynamic_items.py` (private prefix conveys "module-internal, not the public API").
-- `core/` — bpy-free helpers. Direct children of `core/` import nothing from `bpy` at module top. They may lazy-import `bpy` inside one function and accept `Any`-typed inputs from tests.
-- `core/bpy_helpers/` — bpy-bound helpers. Modules under this subpackage import `bpy` at module top. Tests that touch them either patch `bpy` first or skip when running outside Blender.
-- `core/validation/` — per-validator subpackage with `Issue`, `validate_active_sprite`, `validate_active_slot`, `validate_export`. Re-exports the public API from its `__init__.py`.
-- `exporters/godot/writer/` — package, not single file. Submodules per emission concern (`scene_discovery`, `skeleton`, `sprites`, `slots`, `slot_animations`, `animations`). The `__init__.py` re-exports the public `export()` entry.
+- `core/` - bpy-free helpers. Direct children of `core/` import nothing from `bpy` at module top. They may lazy-import `bpy` inside one function and accept `Any`-typed inputs from tests.
+- `core/bpy_helpers/` - bpy-bound helpers. Modules under this subpackage import `bpy` at module top. Tests that touch them either patch `bpy` first or skip when running outside Blender.
+- `core/validation/` - per-validator subpackage with `Issue`, `validate_active_sprite`, `validate_active_slot`, `validate_export`. Re-exports the public API from its `__init__.py`.
+- `exporters/godot/writer/` - package, not single file. Submodules per emission concern (`scene_discovery`, `skeleton`, `sprites`, `slots`, `slot_animations`, `animations`). The `__init__.py` re-exports the public `export()` entry.
 - Custom Property string keys live in `core/cp_keys.py` (single source of truth, every `proscenio_*` literal goes there).
 - Operator user-facing reports go through `core/report.py` (`report_info` / `report_warn` / `report_error`) so the `"Proscenio: "` prefix lives in one place.
 - Cross-package import direction: `panels` → `operators` (only via `bl_idname` strings, never direct class imports) → `core`. `properties` → `core`. No cycles.
@@ -64,7 +64,7 @@ When a single file grows past ~300 LOC, ask whether it has absorbed multiple con
 
 ## Static typing
 
-Both first-class languages in this repo support static typing. **Use it everywhere — do not ship dynamic code when typed code is available.**
+Both first-class languages in this repo support static typing. **Use it everywhere - do not ship dynamic code when typed code is available.**
 
 ### GDScript (Godot plugin)
 
@@ -75,7 +75,7 @@ GDScript 2.0 has full static typing. The plugin must be 100% typed.
 - **Typed collections:** `Array[T]`, `Dictionary[K, V]` (Godot 4.4+) over bare `Array` / `Dictionary` whenever the element type is known.
 - **`class_name`** on every script that is loaded by name.
 - **Signals:** declare typed (`signal imported(path: String)`).
-- **Constants:** `const FOO: int = 1`. Type-annotate even when the literal infers cleanly — explicit beats implicit.
+- **Constants:** `const FOO: int = 1`. Type-annotate even when the literal infers cleanly - explicit beats implicit.
 - **`@export`** vars must be typed. Use `@export var atlas: Texture2D` not `@export var atlas`.
 - `gdlint` runs in CI; treat any "untyped" warning as a build break.
 
@@ -99,11 +99,11 @@ The repo prefers **failing fast** at the earliest possible layer over discoverin
 - **VS Code** Pylance + SonarLint + cspell + gdtoolkit live diagnostics. `.vscode/settings.json` carries the project-specific overrides.
 - **Pyright config** at repo root resolves `bpy` / `mathutils` stubs as missing-but-OK and adds `apps/blender` to `extraPaths`.
 - **Blender's "Treat warnings as errors"** is too coarse for an addon shipped to users; relying on Pylance + ruff suffices.
-- **Godot project** sets `debug/gdscript/warnings/treat_warnings_as_errors=true` so live editor warnings break the import. `untyped_declaration=2` enforces typing; the four `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` keys are pinned to `0` because `JSON.parse` returns `Variant` by design and the importer/builders downcast — without these pinned, every line at the JSON boundary would need a `# warning-ignore`. Mirrored by `gdlint` in CI. **Do not put comments inside `[debug]` in `project.godot`** — Godot's project-settings serializer mangles them when the editor saves.
+- **Godot project** sets `debug/gdscript/warnings/treat_warnings_as_errors=true` so live editor warnings break the import. `untyped_declaration=2` enforces typing; the four `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` keys are pinned to `0` because `JSON.parse` returns `Variant` by design and the importer/builders downcast - without these pinned, every line at the JSON boundary would need a `# warning-ignore`. Mirrored by `gdlint` in CI. **Do not put comments inside `[debug]` in `project.godot`** - Godot's project-settings serializer mangles them when the editor saves.
 
 ### Pre-commit hooks
 
-A single `.pre-commit-config.yaml` runs all of: `ruff check`, `ruff format`, `mypy --strict`, `gdformat --check`, `gdlint`, `cspell`, and `check-jsonschema` against staged `.proscenio` files. Install once with `pip install pre-commit && pre-commit install`. Treat any local skip (`--no-verify`) as a bug — fix the underlying issue.
+A single `.pre-commit-config.yaml` runs all of: `ruff check`, `ruff format`, `mypy --strict`, `gdformat --check`, `gdlint`, `cspell`, and `check-jsonschema` against staged `.proscenio` files. Install once with `pip install pre-commit && pre-commit install`. Treat any local skip (`--no-verify`) as a bug - fix the underlying issue.
 
 ### Static analysis
 
@@ -116,11 +116,11 @@ A single `.pre-commit-config.yaml` runs all of: `ruff check`, `ruff format`, `my
 
 The `.proscenio` JSON Schema is the only cross-component truth. It is enforced at **three** points:
 
-1. **Writer output** — `apps/blender/tests/run_tests.py` schema-validates the freshly exported `.proscenio` before diffing against the golden fixture. The exporter cannot ship a document the importer would reject.
-2. **Importer input** — `apps/godot/addons/proscenio/importer.gd` checks `format_version` and surfaces a clear error per missing field. Future migrators consume the version guard.
-3. **CI fixtures** — `.github/workflows/ci.yml` runs `check-jsonschema` against every `.proscenio` in `examples/` and `tests/fixtures/`.
+1. **Writer output** - `apps/blender/tests/run_tests.py` schema-validates the freshly exported `.proscenio` before diffing against the golden fixture. The exporter cannot ship a document the importer would reject.
+2. **Importer input** - `apps/godot/addons/proscenio/importer.gd` checks `format_version` and surfaces a clear error per missing field. Future migrators consume the version guard.
+3. **CI fixtures** - `.github/workflows/ci.yml` runs `check-jsonschema` against every `.proscenio` in `examples/` and `tests/fixtures/`.
 
-When v2 lands, the same gate ensures every existing fixture either migrates or breaks loudly — no silent drift.
+When v2 lands, the same gate ensures every existing fixture either migrates or breaks loudly - no silent drift.
 
 ### Domain types over loose dicts
 
@@ -128,7 +128,7 @@ In Python, model `.proscenio` shapes as `TypedDict` (or `dataclass`) inside the 
 
 ### Defensive throws / asserts
 
-Cheap to write, expensive to skip. In Python, raise `RuntimeError` at the boundary with a context-rich message (`"Proscenio export needs an Armature in the scene"`). In GDScript, `assert(condition, msg)` is stripped from release builds — useful for invariants documented as code. In TypeScript (UXP plugin), `throw new Error(...)` early-fails the operation with a usable message.
+Cheap to write, expensive to skip. In Python, raise `RuntimeError` at the boundary with a context-rich message (`"Proscenio export needs an Armature in the scene"`). In GDScript, `assert(condition, msg)` is stripped from release builds - useful for invariants documented as code. In TypeScript (UXP plugin), `throw new Error(...)` early-fails the operation with a usable message.
 
 ### Test discipline
 
@@ -216,10 +216,10 @@ feat(blender): add Photoshop JSON importer
 
 ### Description
 
-1. **What changed** — short summary.
-2. **Why** — motivation if non-obvious.
-3. **How to test** — concrete steps, including which Blender or Godot version.
-4. **Schema impact** — if `format_version` bumped, link to the migration note.
+1. **What changed** - short summary.
+2. **Why** - motivation if non-obvious.
+3. **How to test** - concrete steps, including which Blender or Godot version.
+4. **Schema impact** - if `format_version` bumped, link to the migration note.
 
 ### Template
 
@@ -244,15 +244,15 @@ feat(blender): add Photoshop JSON importer
 
 What to review:
 
-1. **Correctness** — does it do what the PR claims?
-2. **Boundary discipline** — Photoshop knows nothing of Blender; Blender knows nothing of Godot internals; Godot reads only `.proscenio`. See [`.ai/skills/architecture.md`](skills/architecture.md).
-3. **Schema fidelity** — exporter output and importer input both match `schemas/proscenio.schema.json`.
-4. **No GDExtension creep** — Godot side stays pure GDScript with built-in nodes only.
-5. **Reload safety** — Blender addon `register()` / `unregister()` symmetry, no leaked classes.
-6. **Test coverage** — non-trivial logic gets a fixture or a unit test.
+1. **Correctness** - does it do what the PR claims?
+2. **Boundary discipline** - Photoshop knows nothing of Blender; Blender knows nothing of Godot internals; Godot reads only `.proscenio`. See [`.ai/skills/architecture.md`](skills/architecture.md).
+3. **Schema fidelity** - exporter output and importer input both match `schemas/proscenio.schema.json`.
+4. **No GDExtension creep** - Godot side stays pure GDScript with built-in nodes only.
+5. **Reload safety** - Blender addon `register()` / `unregister()` symmetry, no leaked classes.
+6. **Test coverage** - non-trivial logic gets a fixture or a unit test.
 
 What not to review:
 
-- Code style — `ruff` and `gdformat` handle it.
+- Code style - `ruff` and `gdformat` handle it.
 - Personal preferences when a convention already chose.
-- Formatting — covered by the editor and lint hooks.
+- Formatting - covered by the editor and lint hooks.

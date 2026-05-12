@@ -10,7 +10,7 @@ from ._helpers import _POSE_FRIENDLY_MODES, draw_subpanel_header
 
 
 class PROSCENIO_UL_bones(bpy.types.UIList):
-    """List view for ``Armature.bones`` -- Skeleton subpanel uses this."""
+    """List view for ``Armature.bones`` - Skeleton subpanel uses this."""
 
     bl_idname = "PROSCENIO_UL_bones"
 
@@ -32,7 +32,7 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
-    """Skeleton summary -- bone count + presence checks."""
+    """Skeleton summary - bone count + presence checks."""
 
     bl_label = "Skeleton"
     bl_idname = "PROSCENIO_PT_skeleton"
@@ -59,12 +59,12 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             return
         first = armatures[0]
         bones = getattr(first.data, "bones", [])
-        layout.label(text=f"Armature '{first.name}' -- {len(bones)} bone(s)")
+        layout.label(text=f"Armature '{first.name}' - {len(bones)} bone(s)")
         if len(armatures) > 1:
             row = layout.row()
             row.alert = True
             row.label(
-                text=f"{len(armatures)} armatures -- writer uses the first only",
+                text=f"{len(armatures)} armatures - writer uses the first only",
                 icon="ERROR",
             )
         if bones:

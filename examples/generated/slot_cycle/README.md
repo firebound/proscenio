@@ -6,10 +6,10 @@ Smallest end-to-end exercise of the **slot system**: one armature, one slot Empt
 
 ```text
 examples/generated/slot_cycle/
-├── slot_cycle.blend                      [SOURCE -- built by build_blend.py from pillow_layers/]
-├── slot_cycle.expected.proscenio         [GOLDEN -- CI-diffed validation midpoint]
-├── pillow_layers/                        [DERIVED -- Pillow draws the 3 colored squares]
-│   ├── attachment_red.png                32x32 -- slot default
+├── slot_cycle.blend                      [SOURCE - built by build_blend.py from pillow_layers/]
+├── slot_cycle.expected.proscenio         [GOLDEN - CI-diffed validation midpoint]
+├── pillow_layers/                        [DERIVED - Pillow draws the 3 colored squares]
+│   ├── attachment_red.png                32x32 - slot default
 │   ├── attachment_green.png              32x32
 │   └── attachment_blue.png               32x32
 └── godot/
@@ -27,11 +27,11 @@ examples/generated/slot_cycle/
 | `slot_default` | `attachment_red` |
 | Attachments | `attachment_red` / `attachment_green` / `attachment_blue` (parent_type=OBJECT to the Empty) |
 
-The Empty is **object-parented** (not bone-parented) to the armature -- bone-parenting rotates child meshes to align with the bone direction, which would tilt the XZ-plane attachments out of the screen plane. The doll fixture follows the same pattern (parent_type=OBJECT, weighting via vertex groups).
+The Empty is **object-parented** (not bone-parented) to the armature - bone-parenting rotates child meshes to align with the bone direction, which would tilt the XZ-plane attachments out of the screen plane. The doll fixture follows the same pattern (parent_type=OBJECT, weighting via vertex groups).
 
 ## Action
 
-`cycle` -- 24 frames keyframing `obj["proscenio_slot_index"]` per second:
+`cycle` - 24 frames keyframing `obj["proscenio_slot_index"]` per second:
 
 ```text
 1  -> 0 (red)

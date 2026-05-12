@@ -1,6 +1,6 @@
 ---
 name: format-spec
-description: .proscenio JSON format — fields, semantics, versioning, migrations
+description: .proscenio JSON format - fields, semantics, versioning, migrations
 ---
 
 # `.proscenio` format
@@ -29,15 +29,15 @@ Each entry in `sprites` is one of two shapes, distinguished by a `type` field:
 | `polygon` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style mesh, deformable, eligible for skinning weights (SPEC 003) |
 | `sprite_frame` | `Sprite2D` | `type`, `name`, `bone`, `hframes`, `vframes` | frame-by-frame animation (pixel art, particles, effects) |
 
-`type` is **optional** on `polygon` sprites — absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
+`type` is **optional** on `polygon` sprites - absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
 
 A sprite of `type: "sprite_frame"` carries an optional `texture_region` (the sub-rectangle of the atlas where the spritesheet lives) plus the frame grid (`hframes` × `vframes`), the initial `frame` index (row-major), and the standard `Sprite2D` knobs `offset` and `centered`. Animations advance the frame via a `sprite_frame` track on the matching sprite.
 
-A single `.proscenio` may freely mix both kinds — a cutout body with a spritesheet face, for example.
+A single `.proscenio` may freely mix both kinds - a cutout body with a spritesheet face, for example.
 
 ## UV coordinates
 
-UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite_frame` sprites have no `uv` field — Godot derives the UV automatically from `frame` × `hframes`/`vframes`.
+UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite_frame` sprites have no `uv` field - Godot derives the UV automatically from `frame` × `hframes`/`vframes`.
 
 ## Coordinate system
 
@@ -47,17 +47,17 @@ UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of 
 - Scales are Vec2 multipliers around the bone origin.
 - **Origin.** The character origin is the scene-root `Node2D` at `(0, 0)`. The `Skeleton2D` lives at `(0, 0)` relative to it. Any global offset is carried by the `root` bone.
 
-The Godot importer trusts the exporter — it does not re-flip. If you write a non-Blender exporter, follow Godot conventions in the file.
+The Godot importer trusts the exporter - it does not re-flip. If you write a non-Blender exporter, follow Godot conventions in the file.
 
 ## Atlas packing (v1)
 
-The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** (SPEC 005.1.c.2) that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible — the writer reads whatever `texture_region` the user supplies.
+The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** (SPEC 005.1.c.2) that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible - the writer reads whatever `texture_region` the user supplies.
 
 Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md).
 
 ## Skinning weights
 
-The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinning — `Polygon2D.skeleton` resolves to the character's `Skeleton2D` and each bone receives a per-vertex weight array. Shape:
+The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinning - `Polygon2D.skeleton` resolves to the character's `Skeleton2D` and each bone receives a per-vertex weight array. Shape:
 
 ```json
 "weights": [
@@ -66,9 +66,9 @@ The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinnin
 ]
 ```
 
-`values` is indexed by the sprite's vertex order — `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used, see [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
+`values` is indexed by the sprite's vertex order - `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used, see [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
 
-Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) — backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites (SPEC 002) ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
+Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites (SPEC 002) ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
 
 ## Versioning policy
 
@@ -94,7 +94,7 @@ The Godot importer rejects unknown future versions with a clear error message an
 | Track type | Targets | Per-key data |
 | --- | --- | --- |
 | `bone_transform` | `Bone2D` | `position`, `rotation`, `scale` |
-| `sprite_frame` | `Sprite2D` (sprite of `type: "sprite_frame"`) | `frame` (spritesheet index) — importer wires this to a value track at `:frame` with `INTERPOLATION_NEAREST` |
+| `sprite_frame` | `Sprite2D` (sprite of `type: "sprite_frame"`) | `frame` (spritesheet index) - importer wires this to a value track at `:frame` with `INTERPOLATION_NEAREST` |
 | `slot_attachment` | slot | `attachment` (sprite name) |
 | `visibility` | any | `visible` (bool) |
 
@@ -106,4 +106,4 @@ Per-key `interp` field: `linear` or `constant`. Default `linear` if omitted.
 - Position / scale tracks: `INTERPOLATION_CUBIC`.
 - `sprite_frame` and `slot_attachment` tracks: `INTERPOLATION_NEAREST` (hard cuts).
 
-This means per-key `interp` is currently ignored for transform tracks — the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred — it requires schema fields the v1 shape does not model.
+This means per-key `interp` is currently ignored for transform tracks - the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred - it requires schema fields the v1 shape does not model.

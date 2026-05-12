@@ -91,7 +91,7 @@ def test_mirror_all_skips_missing_attributes() -> None:
 def test_mirror_all_swallows_caster_errors() -> None:
     """Bogus value (None where int wanted) does not break the rest."""
     props = _full_props()
-    props.hframes = None  # type: ignore[assignment]  — bogus on purpose
+    props.hframes = None  # type: ignore[assignment]  - bogus on purpose
     obj = _ObjectMock(proscenio=props)
     mirror_all_fields(props, obj)
     assert "proscenio_hframes" not in obj  # caster raised → skipped

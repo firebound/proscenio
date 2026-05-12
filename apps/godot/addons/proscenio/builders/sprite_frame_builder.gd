@@ -2,7 +2,7 @@
 extends RefCounted
 
 # Attaches Sprite2D-backed sprites declared as `type: "sprite_frame"` in the
-# .proscenio document. Companion of polygon_builder.gd — each builder
+# .proscenio document. Companion of polygon_builder.gd - each builder
 # discriminator-filters its own kind so importer.gd can call both blindly.
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
@@ -13,7 +13,7 @@ static func _resolve_sprite_texture(
 	fallback_atlas: Texture2D,
 	source_dir: String,
 ) -> Texture2D:
-	# Mirror of polygon_builder._resolve_sprite_texture -- see that file for
+	# Mirror of polygon_builder._resolve_sprite_texture - see that file for
 	# the resolution order rationale (per-sprite `texture` field ->
 	# `<sprite.name>.png` next to source -> fallback atlas).
 	var per_sprite: String = sprite_data.get("texture", "")
@@ -66,7 +66,7 @@ static func attach_sprites(
 		var bone_name: String = NodeNameUtil.sanitize(sprite_data.get("bone", ""))
 		# Slot routing (SPEC 004 D6): sprite_frame attachments compose with
 		# polygon attachments under the same slot Node2D. Default-attachment
-		# starts visible, others start hidden -- the slot_attachment track
+		# starts visible, others start hidden - the slot_attachment track
 		# (animation_builder.gd) flips visibility per key at runtime.
 		# ``sprite.name`` is post-sanitize (Godot strips ``.`` etc); slot_map
 		# keys are sanitized in slot_builder for consistency.

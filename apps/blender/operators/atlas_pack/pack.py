@@ -1,4 +1,4 @@
-"""Atlas pack operator -- generates packed atlas PNG + manifest."""
+"""Atlas pack operator - generates packed atlas PNG + manifest."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from ._paths import packed_atlas_paths
 
 
 class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
-    """Generate a packed atlas PNG + manifest. Non-destructive -- skips UV/material edits."""
+    """Generate a packed atlas PNG + manifest. Non-destructive - skips UV/material edits."""
 
     bl_idname = "proscenio.pack_atlas"
     bl_label = "Proscenio: Pack Atlas"
@@ -59,7 +59,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         if packed is None:
             report_error(
                 self,
-                f"pack failed -- {len(items)} sprite(s) do not fit in "
+                f"pack failed - {len(items)} sprite(s) do not fit in "
                 f"{props.pack_max_size}x{props.pack_max_size} px atlas.",
             )
             return {"CANCELLED"}

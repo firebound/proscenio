@@ -184,8 +184,8 @@ The PSD manifest schema (`psd_manifest.schema.json`) is **DCC-agnostic by design
 
 ## See also
 
-- [SPEC 006 — Photoshop → Blender importer](../specs/006-photoshop-importer/STUDY.md): full design and decisions D1-D10.
-- [SPEC 010 — Photoshop UXP migration](../specs/010-photoshop-uxp-migration/STUDY.md): the active replacement of ExtendScript JSX with TypeScript + React UXP plugin.
+- [SPEC 006 - Photoshop → Blender importer](../specs/006-photoshop-importer/STUDY.md): full design and decisions D1-D10.
+- [SPEC 010 - Photoshop UXP migration](../specs/010-photoshop-uxp-migration/STUDY.md): the active replacement of ExtendScript JSX with TypeScript + React UXP plugin.
 - [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md): plugin internals, dev loop, file system API.
 - [`schemas/psd_manifest.schema.json`](../schemas/psd_manifest.schema.json): authoritative manifest contract.
 - [`docs/GODOT-WORKFLOW.md`](GODOT-WORKFLOW.md): the Godot-side analog to this doc.

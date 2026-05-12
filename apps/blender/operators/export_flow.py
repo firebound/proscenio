@@ -47,7 +47,7 @@ def _gate_on_validation(operator: bpy.types.Operator, scene: bpy.types.Scene) ->
     if errors:
         report_error(
             operator,
-            f"export blocked by {len(errors)} validation error(s) -- see Validation panel.",
+            f"export blocked by {len(errors)} validation error(s) - see Validation panel.",
         )
         return False
     return True
@@ -119,7 +119,7 @@ class PROSCENIO_OT_reexport_godot(bpy.types.Operator):
 
     bl_idname = "proscenio.reexport_godot"
     bl_label = "Proscenio: Re-export"
-    bl_description = "Re-run the writer using the last export path -- no file dialog"
+    bl_description = "Re-run the writer using the last export path - no file dialog"
     bl_options: ClassVar[set[str]] = {"REGISTER"}
 
     @classmethod

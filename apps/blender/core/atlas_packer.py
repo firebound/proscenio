@@ -1,7 +1,7 @@
 """Vendored 2D bin-packer for atlas generation (SPEC 005.1.c.2).
 
 MaxRects with the Best Short Side Fit (BSSF) heuristic. Pure Python, no
-external deps — chosen over `pytexturepacker` because pip-installing into
+external deps - chosen over `pytexturepacker` because pip-installing into
 Blender's bundled Python is fragile cross-platform (paths differ Win/Mac/
 Linux, permissions vary, future Blender ABI may break).
 
@@ -9,9 +9,9 @@ Reference: Jukka Jylänki, "A Thousand Ways to Pack the Bin", 2010.
 
 Public API:
 
-- :class:`Rect` — placement record, ``(x, y, w, h)`` in atlas pixels.
-- :class:`PackResult` — atlas size + per-name placements.
-- :func:`pack` — entry point. Takes ``[(name, w, h)]`` and packing config,
+- :class:`Rect` - placement record, ``(x, y, w, h)`` in atlas pixels.
+- :class:`PackResult` - atlas size + per-name placements.
+- :func:`pack` - entry point. Takes ``[(name, w, h)]`` and packing config,
   returns a :class:`PackResult` or ``None`` if every size up to ``max_size``
   fails to fit.
 
@@ -67,7 +67,7 @@ def pack(
 ) -> PackResult | None:
     """Pack ``items`` into the smallest atlas that fits up to ``max_size``.
 
-    Each item is ``(name, source_w, source_h)`` — source image dimensions
+    Each item is ``(name, source_w, source_h)`` - source image dimensions
     in pixels. Padding is added around each placement (``w + 2*padding``
     reserved). Sizes are tried in doubling steps starting from
     ``start_size`` until the items fit or ``max_size`` is exceeded.
@@ -129,7 +129,7 @@ def _try_pack(
 
 
 def _find_best_slot(free_rects: list[Rect], w: int, h: int) -> Rect | None:
-    """Best Short Side Fit — pick the free rect whose shorter remaining side is smallest."""
+    """Best Short Side Fit - pick the free rect whose shorter remaining side is smallest."""
     best: Rect | None = None
     best_short = float("inf")
     best_long = float("inf")

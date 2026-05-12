@@ -80,7 +80,7 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
             self.report({"ERROR"}, f"Manifest invalid: {exc}")
             return {"CANCELLED"}
         except Exception as exc:
-            # Surface anything to the user — operator must not crash the UI.
+            # Surface anything to the user - operator must not crash the UI.
             self.report({"ERROR"}, f"Import failed: {exc}")
             return {"CANCELLED"}
         msg = (

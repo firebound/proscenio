@@ -1,6 +1,6 @@
 """PSD layer naming convention helpers (SPEC 006 Wave 6.2).
 
-Pure Python — no bpy, no Pillow. The JSX exporter (Wave 6.1) uses the
+Pure Python - no bpy, no Pillow. The JSX exporter (Wave 6.1) uses the
 same rules in JavaScript when classifying layer groups; this module
 provides the Python mirror so the importer can sanity-check that a
 sprite_frame manifest entry's children actually look like indexed
@@ -50,7 +50,7 @@ def match_indexed_frame(name: str) -> IndexedName | None:
     Returns the parsed :class:`IndexedName` or ``None`` if no convention
     matches. The ``base`` field carries the implied group name when the
     naming carries one (``eye_0`` → base ``eye``); for pure-digit and
-    ``frame_<n>`` matches it is the empty string — context (the parent
+    ``frame_<n>`` matches it is the empty string - context (the parent
     PSD group name) supplies the group identity in those cases.
     """
     pure = _PURE_DIGIT_RE.match(name)

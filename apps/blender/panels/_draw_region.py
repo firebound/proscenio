@@ -1,6 +1,6 @@
 """Texture region authoring box (SPEC 005 5.1.c.1).
 
-Shared between the sprite_frame and polygon body draws -- both need
+Shared between the sprite_frame and polygon body draws - both need
 the auto / manual mode toggle and the four region floats. Pulled into
 its own helper module by SPEC 009 wave 9.10.
 """
@@ -33,6 +33,6 @@ def draw_box(
         hint = (
             "computed from UV bounds at export"
             if sprite_type == "polygon"
-            else "omitted at export -- full atlas used"
+            else "omitted at export - full atlas used"
         )
         box.label(text=hint, icon="INFO")

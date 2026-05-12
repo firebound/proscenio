@@ -6,8 +6,8 @@ extends RefCounted
 # A slot in the .proscenio document is a `{name, bone, default,
 # attachments[]}` record. Each slot becomes a `Node2D` child of the
 # matching `Bone2D` (or of the `Skeleton2D` root when `bone` is empty).
-# The sprite builders -- polygon_builder.gd / sprite_frame_builder.gd
-# -- consult the slot map this module returns and route any sprite
+# The sprite builders - polygon_builder.gd / sprite_frame_builder.gd
+# - consult the slot map this module returns and route any sprite
 # whose name appears in some `attachments[]` under the slot Node2D
 # instead of the bone-or-skeleton fallback.
 #
@@ -52,7 +52,7 @@ static func build(skeleton: Skeleton2D, slots_data: Array) -> Dictionary:
 static func _build_one_slot(skeleton: Skeleton2D, slot_data: Dictionary) -> SlotInfo:
 	var raw_slot_name: String = slot_data.get("name", "")
 	if raw_slot_name == "":
-		push_warning("Proscenio: slot entry missing name -- skipping")
+		push_warning("Proscenio: slot entry missing name - skipping")
 		return null
 
 	var node := Node2D.new()
@@ -68,7 +68,7 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_data: Dictionary) -> Slot
 			push_warning(
 				(
 					(
-						"Proscenio: slot '%s' references missing bone '%s' -- "
+						"Proscenio: slot '%s' references missing bone '%s' - "
 						+ "anchoring at skeleton root."
 					)
 					% [raw_slot_name, bone_name]

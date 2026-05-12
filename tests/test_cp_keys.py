@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 009 wave 9.1 -- core.cp_keys constants.
+"""Unit tests for SPEC 009 wave 9.1 - core.cp_keys constants.
 
 Pure pytest, no Blender. Confirms every constant is a non-empty string
 and they are pairwise distinct (no two PG fields point at the same CP

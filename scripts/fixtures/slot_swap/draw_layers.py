@@ -4,13 +4,13 @@ Run with::
 
     py scripts/fixtures/slot_swap/draw_layers.py
 
-Pure Python -- no Blender required. Produces:
+Pure Python - no Blender required. Produces:
 
-- ``examples/generated/slot_swap/pillow_layers/arm.png``    32x8  -- horizontal forearm
-- ``examples/generated/slot_swap/pillow_layers/club.png``   32x32 -- club attachment
-- ``examples/generated/slot_swap/pillow_layers/sword.png``  32x32 -- sword attachment
+- ``examples/generated/slot_swap/pillow_layers/arm.png``    32x8  - horizontal forearm
+- ``examples/generated/slot_swap/pillow_layers/club.png``   32x32 - club attachment
+- ``examples/generated/slot_swap/pillow_layers/sword.png``  32x32 - sword attachment
 
-Each attachment is a separate PNG (no spritesheet) -- the slot system
+Each attachment is a separate PNG (no spritesheet) - the slot system
 swaps **discrete meshes**, not cells of a shared texture. Visual style
 is intentionally minimal pixel-art so the diff between attachments
 during a swap is unambiguous in CI screenshots.
@@ -56,7 +56,7 @@ def main() -> None:
 def _draw_arm() -> None:
     """Horizontal pixel-art arm: skin rectangle + dark outline.
 
-    32 px wide x 16 px tall -- a forearm extending sideways from the
+    32 px wide x 16 px tall - a forearm extending sideways from the
     body. The slot Empty sits at the bone tip (right side after the
     swing rotation) so the weapon attachment naturally comes out of
     the wrist.

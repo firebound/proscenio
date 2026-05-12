@@ -3,7 +3,7 @@
 Mocks ``bpy.types.Object`` via :class:`SimpleNamespace` so the hydration
 helper is exercised without a Blender session. The Blender side of the
 addon (PointerProperty wiring, register/unregister, decorators) is out
-of scope here — covered by the manual smoke test.
+of scope here - covered by the manual smoke test.
 
 Run from the repo root:
 
@@ -20,7 +20,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.hydrate import hydrate_object  # noqa: E402  — sys.path setup above
+from core.hydrate import hydrate_object  # noqa: E402  - sys.path setup above
 
 
 class _ObjectMock:
@@ -59,7 +59,7 @@ def _empty_props() -> SimpleNamespace:
 
 def test_hydrate_skips_object_without_proscenio() -> None:
     obj = _ObjectMock(custom_props={"proscenio_type": "sprite_frame"}, proscenio=None)
-    hydrate_object(obj)  # must not raise — silent skip
+    hydrate_object(obj)  # must not raise - silent skip
 
 
 def test_hydrate_copies_sprite_type_when_present() -> None:
@@ -96,7 +96,7 @@ def test_hydrate_leaves_defaults_when_custom_props_absent() -> None:
     props = _empty_props()
     obj = _ObjectMock(custom_props={}, proscenio=props)
     hydrate_object(obj)
-    # Untouched — every field still equals the default.
+    # Untouched - every field still equals the default.
     assert props.sprite_type == "polygon"
     assert props.hframes == 1
     assert props.vframes == 1

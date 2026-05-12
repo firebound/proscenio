@@ -10,7 +10,7 @@ description: UXP plugin for Photoshop - layer slicing and manifest JSON via Type
 - **UXP** (Unified Extensibility Platform). Adobe's modern plugin runtime; replaces ExtendScript.
 - **TypeScript** for source code - real type checking end-to-end, not `@ts-check` JSDoc. `tsconfig.json` ships in `apps/photoshop/` with `strict: true`; `allowJs: true` lets the existing `.jsx` scaffold continue to import while the port to `.tsx` proceeds.
 - **React** for the panel UI.
-- **webpack + babel** bundle into the UXP plugin format. Webpack is **locked** as the bundler (per [SPEC 010](../../specs/010-photoshop-uxp-migration/STUDY.md) D15) — Adobe's officially supported path. Vite was evaluated and rejected; UXP runtime needs CommonJS output and Vite's ESM-first defaults fight it.
+- **webpack + babel** bundle into the UXP plugin format. Webpack is **locked** as the bundler (per [SPEC 010](../../specs/010-photoshop-uxp-migration/STUDY.md) D15) - Adobe's officially supported path. Vite was evaluated and rejected; UXP runtime needs CommonJS output and Vite's ESM-first defaults fight it.
 - **pnpm** as the package manager (per SPEC 010 D14). `package.json` declares `packageManager: pnpm@9.x`.
 - **Photoshop CC 2021+ (PS 22+)** minimum requirement.
 

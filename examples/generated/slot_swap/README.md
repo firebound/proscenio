@@ -12,7 +12,7 @@ swings while its weapon attachment swaps mid-animation.
   - `club` (32x32 polygon mesh, club.png)
   - `sword` (32x32 polygon mesh, sword.png)
 - 2 actions named `swing` (one on the armature, one on the slot
-  Empty -- Blender renames the second to `swing.001` due to the
+  Empty - Blender renames the second to `swing.001` due to the
   global uniqueness constraint):
   - Arm bone: Y rotation -pi/6 -> +pi/6 -> -pi/6 over 24 frames
   - Slot Empty: `proscenio_slot_index` 0 (club) -> 1 (sword) -> 0
@@ -22,12 +22,12 @@ swings while its weapon attachment swaps mid-animation.
 
 ```text
 examples/generated/slot_swap/
-├── slot_swap.blend                       [SOURCE -- built by build_blend.py]
-├── slot_swap.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
-├── pillow_layers/                        [DERIVED -- Pillow draws the 3 attachments]
-│   ├── arm.png        32x8  -- horizontal forearm
-│   ├── club.png       32x32 -- club attachment
-│   └── sword.png      32x32 -- sword attachment
+├── slot_swap.blend                       [SOURCE - built by build_blend.py]
+├── slot_swap.expected.proscenio          [GOLDEN - CI-diffed validation midpoint]
+├── pillow_layers/                        [DERIVED - Pillow draws the 3 attachments]
+│   ├── arm.png        32x8  - horizontal forearm
+│   ├── club.png       32x32 - club attachment
+│   └── sword.png      32x32 - sword attachment
 └── godot/
     ├── SlotSwap.tscn                     Godot wrapper
     └── SlotSwap.gd                       empty stub
@@ -56,10 +56,10 @@ After rebuilding, regenerate the golden via the writer so
 1. Open `slot_swap.blend` in Blender (after enabling the addon).
 2. **Save As** `slot_swap_workbench.blend` to keep the canonical
    fixture untouched.
-3. Press play on the timeline -- arm should swing left/right, and
+3. Press play on the timeline - arm should swing left/right, and
    the weapon attachment should swap from club to sword at the apex
    of the swing.
-4. Select the `weapon` Empty -- the **Active Slot** subpanel should
+4. Select the `weapon` Empty - the **Active Slot** subpanel should
    appear with `club` and `sword` listed as attachments, club marked
    as the default.
 5. (Optional) Toggle the default attachment to `sword` via the

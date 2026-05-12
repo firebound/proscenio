@@ -11,7 +11,7 @@ access in Blender is dict-style (``obj["proscenio_is_slot"]``); a
 string constant matches that idiom. An Enum would require ``.value``
 on every read.
 
-Pure Python -- no bpy import. Lets the writer's headless path consume
+Pure Python - no bpy import. Lets the writer's headless path consume
 the same keys without registering the addon.
 """
 

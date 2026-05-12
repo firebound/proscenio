@@ -128,7 +128,7 @@ func _run_skinned_checks() -> void:
 	if sprites.size() == 1:
 		var torso: Polygon2D = sprites[0]
 		_assert_eq(torso.name, "torso", "skinned: sprite name")
-		# Skinned polygons live under the skeleton, not the bone — weights
+		# Skinned polygons live under the skeleton, not the bone - weights
 		# move vertices, not the parent transform.
 		_assert_true(torso.get_parent() == skeleton, "skinned: parented to skeleton")
 		_assert_true(not torso.skeleton.is_empty(), "skinned: skeleton NodePath set")
@@ -139,7 +139,7 @@ func _run_skinned_checks() -> void:
 			var lower_weights := torso.get_bone_weights(1)
 			_assert_eq(upper_weights.size(), 4, "skinned: upper weights len")
 			_assert_eq(lower_weights.size(), 4, "skinned: lower weights len")
-			# Vertex 0 is at the top — fully weighted to 'upper'.
+			# Vertex 0 is at the top - fully weighted to 'upper'.
 			_assert_eq(upper_weights[0], 1.0, "skinned: vertex 0 → upper = 1.0")
 			_assert_eq(lower_weights[0], 0.0, "skinned: vertex 0 → lower = 0.0")
 
@@ -232,7 +232,7 @@ func _build_character(data: Dictionary) -> Node2D:
 	# children under the slot Node2D parent (SPEC 004 Wave 4.2). Mirrors the
 	# order in importer.gd._import.
 	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
-	# Both builders discriminator-filter their own kind — calling both is
+	# Both builders discriminator-filter their own kind - calling both is
 	# the same dispatch flow used in importer.gd._import.
 	var sprites_data: Array = data.get("sprites", [])
 	PolygonBuilder.attach_sprites(skeleton, sprites_data, null, slot_map)
@@ -307,7 +307,7 @@ func _assert_eq(actual: Variant, expected: Variant, label: String) -> void:
 		_passes += 1
 		print("  ok  %s" % label)
 	else:
-		_fail("%s — expected %s, got %s" % [label, expected, actual])
+		_fail("%s - expected %s, got %s" % [label, expected, actual])
 
 
 func _assert_true(condition: bool, label: String) -> void:

@@ -33,7 +33,7 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_data: Dictio
 
 	var character_root := skeleton.get_parent()
 	if character_root == null:
-		push_error("Proscenio: skeleton has no parent — animation tracks cannot resolve paths")
+		push_error("Proscenio: skeleton has no parent - animation tracks cannot resolve paths")
 		return
 
 	match track_type:
@@ -55,7 +55,7 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_data: Dictio
 				push_error(
 					(
 						(
-							"Proscenio: sprite '%s' is %s, not Sprite2D — sprite_frame "
+							"Proscenio: sprite '%s' is %s, not Sprite2D - sprite_frame "
 							+ "tracks only target sprites of type 'sprite_frame'."
 						)
 						% [target, sprite.get_class()]
@@ -113,7 +113,7 @@ static func _add_slot_attachment_tracks(
 	# Slot attachment animation = N visibility tracks, one per attachment
 	# child of the slot Node2D. At each key time, exactly one attachment is
 	# visible (the one named in `key.attachment`); the rest go hidden. Uses
-	# NEAREST interpolation -- attachment swaps are hard cuts, not blends
+	# NEAREST interpolation - attachment swaps are hard cuts, not blends
 	# (SPEC 004 D5).
 	var slot_path := str(character_root.get_path_to(slot_node))
 	for child in slot_node.get_children():

@@ -2,10 +2,10 @@
 
 Subpackage with:
 
-- pack.py    -- PROSCENIO_OT_pack_atlas
-- apply.py   -- PROSCENIO_OT_apply_packed_atlas
-- unpack.py  -- PROSCENIO_OT_unpack_atlas
-- _paths.py  -- shared filesystem layout + snapshot helpers
+- pack.py    - PROSCENIO_OT_pack_atlas
+- apply.py   - PROSCENIO_OT_apply_packed_atlas
+- unpack.py  - PROSCENIO_OT_unpack_atlas
+- _paths.py  - shared filesystem layout + snapshot helpers
 """
 
 from __future__ import annotations

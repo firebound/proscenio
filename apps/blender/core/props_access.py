@@ -8,7 +8,7 @@ and lets the call site read as a flat ``props = scene_props(context)``
 followed by ``if props is None: return``.
 
 Pure Python with bpy types only at the type-hint boundary, lazy via
-``TYPE_CHECKING`` -- the runtime path uses ``getattr`` and never
+``TYPE_CHECKING`` - the runtime path uses ``getattr`` and never
 imports bpy. Tests can call into the helpers with
 ``SimpleNamespace(proscenio=...)`` shaped objects.
 """

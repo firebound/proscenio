@@ -1,4 +1,4 @@
-"""Apply Packed Atlas operator -- rewrites UVs + materials per manifest."""
+"""Apply Packed Atlas operator - rewrites UVs + materials per manifest."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         "Reads <blend>.atlas.json, rewrites every sprite's UVs to address the "
         "packed atlas, and (unless material_isolated is set on the object) "
         "links the sprite to the shared 'Proscenio.PackedAtlas' material. "
-        "Undoable -- Ctrl+Z reverts."
+        "Undoable - Ctrl+Z reverts."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -46,7 +46,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
 
         atlas_png, manifest_json = packed_atlas_paths(bpy.data.filepath)
         if not manifest_json.exists():
-            report_error(self, f"manifest not found -- {manifest_json.name}")
+            report_error(self, f"manifest not found - {manifest_json.name}")
             return {"CANCELLED"}
 
         atlas_w, atlas_h, _padding, placements = read_manifest(manifest_json)

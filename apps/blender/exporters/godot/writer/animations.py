@@ -70,7 +70,7 @@ def build_bone_track(
 ) -> dict[str, Any]:
     """Build one ``bone_transform`` track. Channels with no non-rest deltas are
     dropped so the Bone2D rest pose is preserved on import. A bone keyed at
-    rest still gets a track (timing markers only) -- useful for ``root`` handles.
+    rest still gets a track (timing markers only) - useful for ``root`` handles.
     """
     resolved = {t: _resolve_pose_entry(entry, ppu) for t, entry in by_time.items()}
     has = {
@@ -174,7 +174,7 @@ def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:
 
         godot_angle = -2 * atan2(q.z, q.w) = +theta
 
-    This breaks down for rigs not aligned with the XZ plane -- a future
+    This breaks down for rigs not aligned with the XZ plane - a future
     SPEC will generalize via the bone's rest matrix.
     """
     w = float(quat_axes.get(0, 1.0))

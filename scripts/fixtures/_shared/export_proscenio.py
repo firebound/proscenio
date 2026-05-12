@@ -1,4 +1,4 @@
-"""Headless re-exporter — runs the addon's writer over a fixture .blend.
+"""Headless re-exporter - runs the addon's writer over a fixture .blend.
 
 Companion to the SPEC 007 builders. After ``build_<fixture>.py`` produces
 the ``.blend``, this script opens it and writes the ``.proscenio`` golden
@@ -57,7 +57,7 @@ def main() -> None:
     blend = bpy.data.filepath
     if not blend:
         print(
-            "[export_proscenio] no .blend open — pass it via the command line",
+            "[export_proscenio] no .blend open - pass it via the command line",
             file=sys.stderr,
         )
         sys.exit(1)

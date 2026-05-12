@@ -8,7 +8,7 @@ from ._helpers import draw_subpanel_header
 
 
 class PROSCENIO_PT_validation(bpy.types.Panel):
-    """Lazy validation results -- populated by the Validate operator."""
+    """Lazy validation results - populated by the Validate operator."""
 
     bl_label = "Validation"
     bl_idname = "PROSCENIO_PT_validation"
@@ -33,7 +33,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
 
         issues = list(scene_props.validation_results)
         if not issues:
-            layout.label(text="no issues -- ready to export", icon="CHECKMARK")
+            layout.label(text="no issues - ready to export", icon="CHECKMARK")
             return
 
         for issue in issues:

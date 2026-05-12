@@ -9,7 +9,7 @@ from .issue import Issue
 
 
 def validate_active_sprite(obj: Any) -> list[Issue]:
-    """Return per-active-object issues. Cheap -- runs every panel redraw.
+    """Return per-active-object issues. Cheap - runs every panel redraw.
 
     ``obj`` is a ``bpy.types.Object``; typed loosely to keep the
     validation module testable without importing ``bpy``.

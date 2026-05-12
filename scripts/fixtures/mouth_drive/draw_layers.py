@@ -4,7 +4,7 @@ Run with::
 
     py scripts/fixtures/mouth_drive/draw_layers.py
 
-Pure Python -- no Blender required. Produces:
+Pure Python - no Blender required. Produces:
 
 - ``examples/generated/mouth_drive/pillow_layers/mouth_0.png`` ... ``mouth_3.png`` (32x32 each)
 - ``examples/generated/mouth_drive/pillow_layers/mouth_spritesheet.png`` (128x32, 4 frames horizontal)

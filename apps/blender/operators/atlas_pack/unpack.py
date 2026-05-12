@@ -1,4 +1,4 @@
-"""Unpack Atlas operator -- restore original UVs + materials from snapshot."""
+"""Unpack Atlas operator - restore original UVs + materials from snapshot."""
 
 from __future__ import annotations
 
@@ -13,12 +13,12 @@ from ._paths import pre_pack_snapshot_for, scene_has_pre_pack_snapshot, swap_ima
 
 
 class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
-    """Revert a previous Apply Packed Atlas -- restore original UVs + materials."""
+    """Revert a previous Apply Packed Atlas - restore original UVs + materials."""
 
     bl_idname = "proscenio.unpack_atlas"
     bl_label = "Proscenio: Unpack Atlas"
     bl_description = (
-        "Restores every sprite mesh to its pre-Apply state -- original UVs, "
+        "Restores every sprite mesh to its pre-Apply state - original UVs, "
         "original material, original region_mode. Reads a snapshot stored as "
         "a Custom Property + a duplicated UV layer (`<name>.pre_pack`). "
         "Survives .blend reload (Ctrl+Z does not)."
@@ -40,7 +40,7 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             self._restore_object(obj, snapshot)
             del obj[PROSCENIO_PRE_PACK]
             restored += 1
-        msg = f"unpacked {restored} sprite(s) -- restored pre-Apply state"
+        msg = f"unpacked {restored} sprite(s) - restored pre-Apply state"
         report_info(self, msg)
         print(f"[Proscenio] {msg}")
         return {"FINISHED"}

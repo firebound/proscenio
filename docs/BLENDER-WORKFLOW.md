@@ -215,10 +215,10 @@ For the full register / unregister cycle and how reload survival is guaranteed, 
 - [`docs/GODOT-WORKFLOW.md`](GODOT-WORKFLOW.md): Godot side, wrapper pattern, Editable Children fragility.
 - [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md): contributor-focused addon internals.
 - [`.ai/skills/format-spec.md`](../.ai/skills/format-spec.md): `.proscenio` schema details.
-- [SPEC 005 — Blender authoring panel](../specs/005-blender-authoring-panel/STUDY.md): panel design, PG canonical decision.
-- [SPEC 003 — Skinning weights](../specs/003-skinning-weights/STUDY.md): vertex group ↔ bone matching.
-- [SPEC 004 — Slot system](../specs/004-slot-system/STUDY.md): slot Empty + attachments authoring.
-- [SPEC 006 — Photoshop importer](../specs/006-photoshop-importer/STUDY.md): manifest re-import semantics.
-- [SPEC 009 — Code modularity](../specs/009-code-modularity/STUDY.md): addon package structure.
+- [SPEC 005 - Blender authoring panel](../specs/005-blender-authoring-panel/STUDY.md): panel design, PG canonical decision.
+- [SPEC 003 - Skinning weights](../specs/003-skinning-weights/STUDY.md): vertex group ↔ bone matching.
+- [SPEC 004 - Slot system](../specs/004-slot-system/STUDY.md): slot Empty + attachments authoring.
+- [SPEC 006 - Photoshop importer](../specs/006-photoshop-importer/STUDY.md): manifest re-import semantics.
+- [SPEC 009 - Code modularity](../specs/009-code-modularity/STUDY.md): addon package structure.
 - [`docs/DECISIONS.md`](DECISIONS.md): cross-cutting decisions.
 - [`docs/DEFERRED.md`](DEFERRED.md): future SPECs.

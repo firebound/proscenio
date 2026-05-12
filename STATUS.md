@@ -5,7 +5,7 @@ Live state. For project overview see [README](README.md). For locked decisions s
 ## Current
 
 - **Branch in flight:** `feat/spec-009-modularity` (PR #33 in review).
-- **SPEC 009 — code modularity:** waves 9.1 to 9.9 shipping behavior-preserving package splits across writer, panels, operators, validation. No format change.
+- **SPEC 009 - code modularity:** waves 9.1 to 9.9 shipping behavior-preserving package splits across writer, panels, operators, validation. No format change.
 - **Format:** `format_version=1`. No bump pending.
 
 ## Recent waves

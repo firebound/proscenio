@@ -30,7 +30,7 @@ def compose_atlas(
     """Build a single bpy.types.Image holding every packed source and save it.
 
     Pixels are RGBA float32. Padding pixels are left transparent
-    (alpha=0) in this iteration -- edge-extend padding to combat
+    (alpha=0) in this iteration - edge-extend padding to combat
     bilinear bleeding can be added later without changing the operator
     surface.
 
@@ -38,18 +38,18 @@ def compose_atlas(
     ``src.image`` is the same image we are about to overwrite (true on
     second pack runs after the first apply linked every sprite to the
     shared packed atlas). Source pixel arrays are copied into NumPy
-    upfront -- **before** the existing atlas image is removed from
-    ``bpy.data.images`` -- so the mid-loop ``StructRNA of type Image
+    upfront - **before** the existing atlas image is removed from
+    ``bpy.data.images`` - so the mid-loop ``StructRNA of type Image
     has been removed`` error cannot happen.
 
     Returns the new ``bpy.types.Image``.
     """
-    import bpy  # local import -- module must remain importable from non-bpy contexts
+    import bpy  # local import - module must remain importable from non-bpy contexts
     import numpy as np
 
     # Snapshot every source's pixels into NumPy *before* mutating bpy.data.images.
     # If `src.image` is the existing atlas-with-the-same-name we are about to
-    # remove, the snapshot detaches us from the bpy reference -- Blender can
+    # remove, the snapshot detaches us from the bpy reference - Blender can
     # then free the StructRNA without us crashing later in the loop.
     placed_sources: list[tuple[SourceImage, Rect, np.ndarray]] = []
     for src in sources:
@@ -62,7 +62,7 @@ def compose_atlas(
             )
         except (ReferenceError, AttributeError):
             # Source image was already invalidated (e.g. an earlier pack run
-            # in this session removed it). Skip -- the caller's validation
+            # in this session removed it). Skip - the caller's validation
             # path should surface this as a warning.
             continue
         placed_sources.append((src, rect, pixels))

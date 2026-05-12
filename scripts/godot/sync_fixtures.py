@@ -97,6 +97,12 @@ def _link_file(src: Path, dst: Path) -> None:
         return
     except OSError:
         pass
+    print(
+        f"[sync_fixtures] WARNING: could not link {src} -> {dst}; "
+        "falling back to plain copy. Edits in examples/ will NOT propagate live; "
+        "re-run this script after each source change.",
+        file=sys.stderr,
+    )
     shutil.copy2(src, dst)
 
 

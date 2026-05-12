@@ -49,12 +49,16 @@ async function writeLayerPng(
     layer: PsLayer,
     file: UxpFile,
 ): Promise<boolean> {
+    // UXP rejects bare string mode / fill names ("RGB", "transparent")
+    // with "Invalid constant. Expected 'RGB' to be one of
+    // NewDocumentMode." The accepted values are the constant references
+    // from `constants.NewDocumentMode` / `constants.DocumentFill`.
     const work = await app.documents.add({
         width: sourceDoc.width,
         height: sourceDoc.height,
         name: "proscenio_export_tmp",
-        fill: "transparent",
-        mode: "RGB",
+        fill: constants.DocumentFill.transparent,
+        mode: constants.NewDocumentMode.RGB,
     });
     try {
         await layer.duplicate(work);
@@ -91,5 +95,9 @@ async function ensureOutputFile(folder: UxpFolder, outputPath: string): Promise<
             (await dir.getEntry(segments[i])) as UxpFolder,
         );
     }
-    return dir.createFile(segments[segments.length - 1], { overwrite: true });
+    const leaf = segments.at(-1);
+    if (leaf === undefined) {
+        throw new Error(`empty output path: ${outputPath}`);
+    }
+    return dir.createFile(leaf, { overwrite: true });
 }

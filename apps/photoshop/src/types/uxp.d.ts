@@ -68,8 +68,11 @@ declare module "photoshop" {
             width: number;
             height: number;
             resolution?: number;
-            mode?: "RGB" | string;
-            fill?: "transparent" | "white" | "backgroundColor" | string;
+            // Must be a `constants.NewDocumentMode` value (number); UXP
+            // rejects the equivalent string literal.
+            mode?: number;
+            // Must be a `constants.DocumentFill` value (number).
+            fill?: number;
             name?: string;
         }): Promise<PsDocument>;
     }
@@ -92,6 +95,20 @@ declare module "photoshop" {
         };
         TrimType: {
             TRANSPARENT: number;
+            [key: string]: number;
+        };
+        // UXP rejects bare string mode names ("RGB" etc.); pass the
+        // constant from `constants.NewDocumentMode.RGB`.
+        NewDocumentMode: {
+            RGB: number;
+            CMYK: number;
+            grayscale: number;
+            [key: string]: number;
+        };
+        DocumentFill: {
+            transparent: number;
+            white: number;
+            backgroundColor: number;
             [key: string]: number;
         };
     }

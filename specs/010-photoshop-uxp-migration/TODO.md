@@ -74,11 +74,12 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 - [x] Plugin manifest entrypoints in `plugin/manifest.json` register the panel. (Wired in Wave 10.3.)
 - [ ] Live reload via `pnpm run uxp:watch` documented in skill.
 
-## Wave 10.5 - Roundtrip (manifest → PSD)
+## Wave 10.5 - Roundtrip (manifest -> PSD)
 
-- [ ] Port `proscenio_import.jsx` to `src/controllers/importer.ts`.
-- [ ] Reads manifest JSON, opens PSD if absent, recreates layers.
-- [ ] Manual test: roundtrip on `examples/generated/simple_psd/` produces structurally identical PSD.
+- [x] Port `proscenio_import.jsx` semantics to TypeScript. Lives as `src/controllers/import-flow.ts` (orchestrator) + `src/io/manifest-reader.ts` (file-pick + ajv) + `src/io/png-placer.ts` (per-layer placement) + `src/io/psd-writer.ts` (PSD save).
+- [x] Reads manifest JSON, creates a fresh transparent doc at the manifest size, stamps every entry in z_order descending. Sprite_frame entries land as LayerSets with one child per frame.
+- [x] PPU roundtrip fix (BUGS_FOUND entry): parked as part of SPEC 011 (the tag system landing post-10.7 owns the PSD-side metadata story).
+- [ ] Manual test: roundtrip on `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` produces a structurally identical PSD to the existing `02_from_photoshop/doll.psd`.
 
 ## Wave 10.6 - CI completion
 

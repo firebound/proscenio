@@ -1,13 +1,14 @@
-// Proscenio exporter panel. Full UXP equivalent of the JSX dialog:
-// shows the active document info, the cached output folder (persisted
-// across plugin reloads via a UXP persistent token), the skipHidden /
-// skipUnderscorePrefix toggles, an Export button and the result of
-// the last run.
+// Proscenio main panel. Hosts both directions of the manifest <-> PSD
+// roundtrip:
 //
-// Spectrum web components (`<sp-checkbox>`, `<sp-action-button>`,
-// `<sp-body>`, `<sp-heading>`) render natively in UXP and inherit the
+// - Export: active PSD -> manifest JSON + per-layer PNGs (the SPEC 010
+//   primary path).
+// - Import: manifest JSON -> reconstructed PSD with placed layers
+//   (the SPEC 010 roundtrip mirror, formerly proscenio_import.jsx).
+//
+// Spectrum web components render natively in UXP and inherit the
 // Photoshop theme. They are not in React's JSX intrinsic table, so
-// they are declared as minimal interfaces below.
+// they are declared as minimal interfaces at the bottom.
 
 import React from "react";
 import { app } from "photoshop";
@@ -15,7 +16,9 @@ import type { UxpFolder } from "uxp";
 
 import { runExport, type ExportFlowResult } from "../controllers/export-flow";
 import type { ExportOptions } from "../controllers/exporter";
+import { runImport, type ImportFlowResult } from "../controllers/import-flow";
 import { clearRememberedFolder, pickFolder, restoreFolder } from "../io/folder-storage";
+import { readManifestFromPicker, type ReadManifestResult } from "../io/manifest-reader";
 
 const DEFAULT_OPTS: ExportOptions = {
     skipHidden: true,
@@ -32,12 +35,12 @@ export const ProscenioExporter: React.FC = () => {
     const [opts, setOpts] = React.useState<ExportOptions>(DEFAULT_OPTS);
     const [folder, setFolder] = React.useState<UxpFolder | null>(null);
     const [doc, setDoc] = React.useState<DocSnapshot | null>(null);
-    const [busy, setBusy] = React.useState(false);
-    const [last, setLast] = React.useState<ExportFlowResult | null>(null);
+    const [busyExport, setBusyExport] = React.useState(false);
+    const [busyImport, setBusyImport] = React.useState(false);
+    const [lastExport, setLastExport] = React.useState<ExportFlowResult | null>(null);
+    const [lastImport, setLastImport] = React.useState<ImportFlowResult | null>(null);
+    const [importError, setImportError] = React.useState<string[] | null>(null);
 
-    // Restore the persisted folder on first mount. Refresh the doc
-    // snapshot at the same time so the header is populated when the
-    // panel pops open against an already-open document.
     React.useEffect(() => {
         let cancelled = false;
         void restoreFolder().then((restored) => {
@@ -67,14 +70,31 @@ export const ProscenioExporter: React.FC = () => {
 
     const onExport = React.useCallback(async () => {
         if (folder === null) return;
-        setBusy(true);
+        setBusyExport(true);
         try {
             const result = await runExport(opts, folder);
-            setLast(result);
+            setLastExport(result);
         } finally {
-            setBusy(false);
+            setBusyExport(false);
         }
     }, [opts, folder]);
+
+    const onImport = React.useCallback(async () => {
+        setImportError(null);
+        const picked: ReadManifestResult = await readManifestFromPicker();
+        if (picked.kind === "cancelled") return;
+        if (picked.kind === "invalid") {
+            setImportError(picked.errors);
+            return;
+        }
+        setBusyImport(true);
+        try {
+            const result = await runImport(picked.picked.manifest, picked.picked.folder);
+            setLastImport(result);
+        } finally {
+            setBusyImport(false);
+        }
+    }, []);
 
     const onToggleHidden = React.useCallback((e: React.SyntheticEvent) => {
         const checked = (e.target as HTMLInputElement).checked;
@@ -86,13 +106,15 @@ export const ProscenioExporter: React.FC = () => {
         setOpts((o) => ({ ...o, skipUnderscorePrefix: checked }));
     }, []);
 
-    const exportDisabled = busy || folder === null || doc === null;
+    const exportDisabled = busyExport || folder === null || doc === null;
+    const importDisabled = busyImport;
 
     return (
         <div className="proscenio-panel">
             <DocSection doc={doc} onRefresh={onRefreshDoc} />
             <FolderSection folder={folder} onPick={onPickFolder} onClear={onClearFolder} />
             <section className="section">
+                <sp-heading size="XS">Export options</sp-heading>
                 <sp-checkbox checked={opts.skipHidden ? true : undefined} onChange={onToggleHidden}>
                     Skip hidden layers
                 </sp-checkbox>
@@ -107,9 +129,23 @@ export const ProscenioExporter: React.FC = () => {
                 onClick={onExport}
                 disabled={exportDisabled ? true : undefined}
             >
-                {busy ? "Exporting..." : "Export manifest + PNGs"}
+                {busyExport ? "Exporting..." : "Export manifest + PNGs"}
             </sp-action-button>
-            {last !== null && <ExportResult result={last} />}
+            {lastExport !== null && <ExportResultView result={lastExport} />}
+
+            <section className="section">
+                <sp-heading size="XS">Import (manifest to PSD)</sp-heading>
+                <sp-body size="XS" className="muted">
+                    Pick a Proscenio manifest JSON. The plugin recreates the
+                    PSD with placed layers / sprite_frame groups; saved under
+                    the manifest folder's photoshop/ subfolder.
+                </sp-body>
+                <sp-action-button onClick={onImport} disabled={importDisabled ? true : undefined}>
+                    {busyImport ? "Importing..." : "Import manifest as PSD"}
+                </sp-action-button>
+            </section>
+            {importError !== null && <ManifestErrors errors={importError} />}
+            {lastImport !== null && <ImportResultView result={lastImport} />}
         </div>
     );
 };
@@ -164,7 +200,7 @@ const FolderSection: React.FC<{
     </section>
 );
 
-const ExportResult: React.FC<{ result: ExportFlowResult }> = ({ result }) => {
+const ExportResultView: React.FC<{ result: ExportFlowResult }> = ({ result }) => {
     if (result.kind === "ok") {
         return (
             <div className="result ok">
@@ -190,6 +226,53 @@ const ExportResult: React.FC<{ result: ExportFlowResult }> = ({ result }) => {
         </div>
     );
 };
+
+const ImportResultView: React.FC<{ result: ImportFlowResult }> = ({ result }) => {
+    if (result.kind === "ok") {
+        return (
+            <div className="result ok">
+                <sp-body size="XS">
+                    Stamped {result.stamped} entry(ies)
+                    {result.skipped !== undefined && result.skipped > 0
+                        ? ` (${result.skipped} skipped)`
+                        : ""}
+                    .
+                </sp-body>
+                {result.psdPath !== undefined && (
+                    <sp-body size="XS" className="folder-path">
+                        {result.psdPath}
+                    </sp-body>
+                )}
+                {(result.warnings ?? []).map((w) => (
+                    <sp-body size="XS" className="result-row warn" key={w}>
+                        {w}
+                    </sp-body>
+                ))}
+            </div>
+        );
+    }
+    return (
+        <div className="result error">
+            <sp-body size="XS">Import failed.</sp-body>
+            {(result.errors ?? []).map((err) => (
+                <sp-body size="XS" key={err} className="result-row">
+                    {err}
+                </sp-body>
+            ))}
+        </div>
+    );
+};
+
+const ManifestErrors: React.FC<{ errors: string[] }> = ({ errors }) => (
+    <div className="result error">
+        <sp-body size="XS">Manifest invalid.</sp-body>
+        {errors.map((err) => (
+            <sp-body size="XS" key={err} className="result-row">
+                {err}
+            </sp-body>
+        ))}
+    </div>
+);
 
 async function readDocSnapshot(): Promise<DocSnapshot | null> {
     const d = app.activeDocument;

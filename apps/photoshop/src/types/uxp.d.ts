@@ -27,6 +27,9 @@ declare module "uxp" {
 
     export interface LocalFileSystem {
         getFolder(): Promise<UxpFolder>;
+        // Single-file picker. `types` accepts an array of accepted
+        // extensions like `["json"]`; UXP filters the OS dialog.
+        getFileForOpening(options?: { types?: string[]; allowMultiple?: false }): Promise<UxpFile | null>;
         createSessionToken(entry: UxpEntry): string;
         // Persistent tokens survive plugin reloads / Photoshop restarts.
         // Persist the returned string in localStorage; resolve back to
@@ -66,6 +69,8 @@ declare module "photoshop" {
     export interface PhotoshopApp {
         activeDocument: PsDocument | null;
         documents: PsDocumentCollection;
+        // Opens a file (PNG, PSD, ...) as a new active document.
+        open(file: unknown): Promise<PsDocument>;
     }
 
     export interface PsDocumentCollection extends ReadonlyArray<PsDocument> {
@@ -116,6 +121,12 @@ declare module "photoshop" {
             BACKGROUND_COLOR: number;
             [key: string]: number;
         };
+        ElementPlacement: {
+            PLACEATBEGINNING: number;
+            PLACEATEND: number;
+            INSIDE: number;
+            [key: string]: number;
+        };
     }
 
     export interface PsBounds {
@@ -126,13 +137,19 @@ declare module "photoshop" {
     }
 
     export interface PsLayer {
-        readonly name: string;
-        readonly visible: boolean;
+        name: string;
+        visible: boolean;
         readonly bounds: PsBounds;
         readonly kind: number;
         readonly layers?: PsLayer[];
-        duplicate(target?: PsDocument): Promise<PsLayer>;
+        duplicate(target?: PsDocument | PsLayer): Promise<PsLayer>;
+        // Translate accepts deltas in pixels (UnitValue-equivalent). UXP
+        // also accepts plain numbers as pixels.
+        translate(deltaX: number, deltaY: number): Promise<void>;
         delete(): Promise<void>;
+        // Move into a different parent (group / document). Used to drop
+        // a duplicated layer inside a LayerSet during sprite_frame import.
+        move(parent: PsLayer | PsDocument, placement: number): Promise<void>;
     }
 
     export interface PsDocument {
@@ -140,12 +157,25 @@ declare module "photoshop" {
         readonly width: number;
         readonly height: number;
         readonly layers: PsLayer[];
+        readonly layerTree?: PsLayer[];
         readonly saved: boolean;
         readonly path: string | null;
         trim(trimType: number, top?: boolean, bottom?: boolean, left?: boolean, right?: boolean): Promise<void>;
         closeWithoutSaving(): Promise<void>;
+        // Create an empty layer group at the top of the stack.
+        createLayerGroup(opts?: { name?: string }): Promise<PsLayer>;
         saveAs: {
             png(file: unknown, options?: { compression?: number; interlaced?: boolean }, copy?: boolean): Promise<void>;
+            psd(file: unknown, options?: PsdSaveOptions, copy?: boolean): Promise<void>;
         };
+    }
+
+    export interface PsdSaveOptions {
+        alphaChannels?: boolean;
+        embedColorProfile?: boolean;
+        layers?: boolean;
+        spotColors?: boolean;
+        annotations?: boolean;
+        maximizeCompatibility?: boolean;
     }
 }

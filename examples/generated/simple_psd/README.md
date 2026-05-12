@@ -8,7 +8,7 @@ PSD manifest. Use this fixture when debugging the manifest -> stamper
 ## Directory layout
 
 ```text
-examples/simple_psd/
+examples/generated/simple_psd/
 ├── simple_psd.blend                       [SOURCE -- built by build_blend.py from the manifest]
 ├── simple_psd.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
 ├── simple_psd.photoshop_manifest.json     [INPUT -- hand-authored SPEC 006 v1 manifest]
@@ -74,7 +74,7 @@ python scripts/fixtures/simple_psd/draw_layers.py
 blender --background --python scripts/fixtures/simple_psd/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root.
-blender --background examples/simple_psd/simple_psd.blend \
+blender --background examples/generated/simple_psd/simple_psd.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 

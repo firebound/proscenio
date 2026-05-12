@@ -5,7 +5,7 @@ Smallest end-to-end exercise of the **slot system**: one armature, one slot Empt
 ## Directory layout
 
 ```text
-examples/slot_cycle/
+examples/generated/slot_cycle/
 ├── slot_cycle.blend                      [SOURCE -- built by build_blend.py from pillow_layers/]
 ├── slot_cycle.expected.proscenio         [GOLDEN -- CI-diffed validation midpoint]
 ├── pillow_layers/                        [DERIVED -- Pillow draws the 3 colored squares]
@@ -54,7 +54,7 @@ python scripts/fixtures/slot_cycle/draw_layers.py
 blender --background --python scripts/fixtures/slot_cycle/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root.
-blender --background examples/slot_cycle/slot_cycle.blend \
+blender --background examples/generated/slot_cycle/slot_cycle.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 

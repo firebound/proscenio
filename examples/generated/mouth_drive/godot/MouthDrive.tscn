@@ -8,7 +8,7 @@
 ; the imported result and verify that bone-driven property tracks survive
 ; the export -> import round-trip.
 ;
-; Drop `examples/mouth_drive/` at `res://mouth_drive/` in your Godot
+; Drop `examples/generated/mouth_drive/` at `res://mouth_drive/` in your Godot
 ; project, or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]

@@ -5,7 +5,7 @@
 ; imported scene and lets the user attach scripts / collisions / extra
 ; nodes here without losing them on reimport (SPEC 001 Option A).
 ;
-; Drop `examples/blink_eyes/` at `res://blink_eyes/` in your Godot project,
+; Drop `examples/generated/blink_eyes/` at `res://blink_eyes/` in your Godot project,
 ; or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]

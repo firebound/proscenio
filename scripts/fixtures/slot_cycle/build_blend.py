@@ -25,7 +25,7 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "slot_cycle"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_cycle"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 BLEND_PATH = FIXTURE_DIR / "slot_cycle.blend"
 

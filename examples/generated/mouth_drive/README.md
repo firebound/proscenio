@@ -34,7 +34,7 @@ it (or, for procedural fixtures like this one, from the matching
 script).
 
 ```text
-examples/mouth_drive/
+examples/generated/mouth_drive/
 ├── mouth_drive.blend                       [SOURCE -- built by build_blend.py from pillow_layers/]
 ├── mouth_drive.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
 ├── pillow_layers/                          [DERIVED -- Pillow draws each frame + spritesheet]

@@ -21,7 +21,7 @@ swings while its weapon attachment swaps mid-animation.
 ## Directory layout
 
 ```text
-examples/slot_swap/
+examples/generated/slot_swap/
 ├── slot_swap.blend                       [SOURCE -- built by build_blend.py]
 ├── slot_swap.expected.proscenio          [GOLDEN -- CI-diffed validation midpoint]
 ├── pillow_layers/                        [DERIVED -- Pillow draws the 3 attachments]

@@ -6,10 +6,10 @@ Run with::
 
 Pure Python -- no Blender required. Produces:
 
-- ``examples/simple_psd/pillow_layers/square.png`` (64x64 polygon layer)
-- ``examples/simple_psd/pillow_layers/arrow_0.png`` ... ``arrow_3.png``
+- ``examples/generated/simple_psd/pillow_layers/square.png`` (64x64 polygon layer)
+- ``examples/generated/simple_psd/pillow_layers/arrow_0.png`` ... ``arrow_3.png``
   (32x32 each, sprite_frame rotation cycle)
-- ``examples/simple_psd/pillow_layers/arrow_spritesheet.png``
+- ``examples/generated/simple_psd/pillow_layers/arrow_spritesheet.png``
   (preview only -- the importer composes its own internal sheet)
 
 The accompanying ``build_blend.py`` runs in headless Blender, calls the
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, fill, rect, triangle  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "simple_psd"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "simple_psd"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 SHEET_PATH = LAYERS_DIR / "arrow_spritesheet.png"
 

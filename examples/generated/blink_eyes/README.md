@@ -10,7 +10,7 @@ resulting `.proscenio`.
 The fixture is split by **role in the pipeline**: `.blend` at the root is the source-of-truth; everything in subfolders is regenerable from it (or, for procedural fixtures like this one, from the matching script).
 
 ```text
-examples/blink_eyes/
+examples/generated/blink_eyes/
 ├── blink_eyes.blend                       [SOURCE — built by build_blend.py from pillow_layers/]
 ├── blink_eyes.expected.proscenio          [GOLDEN — CI-diffed validation midpoint]
 ├── pillow_layers/                         [DERIVED — Pillow draws each frame + spritesheet]
@@ -66,7 +66,7 @@ python scripts/fixtures/blink_eyes/draw_layers.py
 blender --background --python scripts/fixtures/blink_eyes/build_blend.py
 
 # 3. Generate the golden .proscenio under godot/.
-blender --background examples/blink_eyes/blink_eyes.blend \
+blender --background examples/generated/blink_eyes/blink_eyes.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 

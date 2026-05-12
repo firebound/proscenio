@@ -524,7 +524,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "parenting, and weights survive the round trip.",
             ),
         ),
-        see_also=("specs/006-photoshop-importer", "examples/simple_psd"),
+        see_also=("specs/006-photoshop-importer", "examples/generated/simple_psd"),
     ),
 }
 

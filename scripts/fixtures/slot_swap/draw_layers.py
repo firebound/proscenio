@@ -6,9 +6,9 @@ Run with::
 
 Pure Python -- no Blender required. Produces:
 
-- ``examples/slot_swap/pillow_layers/arm.png``    32x8  -- horizontal forearm
-- ``examples/slot_swap/pillow_layers/club.png``   32x32 -- club attachment
-- ``examples/slot_swap/pillow_layers/sword.png``  32x32 -- sword attachment
+- ``examples/generated/slot_swap/pillow_layers/arm.png``    32x8  -- horizontal forearm
+- ``examples/generated/slot_swap/pillow_layers/club.png``   32x32 -- club attachment
+- ``examples/generated/slot_swap/pillow_layers/sword.png``  32x32 -- sword attachment
 
 Each attachment is a separate PNG (no spritesheet) -- the slot system
 swaps **discrete meshes**, not cells of a shared texture. Visual style
@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, rect  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-LAYERS_DIR = REPO_ROOT / "examples" / "slot_swap" / "pillow_layers"
+LAYERS_DIR = REPO_ROOT / "examples" / "generated" / "slot_swap" / "pillow_layers"
 
 ARM_W = 32
 ARM_H = 8

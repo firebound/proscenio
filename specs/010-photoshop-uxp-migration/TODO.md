@@ -13,7 +13,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 - [ ] D7 - roundtrip parity (default: yes, port import path too)
 - [ ] D8 - schema bump (default: no bump)
 - [ ] D9 - CI integration (default: new `lint-photoshop` job)
-- [ ] D10 - test fixtures (default: reuse `examples/simple_psd/`)
+- [ ] D10 - test fixtures (default: reuse `examples/generated/simple_psd/`)
 - [ ] D11 - JSX retirement trigger (default: parity confirmed by manual roundtrip)
 - [ ] D12 - distribution channel (default: `.ccx` + UDT)
 - [x] D13 - live reload (locked: yes via `pnpm run uxp:watch`)
@@ -22,10 +22,10 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 ## Pre-implementation
 
-- [ ] Confirm `examples/simple_psd/source.psd` exists and exports a valid v1 manifest (use as parity oracle).
+- [ ] Confirm `examples/generated/simple_psd/source.psd` exists and exports a valid v1 manifest (use as parity oracle).
 - [ ] Verify the React scaffold builds: `cd apps/photoshop && npm install && npm run build`.
 - [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT.
-- [ ] Capture current JSX output for `examples/simple_psd/source.psd` as the byte-equality target.
+- [ ] Capture current JSX output for `examples/generated/simple_psd/source.psd` as the byte-equality target.
 
 ## Wave 10.1 - TypeScript foundation
 
@@ -65,7 +65,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 - [ ] Per-layer PNG export via `saveAs.png` writing into `<folder>/layers/`.
 - [ ] Manifest JSON written at `<folder>/manifest.json`.
 - [ ] Schema validation with `ajv` before write; surface errors in panel UI.
-- [ ] Manual test: byte-equality check against captured JSX output for `examples/simple_psd/source.psd`.
+- [ ] Manual test: byte-equality check against captured JSX output for `examples/generated/simple_psd/source.psd`.
 
 ## Wave 10.4 - React panel
 
@@ -78,7 +78,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 - [ ] Port `proscenio_import.jsx` to `src/controllers/importer.ts`.
 - [ ] Reads manifest JSON, opens PSD if absent, recreates layers.
-- [ ] Manual test: roundtrip on `examples/simple_psd/` produces structurally identical PSD.
+- [ ] Manual test: roundtrip on `examples/generated/simple_psd/` produces structurally identical PSD.
 
 ## Wave 10.6 - CI completion
 
@@ -88,7 +88,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.7 - JSX retirement
 
-- [ ] Confirm parity manually on `examples/simple_psd/` and any other PSD fixtures.
+- [ ] Confirm parity manually on `examples/generated/simple_psd/` and any other PSD fixtures.
 - [ ] Delete `apps/photoshop/proscenio_export.jsx`.
 - [ ] Delete `apps/photoshop/proscenio_import.jsx`.
 - [ ] Remove JSX porting notes from `photoshop-uxp-dev` skill.

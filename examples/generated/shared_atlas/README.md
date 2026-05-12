@@ -5,7 +5,7 @@ Tests the **sliced atlas packer** end-to-end (SPEC 005.1.c.2.1). Three polygon m
 ## Directory layout
 
 ```text
-examples/shared_atlas/
+examples/generated/shared_atlas/
 ├── shared_atlas.blend              [SOURCE — 3 polygon meshes referencing atlas.png with partial UVs]
 ├── shared_atlas.expected.proscenio [GOLDEN — CI-diffed validation midpoint]
 ├── atlas.png                       256x256, three colored shapes in three quadrants
@@ -40,7 +40,7 @@ python scripts/fixtures/shared_atlas/draw_atlas.py
 blender --background --python scripts/fixtures/shared_atlas/build_blend.py
 
 # 3. Generate the golden .proscenio under godot/.
-blender --background examples/shared_atlas/shared_atlas.blend \
+blender --background examples/generated/shared_atlas/shared_atlas.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 

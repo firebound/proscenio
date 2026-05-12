@@ -7,7 +7,7 @@ Each PNG is a flat-colored 32x32 square with a bold black digit (1..9) centered 
 ## Directory layout
 
 ```text
-examples/atlas_pack/
+examples/generated/atlas_pack/
 ├── atlas_pack.blend             [SOURCE -- built by build_blend.py]
 ├── atlas_pack.expected.proscenio [GOLDEN -- CI-diffed validation]
 ├── pillow_layers/
@@ -39,7 +39,7 @@ python scripts/fixtures/atlas_pack/draw_layers.py
 blender --background --python scripts/fixtures/atlas_pack/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root (used by run_tests.py).
-blender --background examples/atlas_pack/atlas_pack.blend \
+blender --background examples/generated/atlas_pack/atlas_pack.blend \
     --python scripts/fixtures/_shared/export_proscenio.py
 ```
 

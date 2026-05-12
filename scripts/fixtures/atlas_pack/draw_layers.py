@@ -5,7 +5,7 @@ Run with::
     python scripts/fixtures/atlas_pack/draw_layers.py
 
 Pure Python -- no Blender required. Produces 9 distinct 32x32 PNGs
-under ``examples/atlas_pack/pillow_layers/`` (``sprite_1.png`` ..
+under ``examples/generated/atlas_pack/pillow_layers/`` (``sprite_1.png`` ..
 ``sprite_9.png``). Each PNG is a flat-colored square with a bold digit
 centered in it so packed-atlas placement is visually verifiable.
 
@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, fill  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "atlas_pack"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "atlas_pack"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 
 FRAME_W = 32

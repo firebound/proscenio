@@ -6,10 +6,10 @@ Run with::
 
 This is the smallest end-to-end exercise of the SPEC 006 importer:
 
-1. Loads ``examples/simple_psd/simple_psd.photoshop_manifest.json``
+1. Loads ``examples/generated/simple_psd/simple_psd.photoshop_manifest.json``
    (committed alongside the fixture).
 2. Calls the addon's ``import_manifest()`` to stamp planes + armature.
-3. Saves ``examples/simple_psd/simple_psd.blend``.
+3. Saves ``examples/generated/simple_psd/simple_psd.blend``.
 
 The fixture's golden ``.proscenio`` is then produced by running
 ``scripts/fixtures/_shared/export_proscenio.py`` against the resulting
@@ -32,7 +32,7 @@ import bpy
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADDON_DIR = REPO_ROOT / "apps/blender"
 ADDON_PACKAGE = "proscenio"
-FIXTURE_DIR = REPO_ROOT / "examples" / "simple_psd"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "simple_psd"
 MANIFEST_PATH = FIXTURE_DIR / "simple_psd.photoshop_manifest.json"
 BLEND_PATH = FIXTURE_DIR / "simple_psd.blend"
 

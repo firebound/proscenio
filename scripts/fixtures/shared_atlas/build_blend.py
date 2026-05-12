@@ -4,7 +4,7 @@ Run with::
 
     blender --background --python scripts/fixtures/build_shared_atlas.py
 
-Loads ``examples/shared_atlas/atlas.png`` produced by
+Loads ``examples/generated/shared_atlas/atlas.png`` produced by
 ``draw_shared_atlas.py`` and builds 3 polygon meshes whose UV bounds
 each cover one quadrant of the shared atlas. The bottom-right quadrant
 stays unused.
@@ -21,7 +21,7 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "shared_atlas"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "shared_atlas"
 ATLAS_PATH = FIXTURE_DIR / "atlas.png"
 BLEND_PATH = FIXTURE_DIR / "shared_atlas.blend"
 

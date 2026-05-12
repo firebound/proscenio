@@ -5,7 +5,7 @@
 ; imported scene so the user can attach scripts / collisions / extra
 ; nodes here without losing them on reimport (SPEC 001 Option A).
 ;
-; Drop `examples/slot_swap/` at `res://slot_swap/` in your Godot
+; Drop `examples/generated/slot_swap/` at `res://slot_swap/` in your Godot
 ; project, or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]

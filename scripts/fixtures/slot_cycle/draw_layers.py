@@ -5,7 +5,7 @@ Run with::
     python scripts/fixtures/slot_cycle/draw_layers.py
 
 Pure Python -- no Blender required. Produces three 32x32 PNGs under
-``examples/slot_cycle/pillow_layers/``: a red square, a green square,
+``examples/generated/slot_cycle/pillow_layers/``: a red square, a green square,
 and a blue square. The accompanying ``build_blend.py`` runs in
 headless Blender, builds an armature with one bone, wraps the three
 quads as slot attachments under a single Empty, and adds an action
@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, fill  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "slot_cycle"
+FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_cycle"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 
 SIZE = 32

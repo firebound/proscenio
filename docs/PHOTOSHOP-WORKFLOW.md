@@ -87,7 +87,7 @@ Layer name sanitization is minimal today; use only ASCII characters, dashes, und
 
 ## Recipes
 
-Skeleton + description. Concrete artifact in [`examples/simple_psd/`](../examples/simple_psd/).
+Skeleton + description. Concrete artifact in [`examples/generated/simple_psd/`](../examples/generated/simple_psd/).
 
 ### 1. First import of a new character
 
@@ -191,4 +191,4 @@ The PSD manifest schema (`psd_manifest.schema.json`) is **DCC-agnostic by design
 - [`docs/GODOT-WORKFLOW.md`](GODOT-WORKFLOW.md): the Godot-side analog to this doc.
 - [`docs/DECISIONS.md`](DECISIONS.md): cross-cutting decisions.
 - [`docs/DEFERRED.md`](DEFERRED.md): future SPECs (Krita / GIMP exporters, live link).
-- [`examples/simple_psd/`](../examples/simple_psd/): worked round-trip fixture.
+- [`examples/generated/simple_psd/`](../examples/generated/simple_psd/): worked round-trip fixture.

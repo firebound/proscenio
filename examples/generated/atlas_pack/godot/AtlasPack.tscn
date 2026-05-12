@@ -6,7 +6,7 @@
 ; the imported scene so the user can attach scripts / collisions / extra
 ; nodes here without losing them on reimport (SPEC 001 Option A).
 ;
-; Drop `examples/atlas_pack/` at `res://atlas_pack/` in your Godot
+; Drop `examples/generated/atlas_pack/` at `res://atlas_pack/` in your Godot
 ; project, or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]

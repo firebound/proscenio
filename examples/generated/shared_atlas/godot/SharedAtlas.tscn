@@ -4,7 +4,7 @@
 ; Isolation test for the sliced atlas packer (SPEC 005.1.c.2.1). No
 ; animation — purely the polygon + sliced-UV path.
 ;
-; Drop `examples/shared_atlas/` at `res://shared_atlas/` in your Godot
+; Drop `examples/generated/shared_atlas/` at `res://shared_atlas/` in your Godot
 ; project, or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]

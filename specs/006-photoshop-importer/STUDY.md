@@ -193,4 +193,4 @@ PR strategy:
 
 1. **PR-A — foundation**: Wave 6.0 + 6.1 + 6.2. Branch `feat/spec-006.0-foundation`. Deliverable: schema lockdown, JSX bumped, naming parser tested.
 2. **PR-B — importer**: Wave 6.3 + 6.4. Branch `feat/spec-006.1-importer`. Deliverable: working operator end-to-end.
-3. **PR-C — fixture**: Wave 6.5. Branch `feat/spec-006.2-simple-psd-fixture`. Deliverable: `examples/simple_psd/` end-to-end test.
+3. **PR-C — fixture**: Wave 6.5. Branch `feat/spec-006.2-simple-psd-fixture`. Deliverable: `examples/generated/simple_psd/` end-to-end test.

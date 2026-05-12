@@ -271,6 +271,64 @@ describe("bracket tags", () => {
         expect(b.blend_mode).toBe("screen");
     });
 
+    it("[merge] group emits a single polygon entry with merge flag on the PngWrite", () => {
+        const layers: Layer[] = [
+            set("hair [merge]", [
+                art("strand_back", { x: 10, y: 20, w: 50, h: 60 }),
+                art("strand_front", { x: 15, y: 25, w: 40, h: 55 }),
+            ]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.manifest.layers).toHaveLength(1);
+        const entry = plan.manifest.layers[0] as PolygonEntry;
+        expect(entry.kind).toBe("polygon");
+        expect(entry.name).toBe("hair");
+        // Bounds = union of children: x 10..60, y 20..80 -> w 50, h 60
+        expect(entry.size).toEqual([50, 60]);
+        expect(entry.position).toEqual([10, 20]);
+        expect(plan.writes).toHaveLength(1);
+        expect(plan.writes[0].merge).toBe(true);
+        expect(plan.writes[0].layerPath).toEqual(["hair [merge]"]);
+    });
+
+    it("[merge] children inside [spritesheet] become flattened frames", () => {
+        const layers: Layer[] = [
+            set("brow_states [spritesheet]", [
+                set("0 [merge]", [
+                    art("L0", { x: 0, y: 0, w: 32, h: 16 }),
+                    art("R0", { x: 40, y: 0, w: 32, h: 16 }),
+                ]),
+                set("1 [merge]", [
+                    art("L1", { x: 0, y: 0, w: 30, h: 14 }),
+                    art("R1", { x: 40, y: 0, w: 30, h: 14 }),
+                ]),
+            ]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.manifest.layers).toHaveLength(1);
+        const sf = plan.manifest.layers[0] as SpriteFrameEntry;
+        expect(sf.kind).toBe("sprite_frame");
+        expect(sf.name).toBe("brow_states");
+        expect(sf.frames.map((f) => f.index)).toEqual([0, 1]);
+        // Both writes carry the merge flag and point at the merge groups.
+        expect(plan.writes).toHaveLength(2);
+        expect(plan.writes[0].merge).toBe(true);
+        expect(plan.writes[0].layerPath).toEqual(["brow_states [spritesheet]", "0 [merge]"]);
+        expect(plan.writes[1].merge).toBe(true);
+    });
+
+    it("non-merge group inside [spritesheet] disqualifies the sprite_frame and falls through", () => {
+        const layers: Layer[] = [
+            set("blink [spritesheet]", [
+                set("0", [art("a"), art("b")]),
+                set("1", [art("c"), art("d")]),
+            ]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        // No sprite_frame; each inner art layer comes out as polygon.
+        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
+    });
+
     it("[ignore] inside a sprite_frame group does NOT count toward the frame contiguity check", () => {
         const layers: Layer[] = [
             set("blink", [

@@ -1,65 +1,68 @@
 # Photoshop UXP plugin
 
-Source for the Proscenio Photoshop plugin. Built on Adobe's React UXP starter; ported to TypeScript per [SPEC 010](../specs/010-photoshop-uxp-migration/STUDY.md). Schema target: [`schemas/psd_manifest.schema.json`](../schemas/psd_manifest.schema.json) v1.
+UXP plugin that exports PSD layers to a Proscenio manifest + per-layer PNGs, and re-imports a manifest back into a PSD. Schema target: [`schemas/psd_manifest.schema.json`](../schemas/psd_manifest.schema.json) v1.
 
-For deeper context see [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../docs/PHOTOSHOP-WORKFLOW.md).
+Deeper context: [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../docs/PHOTOSHOP-WORKFLOW.md). Design lives in [SPEC 010](../specs/010-photoshop-uxp-migration/STUDY.md).
 
 ## Stack
 
-- **pnpm** as package manager (locked, SPEC 010 D14).
+- **TypeScript** strict; ajv runtime validation against the v1 schema.
+- **React** for the panel; Spectrum web components (`<sp-checkbox>`, `<sp-action-button>`, `<sp-heading>`, `<sp-body>`) for native theming.
 - **webpack + Babel** as bundler (locked, SPEC 010 D15).
-- **TypeScript** for source code; `tsconfig.json` is strict, with `allowJs` so the scaffold's `.jsx` files compile alongside new `.ts` / `.tsx` during the migration.
-- **React 16** for the panel UI.
+- **pnpm** as package manager (locked, SPEC 010 D14).
+- **vitest** for unit tests on the pure planner + validator.
 
 ## Install dependencies
-
-`pnpm` is the canonical package manager. Install pnpm if you do not have it (<https://pnpm.io/installation>), then from this folder:
 
 ```sh
 pnpm install
 ```
 
-`npm install` works as a fallback if pnpm is unavailable.
+`npm install` works as a fallback, but the committed lockfile is pnpm.
 
-## Build
-
-Two modes:
-
-- `pnpm run watch` builds a development version into `dist/` and rebuilds on source changes. Use during dev with UDT in watch mode.
-- `pnpm run build` builds a production version into `dist/` once. No live reload.
-
-Run either before loading the plugin in Photoshop.
-
-## Type checking
+## Dev loop
 
 ```sh
-pnpm run typecheck
+pnpm run typecheck   # tsc --noEmit; gates the typed surface
+pnpm run test        # vitest run; covers the pure planner + ajv validator
+pnpm run build       # webpack into dist/; one-shot
+pnpm run watch       # webpack + nodemon rebuild on src change
+pnpm run uxp:load    # load dist/ via UDT (`uxp plugin load`)
+pnpm run uxp:reload  # reload the running plugin
+pnpm run uxp:watch   # auto-reload UDT on dist/ changes
+pnpm run uxp:debug   # attach Chrome DevTools to the plugin
 ```
 
-Runs `tsc --noEmit` against `tsconfig.json`. Emits no output - webpack handles the actual transpile via `@babel/preset-typescript`.
+The `uxp:*` scripts assume the [UXP Developer Tool (UDT)](https://developer.adobe.com/photoshop/uxp/2022/guides/devtool/) is running and connected.
 
 ## Load in Photoshop via UDT
 
-Use the [UXP Developer Tool](https://developer.adobe.com/photoshop/uxp/2022/guides/getting-started/) to load the plugin:
+1. `pnpm run build` (or `pnpm run watch`).
+2. UDT > **Add Plugin** > target `apps/photoshop/dist/manifest.json` (the BUILT manifest, not the source `plugin/manifest.json` - the source references files that only exist after webpack runs).
+3. UDT > **Load** on the plugin row. Switch to Photoshop; the **Proscenio Exporter** panel appears under **Plugins**.
 
-1. Click **Add Plugin...** in UDT.
-2. Pick the `manifest.json` from `dist/` (built output) or from `plugin/` (source manifest).
-3. If you point UDT at `plugin/manifest.json`, set the plugin build folder to `dist/` via **... → Options → Advanced**.
-4. Click **Load** on the plugin row. Switch to Photoshop; the plugin panels appear.
+## What the plugin does
 
-During development, the recommended flow is `pnpm run watch` plus loading the `dist/` manifest in UDT.
+| Direction | Trigger | Behaviour |
+| --- | --- | --- |
+| Export | Active PSD + chosen output folder | Walks the layer tree, builds a v1 manifest, validates it against the schema, writes the JSON + per-layer PNGs under the folder's `images/` subdirectory. One core.executeAsModal banner per export. |
+| Import | Picked manifest JSON | Reads the manifest, ajv-validates it, creates a fresh PSD at the manifest size, places every layer at its declared position, names sprite_frame groups as LayerSets with one child per frame. Saves as `photoshop/<doc>.psd` next to the manifest. |
 
-## What this plugin does today
-
-Adobe React UXP starter with two demo panels and a Spectrum UXP color picker. Proscenio-specific functionality (PSD layer walk, manifest emission, schema validation, roundtrip) lands as part of [SPEC 010](../specs/010-photoshop-uxp-migration/STUDY.md).
-
-## Common issues
-
-- **`pnpm install` errors**: delete `node_modules/` and any lockfile (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`), then `pnpm install` again.
-- **Build picks up the wrong loader on a `.tsx` file**: confirm `webpack.config.js` includes `.ts` / `.tsx` in the resolve extensions and the babel rule.
+The output folder is persisted across plugin reloads via UXP's `createPersistentToken` + `localStorage`; pick it once.
 
 ## Compatibility
 
-- Photoshop: 23.2.0 or higher (the scaffold floor; SPEC 010 will bump to PS 22 / CC 2021+).
-- UXP: 5.6 or higher.
-- Node: 20 or higher recommended for pnpm + tsc tooling.
+- **Photoshop**: CC 2024 / PS 25.0 or newer. `plugin/manifest.json` `host.minVersion` enforces.
+- **UXP**: ships with PS - no separate install.
+- **UDT**: latest; some UXP APIs only appear in recent UDT builds.
+- **Node**: 20 or newer for pnpm + tsc.
+
+## Common issues
+
+- **UDT Load fails after Validate passes.** Almost always means UDT is pointed at `plugin/manifest.json` rather than `dist/manifest.json`. Re-add the plugin with the dist path.
+- **Export fails with "Format must be storage.formats.utf8 or storage.formats.binary".** UXP rejected a bare `{ format: "utf8" }` option; the code drops the option entirely (string content defaults to utf8). If this error reappears in a future PS version, propagate `storage.formats.utf8` as the value.
+- **Export PNGs land opaque.** The temp doc was created with the wrong fill enum. `documents.add({ fill })` requires `constants.DocumentFill.TRANSPARENT` (UPPERCASE), not the lowercase string.
+
+## Folder layout
+
+See [.ai/skills/photoshop-uxp-dev.md](../.ai/skills/photoshop-uxp-dev.md) for the canonical map (domain / adapters / io / controllers / hooks / panels / types).

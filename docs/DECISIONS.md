@@ -81,3 +81,12 @@ Selected highlights (full list in [`specs/004-slot-system/STUDY.md`](../specs/00
 ### SPEC 009 - Code modularity (in flight)
 
 - **Refactor into packages without behavior change.** Waves 9.1 to 9.9 split monolithic modules (writer, panels, operators, validation) into focused subpackages. No format change, no user-facing change. Behavior tests carry the proof.
+
+### SPEC 010 - Photoshop UXP migration
+
+- **UXP replaces ExtendScript JSX as the only Photoshop entry point.** The legacy `proscenio_export.jsx` and `proscenio_import.jsx` were retired in Wave 10.7 once the doll roundtrip oracle confirmed pixel-byte parity (manifest semantic-equal; PNG IDAT pixels byte-equal vs the captured JSX baseline).
+- **D14 pnpm, D15 webpack.** Lockfile churn settled; Vite rejected (UXP needs CommonJS output and Vite's ESM-first defaults fight it).
+- **Schema unchanged.** SPEC 010 ships at `format_version: 1` byte-for-byte. The v2 bump that adds tags, anchor and per-entry origin lives in SPEC 011.
+- **Minimum Photoshop bumped to PS 25 / CC 2024+** (Wave 10.7). The PS 22 / CC 2021 floor that D2 originally locked was insufficient once the implementation relied on `constants.NewDocumentMode`, `constants.DocumentFill`, persistent tokens and Spectrum web components.
+- **PanelController stays untyped (`@ts-nocheck`).** The Adobe React UXP starter's Symbol-keyed PanelController is the only shape `entrypoints.setup({ panels })` parses reliably across PS versions; the typed rewrite attempted during the SRP refactor surfaced "No value specified for panel key" at runtime and was reverted. Documented in `apps/photoshop/src/controllers/PanelController.tsx` header.
+- **`localFileSystem: "fullAccess"` required.** The minimum-privilege `"request"` covers `getFolder()` alone; the plugin also calls `createPersistentToken` + sub-folder writes, which need `"fullAccess"`. CodeRabbit's downgrade suggestion was reverted after the smoke test failed.

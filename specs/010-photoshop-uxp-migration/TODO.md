@@ -97,10 +97,10 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.8 - Documentation polish
 
-- [ ] `apps/photoshop/README.md` updated with UXP install + dev loop.
-- [ ] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) end-to-end usage walkthrough mentions the UXP plugin path (currently mentions JSX in step 1).
-- [ ] [`docs/DECISIONS.md`](../../docs/DECISIONS.md) gains "SPEC 010 - Photoshop UXP migration" subsection capturing locked decisions and the JSX retirement.
-- [ ] [`STATUS.md`](../../STATUS.md) flips SPEC 010 row to shipped.
+- [x] `apps/photoshop/README.md` updated with UXP install + dev loop.
+- [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) end-to-end usage walkthrough mentions the UXP plugin path (replaced the step 1 JSX reference).
+- [x] [`docs/DECISIONS.md`](../../docs/DECISIONS.md) gains "SPEC 010 - Photoshop UXP migration" subsection capturing locked decisions and the JSX retirement.
+- [x] [`STATUS.md`](../../STATUS.md) flips SPEC 010 row to shipped.
 
 ## Risks
 

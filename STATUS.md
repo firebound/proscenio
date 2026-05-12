@@ -4,19 +4,19 @@ Live state. For project overview see [README](README.md). For locked decisions s
 
 ## Current
 
-- **Branch in flight:** `feat/spec-009-modularity` (PR #33 in review).
-- **SPEC 009 - code modularity:** waves 9.1 to 9.9 shipping behavior-preserving package splits across writer, panels, operators, validation. No format change.
-- **Format:** `format_version=1`. No bump pending.
+- **Branch in flight:** `refactor/photoshop` (PR #46 in review).
+- **SPEC 010 - Photoshop UXP migration:** shipped through Wave 10.8. Legacy JSX exporter / importer retired; UXP plugin owns both directions of the manifest roundtrip. Doll oracle confirmed pixel-byte parity vs the captured JSX baseline.
+- **Format:** `format_version=1`. SPEC 011 will bump to v2 once tag taxonomy lands.
 
 ## Recent waves
 
 | PR | Wave | Branch |
 | --- | --- | --- |
+| #46 | SPEC 010 (10.1 - 10.8) - Photoshop UXP migration | `refactor/photoshop` |
 | #32 | 5.1.d.6 - README polish | `feat/spec-005.1.d.6-readme-polish` |
 | #31 | 5.1.d.4 - sprite-centric outliner + favorites | `feat/spec-005.1.d.4-outliner` |
 | #30 | 5.1.d.3 - quick armature (modal click-drag bone draw) | `feat/spec-005.1.d.3-quick-armature` |
 | #29 | 5.1.d.2 - pose library shim | `feat/spec-005.1.d.2-pose-library` |
-| #28 | 4.4 - SPEC 004 close-out (doll brow promotion + skills) | `feat/spec-004.4-close-out` |
 
 For older history see `git log --oneline`.
 
@@ -37,4 +37,4 @@ Five Type A fixtures auto-walked by `run_tests.py`: [`doll`](examples/authored/d
 
 ## Next planned work (not committed)
 
-After SPEC 009 lands the planned next slice is **SPEC 008 (UV animation, `texture_region` track)**. Design rough in [`specs/008-uv-animation/STUDY.md`](specs/008-uv-animation/STUDY.md). After that, deferred items are listed in [`docs/DEFERRED.md`](docs/DEFERRED.md); finer-grained backlog is [`specs/backlog.md`](specs/backlog.md).
+After PR #46 merges, the next slice is **SPEC 011 (Photoshop tag system + plugin UI mini-app)**. Design locked in [`specs/011-photoshop-tag-system/STUDY.md`](specs/011-photoshop-tag-system/STUDY.md); bracket-tag taxonomy, schema v2 bump, in-panel tagging UI. **SPEC 008 (UV animation, `texture_region` track)** queues behind that - design rough in [`specs/008-uv-animation/STUDY.md`](specs/008-uv-animation/STUDY.md). Deferred items in [`docs/DEFERRED.md`](docs/DEFERRED.md); finer-grained backlog in [`specs/backlog.md`](specs/backlog.md).

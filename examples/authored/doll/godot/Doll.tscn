@@ -5,7 +5,7 @@
 ; root. Scripts and extra nodes stay on the wrapper and survive every
 ; reimport — see SPEC 001 (specs/001-reimport-merge/STUDY.md).
 ;
-; The `path="res://doll/..."` references assume you drop `examples/authored/doll/`
+; The `path="res://examples/doll/..."` references assume you drop `examples/authored/doll/`
 ; into your Godot project at `res://examples/doll/`. Adjust paths for your layout.
 ; UIDs regenerate the first time Godot opens the scene in your project.
 

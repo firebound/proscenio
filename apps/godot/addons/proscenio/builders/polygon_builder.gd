@@ -17,13 +17,14 @@ static func _resolve_sprite_texture(
 	#    whose body parts ship as separate PNGs alongside the document.
 	# 3. fallback_atlas -- the scene-wide single-image case.
 	var per_sprite: String = sprite_data.get("texture", "")
-	if per_sprite != "":
+	if per_sprite != "" and source_dir != "":
 		var path := source_dir.path_join(per_sprite)
 		if ResourceLoader.exists(path):
 			return ResourceLoader.load(path, "Texture2D") as Texture2D
-	var by_name := source_dir.path_join("%s.png" % sprite_data.get("name", ""))
-	if ResourceLoader.exists(by_name):
-		return ResourceLoader.load(by_name, "Texture2D") as Texture2D
+	if source_dir != "":
+		var by_name := source_dir.path_join("%s.png" % sprite_data.get("name", ""))
+		if ResourceLoader.exists(by_name):
+			return ResourceLoader.load(by_name, "Texture2D") as Texture2D
 	return fallback_atlas
 
 

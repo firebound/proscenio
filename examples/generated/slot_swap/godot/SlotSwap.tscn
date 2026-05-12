@@ -5,13 +5,13 @@
 ; imported scene so the user can attach scripts / collisions / extra
 ; nodes here without losing them on reimport (SPEC 001 Option A).
 ;
-; Drop `examples/generated/slot_swap/` at `res://slot_swap/` in your Godot
+; Drop `examples/generated/slot_swap/` at `res://examples/slot_swap/` in your Godot
 ; project, or adjust paths to match your layout.
 
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://slot_swap/slot_swap.proscenio" id="1_slot"]
-[ext_resource type="Script" path="res://slot_swap/godot/SlotSwap.gd" id="2_slot"]
+[ext_resource type="PackedScene" path="res://examples/slot_swap/slot_swap.proscenio" id="1_slot"]
+[ext_resource type="Script" path="res://examples/slot_swap/SlotSwap.gd" id="2_slot"]
 
 [node name="SlotSwap" type="Node2D"]
 script = ExtResource("2_slot")

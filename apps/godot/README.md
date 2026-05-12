@@ -23,7 +23,9 @@ Before opening for the first time (or after `git pull` that touches `examples/`)
 python scripts/godot/sync_fixtures.py
 ```
 
-The script links each `examples/<name>/<name>.expected.proscenio` -> `apps/godot/<name>/<name>.proscenio`, plus the wrapper `.tscn`/`.gd` and texture PNGs. It tries symlinks first, falls back to hardlinks (Windows without Developer Mode), and finally to plain copies if neither is available. Output dirs (`apps/godot/<name>/`) are gitignored -- never commit them.
+The script links each `examples/<tier>/<name>/<name>.expected.proscenio` -> `apps/godot/examples/<name>/<name>.proscenio`, plus the wrapper `.tscn`/`.gd` and texture PNGs. It tries symlinks first, falls back to hardlinks (Windows without Developer Mode), and finally to plain copies if neither is available. Output dirs (`apps/godot/examples/<name>/`) are gitignored -- never commit them.
+
+The Godot dev project sees the synced fixtures under `res://examples/<name>/` -- wrapper TSCNs reference paths under that prefix. `addons/proscenio/` (the plugin source) and `tests/` (GUT + type-B importer fixtures) live at the project root as usual.
 
 Cross-platform notes:
 

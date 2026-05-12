@@ -46,7 +46,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLES_DIR = REPO_ROOT / "examples"
-GODOT_DEST_DIR = REPO_ROOT / "apps" / "godot"
+GODOT_DEST_DIR = REPO_ROOT / "apps" / "godot" / "examples"
 
 # Subdirs (relative to the fixture root) to scan for PNGs that may need to
 # travel alongside the .proscenio so the Godot importer resolves textures.

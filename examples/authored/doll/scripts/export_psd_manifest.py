@@ -2,18 +2,18 @@
 
 Run with::
 
-    blender --background examples/authored/doll/doll.blend \\
-        --python scripts/fixtures/doll/export_psd_manifest.py
+    blender --background examples/authored/doll/00_blender_base/doll_base.blend \\
+        --python examples/authored/doll/scripts/export_psd_manifest.py
 
-Walks every ``MESH`` object in ``doll.blend``, projects its world XZ
+Walks every ``MESH`` object in ``doll_base.blend``, projects its world XZ
 bounding box onto a Photoshop-style top-left canvas at
 ``PIXELS_PER_UNIT``, and emits a manifest matching
 ``schemas/psd_manifest.schema.json`` (format_version=2, kind=polygon
 for every mesh). Output sits at
-``examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json``
+``examples/authored/doll/00_blender_base/doll_base.photoshop_manifest.json``
 and references the existing
-``examples/authored/doll/01_to_photoshop/render_layers/<name>.png`` files
-(rendered by ``scripts/fixtures/doll/render_layers.py``).
+``examples/authored/doll/00_blender_base/render_layers/<name>.png`` files
+(rendered by ``examples/authored/doll/scripts/render_layers.py``).
 
 Pipeline role: roundtrip-tooling deliverable. The generated manifest
 feeds the Proscenio Photoshop UXP plugin importer so the doll fixture
@@ -36,7 +36,7 @@ Conventions
 - ``z_order``: meshes sorted by world Y ascending (lowest Y = closest
   to camera = frontmost = z_order 0). Ties broken by mesh name.
 - Skipped: meshes whose bounding box is empty (or whose name is in
-  ``SKIP_MESHES``, mirroring ``scripts/fixtures/doll/render_layers.py``).
+  ``SKIP_MESHES``, mirroring ``examples/authored/doll/scripts/render_layers.py``).
 - Sprite_frame: not emitted by this generator. The doll's eye meshes are single
   polygon quads; if a future authored ``.blend`` carries hframed eyes
   the script will need extending.
@@ -51,11 +51,11 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE_DIR = REPO_ROOT / "examples" / "authored" / "doll"
-PHOTOSHOP_OUT_DIR = FIXTURE_DIR / "01_to_photoshop"
-LAYERS_DIR = PHOTOSHOP_OUT_DIR / "render_layers"
-MANIFEST_OUT = PHOTOSHOP_OUT_DIR / "doll.photoshop_manifest.json"
+BLENDER_BASE_DIR = FIXTURE_DIR / "00_blender_base"
+LAYERS_DIR = BLENDER_BASE_DIR / "render_layers"
+MANIFEST_OUT = BLENDER_BASE_DIR / "doll_base.photoshop_manifest.json"
 
 PIXELS_PER_UNIT = 1000.0
 CANVAS_PADDING_PX = 32
@@ -91,12 +91,12 @@ def main() -> None:
         names = ", ".join(missing_names)
         print(
             f"[export_doll_psd_manifest] WARNING - missing layer PNG(s): {names}\n"
-            f"  Run scripts/fixtures/doll/render_layers.py first to regenerate.",
+            f"  Run examples/authored/doll/scripts/render_layers.py first to regenerate.",
             file=sys.stderr,
         )
     manifest = {
         "format_version": MANIFEST_FORMAT_VERSION,
-        "doc": "doll.psd",
+        "doc": "doll_base.psd",
         "size": list(canvas_size),
         "pixels_per_unit": PIXELS_PER_UNIT,
         "layers": layers,

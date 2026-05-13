@@ -1,12 +1,12 @@
-"""Render every mesh in ``doll.blend`` to its own flat PNG layer (SPEC 007).
+"""Render every mesh in ``doll_base.blend`` to its own flat PNG layer (SPEC 007).
 
 Run with::
 
-    blender --background examples/authored/doll/doll.blend \\
-        --python scripts/fixtures/doll/render_layers.py
+    blender --background examples/authored/doll/00_blender_base/doll_base.blend \\
+        --python examples/authored/doll/scripts/render_layers.py
 
 Walks every ``MESH`` object in the scene and renders each to
-``examples/authored/doll/01_to_photoshop/render_layers/<object_name>.png`` from a front-orthographic
+``examples/authored/doll/00_blender_base/render_layers/<object_name>.png`` from a front-orthographic
 camera, with transparent background and Workbench flat shading. The
 result is a stack of 2D layers - one per mesh - that the rest of the
 pipeline (preview composite, .proscenio export) consumes the same way
@@ -49,9 +49,9 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 LAYERS_DIR = (
-    REPO_ROOT / "examples" / "authored" / "doll" / "01_to_photoshop" / "render_layers"
+    REPO_ROOT / "examples" / "authored" / "doll" / "00_blender_base" / "render_layers"
 )
 
 PIXELS_PER_UNIT = 1000.0

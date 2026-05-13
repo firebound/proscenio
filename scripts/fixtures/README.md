@@ -9,10 +9,10 @@ scripts/fixtures/
 ├── _shared/
 │   ├── _draw.py                    Pillow shape rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py         Bpy: open <fixture>.blend, write godot/<fixture>.expected.proscenio
-├── doll/
-│   ├── render_layers.py            Bpy: doll.blend  -> 01_to_photoshop/render_layers/*.png (Workbench flat)
-│   ├── export_psd_manifest.py      Bpy: doll.blend  -> 01_to_photoshop/doll.photoshop_manifest.json
-│   └── preview_pieces.py           Pillow: 01_to_photoshop/render_layers/*.png -> .../pieces_sheet.png
+├── doll/                            (moved to examples/authored/doll/scripts/)
+│   ├── render_layers.py            Bpy: doll_base.blend  -> 00_blender_base/render_layers/*.png (Workbench flat)
+│   ├── export_psd_manifest.py      Bpy: doll_base.blend  -> 00_blender_base/doll_base.photoshop_manifest.json
+│   └── preview_pieces.py           Pillow: 00_blender_base/render_layers/*.png -> .../pieces_sheet.png
 ├── blink_eyes/
 │   ├── draw_layers.py              Pillow -> pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py              Bpy: load spritesheet, build blink_eyes.blend
@@ -40,10 +40,10 @@ scripts/fixtures/
 
 | Fixture | Script | Input | Output |
 | --- | --- | --- | --- |
-| doll | `doll/render_layers.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` |
-| doll | `doll/preview_pieces.py` | `examples/authored/doll/01_to_photoshop/render_layers/*.png` | `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png` |
-| doll | `doll/export_psd_manifest.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` |
-| doll | `_shared/export_proscenio.py` | `examples/authored/doll/doll.blend` | `examples/authored/doll/doll.expected.proscenio` |
+| doll | `examples/authored/doll/scripts/render_layers.py` | `examples/authored/doll/00_blender_base/doll_base.blend` | `examples/authored/doll/00_blender_base/render_layers/*.png` |
+| doll | `examples/authored/doll/scripts/preview_pieces.py` | `examples/authored/doll/00_blender_base/render_layers/*.png` | `examples/authored/doll/00_blender_base/render_layers/pieces_sheet.png` |
+| doll | `examples/authored/doll/scripts/export_psd_manifest.py` | `examples/authored/doll/00_blender_base/doll_base.blend` | `examples/authored/doll/00_blender_base/doll_base.photoshop_manifest.json` |
+| doll | `_shared/export_proscenio.py` | `examples/authored/doll/00_blender_base/doll_base.blend` | `examples/authored/doll/00_blender_base/doll_base.expected.proscenio` |
 | blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/generated/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
 | blink_eyes | `blink_eyes/build_blend.py` | `examples/generated/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/generated/blink_eyes/blink_eyes.blend` |
 | blink_eyes | `_shared/export_proscenio.py` | `examples/generated/blink_eyes/blink_eyes.blend` | `examples/generated/blink_eyes/blink_eyes.expected.proscenio` |
@@ -70,7 +70,7 @@ scripts/fixtures/
 
 - `_shared/_draw.py` is a library, not an entry point.
 - `_shared/export_proscenio.py` runs inside Blender: `blender --background <fixture>.blend --python scripts/fixtures/_shared/export_proscenio.py`.
-- `doll/*.py` mostly run inside Blender (`render_layers.py`, `export_psd_manifest.py`); `preview_pieces.py` is pure Python + Pillow (`python scripts/fixtures/doll/preview_pieces.py`).
+- `examples/authored/doll/scripts/*.py` mostly run inside Blender (`render_layers.py`, `export_psd_manifest.py`); `preview_pieces.py` is pure Python + Pillow (`python examples/authored/doll/scripts/preview_pieces.py`).
 - `blink_eyes/draw_layers.py` and `shared_atlas/draw_atlas.py` are pure Python + Pillow.
 - `*/build_blend.py` runs inside Blender (`blender --background --python scripts/fixtures/<fixture>/build_blend.py`).
 

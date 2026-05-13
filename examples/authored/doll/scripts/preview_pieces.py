@@ -2,13 +2,13 @@
 
 Run with::
 
-    python scripts/fixtures/doll/preview_pieces.py
+    python examples/authored/doll/scripts/preview_pieces.py
 
-Pure Pillow. Walks ``examples/authored/doll/01_to_photoshop/render_layers/`` and
+Pure Pillow. Walks ``examples/authored/doll/00_blender_base/render_layers/`` and
 tiles every PNG into a single sheet with name labels - handy for eyeballing
 each piece in isolation alongside the full-body composite preview.
 
-Output: ``examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png``.
+Output: ``examples/authored/doll/00_blender_base/render_layers/pieces_sheet.png``.
 """
 
 from __future__ import annotations
@@ -17,9 +17,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 LAYERS_DIR = (
-    REPO_ROOT / "examples" / "authored" / "doll" / "01_to_photoshop" / "render_layers"
+    REPO_ROOT / "examples" / "authored" / "doll" / "00_blender_base" / "render_layers"
 )
 OUT_PATH = LAYERS_DIR / "pieces_sheet.png"
 

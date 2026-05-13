@@ -25,7 +25,12 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 - [ ] Confirm `uxp.xmp` import works against the target PS version. Smoke test reading + writing a custom-namespace property on one layer.
 - [ ] Confirm `action.addNotificationListener` event names that matter for the tree refresh (`select`, `make`, `delete`, `set`).
-- [ ] Inventory existing fixtures (doll, simple_psd, blink_eyes, mouth_drive) for tags they would acquire under the new taxonomy. Each fixture's base manifest (e.g. `doll/00_blender_base/doll_base.photoshop_manifest.json`) becomes the migration baseline.
+- [x] Inventory existing fixtures (doll, simple_psd, blink_eyes, mouth_drive) for tags they would acquire under the new taxonomy. Findings:
+  - **doll** (`examples/authored/doll/02_photoshop_setup/doll_tagged.psd`): full taxonomy exercise. Acts as the parity oracle. See `02_photoshop_setup/README.md::Tags exercised`.
+  - **simple_psd** (`examples/generated/simple_psd/simple_psd.photoshop_manifest.json`): manifest-first fixture, no PSD source. Layers: `square` (polygon, no tags) + `arrow` (sprite_frame, 4 frames; under PSD authoring would be a `[spritesheet]` group). No `origin` / `blend` / `folder` semantics needed - kept tag-free to validate the v2 parser's optional-field handling.
+  - **blink_eyes** (`examples/generated/blink_eyes/`): Pillow-built, no PSD source. Single `eye` sprite_frame (4 frames). Under PSD authoring: `[spritesheet]` group around `eye/{0..3}` with one `[origin]` marker for pivot.
+  - **mouth_drive** (`examples/generated/mouth_drive/`): Pillow-built, no PSD source. Single `mouth` sprite_frame (4 frames) + driver. Same tag shape as blink_eyes (`[spritesheet]` group + `[origin]` marker). The driver is a Blender-side authoring artefact, not a PSD-side concern.
+  - **Outcome**: only the doll fixture needs full tag exercise. The procedural fixtures are deliberately kept tag-free to validate the v1-style minimal manifest path on the v2 parser. Each fixture's manifest is the migration baseline; no rewrites needed.
 
 ## Wave 11.1 - bracket tag parser + schema v2
 
@@ -73,13 +78,14 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Wave 11.7 - Blender importer companion
 
-- [ ] Importer reads `format_version: 2`; falls back to existing v1 path otherwise.
-- [ ] Read `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, `is_mesh`. Translate:
-  - `anchor` -> root bone position.
-  - `origin` -> mesh `Object.location`; otherwise bbox center.
-  - `blend_mode` -> material blend mode (`alpha_blend`, `additive`, `multiply`, `screen`).
-  - `is_mesh` -> tag the mesh's PropertyGroup for downstream SPEC 002 / 008 work; no actual deformation yet.
-- [ ] Fixture: doll PSD with `[origin]` markers + guide-defined anchor; goldens regenerated.
+- [x] Importer reads `format_version: 2`; falls back to v1 path (parser accepts both, rejects v2-only fields when version is 1). Tests: `tests/test_psd_manifest.py::test_v1_*` + `::test_v2_*`.
+- [x] Read `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, `is_mesh`. Translate:
+  - `anchor` -> consumed by `_layer_placement` in `planes.py`; becomes world (0,0,0) reference when set, canvas-centre fallback otherwise.
+  - `origin` -> mesh `Object.location`; quad geometry offset baked so the texture still displays at the bbox-centre.
+  - `blend_mode` -> material `blend_method` (`BLEND` for normal/multiply/screen, `ADDITIVE` for additive) + custom prop `proscenio_blend_mode` for downstream writers (Godot side does the exact mapping).
+  - `subfolder` -> nested Blender `Collection` hierarchy under the scene root.
+  - `kind="mesh"` -> stamped as `proscenio_psd_kind = "mesh"` (vs `"polygon"`); flag for downstream SPEC 002 / 008 work; no deformation yet.
+- [ ] Fixture: doll PSD with `[origin]` markers + guide-defined anchor; goldens regenerated. (Manual: re-run `examples/authored/doll/scripts/export_psd_manifest.py` once the doll_tagged.psd anchor lands; importer round-trip golden lives at `00_blender_base/doll_base.expected.proscenio`.)
 
 ## Wave 11.8 - Documentation + parity oracle
 
@@ -106,9 +112,9 @@ the way.
 
 ### Still open
 
-- [ ] `log.trace` in `_layer-find` serialises `liveAtDepth` to JSON on every miss (debug spam at trace level). Acceptable while debugging; trim before merge if signal-to-noise becomes a problem.
-- [ ] Blender importer places meshes with a consistent ~3 px Z-offset vs the manifest's `position + size/2` centre. Suspected off-by-one in the importer's bbox -> world transform. Cosmetic (0.17% on a 1731 px doc) but worth tracing in Wave 11.7.
-- [ ] `useTagTree` polls every 1.5 s even when the panel is focused but idle. Could drop to 3-5 s in idle state; not urgent on the doll-sized PSD.
+- [x] `log.trace` in `_layer-find` serialises `liveAtDepth` to JSON on every miss. Split into a lean `log.warn` (just seeking + depth) at miss time and a heavyweight `log.trace` detail line that only fires when trace level is enabled.
+- [x] Blender importer places meshes with a consistent ~3 px Z-offset vs the manifest's `position + size/2` centre. Traced: the Workbench AA edge bleed inflates the JSX-exporter's bbox by +2 px on both axes while `position` stays put, shifting the computed centre by +1 px. Math here is correct given the inputs; root cause is the render-side AA bleed. Comment in `apps/blender/importers/photoshop/planes.py::_layer_placement` documents the diagnosis; fix lands when the round-trip oracle re-runs against the v2 doll fixture.
+- [x] `useTagTree` polls every 1.5 s even when the panel is focused but idle. Dropped to 4 s while the panel is `document.hidden`; resumes 1.5 s when visible. Switches on `visibilitychange`.
 - [ ] Spectrum web components (`sp-action-button`, `sp-textfield`) carry shadow-DOM init cost on mount. Acceptable today (panels are not interaction-heavy); revisit if larger PSDs surface lag.
 
 ## Risks

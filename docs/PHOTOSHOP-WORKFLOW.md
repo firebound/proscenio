@@ -68,22 +68,58 @@ The tag is the linchpin of idempotency, the Photoshop-side equivalent of the God
 
 Default: **do not edit the tag manually**. Inspect via Blender's Object Properties → Custom Properties to confirm presence after re-import. The Active Sprite subpanel in the addon surfaces tag-aware status when authoring.
 
-## Authoring conventions in PSD
+## Authoring conventions in PSD - the bracket tag taxonomy (SPEC 011)
 
-The UXP plugin's layer walk applies these rules:
+Layer behaviour in the manifest is controlled by **bracket tags** embedded in
+the layer name. A tag is a token in the form `[tag]` or `[tag:value]`;
+multiple tags coexist on a single layer. Tags are parsed left-to-right, and
+the layer's display name is whatever remains once every recognised tag is
+stripped.
+
+```text
+arm.R [folder:body] [origin:10,20] [scale:2.5]
+^^^^^                ^^^^^^^^^^^^^^^ ^^^^^^^^^^
+display name         tag             tag
+```
+
+The full taxonomy (SPEC 011 v1):
+
+| Tag | Where it lives | Effect |
+| --- | --- | --- |
+| `[ignore]` | layer or group | skipped entirely; no manifest entry, no PNG export |
+| `[merge]` | group | walked as if it were a single art layer (flattens children into one PNG) |
+| `[folder:NAME]` | group | becomes a Blender `Collection` named `NAME`; children inherit |
+| `[polygon]` | layer | forces `kind: polygon` (the default for art layers; redundant unless overriding inferred kind) |
+| `[mesh]` | layer | emits `kind: mesh` - a deformable polygon hint for downstream SPEC 002 / 008 work |
+| `[spritesheet]` | group | composes a sprite_frame: each direct child (art layer or `[merge]` group) becomes one frame |
+| `[origin]` | layer | marks the layer's centroid as the pivot of its parent `[spritesheet]` or `[merge]` group (the marker itself is not exported) |
+| `[origin:X,Y]` | layer or group | explicit pivot in PSD pixel coords; overrides the implicit centre |
+| `[scale:N]` | layer or group | multiplies the bbox dimensions by `N` (float). Sub-pixel results raise the `scale-subpixel` validation warning |
+| `[blend:multiply]` | layer | sets the manifest entry's `blend_mode` to multiply; importer applies `material.blend_method = "BLEND"` and stamps `proscenio_blend_mode` for the Godot writer |
+| `[blend:screen]` | layer | same shape, `blend_mode: "screen"` |
+| `[blend:additive]` | layer | same shape, `blend_mode: "additive"` + EEVEE `ADDITIVE` viewport approximation |
+| `[path:NAME]` | layer | overrides the on-disk export path's leaf name |
+| `[name:pre*suf]` | group | name template applied to descendants; `*` is replaced by the descendant's name. Parser accepts; planner currently passes names through unchanged (rewrite lands in a follow-up) |
+
+Walk rules that are independent of tags:
 
 | Convention | Behavior |
 | --- | --- |
-| **Layer name prefix `_`** | excluded (use for artist annotations, color refs, comments) |
 | **Hidden layers** | skipped |
-| **Layer groups** | walked recursively; output names join with `__` (e.g. `body__torso`) |
-| **Sprite_frame layer group** (primary detection) | a group whose **direct children are numbered** (`0`, `1`, `2`, ...) becomes a `kind: sprite_frame` entry in the manifest with `frames[]` |
-| **Sprite_frame flat naming** (fallback) | siblings named `eye_0`, `eye_1`, `eye_2` collapse into a single `kind: sprite_frame` entry named `eye` |
-| **Frame size mismatch** | each sprite_frame's frames are padded with transparent fill to the bounding box of the largest, so the spritesheet grid is regular |
+| **Layer groups (untagged)** | walked recursively; output names join with `__` (e.g. `body__torso`) |
+| **Frame size mismatch (inside `[spritesheet]`)** | each frame is padded with transparent fill to the bbox of the largest, so the spritesheet grid is regular |
 | **Locked layers** | currently treated like normal layers - lock state ignored |
-| **Z-order** | top of layer stack = highest `z_order` value; importer translates to `mesh_center.y = z_order * Z_EPSILON` (default `0.001`) to avoid Z-fighting in Blender's 3D view |
+| **Z-order** | top of layer stack = highest `z_order`; importer translates to `mesh_center.y = z_order * Z_EPSILON` (default `0.001`) to avoid Z-fighting |
+| **Document anchor (guide)** | a horizontal + vertical PSD guide define the figure's pivot; emitted as `manifest.anchor`. Blender importer places world (0,0,0) at the anchor |
 
-Layer name sanitization is minimal today; use only ASCII characters, dashes, underscores, and dots if you intend to address layers by name later.
+Layer name sanitization is minimal; use only ASCII, dashes, underscores, and
+dots in display names if you intend to address layers by name later. Bracket
+tags themselves are stripped before sanitization so spaces inside a tag are
+fine.
+
+> **Legacy: `_`-prefix excludes**. Pre-SPEC 011 fixtures used a `_` prefix to
+> mark a layer as excluded. The migration path is `_layer` -> `[ignore] layer`;
+> the importer reads both for one cycle, then the `_` shortcut retires.
 
 ## Recipes
 
@@ -91,7 +127,7 @@ Skeleton + description. Concrete artifact in [`examples/generated/simple_psd/`](
 
 ### 1. First import of a new character
 
-1. Author the PSD: one layer per body part, layer groups for sprite_frame attachments (eyes, mouth states), `_`-prefixed layers for refs.
+1. Author the PSD: one layer per body part, `[spritesheet]`-tagged groups for animated attachments (eyes, mouth states), `[ignore]`-tagged layers for refs/annotations.
 2. UXP plugin: pick output folder (cached for the session), click **Export**.
 3. Blender: open the target `.blend`, click **Import Photoshop Manifest**, select `manifest.json`.
 4. Result: planes stamped at PSD positions, materials linked, single `root` bone created. Begin rigging.
@@ -141,7 +177,14 @@ Status legend: `supported` shipped + tested, `untested` plausibly works but no f
 | Raster pixel layers | supported | the canonical input |
 | Layer groups (folders) | supported | walked recursively, names joined with `__` |
 | Hidden layers | supported (skipped) | flag respected |
-| `_`-prefixed layers | supported (skipped) | reserved for artist annotations |
+| `[ignore]`-tagged layers / groups | supported (skipped) | reserved for artist annotations + refs |
+| `[merge]` groups | supported | flatten children into a single PNG before manifest emission |
+| `[folder:NAME]` groups | supported | round-trip into Blender `Collection` hierarchy |
+| `[spritesheet]` groups | supported | composes a sprite_frame; `[origin]` marker pivot detection |
+| `[mesh]` layers | supported | emits `kind: mesh`; importer tags `proscenio_psd_kind = "mesh"` |
+| `[blend:multiply]` / `[blend:screen]` / `[blend:additive]` | supported | manifest `blend_mode`; importer sets EEVEE blend_method + custom prop for Godot writer |
+| `[origin:X,Y]` + `[scale:N]` + `[path:NAME]` | supported | numeric / string params honoured; `[scale:N]` warns on sub-pixel results |
+| `[name:pre*suf]` | parsed | planner currently ignores the rewrite (display names cascade unchanged); on the roadmap |
 | Sprite_frame group with numeric children | supported | primary detection path (D9) |
 | Sprite_frame via flat `<name>_<index>` naming | supported | fallback detection (D9) |
 | Frame size mismatch within a sprite_frame group | supported | padded to bbox of largest, transparent fill (D10) |

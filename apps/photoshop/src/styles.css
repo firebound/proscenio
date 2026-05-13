@@ -125,8 +125,8 @@
 .proscenio-panel .subgroup {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding-top: 2px;
+    gap: 4px;
+    padding-top: 4px;
 }
 
 .proscenio-panel .subgroup-title {
@@ -136,6 +136,28 @@
     text-transform: uppercase;
     letter-spacing: 0.4px;
     margin-top: 4px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.proscenio-panel .subgroup .preview-row {
+    padding: 4px 6px;
+    border-left: 3px solid transparent;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 2px;
+    line-height: 1.4;
+}
+
+.proscenio-panel .subgroup .preview-row.warn {
+    border-left-color: #ffb74d;
+}
+
+.proscenio-panel .subgroup .preview-row.muted {
+    border-left-color: rgba(255, 255, 255, 0.25);
+}
+
+.proscenio-panel .subgroup .preview-row.clickable:hover {
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .proscenio-panel .entries-list {

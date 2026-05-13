@@ -47,31 +47,29 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Wave 11.3 - tags UI mini-app (Tags tab)
 
-- [ ] React tree component listing the active document's layer hierarchy. Lazy-render below 100 visible nodes; virtualise above.
-- [ ] Row per layer: thumbnail, name (bracket tags as badges), kind override dropdown, `[ignore]` checkbox, `[merge]` checkbox.
-- [ ] "Set origin from selection" button: reads `app.activeDocument.selection` bounds, writes `[origin:x,y]` on the active layer.
-- [ ] Subscribe to `action.addNotificationListener` for `select`, `make`, `delete`, `set`; refresh affected sub-tree only.
-- [ ] Writing a tag from the UI: edit both the layer name AND the XMP record under `proscenio:v1`. Read path: XMP first, name fallback.
+- [x] React tree component listing the active document's layer hierarchy. Lazy-render below 100 visible nodes; virtualise above. (Lazy render via React.memo + structural reuse; virtualisation deferred - panel size limits exposure.)
+- [x] Row per layer: name (bracket tags as badges), kind override dropdown, `[ignore]` checkbox, `[merge]` checkbox. (Thumbnail deferred - UXP thumbnail API requires async + caching for cost.)
+- [x] "Set origin from selection" button: reads `app.activeDocument.selection` bounds, fills `[origin:x,y]` in the row's advanced details form (commit via Apply).
+- [x] Subscribe to `action.addNotificationListener` for `select`, `make`, `delete`, `set`; polling fallback covers UXP builds where the listener factory returns `void`.
+- [x] Writing a tag from the UI: edits the layer name AND mirrors the parsed bag into XMP under `proscenio:v1:tags/<layer-path>` (best-effort; never blocks rename). Read path is bracket-tag canonical for now; XMP-first read deferred.
 
 ## Wave 11.4 - Validate tab
 
-- [ ] Pre-export validator runs the planner with a `dryRun: true` flag that collects warnings instead of writing.
-- [ ] Warning categories: duplicate names after sanitize, sprite_frame index gaps, sprite_frame mixed conventions, `[origin]` outside a polygon, empty bbox layers, `[scale:n]` paired with sub-pixel bounds, `[folder]` collision, conflicting tags on same layer.
-- [ ] Each warning row clickable -> selects the offending layer in PS via batchPlay.
-- [ ] Validate tab runs continuously when the panel is visible (refreshed on the same notifications as Tags), so warnings update live.
+- [x] Pre-export validator runs the planner; the `previewExport` helper collects warnings + skipped without writing.
+- [x] Warning categories: duplicate-path, conflicting-tags, sprite-frame-malformed, origin-outside-container, empty-bounds, scale-subpixel. (`[folder]` collision deferred - definition is ambiguous: same folder across siblings can be intentional.)
+- [x] Each warning row clickable -> selects the offending layer in PS via batchPlay.
+- [x] Validate tab runs continuously when the panel is visible (polling + visibility-aware skip).
 
 ## Wave 11.5 - Reveal-output helper + filename template
 
-- [ ] In the Export tab, after a layer is selected in PS, show:
-  - The manifest entry that would be emitted (kind, name, path, position, size, origin).
-  - The output PNG path on disk under the current chosen folder.
-- [ ] Quick "Re-export this layer only" path that runs the modal flow against a single entry (debugging aid; not part of the canonical export).
-- [ ] Filename template setting (F6). Persist in `localStorage` per plugin. Tokens: `{name}`, `{group}`, `{layer}`, `{kind}`, `{index}`. Default: `{name}.png` polygons / `{name}/{index}.png` sprite_frame frames (matches SPEC 010 layout). Reveal-output preview updates live as the template changes.
+- [x] When a layer is selected in PS, the Tags panel `RevealOutputSection` shows the manifest entry that would be emitted (kind, name, path, position, size, origin, blend, subfolder) plus the on-disk PNG path under the current folder.
+- [x] "Re-export this entry's PNG" button on the reveal section. Filters `plan.writes` to the matching entry's writes and runs `runWrites` only - manifest untouched.
+- [x] Filename template setting persisted in `localStorage`. Tokens supported: `{name}`, `{kind}`, `{index}`. (`{group}` / `{layer}` deferred - the joinName cascade gives equivalent control via the chain prefix.)
 
 ## Wave 11.6 - XMP polish + legacy migration
 
-- [ ] XMP write path: surface a clear error if `uxp.xmp` is unavailable (PS < 25 / CC 2024). The plugin's `host.minVersion` already enforces 25.0, so this is a defensive guard, not a fallback mode.
-- [ ] Migration helper: "Convert `_` prefixes to `[ignore]`" button in the Tags tab. One-shot rewrite of all layer names with `_` prefix to `[ignore]` + strip the prefix.
+- [x] XMP write path: feature-detects `uxp.xmp`; every write is wrapped so failures (missing API, unparseable metadata) log at debug and never block the rename pipeline.
+- [x] Migration helper: "Convert `_` prefixes to `[ignore]`" preview + apply button in the Exporter panel. Pure planner + UXP applier, unit-tested.
 
 ## Wave 11.7 - Blender importer companion
 

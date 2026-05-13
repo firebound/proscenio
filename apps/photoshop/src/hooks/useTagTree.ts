@@ -18,7 +18,7 @@ import React from "react";
 import { app } from "photoshop";
 
 import { adaptDocument } from "../adapters/photoshop-layer";
-import { buildTagTree, type TagTreeNode } from "../domain/tag-tree";
+import { buildTagTreeReusing, type TagTreeNode } from "../domain/tag-tree";
 import { renameLayer, type RenameResult } from "../io/layer-rename";
 
 const POLL_MS = 1500;
@@ -39,12 +39,15 @@ export function useTagTree(version: number): UseTagTree {
     const [lastError, setLastError] = React.useState<string | null>(null);
     const [tick, setTick] = React.useState(0);
     const lastHashRef = React.useRef<string>("__init__");
+    const treeRef = React.useRef<TagTreeNode[]>([]);
 
     const syncOnce = React.useCallback(() => {
-        const snap = readTree();
+        if (typeof document !== "undefined" && document.hidden === true) return;
+        const snap = readTree(treeRef.current);
         const hash = hashTree(snap.tree, snap.noDocument);
         if (hash === lastHashRef.current) return;
         lastHashRef.current = hash;
+        treeRef.current = snap.tree;
         setTree(snap.tree);
         setNoDocument(snap.noDocument);
     }, []);
@@ -78,11 +81,11 @@ export function useTagTree(version: number): UseTagTree {
     return { tree, noDocument, busy, lastError, rename, refresh };
 }
 
-function readTree(): { tree: TagTreeNode[]; noDocument: boolean } {
+function readTree(prev: TagTreeNode[]): { tree: TagTreeNode[]; noDocument: boolean } {
     const doc = app.activeDocument;
     if (doc === null) return { tree: [], noDocument: true };
     const adapted = adaptDocument(doc);
-    return { tree: buildTagTree(adapted.layers), noDocument: false };
+    return { tree: buildTagTreeReusing(adapted.layers, prev), noDocument: false };
 }
 
 function hashTree(nodes: TagTreeNode[], noDocument: boolean): string {

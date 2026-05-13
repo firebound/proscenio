@@ -30,6 +30,78 @@ export function buildTagTree(layers: Layer[]): TagTreeNode[] {
     return layers.map((layer) => toNode(layer, [], [], 0));
 }
 
+/** Builds the tree while reusing previous node references when nothing
+ *  about a node (rawName, visibility, parent chain) and its descendants
+ *  has changed. Keeps `React.memo` happy: rows that did not change keep
+ *  their `node` prop by reference, so the memo bail-out is a single
+ *  pointer compare instead of a structural walk. */
+export function buildTagTreeReusing(
+    layers: Layer[],
+    prev: TagTreeNode[] | null,
+): TagTreeNode[] {
+    return layers.map((layer, i) => reuseOrBuild(layer, prev?.[i] ?? null, [], [], 0));
+}
+
+function reuseOrBuild(
+    layer: Layer,
+    prev: TagTreeNode | null,
+    parentLayerPath: string[],
+    parentDisplayPath: string[],
+    depth: number,
+): TagTreeNode {
+    const layerPath = [...parentLayerPath, layer.name];
+    const parsed = parseLayerName(layer.name);
+    const stable = parsed.displayName.length > 0 ? parsed.displayName : layer.name;
+    const displayPath = [...parentDisplayPath, stable];
+    const isGroup = layer.kind === "set";
+
+    const children: TagTreeNode[] = isGroup
+        ? layer.layers.map((child, i) => reuseOrBuild(
+            child,
+            prev?.children[i] ?? null,
+            layerPath,
+            displayPath,
+            depth + 1,
+        ))
+        : [];
+
+    if (
+        prev !== null
+        && prev.rawName === layer.name
+        && prev.visible === layer.visible
+        && prev.isGroup === isGroup
+        && prev.depth === depth
+        && stringArraysEqual(prev.layerPath, layerPath)
+        && stringArraysEqual(prev.displayPath, displayPath)
+        && childrenRefEqual(prev.children, children)
+    ) {
+        return prev;
+    }
+    return {
+        layerPath,
+        displayPath,
+        rawName: layer.name,
+        displayName: parsed.displayName,
+        tags: parsed.tags,
+        isGroup,
+        visible: layer.visible,
+        depth,
+        children,
+    };
+}
+
+function elementsEqual<T>(a: readonly T[], b: readonly T[]): boolean {
+    if (a === b) return true;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
+const stringArraysEqual = elementsEqual<string>;
+const childrenRefEqual = elementsEqual<TagTreeNode>;
+
 function toNode(
     layer: Layer,
     parentLayerPath: string[],

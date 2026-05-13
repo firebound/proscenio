@@ -38,9 +38,12 @@ export function useActiveLayerPath(version: number): readonly string[] | null {
     // Polling fallback. On UXP builds where
     // `action.addNotificationListener` returns void, no `select` events
     // ever fire - we never learn that the artist clicked a different
-    // layer. Polling at 300ms catches selection changes cheaply.
+    // layer. Polling at 300ms catches selection changes cheaply. Skips
+    // when the host hides the panel (document.hidden) so background
+    // panels do not burn cycles.
     React.useEffect(() => {
         const id = setInterval(() => {
+            if (typeof document !== "undefined" && document.hidden === true) return;
             updatePath(readActiveLayerPath());
         }, POLL_MS);
         return () => clearInterval(id);

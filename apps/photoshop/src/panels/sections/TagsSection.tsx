@@ -365,6 +365,18 @@ const ClickSpan: React.FC<{
 };
 
 function tagRowEqual(prev: TagRowProps, next: TagRowProps): boolean {
+    // Fast path: when buildTagTreeReusing preserves the node ref,
+    // skip the structural walk entirely.
+    if (
+        prev.node === next.node
+        && prev.selected === next.selected
+        && prev.collapsed === next.collapsed
+        && prev.busy === next.busy
+        && prev.onRename === next.onRename
+        && prev.onToggleCollapse === next.onToggleCollapse
+    ) {
+        return true;
+    }
     return (
         prev.selected === next.selected
         && prev.collapsed === next.collapsed

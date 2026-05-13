@@ -11,13 +11,13 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 ## Contents
 
-| File | Origin | Notes |
+| File | Origin | Tracked? |
 | --- | --- | --- |
-| `doll_ps_tagged.blend` | Blender import of `02_photoshop_setup` (tagged) | gitignored - SPEC 011 parity sandbox, regenerable from step 02's manifest |
-| `doll_rigged.blend` | Blender import of the clean re-export from step 01 + manual rigging | gitignored - regenerable per the steps below |
-| `*.blend1` | Blender autosaves | gitignored |
+| `doll_rigged.blend` | Blender import of the clean re-export from step 01 + **manual rigging** | **yes** - the armature + weights + actions are hand-authored work that no script can regenerate |
+| `doll_ps_tagged.blend` | Blender import of `02_photoshop_setup` (tagged) | no - SPEC 011 parity sandbox; regenerable from step 02's manifest |
+| `*.blend1` | Blender autosaves | no |
 
-> No assets are checked in here on purpose. Both `.blend` files are reproducible from the documented steps; tracking them would bloat the repo with binary noise on every weight-paint tweak.
+> `doll_rigged.blend` is tracked on purpose: its content is artist labour (humanoid armature, vertex weights, NLA tracks), not the output of a deterministic transform. Treat it the same as `00_blender_base/doll_base.blend` - source of truth, edited by hand, committed when the artist finishes a beat. The parity sandbox stays disposable because its single source of truth is the manifest in step 02.
 
 ## Regenerate `doll_ps_tagged.blend` (parity sandbox)
 

@@ -6,9 +6,12 @@
 
 import React from "react";
 
+import type { ExportOptions } from "../domain/planner";
+import { useActiveLayerPath } from "../hooks/useActiveLayerPath";
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
 import { useDocumentChanges } from "../hooks/useDocumentChanges";
 import { useExportFlow } from "../hooks/useExportFlow";
+import { useExportPreview } from "../hooks/useExportPreview";
 import { useFilenameTemplate } from "../hooks/useFilenameTemplate";
 import { useFolderCache } from "../hooks/useFolderCache";
 import { useImportFlow } from "../hooks/useImportFlow";
@@ -19,6 +22,7 @@ import { ExportSection } from "./sections/ExportSection";
 import { FolderSection } from "./sections/FolderSection";
 import { ImportSection } from "./sections/ImportSection";
 import { MigrationSection } from "./sections/MigrationSection";
+import { ReexportSection } from "./sections/ReexportSection";
 
 export const ProscenioExporter: React.FC = () => {
     const { folder, pick: pickFolder, clear: clearFolder } = useFolderCache();
@@ -29,6 +33,23 @@ export const ProscenioExporter: React.FC = () => {
     const ppu = usePixelsPerUnit();
     const version = useDocumentChanges();
     const migration = useMigration(version);
+    const activeLayerPath = useActiveLayerPath(version);
+    const preview = useExportPreview();
+
+    const reexportOpts = React.useMemo<ExportOptions>(
+        () => ({
+            skipHidden: exportFlow.opts.skipHidden,
+            polygonTemplate: templates.polygonTemplate,
+            framesTemplate: templates.framesTemplate,
+            pixelsPerUnit: ppu.pixelsPerUnit,
+        }),
+        [
+            exportFlow.opts.skipHidden,
+            templates.polygonTemplate,
+            templates.framesTemplate,
+            ppu.pixelsPerUnit,
+        ],
+    );
 
     // Push template + pixels-per-unit values into the export options
     // so a single ExportOptions struct is what the controller sees.
@@ -41,11 +62,13 @@ export const ProscenioExporter: React.FC = () => {
         setOption("pixelsPerUnit", ppu.pixelsPerUnit);
     }, [setOption, templates.polygonTemplate, templates.framesTemplate, ppu.pixelsPerUnit]);
 
-    // Re-read the active doc whenever PS fires a notification.
+    // Re-read the active doc + refresh preview whenever PS fires a
+    // notification or templates change.
     React.useEffect(() => {
         void refreshDoc();
+        preview.refresh(reexportOpts);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [version]);
+    }, [version, reexportOpts]);
 
     const exportDisabled = exportFlow.busy || folder === null || doc === null;
 
@@ -79,6 +102,12 @@ export const ProscenioExporter: React.FC = () => {
                 onResetTemplates={templates.reset}
                 onPixelsPerUnitChange={ppu.setPixelsPerUnit}
                 onExport={onExport}
+            />
+            <ReexportSection
+                preview={preview.preview}
+                activeLayerPath={activeLayerPath}
+                folder={folder}
+                opts={reexportOpts}
             />
             <ImportSection
                 busy={importFlow.busy}

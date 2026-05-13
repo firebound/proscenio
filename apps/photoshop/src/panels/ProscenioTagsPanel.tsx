@@ -78,7 +78,6 @@ export const ProscenioTagsPanel: React.FC = () => {
                 preview={preview.preview}
                 activeLayerPath={activeLayerPath}
                 folder={folder}
-                opts={opts}
             />
         </div>
     );

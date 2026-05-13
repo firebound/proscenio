@@ -3,6 +3,7 @@ import React from "react";
 import type { UnderscoreMigrationCandidate } from "../../domain/legacy-migration";
 import type { MigrationPreview, MigrationResult } from "../../io/legacy-migration";
 import { selectLayerByPath } from "../../io/ps-selection";
+import { Accordion } from "../common/Accordion";
 
 interface Props {
     preview: MigrationPreview;
@@ -16,15 +17,14 @@ export const MigrationSection: React.FC<Props> = ({ preview, busy, lastResult, o
     const count = preview.candidates.length;
     if (count === 0 && lastResult === null) return null;
     return (
-        <section className="section">
-            <sp-heading size="XS">Legacy migration</sp-heading>
-            <sp-body size="XS" className="muted">
-                Convert legacy `_layerName` skip conventions to the [ignore] tag.
-            </sp-body>
+        <Accordion
+            title="Legacy migration"
+            badge={count > 0 ? String(count) : undefined}
+            defaultOpen={count > 0}
+            hint="Convert legacy `_layerName` skip conventions to the [ignore] tag."
+        >
             {count === 0 ? (
-                <sp-body size="XS" className="muted">
-                    No underscore-prefixed layers found.
-                </sp-body>
+                <sp-body size="XS" className="muted">No underscore-prefixed layers found.</sp-body>
             ) : (
                 <>
                     <sp-body size="XS">{count} layer(s) ready to rename:</sp-body>
@@ -32,9 +32,7 @@ export const MigrationSection: React.FC<Props> = ({ preview, busy, lastResult, o
                         <CandidateRow key={c.layerPath.join("/")} candidate={c} />
                     ))}
                     {count > 6 && (
-                        <sp-body size="XS" className="muted">
-                            ...and {count - 6} more.
-                        </sp-body>
+                        <sp-body size="XS" className="muted">...and {count - 6} more.</sp-body>
                     )}
                     <sp-action-button onClick={onApply} disabled={busy ? true : undefined}>
                         {busy ? "Renaming..." : `Convert ${count} layer(s) to [ignore]`}
@@ -42,7 +40,7 @@ export const MigrationSection: React.FC<Props> = ({ preview, busy, lastResult, o
                 </>
             )}
             {lastResult !== null && <ResultView result={lastResult} />}
-        </section>
+        </Accordion>
     );
 };
 

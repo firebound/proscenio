@@ -5,6 +5,7 @@ import React from "react";
 
 import type { TagTreeNode } from "../../domain/tag-tree";
 import { elementsEqual } from "../../util/arrays";
+import { Accordion } from "../common/Accordion";
 import { TagRow } from "./tags/Row";
 
 interface Props {
@@ -28,21 +29,19 @@ export const TagsSection: React.FC<Props> = ({
 }) => {
     if (tree.length === 0) {
         return (
-            <section className="section">
-                <sp-heading size="XS">Tags</sp-heading>
-                <sp-body size="XS" className="muted">
-                    No layers. Open a PSD to begin tagging.
-                </sp-body>
-            </section>
+            <Accordion title="Tags">
+                <sp-body size="XS" className="muted">No layers. Open a PSD to begin tagging.</sp-body>
+            </Accordion>
         );
     }
     return (
-        <section className="section">
-            <sp-heading size="XS">Tags</sp-heading>
+        <Accordion
+            title="Tags"
+            badge={String(tree.length)}
+            hint="Layer tree with bracket-tag controls per row. Click + on a row to edit folder / path / scale / origin / name pattern."
+        >
             {lastError !== null && (
-                <sp-body size="XS" className="result-row warn">
-                    {lastError}
-                </sp-body>
+                <sp-body size="XS" className="result-row warn">{lastError}</sp-body>
             )}
             <div className="tag-tree">
                 <TagNodeList
@@ -54,7 +53,7 @@ export const TagsSection: React.FC<Props> = ({
                     onToggleCollapse={onToggleCollapse}
                 />
             </div>
-        </section>
+        </Accordion>
     );
 };
 

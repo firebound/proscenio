@@ -3,15 +3,14 @@
 // (selects the offending layer in PS) so the artist can jump straight
 // to the fix.
 //
-// The section is intentionally read-only - tag edits happen in the
-// Tags section. Validate is just an aggregator + a fast lane to the
-// affected layer.
+// Read-only - tag edits happen in the Tags panel.
 
 import React from "react";
 
 import type { ExportPreview } from "../../controllers/export-flow";
 import type { PlanWarning, SkippedLayer } from "../../domain/planner";
 import { selectLayerByPath } from "../../io/ps-selection";
+import { Accordion } from "../common/Accordion";
 
 interface Props {
     preview: ExportPreview | null;
@@ -20,66 +19,69 @@ interface Props {
 export const ValidateSection: React.FC<Props> = ({ preview }) => {
     if (preview === null) {
         return (
-            <section className="section">
-                <sp-heading size="XS">Validate</sp-heading>
+            <Accordion title="Validate">
                 <sp-body size="XS" className="muted">Open a document to begin validation.</sp-body>
-            </section>
+            </Accordion>
         );
     }
     if (preview.kind === "no-document") {
         return (
-            <section className="section">
-                <sp-heading size="XS">Validate</sp-heading>
+            <Accordion title="Validate">
                 <sp-body size="XS" className="muted">
                     {preview.errors?.[0] ?? "No document open."}
                 </sp-body>
-            </section>
+            </Accordion>
         );
     }
     const warnings = preview.warnings ?? [];
     const skipped = preview.skipped ?? [];
     const valErrors = preview.kind === "validation-failed" ? preview.errors ?? [] : [];
-    const clean = warnings.length === 0 && skipped.length === 0 && valErrors.length === 0;
+    const totalIssues = warnings.length + skipped.length + valErrors.length;
+    const clean = totalIssues === 0;
     return (
-        <section className="section">
-            <sp-heading size="XS">Validate</sp-heading>
+        <Accordion
+            title="Validate"
+            badge={totalIssues > 0 ? String(totalIssues) : "ok"}
+            hint="Planner-emitted warnings + skipped layers. Click any row to jump to the offending layer in Photoshop."
+        >
             {clean ? (
-                <sp-body size="XS" className="muted">
-                    No issues. Manifest looks ready to export.
-                </sp-body>
+                <sp-body size="XS" className="muted">No issues. Manifest looks ready to export.</sp-body>
             ) : (
                 <>
                     {valErrors.length > 0 && (
                         <div className="result error">
                             <sp-body size="XS">Manifest invalid:</sp-body>
                             {valErrors.map((err) => (
-                                <sp-body size="XS" key={err} className="result-row">
-                                    {err}
-                                </sp-body>
+                                <sp-body size="XS" key={err} className="result-row">{err}</sp-body>
                             ))}
                         </div>
                     )}
                     {warnings.length > 0 && (
-                        <>
-                            <sp-body size="XS">Warnings ({warnings.length})</sp-body>
+                        <SubGroup title={`Warnings (${warnings.length})`}>
                             {warnings.map((w, i) => (
                                 <WarningRow key={`${w.code}-${w.name}-${i}`} warning={w} />
                             ))}
-                        </>
+                        </SubGroup>
                     )}
                     {skipped.length > 0 && (
-                        <>
-                            <sp-body size="XS">Skipped ({skipped.length})</sp-body>
+                        <SubGroup title={`Skipped (${skipped.length})`}>
                             {skipped.map((s) => (
                                 <SkippedRow key={`${s.name}-${s.layerPath.join("/")}`} skipped={s} />
                             ))}
-                        </>
+                        </SubGroup>
                     )}
                 </>
             )}
-        </section>
+        </Accordion>
     );
 };
+
+const SubGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="subgroup">
+        <div className="subgroup-title">{title}</div>
+        {children}
+    </div>
+);
 
 const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
     const onClick = React.useCallback(() => {

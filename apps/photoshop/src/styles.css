@@ -4,14 +4,14 @@
 .proscenio-panel {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 8px;
+    padding: 0;
 }
 
 .proscenio-panel .section {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
+    padding: 6px 8px;
 }
 
 .proscenio-panel sp-heading {
@@ -24,16 +24,153 @@
     margin: 0;
 }
 
+/* Accordion: Photoshop-style collapsible section. */
+
+.proscenio-panel .accordion {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.proscenio-panel .accordion:first-child {
+    border-top: none;
+}
+
+.proscenio-panel .accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    user-select: none;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 14px;
+    min-height: 22px;
+}
+
+.proscenio-panel .accordion-header:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.proscenio-panel .accordion-chevron {
+    width: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: monospace;
+    font-size: 9px;
+}
+
+.proscenio-panel .accordion-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.proscenio-panel .accordion-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 8px;
+    padding: 0 6px;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 14px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.proscenio-panel .accordion-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 8px 8px 8px;
+}
+
+/* Compact key/value row pattern. */
+
+.proscenio-panel .kv-row {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    font-size: 11px;
+    min-height: 18px;
+}
+
+.proscenio-panel .kv-label {
+    width: 80px;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 9px;
+    flex-shrink: 0;
+}
+
+.proscenio-panel .kv-value {
+    color: rgba(255, 255, 255, 0.95);
+    word-break: break-all;
+    flex: 1;
+    min-width: 0;
+}
+
+.proscenio-panel .kv-value.mono {
+    font-family: monospace;
+    font-size: 10px;
+}
+
+.proscenio-panel .subgroup {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 2px;
+}
+
+.proscenio-panel .subgroup-title {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 4px;
+}
+
+.proscenio-panel .entries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.proscenio-panel .reveal-paths {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 4px;
+}
+
+/* Tighter Spectrum components in our panels. Custom props may or may
+   not be respected by the shadow DOM; values that land are pure wins,
+   the rest are no-ops. */
+
+.proscenio-panel sp-action-button {
+    width: 100%;
+    display: block;
+    --spectrum-actionbutton-min-height: 22px;
+    --spectrum-actionbutton-padding-x: 8px;
+}
+
+.proscenio-panel sp-textfield {
+    --spectrum-textfield-height: 22px;
+}
+
 .proscenio-panel .row {
     display: flex;
     gap: 6px;
     flex-wrap: nowrap;
     align-items: stretch;
-}
-
-.proscenio-panel sp-action-button {
-    width: 100%;
-    display: block;
 }
 
 .proscenio-panel .row sp-action-button {

@@ -156,6 +156,7 @@ declare module "photoshop" {
     export interface PsLayer {
         name: string;
         visible: boolean;
+        readonly id: number;
         readonly bounds: PsBounds;
         readonly kind: number;
         readonly layers?: PsLayer[];

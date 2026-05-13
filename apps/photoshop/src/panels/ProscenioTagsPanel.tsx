@@ -18,7 +18,6 @@ import { useTagTree } from "../hooks/useTagTree";
 import { DocSection } from "./sections/DocSection";
 import { RevealOutputSection } from "./sections/RevealOutputSection";
 import { TagsSection } from "./sections/TagsSection";
-import { ValidateSection } from "./sections/ValidateSection";
 
 export const ProscenioTagsPanel: React.FC = () => {
     const { doc, refresh: refreshDoc } = useDocSnapshot();
@@ -81,7 +80,6 @@ export const ProscenioTagsPanel: React.FC = () => {
                 folder={folder}
                 opts={opts}
             />
-            <ValidateSection preview={preview.preview} />
         </div>
     );
 };

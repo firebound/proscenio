@@ -1,8 +1,11 @@
-// Plugin entrypoint. Registers the two Proscenio panels:
+// Plugin entrypoint. Registers the four Proscenio panels:
 //
 // - `proscenioExporter`: doc info + folder + export options + import.
 // - `proscenioDebug`: standalone dry-run preview window with the
-//   manifest entries + skipped layers list.
+//   manifest entries list.
+// - `proscenioTags`: layer hierarchy + bracket-tag controls.
+// - `proscenioValidate`: live warnings + skipped layers from the
+//   dry-run preview.
 
 import React from "react";
 import { entrypoints } from "uxp";
@@ -12,6 +15,7 @@ import { PanelController } from "./controllers/PanelController";
 import { ProscenioDebugPanel } from "./panels/ProscenioDebugPanel";
 import { ProscenioExporter } from "./panels/ProscenioExporter";
 import { ProscenioTagsPanel } from "./panels/ProscenioTagsPanel";
+import { ProscenioValidatePanel } from "./panels/ProscenioValidatePanel";
 import { log } from "./util/log";
 
 const exporterController = new PanelController(() => <ProscenioExporter />, {
@@ -53,6 +57,19 @@ const tagsController = new PanelController(() => <ProscenioTagsPanel />, {
     ],
 });
 
+const validateController = new PanelController(() => <ProscenioValidatePanel />, {
+    id: "proscenioValidate",
+    menuItems: [
+        {
+            id: "validate.reload",
+            label: "Reload Plugin",
+            enabled: true,
+            checked: false,
+            oninvoke: () => location.reload(),
+        },
+    ],
+});
+
 entrypoints.setup({
     plugin: {
         create() {
@@ -66,5 +83,6 @@ entrypoints.setup({
         proscenioExporter: exporterController,
         proscenioDebug: debugController,
         proscenioTags: tagsController,
+        proscenioValidate: validateController,
     },
 });

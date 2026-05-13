@@ -2,8 +2,7 @@ import React from "react";
 
 import type { ExportPreview } from "../../controllers/export-flow";
 import type { ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../../domain/manifest";
-import type { EntryRef, PlanWarning, SkippedLayer } from "../../domain/planner";
-import { selectLayerByPath } from "../../io/ps-selection";
+import type { EntryRef } from "../../domain/planner";
 
 interface Props {
     preview: ExportPreview | null;
@@ -48,24 +47,9 @@ const PreviewBody: React.FC<{
             <sp-body size="XS">
                 Entries: {manifest?.layers.length ?? 0} | Skipped: {skipped.length} | Warnings: {warnings.length}
             </sp-body>
-            {preview.kind === "validation-failed" && (
-                <div className="result error">
-                    <sp-body size="XS">Manifest invalid:</sp-body>
-                    {(preview.errors ?? []).map((err) => (
-                        <sp-body size="XS" key={err} className="result-row">
-                            {err}
-                        </sp-body>
-                    ))}
-                </div>
-            )}
-            {warnings.length > 0 && (
-                <>
-                    <sp-heading size="XS">Warnings</sp-heading>
-                    {warnings.map((w, i) => (
-                        <WarningRow key={`${w.code}-${w.name}-${i}`} warning={w} />
-                    ))}
-                </>
-            )}
+            <sp-body size="XS" className="muted">
+                Warnings + skipped layers live in the Proscenio Validate panel.
+            </sp-body>
             <sp-heading size="XS">Entries</sp-heading>
             {(manifest?.layers ?? []).map((entry, i) => (
                 <EntryRow
@@ -74,14 +58,6 @@ const PreviewBody: React.FC<{
                     selected={isEntrySelected(entryRefs[i], activeLayerPath)}
                 />
             ))}
-            {skipped.length > 0 && (
-                <>
-                    <sp-heading size="XS">Skipped layers</sp-heading>
-                    {skipped.map((s) => (
-                        <SkippedRow key={`${s.name}-${s.layerPath.join("/")}`} skipped={s} />
-                    ))}
-                </>
-            )}
         </>
     );
 };
@@ -130,24 +106,3 @@ function badges(entry: ManifestEntry): string {
     return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }
 
-const SkippedRow: React.FC<{ skipped: SkippedLayer }> = ({ skipped }) => {
-    const onClick = React.useCallback(() => {
-        void selectLayerByPath(skipped.layerPath);
-    }, [skipped.layerPath]);
-    return (
-        <sp-body size="XS" className="preview-row muted clickable" onClick={onClick}>
-            {skipped.name} ({skipped.reason})
-        </sp-body>
-    );
-};
-
-const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
-    const onClick = React.useCallback(() => {
-        void selectLayerByPath(warning.layerPath);
-    }, [warning.layerPath]);
-    return (
-        <sp-body size="XS" className="preview-row warn clickable" onClick={onClick}>
-            [{warning.code}] {warning.name}: {warning.message}
-        </sp-body>
-    );
-};

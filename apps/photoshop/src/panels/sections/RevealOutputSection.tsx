@@ -31,9 +31,9 @@ export const RevealOutputSection: React.FC<Props> = ({ preview, activeLayerPath,
     if (activeLayerPath === null || matchedIndex === null || entry === null || ref === null) {
         return (
             <Accordion title="Selected entry">
-                <sp-body size="XS" className="muted">
+                <div className="placeholder-card">
                     Select a layer in Photoshop to inspect what the export will emit for it.
-                </sp-body>
+                </div>
             </Accordion>
         );
     }

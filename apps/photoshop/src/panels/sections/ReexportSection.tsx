@@ -53,9 +53,9 @@ export const ReexportSection: React.FC<Props> = ({ preview, activeLayerPath, fol
             hint="Rewrites the PNG(s) for the layer selected in Photoshop. Manifest JSON is not touched."
         >
             {matched === null ? (
-                <sp-body size="XS" className="muted">
+                <div className="placeholder-card">
                     Select a layer in Photoshop that maps to a manifest entry.
-                </sp-body>
+                </div>
             ) : (
                 <>
                     <KeyValueRow label="entry" value={matched.name} mono />

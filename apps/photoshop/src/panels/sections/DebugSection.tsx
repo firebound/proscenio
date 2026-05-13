@@ -87,20 +87,25 @@ function isEntrySelected(
 }
 
 const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry, selected }) => {
-    const className = selected ? "preview-row selected" : "preview-row";
+    const className = selected ? "entry-row selected" : "entry-row";
     if (entry.kind === "sprite_frame") {
         const sf = entry as SpriteFrameEntry;
         return (
-            <sp-body size="XS" className={className}>
-                [sprite_frame] {sf.name} - {sf.frames.length} frames{badges(sf)}
-            </sp-body>
+            <div className={className}>
+                <span className="entry-kind">sprite_frame</span>
+                <span className="entry-name">{sf.name}</span>
+                <span className="entry-meta">{sf.frames.length} frames{badges(sf)}</span>
+            </div>
         );
     }
     const p = entry as PolygonEntry;
     return (
-        <sp-body size="XS" className={className}>
-            [{p.kind}] {p.name} -&gt; {p.path}{badges(p)}
-        </sp-body>
+        <div className={className}>
+            <span className="entry-kind">{p.kind}</span>
+            <span className="entry-name">{p.name}</span>
+            <span className="entry-path">{p.path}</span>
+            {badges(p) !== "" && <span className="entry-meta">{badges(p)}</span>}
+        </div>
     );
 };
 

@@ -48,10 +48,25 @@ const CandidateRow: React.FC<{ candidate: UnderscoreMigrationCandidate }> = ({ c
     const onClick = React.useCallback(() => {
         void selectLayerByPath(candidate.layerPath);
     }, [candidate.layerPath]);
+    const onKey = React.useCallback((e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            void selectLayerByPath(candidate.layerPath);
+        }
+    }, [candidate.layerPath]);
+    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
     return (
-        <sp-body size="XS" className="preview-row clickable" onClick={onClick}>
-            {candidate.oldName} -&gt; {candidate.newName}
-        </sp-body>
+        <div
+            className="migration-row"
+            role="button"
+            tabIndex={0}
+            onClick={onClick}
+            onKeyDown={onKey}
+        >
+            <span className="migration-old">{candidate.oldName}</span>
+            <span className="migration-arrow">-&gt;</span>
+            <span className="migration-new">{candidate.newName}</span>
+        </div>
     );
 };
 

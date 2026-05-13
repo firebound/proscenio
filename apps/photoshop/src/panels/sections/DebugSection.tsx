@@ -2,15 +2,16 @@ import React from "react";
 
 import type { ExportPreview } from "../../controllers/export-flow";
 import type { ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../../domain/manifest";
-import type { PlanWarning, SkippedLayer } from "../../domain/planner";
+import type { EntryRef, PlanWarning, SkippedLayer } from "../../domain/planner";
 import { selectLayerByPath } from "../../io/ps-selection";
 
 interface Props {
     preview: ExportPreview | null;
+    activeLayerPath: readonly string[] | null;
     onRefresh: () => void;
 }
 
-export const DebugSection: React.FC<Props> = ({ preview, onRefresh }) => (
+export const DebugSection: React.FC<Props> = ({ preview, activeLayerPath, onRefresh }) => (
     <section className="section">
         <sp-heading size="XS">Preview / debug</sp-heading>
         <sp-action-button onClick={onRefresh}>Refresh preview</sp-action-button>
@@ -19,12 +20,15 @@ export const DebugSection: React.FC<Props> = ({ preview, onRefresh }) => (
                 Click Refresh preview to dry-run the export. Nothing is written.
             </sp-body>
         ) : (
-            <PreviewBody preview={preview} />
+            <PreviewBody preview={preview} activeLayerPath={activeLayerPath} />
         )}
     </section>
 );
 
-const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
+const PreviewBody: React.FC<{
+    preview: ExportPreview;
+    activeLayerPath: readonly string[] | null;
+}> = ({ preview, activeLayerPath }) => {
     if (preview.kind === "no-document") {
         return (
             <sp-body size="XS" className="muted">
@@ -35,6 +39,7 @@ const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
     const manifest = preview.manifest;
     const skipped = preview.skipped ?? [];
     const warnings = preview.warnings ?? [];
+    const entryRefs = preview.entryRefs ?? [];
     return (
         <>
             <sp-body size="XS">
@@ -63,7 +68,11 @@ const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
             )}
             <sp-heading size="XS">Entries</sp-heading>
             {(manifest?.layers ?? []).map((entry, i) => (
-                <EntryRow key={`${entry.name}-${i}`} entry={entry} />
+                <EntryRow
+                    key={`${entry.name}-${i}`}
+                    entry={entry}
+                    selected={isEntrySelected(entryRefs[i], activeLayerPath)}
+                />
             ))}
             {skipped.length > 0 && (
                 <>
@@ -77,18 +86,37 @@ const PreviewBody: React.FC<{ preview: ExportPreview }> = ({ preview }) => {
     );
 };
 
-const EntryRow: React.FC<{ entry: ManifestEntry }> = ({ entry }) => {
+function isEntrySelected(
+    ref: EntryRef | undefined,
+    activeLayerPath: readonly string[] | null,
+): boolean {
+    if (ref === undefined || activeLayerPath === null) return false;
+    if (pathsEqual(ref.layerPath, activeLayerPath)) return true;
+    if (ref.framePaths === undefined) return false;
+    return ref.framePaths.some((p) => pathsEqual(p, activeLayerPath));
+}
+
+function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
+const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry, selected }) => {
+    const className = selected ? "preview-row selected" : "preview-row";
     if (entry.kind === "sprite_frame") {
         const sf = entry as SpriteFrameEntry;
         return (
-            <sp-body size="XS" className="preview-row">
+            <sp-body size="XS" className={className}>
                 [sprite_frame] {sf.name} - {sf.frames.length} frames{badges(sf)}
             </sp-body>
         );
     }
     const p = entry as PolygonEntry;
     return (
-        <sp-body size="XS" className="preview-row">
+        <sp-body size="XS" className={className}>
             [{p.kind}] {p.name} -&gt; {p.path}{badges(p)}
         </sp-body>
     );

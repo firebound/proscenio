@@ -70,6 +70,35 @@
           "species": ["generic"]
         }
       ]
+    },
+    {
+      "type": "panel",
+      "id": "proscenioTags",
+      "label": {
+        "default": "Proscenio Tags"
+      },
+      "minimumSize": { "width": 320, "height": 280 },
+      "maximumSize": { "width": 2000, "height": 2000 },
+      "preferredDockedSize": { "width": 380, "height": 600 },
+      "preferredFloatingSize": { "width": 420, "height": 680 },
+      "icons": [
+        {
+          "width": 32,
+          "height": 32,
+          "path": "icons/icon_D.png",
+          "scale": [1, 2],
+          "theme": ["dark", "darkest"],
+          "species": ["generic"]
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "path": "icons/icon_N.png",
+          "scale": [1, 2],
+          "theme": ["lightest", "light"],
+          "species": ["generic"]
+        }
+      ]
     }
   ],
   "icons": [

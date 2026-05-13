@@ -18,6 +18,7 @@ import type { UxpFolder } from "uxp";
 import { adaptDocument } from "../adapters/photoshop-layer";
 import {
     buildExportPlan,
+    type EntryRef,
     type ExportOptions,
     type ExportPlan,
     type PlanWarning,
@@ -27,6 +28,7 @@ import type { Manifest } from "../domain/manifest";
 import { validateManifest } from "../io/manifest-validator";
 import { writeManifest } from "../io/manifest-writer";
 import { runWrites, type PngWriteResult } from "../io/png-writer";
+import { log } from "../util/log";
 
 export interface ExportFlowResult {
     kind: "ok" | "validation-failed" | "no-document" | "failed";
@@ -43,6 +45,7 @@ export interface ExportPreview {
     skipped?: SkippedLayer[];
     warnings?: PlanWarning[];
     writes?: ExportPlan["writes"];
+    entryRefs?: EntryRef[];
     errors?: string[];
 }
 
@@ -51,6 +54,7 @@ export function previewExport(opts: ExportOptions): ExportPreview {
         const doc = app.activeDocument;
         if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
         const adapted = adaptDocument(doc);
+        log.trace("export-flow", "previewExport opts", opts, "layers", adapted.layers.length);
         const plan = buildExportPlan(adapted.info, adapted.layers, {
             ...opts,
             ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
@@ -63,6 +67,7 @@ export function previewExport(opts: ExportOptions): ExportPreview {
                 skipped: plan.skipped,
                 warnings: plan.warnings,
                 writes: plan.writes,
+                entryRefs: plan.entryRefs,
                 errors,
             };
         }
@@ -72,6 +77,7 @@ export function previewExport(opts: ExportOptions): ExportPreview {
             skipped: plan.skipped,
             warnings: plan.warnings,
             writes: plan.writes,
+            entryRefs: plan.entryRefs,
         };
     } catch (err) {
         return {
@@ -87,9 +93,11 @@ export async function runExport(
 ): Promise<ExportFlowResult> {
     const doc = app.activeDocument;
     if (doc === null) {
+        log.warn("export-flow", "runExport: no active document");
         return { kind: "no-document", errors: ["No document is open."] };
     }
 
+    log.info("export-flow", "runExport start", { folder: folder.nativePath, opts });
     const adapted = adaptDocument(doc);
     const plan = buildExportPlan(adapted.info, adapted.layers, {
         ...opts,
@@ -98,6 +106,7 @@ export async function runExport(
 
     const errors = validateManifest(plan.manifest);
     if (errors.length > 0) {
+        log.warn("export-flow", "validation failed", errors);
         return { kind: "validation-failed", errors };
     }
 
@@ -120,6 +129,7 @@ export async function runExport(
         );
         if (!manifestWritten) {
             const failed = pngResults.filter((r) => !r.ok);
+            log.warn("export-flow", "PNG writes failed", failed.length);
             return {
                 kind: "failed",
                 pngResults,
@@ -128,6 +138,10 @@ export async function runExport(
                 ),
             };
         }
+        log.info("export-flow", "runExport done", {
+            entries: plan.manifest.layers.length,
+            manifestFile,
+        });
         return {
             kind: "ok",
             folder: folder.nativePath,
@@ -136,6 +150,7 @@ export async function runExport(
             pngResults,
         };
     } catch (err) {
+        log.error("export-flow", "runExport threw", err);
         return {
             kind: "failed",
             errors: [err instanceof Error ? err.message : String(err)],

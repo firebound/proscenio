@@ -4,20 +4,48 @@
 .proscenio-panel {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 12px;
+    gap: 8px;
+    padding: 8px;
 }
 
 .proscenio-panel .section {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
+}
+
+.proscenio-panel sp-heading {
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+}
+
+.proscenio-panel sp-body {
+    margin: 0;
 }
 
 .proscenio-panel .row {
     display: flex;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+.proscenio-panel sp-action-button {
+    width: 100%;
+    display: block;
+}
+
+.proscenio-panel .row sp-action-button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+}
+
+.proscenio-panel .tag-detail-actions sp-action-button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
 }
 
 .proscenio-panel .muted {
@@ -53,6 +81,312 @@
 
 .proscenio-panel .preview-row.warn {
     color: #ffb74d;
+}
+
+.proscenio-panel .preview-row.selected {
+    background-color: rgba(33, 150, 243, 0.18);
+    border-left: 3px solid #2196f3;
+    padding-left: 6px;
+}
+
+.proscenio-panel .tag-kind-select {
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    padding: 2px 4px;
+}
+
+/* Tags tab - Blender-outliner layout. Plain HTML, zero gaps, hard
+   alignment via fixed-width control column. Names left-justified
+   with depth-based padding; controls anchored to the row's right
+   edge so they line up regardless of indent. */
+
+.proscenio-panel .tag-tree {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.proscenio-panel .tag-row {
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid transparent;
+    contain: strict;
+    content-visibility: auto;
+    contain-intrinsic-size: 20px;
+    width: 100%;
+}
+
+.proscenio-panel .tag-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.proscenio-panel .tag-row.selected {
+    background-color: rgba(33, 150, 243, 0.2);
+    border-left-color: #2196f3;
+}
+
+.proscenio-panel .tag-row-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 20px;
+    overflow: hidden;
+}
+
+.proscenio-panel .tag-row.ignored .tag-name {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.proscenio-panel .tag-row.hidden .tag-name {
+    font-style: italic;
+    opacity: 0.65;
+}
+
+.proscenio-panel .tag-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.proscenio-panel .tag-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 4px;
+}
+
+.proscenio-panel .tag-disclosure {
+    display: inline-block;
+    width: 14px;
+    height: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 18px;
+    cursor: pointer;
+    text-align: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.proscenio-panel .tag-disclosure:hover {
+    color: #fff;
+}
+
+.proscenio-panel .tag-disclosure.disabled {
+    cursor: default;
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.proscenio-panel .tag-name {
+    display: inline-block;
+    flex: 3 1 80px;
+    min-width: 0;
+    height: 20px;
+    color: rgba(255, 255, 255, 0.95);
+    font-family: inherit;
+    font-size: 11px;
+    text-align: left;
+    padding: 0 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 20px;
+    user-select: none;
+}
+
+.proscenio-panel .tag-name:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.proscenio-panel .tag-badges-inline {
+    flex: 1 1 50px;
+    min-width: 0;
+    height: 20px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    padding-right: 2px;
+}
+
+.proscenio-panel .tag-toggle {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.proscenio-panel .tag-toggle + .tag-toggle {
+    margin-left: 1px;
+}
+
+.proscenio-panel .tag-toggle:hover:not(.disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.proscenio-panel .tag-toggle.active {
+    background: #2196f3;
+    border-color: #2196f3;
+    color: #fff;
+}
+
+.proscenio-panel .tag-toggle.disabled {
+    cursor: not-allowed;
+    opacity: 0.22;
+    color: rgba(255, 255, 255, 0.4);
+    background: transparent;
+    pointer-events: none;
+}
+
+.proscenio-panel .tag-select {
+    height: 18px;
+    width: 52px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    padding: 0 2px;
+    margin: 0 0 0 2px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.proscenio-panel .tag-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.proscenio-panel .tag-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    padding: 0 3px;
+    line-height: 14px;
+    height: 14px;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.proscenio-panel .tag-badge-label {
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.proscenio-panel .tag-badge-value {
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.proscenio-panel .tag-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px 4px 4px 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.proscenio-panel .tag-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+}
+
+.proscenio-panel .tag-detail-label {
+    width: 80px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 24px;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.proscenio-panel .tag-detail-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.proscenio-panel input.tag-input {
+    flex: 1;
+    min-width: 0;
+    height: 22px;
+    font-size: 12px;
+    background-color: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    -webkit-text-fill-color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    line-height: 20px;
+    font-family: inherit;
+}
+
+.proscenio-panel input.tag-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+}
+
+.proscenio-panel input.tag-input.narrow {
+    flex: 0 0 60px;
+}
+
+.proscenio-panel input.tag-input:disabled {
+    opacity: 0.4;
+}
+
+.proscenio-panel input[type="checkbox"] {
+    margin: 0;
+    width: 14px;
+    height: 14px;
+}
+
+.proscenio-panel .tag-detail-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 4px;
 }
 
 .proscenio-panel .clickable {

@@ -8,11 +8,62 @@
 // must match the live PSD (the planner uses display-name semantics on
 // the manifest, but selection has to use the raw PS layer name).
 
-import { action, core } from "photoshop";
+import { action, app, core } from "photoshop";
+import type { PsDocument, PsLayer } from "photoshop";
+
+import { log } from "../util/log";
+
+const MAX_DEPTH = 64;
+
+/** Reads the layer-path chain of the single currently-selected PS
+ *  layer. Returns `null` when no document is open, the user has
+ *  multiple layers selected, or the selection cannot be resolved. */
+export function readActiveLayerPath(): string[] | null {
+    try {
+        const doc = app.activeDocument;
+        if (doc === null) return null;
+        const active = doc.activeLayers;
+        if (active === undefined || active.length !== 1) {
+            log.trace("ps-selection", "no single active layer", active?.length);
+            return null;
+        }
+        const chain: string[] = [];
+        let cur: PsLayer | PsDocument | null | undefined = active[0];
+        for (let i = 0; i < MAX_DEPTH; i++) {
+            if (cur === undefined || cur === null) break;
+            if (cur === doc) break;
+            // Doc-shaped sentinel: has width/height but no parent.
+            // Some UXP builds return a fresh wrapper for the document
+            // on the parent chain that fails reference equality with
+            // `doc`. Stop there too.
+            if (isDocumentShape(cur)) break;
+            const name = (cur as PsLayer).name;
+            if (typeof name !== "string") {
+                log.warn("ps-selection", "layer has no name at depth", i, cur);
+                break;
+            }
+            chain.unshift(name);
+            cur = (cur as PsLayer).parent ?? null;
+        }
+        return chain.length === 0 ? null : chain;
+    } catch (err) {
+        log.warn("ps-selection", "readActiveLayerPath threw", err);
+        return null;
+    }
+}
+
+function isDocumentShape(value: PsLayer | PsDocument): boolean {
+    return (
+        "width" in value
+        && "height" in value
+        && !("parent" in (value as object))
+    );
+}
 
 export async function selectLayerByPath(layerPath: readonly string[]): Promise<void> {
     if (layerPath.length === 0) return;
-    const leaf = layerPath[layerPath.length - 1];
+    const leaf = layerPath.at(-1);
+    if (leaf === undefined) return;
     await core.executeAsModal(
         async () => {
             await action.batchPlay(

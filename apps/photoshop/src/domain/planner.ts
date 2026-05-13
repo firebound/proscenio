@@ -34,6 +34,25 @@ export interface ExportOptions {
     skipHidden: boolean;
     pixelsPerUnit?: number;
     anchor?: [number, number];
+    /** Output path template for polygon / mesh entries. Tokens:
+     *  `{name}` (sanitised manifest entry name) and `{kind}`. Default
+     *  `{name}.png`. The `images/` prefix and any `[folder:name]`
+     *  subfolder are prepended automatically; the template only
+     *  controls the file portion. */
+    polygonTemplate?: string;
+    /** Same shape for sprite_frame frame files. Tokens: `{name}`,
+     *  `{index}`. Default `{name}/{index}.png`. */
+    framesTemplate?: string;
+}
+
+const DEFAULT_POLYGON_TEMPLATE = "{name}.png";
+const DEFAULT_FRAMES_TEMPLATE = "{name}/{index}.png";
+
+function applyTemplate(template: string, tokens: Record<string, string | number>): string {
+    return template.replaceAll(/\{(\w+)\}/g, (match, key: string) => {
+        const value = tokens[key];
+        return value === undefined ? match : String(value);
+    });
 }
 
 export interface DocumentInfo {
@@ -55,6 +74,21 @@ export interface ExportPlan {
     writes: PngWrite[];
     skipped: SkippedLayer[];
     warnings: PlanWarning[];
+    /** Mapping from manifest entry (by index, parallel to
+     *  `manifest.layers`) back to the PSD layers that produced it.
+     *  The Debug / Tags surfaces use this to highlight the manifest
+     *  row that matches the currently selected PS layer. */
+    entryRefs: EntryRef[];
+}
+
+export interface EntryRef {
+    name: string;
+    kind: "polygon" | "mesh" | "sprite_frame";
+    /** Polygon / mesh: the source layer (or [merge] group).
+     *  sprite_frame: the group layer that hosts the frames. */
+    layerPath: string[];
+    /** Per-frame source layer chains. Present only on sprite_frame. */
+    framePaths?: string[][];
 }
 
 export interface SkippedLayer {
@@ -94,7 +128,7 @@ export function buildExportPlan(
         skipped: [],
         warnings: [],
         zCounter: { value: 0 },
-        opts,
+        settings: settingsFromOptions(opts),
     };
     walkLayers(parseChildren(layers), "", [], {}, ctx);
     const manifest: Manifest = {
@@ -111,6 +145,37 @@ export function buildExportPlan(
         writes: ctx.out.flatMap(toWrites),
         skipped: ctx.skipped,
         warnings: ctx.warnings,
+        entryRefs: ctx.out.map(toEntryRef),
+    };
+}
+
+function toEntryRef(entry: PlannedEntry): EntryRef {
+    if (entry.kind === "sprite_frame") {
+        return {
+            name: entry.name,
+            kind: "sprite_frame",
+            layerPath: entry._groupLayerPath,
+            framePaths: entry._frameSources.map((s) => s.layerPath),
+        };
+    }
+    return {
+        name: entry.name,
+        kind: entry.kind,
+        layerPath: entry._source.layerPath,
+    };
+}
+
+interface PlannerSettings {
+    skipHidden: boolean;
+    polygonTemplate: string;
+    framesTemplate: string;
+}
+
+function settingsFromOptions(opts: ExportOptions): PlannerSettings {
+    return {
+        skipHidden: opts.skipHidden,
+        polygonTemplate: opts.polygonTemplate ?? DEFAULT_POLYGON_TEMPLATE,
+        framesTemplate: opts.framesTemplate ?? DEFAULT_FRAMES_TEMPLATE,
     };
 }
 
@@ -119,7 +184,7 @@ interface WalkContext {
     skipped: SkippedLayer[];
     warnings: PlanWarning[];
     zCounter: { value: number };
-    opts: ExportOptions;
+    settings: PlannerSettings;
 }
 
 function emitTagConflicts(
@@ -179,7 +244,10 @@ interface PngWriteSource {
     merge: boolean;
 }
 type PlannedPolygon = PolygonEntry & { _source: PngWriteSource };
-type PlannedSpriteFrame = SpriteFrameEntry & { _frameSources: PngWriteSource[] };
+type PlannedSpriteFrame = SpriteFrameEntry & {
+    _frameSources: PngWriteSource[];
+    _groupLayerPath: string[];
+};
 type PlannedEntry = PlannedPolygon | PlannedSpriteFrame;
 
 function parseChildren(children: Layer[]): ParsedLayer[] {
@@ -220,7 +288,7 @@ function walkLayers(
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
             continue;
         }
-        if (ctx.opts.skipHidden && !parsed.raw.visible) {
+        if (ctx.settings.skipHidden && !parsed.raw.visible) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "hidden" });
             continue;
         }
@@ -238,6 +306,7 @@ function walkLayers(
             childPath,
             ctx.zCounter.value,
             inherit(inherited, parsed.tags),
+            ctx.settings,
         );
         if (entry === null) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
@@ -263,7 +332,7 @@ function handleGroup(
 
     if (
         explicitSpriteFrame
-        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.opts.skipHidden))
+        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.settings.skipHidden))
     ) {
         const entry = buildSpriteFrameEntry(
             parsed,
@@ -272,7 +341,7 @@ function handleGroup(
             layerPath,
             ctx.zCounter.value,
             groupInherited,
-            ctx.opts.skipHidden,
+            ctx.settings,
         );
         if (entry !== null) {
             ctx.out.push(entry);
@@ -298,6 +367,7 @@ function handleGroup(
             layerPath,
             ctx.zCounter.value,
             groupInherited,
+            ctx.settings,
         );
         if (entry !== null) {
             ctx.out.push(entry);
@@ -338,15 +408,15 @@ function buildSpriteFrameEntry(
     layerPath: string[],
     zOrder: number,
     inherited: InheritedTags,
-    skipHidden: boolean,
+    settings: PlannerSettings,
 ): PlannedSpriteFrame | null {
     const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
     const folder = group.tags.folder ?? inherited.folder;
     const blend = group.tags.blend ?? inherited.blend;
     const safeName = group.tags.path ?? sanitize(meshName);
-    const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
+    const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
 
-    const sortedFrames = collectFrameChildren(children, skipHidden);
+    const sortedFrames = collectFrameChildren(children, settings.skipHidden);
     if (sortedFrames.length < 2) return null;
 
     let maxBounds: LayerBounds | null = null;
@@ -359,7 +429,8 @@ function buildSpriteFrameEntry(
             maxBounds = bounds;
         }
         const index = frameIndex(child.displayName);
-        frames.push({ index, path: `${dirPath}/${index}.png` });
+        const framePath = `${folderPrefix}/${applyTemplate(settings.framesTemplate, { name: safeName, index })}`;
+        frames.push({ index, path: framePath });
         sources.push({
             layerPath: [...layerPath, child.raw.name],
             merge: child.tags.merge === true,
@@ -385,6 +456,7 @@ function buildSpriteFrameEntry(
         ...optionalBlend(blend),
         ...(folder === undefined ? {} : { subfolder: folder }),
         _frameSources: sources,
+        _groupLayerPath: layerPath,
     };
 }
 
@@ -460,14 +532,16 @@ function buildPolygonEntry(
     layerPath: string[],
     zOrder: number,
     inherited: InheritedTags,
+    settings: PlannerSettings,
 ): PlannedPolygon | null {
     const bounds = scaledBounds(effectiveBounds(source), source.tags.scale);
     if (bounds === null) return null;
     const folder = inherited.folder;
     const blend = inherited.blend;
     const safeName = source.tags.path ?? sanitize(name);
-    const path = folder === undefined ? `images/${safeName}.png` : `images/${sanitize(folder)}/${safeName}.png`;
     const kind: "polygon" | "mesh" = source.tags.kind === "mesh" ? "mesh" : "polygon";
+    const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
+    const path = `${folderPrefix}/${applyTemplate(settings.polygonTemplate, { name: safeName, kind })}`;
     // For `[merge]` groups, an inner `[origin]` marker layer provides
     // the pivot when no explicit `[origin:x,y]` is set on the group.
     const originFromMarker = source.raw.kind === "set"

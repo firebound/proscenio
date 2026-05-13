@@ -479,3 +479,114 @@ describe("buildExportPlan writes", () => {
         expect(plan.writes[2].layerPath).toEqual(["blink", "2"]);
     });
 });
+
+describe("filename templates", () => {
+    it("applies polygonTemplate to polygon entry paths", () => {
+        const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{kind}/{name}.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/polygon/torso.png");
+    });
+
+    it("applies polygonTemplate when [folder:...] is set", () => {
+        const layers: Layer[] = [art("eye [folder:eyes]", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}-img.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/eyes/eye-img.png");
+    });
+
+    it("applies polygonTemplate to [mesh] groups via {kind}", () => {
+        const layers: Layer[] = [
+            set("body [mesh] [merge]", [art("a", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}.{kind}.png",
+        });
+        expect(m.layers[0].kind).toBe("mesh");
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/body.mesh.png");
+    });
+
+    it("applies framesTemplate to sprite_frame paths", () => {
+        const layers: Layer[] = [
+            set("blink", [art("0"), art("1"), art("2")]),
+        ];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            framesTemplate: "frames/{name}_{index}.png",
+        });
+        const sf = m.layers[0] as SpriteFrameEntry;
+        expect(sf.frames[0].path).toBe("images/frames/blink_0.png");
+        expect(sf.frames[2].path).toBe("images/frames/blink_2.png");
+    });
+
+    it("leaves unknown tokens in place (no replacement)", () => {
+        const layers: Layer[] = [art("a", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}.{nonexistent}.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/a.{nonexistent}.png");
+    });
+
+    it("uses default templates when none provided", () => {
+        const layers: Layer[] = [
+            art("torso", { x: 0, y: 0, w: 10, h: 10 }),
+            set("blink", [art("0"), art("1")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/torso.png");
+        expect((m.layers[1] as SpriteFrameEntry).frames[0].path).toBe("images/blink/0.png");
+    });
+
+    it("threads template paths into writes", () => {
+        const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
+        const plan = buildExportPlan(doc, layers, {
+            ...opts,
+            polygonTemplate: "{kind}/{name}.png",
+        });
+        expect(plan.writes[0].outputPath).toBe("images/polygon/torso.png");
+    });
+});
+
+describe("entryRefs", () => {
+    it("maps polygon entries to their source layer chain", () => {
+        const layers: Layer[] = [
+            set("body", [art("torso", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs).toHaveLength(1);
+        expect(plan.entryRefs[0]).toEqual({
+            name: "body__torso",
+            kind: "polygon",
+            layerPath: ["body", "torso"],
+        });
+    });
+
+    it("maps sprite_frame to the group + per-frame layer paths", () => {
+        const layers: Layer[] = [
+            set("blink", [art("0"), art("1"), art("2")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs).toHaveLength(1);
+        expect(plan.entryRefs[0]).toEqual({
+            name: "blink",
+            kind: "sprite_frame",
+            layerPath: ["blink"],
+            framePaths: [["blink", "0"], ["blink", "1"], ["blink", "2"]],
+        });
+    });
+
+    it("preserves mesh kind on entry ref", () => {
+        const layers: Layer[] = [
+            set("body [mesh] [merge]", [art("a", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs[0].kind).toBe("mesh");
+        expect(plan.entryRefs[0].layerPath).toEqual(["body [mesh] [merge]"]);
+    });
+});

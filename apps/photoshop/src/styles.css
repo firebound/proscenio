@@ -389,6 +389,31 @@
     margin-top: 4px;
 }
 
+.proscenio-panel .reveal-row {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    font-size: 11px;
+}
+
+.proscenio-panel .reveal-label {
+    width: 80px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 9px;
+    flex-shrink: 0;
+}
+
+.proscenio-panel .reveal-value {
+    color: rgba(255, 255, 255, 0.95);
+    word-break: break-all;
+}
+
+.proscenio-panel .reveal-value.mono {
+    font-family: monospace;
+}
+
 .proscenio-panel .clickable {
     cursor: pointer;
     text-decoration: underline;

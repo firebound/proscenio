@@ -590,3 +590,69 @@ describe("entryRefs", () => {
         expect(plan.entryRefs[0].layerPath).toEqual(["body [mesh] [merge]"]);
     });
 });
+
+describe("planner warnings", () => {
+    it("emits origin-outside-container when [origin] sits at the doc root", () => {
+        const layers: Layer[] = [art("pivot [origin]")];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeDefined();
+        expect(warning?.layerPath).toEqual(["pivot [origin]"]);
+    });
+
+    it("emits origin-outside-container inside a plain passthrough group", () => {
+        const layers: Layer[] = [
+            set("body", [art("pivot [origin]"), art("torso")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeDefined();
+    });
+
+    it("does NOT warn when [origin] sits inside a [merge] group", () => {
+        const layers: Layer[] = [
+            set("body [merge]", [art("pivot [origin]"), art("torso")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeUndefined();
+    });
+
+    it("does NOT warn when [origin] sits inside a [spritesheet] group", () => {
+        const layers: Layer[] = [
+            set("anim [spritesheet]", [art("pivot [origin]"), art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeUndefined();
+    });
+
+    it("emits empty-bounds warning when a layer has zero-size bbox", () => {
+        const layers: Layer[] = [
+            art("empty", { x: 0, y: 0, w: 0, h: 0 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "empty-bounds");
+        expect(warning).toBeDefined();
+        expect(warning?.layerPath).toEqual(["empty"]);
+    });
+
+    it("emits scale-subpixel warning when [scale:N] yields fractional bounds", () => {
+        const layers: Layer[] = [
+            art("torso [scale:0.5]", { x: 11, y: 13, w: 7, h: 9 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "scale-subpixel");
+        expect(warning).toBeDefined();
+        expect(warning?.message).toMatch(/sub-pixel/);
+    });
+
+    it("does NOT emit scale-subpixel when scale produces integer bounds", () => {
+        const layers: Layer[] = [
+            art("torso [scale:2]", { x: 10, y: 10, w: 10, h: 10 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "scale-subpixel");
+        expect(warning).toBeUndefined();
+    });
+});

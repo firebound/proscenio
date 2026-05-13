@@ -10,6 +10,7 @@ import React from "react";
 
 import type { TagBag } from "../../../domain/tag-parser";
 import type { TagTreeNode } from "../../../domain/tag-tree";
+import { readSelectionCenter } from "../../../io/ps-selection-bounds";
 import { log } from "../../../util/log";
 
 interface DetailForm {
@@ -175,6 +176,20 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
         [setField],
     );
 
+    const onUseSelection = React.useCallback(() => {
+        const center = readSelectionCenter();
+        if (center === null) {
+            log.warn("TagsSection.details", "use-selection: no marquee selection bounds");
+            return;
+        }
+        log.debug("TagsSection.details", "use-selection", center);
+        setForm((prev) => ({
+            ...prev,
+            originX: String(center.x),
+            originY: String(center.y),
+        }));
+    }, []);
+
     return (
         <div className="tag-details" style={{ paddingLeft: `${indentPx + 18}px` }}>
             <DetailRow label="folder" hint="[folder:NAME] - output subfolder under images/">
@@ -224,6 +239,13 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     disabled={busy}
                     onChange={onOriginY}
                 />
+                <sp-action-button
+                    onClick={onUseSelection}
+                    disabled={busy ? true : undefined}
+                    title="Fill X / Y from the centre of the current Photoshop marquee selection"
+                >
+                    From selection
+                </sp-action-button>
             </DetailRow>
             <DetailRow label="origin marker" hint="[origin] - layer's bbox centre = parent group's pivot">
                 <input

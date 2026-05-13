@@ -39,6 +39,12 @@ export interface ExportFlowResult {
     errors?: string[];
 }
 
+export interface SingleLayerExportResult {
+    kind: "ok" | "no-document" | "not-found" | "failed";
+    pngResults?: PngWriteResult[];
+    errors?: string[];
+}
+
 export interface ExportPreview {
     kind: "ok" | "no-document" | "validation-failed";
     manifest?: Manifest;
@@ -161,4 +167,76 @@ export async function runExport(
 function manifestFileName(docName: string): string {
     const stem = docName.replace(/\.[^.]+$/, "");
     return `${stem}.photoshop_exported.json`;
+}
+
+/** Re-exports the PNG(s) belonging to a single manifest entry. Looks
+ *  the entry up by `entryName` (manifest layer name) and only writes
+ *  its PNG(s). The manifest JSON is NOT touched - this is a debugging
+ *  aid for iterating on one asset without rewriting the whole bundle.
+ */
+export async function runSingleLayerExport(
+    opts: ExportOptions,
+    folder: UxpFolder,
+    entryName: string,
+): Promise<SingleLayerExportResult> {
+    const doc = app.activeDocument;
+    if (doc === null) {
+        log.warn("export-flow", "single: no active document");
+        return { kind: "no-document", errors: ["No document is open."] };
+    }
+
+    const adapted = adaptDocument(doc);
+    const plan = buildExportPlan(adapted.info, adapted.layers, {
+        ...opts,
+        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+    });
+
+    const matchingWrites = plan.writes.filter((w) => writeBelongsToEntry(w, entryName, plan));
+    if (matchingWrites.length === 0) {
+        log.warn("export-flow", "single: entry not found", entryName);
+        return { kind: "not-found", errors: [`No manifest entry named "${entryName}".`] };
+    }
+
+    try {
+        const pngResults = await core.executeAsModal(
+            async () => runWrites(doc, folder, matchingWrites),
+            { commandName: `Proscenio re-export ${entryName}` },
+        );
+        log.info("export-flow", "single done", { entryName, files: pngResults.length });
+        const failed = pngResults.filter((r) => !r.ok);
+        if (failed.length > 0) {
+            return {
+                kind: "failed",
+                pngResults,
+                errors: failed.map((r) => `${r.outputPath}: ${r.skippedReason ?? "failed"}`),
+            };
+        }
+        return { kind: "ok", pngResults };
+    } catch (err) {
+        log.error("export-flow", "single threw", err);
+        return {
+            kind: "failed",
+            errors: [err instanceof Error ? err.message : String(err)],
+        };
+    }
+}
+
+function writeBelongsToEntry(
+    write: ExportPlan["writes"][number],
+    entryName: string,
+    plan: ExportPlan,
+): boolean {
+    const ref = plan.entryRefs.find((r) => r.name === entryName);
+    if (ref === undefined) return false;
+    if (samePath(ref.layerPath, write.layerPath)) return true;
+    if (ref.framePaths === undefined) return false;
+    return ref.framePaths.some((p) => samePath(p, write.layerPath));
+}
+
+function samePath(a: readonly string[], b: readonly string[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
 }

@@ -11,6 +11,8 @@
 import { app, core } from "photoshop";
 
 import { findLayerByPath } from "./_layer-find";
+import { writeLayerTagsToXmp } from "./xmp";
+import { parseLayerName } from "../domain/tag-parser";
 import { log } from "../util/log";
 
 export interface RenameResult {
@@ -37,6 +39,12 @@ export async function renameLayer(
         await core.executeAsModal(
             async () => {
                 target.name = newName;
+                // Best-effort XMP mirror per SPEC 011 D2. Bracket
+                // tag in the name stays canonical; if this fails it
+                // logs at debug and the rename still counts as ok.
+                const newLayerPath = [...layerPath.slice(0, -1), newName];
+                const newTags = parseLayerName(newName).tags;
+                writeLayerTagsToXmp(target, newLayerPath, newTags);
                 result = { ok: true };
             },
             { commandName: "Update Proscenio tags" },

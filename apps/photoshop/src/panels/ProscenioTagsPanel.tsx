@@ -13,8 +13,10 @@ import { useDocSnapshot } from "../hooks/useDocSnapshot";
 import { useDocumentChanges } from "../hooks/useDocumentChanges";
 import { useExportPreview } from "../hooks/useExportPreview";
 import { useFilenameTemplate } from "../hooks/useFilenameTemplate";
+import { useFolderCache } from "../hooks/useFolderCache";
 import { useTagTree } from "../hooks/useTagTree";
 import { DocSection } from "./sections/DocSection";
+import { RevealOutputSection } from "./sections/RevealOutputSection";
 import { TagsSection } from "./sections/TagsSection";
 import { ValidateSection } from "./sections/ValidateSection";
 
@@ -25,6 +27,7 @@ export const ProscenioTagsPanel: React.FC = () => {
     const tags = useTagTree(version);
     const preview = useExportPreview();
     const templates = useFilenameTemplate();
+    const { folder } = useFolderCache();
     const [collapsed, setCollapsed] = React.useState<ReadonlySet<string>>(() => new Set());
 
     const opts = React.useMemo<ExportOptions>(
@@ -71,6 +74,12 @@ export const ProscenioTagsPanel: React.FC = () => {
                 lastError={tags.lastError}
                 onRename={onRename}
                 onToggleCollapse={onToggleCollapse}
+            />
+            <RevealOutputSection
+                preview={preview.preview}
+                activeLayerPath={activeLayerPath}
+                folder={folder}
+                opts={opts}
             />
             <ValidateSection preview={preview.preview} />
         </div>

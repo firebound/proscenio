@@ -12,6 +12,7 @@
 import React from "react";
 
 import { readActiveLayerPath } from "../io/ps-selection";
+import { elementsEqual } from "../util/arrays";
 import { log } from "../util/log";
 
 const POLL_MS = 300;
@@ -55,9 +56,5 @@ export function useActiveLayerPath(version: number): readonly string[] | null {
 function pathsEqual(a: readonly string[] | null, b: readonly string[] | null): boolean {
     if (a === b) return true;
     if (a === null || b === null) return false;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
+    return elementsEqual(a, b);
 }

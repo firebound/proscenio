@@ -1,9 +1,17 @@
-// Tree shape the Tags tab renders. Hangs off the adapted Layer[] but
-// pre-resolves the parsed display name + TagBag per node so the UI
-// does not re-parse on every keystroke. Pure - no PS runtime touch.
+// Tree shape the Tags tab renders. Pre-resolves the parsed display
+// name + TagBag per node so the UI does not re-parse on every
+// keystroke. Pure - no PS runtime touch.
+//
+// `buildTagTreeReusing` returns the prior node reference verbatim
+// when nothing about a layer (rawName, visibility, parent chain) and
+// its descendants has changed. That keeps `React.memo` happy: rows
+// that did not change keep their `node` prop by reference, so the
+// memo bail-out is a single pointer compare instead of a structural
+// walk.
 
 import type { Layer } from "./layer";
 import { parseLayerName, type TagBag } from "./tag-parser";
+import { elementsEqual } from "../util/arrays";
 
 export interface TagTreeNode {
     /** Names from the document root down to this node, inclusive. */
@@ -26,15 +34,6 @@ export interface TagTreeNode {
     children: TagTreeNode[];
 }
 
-export function buildTagTree(layers: Layer[]): TagTreeNode[] {
-    return layers.map((layer) => toNode(layer, [], [], 0));
-}
-
-/** Builds the tree while reusing previous node references when nothing
- *  about a node (rawName, visibility, parent chain) and its descendants
- *  has changed. Keeps `React.memo` happy: rows that did not change keep
- *  their `node` prop by reference, so the memo bail-out is a single
- *  pointer compare instead of a structural walk. */
 export function buildTagTreeReusing(
     layers: Layer[],
     prev: TagTreeNode[] | null,
@@ -49,11 +48,43 @@ function reuseOrBuild(
     parentDisplayPath: string[],
     depth: number,
 ): TagTreeNode {
+    const isGroup = layer.kind === "set";
+
+    // Fast path: rawName + visibility + depth + parent chain all match.
+    // Skip `parseLayerName` and reuse the prior tags/displayName.
+    if (
+        prev !== null
+        && prev.rawName === layer.name
+        && prev.visible === layer.visible
+        && prev.isGroup === isGroup
+        && prev.depth === depth
+        && elementsEqual(prev.layerPath.slice(0, -1), parentLayerPath)
+        && elementsEqual(prev.displayPath.slice(0, -1), parentDisplayPath)
+    ) {
+        if (!isGroup) return prev;
+        const children = (layer as { layers: Layer[] }).layers.map((child, i) =>
+            reuseOrBuild(child, prev.children[i] ?? null, prev.layerPath, prev.displayPath, depth + 1));
+        if (elementsEqual(prev.children, children)) return prev;
+        // Children changed; keep this node's own fields (rawName,
+        // tags, displayName) but swap in the new children array.
+        return {
+            layerPath: prev.layerPath,
+            displayPath: prev.displayPath,
+            rawName: prev.rawName,
+            displayName: prev.displayName,
+            tags: prev.tags,
+            isGroup: prev.isGroup,
+            visible: prev.visible,
+            depth: prev.depth,
+            children,
+        };
+    }
+
+    // Slow path: parse + build fresh node.
     const layerPath = [...parentLayerPath, layer.name];
     const parsed = parseLayerName(layer.name);
     const stable = parsed.displayName.length > 0 ? parsed.displayName : layer.name;
     const displayPath = [...parentDisplayPath, stable];
-    const isGroup = layer.kind === "set";
 
     const children: TagTreeNode[] = isGroup
         ? layer.layers.map((child, i) => reuseOrBuild(
@@ -64,19 +95,6 @@ function reuseOrBuild(
             depth + 1,
         ))
         : [];
-
-    if (
-        prev !== null
-        && prev.rawName === layer.name
-        && prev.visible === layer.visible
-        && prev.isGroup === isGroup
-        && prev.depth === depth
-        && stringArraysEqual(prev.layerPath, layerPath)
-        && stringArraysEqual(prev.displayPath, displayPath)
-        && childrenRefEqual(prev.children, children)
-    ) {
-        return prev;
-    }
     return {
         layerPath,
         displayPath,
@@ -88,52 +106,4 @@ function reuseOrBuild(
         depth,
         children,
     };
-}
-
-function elementsEqual<T>(a: readonly T[], b: readonly T[]): boolean {
-    if (a === b) return true;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-}
-
-const stringArraysEqual = elementsEqual<string>;
-const childrenRefEqual = elementsEqual<TagTreeNode>;
-
-function toNode(
-    layer: Layer,
-    parentLayerPath: string[],
-    parentDisplayPath: string[],
-    depth: number,
-): TagTreeNode {
-    const layerPath = [...parentLayerPath, layer.name];
-    const parsed = parseLayerName(layer.name);
-    const stable = parsed.displayName.length > 0 ? parsed.displayName : layer.name;
-    const displayPath = [...parentDisplayPath, stable];
-    const isGroup = layer.kind === "set";
-    return {
-        layerPath,
-        displayPath,
-        rawName: layer.name,
-        displayName: parsed.displayName,
-        tags: parsed.tags,
-        isGroup,
-        visible: layer.visible,
-        depth,
-        children: isGroup
-            ? layer.layers.map((child) => toNode(child, layerPath, displayPath, depth + 1))
-            : [],
-    };
-}
-
-/** Flattens the tree depth-first for virtualised / sequential render. */
-export function flattenTagTree(nodes: TagTreeNode[]): TagTreeNode[] {
-    const out: TagTreeNode[] = [];
-    for (const node of nodes) {
-        out.push(node);
-        if (node.children.length > 0) out.push(...flattenTagTree(node.children));
-    }
-    return out;
 }

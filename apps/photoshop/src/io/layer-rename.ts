@@ -8,8 +8,9 @@
 // resolve the target reference OUTSIDE the modal and only do the
 // `target.name = ...` mutation inside.
 
-import { app, core, type PsDocument, type PsLayer } from "photoshop";
+import { app, core } from "photoshop";
 
+import { findLayerByPath } from "./_layer-find";
 import { log } from "../util/log";
 
 export interface RenameResult {
@@ -28,7 +29,6 @@ export async function renameLayer(
     }
     const target = findLayerByPath(doc, layerPath);
     if (target === null) {
-        log.warn("layer-rename", "layer not found", layerPath);
         return { ok: false, reason: "layer not found" };
     }
     log.debug("layer-rename", "rename", layerPath, "->", newName);
@@ -49,53 +49,4 @@ export async function renameLayer(
     }
     if (!result.ok) log.warn("layer-rename", "failed", layerPath, result.reason);
     return result;
-}
-
-function findLayerByPath(doc: PsDocument, layerPath: readonly string[]): PsLayer | null {
-    if (layerPath.length === 0) return null;
-    let candidates: PsLayer[] = toArray(doc.layers as ArrayLike<PsLayer> | undefined);
-    let target: PsLayer | null = null;
-    for (let depth = 0; depth < layerPath.length; depth++) {
-        const segment = layerPath[depth];
-        const liveNames = candidates.map((l) => l.name);
-        log.trace(
-            "layer-rename.find",
-            "depth",
-            depth,
-            "seg",
-            JSON.stringify(segment),
-            "live",
-            JSON.stringify(liveNames),
-        );
-        let found: PsLayer | null = null;
-        for (const layer of candidates) {
-            if (layer.name === segment) { found = layer; break; }
-        }
-        if (found === null) {
-            log.warn("layer-rename.find", "no match at depth", depth, {
-                seeking: segment,
-                seekingChars: charCodes(segment),
-                liveAtDepth: JSON.stringify(liveNames),
-                liveChars: JSON.stringify(liveNames.map(charCodes)),
-            });
-            return null;
-        }
-        target = found;
-        candidates = toArray((found as { layers?: ArrayLike<PsLayer> }).layers);
-    }
-    return target;
-}
-
-function toArray(value: ArrayLike<PsLayer> | undefined): PsLayer[] {
-    if (value === undefined || value === null) return [];
-    return Array.from(value);
-}
-
-function charCodes(s: string): number[] {
-    const out: number[] = [];
-    for (const ch of s) {
-        const code = ch.codePointAt(0);
-        if (code !== undefined) out.push(code);
-    }
-    return out;
 }

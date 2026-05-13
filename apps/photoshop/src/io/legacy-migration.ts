@@ -10,8 +10,9 @@
 // silently slips through, which is acceptable for a one-shot artist
 // helper.
 
-import { app, core, type PsDocument, type PsLayer } from "photoshop";
+import { app, core } from "photoshop";
 
+import { findLayerByPath } from "./_layer-find";
 import { adaptDocument } from "../adapters/photoshop-layer";
 import {
     planUnderscoreMigration,
@@ -76,17 +77,4 @@ export async function applyUnderscoreMigration(): Promise<MigrationResult> {
     );
     log.info("legacy-migration", "renamed", renamed, "failed", failures.length);
     return { renamed, failures };
-}
-
-function findLayerByPath(doc: PsDocument, layerPath: readonly string[]): PsLayer | null {
-    let layers: PsLayer[] | undefined = doc.layers;
-    let target: PsLayer | null = null;
-    for (const segment of layerPath) {
-        if (layers === undefined) return null;
-        const found: PsLayer | undefined = layers.find((l: PsLayer) => l.name === segment);
-        if (found === undefined) return null;
-        target = found;
-        layers = found.layers;
-    }
-    return target;
 }

@@ -20,6 +20,7 @@ import { app } from "photoshop";
 import { adaptDocument } from "../adapters/photoshop-layer";
 import { buildTagTreeReusing, type TagTreeNode } from "../domain/tag-tree";
 import { renameLayer, type RenameResult } from "../io/layer-rename";
+import { elementsEqual } from "../util/arrays";
 
 const POLL_MS = 1500;
 
@@ -38,15 +39,21 @@ export function useTagTree(version: number): UseTagTree {
     const [busy, setBusy] = React.useState(false);
     const [lastError, setLastError] = React.useState<string | null>(null);
     const [tick, setTick] = React.useState(0);
-    const lastHashRef = React.useRef<string>("__init__");
     const treeRef = React.useRef<TagTreeNode[]>([]);
+    const noDocRef = React.useRef<boolean>(true);
 
     const syncOnce = React.useCallback(() => {
         if (typeof document !== "undefined" && document.hidden === true) return;
         const snap = readTree(treeRef.current);
-        const hash = hashTree(snap.tree, snap.noDocument);
-        if (hash === lastHashRef.current) return;
-        lastHashRef.current = hash;
+        // `buildTagTreeReusing` preserves node refs for unchanged
+        // subtrees, so a top-level element-wise compare is enough
+        // to bail when nothing structural moved - O(top-level
+        // count) instead of walking the whole tree.
+        if (
+            snap.noDocument === noDocRef.current
+            && elementsEqual(treeRef.current, snap.tree)
+        ) return;
+        noDocRef.current = snap.noDocument;
         treeRef.current = snap.tree;
         setTree(snap.tree);
         setNoDocument(snap.noDocument);
@@ -86,22 +93,4 @@ function readTree(prev: TagTreeNode[]): { tree: TagTreeNode[]; noDocument: boole
     if (doc === null) return { tree: [], noDocument: true };
     const adapted = adaptDocument(doc);
     return { tree: buildTagTreeReusing(adapted.layers, prev), noDocument: false };
-}
-
-function hashTree(nodes: TagTreeNode[], noDocument: boolean): string {
-    if (noDocument) return "no-doc";
-    const parts: string[] = [];
-    walkHash(nodes, parts);
-    return parts.join("|");
-}
-
-function walkHash(nodes: TagTreeNode[], out: string[]): void {
-    for (const n of nodes) {
-        out.push(n.rawName, n.visible ? "1" : "0");
-        if (n.children.length > 0) {
-            out.push("[");
-            walkHash(n.children, out);
-            out.push("]");
-        }
-    }
 }

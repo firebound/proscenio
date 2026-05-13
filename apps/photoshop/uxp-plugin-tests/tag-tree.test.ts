@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import { buildTagTree, flattenTagTree } from "../src/domain/tag-tree";
+import { buildTagTreeReusing, type TagTreeNode } from "../src/domain/tag-tree";
 
 function art(name: string, visible = true): ArtLayer {
     return { kind: "art", name, visible, bounds: { x: 0, y: 0, w: 10, h: 10 } };
@@ -14,9 +14,13 @@ function set(name: string, layers: Layer[], visible = true): LayerSet {
     return { kind: "set", name, visible, layers };
 }
 
-describe("buildTagTree", () => {
+function build(layers: Layer[]): TagTreeNode[] {
+    return buildTagTreeReusing(layers, null);
+}
+
+describe("buildTagTreeReusing - fresh build", () => {
     it("parses tags on leaf layers", () => {
-        const tree = buildTagTree([art("torso [ignore]")]);
+        const tree = build([art("torso [ignore]")]);
         expect(tree[0]).toMatchObject({
             displayName: "torso",
             tags: { ignore: true },
@@ -31,7 +35,7 @@ describe("buildTagTree", () => {
         const layers: Layer[] = [
             set("body [merge]", [art("torso"), art("head")]),
         ];
-        const tree = buildTagTree(layers);
+        const tree = build(layers);
         expect(tree[0].isGroup).toBe(true);
         expect(tree[0].tags.merge).toBe(true);
         expect(tree[0].children).toHaveLength(2);
@@ -40,24 +44,49 @@ describe("buildTagTree", () => {
     });
 
     it("propagates visibility", () => {
-        const tree = buildTagTree([art("hidden", false)]);
+        const tree = build([art("hidden", false)]);
         expect(tree[0].visible).toBe(false);
     });
 });
 
-describe("flattenTagTree", () => {
-    it("emits nodes depth-first", () => {
+describe("buildTagTreeReusing - reuse", () => {
+    it("returns the same node reference when nothing changed", () => {
+        const layers: Layer[] = [art("torso"), art("head")];
+        const first = build(layers);
+        const second = buildTagTreeReusing(layers, first);
+        expect(second[0]).toBe(first[0]);
+        expect(second[1]).toBe(first[1]);
+    });
+
+    it("returns the same group reference when its subtree is intact", () => {
         const layers: Layer[] = [
-            set("body", [art("torso"), set("head", [art("hair")])]),
-            art("ground"),
+            set("body", [art("torso"), art("head")]),
         ];
-        const flat = flattenTagTree(buildTagTree(layers));
-        expect(flat.map((n) => n.rawName)).toEqual([
-            "body",
-            "torso",
-            "head",
-            "hair",
-            "ground",
+        const first = build(layers);
+        const second = buildTagTreeReusing(layers, first);
+        expect(second[0]).toBe(first[0]);
+        expect(second[0].children[0]).toBe(first[0].children[0]);
+    });
+
+    it("rebuilds only the changed branch", () => {
+        const first = build([
+            set("body", [art("torso"), art("head")]),
+            art("ground"),
         ]);
+        const second = buildTagTreeReusing(
+            [
+                set("body", [art("torso [ignore]"), art("head")]),
+                art("ground"),
+            ],
+            first,
+        );
+        // ground stayed identical
+        expect(second[1]).toBe(first[1]);
+        // body group needs a new wrapper (one child changed)...
+        expect(second[0]).not.toBe(first[0]);
+        // ...but the unchanged sibling head keeps its reference.
+        expect(second[0].children[1]).toBe(first[0].children[1]);
+        // and the renamed child got fresh tags.
+        expect(second[0].children[0].tags.ignore).toBe(true);
     });
 });

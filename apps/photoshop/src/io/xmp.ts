@@ -18,7 +18,19 @@ import { log } from "../util/log";
 
 export const PROSCENIO_XMP_NAMESPACE_URI = "https://proscenio.dev/spec-011/v1";
 export const PROSCENIO_XMP_PREFIX = "proscenio";
-const XMP_PROPERTY_PREFIX = "tags/";
+const XMP_PROPERTY_PREFIX = "tag_";
+
+// XMP local names must follow XML NCName rules: letters, digits,
+// underscore, hyphen, period; cannot contain `/` or whitespace. PSD
+// layer names happily include both, so we sanitise the path before
+// passing it to `setProperty`. Two distinct paths can collide here
+// (rare in practice); the bracket-tag canonical store is authoritative
+// regardless.
+function xmpPropertyName(layerPath: readonly string[]): string {
+    const joined = layerPath.join("__");
+    const safe = joined.replaceAll(/[^A-Za-z0-9_\-.]/g, "_");
+    return XMP_PROPERTY_PREFIX + safe;
+}
 
 interface XMPMetaCtor {
     new (raw?: string): XMPMetaInstance;
@@ -80,7 +92,7 @@ export function writeLayerTagsToXmp(
         const raw = carrier.xmpMetadata ?? carrier.metadata?.xmp ?? "";
         const meta = new mod.XMPMeta(raw);
         mod.XMPMeta.registerNamespace?.(PROSCENIO_XMP_NAMESPACE_URI, PROSCENIO_XMP_PREFIX);
-        const key = XMP_PROPERTY_PREFIX + layerPath.join("/");
+        const key = xmpPropertyName(layerPath);
         const value = JSON.stringify(serializableTagBag(tags));
         meta.setProperty(PROSCENIO_XMP_NAMESPACE_URI, key, value);
         carrier.xmpMetadata = meta.serialize();
@@ -105,7 +117,7 @@ export function readLayerTagsFromXmp(
         const raw = carrier.xmpMetadata ?? carrier.metadata?.xmp ?? "";
         if (raw === "") return null;
         const meta = new mod.XMPMeta(raw);
-        const key = XMP_PROPERTY_PREFIX + layerPath.join("/");
+        const key = xmpPropertyName(layerPath);
         const prop = meta.getProperty(PROSCENIO_XMP_NAMESPACE_URI, key);
         if (prop?.value === undefined) return null;
         const parsed: unknown = JSON.parse(prop.value);

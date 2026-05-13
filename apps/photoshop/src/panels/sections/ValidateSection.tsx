@@ -88,9 +88,12 @@ const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
         void selectLayerByPath(warning.layerPath);
     }, [warning.layerPath]);
     return (
-        <sp-body size="XS" className="preview-row warn clickable" onClick={onClick}>
-            [{warning.code}] {warning.name}: {warning.message}
-        </sp-body>
+        <ValidateRow severity="warn" onActivate={onClick}>
+            <span className="validate-code">{warning.code}</span>
+            <span className="validate-text">
+                <strong>{warning.name}</strong>: {warning.message}
+            </span>
+        </ValidateRow>
     );
 };
 
@@ -99,8 +102,36 @@ const SkippedRow: React.FC<{ skipped: SkippedLayer }> = ({ skipped }) => {
         void selectLayerByPath(skipped.layerPath);
     }, [skipped.layerPath]);
     return (
-        <sp-body size="XS" className="preview-row muted clickable" onClick={onClick}>
-            {skipped.name} ({skipped.reason})
-        </sp-body>
+        <ValidateRow severity="skipped" onActivate={onClick}>
+            <span className="validate-code">{skipped.reason}</span>
+            <span className="validate-text">{skipped.name}</span>
+        </ValidateRow>
+    );
+};
+
+const ValidateRow: React.FC<{
+    severity: "warn" | "skipped";
+    onActivate: () => void;
+    children: React.ReactNode;
+}> = ({ severity, onActivate, children }) => {
+    const onKey = React.useCallback((e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onActivate();
+        }
+    }, [onActivate]);
+    // UXP's native <button> drops text content (verified visually in
+    // other panels), so we keep the div + role="button" pattern.
+    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
+    return (
+        <div
+            className={`validate-row ${severity}`}
+            role="button"
+            tabIndex={0}
+            onClick={onActivate}
+            onKeyDown={onKey}
+        >
+            {children}
+        </div>
     );
 };

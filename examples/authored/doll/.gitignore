@@ -1,13 +1,11 @@
-# JSX exporter output (running proscenio_export.jsx on 02_from_photoshop/doll.psd).
-# Regenerable from 01_to_photoshop/doll.photoshop_manifest.json + 02_from_photoshop/doll.psd.
-02_from_photoshop/export/
+# Step 02 workbench: re-exported manifest + PNGs from `doll_tagged.psd`.
+# Regenerable via the Proscenio Exporter panel; kept out of git so the
+# artist can iterate without polluting commits. The tagged PSD itself
+# IS tracked.
+02_photoshop_setup/export/
+02_photoshop_setup/uxp_export/
 
-# UXP exporter output (running the Proscenio Exporter panel on the same PSD).
-# Regenerable; used as Wave 10.3 parity oracle target.
-02_from_photoshop/uxp_export/
-
-# Blender file produced when re-importing the photoshop manifest into Blender
-# (proscenio.import_photoshop run during manual testing 1.17). Regenerable
-# from 01_to_photoshop/doll.photoshop_manifest.json or 02_from_photoshop/export/.
-02_from_photoshop/imported_from_photoshop.blend
-02_from_photoshop/imported_from_photoshop.blend1
+# Step 03 workbench: Blender rigging file. Regenerable from step 02's
+# manifest via the Proscenio Blender importer.
+03_blender_setup/doll_rigged.blend
+03_blender_setup/doll_rigged.blend1

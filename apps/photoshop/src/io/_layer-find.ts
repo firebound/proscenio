@@ -24,8 +24,8 @@ export function findLayerByPath(
             if (layer.name === segment) { found = layer; break; }
         }
         if (found === null) {
-            log.warn("layer-find", "no match at depth", depth, {
-                seeking: segment,
+            log.warn("layer-find", "no match at depth", depth, "seeking", segment);
+            log.trace("layer-find", "miss detail", {
                 seekingChars: charCodes(segment),
                 liveAtDepth: candidates.map((l) => l.name),
             });

@@ -3,9 +3,11 @@
 //
 //   1. On every PS notification bump (via `version`).
 //   2. After a layer rename runs through this hook.
-//   3. Polled every 1.5s as a fallback - some UXP builds never fire
-//      notification callbacks, so the timer is the only way the
-//      panel learns about external edits.
+//   3. Polled as a fallback - some UXP builds never fire notification
+//      callbacks, so the timer is the only way the panel learns about
+//      external edits. The cadence adapts to document visibility:
+//      ACTIVE_POLL_MS while the panel is visible, IDLE_POLL_MS while
+//      hidden, since the polling has no work to do off-screen.
 //
 // All three paths fold into the same read + hash-compare step. A
 // fresh tree is only pushed to state when the structural hash
@@ -22,7 +24,8 @@ import { buildTagTreeReusing, type TagTreeNode } from "../domain/tag-tree";
 import { renameLayer, type RenameResult } from "../io/layer-rename";
 import { elementsEqual } from "../util/arrays";
 
-const POLL_MS = 1500;
+const ACTIVE_POLL_MS = 1500;
+const IDLE_POLL_MS = 4000;
 
 export interface UseTagTree {
     tree: TagTreeNode[];
@@ -64,8 +67,32 @@ export function useTagTree(version: number): UseTagTree {
     }, [version, tick, syncOnce]);
 
     React.useEffect(() => {
-        const id = setInterval(syncOnce, POLL_MS);
-        return () => clearInterval(id);
+        let id: ReturnType<typeof setInterval> | null = null;
+        const start = (): void => {
+            const hidden = typeof document !== "undefined" && document.hidden === true;
+            const interval = hidden ? IDLE_POLL_MS : ACTIVE_POLL_MS;
+            id = setInterval(syncOnce, interval);
+        };
+        const stop = (): void => {
+            if (id !== null) {
+                clearInterval(id);
+                id = null;
+            }
+        };
+        const onVisibility = (): void => {
+            stop();
+            start();
+        };
+        start();
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", onVisibility);
+        }
+        return () => {
+            stop();
+            if (typeof document !== "undefined") {
+                document.removeEventListener("visibilitychange", onVisibility);
+            }
+        };
     }, [syncOnce]);
 
     const refresh = React.useCallback(() => setTick((t) => t + 1), []);

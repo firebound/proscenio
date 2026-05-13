@@ -220,17 +220,15 @@
     cursor: default;
 }
 
-/* Manifest entry rows in the Debug Preview list. */
+/* Manifest entry rows in the Debug Preview list. UXP's flex `gap`
+   is unreliable, so we use explicit margins on the children. */
 .proscenio-panel .entry-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px;
-    padding: 3px 6px;
+    padding: 4px 7px;
     border-left: 3px solid transparent;
     border-radius: 2px;
     font-size: 11px;
-    line-height: 1.4;
+    line-height: 1.5;
+    word-break: break-word;
 }
 
 .proscenio-panel .entry-row:hover {
@@ -243,17 +241,23 @@
 }
 
 .proscenio-panel .entry-row .entry-kind {
-    color: rgba(255, 255, 255, 0.5);
+    display: inline-block;
+    padding: 0 4px;
+    margin-right: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    color: rgba(255, 255, 255, 0.7);
     font-family: monospace;
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    flex-shrink: 0;
+    line-height: 1.4;
 }
 
 .proscenio-panel .entry-row .entry-name {
     color: rgba(255, 255, 255, 0.95);
     font-weight: bold;
+    margin-right: 6px;
 }
 
 .proscenio-panel .entry-row .entry-path {
@@ -261,6 +265,7 @@
     font-family: monospace;
     font-size: 10px;
     word-break: break-all;
+    margin-right: 6px;
 }
 
 .proscenio-panel .entry-row .entry-meta {

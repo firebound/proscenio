@@ -5,7 +5,14 @@
 02_photoshop_setup/export/
 02_photoshop_setup/uxp_export/
 
-# Step 03 workbench: Blender rigging file. Regenerable from step 02's
-# manifest via the Proscenio Blender importer.
+# Step 03 workbench: Blender artefacts. Both files regenerable per
+# 03_blender_setup/README.md; gitignored to keep .blend binaries out
+# of commit churn.
+#
+# - doll_ps_tagged.blend  : SPEC 011 parity sandbox (deformed on purpose)
+# - doll_rigged.blend     : rigging target, built from the clean
+#                           re-export of 01_photoshop_base/doll_ps_base.psd
+03_blender_setup/doll_ps_tagged.blend
+03_blender_setup/doll_ps_tagged.blend1
 03_blender_setup/doll_rigged.blend
 03_blender_setup/doll_rigged.blend1

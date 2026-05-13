@@ -31,16 +31,18 @@ from ...core.bpy_helpers.psd_spritesheet import (  # type: ignore[import-not-fou
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
 
-# EEVEE material.blend_method mapping for SPEC 011 blend modes. Blender's
-# built-in modes do not have native "multiply" / "screen" / "additive"
-# values - artists get the closest viewport approximation here, and the
-# manifest-declared mode is stamped as a custom property so downstream
-# writers (Godot) emit the exact requested value.
+# EEVEE material.blend_method mapping for SPEC 011 blend modes.
+# Blender 4.2+ collapsed the alpha modes to {OPAQUE, CLIP, HASHED,
+# BLEND} (the old "ADDITIVE" / "MULTIPLY" alpha modes were retired in
+# favour of shader-node-based blending). Every non-opaque mode here
+# routes through "BLEND"; the manifest-declared mode is stamped as a
+# custom property so downstream writers (Godot) can emit the exact
+# requested compositing operator.
 _BLEND_METHOD_BY_MODE: dict[str, str] = {
     "normal": "BLEND",
     "multiply": "BLEND",
     "screen": "BLEND",
-    "additive": "ADDITIVE",
+    "additive": "BLEND",
 }
 
 
@@ -291,7 +293,14 @@ def _attach_material(
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     method = _BLEND_METHOD_BY_MODE.get(blend_mode or "normal", "BLEND")
     if hasattr(mat, "blend_method"):
-        mat.blend_method = method
+        # Defensive against Blender enum drift (e.g. ADDITIVE retired in
+        # 4.2): look the value up in the property's enum_items before
+        # assigning so a stale mapping does not abort the entire import.
+        prop = mat.bl_rna.properties.get("blend_method")
+        valid = (
+            {item.identifier for item in prop.enum_items} if prop is not None else set()
+        )
+        mat.blend_method = method if method in valid else "BLEND"
     if mesh.materials:
         mesh.materials[0] = mat
     else:

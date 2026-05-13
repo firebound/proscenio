@@ -25,7 +25,7 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 - [ ] Confirm `uxp.xmp` import works against the target PS version. Smoke test reading + writing a custom-namespace property on one layer.
 - [ ] Confirm `action.addNotificationListener` event names that matter for the tree refresh (`select`, `make`, `delete`, `set`).
-- [ ] Inventory existing fixtures (doll, simple_psd, blink_eyes, mouth_drive) for tags they would acquire under the new taxonomy. Each fixture's `01_to_photoshop/*.photoshop_manifest.json` becomes the migration baseline.
+- [ ] Inventory existing fixtures (doll, simple_psd, blink_eyes, mouth_drive) for tags they would acquire under the new taxonomy. Each fixture's base manifest (e.g. `doll/00_blender_base/doll_base.photoshop_manifest.json`) becomes the migration baseline.
 
 ## Wave 11.1 - bracket tag parser + schema v2
 

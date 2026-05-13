@@ -24,7 +24,7 @@ UXP plugin replaces ExtendScript JSX. Schema unchanged. See [STUDY.md](STUDY.md)
 
 - [x] Verify the React scaffold builds: `cd apps/photoshop && pnpm install && pnpm run build`. (Build green on Wave 10.1.x.)
 - [ ] Verify `uxp plugin load` works against a real Photoshop install via UDT. (Manual; needs the user's PS.)
-- [x] Capture JSX baseline for the parity oracle: run `apps/photoshop/proscenio_export.jsx` against `examples/authored/doll/02_from_photoshop/doll.psd`, diff `02_from_photoshop/export/doll.photoshop_exported.json` against `01_to_photoshop/doll.photoshop_manifest.json`. 22/22 layers, names match. 2 legacy JSX bugs surfaced (logged in `tests/BUGS_FOUND.md`): `pixels_per_unit` not round-tripped (defaults to 100), `waist.size` off by 1 px. UXP exporter target = current JSX output (B); the PPU bug rides along until Wave 10.5 fixes the import path.
+- [x] Capture JSX baseline for the parity oracle: run `apps/photoshop/proscenio_export.jsx` against the doll PSD (now `02_photoshop_setup/doll_tagged.psd`; baseline captured against the pre-restructure `02_from_photoshop/doll.psd`), diff `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` against `00_blender_base/doll_base.photoshop_manifest.json`. 22/22 layers, names match. 2 legacy JSX bugs surfaced (logged in `tests/BUGS_FOUND.md`): `pixels_per_unit` not round-tripped (defaults to 100), `waist.size` off by 1 px. UXP exporter target = current JSX output (B); the PPU bug rides along until Wave 10.5 fixes the import path.
 
 ## Wave 10.1 - TypeScript foundation
 
@@ -65,7 +65,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 - [x] Per-layer PNG export via `saveAs.png` writing into `<folder>/images/<name>.png` (folder layout matches JSX exporter, not the originally-spec'd `<folder>/layers/`, so the same parity oracle works).
 - [x] Manifest JSON written at `<folder>/<doc>.photoshop_exported.json` (filename matches JSX exporter for byte-equality comparisons).
 - [x] Schema validation with `ajv` before write; surface errors in panel UI.
-- [x] Manual test: byte-equality check against captured JSX output for `examples/authored/doll/02_from_photoshop/doll.psd`. Ran UXP exporter in UDT against doll.psd; output landed in `02_from_photoshop/uxp_export/`. Manifest JSON: 22/22 entries semantically identical to the JSX baseline (only CRLF -> LF byte diff). PNGs: 22/22 pixel-byte-equal (SHA256 of decompressed IDAT matches; outer SHA differs only in zlib encoder flavour). Parity oracle PASSED.
+- [x] Manual test: byte-equality check against captured JSX output for the pre-restructure `examples/authored/doll/02_from_photoshop/doll.psd` (today: `02_photoshop_setup/doll_tagged.psd`). Ran UXP exporter in UDT against doll.psd; output landed in `02_photoshop_setup/uxp_export/`. Manifest JSON: 22/22 entries semantically identical to the JSX baseline (only CRLF -> LF byte diff). PNGs: 22/22 pixel-byte-equal (SHA256 of decompressed IDAT matches; outer SHA differs only in zlib encoder flavour). Parity oracle PASSED.
 
 ## Wave 10.4 - React panel
 
@@ -79,7 +79,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 - [x] Port `proscenio_import.jsx` semantics to TypeScript. Lives as `src/controllers/import-flow.ts` (orchestrator) + `src/io/manifest-reader.ts` (file-pick + ajv) + `src/io/png-placer.ts` (per-layer placement) + `src/io/psd-writer.ts` (PSD save).
 - [x] Reads manifest JSON, creates a fresh transparent doc at the manifest size, stamps every entry in z_order descending. Sprite_frame entries land as LayerSets with one child per frame.
 - [x] PPU roundtrip fix (BUGS_FOUND entry): parked as part of SPEC 011 (the tag system landing post-10.7 owns the PSD-side metadata story).
-- [ ] Manual test: roundtrip on `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` produces a structurally identical PSD to the existing `02_from_photoshop/doll.psd`.
+- [ ] Manual test: roundtrip on `examples/authored/doll/00_blender_base/doll_base.photoshop_manifest.json` produces a structurally identical PSD to `01_photoshop_base/doll_ps_base.psd`.
 
 ## Wave 10.6 - CI completion
 
@@ -89,7 +89,7 @@ The Adobe React UXP starter pinned several plugins to old majors. After Wave 10.
 
 ## Wave 10.7 - JSX retirement
 
-- [x] Confirm parity manually. Wave 10.3 ran the doll roundtrip oracle (`examples/authored/doll/02_from_photoshop/doll.psd`): manifest 22/22 semantic-equal, PNGs 22/22 pixel-byte-equal vs the JSX baseline. `examples/generated/simple_psd/` has no PSD source (manifest-first fixture), so doll is the canonical retirement gate.
+- [x] Confirm parity manually. Wave 10.3 ran the doll roundtrip oracle against the pre-restructure `02_from_photoshop/doll.psd` (today: `02_photoshop_setup/doll_tagged.psd`): manifest 22/22 semantic-equal, PNGs 22/22 pixel-byte-equal vs the JSX baseline. `examples/generated/simple_psd/` has no PSD source (manifest-first fixture), so doll is the canonical retirement gate.
 - [x] Delete `apps/photoshop/proscenio_export.jsx`.
 - [x] Delete `apps/photoshop/proscenio_import.jsx`.
 - [x] Remove JSX porting notes from `photoshop-uxp-dev` skill.

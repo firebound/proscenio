@@ -65,7 +65,7 @@ Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blen
 
 ### Visual style
 
-Each mesh in `doll.blend` carries a flat-color material. `scripts/fixtures/doll/render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background) under `examples/authored/doll/01_to_photoshop/render_layers/`. Region colors are the artist's choice in the `.blend` - change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
+Each mesh in `doll_base.blend` carries a flat-color material. `examples/authored/doll/scripts/render_layers.py` reads each material's Principled BSDF Base Color and stamps a flat-shaded PNG (Workbench engine, transparent background) under `examples/authored/doll/00_blender_base/render_layers/`. Region colors are the artist's choice in the `.blend` - change a Base Color, re-run the render, the layer PNG updates. Flat shading (no lighting) keeps the layer output indistinguishable from a Photoshop-painted layer, and weight-paint smearing across bone seams stays visually obvious.
 
 ### Actions
 
@@ -167,22 +167,25 @@ examples/
 ├── authored/
 │   └── doll/                                   [tier 0 - hand-authored .blend, no build script]
 │       ├── README.md
-│       ├── doll.blend                          [SOURCE - authored Blender]
-│       ├── doll.expected.proscenio             [GOLDEN - CI-diffed validation]
-│       ├── 01_to_photoshop/                    bpy outputs going INTO Photoshop
-│       │   ├── doll.photoshop_manifest.json    bpy -> SPEC 006 v1 manifest
-│       │   └── render_layers/                  Workbench-rendered PNGs, one per mesh
-│       │       ├── head.png / chest.png / belly.png / waist.png
-│       │       ├── arm.L/R, forearm.L/R, hand.L/R
-│       │       ├── leg.L/R, thigh.L/R, foot.L/R
-│       │       ├── eye.L/R, brow.L/R, ear.L/R
-│       │       └── pieces_sheet.png            contact sheet (visual debug)
-│       ├── 02_from_photoshop/                  outputs coming BACK from Photoshop
-│       │   ├── doll.psd                        JSX importer output (PSD)
-│       │   └── export/                         JSX exporter output (gitignored - roundtrip)
-│       │       ├── doll.photoshop_exported.json   re-exported manifest
-│       │       └── images/                     re-exported per-layer PNGs
-│       └── godot/                              Godot wrapper artifacts
+│       ├── scripts/                            bpy + Pillow scripts (live next to the fixture they serve)
+│       │   ├── render_layers.py                doll_base.blend -> 00_blender_base/render_layers/*.png
+│       │   ├── export_psd_manifest.py          doll_base.blend -> 00_blender_base/doll_base.photoshop_manifest.json
+│       │   └── preview_pieces.py               render_layers/*.png -> pieces_sheet.png
+│       ├── 00_blender_base/                    [SOURCE - hand-authored .blend + derived inputs]
+│       │   ├── doll_base.blend                 hand-authored Blender source of truth
+│       │   ├── doll_base.expected.proscenio    CI golden for the direct Blender -> Godot path
+│       │   ├── doll_base.photoshop_manifest.json   SPEC 006/011 manifest the PS importer reads
+│       │   └── render_layers/                  Workbench PNGs (one per mesh) + pieces_sheet.png
+│       ├── 01_photoshop_base/                  [DERIVED - clean PSD imported from 00's manifest]
+│       │   └── doll_ps_base.psd                Proscenio Exporter panel output (no artist edits)
+│       ├── 02_photoshop_setup/                 [AUTHORED - artist workbench + re-exported manifest]
+│       │   ├── doll_tagged.psd                 copy of doll_ps_base + manual edits + SPEC 011 tags
+│       │   └── export/                         Proscenio Exporter panel output (gitignored)
+│       │       ├── doll_tagged.photoshop_exported.json
+│       │       └── images/
+│       ├── 03_blender_setup/                   [AUTHORED - rigged .blend, gitignored]
+│       │   └── doll_rigged.blend               imported from step 02 + manual rig/weights/actions
+│       └── 04_godot_import/                    [AUTHORED - SPEC 001 wrapper for the Godot side]
 │           ├── Doll.tscn
 │           └── Doll.gd
 ├── blink_eyes/
@@ -208,10 +211,6 @@ scripts/fixtures/
 ├── _shared/
 │   ├── _draw.py                            Pillow rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py                 bpy - open <fixture>.blend → write <fixture>.expected.proscenio
-├── doll/
-│   ├── render_layers.py                    bpy - doll.blend → 01_to_photoshop/render_layers/*.png (Workbench flat)
-│   ├── export_psd_manifest.py              bpy - doll.blend → 01_to_photoshop/doll.photoshop_manifest.json
-│   └── preview_pieces.py                   Pillow - 01_to_photoshop/render_layers/*.png → .../pieces_sheet.png
 ├── blink_eyes/
 │   ├── draw_layers.py                      Pillow → pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py                      bpy - load spritesheet, build blink_eyes.blend
@@ -220,4 +219,4 @@ scripts/fixtures/
     └── build_blend.py                      bpy - load atlas, build shared_atlas.blend
 ```
 
-The doll fixture has **no** programmatic weight or action assignment script - everything visual, weights, and animation lives inside the hand-authored `doll.blend`. The blink_eyes and shared_atlas fixtures stay procedural because they are minimal isolation tests where authoring a `.blend` by hand would add overhead with no payoff.
+The doll fixture has **no** programmatic weight or action assignment script - everything visual, weights, and animation lives inside the hand-authored `doll_base.blend` (geometry/materials) and `03_blender_setup/doll_rigged.blend` (armature + weights + actions). The blink_eyes and shared_atlas fixtures stay procedural because they are minimal isolation tests where authoring a `.blend` by hand would add overhead with no payoff.

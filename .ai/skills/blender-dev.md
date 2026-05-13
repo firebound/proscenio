@@ -134,7 +134,7 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 1. Hand-author `examples/<name>/<name>.blend` (mesh objects + armature + materials + weights + actions). For procedural fixtures (`blink_eyes/`, `shared_atlas/`, `mouth_drive/`), keep the `scripts/fixtures/<name>/build_blend.py` builder.
 2. For hand-authored fixtures: render layers from the `.blend` with `blender --background examples/<name>/<name>.blend --python scripts/fixtures/<name>/render_layers.py`. For procedural ones: run `py scripts/fixtures/<name>/draw_layers.py` then `blender --background --python scripts/fixtures/<name>/build_blend.py`.
 3. Generate the golden: `blender --background examples/<name>/<name>.blend --python scripts/fixtures/_shared/export_proscenio.py`.
-4. Add `<Name>.tscn` + `<Name>.gd` wrapper following the SPEC 001 pattern (see `examples/authored/doll/Doll.gd` for the canonical template).
+4. Add `<Name>.tscn` + `<Name>.gd` wrapper following the SPEC 001 pattern (see `examples/authored/doll/04_godot_import/Doll.gd` for the canonical template).
 5. Verify locally: `blender --background --python apps/blender/tests/run_tests.py`. The runner auto-discovers the new fixture.
 
 For **procedural pixel-art fixtures** (Pillow-drawn spritesheets feeding a single-feature `.blend`), follow the conventions in [`scripts/fixtures/README.md`](../../scripts/fixtures/README.md) - bone tail along world -Y, image filepath relative (`//pillow_layers/...`), `tex.interpolation = "Closest"`, driver wiring matches the panel operator's defaults, etc. Copy from `mouth_drive/build_blend.py` (newest, follows every convention) rather than older builders.

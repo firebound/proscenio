@@ -42,12 +42,12 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 `doll.blend` is authored by hand in Blender (mesh objects per body part + armature). Layer PNGs are rendered from it; helper bpy modules drive auxiliary fixture work.
 
-- [x] `examples/authored/doll/doll.blend` - hand-authored mesh objects + `doll.rig` armature + per-mesh materials + vertex weights + actions. Single source of truth for the doll fixture.
-- [x] `scripts/fixtures/doll/render_layers.py` - bpy: opens `doll.blend`, walks every mesh, renders each to `examples/authored/doll/01_to_photoshop/render_layers/<name>.png` (Workbench flat, transparent background, ortho front view).
-- [x] `scripts/fixtures/doll/preview_pieces.py` - Pillow: contact sheet of every layer PNG (visual debug), output `examples/authored/doll/01_to_photoshop/render_layers/pieces_sheet.png`.
-- [x] Run `render_layers.py` → `examples/authored/doll/01_to_photoshop/render_layers/*.png` committed alongside `doll.blend`.
-- [x] `examples/authored/doll/doll.expected.proscenio` golden generated via `export_proscenio.py` (1956 lines, schema-valid).
-- [x] `examples/authored/doll/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
+- [x] `examples/authored/doll/00_blender_base/doll_base.blend` - hand-authored mesh objects + per-mesh materials. Single source of truth for the doll fixture geometry. Armature + weights + actions land in step 03 (`03_blender_setup/doll_rigged.blend`).
+- [x] `examples/authored/doll/scripts/render_layers.py` - bpy: opens `doll_base.blend`, walks every mesh, renders each to `00_blender_base/render_layers/<name>.png` (Workbench flat, transparent background, ortho front view).
+- [x] `examples/authored/doll/scripts/preview_pieces.py` - Pillow: contact sheet of every layer PNG (visual debug), output `00_blender_base/render_layers/pieces_sheet.png`.
+- [x] Run `render_layers.py` -> `00_blender_base/render_layers/*.png` committed alongside `doll_base.blend`.
+- [x] `examples/authored/doll/00_blender_base/doll_base.expected.proscenio` golden generated via `export_proscenio.py` (schema-valid).
+- [x] `examples/authored/doll/04_godot_import/Doll.tscn` + `Doll.gd` (mirrors the SPEC 001 wrapper pattern).
 - [x] `examples/authored/doll/README.md`.
 
 ## Test runner + CI
@@ -72,11 +72,10 @@ Builds three test fixtures (`blink_eyes/`, `shared_atlas/`, `doll/`) covering th
 
 ## Coverage gaps (open)
 
-- **Doll-from-Photoshop fixture missing.** `examples/authored/doll/doll.blend` é sandbox de autoria PRA o Photoshop roundtrip - materiais usam flat Base Color (sem Image Texture node). Resultado: writer não emite `"texture"` per-sprite + nenhum `"atlas"` global. Importer Godot precisa cair no fallback `<sprite_name>.png` pra renderizar. Mas isso só funciona porque o sync mirroreia os PNGs do render_layers junto. Pra testar o **caminho real "Photoshop -> Blender -> Godot"**, precisa fixture derivada:
-  - Nome sugerido: `doll_from_psd.blend` ou `doll.imported.blend`.
-  - Gerado rodando `proscenio.import_photoshop` em headless contra `doll.photoshop_manifest.json` (ou roundtrip do `02_from_photoshop/doll.photoshop_exported.json`).
+- **Doll-from-Photoshop fixture missing.** `00_blender_base/doll_base.blend` é sandbox de autoria PRA o Photoshop roundtrip - materiais usam flat Base Color (sem Image Texture node). Resultado: writer não emite `"texture"` per-sprite + nenhum `"atlas"` global. Importer Godot precisa cair no fallback `<sprite_name>.png` pra renderizar. Mas isso só funciona porque o sync mirroreia os PNGs do render_layers junto. Pra testar o **caminho real "Photoshop -> Blender -> Godot"**, precisa fixture derivada - **este é exatamente o papel da step 03 (`03_blender_setup/doll_rigged.blend`)**:
+  - Gerado importando `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` no Blender via Proscenio importer.
   - Resultado: meshes com Image Texture nodes -> writer emite `"texture"` per-sprite -> Godot renderiza direto sem fallback.
-  - Cobre o pipeline end-to-end como o usuário real experimentaria.
+  - Cobre o pipeline end-to-end como o usuário real experimentaria. Land quando o Blender importer ship-ar (SPEC 006 Wave de import).
 
 ## Coverage gaps (closed in this branch)
 

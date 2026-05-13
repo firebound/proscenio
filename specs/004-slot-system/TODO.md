@@ -59,7 +59,7 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 **Drive-bys** (CI broken on main after Wave 4.2 merge):
 
 - [x] `apps/godot/tests/fixtures/slots_demo.proscenio` - add the missing `texture_region` field on each polygon entry (PolygonSprite schema requires it).
-- [x] `examples/authored/doll/doll.blend` - re-fix `waist` mesh's vertex group (`waist` -> `spine`); the rename done in Wave 4.1 did not persist into main. Regenerate `doll.expected.proscenio` golden.
+- [x] `examples/authored/doll/00_blender_base/doll_base.blend` - re-fix `waist` mesh's vertex group (`waist` -> `spine`); the rename done in Wave 4.1 did not persist into main. Regenerate `doll_base.expected.proscenio` golden.
 
 **Writer extension** (uncovered while authoring slot_cycle):
 

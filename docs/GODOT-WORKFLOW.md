@@ -40,7 +40,7 @@ Godot offers two ways to customize an instanced sub-scene. Side-by-side trade-of
 
 ## Recipes by use case
 
-Each recipe describes the pattern; concrete code lives in [`examples/authored/doll/godot/`](../examples/authored/doll/godot/) where applicable.
+Each recipe describes the pattern; concrete code lives in [`examples/authored/doll/04_godot_import/`](../examples/authored/doll/04_godot_import/) where applicable.
 
 ### 1. AI / behavior / state machine on the character
 
@@ -168,4 +168,4 @@ Most pain points users hit (events, effects, AI, materials, colliders) have wrap
 - [`.ai/skills/godot-dev.md`](../.ai/skills/godot-dev.md): plugin internals (importer, builders, slot system).
 - [`docs/DECISIONS.md`](DECISIONS.md): cross-cutting architectural decisions.
 - [`docs/DEFERRED.md`](DEFERRED.md): future SPECs that will reduce wrapper-pattern friction.
-- [`examples/authored/doll/godot/`](../examples/authored/doll/godot/): worked example wrapper (`Doll.tscn` + `Doll.gd`).
+- [`examples/authored/doll/04_godot_import/`](../examples/authored/doll/04_godot_import/): worked example wrapper (`Doll.tscn` + `Doll.gd`).

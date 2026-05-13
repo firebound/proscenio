@@ -191,12 +191,12 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 ### 1.17 Photoshop import
 
 - [x] "Import Photoshop Manifest" operator: ImportHelper file picker abre, filter `.json`, sidebar com `Placement` (default "Landed") + `Root Bone Name` (default "root").
-- [x] `examples/authored/doll/01_to_photoshop/doll.photoshop_manifest.json` E `02_from_photoshop/export/doll.photoshop_exported.json` (PS-roundtrip) ambos stamp OK - INFO bar `Proscenio: stamped 22 mesh(es) (armature: doll.rig)`. Doll só tem polygon (sprite_frame eyes são planned, não real); sprite_frame path validado via simple_psd no item seguinte.
+- [x] `examples/authored/doll/00_blender_base/doll_base.photoshop_manifest.json` E `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` (PS-roundtrip) ambos stamp OK - INFO bar `Proscenio: stamped 22 mesh(es) (armature: doll.rig)`. Doll só tem polygon (sprite_frame eyes são planned, não real); sprite_frame path validado via simple_psd no item seguinte.
 - [x] `examples/generated/simple_psd/simple_psd.photoshop_manifest.json` stamp - INFO bar inclui "composed M spritesheet(s)" indicando sprite_frame layers detectados (arrow_0..3 grouping).
 - [x] Imported scene tem stub armature (`doll.rig` com bone `root`) + 22 meshes parented `parent_type=OBJECT` ao armature object. Por design (`importers/photoshop/planes.py`) - evita bone-direction rotation flip que poria meshes em XY ao invés de XZ.
 - [x] PSD layer names = object names sem colisão. 22 meshes nomeados conforme `manifest.layers[].name` sem sufixos `.001/.002`.
 
-**Cross-app roundtrip diff (01_to vs 02_from):** drift esperado registrado:
+**Cross-app roundtrip diff (00_blender_base vs 02_photoshop_setup):** drift esperado registrado:
 
 - size: +2px em ambos eixos em todas as 22 layers - PSD export captura bbox alpha-aware com 1px edge padding cada lado.
 - path: `render_layers/<name>.png` -> `images/<name_underscored>.png`. Folder convention difere (bpy vs JSX) + `.` em layer name vira `_` (PSD não permite `.`).
@@ -269,15 +269,15 @@ Quando UXP migration shippa:
 
 ### 4.1 doll full pipeline
 
-- [ ] `doll.blend` -> render_layers PNG (via `scripts/fixtures/doll/render_layers.py`)
-- [ ] PNGs -> Photoshop (manual ou via JSX import) -> .psd
-- [ ] .psd -> JSX export -> manifest mirror
-- [ ] manifest -> Blender via Import Photoshop Manifest -> meshes recriados
+- [ ] `00_blender_base/doll_base.blend` -> render_layers PNG (via `examples/authored/doll/scripts/render_layers.py`)
+- [ ] PNGs -> Photoshop (Proscenio Exporter panel: Import manifest as PSD) -> `01_photoshop_base/doll_ps_base.psd`
+- [ ] PSD copy + tags -> `02_photoshop_setup/doll_tagged.psd` -> Proscenio Exporter -> `export/doll_tagged.photoshop_exported.json` + images
+- [ ] Manifest -> Blender via Import Photoshop Manifest -> `03_blender_setup/doll_rigged.blend`
 - [ ] Output Blender ~= input Blender (modulo round-trip drift documentada)
 
 ### 4.2 doll -> Godot
 
-- [ ] `doll.blend` -> Export Godot -> `doll.proscenio`
+- [ ] `03_blender_setup/doll_rigged.blend` -> Export Godot -> `doll.proscenio`
 - [ ] `doll.proscenio` -> Godot import -> `doll.scn`
 - [ ] Wrapper scene plays -> doll renderiza no editor + runtime
 - [ ] `doll_slots.blend` -> mesmo pipeline -> brow_raise animation visível

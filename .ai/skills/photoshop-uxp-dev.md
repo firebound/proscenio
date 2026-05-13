@@ -111,7 +111,7 @@ When pointing UDT at the plugin, target the built `dist/manifest.json`, not the 
 
 Unit tests for the pure planner + validator live under `uxp-plugin-tests/` and run via vitest. PS DOM operations stay manual.
 
-Manual smoke test: load the plugin in UDT, run the exporter against `examples/authored/doll/02_from_photoshop/doll.psd`, diff the output against the captured oracle baseline under `examples/authored/doll/02_from_photoshop/uxp_export/` (gitignored; regenerable per the SPEC 010 Wave 10.3 procedure).
+Manual smoke test: load the plugin in UDT, run the exporter against `examples/authored/doll/02_photoshop_setup/doll_tagged.psd`, diff the output against the captured oracle baseline under `examples/authored/doll/02_photoshop_setup/uxp_export/` (gitignored; regenerable per the SPEC 010 Wave 10.3 procedure).
 
 ## Reference prior art
 

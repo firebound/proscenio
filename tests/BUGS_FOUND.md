@@ -170,7 +170,7 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 **Fix:** trocar 3 paths nos `.tscn` afetados:
 
 - `examples/generated/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
-- `examples/authored/doll/godot/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd`
+- `examples/authored/doll/04_godot_import/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd` (historical; the restructure moved this file to `04_godot_import/` and updates path conventions accordingly)
 - `examples/generated/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
 
 `mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.
@@ -479,9 +479,9 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 **Repro:** Roundtrip oracle SPEC 010:
 
-1. Blender escreve `01_to_photoshop/doll.photoshop_manifest.json` com `pixels_per_unit = 1000.0` (PPU do `render_layers.py`).
-2. `proscenio_import.jsx` lê manifest, popula `02_from_photoshop/doll.psd` (não persiste PPU em metadado).
-3. `proscenio_export.jsx` re-exporta o PSD -> `02_from_photoshop/export/doll.photoshop_exported.json` com `pixels_per_unit = 100`.
+1. Blender escreve `00_blender_base/doll_base.photoshop_manifest.json` com `pixels_per_unit = 1000.0` (PPU do `render_layers.py`).
+2. Proscenio Exporter panel (Import manifest as PSD) lê manifest, popula `01_photoshop_base/doll_ps_base.psd` (não persiste PPU em metadado).
+3. Re-exportar `02_photoshop_setup/doll_tagged.psd` -> `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` com `pixels_per_unit = 100`.
 
 Diff esperado byte-equal contra a (1) falha só nesse campo (+ paths esperados por design).
 

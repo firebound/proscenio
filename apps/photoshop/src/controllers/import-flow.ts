@@ -13,14 +13,12 @@ import type { PsDocument } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import { moveLayerIntoGroup, placePngAt } from "../io/png-placer";
-import { savePsd } from "../io/psd-writer";
 import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../domain/manifest";
 
 export interface ImportFlowResult {
     kind: "ok" | "failed";
     stamped?: number;
     skipped?: number;
-    psdPath?: string;
     warnings?: string[];
     errors?: string[];
 }
@@ -62,12 +60,17 @@ async function doImport(manifest: Manifest, folder: UxpFolder): Promise<ImportFl
         else skipped += 1;
     }
 
-    const savedFile = await savePsd(doc, folder, manifest.doc);
+    // The doc stays open and unsaved on purpose: the user picks the
+    // canonical save location via File > Save As (typically the
+    // matching `01_photoshop_base/` baseline for the doll pipeline).
+    // The previous auto-save into `<manifestFolder>/photoshop/` was a
+    // JSX-era leftover that polluted the source-of-truth folder with
+    // a second copy under a different name; dropping it forces every
+    // PSD on disk to be an intentional artefact.
     return {
         kind: "ok",
         stamped,
         skipped,
-        psdPath: savedFile.nativePath,
         warnings,
     };
 }

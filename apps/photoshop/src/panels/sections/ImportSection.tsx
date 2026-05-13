@@ -14,7 +14,7 @@ export const ImportSection: React.FC<Props> = ({ busy, last, manifestErrors, onI
     <Accordion
         title="Import (manifest to PSD)"
         defaultOpen={false}
-        hint="Pick a Proscenio manifest JSON. The plugin recreates the PSD with placed layers / sprite_frame groups; saved under the manifest folder's photoshop/ subfolder."
+        hint="Pick a Proscenio manifest JSON. The plugin recreates the PSD with placed layers / sprite_frame groups; the document stays open and unsaved -- use File > Save As to commit it to disk."
     >
         <sp-action-button onClick={onImport} disabled={busy ? true : undefined}>
             {busy ? "Importing..." : "Import manifest as PSD"}
@@ -33,11 +33,8 @@ const ImportResultView: React.FC<{ result: ImportFlowResult }> = ({ result }) =>
                     {result.skipped !== undefined && result.skipped > 0
                         ? ` (${result.skipped} skipped)`
                         : ""}
-                    .
+                    . Use File &gt; Save As to commit the PSD.
                 </sp-body>
-                {result.psdPath !== undefined && (
-                    <sp-body size="XS" className="folder-path">{result.psdPath}</sp-body>
-                )}
                 {(result.warnings ?? []).map((w) => (
                     <sp-body size="XS" className="result-row warn" key={w}>{w}</sp-body>
                 ))}

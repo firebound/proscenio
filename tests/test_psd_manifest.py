@@ -118,6 +118,97 @@ def test_reject_unsupported_format_version() -> None:
         psd_manifest.parse(doc)
 
 
+def _valid_v1_doc() -> dict:
+    """SPEC 006 v1 manifest (pre-SPEC 011): no anchor / origin / blend_mode / subfolder, no mesh kind."""
+    return {
+        "format_version": 1,
+        "doc": "doll.psd",
+        "size": [1024, 1024],
+        "pixels_per_unit": 100,
+        "layers": [
+            {
+                "kind": "polygon",
+                "name": "torso",
+                "path": "doll/images/torso.png",
+                "position": [120, 340],
+                "size": [180, 240],
+                "z_order": 0,
+            },
+            {
+                "kind": "sprite_frame",
+                "name": "eye",
+                "position": [350, 200],
+                "size": [32, 32],
+                "z_order": 1,
+                "frames": [
+                    {"index": 0, "path": "doll/images/eye/0.png"},
+                    {"index": 1, "path": "doll/images/eye/1.png"},
+                ],
+            },
+        ],
+    }
+
+
+def test_v1_manifest_parses_with_optional_fields_none() -> None:
+    manifest = psd_manifest.parse(_valid_v1_doc())
+    assert manifest.format_version == 1
+    assert manifest.anchor is None
+    polygon, sprite_frame = manifest.layers
+    assert isinstance(polygon, PolygonLayer)
+    assert polygon.origin is None
+    assert polygon.blend_mode is None
+    assert polygon.subfolder is None
+    assert isinstance(sprite_frame, SpriteFrameLayer)
+    assert sprite_frame.origin is None
+    assert sprite_frame.blend_mode is None
+    assert sprite_frame.subfolder is None
+
+
+def test_v1_rejects_anchor() -> None:
+    doc = _valid_v1_doc()
+    doc["anchor"] = [10, 20]
+    with pytest.raises(ManifestError, match="anchor"):
+        psd_manifest.parse(doc)
+
+
+def test_v1_rejects_mesh_kind() -> None:
+    doc = _valid_v1_doc()
+    doc["layers"][0]["kind"] = "mesh"
+    with pytest.raises(ManifestError, match="'mesh'"):
+        psd_manifest.parse(doc)
+
+
+def test_v1_rejects_v2_only_optional_field_on_layer() -> None:
+    doc = _valid_v1_doc()
+    doc["layers"][0]["blend_mode"] = "multiply"
+    with pytest.raises(ManifestError, match="unexpected key"):
+        psd_manifest.parse(doc)
+
+
+def test_v2_accepts_anchor_and_per_layer_options() -> None:
+    doc = _valid_doc()
+    doc["anchor"] = [512, 768]
+    doc["layers"][0]["origin"] = [200, 400]
+    doc["layers"][0]["blend_mode"] = "multiply"
+    doc["layers"][0]["subfolder"] = "body/torso"
+    doc["layers"][0]["kind"] = "mesh"
+    manifest = psd_manifest.parse(doc)
+    assert manifest.anchor == (512, 768)
+    polygon = manifest.layers[0]
+    assert isinstance(polygon, PolygonLayer)
+    assert polygon.kind == "mesh"
+    assert polygon.origin == (200, 400)
+    assert polygon.blend_mode == "multiply"
+    assert polygon.subfolder == "body/torso"
+
+
+def test_v2_rejects_invalid_blend_mode() -> None:
+    doc = _valid_doc()
+    doc["layers"][0]["blend_mode"] = "overlay"
+    with pytest.raises(ManifestError, match="blend_mode"):
+        psd_manifest.parse(doc)
+
+
 def test_reject_missing_required_root_field() -> None:
     doc = _valid_doc()
     del doc["pixels_per_unit"]

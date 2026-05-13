@@ -31,6 +31,18 @@ from ...core.bpy_helpers.psd_spritesheet import (  # type: ignore[import-not-fou
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
 
+# EEVEE material.blend_method mapping for SPEC 011 blend modes. Blender's
+# built-in modes do not have native "multiply" / "screen" / "additive"
+# values - artists get the closest viewport approximation here, and the
+# manifest-declared mode is stamped as a custom property so downstream
+# writers (Godot) emit the exact requested value.
+_BLEND_METHOD_BY_MODE: dict[str, str] = {
+    "normal": "BLEND",
+    "multiply": "BLEND",
+    "screen": "BLEND",
+    "additive": "ADDITIVE",
+}
+
 
 @dataclass(frozen=True)
 class StampedSpriteFrame:
@@ -61,9 +73,12 @@ def stamp_polygon(
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
     _set_world_position(obj, placement.location)
-    _attach_material(obj, image_path)
+    _attach_material(obj, image_path, blend_mode=layer.blend_mode)
     _parent_to_root(obj, armature_obj)
+    _link_to_subfolder(obj, layer.subfolder)
     _tag_origin(obj, layer.name)
+    _tag_kind(obj, layer.kind)
+    _tag_blend_mode(obj, layer.blend_mode)
     _tag_sprite_type(obj, "polygon")
     return obj
 
@@ -99,9 +114,12 @@ def stamp_sprite_frame(
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
     _set_world_position(obj, placement.location)
-    _attach_material(obj, sheet_path)
+    _attach_material(obj, sheet_path, blend_mode=layer.blend_mode)
     _parent_to_root(obj, armature_obj)
+    _link_to_subfolder(obj, layer.subfolder)
     _tag_origin(obj, layer.name)
+    _tag_kind(obj, "sprite_frame")
+    _tag_blend_mode(obj, layer.blend_mode)
     _tag_sprite_type(obj, "sprite_frame", hframes=sheet.hframes, vframes=sheet.vframes)
     return StampedSpriteFrame(mesh_obj=obj, spritesheet_path=sheet_path)
 
@@ -134,6 +152,18 @@ def _layer_placement(
     (0, 0, 0): every layer's PSD pixel position is re-zeroed against
     it. Without an anchor the importer falls back to canvas-centered
     placement (legacy behaviour for fixtures authored before SPEC 011).
+
+    Known drift (Wave 11.7 investigation, tests/BUGS_FOUND.md): on the
+    Blender -> JSX export -> Blender round-trip, the JSX exporter
+    captures the alpha-aware bbox of each Workbench-rendered PNG which
+    bleeds 1 px on every edge from anti-aliasing. The manifest's
+    ``size`` ends up +2 px on both axes while ``position`` stays put,
+    which shifts the computed bbox centre by +1 px (~0.17 % on a
+    1731 px doc - cosmetic). The math here is correct given the inputs;
+    fixing the drift means either trimming the AA bleed at render time
+    or anchoring the exporter to the layer's authored bounds rather
+    than the rendered pixels' bbox. Left intentional until the round-
+    trip oracle re-runs against the SPEC 011 v2 doll fixture.
     """
     px_x, px_y = position_px
     px_w, px_h = size_px
@@ -231,8 +261,18 @@ def _set_world_position(obj: bpy.types.Object, center: tuple[float, float, float
     obj.location = center
 
 
-def _attach_material(obj: bpy.types.Object, image_path: Path) -> None:
-    """Build (or refresh) a flat-shaded material with a TexImage node."""
+def _attach_material(
+    obj: bpy.types.Object,
+    image_path: Path,
+    blend_mode: str | None = None,
+) -> None:
+    """Build (or refresh) a flat-shaded material with a TexImage node.
+
+    ``blend_mode`` (when set) maps the SPEC 011 blend mode onto the
+    EEVEE material's ``blend_method`` so the artist sees a sensible
+    viewport approximation. The exact mode is preserved as a custom
+    property by ``_tag_blend_mode`` for downstream writers.
+    """
     mesh = obj.data
     image = bpy.data.images.load(str(image_path), check_existing=True)
     image.name = image_path.stem
@@ -249,6 +289,9 @@ def _attach_material(obj: bpy.types.Object, image_path: Path) -> None:
     nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    method = _BLEND_METHOD_BY_MODE.get(blend_mode or "normal", "BLEND")
+    if hasattr(mat, "blend_method"):
+        mat.blend_method = method
     if mesh.materials:
         mesh.materials[0] = mat
     else:
@@ -271,8 +314,45 @@ def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> No
     obj.parent_type = "OBJECT"
 
 
+def _link_to_subfolder(obj: bpy.types.Object, subfolder: str | None) -> None:
+    """Move ``obj`` into a nested Collection hierarchy mirroring ``subfolder``.
+
+    A ``subfolder`` like ``"body/torso"`` creates (or reuses) collections
+    ``body`` -> ``torso`` under the active scene's root collection, and
+    relinks ``obj`` into the deepest one. ``None`` leaves it in the
+    scene's root collection.
+    """
+    if not subfolder:
+        return
+    scene = bpy.context.scene
+    parent = scene.collection
+    for part in subfolder.split("/"):
+        clean = part.strip()
+        if not clean:
+            continue
+        child = bpy.data.collections.get(clean) or bpy.data.collections.new(clean)
+        if child.name not in {c.name for c in parent.children}:
+            parent.children.link(child)
+        parent = child
+    for existing in obj.users_collection:
+        existing.objects.unlink(obj)
+    parent.objects.link(obj)
+
+
 def _tag_origin(obj: bpy.types.Object, layer_name: str) -> None:
     obj["proscenio_import_origin"] = f"psd:{layer_name}"
+
+
+def _tag_kind(obj: bpy.types.Object, kind: str) -> None:
+    """Stamp the manifest ``kind`` so downstream writers can branch on it."""
+    obj["proscenio_psd_kind"] = kind
+
+
+def _tag_blend_mode(obj: bpy.types.Object, blend_mode: str | None) -> None:
+    """Preserve the manifest-declared blend mode for downstream writers."""
+    if blend_mode is None:
+        return
+    obj["proscenio_blend_mode"] = blend_mode
 
 
 def _tag_sprite_type(

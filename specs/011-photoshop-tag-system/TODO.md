@@ -90,6 +90,29 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [ ] Add a new fixture `examples/authored/doll_tagged/` (or extend the existing doll) that exercises every tag in the v1 taxonomy. Becomes the SPEC 011 parity oracle.
 - [ ] Re-run the SPEC 010 doll-roundtrip oracle once schema v2 ships; verify the v1 baseline still validates against the legacy importer path.
 
+## Additional work surfaced during implementation
+
+Items discovered while building the Tags / Validate / Export UI that
+were not in the original TODO but landed (or were registered) along
+the way.
+
+### Done outside the original scope
+
+- **Logger module** ([`apps/photoshop/src/util/log.ts`](../../apps/photoshop/src/util/log.ts)) with 6 levels (trace/debug/info/warn/error/off), localStorage persistence, cross-panel sync via 500ms cache, and `window.proscenio.setLogLevel` debug surface. Added because the UXP DevTools console is the only debugger available and we needed gated tracing.
+- **Polling fallback** for UXP builds where `action.addNotificationListener` returns `void` (no teardown handle, no events). Implemented for `useDocumentChanges`, `useActiveLayerPath` (300ms), `useTagTree` (1.5s). Bails when `document.hidden` is true so background panels do not burn cycles.
+- **Structural reuse** in `buildTagTreeReusing` to keep `TagTreeNode` references stable across polls when nothing changed. Drives `React.memo` short-circuit on `prev.node === next.node` (single pointer compare instead of structural walk). Fast path also skips `parseLayerName` regex when the row is being reused.
+- **Pixels-per-unit UI control** in the Export tab (with persisted value + live "Canvas height = N units" hint). Out of scope of the SPEC but the manifest field exists and downstream needs a way to set it without code edits.
+- **Legacy migration helper** ([`apps/photoshop/src/domain/legacy-migration.ts`](../../apps/photoshop/src/domain/legacy-migration.ts)) for Wave 11.6's `_<name>` -> `[ignore]` rewrite. Pure planner + UXP applier separated; the planner has unit tests.
+- **Shared layer-find helper** ([`apps/photoshop/src/io/_layer-find.ts`](../../apps/photoshop/src/io/_layer-find.ts)) used by both `layer-rename` and `legacy-migration` (was duplicated).
+- **Shared `elementsEqual<T>`** in [`apps/photoshop/src/util/arrays.ts`](../../apps/photoshop/src/util/arrays.ts) (was duplicated four ways across hooks and section components).
+
+### Still open
+
+- [ ] `log.trace` in `_layer-find` serialises `liveAtDepth` to JSON on every miss (debug spam at trace level). Acceptable while debugging; trim before merge if signal-to-noise becomes a problem.
+- [ ] Blender importer places meshes with a consistent ~3 px Z-offset vs the manifest's `position + size/2` centre. Suspected off-by-one in the importer's bbox -> world transform. Cosmetic (0.17% on a 1731 px doc) but worth tracing in Wave 11.7.
+- [ ] `useTagTree` polls every 1.5 s even when the panel is focused but idle. Could drop to 3-5 s in idle state; not urgent on the doll-sized PSD.
+- [ ] Spectrum web components (`sp-action-button`, `sp-textfield`) carry shadow-DOM init cost on mount. Acceptable today (panels are not interaction-heavy); revisit if larger PSDs surface lag.
+
 ## Risks
 
 - **XMP API stability**. `uxp.xmp` is relatively new and may differ between PS minor versions. Mitigation: feature-detect; degrade gracefully to bracket-tag-only.

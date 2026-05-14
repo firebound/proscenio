@@ -47,7 +47,7 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
             return False
         # Re-projection toggles Edit Mode on the active mesh; starting from
         # Edit Mode would leak state from the user's in-progress selection.
-        return context.mode == "OBJECT"
+        return bool(context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
@@ -98,7 +98,7 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
         # mesh.uv_layers.active.data is empty while the mesh is in Edit
         # Mode (BMesh owns the loop data instead); execute() would raise
         # IndexError when reading uv_layer.data[li].
-        return context.mode == "OBJECT"
+        return bool(context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object

@@ -28,7 +28,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         # Atlas pack reads source images and writes the manifest while every
         # sprite mesh is in Object Mode; running it from Edit Mode leaves the
         # active mesh's UV data behind BMesh and breaks the round-trip.
-        return bool(bpy.data.filepath) and context.mode == "OBJECT"
+        return bool(bpy.data.filepath and context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         from ...core import atlas_packer  # type: ignore[import-not-found]

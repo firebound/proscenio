@@ -35,6 +35,14 @@ A sprite of `type: "sprite_frame"` carries an optional `texture_region` (the sub
 
 A single `.proscenio` may freely mix both kinds - a cutout body with a spritesheet face, for example.
 
+> **Note - the name `sprite_frame` shows up in three places**, do not confuse them:
+>
+> 1. **Sprite discriminator** here in `.proscenio` (`type: "sprite_frame"`) → Godot `Sprite2D` with `hframes`/`vframes`/`frame`.
+> 2. **PSD manifest layer kind** (`kind: "sprite_frame"`) → a Photoshop `LayerSet` tagged `[spritesheet]`; the Blender importer consumes it and the Blender writer can re-emit it as a `.proscenio` sprite of `type: "sprite_frame"`.
+> 3. **Animation track type** (`type: "sprite_frame"` inside an animation track) → animates the `:frame` property of an existing `Sprite2D` over time (see "Track types" below).
+>
+> The shape is different in each context. The `.proscenio` schema is still `format_version=1`; the SPEC 011 taxonomy that introduced `kind: "mesh"`, `anchor`, per-entry `origin`, `blend_mode`, and `subfolder` lives on the **PSD manifest** side and bumped that schema to v2 - not this one.
+
 ## UV coordinates
 
 UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite_frame` sprites have no `uv` field - Godot derives the UV automatically from `frame` × `hframes`/`vframes`.

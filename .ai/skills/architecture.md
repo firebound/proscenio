@@ -8,26 +8,33 @@ description: Repo layout, component boundaries, dependency direction, extension 
 ## Three components, two contracts
 
 ```text
-Photoshop ──UXP plugin──▶ layer PNGs + manifest JSON (psd_manifest.schema.json v1)
+Photoshop ──UXP plugin──▶ layer PNGs + manifest JSON (psd_manifest.schema.json)
                                   │
                                   ▼
                                Blender (addon: rig, mesh, animate)
                                   │
                                   ▼ exporter
-                            .proscenio (JSON, proscenio.schema.json v1)
+                            .proscenio (JSON, proscenio.schema.json)
                                   │
                                   ▼ EditorImportPlugin
-                               Godot .scn (Skeleton2D + Bone2D + Polygon2D + AnimationPlayer)
+                               Godot .scn  (Node2D root
+                                            └─ Skeleton2D + Bone2D[]
+                                               ├─ Polygon2D[]  (type: polygon)
+                                               ├─ Sprite2D[]   (type: sprite_frame)
+                                               └─ Node2D[]     (slot containers)
+                                            └─ AnimationPlayer + AnimationLibrary)
 ```
+
+Each format carries its own `format_version`; see [`format-spec.md`](format-spec.md) for the `.proscenio` shape and the PSD manifest's own schema file for the manifest shape.
 
 ## Strict dependency direction
 
-- **Photoshop exporter** (UXP plugin, TypeScript + React) knows nothing of Blender or Godot. Output conforms to `psd_manifest.schema.json` v1.
+- **Photoshop exporter** (UXP plugin, TypeScript + React) knows nothing of Blender or Godot. Output conforms to the PSD manifest schema.
 - **Blender addon** knows the Photoshop manifest format and the `.proscenio` output format. Knows nothing of Godot internals.
 - **Godot plugin** knows only the `.proscenio` schema. Does not parse `.blend`. Does not depend on Python.
-- **Two schemas, two contracts**:
-  - [`schemas/psd_manifest.schema.json`](../../schemas/psd_manifest.schema.json) - Photoshop ↔ Blender bridge.
-  - [`schemas/proscenio.schema.json`](../../schemas/proscenio.schema.json) - Blender ↔ Godot bridge.
+- **Two schemas, two contracts**, both under `schemas/`:
+  - `psd_manifest.schema.json` - Photoshop ↔ Blender bridge.
+  - `proscenio.schema.json` - Blender ↔ Godot bridge.
 
 ## What goes where
 
@@ -43,9 +50,9 @@ Photoshop ──UXP plugin──▶ layer PNGs + manifest JSON (psd_manifest.sch
 
 ## Extension points
 
-- New DCC input format (Krita, GIMP, Aseprite) → emit conforming `psd_manifest.schema.json` from that DCC; reuse the existing [`apps/blender/importers/photoshop/`](../../apps/blender/importers/) consumer (manifest is DCC-agnostic by design).
-- New output target (Unity, Defold, raw Spine emitter) → new module under [`apps/blender/exporters/`](../../apps/blender/exporters/).
-- New animation track type → bump `format_version` in `proscenio.schema.json`, update schema, update Blender writer, update Godot animation builder.
+- New DCC input format (Krita, GIMP, Aseprite) → emit a conforming PSD manifest from that DCC; the Blender-side consumer is DCC-agnostic by design.
+- New output target (Unity, Defold, raw Spine emitter) → new exporter module on the Blender side, reusing the rig + animation data already on the scene.
+- New animation track type → bump `format_version` on the affected schema, update the schema, then update producer and consumer in lockstep.
 
 ## Hard rules
 

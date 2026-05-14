@@ -5,6 +5,7 @@ import React from "react";
 
 import type { TagTreeNode } from "../../domain/tag-tree";
 import { elementsEqual } from "../../util/arrays";
+import { collapseKey } from "../../util/collapseKey";
 import { Accordion } from "../common/Accordion";
 import { TagRow } from "./tags/Row";
 
@@ -108,7 +109,7 @@ const TagNodeBranch: React.FC<BranchProps> = ({
 }) => {
     const selected = activeLayerPath !== null
         && elementsEqual(node.layerPath, activeLayerPath);
-    const key = node.displayPath.join("/");
+    const key = collapseKey(node.displayPath);
     const isCollapsed = collapsed.has(key);
     const showChildren = node.children.length > 0 && !isCollapsed;
     return (

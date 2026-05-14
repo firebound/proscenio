@@ -5,6 +5,12 @@
 
 import React from "react";
 
+let idCounter = 0;
+function nextId(): number {
+    idCounter += 1;
+    return idCounter;
+}
+
 interface Props {
     title: string;
     /** Optional small label rendered next to the title (e.g. counts). */
@@ -32,6 +38,7 @@ export const Accordion: React.FC<Props> = ({
             setOpen((o) => !o);
         }
     }, []);
+    const bodyId = React.useMemo(() => `accordion-body-${nextId()}`, []);
 
     return (
         <section className={`accordion ${open ? "open" : "closed"}`}>
@@ -41,6 +48,8 @@ export const Accordion: React.FC<Props> = ({
                 role="button"
                 tabIndex={0}
                 title={hint}
+                aria-expanded={open}
+                aria-controls={bodyId}
                 onClick={onToggle}
                 onKeyDown={onKey}
             >
@@ -48,7 +57,7 @@ export const Accordion: React.FC<Props> = ({
                 <span className="accordion-title">{title}</span>
                 {badge !== undefined && <span className="accordion-badge">{badge}</span>}
             </span>
-            {open && <div className="accordion-body">{children}</div>}
+            {open && <div id={bodyId} className="accordion-body">{children}</div>}
         </section>
     );
 };

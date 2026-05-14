@@ -41,6 +41,7 @@ export const ClickSpan: React.FC<ClickSpanProps> = ({
             if (disabled) return;
             if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
+                e.stopPropagation();
                 onClick();
             }
         },

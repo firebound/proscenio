@@ -51,8 +51,8 @@ export const ValidateSection: React.FC<Props> = ({ preview }) => {
                     {valErrors.length > 0 && (
                         <div className="result error">
                             <sp-body size="XS">Manifest invalid:</sp-body>
-                            {valErrors.map((err) => (
-                                <sp-body size="XS" key={err} className="result-row">{err}</sp-body>
+                            {valErrors.map((err, i) => (
+                                <sp-body size="XS" key={`${i}-${err}`} className="result-row">{err}</sp-body>
                             ))}
                         </div>
                     )}

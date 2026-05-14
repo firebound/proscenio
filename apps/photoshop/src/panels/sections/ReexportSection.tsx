@@ -105,8 +105,8 @@ const ReexportResult: React.FC<{ result: SingleLayerExportResult }> = ({ result 
     return (
         <div className="result error">
             <sp-body size="XS">Re-export {result.kind}.</sp-body>
-            {(result.errors ?? []).map((err) => (
-                <sp-body size="XS" className="result-row" key={err}>{err}</sp-body>
+            {(result.errors ?? []).map((err, i) => (
+                <sp-body size="XS" className="result-row" key={`${i}-${err}`}>{err}</sp-body>
             ))}
         </div>
     );

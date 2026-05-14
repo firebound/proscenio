@@ -63,6 +63,7 @@ const PreviewBody: React.FC<{
             <KeyValueRow label="entries" value={String(manifest?.layers.length ?? 0)} />
             <KeyValueRow label="skipped" value={String(skipped.length)} />
             <KeyValueRow label="warnings" value={String(warnings.length)} />
+            <sp-action-button onClick={onRefresh}>Refresh</sp-action-button>
             <div className="entries-list">
                 {(manifest?.layers ?? []).map((entry, i) => (
                     <EntryRow

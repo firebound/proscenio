@@ -15,6 +15,7 @@ import { useExportPreview } from "../hooks/useExportPreview";
 import { useFilenameTemplate } from "../hooks/useFilenameTemplate";
 import { useFolderCache } from "../hooks/useFolderCache";
 import { useTagTree } from "../hooks/useTagTree";
+import { collapseKey } from "../util/collapseKey";
 import { DocSection } from "./sections/DocSection";
 import { RevealOutputSection } from "./sections/RevealOutputSection";
 import { TagsSection } from "./sections/TagsSection";
@@ -52,8 +53,8 @@ export const ProscenioTagsPanel: React.FC = () => {
         [renameFn],
     );
 
-    const onToggleCollapse = React.useCallback((layerPath: readonly string[]) => {
-        const key = layerPath.join("/");
+    const onToggleCollapse = React.useCallback((displayPath: readonly string[]) => {
+        const key = collapseKey(displayPath);
         setCollapsed((prev) => {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key);

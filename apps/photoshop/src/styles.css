@@ -179,7 +179,7 @@
 
 .proscenio-panel .validate-row .validate-text {
     color: rgba(255, 255, 255, 0.95);
-    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .proscenio-panel .entries-list {
@@ -228,7 +228,7 @@
     border-radius: 2px;
     font-size: 11px;
     line-height: 1.5;
-    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .proscenio-panel .entry-row:hover {

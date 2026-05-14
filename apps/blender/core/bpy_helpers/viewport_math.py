@@ -34,7 +34,6 @@ def mouse_event_to_plane_point(
     fallback as a normal success path.
     """
     from bpy_extras import view3d_utils
-    from mathutils import Vector
 
     region = context.region
     rv3d = context.region_data

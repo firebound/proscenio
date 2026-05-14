@@ -31,8 +31,17 @@ _DRIVER_SOURCE_AXES: tuple[tuple[str, str, str], ...] = (
 def _ensure_single_driver(
     sprite: bpy.types.Object,
     data_path: str,
+    source_armature: bpy.types.Object,
+    source_bone: str,
 ) -> bpy.types.FCurve:
     """Idempotent: drop any existing driver on ``data_path`` first, then add fresh.
+
+    Also drop sibling drivers under ``proscenio.*`` that target the same
+    ``(armature, bone)`` source - F9 redo with a different ``Target``
+    property changes ``data_path`` but the old driver on the previous
+    path lingers otherwise. Side effect: a single sprite cannot host two
+    proscenio drivers off the same bone (an unusual setup; passing the
+    bone source through the cleanup makes the common case work).
 
     After ``driver_add`` Blender seeds the fcurve with default keyframes
     around the property's current value, with constant extrapolation.
@@ -41,14 +50,48 @@ def _ensure_single_driver(
     breaking the feature for property values outside that band. Strip
     them so the driver expression result passes through 1:1.
     """
-    if sprite.animation_data is not None:
-        existing = sprite.animation_data.drivers.find(data_path)
-        if existing is not None:
-            sprite.driver_remove(data_path)
+    _purge_stale_drivers(sprite, data_path, source_armature, source_bone)
     fcurve = sprite.driver_add(data_path)
     while fcurve.keyframe_points:
         fcurve.keyframe_points.remove(fcurve.keyframe_points[0])
     return fcurve
+
+
+def _purge_stale_drivers(
+    sprite: bpy.types.Object,
+    data_path: str,
+    source_armature: bpy.types.Object,
+    source_bone: str,
+) -> None:
+    """Remove driver on ``data_path`` plus any sibling ``proscenio.*`` driver
+    sourced from the same ``(armature, bone)`` pair."""
+    if sprite.animation_data is None:
+        return
+    existing = sprite.animation_data.drivers.find(data_path)
+    if existing is not None:
+        sprite.driver_remove(data_path)
+    stale_paths = [
+        fc.data_path
+        for fc in sprite.animation_data.drivers
+        if fc.data_path != data_path
+        and fc.data_path.startswith("proscenio.")
+        and _driver_matches_source(fc.driver, source_armature, source_bone)
+    ]
+    for path in stale_paths:
+        sprite.driver_remove(path)
+
+
+def _driver_matches_source(
+    driver: bpy.types.Driver,
+    source_armature: bpy.types.Object,
+    source_bone: str,
+) -> bool:
+    """True when ``driver`` reads from ``(source_armature, source_bone)``."""
+    for var in driver.variables:
+        for target in var.targets:
+            if target.id is source_armature and target.bone_target == source_bone:
+                return True
+    return False
 
 
 class PROSCENIO_OT_create_driver(bpy.types.Operator):
@@ -133,7 +176,7 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
 
         data_path = f"proscenio.{self.target_property}"
         try:
-            fcurve = _ensure_single_driver(sprite, data_path)
+            fcurve = _ensure_single_driver(sprite, data_path, armature, self.bone_name)
         except (TypeError, RuntimeError) as exc:
             report_error(self, f"could not add driver on {data_path}: {exc}")
             return {"CANCELLED"}

@@ -86,6 +86,17 @@ For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-fe
 - Always `unregister()` cleanly - leaked classes break reload.
 - Lint: `ruff check apps/blender/`. Format: `ruff format apps/blender/`. Type-check: `mypy` against the addon's pyproject.
 
+## Modal operators with in-viewport overlay
+
+Pattern lifted from SPEC 012.1 (`operators/quick_armature.py`). Reusable for any operator that needs preview feedback while a modal session is active.
+
+- **Two draw handlers per operator.** Register one `POST_VIEW` handler on `bpy.types.SpaceView3D` for world-space hints (preview line, anchor circle); register one `POST_PIXEL` handler for screen-space hints (modifier cheatsheet, status header). Store both handles as class attributes so they survive any modal exit path.
+- **Single unregister helper.** Call `_unregister_handlers(self)` from `_finish`, `cancel`, and every error-return path. Wrap each `draw_handler_remove` in `contextlib.suppress(ValueError, RuntimeError)` so reload-scripts paths that already dropped the handle do not raise.
+- **Sweep orphans on addon `unregister()`.** When the addon is disabled or reloaded, walk the operator's class attributes and remove any leftover handles before the operator class itself is unregistered. Cheap insurance against Blender's reload-scripts loop.
+- **Geometry helpers stay bpy-free.** Vertex math (`build_circle_vertices`, `build_rect_vertices`) lives under `core/modal_overlay_geometry.py` so pytest can verify it without booting Blender. The bpy-bound wrappers (`draw_line_3d`, `draw_circle_3d`, `draw_text_panel_2d`) live under `core/bpy_helpers/modal_overlay.py` and consume those vertices.
+- **Tag area for redraw on `MOUSEMOVE`.** Modal handlers do not redraw spontaneously; call `context.area.tag_redraw()` after updating any state the draw handler reads. Cap the work to mouse-event cadence - no timers needed.
+- **Snapshot-and-restore view state.** If the operator changes `view_perspective` or `view_matrix` (auto-snap to a specific orientation), save the originals in `invoke` and restore them in every exit path. Operators should not silently mutate user view state.
+
 ## Authoring panel overview
 
 The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with **N**). Subpanels expose every Proscenio knob - sprite type and metadata, skeleton helpers, slot anchors, animation summary, atlas pack / apply / unpack, validation issues, export controls, diagnostics. Each subpanel header carries a status badge (`godot-ready` / `blender-only` / `planned` / `out-of-scope`) and a `?` button that opens an in-panel help popup.

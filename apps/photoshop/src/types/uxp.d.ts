@@ -69,7 +69,19 @@ declare module "photoshop" {
     export const constants: PhotoshopConstants;
     export const action: {
         batchPlay(commands: unknown[], options?: unknown): Promise<unknown>;
+        /** Subscribe to PS notification events. Return shape varies
+         *  by UXP version: older builds return `void`, newer builds
+         *  return a sync handle, recent builds return
+         *  `Promise<handle>`. Consumers must probe at runtime. */
+        addNotificationListener(
+            events: ReadonlyArray<{ event: string }>,
+            callback: (event: { event: string }, descriptor: unknown) => void,
+        ): Promise<PsNotificationListener> | PsNotificationListener | void;
     };
+
+    export interface PsNotificationListener {
+        remove(): void;
+    }
 
     export interface PhotoshopApp {
         activeDocument: PsDocument | null;
@@ -144,9 +156,13 @@ declare module "photoshop" {
     export interface PsLayer {
         name: string;
         visible: boolean;
+        readonly id: number;
         readonly bounds: PsBounds;
         readonly kind: number;
         readonly layers?: PsLayer[];
+        /** Parent in the layer tree. Either an enclosing group layer
+         *  or the host document when the layer sits at the root. */
+        readonly parent?: PsLayer | PsDocument;
         duplicate(target?: PsDocument | PsLayer): Promise<PsLayer>;
         // Translate accepts deltas in pixels (UnitValue-equivalent). UXP
         // also accepts plain numbers as pixels.
@@ -173,6 +189,10 @@ declare module "photoshop" {
         readonly height: number;
         readonly layers: PsLayer[];
         readonly layerTree?: PsLayer[];
+        /** The layers the user has selected. UXP reports an empty
+         *  array when no selection exists; multiple entries when the
+         *  user is multi-selecting in the Layers panel. */
+        readonly activeLayers: PsLayer[];
         readonly saved: boolean;
         readonly path: string | null;
         readonly guides?: PsGuide[];

@@ -25,16 +25,16 @@
       "preferredFloatingSize": { "width": 280, "height": 360 },
       "icons": [
         {
-          "width": 32,
-          "height": 32,
+          "width": 23,
+          "height": 23,
           "path": "icons/icon_D.png",
           "scale": [1, 2],
           "theme": ["dark", "darkest"],
           "species": ["generic"]
         },
         {
-          "width": 32,
-          "height": 32,
+          "width": 23,
+          "height": 23,
           "path": "icons/icon_N.png",
           "scale": [1, 2],
           "theme": ["lightest", "light"],
@@ -54,16 +54,74 @@
       "preferredFloatingSize": { "width": 420, "height": 600 },
       "icons": [
         {
-          "width": 32,
-          "height": 32,
+          "width": 23,
+          "height": 23,
           "path": "icons/icon_D.png",
           "scale": [1, 2],
           "theme": ["dark", "darkest"],
           "species": ["generic"]
         },
         {
-          "width": 32,
-          "height": 32,
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_N.png",
+          "scale": [1, 2],
+          "theme": ["lightest", "light"],
+          "species": ["generic"]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "id": "proscenioTags",
+      "label": {
+        "default": "Proscenio Tags"
+      },
+      "minimumSize": { "width": 320, "height": 280 },
+      "maximumSize": { "width": 2000, "height": 2000 },
+      "preferredDockedSize": { "width": 380, "height": 600 },
+      "preferredFloatingSize": { "width": 420, "height": 680 },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_D.png",
+          "scale": [1, 2],
+          "theme": ["dark", "darkest"],
+          "species": ["generic"]
+        },
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_N.png",
+          "scale": [1, 2],
+          "theme": ["lightest", "light"],
+          "species": ["generic"]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "id": "proscenioValidate",
+      "label": {
+        "default": "Proscenio Validate"
+      },
+      "minimumSize": { "width": 280, "height": 240 },
+      "maximumSize": { "width": 2000, "height": 2000 },
+      "preferredDockedSize": { "width": 340, "height": 480 },
+      "preferredFloatingSize": { "width": 380, "height": 520 },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_D.png",
+          "scale": [1, 2],
+          "theme": ["dark", "darkest"],
+          "species": ["generic"]
+        },
+        {
+          "width": 23,
+          "height": 23,
           "path": "icons/icon_N.png",
           "scale": [1, 2],
           "theme": ["lightest", "light"],
@@ -74,16 +132,16 @@
   ],
   "icons": [
     {
-      "width": 32,
-      "height": 32,
+      "width": 23,
+      "height": 23,
       "path": "icons/icon_D.png",
       "scale": [1, 2],
       "theme": ["dark", "darkest"],
       "species": ["generic"]
     },
     {
-      "width": 32,
-      "height": 32,
+      "width": 23,
+      "height": 23,
       "path": "icons/icon_N.png",
       "scale": [1, 2],
       "theme": ["lightest", "light"],

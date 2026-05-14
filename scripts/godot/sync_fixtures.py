@@ -14,7 +14,7 @@ canonical source under ``examples/``. No duplication on disk: edits in
 1. Link ``<name>.expected.proscenio`` -> ``<name>.proscenio`` (drops the
    ``.expected.`` suffix; goldens stay under examples/ for the test harness).
 2. Link every PNG sitting in the fixture root or under its texture subdirs
-   (``pillow_layers/``, ``render_layers/``, ``01_to_photoshop/render_layers/``)
+   (``pillow_layers/``, ``render_layers/``, ``00_blender_base/render_layers/``)
    into the same dest directory so the Godot importer + Sprite2D / Polygon2D
    builders can find them via filename lookup.
 3. Link ``examples/<name>/godot/<Name>.tscn`` + ``<Name>.gd`` (the wrapper
@@ -54,7 +54,7 @@ _TEXTURE_SUBDIRS: tuple[str, ...] = (
     "",
     "pillow_layers",
     "render_layers",
-    "01_to_photoshop/render_layers",
+    "00_blender_base/render_layers",
     "_spritesheets",
 )
 

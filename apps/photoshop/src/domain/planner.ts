@@ -34,6 +34,25 @@ export interface ExportOptions {
     skipHidden: boolean;
     pixelsPerUnit?: number;
     anchor?: [number, number];
+    /** Output path template for polygon / mesh entries. Tokens:
+     *  `{name}` (sanitised manifest entry name) and `{kind}`. Default
+     *  `{name}.png`. The `images/` prefix and any `[folder:name]`
+     *  subfolder are prepended automatically; the template only
+     *  controls the file portion. */
+    polygonTemplate?: string;
+    /** Same shape for sprite_frame frame files. Tokens: `{name}`,
+     *  `{index}`. Default `{name}/{index}.png`. */
+    framesTemplate?: string;
+}
+
+const DEFAULT_POLYGON_TEMPLATE = "{name}.png";
+const DEFAULT_FRAMES_TEMPLATE = "{name}/{index}.png";
+
+function applyTemplate(template: string, tokens: Record<string, string | number>): string {
+    return template.replaceAll(/\{(\w+)\}/g, (match, key: string) => {
+        const value = tokens[key];
+        return value === undefined ? match : String(value);
+    });
 }
 
 export interface DocumentInfo {
@@ -54,12 +73,41 @@ export interface ExportPlan {
     manifest: Manifest;
     writes: PngWrite[];
     skipped: SkippedLayer[];
+    warnings: PlanWarning[];
+    /** Mapping from manifest entry (by index, parallel to
+     *  `manifest.layers`) back to the PSD layers that produced it.
+     *  The Debug / Tags surfaces use this to highlight the manifest
+     *  row that matches the currently selected PS layer. */
+    entryRefs: EntryRef[];
+}
+
+export interface EntryRef {
+    name: string;
+    kind: "polygon" | "mesh" | "sprite_frame";
+    /** Polygon / mesh: the source layer (or [merge] group).
+     *  sprite_frame: the group layer that hosts the frames. */
+    layerPath: string[];
+    /** Per-frame source layer chains. Present only on sprite_frame. */
+    framePaths?: string[][];
 }
 
 export interface SkippedLayer {
     layerPath: string[];
     name: string;
     reason: "ignore-tag" | "hidden" | "empty-bounds" | "origin-marker";
+}
+
+export interface PlanWarning {
+    layerPath: string[];
+    name: string;
+    code:
+        | "duplicate-path"
+        | "conflicting-tags"
+        | "sprite-frame-malformed"
+        | "empty-bounds"
+        | "scale-subpixel"
+        | "origin-outside-container";
+    message: string;
 }
 
 interface ParsedLayer {
@@ -84,8 +132,9 @@ export function buildExportPlan(
     const ctx: WalkContext = {
         out: [],
         skipped: [],
+        warnings: [],
         zCounter: { value: 0 },
-        opts,
+        settings: settingsFromOptions(opts),
     };
     walkLayers(parseChildren(layers), "", [], {}, ctx);
     const manifest: Manifest = {
@@ -96,14 +145,114 @@ export function buildExportPlan(
         ...(opts.anchor === undefined ? {} : { anchor: opts.anchor }),
         layers: ctx.out.map(toManifestEntry),
     };
-    return { manifest, writes: ctx.out.flatMap(toWrites), skipped: ctx.skipped };
+    detectDuplicatePaths(ctx);
+    return {
+        manifest,
+        writes: ctx.out.flatMap(toWrites),
+        skipped: ctx.skipped,
+        warnings: ctx.warnings,
+        entryRefs: ctx.out.map(toEntryRef),
+    };
+}
+
+function toEntryRef(entry: PlannedEntry): EntryRef {
+    if (entry.kind === "sprite_frame") {
+        return {
+            name: entry.name,
+            kind: "sprite_frame",
+            layerPath: entry._groupLayerPath,
+            framePaths: entry._frameSources.map((s) => s.layerPath),
+        };
+    }
+    return {
+        name: entry.name,
+        kind: entry.kind,
+        layerPath: entry._source.layerPath,
+    };
+}
+
+interface PlannerSettings {
+    skipHidden: boolean;
+    polygonTemplate: string;
+    framesTemplate: string;
+}
+
+function settingsFromOptions(opts: ExportOptions): PlannerSettings {
+    return {
+        skipHidden: opts.skipHidden,
+        polygonTemplate: opts.polygonTemplate ?? DEFAULT_POLYGON_TEMPLATE,
+        framesTemplate: opts.framesTemplate ?? DEFAULT_FRAMES_TEMPLATE,
+    };
 }
 
 interface WalkContext {
     out: PlannedEntry[];
     skipped: SkippedLayer[];
+    warnings: PlanWarning[];
     zCounter: { value: number };
-    opts: ExportOptions;
+    settings: PlannerSettings;
+}
+
+function emitTagConflicts(
+    parsed: ParsedLayer,
+    layerPath: string[],
+    displayName: string,
+    ctx: WalkContext,
+): void {
+    const t = parsed.tags;
+    const conflicts: string[] = [];
+    if (t.merge === true && t.kind === "sprite_frame") {
+        conflicts.push("[merge] and [spritesheet] are mutually exclusive");
+    }
+    if (t.originMarker === true && t.origin !== undefined) {
+        conflicts.push("[origin] marker and [origin:x,y] cannot both be set");
+    }
+    if (t.kind === "mesh" && parsed.raw.kind === "set" && t.merge !== true) {
+        conflicts.push("[mesh] applies to a layer (or a [merge] group); plain groups are walked");
+    }
+    if (conflicts.length === 0) return;
+    ctx.warnings.push({
+        layerPath,
+        name: displayName,
+        code: "conflicting-tags",
+        message: conflicts.join("; "),
+    });
+}
+
+function detectDuplicatePaths(ctx: WalkContext): void {
+    // Index each entry by every concrete output path it will write.
+    // For sprite_frame entries that means walking `frames[]` rather
+    // than using a synthetic `<name>/*` glob: the user's filename
+    // template may not include `{name}`, in which case two distinct
+    // sprite_frames in the same subfolder collide on identical
+    // per-frame paths and the glob-based check would miss it.
+    const byPath = new Map<string, Set<PlannedEntry>>();
+    const recordPath = (entry: PlannedEntry, path: string): void => {
+        const set = byPath.get(path);
+        if (set === undefined) byPath.set(path, new Set([entry]));
+        else set.add(entry);
+    };
+    for (const entry of ctx.out) {
+        if (entry.kind === "sprite_frame") {
+            for (const frame of entry.frames) recordPath(entry, frame.path);
+            continue;
+        }
+        recordPath(entry, entry.path);
+    }
+    for (const [path, entrySet] of byPath) {
+        if (entrySet.size < 2) continue;
+        for (const entry of entrySet) {
+            const layerPath = entry.kind === "sprite_frame"
+                ? entry._frameSources[0]?.layerPath ?? []
+                : entry._source.layerPath;
+            ctx.warnings.push({
+                layerPath,
+                name: entry.name,
+                code: "duplicate-path",
+                message: `${entrySet.size} entries resolve to the same output path '${path}'. Sanitisation collapses different layer names to the same on-disk file; rename or use [path:...] to disambiguate.`,
+            });
+        }
+    }
 }
 
 interface PngWriteSource {
@@ -111,7 +260,10 @@ interface PngWriteSource {
     merge: boolean;
 }
 type PlannedPolygon = PolygonEntry & { _source: PngWriteSource };
-type PlannedSpriteFrame = SpriteFrameEntry & { _frameSources: PngWriteSource[] };
+type PlannedSpriteFrame = SpriteFrameEntry & {
+    _frameSources: PngWriteSource[];
+    _groupLayerPath: string[];
+};
 type PlannedEntry = PlannedPolygon | PlannedSpriteFrame;
 
 function parseChildren(children: Layer[]): ParsedLayer[] {
@@ -124,10 +276,13 @@ function parseChildren(children: Layer[]): ParsedLayer[] {
 // Tags inherited from ancestor groups onto descendants. `[folder]`
 // and `[blend]` on a group apply to every descendant unless that
 // descendant declares its own override. Local tags on the child
-// always win.
+// always win. `pickPivot` records whether the enclosing group is a
+// sprite_frame source or a `[merge]` group, both of which consume an
+// `[origin]` marker; otherwise the marker would be discarded.
 interface InheritedTags {
     folder?: string;
     blend?: BlendMode;
+    pickPivot?: true;
 }
 
 function inherit(parent: InheritedTags, child: TagBag): InheritedTags {
@@ -135,6 +290,11 @@ function inherit(parent: InheritedTags, child: TagBag): InheritedTags {
         folder: child.folder ?? parent.folder,
         blend: child.blend ?? parent.blend,
     };
+}
+
+function inheritWithPivot(parent: InheritedTags, child: TagBag, pickPivot: boolean): InheritedTags {
+    const next = inherit(parent, child);
+    return pickPivot ? { ...next, pickPivot: true } : next;
 }
 
 function walkLayers(
@@ -147,11 +307,12 @@ function walkLayers(
     for (const parsed of children) {
         const childPath = [...layerPath, parsed.raw.name];
         const displayName = fallbackName(parsed.displayName, parsed.raw);
+        emitTagConflicts(parsed, childPath, displayName, ctx);
         if (parsed.tags.ignore === true) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
             continue;
         }
-        if (ctx.opts.skipHidden && !parsed.raw.visible) {
+        if (ctx.settings.skipHidden && !parsed.raw.visible) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "hidden" });
             continue;
         }
@@ -160,6 +321,14 @@ function walkLayers(
             continue;
         }
         if (parsed.tags.originMarker === true) {
+            if (inherited.pickPivot !== true) {
+                ctx.warnings.push({
+                    layerPath: childPath,
+                    name: displayName,
+                    code: "origin-outside-container",
+                    message: "[origin] marker dropped: parent is not a [spritesheet] or [merge] group, so no entry consumes the pivot",
+                });
+            }
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
             continue;
         }
@@ -169,9 +338,18 @@ function walkLayers(
             childPath,
             ctx.zCounter.value,
             inherit(inherited, parsed.tags),
+            ctx.settings,
+            { layerPath: childPath, name: displayName },
+            ctx,
         );
         if (entry === null) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
+            ctx.warnings.push({
+                layerPath: childPath,
+                name: displayName,
+                code: "empty-bounds",
+                message: "Layer has empty bounds (no visible pixels). Skipped from export.",
+            });
             continue;
         }
         ctx.out.push(entry);
@@ -194,7 +372,7 @@ function handleGroup(
 
     if (
         explicitSpriteFrame
-        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.opts.skipHidden))
+        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.settings.skipHidden))
     ) {
         const entry = buildSpriteFrameEntry(
             parsed,
@@ -203,12 +381,23 @@ function handleGroup(
             layerPath,
             ctx.zCounter.value,
             groupInherited,
-            ctx.opts.skipHidden,
+            ctx.settings,
         );
         if (entry !== null) {
             ctx.out.push(entry);
             ctx.zCounter.value += 1;
             return;
+        }
+        if (explicitSpriteFrame) {
+            // Tagged `[spritesheet]` but no contiguous-from-zero frames
+            // landed (mixed kinds, gaps, all bounds-empty). Surface so
+            // the artist can fix the children before re-export.
+            ctx.warnings.push({
+                layerPath,
+                name: fallbackName(parsed.displayName, parsed.raw),
+                code: "sprite-frame-malformed",
+                message: "[spritesheet] group has no valid contiguous frames; falling back to passthrough recursion",
+            });
         }
     }
     if (parsed.tags.merge === true) {
@@ -218,6 +407,9 @@ function handleGroup(
             layerPath,
             ctx.zCounter.value,
             groupInherited,
+            ctx.settings,
+            { layerPath, name: fallbackName(parsed.displayName, parsed.raw) },
+            ctx,
         );
         if (entry !== null) {
             ctx.out.push(entry);
@@ -226,7 +418,16 @@ function handleGroup(
         }
     }
     const nested = joinName(prefix, parsed.displayName);
-    walkLayers(parsedChildren, nested, layerPath, groupInherited, ctx);
+    // Pass `pickPivot` down for sprite_frame / merge groups so an
+    // `[origin]` marker inside them does not raise the
+    // origin-outside-container warning.
+    const containerHasPivot = explicitSpriteFrame
+        || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.settings.skipHidden))
+        || parsed.tags.merge === true;
+    const nestedInherited = containerHasPivot
+        ? inheritWithPivot(inherited, parsed.tags, true)
+        : groupInherited;
+    walkLayers(parsedChildren, nested, layerPath, nestedInherited, ctx);
 }
 
 function autoDetectSpriteFrame(children: ParsedLayer[], skipHidden: boolean): boolean {
@@ -258,15 +459,15 @@ function buildSpriteFrameEntry(
     layerPath: string[],
     zOrder: number,
     inherited: InheritedTags,
-    skipHidden: boolean,
+    settings: PlannerSettings,
 ): PlannedSpriteFrame | null {
     const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
     const folder = group.tags.folder ?? inherited.folder;
     const blend = group.tags.blend ?? inherited.blend;
     const safeName = group.tags.path ?? sanitize(meshName);
-    const dirPath = folder === undefined ? `images/${safeName}` : `images/${sanitize(folder)}/${safeName}`;
+    const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
 
-    const sortedFrames = collectFrameChildren(children, skipHidden);
+    const sortedFrames = collectFrameChildren(children, settings.skipHidden);
     if (sortedFrames.length < 2) return null;
 
     let maxBounds: LayerBounds | null = null;
@@ -279,7 +480,8 @@ function buildSpriteFrameEntry(
             maxBounds = bounds;
         }
         const index = frameIndex(child.displayName);
-        frames.push({ index, path: `${dirPath}/${index}.png` });
+        const framePath = `${folderPrefix}/${applyTemplate(settings.framesTemplate, { name: safeName, index })}`;
+        frames.push({ index, path: framePath });
         sources.push({
             layerPath: [...layerPath, child.raw.name],
             merge: child.tags.merge === true,
@@ -305,6 +507,7 @@ function buildSpriteFrameEntry(
         ...optionalBlend(blend),
         ...(folder === undefined ? {} : { subfolder: folder }),
         _frameSources: sources,
+        _groupLayerPath: layerPath,
     };
 }
 
@@ -374,20 +577,42 @@ function pickOriginMarker(children: ParsedLayer[]): [number, number] | undefined
     return undefined;
 }
 
+interface WarnRef {
+    layerPath: string[];
+    name: string;
+}
+
 function buildPolygonEntry(
     source: ParsedLayer,
     name: string,
     layerPath: string[],
     zOrder: number,
     inherited: InheritedTags,
+    settings: PlannerSettings,
+    warnRef?: WarnRef,
+    ctx?: WalkContext,
 ): PlannedPolygon | null {
     const bounds = scaledBounds(effectiveBounds(source), source.tags.scale);
     if (bounds === null) return null;
+    if (
+        warnRef !== undefined
+        && ctx !== undefined
+        && source.tags.scale !== undefined
+        && hasSubpixelBounds(bounds)
+    ) {
+        ctx.warnings.push({
+            layerPath: warnRef.layerPath,
+            name: warnRef.name,
+            code: "scale-subpixel",
+            message: `[scale:${source.tags.scale}] yields sub-pixel bounds (${bounds.x.toFixed(2)}, ${bounds.y.toFixed(2)}, ${bounds.w.toFixed(2)}x${bounds.h.toFixed(2)}); manifest will round and downstream may visually drift.`,
+        });
+    }
     const folder = inherited.folder;
     const blend = inherited.blend;
     const safeName = source.tags.path ?? sanitize(name);
-    const path = folder === undefined ? `images/${safeName}.png` : `images/${sanitize(folder)}/${safeName}.png`;
     const kind: "polygon" | "mesh" = source.tags.kind === "mesh" ? "mesh" : "polygon";
+    const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
+    const path = `${folderPrefix}/${applyTemplate(settings.polygonTemplate, { name: safeName, kind })}`;
     // For `[merge]` groups, an inner `[origin]` marker layer provides
     // the pivot when no explicit `[origin:x,y]` is set on the group.
     const originFromMarker = source.raw.kind === "set"
@@ -408,6 +633,15 @@ function buildPolygonEntry(
             merge: source.tags.merge === true,
         },
     };
+}
+
+function hasSubpixelBounds(bounds: LayerBounds): boolean {
+    return (
+        !Number.isInteger(bounds.x)
+        || !Number.isInteger(bounds.y)
+        || !Number.isInteger(bounds.w)
+        || !Number.isInteger(bounds.h)
+    );
 }
 
 function scaledBounds(bounds: LayerBounds | null, scale: number | undefined): LayerBounds | null {

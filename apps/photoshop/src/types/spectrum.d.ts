@@ -16,6 +16,7 @@ declare global {
             "sp-body": SpectrumElementProps;
             "sp-checkbox": SpectrumCheckboxProps;
             "sp-action-button": SpectrumActionButtonProps;
+            "sp-textfield": SpectrumTextfieldProps;
         }
     }
 
@@ -25,6 +26,7 @@ declare global {
 
     interface SpectrumCheckboxProps extends SpectrumElementProps {
         checked?: boolean;
+        disabled?: boolean;
         onChange?: (e: React.SyntheticEvent) => void;
     }
 
@@ -32,5 +34,13 @@ declare global {
         disabled?: boolean;
         quiet?: "true";
         onClick?: (e: React.SyntheticEvent) => void;
+    }
+
+    interface SpectrumTextfieldProps extends SpectrumElementProps {
+        value?: string;
+        placeholder?: string;
+        disabled?: boolean;
+        onInput?: (e: React.SyntheticEvent) => void;
+        onChange?: (e: React.SyntheticEvent) => void;
     }
 }

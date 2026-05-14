@@ -1,6 +1,8 @@
 import React from "react";
 import type { UxpFolder } from "uxp";
 
+import { Accordion } from "../common/Accordion";
+
 interface Props {
     folder: UxpFolder | null;
     onPick: () => void;
@@ -8,24 +10,22 @@ interface Props {
 }
 
 export const FolderSection: React.FC<Props> = ({ folder, onPick, onClear }) => (
-    <section className="section">
-        <sp-heading size="XS">Output folder</sp-heading>
+    <Accordion
+        title="Output folder"
+        hint="Where the export writes the manifest + PNGs. The path persists across plugin reloads."
+    >
         {folder === null ? (
-            <sp-body size="XS" className="muted">
-                Pick a folder. Path is remembered across plugin reloads.
-            </sp-body>
+            <div className="placeholder-card">No folder picked.</div>
         ) : (
-            <sp-body size="XS" className="folder-path">
+            <div className="path-display" title={folder.nativePath}>
                 {folder.nativePath}
-            </sp-body>
+            </div>
         )}
         <div className="row">
             <sp-action-button onClick={onPick}>
                 {folder === null ? "Pick folder" : "Change folder"}
             </sp-action-button>
-            {folder !== null && (
-                <sp-action-button onClick={onClear}>Forget</sp-action-button>
-            )}
+            {folder !== null && <sp-action-button onClick={onClear}>Forget</sp-action-button>}
         </div>
-    </section>
+    </Accordion>
 );

@@ -156,7 +156,7 @@ Branch: `feat/spec-005.1.d.1-driver-shortcut`. Smallest authoring shortcut for t
 - [x] Active Sprite subpanel renders a "Drive from bone" box with the five pickers + the action button. No mode-switching required: the user picks armature + bone via `prop_search` directly in the sidebar regardless of Object / Pose / Edit mode. Button stays disabled until both armature and bone are picked.
 - [x] `PROSCENIO_OT_create_driver` operator. Reads picker state from `Object.proscenio.driver_*` on `invoke`, re-mirrors the redo overrides back to the PG on `execute` so the panel reflects the latest choice. Idempotent: re-running on the same `(sprite, target_property)` pair removes the existing driver before adding the fresh one - no duplicate FCurves.
 - [x] Operator redo panel exposes `target_property` + `source_axis` + `expression` + `armature_name` + `bone_name` for in-place tweaking via F9.
-- [x] Manual smoke test: `examples/authored/doll/doll.blend`, picked `forearm.L` mesh + `doll.rig` armature + `forearm.L` bone in the panel, clicked Drive from Bone, driver appeared in the Drivers Editor on `forearm.L.proscenio.region_x` with `var` expression and TRANSFORMS variable pointing at `doll.rig:forearm.L.ROT_Z`.
+- [x] Manual smoke test: `examples/authored/doll/00_blender_base/doll_base.blend`, picked `forearm.L` mesh + `doll.rig` armature + `forearm.L` bone in the panel, clicked Drive from Bone, driver appeared in the Drivers Editor on `forearm.L.proscenio.region_x` with `var` expression and TRANSFORMS variable pointing at `doll.rig:forearm.L.ROT_Z`.
 
 ### 5.1.d.2 - Pose library shim (planned)
 

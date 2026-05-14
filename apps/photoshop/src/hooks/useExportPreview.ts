@@ -7,6 +7,7 @@ import React from "react";
 
 import { previewExport, type ExportPreview } from "../controllers/export-flow";
 import type { ExportOptions } from "../domain/planner";
+import { log } from "../util/log";
 
 export interface UseExportPreview {
     preview: ExportPreview | null;
@@ -17,7 +18,19 @@ export function useExportPreview(): UseExportPreview {
     const [preview, setPreview] = React.useState<ExportPreview | null>(null);
 
     const refresh = React.useCallback((opts: ExportOptions) => {
-        setPreview(previewExport(opts));
+        const result = previewExport(opts);
+        log.debug(
+            "useExportPreview",
+            "refresh",
+            result.kind,
+            "entries=",
+            result.manifest?.layers.length ?? 0,
+            "warnings=",
+            result.warnings?.length ?? 0,
+            "skipped=",
+            result.skipped?.length ?? 0,
+        );
+        setPreview(result);
     }, []);
 
     return { preview, refresh };

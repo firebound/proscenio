@@ -42,14 +42,15 @@ apps/photoshop/
 
 ## Output format
 
-The plugin emits a manifest JSON conforming to [`schemas/psd_manifest.schema.json`](../../schemas/psd_manifest.schema.json) v1, alongside per-layer PNGs under `images/`.
+The plugin emits a manifest JSON conforming to [`schemas/psd_manifest.schema.json`](../../schemas/psd_manifest.schema.json) v2, alongside per-layer PNGs under `images/`. v1 is still accepted by the Blender side for legacy fixtures - the parser at [`apps/blender/core/psd_manifest.py`](../../apps/blender/core/psd_manifest.py) reads both, rejecting v2-only fields on a v1 document.
 
 ```json
 {
-  "format_version": 1,
-  "doc": "dummy.psd",
+  "format_version": 2,
+  "doc": "doll.psd",
   "size": [1024, 1024],
   "pixels_per_unit": 100,
+  "anchor": [512, 768],
   "layers": [
     {
       "kind": "polygon",
@@ -57,20 +58,53 @@ The plugin emits a manifest JSON conforming to [`schemas/psd_manifest.schema.jso
       "path": "images/torso.png",
       "position": [120, 340],
       "size": [180, 240],
-      "z_order": 0
+      "z_order": 0,
+      "origin": [200, 460],
+      "blend_mode": "multiply",
+      "subfolder": "body/torso"
     }
   ]
 }
 ```
 
-This JSON is consumed by [`apps/blender/importers/photoshop_json.py`](../../apps/blender/importers/photoshop_json.py).
+Schema v2 deltas (SPEC 011):
 
-## Conventions (current; SPEC 011 replaces with explicit tags)
+| Field | Where | Source tag(s) |
+| --- | --- | --- |
+| `anchor` | root | document-level horizontal + vertical PSD guides |
+| `kind: "mesh"` | per layer | `[mesh]` tag |
+| `origin` | per layer | `[origin]` marker inside a `[spritesheet]` / `[merge]` group, or explicit `[origin:X,Y]` |
+| `blend_mode` | per layer | `[blend:multiply]` / `[blend:screen]` / `[blend:additive]` |
+| `subfolder` | per layer | accumulated path from enclosing `[folder:NAME]` groups |
 
-- Layer groups become folders in the output structure (names join with `__`).
+This JSON is consumed by [`apps/blender/importers/photoshop/__init__.py`](../../apps/blender/importers/photoshop/__init__.py) (orchestrator) + `planes.py` (stamper).
+
+## Tag parser internals
+
+The bracket-tag taxonomy is parsed in TypeScript at [`apps/photoshop/src/domain/tag-parser.ts`](../../apps/photoshop/src/domain/tag-parser.ts). The parser walks the PSD layer / group name once, lexing every `[tag]` or `[tag:value]` token; the residual string after every recognised tag is stripped becomes the display name surfaced to the manifest.
+
+- **Token grammar**: `[` `IDENT` (`:` `VALUE`)? `]`. `IDENT` is alphanumeric + underscore; `VALUE` is any non-`]` chars (allows spaces / commas / floats).
+- **Unknown tags pass through**: an unrecognised `[foo]` stays in the display name so the artist's typo or future tag is still visible. The Tags tab in the panel flags unknown tags with a warning chip.
+- **Tag bag**: parser returns `{ name: string, tags: Tag[] }`. Downstream consumers read `tags.find(t => t.kind === "blend")` etc.; ordering inside the bag matches lexical order in the source string.
+- **Rewrite path**: the Tags tab uses `writeLayerName(name, tags)` from `apps/photoshop/src/domain/tag-writer.ts` to deterministically reconstruct a layer name from the tag bag - keeps the round-trip stable when toggling tags via the UI.
+
+## XMP storage
+
+Tags are stored in **two places** for resilience:
+
+1. **Inside the layer name** (`arm.R [folder:body] [origin:10,20]`) - the artist-visible canonical form. Round-trippable in any PSD without plugin support.
+2. **In the document's XMP metadata** under the `proscenio:` namespace - keyed by the layer's sanitised path. Used by the planner to survive layer renames without losing the tag bag.
+
+The namespace URI is `https://proscenio.dev/spec-011/v1` (prefix `proscenio`), registered via UXP's `xmp` module at plugin load. Both live as exported constants in `apps/photoshop/src/io/xmp.ts` (`PROSCENIO_XMP_NAMESPACE_URI`, `PROSCENIO_XMP_PREFIX`). Property names are **NCName-safe**: the layer's full sanitised path (with `/` and other illegal NCName chars replaced by `_`) is used so each layer has a stable XMP key even when its display name changes.
+
+The XMP write helpers live at `apps/photoshop/src/io/xmp.ts`. They serialise the tag bag to a compact JSON string per property; reading back is a `JSON.parse` of the property value, falling back to a parse of the layer name when the XMP entry is missing (a fresh-from-Blender PSD has no XMP yet).
+
+## Conventions (legacy, pre-SPEC 011)
+
+- Layer groups become folders in the output structure (names join with `__`) when no `[folder:NAME]` tag is present.
 - Hidden layers are skipped (toggleable).
-- Layer name prefix `_` excludes the layer (toggleable). SPEC 011 retires this in favour of `[ignore]`.
-- Sprite-frame group detection: numeric children inside a layer group (primary) plus `<name>_<index>` flat-naming fallback. SPEC 011 retires the flat fallback in favour of explicit `[spritesheet]` group tags.
+- Layer name prefix `_` excludes the layer (toggleable). **Retired in v2**: use `[ignore]`. The plugin reads both for one cycle, then the shortcut drops.
+- Sprite-frame group detection: `<name>_<index>` flat-naming fallback. **Retired in v2**: use `[spritesheet]` group tags. The fallback stays for a release to ease migration.
 
 ## File system in UXP
 
@@ -111,7 +145,7 @@ When pointing UDT at the plugin, target the built `dist/manifest.json`, not the 
 
 Unit tests for the pure planner + validator live under `uxp-plugin-tests/` and run via vitest. PS DOM operations stay manual.
 
-Manual smoke test: load the plugin in UDT, run the exporter against `examples/authored/doll/02_from_photoshop/doll.psd`, diff the output against the captured oracle baseline under `examples/authored/doll/02_from_photoshop/uxp_export/` (gitignored; regenerable per the SPEC 010 Wave 10.3 procedure).
+Manual smoke test: load the plugin in UDT, run the exporter against `examples/authored/doll/02_photoshop_setup/doll_tagged.psd`, diff the output against the captured oracle baseline under `examples/authored/doll/02_photoshop_setup/uxp_export/` (gitignored; regenerable per the SPEC 010 Wave 10.3 procedure).
 
 ## Reference prior art
 

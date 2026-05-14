@@ -1,0 +1,189 @@
+{
+  "format_version": 2,
+  "doc": "tag_smoke.psd",
+  "size": [
+    256,
+    256
+  ],
+  "pixels_per_unit": 100,
+  "layers": [
+    {
+      "kind": "polygon",
+      "name": "hair",
+      "path": "images/hair.png",
+      "position": [
+        10,
+        10
+      ],
+      "size": [
+        10,
+        10
+      ],
+      "z_order": 0
+    },
+    {
+      "kind": "polygon",
+      "name": "outer",
+      "path": "images/outer.png",
+      "position": [
+        30,
+        30
+      ],
+      "size": [
+        16,
+        8
+      ],
+      "z_order": 1
+    },
+    {
+      "kind": "polygon",
+      "name": "body__torso",
+      "path": "images/body/body__torso.png",
+      "position": [
+        50,
+        50
+      ],
+      "size": [
+        16,
+        32
+      ],
+      "z_order": 2,
+      "subfolder": "body"
+    },
+    {
+      "kind": "mesh",
+      "name": "body__chest",
+      "path": "images/body/body__chest.png",
+      "position": [
+        50,
+        50
+      ],
+      "size": [
+        16,
+        32
+      ],
+      "z_order": 3,
+      "subfolder": "body"
+    },
+    {
+      "kind": "mesh",
+      "name": "body__chest_mult",
+      "path": "images/body/body__chest_mult.png",
+      "position": [
+        50,
+        50
+      ],
+      "size": [
+        16,
+        32
+      ],
+      "z_order": 4,
+      "blend_mode": "multiply",
+      "subfolder": "body"
+    },
+    {
+      "kind": "polygon",
+      "name": "teste__arm",
+      "path": "images/teste/weapon.png",
+      "position": [
+        140,
+        0
+      ],
+      "size": [
+        24,
+        40
+      ],
+      "z_order": 5,
+      "origin": [
+        10,
+        20
+      ],
+      "subfolder": "teste"
+    },
+    {
+      "kind": "sprite_frame",
+      "name": "eyes",
+      "position": [
+        90,
+        30
+      ],
+      "size": [
+        18,
+        4
+      ],
+      "z_order": 6,
+      "frames": [
+        {
+          "index": 0,
+          "path": "images/eyes/0.png"
+        },
+        {
+          "index": 1,
+          "path": "images/eyes/1.png"
+        }
+      ],
+      "origin": [
+        100,
+        33
+      ]
+    },
+    {
+      "kind": "polygon",
+      "name": "eye_L_scrn",
+      "path": "images/eye_L_scrn.png",
+      "position": [
+        100,
+        30
+      ],
+      "size": [
+        8,
+        4
+      ],
+      "z_order": 7,
+      "blend_mode": "screen"
+    },
+    {
+      "kind": "polygon",
+      "name": "eye_R_add",
+      "path": "images/eye_R_add.png",
+      "position": [
+        90,
+        30
+      ],
+      "size": [
+        8,
+        4
+      ],
+      "z_order": 8,
+      "blend_mode": "additive"
+    },
+    {
+      "kind": "polygon",
+      "name": "hands__hand_L",
+      "path": "images/hands__hand_L.png",
+      "position": [
+        200,
+        100
+      ],
+      "size": [
+        10,
+        12
+      ],
+      "z_order": 9
+    },
+    {
+      "kind": "polygon",
+      "name": "hands__hand_R",
+      "path": "images/hands__hand_R.png",
+      "position": [
+        180,
+        100
+      ],
+      "size": [
+        10,
+        12
+      ],
+      "z_order": 10
+    }
+  ]
+}

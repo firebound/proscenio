@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 MANIFEST_FORMAT_VERSION = 2
+SUPPORTED_MANIFEST_VERSIONS: frozenset[int] = frozenset({1, 2})
 
 _ROOT = "<root>"
 
@@ -113,12 +114,20 @@ def load(path: Path | str) -> Manifest:
 
 
 def parse(raw: Any, source_path: Path | None = None) -> Manifest:
-    """Parse a pre-loaded JSON document into a :class:`Manifest`."""
+    """Parse a pre-loaded JSON document into a :class:`Manifest`.
+
+    Accepts both ``format_version: 2`` (SPEC 011 v2 - anchor, origin,
+    blend_mode, subfolder, mesh kind) and the legacy ``format_version: 1``
+    (SPEC 006 v1). v1 documents materialise as v2-shaped records with
+    the new optional fields left as ``None`` / kind constrained to
+    ``polygon`` | ``sprite_frame``.
+    """
     _require_dict(raw, _ROOT)
     fv = _require_field(raw, "format_version", _ROOT)
-    if fv != MANIFEST_FORMAT_VERSION:
+    if fv not in SUPPORTED_MANIFEST_VERSIONS:
         raise ManifestError(
-            f"unsupported manifest format_version {fv!r}; expected {MANIFEST_FORMAT_VERSION}"
+            f"unsupported manifest format_version {fv!r}; "
+            f"expected one of {sorted(SUPPORTED_MANIFEST_VERSIONS)}"
         )
     doc = _require_field(raw, "doc", _ROOT)
     if not isinstance(doc, str) or not doc:
@@ -130,10 +139,12 @@ def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     layers_raw = _require_field(raw, "layers", _ROOT)
     if not isinstance(layers_raw, list):
         raise ManifestError(f"{_ROOT}.layers must be an array, got {type(layers_raw).__name__}")
-    layers = tuple(_parse_layer(entry, idx) for idx, entry in enumerate(layers_raw))
+    layers = tuple(_parse_layer(entry, idx, version=fv) for idx, entry in enumerate(layers_raw))
     anchor = None
-    if "anchor" in raw:
+    if fv >= 2 and "anchor" in raw:
         anchor = _parse_uint_pair(raw["anchor"], f"{_ROOT}.anchor")
+    elif fv == 1 and "anchor" in raw:
+        raise ManifestError(f"{_ROOT}.anchor is not supported in format_version 1")
     return Manifest(
         format_version=fv,
         doc=doc,
@@ -177,16 +188,24 @@ _SPRITE_FRAME_KEYS: frozenset[str] = frozenset(
         "subfolder",
     )
 )
+_POLYGON_KEYS_V1: frozenset[str] = frozenset(
+    ("kind", "name", "path", "position", "size", "z_order")
+)
+_SPRITE_FRAME_KEYS_V1: frozenset[str] = frozenset(
+    ("kind", "name", "position", "size", "z_order", "frames")
+)
 
 
-def _parse_layer(entry: Any, idx: int) -> Layer:
+def _parse_layer(entry: Any, idx: int, version: int) -> Layer:
     label = f"<root>.layers[{idx}]"
     _require_dict(entry, label)
     kind = _require_field(entry, "kind", label)
     if kind == "polygon" or kind == "mesh":
-        return _parse_polygon(entry, label, kind)
+        if kind == "mesh" and version < 2:
+            raise ManifestError(f"{label}.kind 'mesh' is only valid in format_version >= 2")
+        return _parse_polygon(entry, label, kind, version=version)
     if kind == "sprite_frame":
-        return _parse_sprite_frame(entry, label)
+        return _parse_sprite_frame(entry, label, version=version)
     raise ManifestError(f"{label}.kind must be 'polygon', 'mesh', or 'sprite_frame', got {kind!r}")
 
 
@@ -194,13 +213,15 @@ def _parse_polygon(
     entry: dict[str, Any],
     label: str,
     kind: Literal["polygon", "mesh"],
+    version: int,
 ) -> PolygonLayer:
     name = _require_str(entry, "name", label)
     path = _require_str(entry, "path", label)
     position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")
     size = _parse_uint_pair(_require_field(entry, "size", label), f"{label}.size")
     z_order = _require_uint(entry, "z_order", label)
-    extra = set(entry) - _POLYGON_KEYS
+    allowed = _POLYGON_KEYS if version >= 2 else _POLYGON_KEYS_V1
+    extra = set(entry) - allowed
     if extra:
         raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
     return PolygonLayer(
@@ -210,13 +231,13 @@ def _parse_polygon(
         position=position,
         size=size,
         z_order=z_order,
-        origin=_optional_uint_pair(entry, "origin", label),
-        blend_mode=_optional_blend_mode(entry, label),
-        subfolder=_optional_str(entry, "subfolder", label),
+        origin=_optional_uint_pair(entry, "origin", label) if version >= 2 else None,
+        blend_mode=_optional_blend_mode(entry, label) if version >= 2 else None,
+        subfolder=_optional_str(entry, "subfolder", label) if version >= 2 else None,
     )
 
 
-def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
+def _parse_sprite_frame(entry: dict[str, Any], label: str, version: int) -> SpriteFrameLayer:
     name = _require_str(entry, "name", label)
     position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")
     size = _parse_uint_pair(_require_field(entry, "size", label), f"{label}.size")
@@ -225,7 +246,8 @@ def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
     if not isinstance(frames_raw, list) or len(frames_raw) < 2:
         raise ManifestError(f"{label}.frames must be an array of >= 2 entries, got {frames_raw!r}")
     frames = tuple(_parse_frame(f, f"{label}.frames[{i}]") for i, f in enumerate(frames_raw))
-    extra = set(entry) - _SPRITE_FRAME_KEYS
+    allowed = _SPRITE_FRAME_KEYS if version >= 2 else _SPRITE_FRAME_KEYS_V1
+    extra = set(entry) - allowed
     if extra:
         raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
     return SpriteFrameLayer(
@@ -235,9 +257,9 @@ def _parse_sprite_frame(entry: dict[str, Any], label: str) -> SpriteFrameLayer:
         size=size,
         z_order=z_order,
         frames=frames,
-        origin=_optional_uint_pair(entry, "origin", label),
-        blend_mode=_optional_blend_mode(entry, label),
-        subfolder=_optional_str(entry, "subfolder", label),
+        origin=_optional_uint_pair(entry, "origin", label) if version >= 2 else None,
+        blend_mode=_optional_blend_mode(entry, label) if version >= 2 else None,
+        subfolder=_optional_str(entry, "subfolder", label) if version >= 2 else None,
     )
 
 

@@ -410,6 +410,44 @@ describe("origin marker inside [merge] group", () => {
     });
 });
 
+describe("plan warnings (SPEC 011.4)", () => {
+    it("flags duplicate sanitised paths", () => {
+        // `arm.L` and `arm_L` both sanitise to `arm_L`.
+        const layers: Layer[] = [art("arm.L"), art("arm_L")];
+        const plan = buildExportPlan(doc, layers, opts);
+        const dup = plan.warnings.filter((w) => w.code === "duplicate-path");
+        expect(dup.length).toBeGreaterThan(0);
+        expect(dup[0].message).toMatch(/same output path/);
+    });
+
+    it("flags conflicting tags ([merge] + [spritesheet])", () => {
+        const layers: Layer[] = [
+            set("brow [merge] [spritesheet]", [art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const conflicts = plan.warnings.filter((w) => w.code === "conflicting-tags");
+        expect(conflicts.length).toBe(1);
+        expect(conflicts[0].message).toMatch(/mutually exclusive/);
+    });
+
+    it("flags a malformed [spritesheet] group (no contiguous frames)", () => {
+        const layers: Layer[] = [
+            set("blink [spritesheet]", [art("brow.L"), art("brow.R")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const malformed = plan.warnings.filter((w) => w.code === "sprite-frame-malformed");
+        expect(malformed.length).toBe(1);
+    });
+
+    it("does not warn when a valid [spritesheet] group succeeds", () => {
+        const layers: Layer[] = [
+            set("blink [spritesheet]", [art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.warnings).toEqual([]);
+    });
+});
+
 describe("buildExportPlan writes", () => {
     it("emits one PngWrite per polygon with the source layerPath", () => {
         const layers: Layer[] = [
@@ -439,5 +477,182 @@ describe("buildExportPlan writes", () => {
             outputPath: "images/blink/0.png",
         });
         expect(plan.writes[2].layerPath).toEqual(["blink", "2"]);
+    });
+});
+
+describe("filename templates", () => {
+    it("applies polygonTemplate to polygon entry paths", () => {
+        const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{kind}/{name}.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/polygon/torso.png");
+    });
+
+    it("applies polygonTemplate when [folder:...] is set", () => {
+        const layers: Layer[] = [art("eye [folder:eyes]", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}-img.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/eyes/eye-img.png");
+    });
+
+    it("applies polygonTemplate to [mesh] groups via {kind}", () => {
+        const layers: Layer[] = [
+            set("body [mesh] [merge]", [art("a", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}.{kind}.png",
+        });
+        expect(m.layers[0].kind).toBe("mesh");
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/body.mesh.png");
+    });
+
+    it("applies framesTemplate to sprite_frame paths", () => {
+        const layers: Layer[] = [
+            set("blink", [art("0"), art("1"), art("2")]),
+        ];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            framesTemplate: "frames/{name}_{index}.png",
+        });
+        const sf = m.layers[0] as SpriteFrameEntry;
+        expect(sf.frames[0].path).toBe("images/frames/blink_0.png");
+        expect(sf.frames[2].path).toBe("images/frames/blink_2.png");
+    });
+
+    it("leaves unknown tokens in place (no replacement)", () => {
+        const layers: Layer[] = [art("a", { x: 0, y: 0, w: 10, h: 10 })];
+        const m = buildManifest(doc, layers, {
+            ...opts,
+            polygonTemplate: "{name}.{nonexistent}.png",
+        });
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/a.{nonexistent}.png");
+    });
+
+    it("uses default templates when none provided", () => {
+        const layers: Layer[] = [
+            art("torso", { x: 0, y: 0, w: 10, h: 10 }),
+            set("blink", [art("0"), art("1")]),
+        ];
+        const m = buildManifest(doc, layers, opts);
+        expect((m.layers[0] as PolygonEntry).path).toBe("images/torso.png");
+        expect((m.layers[1] as SpriteFrameEntry).frames[0].path).toBe("images/blink/0.png");
+    });
+
+    it("threads template paths into writes", () => {
+        const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
+        const plan = buildExportPlan(doc, layers, {
+            ...opts,
+            polygonTemplate: "{kind}/{name}.png",
+        });
+        expect(plan.writes[0].outputPath).toBe("images/polygon/torso.png");
+    });
+});
+
+describe("entryRefs", () => {
+    it("maps polygon entries to their source layer chain", () => {
+        const layers: Layer[] = [
+            set("body", [art("torso", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs).toHaveLength(1);
+        expect(plan.entryRefs[0]).toEqual({
+            name: "body__torso",
+            kind: "polygon",
+            layerPath: ["body", "torso"],
+        });
+    });
+
+    it("maps sprite_frame to the group + per-frame layer paths", () => {
+        const layers: Layer[] = [
+            set("blink", [art("0"), art("1"), art("2")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs).toHaveLength(1);
+        expect(plan.entryRefs[0]).toEqual({
+            name: "blink",
+            kind: "sprite_frame",
+            layerPath: ["blink"],
+            framePaths: [["blink", "0"], ["blink", "1"], ["blink", "2"]],
+        });
+    });
+
+    it("preserves mesh kind on entry ref", () => {
+        const layers: Layer[] = [
+            set("body [mesh] [merge]", [art("a", { x: 0, y: 0, w: 10, h: 10 })]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.entryRefs[0].kind).toBe("mesh");
+        expect(plan.entryRefs[0].layerPath).toEqual(["body [mesh] [merge]"]);
+    });
+});
+
+describe("planner warnings", () => {
+    it("emits origin-outside-container when [origin] sits at the doc root", () => {
+        const layers: Layer[] = [art("pivot [origin]")];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeDefined();
+        expect(warning?.layerPath).toEqual(["pivot [origin]"]);
+    });
+
+    it("emits origin-outside-container inside a plain passthrough group", () => {
+        const layers: Layer[] = [
+            set("body", [art("pivot [origin]"), art("torso")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeDefined();
+    });
+
+    it("does NOT warn when [origin] sits inside a [merge] group", () => {
+        const layers: Layer[] = [
+            set("body [merge]", [art("pivot [origin]"), art("torso")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeUndefined();
+    });
+
+    it("does NOT warn when [origin] sits inside a [spritesheet] group", () => {
+        const layers: Layer[] = [
+            set("anim [spritesheet]", [art("pivot [origin]"), art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "origin-outside-container");
+        expect(warning).toBeUndefined();
+    });
+
+    it("emits empty-bounds warning when a layer has zero-size bbox", () => {
+        const layers: Layer[] = [
+            art("empty", { x: 0, y: 0, w: 0, h: 0 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "empty-bounds");
+        expect(warning).toBeDefined();
+        expect(warning?.layerPath).toEqual(["empty"]);
+    });
+
+    it("emits scale-subpixel warning when [scale:N] yields fractional bounds", () => {
+        const layers: Layer[] = [
+            art("torso [scale:0.5]", { x: 11, y: 13, w: 7, h: 9 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "scale-subpixel");
+        expect(warning).toBeDefined();
+        expect(warning?.message).toMatch(/sub-pixel/);
+    });
+
+    it("does NOT emit scale-subpixel when scale produces integer bounds", () => {
+        const layers: Layer[] = [
+            art("torso [scale:2]", { x: 10, y: 10, w: 10, h: 10 }),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        const warning = plan.warnings.find((w) => w.code === "scale-subpixel");
+        expect(warning).toBeUndefined();
     });
 });

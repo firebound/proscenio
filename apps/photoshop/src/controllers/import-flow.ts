@@ -1,7 +1,9 @@
 // Top-level import orchestrator. Mirrors the export flow's shape: the
 // caller passes a pre-resolved manifest (already validated) and a
 // pre-picked output folder; this module owns the modal that creates
-// the document, stamps every entry, and saves the PSD.
+// the document and stamps every entry. The resulting PSD is left
+// open and unsaved on purpose - the artist commits it to disk via
+// File > Save As (auto-save retired in 2a92db3).
 //
 // Entry processing order: z_order DESCENDING so the front layer
 // (z_order 0) lands on top of the Photoshop layer stack. PS adds new
@@ -13,14 +15,12 @@ import type { PsDocument } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import { moveLayerIntoGroup, placePngAt } from "../io/png-placer";
-import { savePsd } from "../io/psd-writer";
 import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../domain/manifest";
 
 export interface ImportFlowResult {
     kind: "ok" | "failed";
     stamped?: number;
     skipped?: number;
-    psdPath?: string;
     warnings?: string[];
     errors?: string[];
 }
@@ -62,12 +62,17 @@ async function doImport(manifest: Manifest, folder: UxpFolder): Promise<ImportFl
         else skipped += 1;
     }
 
-    const savedFile = await savePsd(doc, folder, manifest.doc);
+    // The doc stays open and unsaved on purpose: the user picks the
+    // canonical save location via File > Save As (typically the
+    // matching `01_photoshop_base/` baseline for the doll pipeline).
+    // The previous auto-save into `<manifestFolder>/photoshop/` was a
+    // JSX-era leftover that polluted the source-of-truth folder with
+    // a second copy under a different name; dropping it forces every
+    // PSD on disk to be an intentional artefact.
     return {
         kind: "ok",
         stamped,
         skipped,
-        psdPath: savedFile.nativePath,
         warnings,
     };
 }

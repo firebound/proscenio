@@ -202,9 +202,7 @@ def _parse_layer(entry: Any, idx: int, version: int) -> Layer:
     kind = _require_field(entry, "kind", label)
     if kind == "polygon" or kind == "mesh":
         if kind == "mesh" and version < 2:
-            raise ManifestError(
-                f"{label}.kind 'mesh' is only valid in format_version >= 2"
-            )
+            raise ManifestError(f"{label}.kind 'mesh' is only valid in format_version >= 2")
         return _parse_polygon(entry, label, kind, version=version)
     if kind == "sprite_frame":
         return _parse_sprite_frame(entry, label, version=version)

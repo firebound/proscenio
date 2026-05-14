@@ -297,9 +297,7 @@ def _attach_material(
         # 4.2): look the value up in the property's enum_items before
         # assigning so a stale mapping does not abort the entire import.
         prop = mat.bl_rna.properties.get("blend_method")
-        valid = (
-            {item.identifier for item in prop.enum_items} if prop is not None else set()
-        )
+        valid = {item.identifier for item in prop.enum_items} if prop is not None else set()
         mat.blend_method = method if method in valid else "BLEND"
     if mesh.materials:
         mesh.materials[0] = mat

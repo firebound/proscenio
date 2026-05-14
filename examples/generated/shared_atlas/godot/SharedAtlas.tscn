@@ -10,7 +10,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://examples/shared_atlas/shared_atlas.proscenio" id="1_sa"]
-[ext_resource type="Script" path="res://examples/shared_atlas/SharedAtlas.gd" id="2_sa"]
+[ext_resource type="Script" path="res://examples/shared_atlas/godot/SharedAtlas.gd" id="2_sa"]
 
 [node name="SharedAtlas" type="Node2D"]
 script = ExtResource("2_sa")

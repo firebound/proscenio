@@ -12,7 +12,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://examples/doll/doll.proscenio" id="1_doll"]
-[ext_resource type="Script" path="res://examples/doll/Doll.gd" id="2_doll"]
+[ext_resource type="Script" path="res://examples/doll/04_godot_import/Doll.gd" id="2_doll"]
 
 [node name="Doll" type="Node2D"]
 script = ExtResource("2_doll")

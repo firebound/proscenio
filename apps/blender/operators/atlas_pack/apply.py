@@ -83,8 +83,17 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         return {"FINISHED"}
 
     def _snapshot_pre_pack(self, obj: bpy.types.Object) -> None:
-        """Snapshot pre-apply state to a Custom Property + duplicated UV layer."""
+        """Snapshot pre-apply state to a Custom Property + duplicated UV layer.
+
+        Re-Apply path: when a snapshot is already present, the active UV
+        layer carries the atlas-space coordinates from the previous run.
+        Replaying _rewrite_uvs on those would treat them as source-image
+        space and shrink the slot each iteration. Restore the pre_pack
+        layer's data into the active layer first so every Apply starts
+        from the original source-image UVs.
+        """
         if PROSCENIO_PRE_PACK in obj:
+            self._restore_active_uvs_from_pre_pack(obj)
             return
         snapshot: dict[str, Any] = {}
         materials = getattr(obj.data, "materials", None) or []
@@ -100,6 +109,20 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
             snapshot["region_h"] = float(props.region_h)
         snapshot["uv_layer_snapshot"] = duplicate_active_uv_layer(obj)
         obj[PROSCENIO_PRE_PACK] = json.dumps(snapshot)
+
+    def _restore_active_uvs_from_pre_pack(self, obj: bpy.types.Object) -> None:
+        """Copy the pre_pack snapshot layer's UVs into the active layer."""
+        uv_layers = getattr(obj.data, "uv_layers", None)
+        if uv_layers is None:
+            return
+        active = uv_layers.active
+        if active is None:
+            return
+        snap = uv_layers.get(f"{active.name}.pre_pack")
+        if snap is None or len(snap.data) != len(active.data):
+            return
+        for i, loop in enumerate(snap.data):
+            active.data[i].uv = loop.uv
 
     def _apply_to_object(
         self,

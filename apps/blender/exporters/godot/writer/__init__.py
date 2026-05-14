@@ -80,10 +80,12 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
         if obj.hide_viewport:
             hidden_state[obj] = True
             obj.hide_viewport = False
-    if hidden_state:
-        bpy.context.view_layer.update()
 
     try:
+        if hidden_state:
+            # Inside the try so that a failure during view_layer.update()
+            # still triggers the finally below and restores hide_viewport.
+            bpy.context.view_layer.update()
         sprites_out = [build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
     finally:
         for obj in hidden_state:

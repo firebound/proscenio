@@ -97,7 +97,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "the icon to re-open this legend.",
             ),
         ),
-        see_also=("STATUS.md",),
+        see_also=(),
     ),
     "pipeline_overview": HelpTopic(
         title="Proscenio pipeline overview",
@@ -130,7 +130,6 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         see_also=(
             _SPEC_INITIAL_PLAN,
             _SPEC_REIMPORT_MERGE,
-            "STATUS.md",
         ),
     ),
     "active_sprite": HelpTopic(

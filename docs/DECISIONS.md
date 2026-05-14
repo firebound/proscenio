@@ -1,6 +1,6 @@
 # Decisions
 
-Architectural and per-SPEC decisions that are locked. ADR-light: each entry records the call, the rationale, and the trigger that would force a revisit. Live state lives in [`STATUS.md`](../STATUS.md); per-SPEC design rationale lives in [`specs/NNN-*/STUDY.md`](../specs/). This file aggregates the cross-cutting decisions and the per-SPEC tradeoffs worth surfacing outside their STUDY.
+Architectural and per-SPEC decisions that are locked. ADR-light: each entry records the call, the rationale, and the trigger that would force a revisit. Per-SPEC design rationale lives in [`specs/NNN-*/STUDY.md`](../specs/); the rolling backlog of open work lives in [`specs/backlog.md`](../specs/backlog.md). This file aggregates the cross-cutting decisions and the per-SPEC tradeoffs worth surfacing outside their STUDY.
 
 ## Core architecture
 

@@ -165,7 +165,6 @@ In one sentence: Proscenio trades Spine's multi-runtime, polished preview, and r
 
 - [`AGENTS.md`](AGENTS.md) - entry point for contributors and LLM agents.
 - [`.ai/skills/`](.ai/skills/README.md) - task-specific skill bundles.
-- [`STATUS.md`](STATUS.md) - live state: current branch, recent waves, fixtures, open work.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - setup, PR rules, end-to-end usage walkthrough.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) - locked architectural and per-SPEC decisions.
 - [`docs/COMPARISON.md`](docs/COMPARISON.md) - feature matrix and positioning vs alternatives.

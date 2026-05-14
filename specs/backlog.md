@@ -101,6 +101,14 @@ When a Bone2D and a child Polygon2D share a name (e.g. both called `head`), Godo
 
 Currently the rule "scene must work without the plugin" is enforced by review. A small editor check that opens a generated scene with the plugin disabled and asserts no errors would be a CI-friendly guard.
 
+### `project.godot` warning tuning for JSON boundary
+
+`apps/godot/project.godot` `[debug]` carries only `untyped_declaration=2`, `return_value_discarded=1`, `treat_warnings_as_errors=true`. The `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` families fire on every line that downcasts `JSON.parse` output, forcing `# warning-ignore` clutter. **Why deferred**: current builders use bare `Dictionary` at the JSON boundary, which compiles cleanly without the pins because the casts are implicit. **Trigger to revisit**: when tightening builders to use `Dictionary[K, V]` typed collections (see entry below), pin the four unsafe-access keys to `0` so the downcasts at the JSON edge stay quiet without per-line ignores.
+
+### Annotate `: Variant` on JSON-boundary lookups in Godot builders
+
+Three lookups currently bind without an explicit type: `polygon_builder.gd:114`, `skeleton_builder.gd:36`, `sprite_frame_builder.gd:74` (each of the shape `var x = dict.get("key", null)`). Conventions explicitly allow bare `Dictionary` at the decode boundary, but the `var x = ...` form trips the "Never `var x = 0`" reading on hover. **Why deferred**: cosmetic, no runtime impact, the surrounding code immediately tests the value for null. **Trigger to revisit**: when refactoring the builders to typed collections, or when a reader confuses these for missing type annotations.
+
 ## Photoshop and Krita
 
 ### JSX exporter port from `coa_tools2`
@@ -216,6 +224,10 @@ Resolved - canonical URL is `https://github.com/Space-Wizard-Studios/firebound-p
 ### Statusline / dev-loop polish
 
 The dev junction setup for the Blender addon is a manual `New-Item -ItemType Junction`. A `scripts/install-dev.ps1` would automate it. Same for copying the dummy fixture into `apps/godot/test_dummy/`.
+
+### Release workflow Photoshop job stale (`.jsx` -> UXP `dist/`)
+
+`.github/workflows/release.yml` line 39 still runs `cp apps/photoshop/proscenio_export.jsx "dist/proscenio-photoshop-${version}.jsx"`. The legacy JSX exporter is gone; the plugin is now a UXP bundle that webpack emits into `apps/photoshop/dist/` (`index.html`, `index.js`, `manifest.json`, `icons/`). A `photoshop-v*` tag would fail at this step. **Why deferred**: no release has been cut yet on the UXP branch; current development uses `pnpm uxp:load` from the dev folder. **Trigger to revisit**: before cutting the first `photoshop-v*` tag. Replace the `cp` with `(cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-${version}.ccx" .)` (or `.zip` if `.ccx` packaging is out of scope), and adjust the release artifact pattern in the same job.
 
 ## Architecture revisits
 

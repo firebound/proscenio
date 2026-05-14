@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 import bpy
 
 from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core.report import report_info  # type: ignore[import-not-found]
+from ...core.report import report_info, report_warn  # type: ignore[import-not-found]
 from ._paths import pre_pack_snapshot_for, scene_has_pre_pack_snapshot, swap_image_in_materials
 
 
@@ -27,27 +27,45 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return scene_has_pre_pack_snapshot(context.scene)
+        # Unpack writes uv_layer.data + materials; both need Object Mode for
+        # the same BMesh-vs-mesh.uv_layers reason that gates Pack and Apply.
+        return bool(scene_has_pre_pack_snapshot(context.scene) and context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         restored = 0
+        partial: list[str] = []
         for obj in context.scene.objects:
             if obj.type != "MESH":
                 continue
             snapshot = pre_pack_snapshot_for(obj)
             if snapshot is None:
                 continue
-            self._restore_object(obj, snapshot)
+            self._restore_object(obj, snapshot, partial)
             del obj[PROSCENIO_PRE_PACK]
             restored += 1
-        msg = f"unpacked {restored} sprite(s) - restored pre-Apply state"
+        # Surface partial restores in the final INFO line as well as via
+        # the per-object warns. Blender's info bar only displays the last
+        # report, so the warn would otherwise be hidden by this summary.
+        if partial:
+            msg = (
+                f"unpacked {restored} sprite(s); {len(partial)} with materials "
+                f"missing (UVs only): {', '.join(partial)}"
+            )
+        else:
+            msg = f"unpacked {restored} sprite(s) - restored pre-Apply state"
         report_info(self, msg)
         print(f"[Proscenio] {msg}")
         return {"FINISHED"}
 
-    def _restore_object(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
+    def _restore_object(
+        self,
+        obj: bpy.types.Object,
+        snapshot: dict[str, Any],
+        partial: list[str],
+    ) -> None:
         self._restore_uvs(obj, snapshot.get("uv_layer_snapshot", ""))
-        self._restore_material(obj, snapshot)
+        if not self._restore_material(obj, snapshot):
+            partial.append(obj.name)
         self._restore_region(obj, snapshot)
 
     def _restore_uvs(self, obj: bpy.types.Object, snap_name: str) -> None:
@@ -67,14 +85,25 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             target.data[i].uv = loop.uv
         uv_layers.remove(snap)
 
-    def _restore_material(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
+    def _restore_material(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> bool:
+        """Restore obj's material from the snapshot. Returns False on missing."""
         mat_name = str(snapshot.get("material", ""))
         materials = getattr(obj.data, "materials", None)
         if not mat_name or materials is None:
-            return
+            return True
         mat = bpy.data.materials.get(mat_name)
         if mat is None:
-            return
+            # Snapshot stored the material by name; a manual rename between
+            # Apply and Unpack breaks the lookup. Surface the partial restore
+            # so the user knows UVs were rolled back but the material was
+            # not (a later SPEC may switch the snapshot to a PointerProperty
+            # so renames track automatically).
+            report_warn(
+                self,
+                f"'{obj.name}': original material '{mat_name}' not found "
+                f"(renamed or deleted?); restored UVs only",
+            )
+            return False
         if materials:
             materials[0] = mat
         else:
@@ -84,6 +113,7 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             image = bpy.data.images.get(image_name)
             if image is not None:
                 swap_image_in_materials(materials, image)
+        return True
 
     def _restore_region(self, obj: bpy.types.Object, snapshot: dict[str, Any]) -> None:
         props = getattr(obj, "proscenio", None)

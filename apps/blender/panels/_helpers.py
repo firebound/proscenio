@@ -36,3 +36,31 @@ def draw_subpanel_header(
     op.band = status.value
     op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
+
+
+def draw_subbox_header(
+    box: bpy.types.UILayout,
+    title: str,
+    title_icon: str,
+    feature_id: str,
+    help_topic: str,
+) -> None:
+    """Render a sub-box title row with status + help button on the right.
+
+    Sub-boxes (``layout.box()``) don't have a header_preset slot, so the
+    Proscenio status + help affordances had to be omitted - leaving help
+    topics like ``sprite_frame_preview`` orphan in the UI even though
+    they exist in ``core/help_topics.py``. This helper packs title +
+    status badge + help icon into a single row inside the box, so each
+    sub-box gets the same affordance as a top-level subpanel.
+    """
+    badge = badge_for(feature_id)
+    status = status_for(feature_id)
+    row = box.row(align=True)
+    row.label(text=title, icon=title_icon)
+    spacer = row.row()
+    spacer.alignment = "RIGHT"
+    op = spacer.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op.band = status.value
+    op = spacer.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = help_topic

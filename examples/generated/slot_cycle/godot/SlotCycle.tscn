@@ -12,7 +12,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://examples/slot_cycle/slot_cycle.proscenio" id="1_slot"]
-[ext_resource type="Script" path="res://examples/slot_cycle/SlotCycle.gd" id="2_slot"]
+[ext_resource type="Script" path="res://examples/slot_cycle/godot/SlotCycle.gd" id="2_slot"]
 
 [node name="SlotCycle" type="Node2D"]
 script = ExtResource("2_slot")

@@ -8,11 +8,12 @@ from typing import Any, ClassVar
 import bpy
 
 from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core.report import report_error, report_info  # type: ignore[import-not-found]
+from ...core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
 from ._paths import (
     duplicate_active_uv_layer,
     first_texture_image_name,
     packed_atlas_paths,
+    pre_pack_snapshot_for,
     swap_image_in_materials,
 )
 
@@ -35,6 +36,11 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         if not bpy.data.filepath:
+            return False
+        # Apply rewrites uv_layer.data which is empty under BMesh while in
+        # Edit Mode; the operator would silently skip every sprite reporting
+        # "no UV layer" without indicating the real cause.
+        if context.mode != "OBJECT":
             return False
         _, manifest = packed_atlas_paths(bpy.data.filepath)
         return manifest.exists()
@@ -59,11 +65,15 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
 
         rewritten = 0
         skipped = 0
+        skipped_drift = 0
         for obj in context.scene.objects:
             if obj.type != "MESH" or obj.name not in placements:
                 continue
             placement = placements[obj.name]
-            self._snapshot_pre_pack(obj)
+            if not self._snapshot_pre_pack(obj):
+                # Re-Apply with a stale snapshot would shrink the slot.
+                skipped_drift += 1
+                continue
             if not self._apply_to_object(obj, placement, atlas_w, atlas_h):
                 skipped += 1
                 continue
@@ -73,14 +83,28 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         msg = f"applied packed atlas to {rewritten} sprite(s)"
         if skipped:
             msg += f"; skipped {skipped} (no UV layer)"
+        if skipped_drift:
+            msg += f"; skipped {skipped_drift} (stale pre-pack snapshot)"
         report_info(self, msg)
         print(f"[Proscenio] {msg}")
         return {"FINISHED"}
 
-    def _snapshot_pre_pack(self, obj: bpy.types.Object) -> None:
-        """Snapshot pre-apply state to a Custom Property + duplicated UV layer."""
+    def _snapshot_pre_pack(self, obj: bpy.types.Object) -> bool:
+        """Snapshot pre-apply state to a Custom Property + duplicated UV layer.
+
+        Re-Apply path: when a snapshot is already present, the active UV
+        layer carries the atlas-space coordinates from the previous run.
+        Replaying _rewrite_uvs on those would treat them as source-image
+        space and shrink the slot each iteration. Restore the pre_pack
+        layer's data into the active layer first so every Apply starts
+        from the original source-image UVs.
+
+        Returns True when re-rewriting is safe; False when the snapshot
+        is unrecoverable (renamed pre_pack layer, mismatched length) and
+        the caller should skip this sprite to avoid cumulative drift.
+        """
         if PROSCENIO_PRE_PACK in obj:
-            return
+            return self._restore_active_uvs_from_pre_pack(obj)
         snapshot: dict[str, Any] = {}
         materials = getattr(obj.data, "materials", None) or []
         if materials and materials[0] is not None:
@@ -95,6 +119,37 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
             snapshot["region_h"] = float(props.region_h)
         snapshot["uv_layer_snapshot"] = duplicate_active_uv_layer(obj)
         obj[PROSCENIO_PRE_PACK] = json.dumps(snapshot)
+        return True
+
+    def _restore_active_uvs_from_pre_pack(self, obj: bpy.types.Object) -> bool:
+        """Copy the pre_pack snapshot layer's UVs into the active layer.
+
+        Resolves the snapshot layer by name stored in the CP, NOT from
+        the live active layer name - renaming the active UV between
+        Apply runs used to break this lookup silently and re-Apply would
+        run _rewrite_uvs over already-atlased UVs again.
+        Returns False when the snapshot is unrecoverable so the caller
+        can skip the sprite instead of double-packing.
+        """
+        uv_layers = getattr(obj.data, "uv_layers", None)
+        if uv_layers is None:
+            return False
+        active = uv_layers.active
+        if active is None:
+            return False
+        snapshot = pre_pack_snapshot_for(obj) or {}
+        snap_name = str(snapshot.get("uv_layer_snapshot", ""))
+        snap = uv_layers.get(snap_name) if snap_name else None
+        if snap is None or len(snap.data) != len(active.data):
+            report_warn(
+                self,
+                f"'{obj.name}': pre-pack UV snapshot missing or out of sync "
+                f"(renamed layer?); skipping Apply to avoid cumulative drift",
+            )
+            return False
+        for i, loop in enumerate(snap.data):
+            active.data[i].uv = loop.uv
+        return True
 
     def _apply_to_object(
         self,

@@ -324,8 +324,9 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 _SECTION_WHAT,
                 "Modal viewport tool that creates or extends a 'Proscenio.QuickRig'",
                 "armature one bone per click-drag. Each press records the bone head",
-                "on the world z=0 plane; each release records the tail and lands the",
-                "bone. Speeds up the rough-sketch phase before refining in Edit Mode.",
+                "on the world Y=0 picture plane (Proscenio 2D-cutout convention);",
+                "each release records the tail and lands the bone. Speeds up the",
+                "rough-sketch phase before refining in Edit Mode.",
             ),
             _section(
                 _SECTION_HOW,
@@ -338,7 +339,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "Caveats",
-                "Bones are flat on the z=0 plane (this is a 2D pipeline). Drags",
+                "Bones are flat on the Y=0 plane (this is a 2D pipeline). Drags",
                 "shorter than 1e-4 world units are skipped to avoid degenerate",
                 "zero-length bones. The QuickRig armature is identical to any",
                 "hand-built one - rename, parent meshes, weight-paint, or merge",

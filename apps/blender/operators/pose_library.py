@@ -61,16 +61,60 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
                 "(Blender < 3.5 or pose library disabled).",
             )
             return {"CANCELLED"}
+        library = _first_writable_asset_library()
+        if library is None:
+            report_error(
+                self,
+                "no writable asset library configured. Add one in "
+                "Preferences > File Paths > Asset Libraries with a path "
+                "Blender can write to, then retry.",
+            )
+            return {"CANCELLED"}
 
         pose_name = self.pose_name or _default_pose_asset_name(armature, context)
+        # asset_library_reference is required since Blender 4.x+ when
+        # calling create_pose_asset programmatically; default '' falls
+        # back to "" and Blender refuses with "Unexpected library type".
+        # Pass the first writable user library's name (matches the
+        # ENUM identifier convention).
         try:
-            bpy.ops.poselib.create_pose_asset(pose_name=pose_name)
-        except RuntimeError as exc:
+            bpy.ops.poselib.create_pose_asset(
+                pose_name=pose_name,
+                asset_library_reference=library.name,
+            )
+        except (RuntimeError, TypeError) as exc:
             report_error(self, f"pose library refused: {exc}")
             return {"CANCELLED"}
 
-        report_info(self, f"saved pose asset '{pose_name}' to the Asset Browser")
+        report_info(
+            self,
+            f"saved pose asset '{pose_name}' to '{library.name}'",
+        )
         return {"FINISHED"}
+
+
+def _first_writable_asset_library() -> bpy.types.UserAssetLibrary | None:
+    """Return the first Asset Library with a writable on-disk path, or None.
+
+    Blender 4.x ships without default writable Pose Libraries, so
+    poselib.create_pose_asset fails with "Unexpected library type" until
+    the user adds one in Preferences > File Paths > Asset Libraries.
+    Returning the entry (not just a bool) lets the caller pass its name
+    as ``asset_library_reference`` - required by the operator since 4.x
+    even when only one library is configured. The poll path lets the
+    operator stay clickable; the precheck surfaces the missing setup
+    with an actionable hint instead of the cryptic poselib error.
+    """
+    import os
+
+    libs = getattr(bpy.context.preferences.filepaths, "asset_libraries", None)
+    if libs is None:
+        return None
+    for lib in libs:
+        path = str(getattr(lib, "path", ""))
+        if path and os.path.isdir(path) and os.access(path, os.W_OK):
+            return lib
+    return None
 
 
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):

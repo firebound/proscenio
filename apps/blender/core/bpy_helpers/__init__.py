@@ -12,7 +12,7 @@ Modules:
 - ``psd_spritesheet.py``    Photoshop-driven spritesheet composition
 - ``sprite_frame_shader.py`` Material slicer node group setup / removal
 - ``select.py``             ``select_only(context, obj)`` helper
-- ``viewport_math.py``      mouse-event projection onto z=0 plane
+- ``viewport_math.py``      mouse-event projection onto a world plane
 
 This ``__init__.py`` deliberately does NOT eager-import the submodules.
 Tests that touch one submodule (after mocking bpy) should import

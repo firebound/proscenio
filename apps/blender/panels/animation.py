@@ -26,7 +26,13 @@ class PROSCENIO_UL_actions(bpy.types.UIList):
     ) -> None:
         start, end = item.frame_range
         row = layout.row(align=True)
-        row.label(text=item.name, icon="ACTION")
+        op = row.operator(
+            "proscenio.set_active_action",
+            text=item.name,
+            icon="ACTION",
+            emboss=False,
+        )
+        op.action_name = item.name
         row.label(text=f"[{start:.0f}-{end:.0f}]")
 
 

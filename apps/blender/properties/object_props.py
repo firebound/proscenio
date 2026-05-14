@@ -206,6 +206,7 @@ class ProscenioObjectProps(PropertyGroup):
             "Toggle 'Show favorites only' on the panel to hide everything else."
         ),
         default=False,
+        update=on_any_update,
     )
 
     is_slot: BoolProperty(  # type: ignore[valid-type]
@@ -216,6 +217,7 @@ class ProscenioObjectProps(PropertyGroup):
             "and the Godot importer wires a Node2D parent + visible-toggled children."
         ),
         default=False,
+        update=on_any_update,
     )
     slot_default: StringProperty(  # type: ignore[valid-type]
         name="Slot default",
@@ -224,4 +226,5 @@ class ProscenioObjectProps(PropertyGroup):
             "Empty string defers to the first child mesh by sorted name."
         ),
         default="",
+        update=on_any_update,
     )

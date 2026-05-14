@@ -78,6 +78,11 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 - **Falta atalhos pra connect/disconnect parent.** Hoje só tem `Shift` pra parent ao último bone (sem connect). Faltam: Ctrl+Shift pra parent connected (extends naturally); modifier pra escolher um parent específico (não só o último); operador "unparent" sem sair do modal.
 - **Saída do modal não óbvia.** Esc / right-click funcionam mas user que não viu o status bar fica preso. Sugestões: (a) botão "Confirm" / "Cancel" floating na viewport. (b) header bar com mensagem destacada. (c) ESC sempre mostra confirm dialog "Discard / Keep" pra evitar perda acidental.
 - **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (BUGS_FOUND.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
+- **(SPEC 012.1 polish) Preview line cortada visualmente quando cursor passa por baixo de panel/header/toolbar.** Apos fix do region overlay filter (operator nao processa eventos sob N-panel/header/toolbar), preview line continua sendo desenhada matematicamente cheia ate cursor real - mas Blender pinta panels POR CIMA do GPU draw handler, mascarando trechos da linha. Visualmente parece "corte". Tradeoff aceito: clicks em panel area nao criam bones (correto). Polish proposto:
+  - **A. Clamp visual no boundary do canvas-livre.** No MOUSEMOVE, se cursor entra zona de overlay, projeta `_cursor_world` pra borda mais proxima do retangulo canvas-menos-overlays. Linha para visualmente na borda do panel em vez de sumir sob ele.
+  - **B. Indicacao por cor.** Linha muda pra cinza/vermelho `(0.6, 0.6, 0.6, 0.7)` quando cursor sobre overlay zone. Sinaliza "click aqui = no-op" sem precisar matematica de clamp.
+  - **C. Ambos.** Clamp + cor diferente.
+  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra Wave 12.2 polish ou 12.3.
 
 ## Outliner panel
 

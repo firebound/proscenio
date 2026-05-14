@@ -10,6 +10,32 @@ Distinto de UI_FEEDBACK.md (que cobre polish, não comportamento).
 
 ## apps/blender
 
+### bpy.props annotations em Operator nao registram com `from __future__ import annotations` (codebase-wide latente)
+
+**Repro:** SPEC 012.1 introduziu `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
+
+**Causa:** com `from __future__ import annotations` (PEP 563) no topo do arquivo, todo annotation vira string em runtime. Blender 5.1.1 metaclass `_RNAMeta` checa `isinstance(value, _PropertyDeferred)` ao registrar; strings falham o check silenciosamente -> property nunca promove pra RNA -> `self.<prop>` quebra.
+
+**Diagnostico:** headless `--background --python` confirmou: `cls.__annotations__["lock_to_front_ortho"]` retornava `str` com PEP 563 ativo, `_PropertyDeferred` sem PEP 563. Apos remover `from __future__ import annotations` do arquivo, invoke succeed.
+
+**Fix aplicado em SPEC 012.1:** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py`. Docstring documenta o constraint.
+
+**Latente no resto do codebase:** todo operator/PropertyGroup/Panel do projeto usa `from __future__ import annotations` + bpy.props annotations. Nenhum quebrou ate hoje porque:
+
+- `PROSCENIO_OT_export_godot.filter_glob` + `filename_ext` -> herdados de `ExportHelper` (registrados em C, nao via Python annotation).
+- `PROSCENIO_OT_export_godot.pixels_per_unit` -> nunca foi acessado via `self.pixels_per_unit` (writer recebe via outra rota).
+- `PROSCENIO_OT_help.topic` -> mesmo padrao, nao acessado via `self.topic`.
+- `PROSCENIO_OT_select_outliner_object.obj_name` -> idem.
+- `PROSCENIO_OT_import_photoshop.{filter_glob,placement,root_bone_name}` -> idem.
+
+**Auditoria pendente:** rodar grep `: \w+Property\(` em `apps/blender/operators/` + `apps/blender/properties/` + `apps/blender/panels/`, validar se cada anotacao precisa ser acessada via `self.<prop>` num operator. Para os que precisam, remover `from __future__ import annotations` do arquivo (cost: forward refs precisam aspas + ClassVar types como `Matrix` precisam import runtime).
+
+**Arquivos afetados:** `apps/blender/operators/*.py`, `apps/blender/properties/*.py`, `apps/blender/panels/*.py`. Adicionar ao [`specs/012-quick-armature-ux/TODO.md`](../specs/012-quick-armature-ux/TODO.md) Wave 12.2 como follow-up "auditoria bpy.props + PEP 563".
+
+**Severity:** medium-high - bug nao quebra produto em uso porque ninguem acessou `self.<prop>` ainda; quebra na primeira tentativa de adicionar property nova ao operator. SPEC 012.2 vai precisar (`name_prefix: StringProperty(...)` + `BoolProperty` undo flags).
+
+**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** com Blender 5.x, classes registradas via `bpy.utils.register_class` que declaram bpy.props nao podem usar `from __future__ import annotations` no mesmo arquivo. Restricao se aplica a Operator, PropertyGroup, Panel. Modulos `core/` puros podem manter PEP 563.
+
 ### Snap to UV bounds: IndexError em edit mode
 
 **Repro:** Active Sprite > polygon mode > manual region > entra Edit mode no mesh > click "Snap to UV bounds".

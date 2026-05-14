@@ -91,16 +91,11 @@ class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
         if bones is None or self.bone_name not in bones:
             report_warn(self, f"bone '{self.bone_name}' not in '{armature.name}'")
             return {"CANCELLED"}
-        # Make the armature active so subsequent Pose Mode ops target it.
         select_only(context, armature)
-        # Sync data-level active bone (drives the Properties editor display)
-        # plus pose-level selection so the bone shows up highlighted in the
-        # viewport when the user is already in Pose Mode.
-        target_bone = bones[self.bone_name]
-        armature.data.bones.active = target_bone
-        if context.mode == "POSE" and armature.pose is not None:
-            for pose_bone in armature.pose.bones:
-                pose_bone.bone.select = pose_bone.name == self.bone_name
+        armature.data.bones.active = bones[self.bone_name]
+        if context.mode == "POSE":
+            _sync_pose_bone_selection(armature, self.bone_name)
+        _sync_active_index(context, "active_bone_index", bones, self.bone_name)
         return {"FINISHED"}
 
 
@@ -142,7 +137,45 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
         if armature.animation_data is None:
             armature.animation_data_create()
         armature.animation_data.action = action
+        _sync_active_index(context, "active_action_index", bpy.data.actions, self.action_name)
         return {"FINISHED"}
+
+
+def _sync_pose_bone_selection(armature: bpy.types.Object, bone_name: str) -> None:
+    """Set viewport selection so only ``bone_name`` is selected.
+
+    `bones.active` drives the Properties-editor highlight; PoseBone.select
+    drives the viewport bone-shape selection. Blender 4.x exposed the
+    select flag on Bone too, but 5.1 moved it to PoseBone exclusively
+    (probe: `bpy.types.Bone.bl_rna.properties` has only `hide_select`,
+    while `bpy.types.PoseBone` has `select`). hasattr guard keeps the
+    helper tolerant of either layout.
+    """
+    if armature.pose is None:
+        return
+    for pose_bone in armature.pose.bones:
+        wanted = pose_bone.name == bone_name
+        if hasattr(pose_bone, "select"):
+            pose_bone.select = wanted
+        elif hasattr(pose_bone.bone, "select"):
+            pose_bone.bone.select = wanted
+
+
+def _sync_active_index(
+    context: bpy.types.Context,
+    prop_name: str,
+    items: bpy.types.AnyType,
+    target_name: str,
+) -> None:
+    """Update ``scene.proscenio.<prop_name>`` so the panel UIList highlight
+    follows the row whose underlying datablock matches ``target_name``."""
+    scene_props = getattr(context.scene, "proscenio", None)
+    if scene_props is None or not hasattr(scene_props, prop_name):
+        return
+    for idx, candidate in enumerate(items):
+        if candidate.name == target_name:
+            setattr(scene_props, prop_name, idx)
+            return
 
 
 class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):

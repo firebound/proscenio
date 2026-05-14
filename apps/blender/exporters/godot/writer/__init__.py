@@ -84,9 +84,7 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
         bpy.context.view_layer.update()
 
     try:
-        sprites_out = [
-            build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs
-        ]
+        sprites_out = [build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
     finally:
         for obj in hidden_state:
             obj.hide_viewport = True

@@ -63,9 +63,7 @@ def _fallback_point(
     from bpy_extras import view3d_utils
     from mathutils import Vector
 
-    fallback = view3d_utils.region_2d_to_location_3d(
-        region, rv3d, coord, Vector((0.0, 0.0, 0.0))
-    )
+    fallback = view3d_utils.region_2d_to_location_3d(region, rv3d, coord, Vector((0.0, 0.0, 0.0)))
     out = [float(fallback.x), float(fallback.y), float(fallback.z)]
     out[axis_index] = 0.0
     return (out[0], out[1], out[2])

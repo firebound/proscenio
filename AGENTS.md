@@ -1,55 +1,34 @@
 # AGENTS.md
 
-This repository ships three components that bridge Blender → Godot 4 for 2D cutout animation:
+Three apps bridge Photoshop → Blender → Godot 4 for 2D cutout animation:
 
-- `apps/photoshop/` - Photoshop UXP plugin (TypeScript + React; PSD layers + manifest JSON)
-- `apps/blender/` - Blender 4.2+ addon (sprite import, rigging, animation, `.proscenio` export)
-- `apps/godot/` - Godot 4.3+ editor plugin (`.proscenio` → native `.tscn`)
+- `apps/photoshop/` - UXP plugin (TypeScript + React). Slices PSD layers and emits a manifest JSON.
+- `apps/blender/` - Blender 4.2+ addon (Python). Imports the manifest, hosts rig + animation, exports `.proscenio`.
+- `apps/godot/` - Godot 4.3+ editor plugin (GDScript). Imports `.proscenio` into a native `.tscn`.
 
-For LLM agents and human contributors: detailed guidance lives in [`.ai/skills/`](.ai/skills/README.md). Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in [`.ai/conventions.md`](.ai/conventions.md) - read those first.
-
-## Skills index
-
-| Task | Skill |
-| --- | --- |
-| Understand repo layout, components, boundaries | [.ai/skills/architecture.md](.ai/skills/architecture.md) |
-| Touch the `.proscenio` format or schema | [.ai/skills/format-spec.md](.ai/skills/format-spec.md) |
-| Edit Blender addon code | [.ai/skills/blender-dev.md](.ai/skills/blender-dev.md) |
-| Edit Godot plugin code | [.ai/skills/godot-dev.md](.ai/skills/godot-dev.md) |
-| Edit Photoshop UXP plugin | [.ai/skills/photoshop-uxp-dev.md](.ai/skills/photoshop-uxp-dev.md) |
-| Run or write tests | [.ai/skills/testing.md](.ai/skills/testing.md) |
-| Package, version, release | [.ai/skills/release.md](.ai/skills/release.md) |
-| Domain terms (bone, slot, atlas, weights) | [.ai/skills/glossary.md](.ai/skills/glossary.md) |
-| External prior art and Godot/Blender docs | [.ai/skills/references.md](.ai/skills/references.md) |
+For LLM agents and human contributors: detailed guidance lives under `.ai/skills/`. Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in `.ai/conventions.md` - read those first.
 
 ## Hard rules
 
-1. **Format is contract.** Any change to the `.proscenio` shape requires a `format_version` bump in [schemas/proscenio.schema.json](schemas/proscenio.schema.json) and a migration note. CI validates every example and fixture against the schema.
-2. **Blender addon is GPL-3.0-or-later.** No relicensing. Repo is GPL-3.0 throughout for simplicity.
-3. **No GDExtension. No native runtime.** The Godot plugin runs only at editor import time. Generated scenes use built-in nodes (`Skeleton2D`, `Bone2D`, `Polygon2D`, `AnimationPlayer`, `AnimationLibrary`). Verify by opening a generated `.tscn` in a stock Godot project without the plugin installed - it must work.
-4. **Strict dependency direction.** Photoshop knows nothing of Blender. Blender knows nothing of Godot internals. Godot knows only `.proscenio`. The schema is the only shared artifact.
-5. **One component per PR** unless the change is a format bump (which by definition crosses components).
-6. **Conventional Commits.** Squash merge.
-7. **Branch policy.** SPEC docs (`specs/<NNN>-…/STUDY.md` and `TODO.md`) land directly on `main`. Implementation lives on a `feat/spec-<NNN>-<slug>` branch (or `fix/spec-<NNN>-<slug>`, `chore/spec-<NNN>-<slug>` if the SPEC's nature warrants) and merges back via PR when the SPEC's TODO is satisfied. Branch names follow Conventional Commits prefixes everywhere. Full convention in [`.ai/conventions.md`](.ai/conventions.md#branches).
+1. **Schemas are the contract.** Any change to a cross-component shape (`.proscenio`, PSD manifest) requires a `format_version` bump on the relevant schema plus a migration note. CI validates every example and fixture against the schemas.
+2. **Blender addon is GPL-3.0-or-later.** No relicensing. The repo is GPL-3.0 throughout for simplicity.
+3. **No GDExtension. No native runtime.** The Godot plugin runs only at editor import time. Generated scenes use built-in nodes only (`Skeleton2D`, `Bone2D`, `Polygon2D`, `Sprite2D`, `Node2D`, `AnimationPlayer`, `AnimationLibrary`). Operational test: open a generated `.tscn` in a stock Godot project without the plugin installed - it must work.
+4. **Strict dependency direction.** Photoshop knows nothing of Blender. Blender knows nothing of Godot internals. Godot reads only `.proscenio`. The schemas are the only shared artifacts.
+5. **One component per PR** unless the change is a schema bump (which crosses by design).
+6. **Conventional Commits.** Branch names use the same prefix vocabulary.
 
 ## Repository layout
 
 ```text
-.
-├── AGENTS.md                  # this file - entry point
-├── README.md                  # user-facing
-├── LICENSE                    # GPL-3.0
-├── CONTRIBUTING.md
-├── .ai/skills/                # LLM-oriented guidance
-├── .github/workflows/         # CI + release
-├── docs/                      # user docs (mkdocs later)
-├── schemas/                   # .proscenio JSON Schema
-├── examples/                  # end-to-end samples (LFS for binaries)
-├── apps/photoshop/        # UXP (TypeScript + React)
-├── apps/blender/             # Python (Blender Extensions package)
-└── apps/godot/              # GDScript (dev project + addon)
+apps/<photoshop|blender|godot>/   per-app source
+schemas/                          cross-component JSON schemas
+specs/                            numbered planning specs + STATUS / backlog
+examples/                         end-to-end fixtures
+docs/                             user-facing docs
+.ai/                              skills + conventions for agents and contributors
+.github/workflows/                CI + release
 ```
 
 ## Status
 
-Pre-alpha. Format unstable. Not for production. The current planning spec is [`specs/000-initial-plan/`](specs/000-initial-plan/) - read [`STUDY.md`](specs/000-initial-plan/STUDY.md) for the rationale and [`TODO.md`](specs/000-initial-plan/TODO.md) for the actionable plan.
+Pre-alpha. Formats unstable. Not for production. Active planning lives under `specs/`; the rolling backlog is in `specs/backlog.md`.

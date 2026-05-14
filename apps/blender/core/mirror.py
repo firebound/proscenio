@@ -15,6 +15,8 @@ Map covers the full Object-side schema:
 
 - sprite_type, hframes, vframes, frame, centered (SPEC 005)
 - region_mode, region_x/y/w/h (SPEC 005.1.c.1)
+- is_slot, slot_default (SPEC 004)
+- is_outliner_favorite (SPEC 005.1.d.4)
 """
 
 from __future__ import annotations
@@ -33,6 +35,9 @@ OBJECT_MIRROR_MAP: tuple[tuple[str, str, type], ...] = (
     ("proscenio_region_w", "region_w", float),
     ("proscenio_region_h", "region_h", float),
     ("proscenio_material_isolated", "material_isolated", bool),
+    ("proscenio_is_slot", "is_slot", bool),
+    ("proscenio_slot_default", "slot_default", str),
+    ("proscenio_outliner_favorite", "is_outliner_favorite", bool),
 )
 
 

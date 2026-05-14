@@ -24,6 +24,10 @@ PROSCENIO_IS_SLOT = "proscenio_is_slot"
 # ProscenioObjectProps.slot_default.
 PROSCENIO_SLOT_DEFAULT = "proscenio_slot_default"
 
+# Per-Object outliner-favorite pin (SPEC 005.1.d.4). Mirrors
+# ProscenioObjectProps.is_outliner_favorite.
+PROSCENIO_OUTLINER_FAVORITE = "proscenio_outliner_favorite"
+
 # Per-Object slot index keyed by the action's slot_attachment animation.
 # Read by writer._build_slot_attachment_track via fcurve data_path
 # '["proscenio_slot_index"]'.

@@ -63,17 +63,7 @@ A Blender operator that adds a properly configured ortho camera for pixel-perfec
 
 ### Quick Armature: Front-Ortho UX guard
 
-`PROSCENIO_OT_quick_armature` now projects mouse drags onto the world Y=0 picture plane (pipeline contract: bones live in XZ). Works from any view, but the projection only matches cursor 1:1 in Front Orthographic - in Top/Right/Persp the bone lands at Y=0 under a ray cast from the cursor, which feels unintuitive.
-
-**Why deferred**: hardcoding Y=0 is correct (downstream writer + Godot importer assume the XZ plane); locking the operator to Front Ortho would block legitimate persp-view authoring; soft UX guard is the right path but not blocking the bug-fix branch.
-
-**What the SPEC would ship**:
-
-1. **Status hint on `invoke`**: prefix the existing `workspace.status_text_set("Quick Armature: drag = bone ...")` with "Y=0 picture plane |" so the constraint is visible while modal is active.
-2. **Auto-switch to Front Ortho**: on `invoke`, if the active region is `VIEW_3D` but `rv3d.view_perspective` is not `ORTHO` or `rv3d.view_matrix` is not facing -Y, call `bpy.ops.view3d.view_axis(type="FRONT")` before `modal_handler_add`. Add an "Operator option: Lock view" toggle so the user can opt out if they explicitly want to author in persp.
-3. **Modal hint label**: optional - draw a 2D overlay at cursor showing "Y=0" while dragging.
-
-**Trigger to revisit**: when the next UX pass on the Blender addon happens, or when a second user reports the lock-in-front-view confusion.
+**Resolved by [SPEC 012](012-quick-armature-ux/STUDY.md)** Wave 12.1 - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same wave.
 
 ### Blender 4.3 legacy actions compatibility
 

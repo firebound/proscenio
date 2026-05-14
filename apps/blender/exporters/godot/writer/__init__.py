@@ -70,12 +70,33 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
 
     sprite_objs = find_sprite_meshes(scene)
 
+    # Blender skips depsgraph evaluation for hide_viewport=True objects, so
+    # `obj.matrix_world` returns an identity / stale value for hidden slot
+    # attachments. Un-hide every sprite, force a depsgraph update so each
+    # `matrix_world` reflects the parent chain, build the entries, then
+    # restore the original hide state. See tests/BUGS_FOUND.md.
+    hidden_state: dict[bpy.types.Object, bool] = {}
+    for obj in sprite_objs:
+        if obj.hide_viewport:
+            hidden_state[obj] = True
+            obj.hide_viewport = False
+    if hidden_state:
+        bpy.context.view_layer.update()
+
+    try:
+        sprites_out = [
+            build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs
+        ]
+    finally:
+        for obj in hidden_state:
+            obj.hide_viewport = True
+
     doc: dict[str, Any] = {
         "format_version": SCHEMA_VERSION,
         "name": doc_name(),
         "pixels_per_unit": pixels_per_unit,
         "skeleton": skeleton,
-        "sprites": [build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs],
+        "sprites": sprites_out,
     }
 
     slots = build_slots_for_scene(scene)

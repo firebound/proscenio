@@ -14,6 +14,22 @@ The `authored/` subdirectory exists specifically to telegraph this asymmetry. Ne
 
 Fixtures rebuilt from a script under [`scripts/fixtures/<name>/`](../scripts/fixtures/) (Pillow + headless Blender). Safe to delete and regenerate. Each isolates one feature end-to-end so a regression has a small, named blast radius.
 
+New fixtures land under one of two **pipeline-direction subdirectories**; the pre-existing flat layout is preserved for fixtures that predate the categorization (see "Legacy flat layout" below).
+
+### `generated/psd_to_blender/` - PSD-side authoring inputs
+
+| Fixture                                                                       | Feature exercised                                                                              |
+|-------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| [`generated/psd_to_blender/tag_smoke/`](generated/psd_to_blender/tag_smoke/)  | SPEC 011 v1 bracket-tag taxonomy parity oracle (synthetic input + committed manifest golden)   |
+
+See [`generated/psd_to_blender/README.md`](generated/psd_to_blender/README.md) for the bucket's testing posture.
+
+### `generated/blender_to_godot/` - Blender-to-Godot scene pipeline
+
+Empty for new entries today; existing Blender -> Godot fixtures still live at the legacy flat layout (below). See [`generated/blender_to_godot/README.md`](generated/blender_to_godot/README.md) for the deferred-migration rationale.
+
+### Legacy flat layout (Blender -> Godot fixtures)
+
 | Fixture | Feature exercised |
 |---|---|
 | [`generated/atlas_pack/`](generated/atlas_pack/) | atlas packer (Pack / Apply / Unpack), 9 distinct sprites with own textures |
@@ -24,7 +40,7 @@ Fixtures rebuilt from a script under [`scripts/fixtures/<name>/`](../scripts/fix
 | [`generated/slot_cycle/`](generated/slot_cycle/) | slot system, 3 attachments cycling |
 | [`generated/slot_swap/`](generated/slot_swap/) | slot system + bone rotation (swing + weapon swap in one action) |
 
-The conventions for adding a new procedural fixture live in [`scripts/fixtures/README.md`](../scripts/fixtures/README.md).
+The conventions for adding a new procedural fixture live in [`scripts/fixtures/README.md`](../scripts/fixtures/README.md). Migration of these flat fixtures into the subdirectories is tracked in [`specs/backlog.md`](../specs/backlog.md).
 
 ## Discovery
 

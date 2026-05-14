@@ -141,12 +141,12 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
         by = float(loc.get(1, 0.0))
         bz = float(loc.get(2, 0.0))
         if max(abs(bx), abs(by), abs(bz)) > 1e-6:
-            position = [round(by * ppu, 6), round(-bx * ppu, 6)]
+            position = [round(bx * ppu, 6), round(-bz * ppu, 6)]
 
     if "rotation_euler" in entry:
-        rz = float(entry["rotation_euler"].get(2, 0.0))
-        if abs(rz) > 1e-6:
-            rotation = round(-rz, 6)
+        ry = float(entry["rotation_euler"].get(1, 0.0))
+        if abs(ry) > 1e-6:
+            rotation = round(ry, 6)
     if "rotation_quaternion" in entry:
         angle = _quat_to_screen_angle(entry["rotation_quaternion"])
         if abs(angle) > 1e-6:
@@ -158,7 +158,7 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
         sy = float(sc.get(1, 1.0))
         sz = float(sc.get(2, 1.0))
         if max(abs(sx - 1.0), abs(sy - 1.0), abs(sz - 1.0)) > 1e-6:
-            scale = [round(sy, 6), round(sx, 6)]
+            scale = [round(sx, 6), round(sz, 6)]
 
     return {"position": position, "rotation": rotation, "scale": scale}
 
@@ -166,20 +166,24 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
 def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:
     """Bone-local quaternion -> Godot 2D screen rotation in radians.
 
-    For our XZ-plane 2D rig, world +Y points away from the camera (front
-    view) and bone Z aligns with -world Y. A user rotating a bone "around
-    world Y" by +theta in Blender's pose mode produces a bone-local
-    quaternion ``(cos(theta/2), 0, 0, -sin(theta/2))``. The visual
-    direction matches Godot's Y-down CW positive convention, so:
+    Project convention (codified in scripts/fixtures/README.md): bones
+    are authored with tail along -Y from head, so bone-Y aligns with
+    -world Y (camera axis) and bone-Z aligns with +world Z. Rotating a
+    bone with `R Y theta` in pose mode produces a bone-local quaternion
+    ``(cos(theta/2), 0, sin(theta/2), 0)`` -> w + y components.
 
-        godot_angle = -2 * atan2(q.z, q.w) = +theta
+    Godot 2D uses Y-down with CW-positive rotation. World Z maps to
+    -screen-Y, so `R Y +theta` is visually CW in the front view, i.e.
+    +theta in Godot:
 
-    This breaks down for rigs not aligned with the XZ plane - a future
+        godot_angle = 2 * atan2(q.y, q.w) = +theta
+
+    Breaks down for rigs not aligned with the XZ plane - a future
     SPEC will generalize via the bone's rest matrix.
     """
     w = float(quat_axes.get(0, 1.0))
-    z = float(quat_axes.get(3, 0.0))
-    return -2.0 * math.atan2(z, w)
+    y = float(quat_axes.get(2, 0.0))
+    return 2.0 * math.atan2(y, w)
 
 
 def _parse_bone_data_path(data_path: str) -> tuple[str | None, str | None]:

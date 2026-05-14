@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 import bpy
 
 from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core.report import report_info  # type: ignore[import-not-found]
+from ...core.report import report_info, report_warn  # type: ignore[import-not-found]
 from ._paths import pre_pack_snapshot_for, scene_has_pre_pack_snapshot, swap_image_in_materials
 
 
@@ -76,6 +76,16 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             return
         mat = bpy.data.materials.get(mat_name)
         if mat is None:
+            # Snapshot stored the material by name; a manual rename between
+            # Apply and Unpack breaks the lookup. Surface the partial restore
+            # so the user knows UVs were rolled back but the material was
+            # not (a later SPEC may switch the snapshot to a PointerProperty
+            # so renames track automatically).
+            report_warn(
+                self,
+                f"'{obj.name}': original material '{mat_name}' not found "
+                f"(renamed or deleted?); restored UVs only",
+            )
             return
         if materials:
             materials[0] = mat

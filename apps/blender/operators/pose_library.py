@@ -61,6 +61,14 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
                 "(Blender < 3.5 or pose library disabled).",
             )
             return {"CANCELLED"}
+        if not _has_writable_asset_library():
+            report_error(
+                self,
+                "no writable asset library configured. Add one in "
+                "Preferences > File Paths > Asset Libraries with a path "
+                "Blender can write to, then retry.",
+            )
+            return {"CANCELLED"}
 
         pose_name = self.pose_name or _default_pose_asset_name(armature, context)
         try:
@@ -71,6 +79,28 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
 
         report_info(self, f"saved pose asset '{pose_name}' to the Asset Browser")
         return {"FINISHED"}
+
+
+def _has_writable_asset_library() -> bool:
+    """True when at least one Asset Library is configured with a usable path.
+
+    Blender 4.x ships without default writable Pose Libraries, so
+    poselib.create_pose_asset fails with "Unexpected library type" until
+    the user adds one in Preferences > File Paths > Asset Libraries. The
+    poll path lets the operator stay clickable; the precheck surfaces
+    the missing setup with an actionable hint instead of the cryptic
+    poselib error.
+    """
+    import os
+
+    libs = getattr(bpy.context.preferences.filepaths, "asset_libraries", None)
+    if libs is None:
+        return False
+    for lib in libs:
+        path = str(getattr(lib, "path", ""))
+        if path and os.path.isdir(path) and os.access(path, os.W_OK):
+            return True
+    return False
 
 
 class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):

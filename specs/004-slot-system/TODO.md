@@ -21,36 +21,36 @@ Slot system implementation. See [STUDY.md](STUDY.md) for the full design + decis
 
 ## Wave 4.1 - writer + authoring panel + preview shader (Blender side)
 
-Branch: `feat/spec-004.1-slots-blender`.
+Branch: `feat/spec-004.1-slots-blender`. **Shipped**.
 
-**Slot system core** (D1–D12 + D14):
+**Slot system core** (D1-D12 + D14):
 
-- [ ] `properties/__init__.py` gains `is_slot: BoolProperty` + `slot_default: StringProperty` on `ProscenioObjectProps`.
-- [ ] `operators/__init__.py` gains `PROSCENIO_OT_create_slot` (D8 two-path: bare creation under active bone, or wrap N selected meshes in a fresh Empty).
-- [ ] Active Sprite subpanel renders a Slots section when `active_object.type == "EMPTY"` and `is_slot == True`: list of attachment children, default picker, "Add attachment" button (parents the active mesh into the slot Empty), reorder buttons (D12 z-order). Children kind-mixed (polygon + sprite_frame) - D14.
-- [ ] Writer (`exporters/godot/writer.py`) walks scene Empties, emits `slots[]` array. Each slot's `bone` = Empty's `parent_bone`; `attachments` = ordered child mesh names (per D12); `default` = `slot_default` or first child. Sprites continue to emit normally in `sprites[]` regardless of slot membership (D6).
-- [ ] Validation rules per D9 + D10 - surfaced in Validation subpanel via existing `Issue` + click-to-select.
-- [ ] `core/feature_status.py` flips `slot_system` from `PLANNED` to `GODOT_READY`.
-- [ ] `core/help_topics.py` adds a `slot_system` topic (what slots do, how to author, how Godot consumes them, contrast with driver shortcut, the two PS-import flows that compose under one slot per D14).
-- [ ] Tests: writer round-trip on a hand-built slot fixture (`tests/test_slot_writer.py`) covering polygon-only, sprite_frame-only, and mixed-kind slots; validation rules (`tests/test_slot_validation.py`).
+- [x] `properties/object_props.py` carries `is_slot: BoolProperty` + `slot_default: StringProperty` on `ProscenioObjectProps`. PR 49 also fixed the PG <-> CP mirror for both fields.
+- [x] `operators/slot/create.py` ships `PROSCENIO_OT_create_slot` with the D8 two-path behavior (bare creation under active bone, or wrap N selected meshes in a fresh Empty).
+- [x] `panels/active_slot.py` renders the slot authoring section when the active Empty has `is_slot=True`: attachment list, default picker (SOLO_ON/OFF star), "Add Selected Mesh" button. Reorder/z-order surfaces via list order (D12) - PR 49 added the row-click sync helper.
+- [x] `exporters/godot/writer/slots.py` walks the scene's Empties and emits `slots[]`. `slot_animations.py` merges per-action so bone-transform + slot-attachment tracks share one Animation in Godot (D6).
+- [x] Validation D9 + D10 live in `core/validation/active_slot.py` + the Validation subpanel, surfaced via the `Issue` + click-to-select path.
+- [x] `core/feature_status.py` carries `slot_system: GODOT_READY`.
+- [x] `core/help_topics.py` carries the `slot_system` topic.
+- [x] Tests: `tests/test_slot_emit.py` + `tests/test_slot_validation.py` cover round-trip + validation rules. Headless run via `apps/blender/tests/run_tests.py` exercises `slot_cycle` and `slot_swap` end-to-end (7/7 PASS).
 
 **Sprite_frame preview shader** (D13):
 
-- [ ] `core/sprite_frame_shader.py` - pure Python helper that builds a reusable shader-node group ("Proscenio Sprite Frame Slicer") with input sockets `Frame`, `H Frames`, `V Frames` and a wired `Image Texture` lookup. Math: `cell_w = 1/hframes`, `cell_x = frame % hframes`, etc. The group is parametrized so the same node tree can serve every sprite_frame mesh in the scene.
-- [ ] `PROSCENIO_OT_setup_sprite_frame_preview` operator - inserts the slicer between `TexCoord` and `TexImage` of the active mesh's first image-textured material; wires drivers from `obj.proscenio.frame / hframes / vframes` onto the matching shader inputs. Idempotent: re-runs detect an existing slicer and refresh drivers.
-- [ ] `PROSCENIO_OT_remove_sprite_frame_preview` - bypasses the slicer (keeps the texture wired straight to BSDF), drops the drivers, leaves the node group present so other materials still reference it.
-- [ ] Active Sprite subpanel surfaces "Setup Preview Material" / "Remove Preview Material" button when `sprite_type == "sprite_frame"` and a material is linked.
-- [ ] `core/help_topics.py` `active_sprite` topic gains a "Material preview (Z-key cycles to Material Preview mode)" caveat sentence.
-- [ ] Tests: `tests/test_sprite_frame_shader.py` - verify the math helpers (`cell_offset_x(frame, hframes)`, etc.) without booting Blender. Shader-node creation itself stays bpy-bound (manual smoke test on doll's eye fixture).
+- [x] `core/bpy_helpers/sprite_frame_shader.py` ships the reusable "Proscenio Sprite Frame Slicer" node group with the parametrized `Frame` / `H Frames` / `V Frames` math.
+- [x] `operators/slot/preview_shader.py` ships `PROSCENIO_OT_setup_sprite_frame_preview` (idempotent slicer insertion + driver wiring).
+- [x] Same module ships `PROSCENIO_OT_remove_sprite_frame_preview` (drops drivers, keeps the node group available).
+- [x] `panels/_draw_sprite_frame.py` surfaces "Setup Preview" / "Remove Preview" buttons when `sprite_type == "sprite_frame"`. PR 49 added the `?` help-button affordance to the sub-box header.
+- [x] `core/help_topics.py` ships the standalone `sprite_frame_preview` topic with the Z-key Material Preview caveat. (Landed as its own topic rather than nested inside `active_sprite`; same UX outcome.)
+- [x] Tests: `tests/test_sprite_frame_math.py` covers the math helpers (`cell_offset_x`, etc.) without booting Blender.
 
 ## Wave 4.2 - Godot importer + animation track
 
-Branch: `feat/spec-004.2-slots-godot`.
+Branch: `feat/spec-004.2-slots-godot`. **Shipped**.
 
-- [ ] `apps/godot/addons/proscenio/builders/slot_builder.gd` - reads `slots[]` from manifest, builds a `Node2D` per slot under the skeleton, populates with attachment children (delegated back to `polygon_builder.gd` / `sprite_frame_builder.gd`), sets `visible` per default.
-- [ ] `polygon_builder.gd` / `sprite_frame_builder.gd` patch: when a sprite name appears in any `slots[].attachments[]`, route it under the slot Node2D instead of the skeleton root.
-- [ ] `animation_builder.gd` adds `slot_attachment` track handling: at each key, finds the named child of the slot, sets `visible = true`, hides siblings. Track interpolation = `INTERPOLATION_NEAREST` (constant step).
-- [ ] GUT tests: `apps/godot/tests/test_slots.gd` - slot structure (Node2D parent + children), default visibility, animation track flips visibility on the right child, multi-slot scene.
+- [x] `apps/godot/addons/proscenio/builders/slot_builder.gd` builds the `Node2D` per slot under the skeleton, attaches children via the polygon / sprite_frame builders, and toggles `visible` per default.
+- [x] `polygon_builder.gd` + `sprite_frame_builder.gd` route into the slot Node2D when the sprite name appears in any `slots[].attachments[]`.
+- [x] `animation_builder.gd` ships `slot_attachment` track handling: NEAREST interp, sibling visibility flip per key.
+- [x] GUT coverage: `apps/godot/tests/test_importer.gd` carries the slot-structure + default-visibility + multi-slot assertions (38 slot references). Standalone `test_slots.gd` was not split out - the existing importer suite already exercises every assertion the TODO planned.
 
 ## Wave 4.3 - fixtures + docs (in flight)
 
@@ -82,15 +82,15 @@ Branch: `feat/spec-004.3-slots-fixtures`.
 - [x] `scripts/fixtures/README.md` - `slot_cycle/` entry in the layout + script-output map.
 - [x] Update `examples/authored/doll/README.md` brow row from "future home for slots" to a forward-looking note pointing at `examples/generated/slot_cycle/` for the live slot demo.
 
-## Wave 4.4 - close-out (planned)
+## Wave 4.4 - close-out
 
-Branch: `feat/spec-004.4-close-out`. Bundles the Wave-4.3 deferred items into one final SPEC 004 PR so the spec ships fully closed before SPEC 005 close-out + SPEC 008 design pass.
+Branch: `feat/spec-004.4-close-out`. Bundles the Wave-4.3 deferred items into one final SPEC 004 PR. **Shipped** - all live demo coverage migrated to `examples/generated/slot_cycle/` + `examples/generated/slot_swap/` and the docs landed alongside.
 
-- [ ] `examples/authored/doll/`: promote `brow.L` and `brow.R` to slots with brow-up / brow-down attachments. Author sibling `brow.L.up` / `brow.R.up` meshes; existing `brow.L` / `brow.R` become the "down" defaults. Weight paint each pair to the same brow bone the doll already exposes. Add a `brow_raise` action keyframing each slot's `proscenio_slot_index` 0 -> 1 -> 0.
-- [ ] Re-export `examples/authored/doll/doll.expected.proscenio` golden so it includes the new slots[] + brow_raise animation.
-- [ ] `examples/authored/doll/README.md`: brow row updated from "live slot demo coming" to "two slots (`brow.L.swap` / `brow.R.swap`) drive the brow_raise action".
-- [ ] `.ai/skills/godot-dev.md`: new "Slots" subsection - worked example with `Node2D` parent + `visible`-toggled children + `slot_attachment` track expansion. Short (one screen of text + the doll brow scene tree).
-- [ ] `format-spec.md` (defer if the doc still does not exist) - slot section listing the Slot schema shape + the slot_attachment track contract. Cross-references SPEC 004.
+- [x] ~~doll brow promotion to slots + `brow_raise` action~~ - **Retired**. Slot demo coverage moved to `examples/generated/slot_cycle/` (3-attachment cycle) and `examples/generated/slot_swap/` (single-slot bone swing). Decision recorded in `examples/authored/doll/README.md` (the brow row now points at both generated fixtures).
+- [x] ~~Re-export `doll.expected.proscenio` with slots[] + brow_raise~~ - **Retired** alongside the brow promotion above.
+- [x] `examples/authored/doll/README.md` brow row updated to reference `slot_swap` + `slot_cycle` as the live slot demos.
+- [x] `.ai/skills/godot-dev.md` ships the "Slots (SPEC 004)" subsection at line 116 with the `Node2D` parent + visibility-toggled children + `slot_attachment` track shape.
+- [x] `.ai/skills/format-spec.md` mentions slots in the schema table + interpolation list. A dedicated slot subsection is **deferred** - the field-level rows are enough for the format contract; promote to a full subsection only when a second consumer beyond Godot needs the contract documented in one place.
 
 ## Out of scope
 

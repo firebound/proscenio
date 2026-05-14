@@ -55,6 +55,7 @@ keyframable
 keymap
 Keymap
 keymaps
+LEFTMOUSE
 lockdown
 mainfile
 mathutils
@@ -73,9 +74,9 @@ onready
 outliner
 parseia
 pngs
-Puppet2D
 printerr
 PROSC
+Puppet2D
 pycache
 pydata
 pyproject

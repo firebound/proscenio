@@ -138,9 +138,11 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
     if "location" in entry:
         loc = entry["location"]
         bx = float(loc.get(0, 0.0))
-        by = float(loc.get(1, 0.0))
         bz = float(loc.get(2, 0.0))
-        if max(abs(bx), abs(by), abs(bz)) > 1e-6:
+        # Y is the depth axis in Proscenio's XZ picture plane convention,
+        # so a keyframe authored only on bone-Y has no visible motion and
+        # shouldn't force a position channel into the export.
+        if max(abs(bx), abs(bz)) > 1e-6:
             position = [round(bx * ppu, 6), round(-bz * ppu, 6)]
 
     if "rotation_euler" in entry:
@@ -155,9 +157,11 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
     if "scale" in entry:
         sc = entry["scale"]
         sx = float(sc.get(0, 1.0))
-        sy = float(sc.get(1, 1.0))
         sz = float(sc.get(2, 1.0))
-        if max(abs(sx - 1.0), abs(sy - 1.0), abs(sz - 1.0)) > 1e-6:
+        # Same XZ-picture-plane reasoning as the location branch: scaling
+        # along bone-Y has no visible effect, so it should not promote
+        # the scale channel into the export.
+        if max(abs(sx - 1.0), abs(sz - 1.0)) > 1e-6:
             scale = [round(sx, 6), round(sz, 6)]
 
     return {"position": position, "rotation": rotation, "scale": scale}

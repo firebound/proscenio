@@ -18,14 +18,27 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
         self,
         _context: bpy.types.Context,
         layout: bpy.types.UILayout,
-        _data: bpy.types.AnyType,
+        data: bpy.types.AnyType,
         item: bpy.types.AnyType,
         _icon: int,
         _active_data: bpy.types.AnyType,
         _active_propname: str,
     ) -> None:
         row = layout.row(align=True)
-        row.label(text=item.name, icon="BONE_DATA")
+        # `data` is the armature data block. Walk back to its owning Object
+        # so the operator can address it by name + sync pose-mode selection.
+        armature_obj = next(
+            (o for o in bpy.data.objects if o.type == "ARMATURE" and o.data is data),
+            None,
+        )
+        op = row.operator(
+            "proscenio.select_bone_by_name",
+            text=item.name,
+            icon="BONE_DATA",
+            emboss=False,
+        )
+        op.armature_name = armature_obj.name if armature_obj is not None else ""
+        op.bone_name = item.name
         parent_name = item.parent.name if item.parent is not None else "-"
         row.label(text=f"parent: {parent_name}")
         row.label(text=f"len {item.length:.2f}")

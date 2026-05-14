@@ -99,7 +99,14 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         """Hide non-Proscenio objects, apply text + favorites filter, sort by category."""
         objects = list(getattr(data, propname))
         scene_props = getattr(context.scene, "proscenio", None)
-        flt_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
+        proscenio_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
+        # Blender renders a built-in "Filter by Name" field at the bottom of
+        # every UIList. Our filter_items previously read only scene_props
+        # and ignored self.filter_name, so the native field looked broken.
+        # Prefer the Proscenio search bar (top, with VIEWZOOM icon) when
+        # both are non-empty; otherwise fall through to whichever is set.
+        native_text = (self.filter_name or "").lower()
+        flt_text = proscenio_text or native_text
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )

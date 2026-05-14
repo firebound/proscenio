@@ -13,6 +13,7 @@ from __future__ import annotations
 import bpy
 
 from . import _draw_region
+from ._helpers import draw_subbox_header
 
 
 def draw_body(
@@ -23,7 +24,13 @@ def draw_body(
 ) -> None:
     """Sprite-frame body block."""
     box = layout.box()
-    box.label(text="Sprite frame", icon="IMAGE_DATA")
+    draw_subbox_header(
+        box,
+        title="Sprite frame",
+        title_icon="IMAGE_DATA",
+        feature_id="sprite_frame_preview",
+        help_topic="sprite_frame_preview",
+    )
     box.prop(props, "hframes")
     box.prop(props, "vframes")
     box.prop(props, "frame")

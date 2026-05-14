@@ -58,6 +58,7 @@ class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
             report_warn(self, f"object '{self.obj_name}' not found")
             return {"CANCELLED"}
         select_only(context, obj)
+        _sync_active_index(context, "active_outliner_index", bpy.data.objects, self.obj_name)
         return {"FINISHED"}
 
 

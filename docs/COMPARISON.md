@@ -33,7 +33,7 @@ Standalone authoring tools and engine-native + plugin paths grouped from left to
 | **Hot reload on save** | partial (Godot side only) | yes | partial | yes | yes | yes | yes | yes | yes | yes |
 | **Auto-rig / templates / presets** | no | partial (pose tool) | partial | yes (physics presets) | partial | no | no | partial (community) | no | partial (templates) |
 | **Mesh-from-contour (automesh)** | no | yes | yes | - | partial | no | no | no | no (manual control points) | yes (auto-mesh from sprite) |
-| **Strong typing across pipeline** | yes (mypy strict + GDScript typed + ts-check JSX) | - | no | - | - | - | - | - | - | - |
+| **Strong typing across pipeline** | yes (mypy strict + GDScript typed + TypeScript strict) | - | no | - | - | - | - | - | - | - |
 | **Versioned export schema (open)** | yes (JSON Schema 2020-12, 5 gates) | proprietary | no | proprietary | proprietary | - | - | - | proprietary | proprietary |
 
 ## Positioning summary
@@ -58,7 +58,7 @@ Cross-tool QoL paradigms the community celebrates, and where Proscenio sits on e
 - **Engine-native output.** Generated `.scn` uses only Godot core nodes. Plugin uninstall is a hard test, not a hope. (Differentiator vs Spine, DragonBones, CT2 Godot importer.)
 - **Direct manipulation in the DCC.** Authoring inherits Blender's existing weight paint, dopesheet, NLA, drivers. Proscenio adds shortcuts (Quick Armature, Drive from Bone), not proprietary modes. (CT2 markets this as "no proprietary modes.")
 - **Versioned contract as single source of truth.** Schema bumps are explicit, validated in 5 gates, and force migration. (Inherited from data-engineering practice; rare among DCC pipelines.)
-- **Strong typing end-to-end.** Python `mypy --strict`, GDScript `untyped_declaration=2`, ExtendScript `@ts-check`. (Paradigm absent from prior art.)
+- **Strong typing end-to-end.** Python `mypy --strict`, GDScript `untyped_declaration=2`, TypeScript `strict`. (Paradigm absent from prior art.)
 
 ### Partially adopted
 

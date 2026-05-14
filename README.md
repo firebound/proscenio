@@ -166,7 +166,7 @@ In one sentence: Proscenio trades Spine's multi-runtime, polished preview, and r
 - [`AGENTS.md`](AGENTS.md) - entry point for contributors and LLM agents.
 - [`.ai/skills/`](.ai/skills/README.md) - task-specific skill bundles.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - setup, PR rules, end-to-end usage walkthrough.
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) - locked architectural and per-SPEC decisions.
+- [`specs/decisions.md`](specs/decisions.md) - locked architectural and per-SPEC decisions.
 - [`docs/COMPARISON.md`](docs/COMPARISON.md) - feature matrix and positioning vs alternatives.
 - [`docs/DEFERRED.md`](docs/DEFERRED.md) - SPEC-level deferred features and rationale.
 - [`docs/GODOT-WORKFLOW.md`](docs/GODOT-WORKFLOW.md) - customizing imported characters Godot-side without losing work on reimport.

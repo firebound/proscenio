@@ -36,6 +36,11 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def poll(cls, context: bpy.types.Context) -> bool:
         if not bpy.data.filepath:
             return False
+        # Apply rewrites uv_layer.data which is empty under BMesh while in
+        # Edit Mode; the operator would silently skip every sprite reporting
+        # "no UV layer" without indicating the real cause.
+        if context.mode != "OBJECT":
+            return False
         _, manifest = packed_atlas_paths(bpy.data.filepath)
         return manifest.exists()
 

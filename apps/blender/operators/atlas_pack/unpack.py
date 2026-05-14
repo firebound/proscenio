@@ -27,7 +27,9 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return scene_has_pre_pack_snapshot(context.scene)
+        # Unpack writes uv_layer.data + materials; both need Object Mode for
+        # the same BMesh-vs-mesh.uv_layers reason that gates Pack and Apply.
+        return scene_has_pre_pack_snapshot(context.scene) and context.mode == "OBJECT"
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         restored = 0

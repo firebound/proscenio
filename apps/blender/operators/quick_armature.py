@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 
 from ..core.bpy_helpers.viewport_math import (  # type: ignore[import-not-found]
-    mouse_event_to_z0_point,
+    mouse_event_to_plane_point,
 )
 from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
 
@@ -66,8 +66,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         context: bpy.types.Context,
         event: bpy.types.Event,
     ) -> set[str]:
+        # Proscenio's 2D-cutout convention authors bones in the XZ
+        # picture plane (Y=0). The legacy Y=Z-up projection put bones in
+        # the ground plane, which collapses in Front Ortho - see
+        # tests/BUGS_FOUND.md.
         if event.value == "PRESS":
-            type(self)._drag_head = mouse_event_to_z0_point(context, event)
+            type(self)._drag_head = mouse_event_to_plane_point(context, event, plane_axis="Y")
             type(self)._shift_held = bool(event.shift)
             return {"RUNNING_MODAL"}
         if event.value != "RELEASE":
@@ -76,7 +80,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         type(self)._drag_head = None
         if head is None:
             return {"RUNNING_MODAL"}
-        tail = mouse_event_to_z0_point(context, event)
+        tail = mouse_event_to_plane_point(context, event, plane_axis="Y")
         if tail is None:
             return {"RUNNING_MODAL"}
         from mathutils import Vector

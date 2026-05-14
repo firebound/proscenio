@@ -3,15 +3,14 @@
 # The current importer (>= 2a92db3) leaves the doc unsaved on purpose.
 00_blender_base/photoshop/
 
-# Step 01: clean re-export of the untagged baseline PSD. Regenerable
-# via the Proscenio Exporter panel; the PSD itself IS tracked.
+# Step 01: clean re-export of the untagged baseline PSD. Diagnostic
+# only (round-trip oracle); the PSD itself IS tracked. Regenerable
+# via the Proscenio Exporter panel against doll_ps_base.psd.
 01_photoshop_base/export/
 
-# Step 02 workbench: re-exported manifest + PNGs from `doll_tagged.psd`.
-# Regenerable via the Proscenio Exporter panel; kept out of git so the
-# artist can iterate without polluting commits. The tagged PSD itself
-# IS tracked.
-02_photoshop_setup/export/
+# Step 02: UXP export oracle. The captured-baseline subfolder for
+# SPEC 010 parity checks; regenerable via the manual procedure in
+# specs/010-photoshop-uxp-migration/TODO.md.
 02_photoshop_setup/uxp_export/
 
 # Step 03: SPEC 011 parity sandbox. Genuinely regenerable from the

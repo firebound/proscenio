@@ -125,6 +125,48 @@ Marks a layer as "animated separately from its parent group" so the rig generato
 
 `PngWrite.layerPath` (and the parallel `_frameSources` on planned sprite_frame entries) is a chain of layer names. Photoshop allows siblings with duplicate names; if a user authors two children named `arm` inside the same group, the materialiser would resolve whichever appears first in `layer.layers` and silently write the wrong PNG. **Why deferred**: the doll oracle and every shipped fixture have unique names per group; ajv catches name collisions at the sanitize level for manifest entries. **Trigger to revisit**: a user reports a wrong-PNG export, or SPEC 011's tag inspector starts addressing layers by stable handle. Implementation hint: replace `string[]` with `Array<{ name: string; index: number }>` so the adapter can tie-break by position when two siblings share a name.
 
+### SPEC 011 v1 design decisions to revisit
+
+Behaviours that landed as "by design" in the v1 taxonomy. Each is intentional today but worth re-examining once real artist usage stresses the assumption.
+
+#### Nested `[merge]` collapses silently
+
+A `[merge]` group inside another `[merge]` is flattened into the outer entry without a warning. Confirmed end-to-end on the doll oracle: `brow_states [spritesheet]` with `1 [merge]` containing `1.1 [merge]` emits two frames (`0`, `1`) instead of three, because `1.1` collapses into `1`. **Why deferred**: this is the obvious recursive semantics for `[merge]` and the doll authoring run produced no surprise; no warning means no false-positive fatigue. **Trigger to revisit**: an artist reports "I added a sub-layer inside [merge] and it vanished" without realising it was deliberate - then we surface a `merge-nested` info-level entry on the Validate tab so the collapse is visible at authoring time.
+
+#### `[name:pre*suf]` parsed but planner does not rewrite
+
+The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does not rewrite descendant names against the template. Display names cascade via `joinName` (parent `__` child) unchanged. **Why deferred**: rewrite has subtle interactions with `joinName` (do we rewrite before or after joining? what wins when a child carries its own `[path:NAME]`?) and zero shipped consumer needs it today. **Trigger to revisit**: a fixture or external user wants prefix/suffix templating on a real group - then we design the rewrite order with the actual workflow in hand.
+
+#### `kind: "mesh"` semantically equal to `kind: "polygon"` downstream
+
+`[mesh]` emits `kind: "mesh"` on the manifest and the Blender importer stamps a `proscenio_psd_kind = "mesh"` custom property, but no downstream code branches on it yet (the Godot writer treats both as a single quad). **Why deferred**: the distinction exists so SPEC 002 (mesh deformation) and SPEC 008 (UV animation) can tell editable polygons apart from rigid sprites. **Trigger to revisit**: SPEC 002 ships; at that point the importer adds a Subdivision Surface modifier (or equivalent) only to `kind: "mesh"` entries.
+
+#### Waist height drifts -1 px on the PS round-trip
+
+`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a SPEC 010.5 cycle fixes the underlying off-by-one in the JSX-era PSD reader.
+
+#### `pixels_per_unit` not round-tripped (defaults to 100 on re-export)
+
+The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: SPEC 010.5 plumbs PPU through XMP so the round-trip is lossless.
+
+### SPEC 011 follow-ups deferred from Waves 11.x
+
+#### Dedicated origin / pivot fixture (Wave 11.2)
+
+Wave 11.2 listed a "small PSD with one `[origin]` marker layer per body part, golden-diffed" as a follow-up. The doll oracle (`02_photoshop_setup/doll_tagged.psd`) covers the planner + writer paths for `[origin]` and `[origin:X,Y]` end-to-end, so the dedicated mini-PSD never materialised. **Why deferred**: tests/test_doll_tagged_manifest.py asserts origin presence on both the explicit-coordinate (`belly`, `arm.R`) and marker (`brow_states`) paths; tag_smoke locks the synthetic case. Coverage redundancy is high. **Trigger to revisit**: a regression where the origin handling diverges between PSD authoring styles - then ship the dedicated fixture so the failure mode has its own named test.
+
+#### SPEC 010 doll-roundtrip oracle re-run against schema v2
+
+Wave 10.3 captured a byte-equal JSX baseline against `doll.psd` for the SPEC 010 retirement gate. After SPEC 011 v2 landed, the manifest gained `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, and `kind: "mesh"`. The captured oracle still applies to legacy v1 imports, but a fresh v2 byte-equal capture against `doll_tagged.psd` is open. **Why deferred**: pytest's `test_doll_tagged_manifest.py` already pins the v2 manifest's structural invariants; a byte-equal SHA capture adds little signal beyond locking the exact JSON whitespace and key order. **Trigger to revisit**: the UXP exporter changes its serialisation strategy (key order, indentation, encoding) - then byte-equal capture catches the change before users notice.
+
+#### Spectrum web component shadow-DOM init cost
+
+`sp-action-button` / `sp-textfield` mount with shadow-DOM overhead noticeable on first paint of the Tags / Validate panels. Acceptable on the doll-sized PSD (22 layers). **Why deferred**: panels are not interaction-heavy, and the doll fixture is the largest known consumer today. **Trigger to revisit**: an artist reports lag opening the Tags tab on a >100-layer PSD; first response is to switch the hot widgets to plain HTML elements (the SRP audit already retired several Spectrum components for this reason - see `5c6bef2`).
+
+#### Migrating flat fixtures into `psd_to_blender/` and `blender_to_godot/`
+
+The new categorization buckets at `examples/generated/{psd_to_blender,blender_to_godot}/` accept new fixtures directly. The pre-existing flat fixtures (`atlas_pack/`, `blink_eyes/`, `mouth_drive/`, `shared_atlas/`, `simple_psd/`, `slot_cycle/`, `slot_swap/`) stay where they are because moving them ripples through every SPEC TODO, the `scripts/fixtures/` index, and several wrapper-scene paths. **Why deferred**: refactor cost > current confusion cost. **Trigger to revisit**: the next time one of those fixtures needs editing for an unrelated reason; piggyback the move onto the same commit.
+
 ## Tests and CI
 
 ### Blender headless test - multi-version matrix

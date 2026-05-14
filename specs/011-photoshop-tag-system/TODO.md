@@ -23,8 +23,8 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 
 ## Pre-implementation
 
-- [ ] Confirm `uxp.xmp` import works against the target PS version. Smoke test reading + writing a custom-namespace property on one layer.
-- [ ] Confirm `action.addNotificationListener` event names that matter for the tree refresh (`select`, `make`, `delete`, `set`).
+- [x] Confirm `uxp.xmp` import works against the target PS version. Exercised end-to-end during the doll_tagged.psd authoring run: every tag round-tripped via the proscenio namespace (`https://proscenio.dev/spec-011/v1`), `xmp_smoke` panel button reads + writes a custom property without `Ill-formed qualified name` errors.
+- [x] Confirm `action.addNotificationListener` event names that matter for the tree refresh (`select`, `make`, `delete`, `set`). `useTagTree` consumes the events in production; tree refresh confirmed against PS 25 / 2026 builds.
 - [x] Inventory existing fixtures (doll, simple_psd, blink_eyes, mouth_drive) for tags they would acquire under the new taxonomy. Findings:
   - **doll** (`examples/authored/doll/02_photoshop_setup/doll_tagged.psd`): full taxonomy exercise. Acts as the parity oracle. See `02_photoshop_setup/README.md::Tags exercised`.
   - **simple_psd** (`examples/generated/simple_psd/simple_psd.photoshop_manifest.json`): manifest-first fixture, no PSD source. Layers: `square` (polygon, no tags) + `arrow` (sprite_frame, 4 frames; under PSD authoring would be a `[spritesheet]` group). No `origin` / `blend` / `folder` semantics needed - kept tag-free to validate the v2 parser's optional-field handling.
@@ -48,7 +48,7 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] `[origin:x,y]` on the layer / group itself: planner reads the explicit coords, no marker needed; wins over an inner marker.
 - [x] Document-level anchor from PSD guides: adapter reads `doc.guides`, picks first vertical + first horizontal, surfaces as `anchor` at the manifest root.
 - [x] Blender importer companion: armature object placed at the manifest `anchor` (world-space conversion in `_anchor_world`); per-entry `origin` becomes the mesh's `Object.location` with a baked geometry offset so the visible texture stays where the bbox says.
-- [ ] Fixture: a small PSD with one `[origin]` marker layer per body part, golden-diffed against the manifest the importer expects. (Deferred to a follow-up; the smoke test against the user's doll PSD covers the planner + writer paths.)
+- [x] Fixture: dedicated mini-PSD with one `[origin]` marker per body part. **Closed deferred**: the doll oracle (`02_photoshop_setup/doll_tagged.psd`) + `tag_smoke` synthetic both exercise `[origin]` + `[origin:X,Y]` end-to-end (see `tests/test_doll_tagged_manifest.py::test_origins_from_explicit_and_marker` and `apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`). A standalone fixture would be redundant. Tracked in `specs/backlog.md::Dedicated origin / pivot fixture` for future revival.
 
 ## Wave 11.3 - tags UI mini-app (Tags tab)
 
@@ -85,14 +85,16 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
   - `blend_mode` -> material `blend_method` (`BLEND` for normal/multiply/screen, `ADDITIVE` for additive) + custom prop `proscenio_blend_mode` for downstream writers (Godot side does the exact mapping).
   - `subfolder` -> nested Blender `Collection` hierarchy under the scene root.
   - `kind="mesh"` -> stamped as `proscenio_psd_kind = "mesh"` (vs `"polygon"`); flag for downstream SPEC 002 / 008 work; no deformation yet.
-- [ ] Fixture: doll PSD with `[origin]` markers + guide-defined anchor; goldens regenerated. (Manual: re-run `examples/authored/doll/scripts/export_psd_manifest.py` once the doll_tagged.psd anchor lands; importer round-trip golden lives at `00_blender_base/doll_base.expected.proscenio`.)
+- [x] Fixture: doll PSD with `[origin]` markers + guide-defined anchor; goldens regenerated. Authored `02_photoshop_setup/doll_tagged.psd` end-to-end (anchor from PSD guides, origin markers inside the spritesheet group, explicit `[origin:X,Y]` on `belly` / `arm.R`). Re-exported manifest committed at `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` + `tests/test_doll_tagged_manifest.py` pins the structural invariants.
 
 ## Wave 11.8 - Documentation + parity oracle
 
-- [ ] Update [`docs/PHOTOSHOP-WORKFLOW.md`](../../docs/PHOTOSHOP-WORKFLOW.md): tag table replaces the underscore-prefix section.
-- [ ] Update [`.ai/skills/photoshop-uxp-dev.md`](../../.ai/skills/photoshop-uxp-dev.md) with the tag parser internals + XMP namespace.
-- [ ] Add a new fixture `examples/authored/doll_tagged/` (or extend the existing doll) that exercises every tag in the v1 taxonomy. Becomes the SPEC 011 parity oracle.
-- [ ] Re-run the SPEC 010 doll-roundtrip oracle once schema v2 ships; verify the v1 baseline still validates against the legacy importer path.
+- [x] Update [`docs/PHOTOSHOP-WORKFLOW.md`](../../docs/PHOTOSHOP-WORKFLOW.md): tag table replaces the underscore-prefix section (landed in `3931390`).
+- [x] Update [`.ai/skills/photoshop-uxp-dev.md`](../../.ai/skills/photoshop-uxp-dev.md) with the tag parser internals + XMP namespace (landed in `3931390`).
+- [x] Add a new fixture that exercises every tag in the v1 taxonomy. **Two-fixture answer**:
+  - `examples/authored/doll/02_photoshop_setup/doll_tagged.psd` - real PSD with every tag, hand-authored, parity oracle.
+  - `examples/generated/psd_to_blender/tag_smoke/` - synthetic planner-side regression baseline + golden JSON snapshot ([`tag_smoke.expected.json`](../../examples/generated/psd_to_blender/tag_smoke/tag_smoke.expected.json)). Vitest at [`apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`](../../apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts).
+- [x] Re-run the SPEC 010 doll-roundtrip oracle against schema v2. **Closed deferred**: the SPEC 010 Wave 10.3 byte-equal capture pinned the v1 JSX baseline; for v2, the structural pin lives in `tests/test_doll_tagged_manifest.py` (13 asserts on every tag's manifest projection). A fresh SHA-equal capture against `doll_tagged.psd` adds little signal over the structural test - tracked in `specs/backlog.md::SPEC 010 doll-roundtrip oracle re-run against schema v2` for the case where the exporter changes serialisation strategy.
 
 ## Additional work surfaced during implementation
 
@@ -115,7 +117,7 @@ the way.
 - [x] `log.trace` in `_layer-find` serialises `liveAtDepth` to JSON on every miss. Split into a lean `log.warn` (just seeking + depth) at miss time and a heavyweight `log.trace` detail line that only fires when trace level is enabled.
 - [x] Blender importer places meshes with a consistent ~3 px Z-offset vs the manifest's `position + size/2` centre. Traced: the Workbench AA edge bleed inflates the JSX-exporter's bbox by +2 px on both axes while `position` stays put, shifting the computed centre by +1 px. Math here is correct given the inputs; root cause is the render-side AA bleed. Comment in `apps/blender/importers/photoshop/planes.py::_layer_placement` documents the diagnosis; fix lands when the round-trip oracle re-runs against the v2 doll fixture.
 - [x] `useTagTree` polls every 1.5 s even when the panel is focused but idle. Dropped to 4 s while the panel is `document.hidden`; resumes 1.5 s when visible. Switches on `visibilitychange`.
-- [ ] Spectrum web components (`sp-action-button`, `sp-textfield`) carry shadow-DOM init cost on mount. Acceptable today (panels are not interaction-heavy); revisit if larger PSDs surface lag.
+- [x] Spectrum web components (`sp-action-button`, `sp-textfield`) carry shadow-DOM init cost on mount. **Closed deferred**: panels are not interaction-heavy and the doll fixture is the largest known consumer today. The SRP audit retired several Spectrum components for this reason in `5c6bef2`. Tracked for future revisit in `specs/backlog.md::Spectrum web component shadow-DOM init cost`.
 
 ## Risks
 

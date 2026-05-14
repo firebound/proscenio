@@ -13,13 +13,22 @@ from ..core.report import report_info, report_warn  # type: ignore[import-not-fo
 
 
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
-    """Re-unwrap the active mesh's UVs against its first image-textured material."""
+    """Re-unwrap the active mesh's UVs against its first image-textured material.
+
+    Known limitation (tests/BUGS_FOUND.md): bpy.ops.uv.smart_project picks
+    a projection from face normals. For quads in the XZ picture plane the
+    normal points -Y; the operator can rotate/mirror the result relative
+    to whatever the build_blend.py author hand-tuned. Use only on meshes
+    whose UVs were never authored by hand, or restore from the pre_pack
+    snapshot afterwards.
+    """
 
     bl_idname = "proscenio.reproject_sprite_uv"
     bl_label = "Proscenio: Reproject UV"
     bl_description = (
         "Re-projects the active mesh's UVs (Smart UV Project) so the texture "
-        "lines up after vertex edits. Active object only."
+        "lines up after vertex edits. Active object only. May rotate / "
+        "mirror UVs relative to hand-authored layouts."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -34,7 +43,11 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
-        return obj is not None and obj.type == "MESH"
+        if obj is None or obj.type != "MESH":
+            return False
+        # Re-projection toggles Edit Mode on the active mesh; starting from
+        # Edit Mode would leak state from the user's in-progress selection.
+        return context.mode == "OBJECT"
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
@@ -80,7 +93,12 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
-        return obj is not None and obj.type == "MESH"
+        if obj is None or obj.type != "MESH":
+            return False
+        # mesh.uv_layers.active.data is empty while the mesh is in Edit
+        # Mode (BMesh owns the loop data instead); execute() would raise
+        # IndexError when reading uv_layer.data[li].
+        return context.mode == "OBJECT"
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
@@ -91,7 +109,7 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
 
         mesh = obj.data
         uv_layer = mesh.uv_layers.active
-        if uv_layer is None or not mesh.polygons:
+        if uv_layer is None or not mesh.polygons or len(uv_layer.data) == 0:
             report_warn(self, f"'{obj.name}' has no UV layer or no polygons")
             return {"CANCELLED"}
 

@@ -37,6 +37,19 @@ export function useMigration(version: number): UseMigration {
             const result = await applyUnderscoreMigration();
             setLastResult(result);
             setPreview(previewUnderscoreMigration());
+        } catch (err) {
+            // applyUnderscoreMigration already absorbs per-candidate
+            // failures and returns a MigrationResult; this catch fires
+            // only when the outer executeAsModal itself rejects (PS
+            // busy / locked / target lost mid-flight). Surface that
+            // through the same shape the UI already renders.
+            setLastResult({
+                renamed: 0,
+                failures: [{
+                    layerPath: [],
+                    reason: err instanceof Error ? err.message : "migration threw exception",
+                }],
+            });
         } finally {
             setBusy(false);
         }

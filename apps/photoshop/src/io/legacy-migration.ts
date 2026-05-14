@@ -48,7 +48,14 @@ export async function applyUnderscoreMigration(): Promise<MigrationResult> {
         log.warn("legacy-migration", "no active document");
         return { renamed: 0, failures: [] };
     }
-    const candidates = planUnderscoreMigration(adaptDocument(doc).layers);
+    // Sort by path depth DESCENDING so deeper layers rename first.
+    // Renaming an ancestor before its descendants would change the
+    // ancestor's name in the live tree, making the descendant's pre-
+    // migration `layerPath` no longer match - findLayerByPath would
+    // report "layer not found" for every nested candidate.
+    const candidates = planUnderscoreMigration(adaptDocument(doc).layers)
+        .slice()
+        .sort((a, b) => b.layerPath.length - a.layerPath.length);
     log.info("legacy-migration", "candidates", candidates.length);
     if (candidates.length === 0) return { renamed: 0, failures: [] };
 

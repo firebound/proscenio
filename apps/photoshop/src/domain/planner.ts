@@ -220,18 +220,28 @@ function emitTagConflicts(
 }
 
 function detectDuplicatePaths(ctx: WalkContext): void {
-    const byPath = new Map<string, PlannedEntry[]>();
+    // Index each entry by every concrete output path it will write.
+    // For sprite_frame entries that means walking `frames[]` rather
+    // than using a synthetic `<name>/*` glob: the user's filename
+    // template may not include `{name}`, in which case two distinct
+    // sprite_frames in the same subfolder collide on identical
+    // per-frame paths and the glob-based check would miss it.
+    const byPath = new Map<string, Set<PlannedEntry>>();
+    const recordPath = (entry: PlannedEntry, path: string): void => {
+        const set = byPath.get(path);
+        if (set === undefined) byPath.set(path, new Set([entry]));
+        else set.add(entry);
+    };
     for (const entry of ctx.out) {
-        const path = entry.kind === "sprite_frame"
-            ? `images/${sanitize(entry.subfolder ?? "")}/${entry.name}/*`
-            : entry.path;
-        const list = byPath.get(path);
-        if (list === undefined) byPath.set(path, [entry]);
-        else list.push(entry);
+        if (entry.kind === "sprite_frame") {
+            for (const frame of entry.frames) recordPath(entry, frame.path);
+            continue;
+        }
+        recordPath(entry, entry.path);
     }
-    for (const [path, entries] of byPath) {
-        if (entries.length < 2) continue;
-        for (const entry of entries) {
+    for (const [path, entrySet] of byPath) {
+        if (entrySet.size < 2) continue;
+        for (const entry of entrySet) {
             const layerPath = entry.kind === "sprite_frame"
                 ? entry._frameSources[0]?.layerPath ?? []
                 : entry._source.layerPath;
@@ -239,7 +249,7 @@ function detectDuplicatePaths(ctx: WalkContext): void {
                 layerPath,
                 name: entry.name,
                 code: "duplicate-path",
-                message: `${entries.length} entries resolve to the same output path '${path}'. Sanitisation collapses different layer names to the same on-disk file; rename or use [path:...] to disambiguate.`,
+                message: `${entrySet.size} entries resolve to the same output path '${path}'. Sanitisation collapses different layer names to the same on-disk file; rename or use [path:...] to disambiguate.`,
             });
         }
     }

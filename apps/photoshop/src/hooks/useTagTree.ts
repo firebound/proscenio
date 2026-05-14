@@ -104,6 +104,8 @@ export function useTagTree(version: number): UseTagTree {
             try {
                 const result: RenameResult = await renameLayer(layerPath, newName);
                 if (!result.ok) setLastError(result.reason ?? "rename failed");
+            } catch (err) {
+                setLastError(err instanceof Error ? err.message : "rename threw exception");
             } finally {
                 setBusy(false);
                 refresh();

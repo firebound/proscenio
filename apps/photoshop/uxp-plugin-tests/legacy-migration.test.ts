@@ -59,12 +59,13 @@ describe("planUnderscoreMigration", () => {
         expect(candidates[2].layerPath).toEqual(["body", "_archived", "_old"]);
     });
 
-    it("emits nothing for layers that already start with `_` but produce the same name", () => {
-        // Pathological case: leading underscore + name = "[ignore]" only
-        // would resolve to "[ignore]" both before and after; should not
-        // emit a no-op rename.
+    it("drops the leading `_` when the stripped name already carries [ignore]", () => {
+        // `_[ignore]` strips to `[ignore]`; the migration normalises
+        // the cosmetic underscore prefix even though the semantic
+        // (the [ignore] tag) is already present in both forms.
         const candidates = planUnderscoreMigration([art("_[ignore]")]);
-        expect(candidates[0].newName).toBe("[ignore]");
+        expect(candidates).toHaveLength(1);
         expect(candidates[0].oldName).toBe("_[ignore]");
+        expect(candidates[0].newName).toBe("[ignore]");
     });
 });

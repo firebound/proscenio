@@ -36,7 +36,6 @@ export async function placePngAt(
     try {
         const srcLayer = srcDoc.layers[0];
         if (srcLayer === undefined) {
-            await srcDoc.closeWithoutSaving();
             return { layer: null, warning: `PNG ${pngFile.name} has no layers` };
         }
         // UXP returns `bounds` either as plain numbers or as
@@ -49,7 +48,6 @@ export async function placePngAt(
         const right = unwrap(srcLayer.bounds.right);
         const bottom = unwrap(srcLayer.bounds.bottom);
         if (left === null || top === null || right === null || bottom === null) {
-            await srcDoc.closeWithoutSaving();
             return {
                 layer: null,
                 warning: `${pngFile.name} bounds unreadable; layer skipped`,

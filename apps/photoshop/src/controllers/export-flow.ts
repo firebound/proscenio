@@ -226,11 +226,16 @@ function writeBelongsToEntry(
     entryName: string,
     plan: ExportPlan,
 ): boolean {
-    const ref = plan.entryRefs.find((r) => r.name === entryName);
-    if (ref === undefined) return false;
-    if (samePath(ref.layerPath, write.layerPath)) return true;
-    if (ref.framePaths === undefined) return false;
-    return ref.framePaths.some((p) => samePath(p, write.layerPath));
+    // `find` would pick the first ref with this name, but the planner
+    // can emit duplicate names (e.g. two layers with a `[path:test]`
+    // tag) - walking every matching ref keeps the re-export safe when
+    // the user-selected layer is not the first hit.
+    for (const ref of plan.entryRefs) {
+        if (ref.name !== entryName) continue;
+        if (samePath(ref.layerPath, write.layerPath)) return true;
+        if (ref.framePaths?.some((p) => samePath(p, write.layerPath))) return true;
+    }
+    return false;
 }
 
 function samePath(a: readonly string[], b: readonly string[]): boolean {

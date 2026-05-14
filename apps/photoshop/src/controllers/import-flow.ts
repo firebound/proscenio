@@ -1,7 +1,9 @@
 // Top-level import orchestrator. Mirrors the export flow's shape: the
 // caller passes a pre-resolved manifest (already validated) and a
 // pre-picked output folder; this module owns the modal that creates
-// the document, stamps every entry, and saves the PSD.
+// the document and stamps every entry. The resulting PSD is left
+// open and unsaved on purpose - the artist commits it to disk via
+// File > Save As (auto-save retired in 2a92db3).
 //
 // Entry processing order: z_order DESCENDING so the front layer
 // (z_order 0) lands on top of the Photoshop layer stack. PS adds new

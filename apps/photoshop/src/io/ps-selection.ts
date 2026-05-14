@@ -11,6 +11,7 @@
 import { action, app, core } from "photoshop";
 import type { PsDocument, PsLayer } from "photoshop";
 
+import { findLayerByPath } from "./_layer-find";
 import { log } from "../util/log";
 
 const MAX_DEPTH = 64;
@@ -62,15 +63,30 @@ function isDocumentShape(value: PsLayer | PsDocument): boolean {
 
 export async function selectLayerByPath(layerPath: readonly string[]): Promise<void> {
     if (layerPath.length === 0) return;
-    const leaf = layerPath.at(-1);
-    if (leaf === undefined) return;
+    const doc = app.activeDocument;
+    if (doc === null) {
+        log.warn("ps-selection", "selectLayerByPath: no active document");
+        return;
+    }
+    // Resolve the full path to a concrete PsLayer first so the
+    // batchPlay descriptor can address the layer by `_id` instead of
+    // by leaf `_name`. A bare `_name: leaf` reference is ambiguous in
+    // PSDs where two siblings in different branches share a name
+    // (e.g. `body/eye.L` and `face/eye.L`) - the live document picks
+    // whichever the walker finds first, which is not necessarily the
+    // path the Validate / Debug row was emitted from.
+    const target = findLayerByPath(doc, layerPath);
+    if (target === null) {
+        log.warn("ps-selection", "selectLayerByPath: layer not found", layerPath);
+        return;
+    }
     await core.executeAsModal(
         async () => {
             await action.batchPlay(
                 [
                     {
                         _obj: "select",
-                        _target: [{ _ref: "layer", _name: leaf }],
+                        _target: [{ _ref: "layer", _id: target.id }],
                         makeVisible: false,
                         _options: { dialogOptions: "dontDisplay" },
                     },

@@ -1,6 +1,9 @@
 anims
 bboxes
+cheatsheet
 dejavu
+leftmouse
+rightmouse
 docpath
 DONOTSAVECHANGES
 dopesheet

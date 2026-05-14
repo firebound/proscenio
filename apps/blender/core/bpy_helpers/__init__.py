@@ -9,6 +9,7 @@ Modules:
 - ``atlas_collect.py``      ``SourceImage`` + walk meshes for textured materials
 - ``atlas_compose.py``      assemble packed ``bpy.types.Image`` + write manifest JSON
 - ``atlas_manifest.py``     ``Placement`` + read manifest JSON
+- ``modal_overlay.py``      gpu/blf draw helpers for modal operator overlays
 - ``psd_spritesheet.py``    Photoshop-driven spritesheet composition
 - ``sprite_frame_shader.py`` Material slicer node group setup / removal
 - ``select.py``             ``select_only(context, obj)`` helper

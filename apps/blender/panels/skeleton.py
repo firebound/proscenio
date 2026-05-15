@@ -66,21 +66,15 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         layout = self.layout
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
         scene_props = getattr(context.scene, "proscenio", None)
-        # Single-armature scenes auto-fill the picker so it never
-        # shows "empty" while the panel below clearly says it is
-        # working on the only available rig. Idempotent write -
-        # subsequent draws find the pointer set, skip the assign.
-        if (
-            scene_props is not None
-            and scene_props.active_armature is None
-            and len(armatures) == 1
-        ):
-            scene_props.active_armature = armatures[0]
-        # Active-armature picker is always visible: in zero-armature
-        # scenes it stays empty (Quick Armature will create QuickRig
-        # and auto-populate it); otherwise the user picks the rig that
-        # every Proscenio skeleton op targets, instead of relying on
-        # whatever object Blender treats as active.
+        # Active-armature picker is always visible. Initial fill on
+        # `.blend` open / addon enable happens through the load_post +
+        # deferred_hydrate handlers (see properties/_handlers.py:
+        # auto_populate_active_armature). The picker is otherwise
+        # user-driven: clearing it via the "x" intentionally tells
+        # Proscenio "no explicit target - fall back to QuickRig on
+        # the next skeleton op". Writes during ``draw`` are forbidden
+        # by Blender (`Writing to ID classes in this context is not
+        # allowed`), so we never mutate the pointer here.
         if scene_props is not None:
             row = layout.row(align=True)
             row.label(text="", icon="ARMATURE_DATA")
@@ -97,15 +91,22 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         )
         bones = getattr(target.data, "bones", [])
         layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
-        if len(armatures) > 1 and (
-            scene_props is None or scene_props.active_armature is None
+        if (
+            scene_props is not None
+            and scene_props.active_armature is None
+            and armatures
         ):
             row = layout.row()
             row.alert = True
+            count_phrase = (
+                "1 armature in scene"
+                if len(armatures) == 1
+                else f"{len(armatures)} armatures in scene"
+            )
             row.label(
                 text=(
-                    f"{len(armatures)} armatures - pick one above so every "
-                    "Proscenio skeleton op targets the same rig"
+                    f"no rig picked - skeleton ops will create a new "
+                    f"Proscenio.QuickRig ({count_phrase})"
                 ),
                 icon="ERROR",
             )

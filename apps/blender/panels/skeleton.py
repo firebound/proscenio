@@ -84,37 +84,44 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             row.alert = True
             row.label(text="no Armature in scene", icon="ERROR")
             return
-        target = (
+        explicit_target = (
             scene_props.active_armature
-            if scene_props is not None and scene_props.active_armature is not None
-            else armatures[0]
+            if scene_props is not None
+            else None
         )
-        bones = getattr(target.data, "bones", [])
-        layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
-        if (
-            scene_props is not None
-            and scene_props.active_armature is None
-            and armatures
-        ):
-            row = layout.row()
-            row.alert = True
-            count_phrase = (
-                "1 armature in scene"
-                if len(armatures) == 1
-                else f"{len(armatures)} armatures in scene"
+        if explicit_target is not None:
+            bones = getattr(explicit_target.data, "bones", [])
+            layout.label(
+                text=f"Armature '{explicit_target.name}' - {len(bones)} bone(s)"
             )
+        elif armatures:
+            box = layout.box()
+            row = box.row()
             row.label(
                 text=(
-                    f"no rig picked - skeleton ops will create a new "
-                    f"Proscenio.QuickRig ({count_phrase})"
+                    "no rig picked - skeleton ops will create a new "
+                    "Proscenio.QuickRig"
                 ),
-                icon="ERROR",
+                icon="INFO",
             )
-        if bones and scene_props is not None:
+            row = box.row(align=True)
+            row.label(text="Use existing instead:")
+            for arm in armatures:
+                op = row.operator(
+                    "proscenio.set_active_armature",
+                    text=arm.name,
+                    icon="ARMATURE_DATA",
+                )
+                op.armature_name = arm.name
+        if (
+            explicit_target is not None
+            and bones
+            and scene_props is not None
+        ):
             layout.template_list(
                 "PROSCENIO_UL_bones",
                 "",
-                target.data,
+                explicit_target.data,
                 "bones",
                 scene_props,
                 "active_bone_index",

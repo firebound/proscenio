@@ -40,38 +40,29 @@ def _ctx(
 
 
 class TestResolveOrder:
-    def test_explicit_pointer_wins_over_active(self) -> None:
+    """SPEC 012.2 contract: picker is the only source of truth.
+
+    Heuristics (active object, single-armature scene) live in the
+    auto-populate handler, not in this resolver. Once the user clears
+    the picker, the resolver returns ``None`` and the operator falls
+    back to ``Proscenio.QuickRig``.
+    """
+
+    def test_explicit_pointer_returns_armature(self) -> None:
         explicit = _obj("MainRig")
-        active = _obj("OtherRig")
-        ctx = _ctx(explicit_armature=explicit, active=active, scene_objects=[explicit, active])
+        ctx = _ctx(explicit_armature=explicit, scene_objects=[explicit])
         assert resolve_skeleton_target(ctx) is explicit
 
-    def test_active_armature_used_when_no_explicit(self) -> None:
+    def test_no_explicit_returns_none_even_with_active_armature(self) -> None:
         active = _obj("MainRig")
         ctx = _ctx(active=active, scene_objects=[active])
-        assert resolve_skeleton_target(ctx) is active
-
-    def test_active_non_armature_falls_through(self) -> None:
-        only_arm = _obj("MainRig")
-        active_mesh = _obj("body", obj_type="MESH")
-        ctx = _ctx(active=active_mesh, scene_objects=[only_arm, active_mesh])
-        # Mesh active does not qualify; single-armature heuristic picks MainRig.
-        assert resolve_skeleton_target(ctx) is only_arm
-
-    def test_single_scene_armature_auto_target(self) -> None:
-        only_arm = _obj("MainRig")
-        ctx = _ctx(active=None, scene_objects=[only_arm])
-        assert resolve_skeleton_target(ctx) is only_arm
-
-    def test_multiple_armatures_no_active_returns_none(self) -> None:
-        a = _obj("RigA")
-        b = _obj("RigB")
-        ctx = _ctx(active=None, scene_objects=[a, b])
+        # Active object NOT used as fallback - picker is the contract.
         assert resolve_skeleton_target(ctx) is None
 
-    def test_zero_armatures_returns_none(self) -> None:
-        mesh = _obj("body", obj_type="MESH")
-        ctx = _ctx(active=mesh, scene_objects=[mesh])
+    def test_no_explicit_returns_none_even_with_single_scene_armature(self) -> None:
+        only_arm = _obj("MainRig")
+        ctx = _ctx(active=None, scene_objects=[only_arm])
+        # Single-armature heuristic also dropped from the resolver.
         assert resolve_skeleton_target(ctx) is None
 
     def test_explicit_pointer_with_non_armature_type_ignored(self) -> None:
@@ -86,11 +77,10 @@ class TestResolveOrder:
         ctx = SimpleNamespace(scene=None, view_layer=None)
         assert resolve_skeleton_target(ctx) is None
 
-    def test_no_proscenio_pg_falls_through(self) -> None:
+    def test_no_proscenio_pg_returns_none(self) -> None:
         only_arm = _obj("MainRig")
         scene = SimpleNamespace(objects=[only_arm])
         view_layer = SimpleNamespace(objects=SimpleNamespace(active=only_arm))
         ctx = SimpleNamespace(scene=scene, view_layer=view_layer)
-        # Scene has no .proscenio attr - getattr returns None and
-        # resolution falls through to the active-armature path.
-        assert resolve_skeleton_target(ctx) is only_arm
+        # No .proscenio attr -> no picker to read -> None.
+        assert resolve_skeleton_target(ctx) is None

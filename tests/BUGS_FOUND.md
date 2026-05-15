@@ -10,31 +10,29 @@ Distinto de UI_FEEDBACK.md (que cobre polish, não comportamento).
 
 ## apps/blender
 
-### bpy.props annotations em Operator nao registram com `from __future__ import annotations` (codebase-wide latente)
+### bpy.props annotations falham em Operator com PEP 563 + ClassVar referenciando tipo TYPE_CHECKING-only
 
-**Repro:** SPEC 012.1 introduziu `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
+**Repro original (SPEC 012.1):** `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
 
-**Causa:** com `from __future__ import annotations` (PEP 563) no topo do arquivo, todo annotation vira string em runtime. Blender 5.1.1 metaclass `_RNAMeta` checa `isinstance(value, _PropertyDeferred)` ao registrar; strings falham o check silenciosamente -> property nunca promove pra RNA -> `self.<prop>` quebra.
+**Causa real (post-mortem refinado em SPEC 012.2 audit):** o problema **nao** e PEP 563 em si. E a combinacao tripla:
 
-**Diagnostico:** headless `--background --python` confirmou: `cls.__annotations__["lock_to_front_ortho"]` retornava `str` com PEP 563 ativo, `_PropertyDeferred` sem PEP 563. Apos remover `from __future__ import annotations` do arquivo, invoke succeed.
+1. `from __future__ import annotations` (PEP 563) ativo no arquivo
+2. ClassVar annotation referenciando tipo so importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
+3. Blender 5.1's `register_class` chama `typing.get_type_hints(cls)` que tenta evaluar TODAS as annotation strings contra module globals
 
-**Fix aplicado em SPEC 012.1:** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py`. Docstring documenta o constraint.
+`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix so existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk -> nenhuma `_PropertyDeferred` promove pra RNA -> `self.<prop>` quebra.
 
-**Latente no resto do codebase:** todo operator/PropertyGroup/Panel do projeto usa `from __future__ import annotations` + bpy.props annotations. Nenhum quebrou ate hoje porque:
+Confirmado via headless `--background --python` instrumentando `get_type_hints`. Apos remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registracao volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagogica + consistencia.
 
-- `PROSCENIO_OT_export_godot.filter_glob` + `filename_ext` -> herdados de `ExportHelper` (registrados em C, nao via Python annotation).
-- `PROSCENIO_OT_export_godot.pixels_per_unit` -> nunca foi acessado via `self.pixels_per_unit` (writer recebe via outra rota).
-- `PROSCENIO_OT_help.topic` -> mesmo padrao, nao acessado via `self.topic`.
-- `PROSCENIO_OT_select_outliner_object.obj_name` -> idem.
-- `PROSCENIO_OT_import_photoshop.{filter_glob,placement,root_bone_name}` -> idem.
+**Audit codebase-wide (SPEC 012.2):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso e ARTEFATO de `bl_rna.properties.keys()` nao expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
 
-**Auditoria pendente:** rodar grep `: \w+Property\(` em `apps/blender/operators/` + `apps/blender/properties/` + `apps/blender/panels/`, validar se cada anotacao precisa ser acessada via `self.<prop>` num operator. Para os que precisam, remover `from __future__ import annotations` do arquivo (cost: forward refs precisam aspas + ClassVar types como `Matrix` precisam import runtime).
+**Conclusao:** o bug se manifesta APENAS quando o combo das 3 condicoes acima ocorre. Todos os outros operators usam ClassVar so com tipos builtin (`set[str]`) e nao tem TYPE_CHECKING import referenciado em ClassVar - imunes ao bug. Sem fix necessario em demais operators.
 
-**Arquivos afetados:** `apps/blender/operators/*.py`, `apps/blender/properties/*.py`, `apps/blender/panels/*.py`. Adicionar ao [`specs/012-quick-armature-ux/TODO.md`](../specs/012-quick-armature-ux/TODO.md) Wave 12.2 como follow-up "auditoria bpy.props + PEP 563".
+**Fix aplicado em SPEC 012.1 (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
 
-**Severity:** medium-high - bug nao quebra produto em uso porque ninguem acessou `self.<prop>` ainda; quebra na primeira tentativa de adicionar property nova ao operator. SPEC 012.2 vai precisar (`name_prefix: StringProperty(...)` + `BoolProperty` undo flags).
+**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` so existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug e silent + dificil de debugar (annotation walk falha sem erro visivel; so `self.<prop>` raises AttributeError tarde).
 
-**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** com Blender 5.x, classes registradas via `bpy.utils.register_class` que declaram bpy.props nao podem usar `from __future__ import annotations` no mesmo arquivo. Restricao se aplica a Operator, PropertyGroup, Panel. Modulos `core/` puros podem manter PEP 563.
+**Severity (revisado):** medium - bug e raro (precisa o combo especifico) mas custa horas pra debugar quando aparece.
 
 ### Snap to UV bounds: IndexError em edit mode
 

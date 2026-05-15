@@ -147,16 +147,15 @@ Branch: `feat/spec-012.2-quick-armature-productivity`. **Blocked on Wave 12.1.**
 - [ ] Update `bl_description` to enumerate every modifier shipped through Wave 12.2.
 - [ ] Update [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) with the "session-local undo stack" pattern (D7 implementation note from STUDY).
 
-**Codebase audit (drive-by from Wave 12.1 PEP 563 bug)**:
+**Codebase audit (drive-by from Wave 12.1 PEP 563 bug) - CONCLUDED**:
 
-See [`tests/BUGS_FOUND.md`](../../tests/BUGS_FOUND.md) "bpy.props annotations em Operator nao registram com `from __future__ import annotations`". SPEC 012.1 removed `from __future__ import annotations` from `quick_armature.py` to make `lock_to_front_ortho` register. Wave 12.2 needs `name_prefix: StringProperty(...)` on the same operator -> already covered. But every other file with bpy.props annotations + PEP 563 is a latent landmine.
+Audit ran headless via `--background --python` querying every Operator class for declared bpy.props vs RNA-registered props. Initial false-positive showed all operators "missing" their props because `bl_rna.properties.keys()` does not expose operator-declared props (they live in a separate namespace; runtime `self.<prop>` works regardless).
 
-- [ ] Grep `: \w+Property\(` across `apps/blender/operators/`, `apps/blender/properties/`, `apps/blender/panels/`. List every class that declares a bpy.props annotation.
-- [ ] For each class, check whether any `self.<prop>` access exists in the same module (or `op.<prop>` / `prop_group.<prop>` from callers).
-- [ ] For classes that access via `self.<prop>`: remove `from __future__ import annotations` from the file. Adjust forward references (use string quotes) and import any runtime-needed types (`Matrix`, etc.) at module top.
-- [ ] For classes that never access via `self.<prop>`: either remove the dead annotation or document why it stays (e.g. ExportHelper-injected `filter_glob`).
-- [ ] Update [`.ai/conventions.md`](../../.ai/conventions.md) "Static typing" section with a callout: Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`) that declare bpy.props cannot use `from __future__ import annotations`. Pure `core/` modules can keep PEP 563.
-- [ ] Update [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) Coding rules with the same callout.
+Refined diagnosis (see [`tests/BUGS_FOUND.md`](../../tests/BUGS_FOUND.md)): bug is a triple-condition combo (`from __future__ import annotations` + `ClassVar[X | None]` + `X` only imported under `if TYPE_CHECKING:`). Only `quick_armature.py` triggered it; every other operator in the addon uses ClassVar with builtin types only and is immune.
+
+- [x] Audit complete - no further operator changes required.
+- [x] BUGS_FOUND.md entry rewritten with the refined root cause and a clear "what to avoid" rule.
+- [ ] Future polish: add the rule to `.ai/conventions.md` Static typing section + `.ai/skills/blender-dev.md` (deferred, low priority - bug rare enough).
 
 ## Out of scope (deferred to 012.3 or backlog)
 

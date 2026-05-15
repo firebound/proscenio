@@ -104,10 +104,14 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                 ),
                 icon="INFO",
             )
-            row = box.row(align=True)
-            row.label(text="Use existing instead:")
+            box.label(text="Use existing instead:")
+            # Stack one button per row so long armature names stay
+            # readable - the previous horizontal row truncated every
+            # name down to "atlas_pack.arm..." once two or more
+            # armatures were in the scene.
+            buttons = box.column(align=True)
             for arm in armatures:
-                op = row.operator(
+                op = buttons.operator(
                     "proscenio.set_active_armature",
                     text=arm.name,
                     icon="ARMATURE_DATA",

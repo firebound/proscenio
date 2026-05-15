@@ -48,7 +48,12 @@ from bpy.types import Scene
 from ..core.hydrate import (  # type: ignore[import-not-found]
     OBJECT_PROPS as _OBJECT_PROPS,  # noqa: F401
 )
-from ._handlers import deferred_hydrate, on_blend_load, on_blend_save_pre
+from ._handlers import (
+    deferred_hydrate,
+    on_blend_load,
+    on_blend_save_pre,
+    on_depsgraph_update,
+)
 from .object_props import ProscenioObjectProps
 from .scene_props import ProscenioQuickArmatureProps, ProscenioSceneProps
 from .validation_issue import ProscenioValidationIssue
@@ -70,6 +75,8 @@ def register() -> None:
         bpy.app.handlers.load_post.append(on_blend_load)
     if on_blend_save_pre not in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.append(on_blend_save_pre)
+    if on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(on_depsgraph_update)
     # Defer hydration to the next tick. Two reasons:
     #   1. During initial Blender startup, bpy.data is _RestrictData here.
     #   2. Mid-session enable: PointerProperty wiring stabilizes only
@@ -88,6 +95,8 @@ def unregister() -> None:
     # fire against a half-torn-down PropertyGroup.
     if bpy.app.timers.is_registered(deferred_hydrate):
         bpy.app.timers.unregister(deferred_hydrate)
+    if on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(on_depsgraph_update)
     if on_blend_save_pre in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.remove(on_blend_save_pre)
     if on_blend_load in bpy.app.handlers.load_post:

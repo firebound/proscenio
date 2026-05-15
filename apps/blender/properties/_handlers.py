@@ -70,6 +70,37 @@ def on_blend_load(_filepath: str) -> None:
 
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
+def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph) -> None:
+    """Keep ``scene.proscenio.active_armature`` in sync with reality.
+
+    Blender nulls the PointerProperty automatically when the referenced
+    Object data block is deleted, but if the user only unlinked the
+    armature from the scene (or renamed via Outliner) the pointer can
+    end up dangling: it still resolves to an Object that is no longer
+    visible in this scene. The handler clears that case so the picker
+    visibly matches what skeleton ops can actually target, then tags
+    every VIEW_3D area for redraw so the panel updates without forcing
+    the user to mouse over it.
+    """
+    proscenio = getattr(scene, "proscenio", None)
+    if proscenio is None:
+        return
+    pointer = proscenio.active_armature
+    if pointer is None:
+        return
+    if pointer.name in scene.objects and pointer.type == "ARMATURE":
+        return
+    proscenio.active_armature = None
+    window_manager = getattr(bpy.context, "window_manager", None)
+    if window_manager is None:
+        return
+    for window in window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
+
+
+@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
 def on_blend_save_pre(_filepath: str) -> None:
     """Flush every PropertyGroup field to its CP mirror before save."""
     try:

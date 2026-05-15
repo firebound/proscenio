@@ -24,25 +24,68 @@ from core.quick_armature_math import (  # noqa: E402  - sys.path setup above
     apply_axis_lock,
     format_bone_name,
     resolve_press_mode,
+    resolve_press_mode_label,
     sanitize_prefix,
     snap_world_point_xz,
 )
 
 
 class TestResolvePressMode:
-    """D10: invert default chord vocabulary (chain by default)."""
+    """D10 + refinement: chord vocabulary aligned with Blender bone parenting."""
 
-    def test_default_chain_no_modifier_chains_connected(self) -> None:
+    def test_default_chain_no_modifier_returns_connected(self) -> None:
         assert resolve_press_mode(shift_held=False, default_chain=True) == (True, True)
 
-    def test_default_chain_with_shift_starts_new_root(self) -> None:
+    def test_default_chain_with_shift_returns_unparented(self) -> None:
         assert resolve_press_mode(shift_held=True, default_chain=True) == (False, False)
 
-    def test_legacy_no_modifier_starts_new_root(self) -> None:
+    def test_alt_held_returns_disconnected(self) -> None:
+        assert resolve_press_mode(
+            shift_held=False, alt_held=True, default_chain=True
+        ) == (True, False)
+
+    def test_alt_with_shift_still_disconnected(self) -> None:
+        # Alt wins over Shift; user explicitly asked for parented + free head.
+        assert resolve_press_mode(
+            shift_held=True, alt_held=True, default_chain=True
+        ) == (True, False)
+
+    def test_legacy_no_modifier_returns_unparented(self) -> None:
         assert resolve_press_mode(shift_held=False, default_chain=False) == (False, False)
 
-    def test_legacy_with_shift_chains_unconnected(self) -> None:
+    def test_legacy_with_shift_returns_disconnected(self) -> None:
+        # SPEC 012.1 shipped Shift = parent + use_connect=False; the
+        # refinement keeps that vocabulary when the user opts back in.
         assert resolve_press_mode(shift_held=True, default_chain=False) == (True, False)
+
+
+class TestResolvePressModeLabel:
+    """Same chord matrix returned as Blender-aligned labels."""
+
+    def test_default_no_modifier_is_connected(self) -> None:
+        assert resolve_press_mode_label(
+            shift_held=False, alt_held=False, default_chain=True
+        ) == "connected"
+
+    def test_default_shift_is_unparented(self) -> None:
+        assert resolve_press_mode_label(
+            shift_held=True, alt_held=False, default_chain=True
+        ) == "unparented"
+
+    def test_alt_label_is_disconnected(self) -> None:
+        assert resolve_press_mode_label(
+            shift_held=False, alt_held=True, default_chain=True
+        ) == "disconnected"
+
+    def test_legacy_no_modifier_is_unparented(self) -> None:
+        assert resolve_press_mode_label(
+            shift_held=False, alt_held=False, default_chain=False
+        ) == "unparented"
+
+    def test_legacy_shift_is_disconnected(self) -> None:
+        assert resolve_press_mode_label(
+            shift_held=True, alt_held=False, default_chain=False
+        ) == "disconnected"
 
 
 class TestSnapWorldPointXz:

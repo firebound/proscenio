@@ -34,6 +34,9 @@ from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     AxisLock as _AxisLockCore,
 )
 from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+    PressMode,
+)
+from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     apply_axis_lock as _apply_axis_lock,
 )
 from ..core.quick_armature_math import (  # type: ignore[import-not-found]
@@ -41,6 +44,9 @@ from ..core.quick_armature_math import (  # type: ignore[import-not-found]
 )
 from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     resolve_press_mode as _resolve_press_mode,
+)
+from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+    resolve_press_mode_label as _resolve_press_mode_label,
 )
 from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     sanitize_prefix as _sanitize_prefix,
@@ -55,7 +61,9 @@ AxisLock = _AxisLockCore
 
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 
-_PREVIEW_COLOR = (1.0, 0.6, 0.0, 0.9)
+_PREVIEW_COLOR = (1.0, 0.6, 0.0, 0.9)  # connected (Blender modal-progress orange)
+_PREVIEW_COLOR_UNPARENTED = (0.4, 0.8, 1.0, 0.9)  # cyan = no parent
+_PREVIEW_COLOR_DISCONNECTED = (1.0, 0.85, 0.2, 0.9)  # yellow = parent + free head
 _PREVIEW_COLOR_INVALID = (0.9, 0.25, 0.25, 0.85)
 _AXIS_LINE_COLOR_X = (1.0, 0.3, 0.3, 0.9)
 _AXIS_LINE_COLOR_Z = (0.3, 0.55, 1.0, 0.9)
@@ -115,8 +123,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     # exist so mypy can resolve the attributes; per-invoke assignment in
     # invoke() ensures every modal session starts clean.
     _drag_head: ClassVar[tuple[float, float, float] | None] = None
+    _drag_press_point: ClassVar[tuple[float, float, float] | None] = None
     _last_bone_name: ClassVar[str] = ""
     _shift_held: ClassVar[bool] = False
+    _alt_held: ClassVar[bool] = False
+    _press_mode: ClassVar[PressMode] = "connected"
+    _target_armature_name: ClassVar[str] = _QUICK_RIG_NAME
     _cursor_world: ClassVar[tuple[float, float, float] | None] = None
     _preview_handle_3d: ClassVar[Any] = None
     _cheatsheet_handle_2d: ClassVar[Any] = None
@@ -172,8 +184,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                 workspace.status_text_set(None)
 
         cls._drag_head = None
+        cls._drag_press_point = None
         cls._last_bone_name = ""
         cls._shift_held = False
+        cls._alt_held = False
+        cls._press_mode = "connected"
+        cls._target_armature_name = _QUICK_RIG_NAME
         cls._cursor_world = None
         cls._cursor_in_canvas = True
         cls._cursor_screen_x = 0
@@ -380,16 +396,31 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # tests/BUGS_FOUND.md.
         cls = type(self)
         if event.value == "PRESS":
-            raw_head = mouse_event_to_plane_point(
+            raw_press_point = mouse_event_to_plane_point(
                 context, event, plane_axis="Y"
             )
             # Apply grid snap to head so chained bones share an aligned
             # origin. Axis lock is only meaningful between PRESS and
             # RELEASE so head itself is unaffected by the lock.
-            if raw_head is not None and cls._ctrl_held:
-                raw_head = _snap_world_point_xz(raw_head, cls._snap_increment)
-            cls._drag_head = raw_head
+            if raw_press_point is not None and cls._ctrl_held:
+                raw_press_point = _snap_world_point_xz(
+                    raw_press_point, cls._snap_increment
+                )
+            cls._drag_press_point = raw_press_point
             cls._shift_held = bool(event.shift)
+            cls._alt_held = bool(event.alt)
+            cls._press_mode = _resolve_press_mode_label(
+                shift_held=cls._shift_held,
+                alt_held=cls._alt_held,
+                default_chain=cls._default_chain,
+            )
+            # In connected mode the bone's head will snap to the parent
+            # tail at commit time; reflect that in the live preview so
+            # the user sees the actual bone shape (parent.tail -> cursor)
+            # rather than a misleading press_point -> cursor line.
+            cls._drag_head = self._effective_drag_head(
+                raw_press_point, cls._press_mode
+            )
             if context.area is not None:
                 context.area.tag_redraw()
             return {"RUNNING_MODAL"}
@@ -397,6 +428,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             return {"RUNNING_MODAL"}
         head = cls._drag_head
         cls._drag_head = None
+        cls._drag_press_point = None
         if head is None:
             return {"RUNNING_MODAL"}
         raw_tail = mouse_event_to_plane_point(context, event, plane_axis="Y")
@@ -409,7 +441,9 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                 context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         parent_to_last, connect = _resolve_press_mode(
-            shift_held=cls._shift_held, default_chain=cls._default_chain
+            shift_held=cls._shift_held,
+            alt_held=cls._alt_held,
+            default_chain=cls._default_chain,
         )
         self._create_bone(
             context,
@@ -421,6 +455,37 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if context.area is not None:
             context.area.tag_redraw()
         return {"RUNNING_MODAL"}
+
+    def _effective_drag_head(
+        self,
+        press_point: tuple[float, float, float] | None,
+        mode: PressMode,
+    ) -> tuple[float, float, float] | None:
+        """Pick the live preview head for a press based on the chord.
+
+        Connected chords commit with ``head = parent.tail`` so the
+        preview must show that anchor (not the user's press point) to
+        avoid misleading the user. Unparented / disconnected chords
+        keep the user's press point as head.
+        """
+        if press_point is None:
+            return None
+        if mode != "connected":
+            return press_point
+        cls = type(self)
+        if not cls._last_bone_name:
+            return press_point
+        armature = bpy.data.objects.get(cls._target_armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return press_point
+        bone = armature.data.bones.get(cls._last_bone_name)
+        if bone is None:
+            return press_point
+        # Bone tail in world space accounts for the armature object's
+        # transform; QuickRig sits at the origin in this addon, but
+        # multiplying by ``matrix_world`` is safe regardless.
+        tail_world = armature.matrix_world @ bone.tail_local
+        return (float(tail_world.x), float(tail_world.y), float(tail_world.z))
 
     def _resolve_release_tail(
         self,
@@ -448,13 +513,28 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         self._exit(context, cancelled=True)
 
     def _ensure_armature(self, context: bpy.types.Context) -> bpy.types.Object | None:
+        cls = type(self)
+        # SPEC 012.2 D-merge: when the user has an armature active, the
+        # operator targets that rig directly (bones append to it; no
+        # separate Proscenio.QuickRig orphan). This makes the loop
+        # "create rig -> confirm -> Edit Mode tweak -> re-invoke to
+        # extend" trivial: re-invoke with the same active armature
+        # continues the same skeleton.
+        active = context.view_layer.objects.active
+        if active is not None and active.type == "ARMATURE":
+            cls._target_armature_name = active.name
+            return active
+        # Fallback: legacy Proscenio.QuickRig used when no armature is
+        # active. Re-find an existing one so re-invokes accumulate.
         existing = context.scene.objects.get(_QUICK_RIG_NAME)
         if existing is not None and existing.type == "ARMATURE":
+            cls._target_armature_name = _QUICK_RIG_NAME
             return existing
         arm_data = bpy.data.armatures.new(_QUICK_RIG_NAME)
         arm_obj = bpy.data.objects.new(_QUICK_RIG_NAME, arm_data)
         context.scene.collection.objects.link(arm_obj)
-        type(self)._created_armature_this_session = True
+        cls._created_armature_this_session = True
+        cls._target_armature_name = _QUICK_RIG_NAME
         return arm_obj
 
     def _create_bone(
@@ -467,7 +547,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         connect: bool,
     ) -> None:
         cls = type(self)
-        armature = context.scene.objects.get(_QUICK_RIG_NAME)
+        armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None:
             return
         prev_active = context.view_layer.objects.active
@@ -525,7 +605,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             )
             # Any new bone clears the redo stack (standard semantics).
             cls._redo_records = []
-            report_info(self, f"'{bone_name}' added to {_QUICK_RIG_NAME}")
+            report_info(self, f"'{bone_name}' added to {cls._target_armature_name}")
 
     def _undo_last_bone(self, context: bpy.types.Context) -> None:
         cls = type(self)
@@ -534,7 +614,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             return
         record = cls._session_records.pop()
         cls._redo_records.append(record)
-        armature = context.scene.objects.get(_QUICK_RIG_NAME)
+        armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return
         prev_active = context.view_layer.objects.active
@@ -711,13 +791,16 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             cls._cursor_warning_handle_2d = None
 
     def _count_session_bones(self) -> int:
-        armature = bpy.data.objects.get(_QUICK_RIG_NAME)
+        cls = type(self)
+        armature = bpy.data.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return 0
         return len(armature.data.bones)
 
     def _sweep_empty_armature(self) -> None:
         cls = type(self)
+        # Only sweep the auto-created Proscenio.QuickRig - never touch
+        # an active armature the user picked as target.
         if not cls._created_armature_this_session:
             return
         armature = bpy.data.objects.get(_QUICK_RIG_NAME)
@@ -835,8 +918,10 @@ def _resolve_quick_armature_props(
 
 def _build_status_bar_text(cls: type[PROSCENIO_OT_quick_armature]) -> str:
     """Short canonical form of the cheatsheet for the bottom status bar."""
-    chord = "drag = chain | Shift = new root" if cls._default_chain else (
-        "drag = root | Shift = chain"
+    chord = (
+        "drag = connected | Shift = unparented | Alt = disconnected"
+        if cls._default_chain
+        else "drag = unparented | Shift = connected | Alt = disconnected"
     )
     return (
         f"Quick Armature: {chord} | X/Z = axis lock | Ctrl = grid snap "
@@ -920,7 +1005,7 @@ def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
         _draw_axis_guideline(head, cls._axis_lock)
     if head is None or cursor is None:
         return
-    color = _PREVIEW_COLOR if cls._cursor_in_canvas else _PREVIEW_COLOR_INVALID
+    color = _preview_color_for(cls)
     draw_line_3d(head, cursor, color, line_width=_PREVIEW_LINE_WIDTH)
     draw_circle_3d(
         head,
@@ -930,6 +1015,35 @@ def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
         segments=_ANCHOR_SEGMENTS,
         line_width=_PREVIEW_LINE_WIDTH,
     )
+    # When the connected-mode head was snapped to the parent's tail,
+    # also surface the "rejected" press point as a faint marker so the
+    # user can see how far Blender dragged the head from the click.
+    press_point = cls._drag_press_point
+    if (
+        press_point is not None
+        and cls._press_mode == "connected"
+        and (Vector(press_point) - Vector(head)).length > _BONE_TOO_SHORT_TOLERANCE
+    ):
+        draw_circle_3d(
+            press_point,
+            _ANCHOR_RADIUS * 0.6,
+            (color[0], color[1], color[2], 0.35),
+            plane_axis="Y",
+            segments=_ANCHOR_SEGMENTS,
+            line_width=1.0,
+        )
+
+
+def _preview_color_for(
+    cls: type[PROSCENIO_OT_quick_armature],
+) -> tuple[float, float, float, float]:
+    if not cls._cursor_in_canvas:
+        return _PREVIEW_COLOR_INVALID
+    if cls._press_mode == "unparented":
+        return _PREVIEW_COLOR_UNPARENTED
+    if cls._press_mode == "disconnected":
+        return _PREVIEW_COLOR_DISCONNECTED
+    return _PREVIEW_COLOR
 
 
 def _draw_axis_guideline(
@@ -960,22 +1074,27 @@ def _build_cheatsheet_lines(
 ) -> tuple[str, ...]:
     """Compose the 3-line modifier cheatsheet honouring the active mode.
 
-    Line 2 swaps wording when the user disables ``default_chain`` so the
-    chord vocabulary always matches the actual press-time semantics.
-    Line 3 always lists the live modifiers (axis lock, grid snap) plus
-    in-modal undo / redo / exit. The optional fourth line is the
-    cursor-outside-canvas warning.
+    Vocabulary matches Blender's bone parenting terminology:
+
+    - ``connected`` = parented + ``use_connect=True`` (head snaps to
+      parent.tail, Blender E extrude convention).
+    - ``unparented`` = bone has no parent.
+    - ``disconnected`` = parented + ``use_connect=False`` (head free).
+
+    The chord line swaps when ``default_chain`` is OFF so the press
+    semantics always match the documented copy. The optional last
+    line is the cursor-outside-canvas warning.
     """
     title = _CHEATSHEET_TITLE
     if cls._default_chain:
         line_chord = (
-            "drag = chain  |  Shift = new root  |  X / Z = axis lock  "
-            "|  Ctrl = grid snap"
+            "drag = connected  |  Shift = unparented  |  Alt = disconnected  "
+            "|  X / Z = axis lock  |  Ctrl = grid snap"
         )
     else:
         line_chord = (
-            "drag = root  |  Shift = chain  |  X / Z = axis lock  "
-            "|  Ctrl = grid snap"
+            "drag = unparented  |  Shift = connected  |  Alt = disconnected  "
+            "|  X / Z = axis lock  |  Ctrl = grid snap"
         )
     line_actions = (
         "Ctrl+Z = undo  |  Ctrl+Shift+Z = redo  "

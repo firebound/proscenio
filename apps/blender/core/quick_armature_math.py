@@ -15,24 +15,58 @@ AxisLock = Literal["X", "Z"] | None
 DEFAULT_NAME_PREFIX = "qbone"
 
 
+PressMode = Literal["connected", "unparented", "disconnected"]
+
+
+def resolve_press_mode_label(
+    *,
+    shift_held: bool,
+    alt_held: bool,
+    default_chain: bool,
+) -> PressMode:
+    """Return the press-time chord category as a Blender-aligned label.
+
+    ``connected`` = parented + ``use_connect=True`` (head snaps to the
+    parent's tail; Blender E extrude convention).
+    ``unparented`` = bone has no parent at all.
+    ``disconnected`` = parented + ``use_connect=False`` (head stays
+    where the user pressed; useful for branching chains starting at
+    an offset from the tip).
+
+    ``alt_held`` always means disconnected, regardless of
+    ``default_chain``. ``shift_held`` flips the no-modifier vocabulary
+    between connected and unparented per ``default_chain``.
+    """
+    if alt_held:
+        return "disconnected"
+    if default_chain:
+        return "unparented" if shift_held else "connected"
+    # Legacy SPEC 012.1 vocabulary: no modifier = unparented root,
+    # Shift = parented but disconnected (head free, parent set).
+    return "disconnected" if shift_held else "unparented"
+
+
 def resolve_press_mode(
     *,
     shift_held: bool,
+    alt_held: bool = False,
     default_chain: bool,
 ) -> tuple[bool, bool]:
     """Decide ``(parent_to_last, connect)`` for a left-mouse PRESS.
 
     ``default_chain=True`` (D10 recommendation) matches Blender's E
     extrude reflex: no modifier chains the new bone connected to the
-    previous tail; Shift starts a fresh root. ``default_chain=False``
-    keeps the SPEC 012.1 vocabulary: no modifier = unparented root,
-    Shift = chain (no connect).
+    previous tail; Shift starts a fresh unparented root. Hold Alt for
+    a parented + disconnected bone (head free, parent set). When
+    ``default_chain=False`` the SPEC 012.1 vocabulary applies and
+    Shift means chain-disconnected.
     """
-    if default_chain:
-        if shift_held:
-            return (False, False)
+    label = resolve_press_mode_label(
+        shift_held=shift_held, alt_held=alt_held, default_chain=default_chain
+    )
+    if label == "connected":
         return (True, True)
-    if shift_held:
+    if label == "disconnected":
         return (True, False)
     return (False, False)
 

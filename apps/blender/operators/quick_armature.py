@@ -21,6 +21,7 @@ from mathutils import Quaternion, Vector
 from ..core.bpy_helpers.modal_overlay import (  # type: ignore[import-not-found]
     PanelAlign,
     draw_circle_3d,
+    draw_dashed_line_3d,
     draw_line_3d,
     draw_text_panel_2d,
 )
@@ -55,6 +56,7 @@ from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     snap_world_point_xz as _snap_world_point_xz,
 )
 from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ..core.skeleton_target import resolve_skeleton_target  # type: ignore[import-not-found]
 from ..core.viewport_state import is_front_ortho  # type: ignore[import-not-found]
 
 AxisLock = _AxisLockCore
@@ -150,6 +152,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_screen_x: ClassVar[int] = 0
     _cursor_screen_y: ClassVar[int] = 0
     _cursor_warning_handle_2d: ClassVar[Any] = None
+    _statusbar_appended: ClassVar[bool] = False
     # Wave 12.2 state: chord vocabulary, axis lock, grid snap, undo
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
@@ -514,18 +517,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
 
     def _ensure_armature(self, context: bpy.types.Context) -> bpy.types.Object | None:
         cls = type(self)
-        # SPEC 012.2 D-merge: when the user has an armature active, the
-        # operator targets that rig directly (bones append to it; no
-        # separate Proscenio.QuickRig orphan). This makes the loop
-        # "create rig -> confirm -> Edit Mode tweak -> re-invoke to
-        # extend" trivial: re-invoke with the same active armature
-        # continues the same skeleton.
-        active = context.view_layer.objects.active
-        if active is not None and active.type == "ARMATURE":
-            cls._target_armature_name = active.name
-            return active
-        # Fallback: legacy Proscenio.QuickRig used when no armature is
-        # active. Re-find an existing one so re-invokes accumulate.
+        target = resolve_skeleton_target(context)
+        if target is not None:
+            cls._target_armature_name = target.name
+            return target
+        # No explicit pointer, no active armature, no single-armature
+        # heuristic - fall back to Proscenio.QuickRig (creating it on
+        # first invoke).
         existing = context.scene.objects.get(_QUICK_RIG_NAME)
         if existing is not None and existing.type == "ARMATURE":
             cls._target_armature_name = _QUICK_RIG_NAME
@@ -535,6 +533,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         context.scene.collection.objects.link(arm_obj)
         cls._created_armature_this_session = True
         cls._target_armature_name = _QUICK_RIG_NAME
+        # Auto-promote the freshly created QuickRig to the explicit
+        # active_armature pointer so subsequent skeleton ops see the
+        # same target without surprise.
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is not None and scene_props.active_armature is None:
+            scene_props.active_armature = arm_obj
         return arm_obj
 
     def _create_bone(
@@ -768,6 +772,14 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._cursor_warning_handle_2d = bpy.types.SpaceView3D.draw_handler_add(
             _draw_cursor_warning_2d, (cls,), "WINDOW", "POST_PIXEL"
         )
+        # Inject the chord cheatsheet into Blender's bottom STATUS BAR
+        # so the user sees real EVENT_* icons (mouse, modifier keys)
+        # next to each binding. Append-style hook is the safe pattern:
+        # we do not own the header layout, only add a draw callback to
+        # the existing one and remove it on exit.
+        if not cls._statusbar_appended:
+            bpy.types.STATUSBAR_HT_header.append(_draw_statusbar_quick_armature)
+            cls._statusbar_appended = True
 
     def _unregister_handlers(self) -> None:
         cls = type(self)
@@ -789,6 +801,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                     cls._cursor_warning_handle_2d, "WINDOW"
                 )
             cls._cursor_warning_handle_2d = None
+        if cls._statusbar_appended:
+            with contextlib.suppress(ValueError, RuntimeError):
+                bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
+            cls._statusbar_appended = False
 
     def _count_session_bones(self) -> int:
         cls = type(self)
@@ -1006,6 +1022,14 @@ def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     if head is None or cursor is None:
         return
     color = _preview_color_for(cls)
+    # Disconnected mode (Alt+drag): bone gets a parent but its head
+    # stays at the user's press point. Render a dashed line from the
+    # parent's tail to the new head so the parent relationship stays
+    # visible despite the gap.
+    if cls._press_mode == "disconnected":
+        parent_tail = _resolve_parent_tail_world(cls)
+        if parent_tail is not None:
+            draw_dashed_line_3d(parent_tail, head, color)
     draw_line_3d(head, cursor, color, line_width=_PREVIEW_LINE_WIDTH)
     draw_circle_3d(
         head,
@@ -1032,6 +1056,27 @@ def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
             segments=_ANCHOR_SEGMENTS,
             line_width=1.0,
         )
+
+
+def _resolve_parent_tail_world(
+    cls: type[PROSCENIO_OT_quick_armature],
+) -> tuple[float, float, float] | None:
+    """Return the world-space tail of the most recent session bone.
+
+    Used by the disconnected-mode dashed preview so the user sees the
+    parent relationship even though the new bone's head sits at the
+    press point (no auto-snap).
+    """
+    if not cls._last_bone_name:
+        return None
+    armature = bpy.data.objects.get(cls._target_armature_name)
+    if armature is None or armature.type != "ARMATURE":
+        return None
+    bone = armature.data.bones.get(cls._last_bone_name)
+    if bone is None:
+        return None
+    tail_world = armature.matrix_world @ bone.tail_local
+    return (float(tail_world.x), float(tail_world.y), float(tail_world.z))
 
 
 def _preview_color_for(
@@ -1148,6 +1193,70 @@ def _draw_cursor_warning_2d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     )
 
 
+def _draw_statusbar_quick_armature(
+    self: bpy.types.Header,
+    _context: bpy.types.Context,
+) -> None:
+    """Render the chord cheatsheet inline in the bottom STATUS BAR.
+
+    Uses Blender's native ``EVENT_*`` and ``MOUSE_*`` icons via
+    ``layout.label(icon=...)`` so the hint visually matches Blender's
+    own modal status bar (knife tool, loop cut, etc).
+    """
+    cls = PROSCENIO_OT_quick_armature
+    layout = self.layout
+    layout.separator_spacer()
+
+    # Drag chord
+    if cls._default_chain:
+        connect_label = "connected"
+        unparented_label = "unparented"
+    else:
+        connect_label = "unparented"
+        unparented_label = "connected"
+    row = layout.row(align=True)
+    row.label(text="", icon="MOUSE_LMB_DRAG")
+    row.label(text=connect_label)
+
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_SHIFT")
+    row.label(text="+")
+    row.label(text="", icon="MOUSE_LMB_DRAG")
+    row.label(text=unparented_label)
+
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_ALT")
+    row.label(text="+")
+    row.label(text="", icon="MOUSE_LMB_DRAG")
+    row.label(text="disconnected")
+
+    # Live modifiers
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_X")
+    row.label(text="/")
+    row.label(text="", icon="EVENT_Z")
+    row.label(text="axis lock")
+
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_CTRL")
+    row.label(text="grid snap")
+
+    # Actions
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_CTRL")
+    row.label(text="+")
+    row.label(text="", icon="EVENT_Z")
+    row.label(text="undo")
+
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_RETURN")
+    row.label(text="confirm")
+
+    row = layout.row(align=True)
+    row.label(text="", icon="EVENT_ESC")
+    row.label(text="exit")
+
+
 def _sweep_orphan_handlers() -> None:
     """Remove draw handlers leaked across script reloads.
 
@@ -1167,6 +1276,10 @@ def _sweep_orphan_handlers() -> None:
         with contextlib.suppress(ValueError, RuntimeError):
             bpy.types.SpaceView3D.draw_handler_remove(handle, "WINDOW")
         setattr(PROSCENIO_OT_quick_armature, attr, None)
+    if getattr(PROSCENIO_OT_quick_armature, "_statusbar_appended", False):
+        with contextlib.suppress(ValueError, RuntimeError):
+            bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
+        PROSCENIO_OT_quick_armature._statusbar_appended = False
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_quick_armature,)

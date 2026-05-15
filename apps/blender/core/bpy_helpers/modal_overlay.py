@@ -62,6 +62,56 @@ def draw_line_3d(
     gpu.state.blend_set("NONE")
 
 
+def draw_dashed_line_3d(
+    start: tuple[float, float, float],
+    end: tuple[float, float, float],
+    color: tuple[float, float, float, float],
+    dash_length: float = 0.05,
+    gap_length: float = 0.04,
+    line_width: float = 1.5,
+) -> None:
+    """Draw a dashed line in world space from ``start`` to ``end``.
+
+    The segment / gap pair walks the line at fixed ``dash_length`` and
+    ``gap_length`` so the dash visual stays uniform regardless of
+    bone length. Final dash truncates if the remaining distance is
+    shorter than ``dash_length``.
+    """
+    sx, sy, sz = start
+    ex, ey, ez = end
+    dx = ex - sx
+    dy = ey - sy
+    dz = ez - sz
+    total = (dx * dx + dy * dy + dz * dz) ** 0.5
+    if total < 1e-6 or dash_length <= 0.0:
+        return
+    step = dash_length + gap_length
+    if step <= 0.0:
+        return
+    inv_total = 1.0 / total
+    ux = dx * inv_total
+    uy = dy * inv_total
+    uz = dz * inv_total
+    vertices: list[tuple[float, float, float]] = []
+    travelled = 0.0
+    while travelled < total:
+        seg_end = min(travelled + dash_length, total)
+        vertices.append((sx + ux * travelled, sy + uy * travelled, sz + uz * travelled))
+        vertices.append((sx + ux * seg_end, sy + uy * seg_end, sz + uz * seg_end))
+        travelled += step
+    if not vertices:
+        return
+    shader = _shader()
+    batch = batch_for_shader(shader, "LINES", {"pos": vertices})
+    gpu.state.blend_set("ALPHA")
+    gpu.state.line_width_set(line_width)
+    shader.bind()
+    shader.uniform_float("color", color)
+    batch.draw(shader)
+    gpu.state.line_width_set(1.0)
+    gpu.state.blend_set("NONE")
+
+
 def draw_circle_3d(
     center: tuple[float, float, float],
     radius: float,

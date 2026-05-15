@@ -15,9 +15,15 @@ from bpy.props import (
     PointerProperty,
     StringProperty,
 )
+from bpy.types import Object as _Object
 from bpy.types import PropertyGroup
 
 from .validation_issue import ProscenioValidationIssue
+
+
+def _is_armature(_self: PropertyGroup, obj: _Object) -> bool:
+    """PointerProperty poll: only Armature objects qualify as targets."""
+    return obj.type == "ARMATURE"
 
 
 class ProscenioQuickArmatureProps(PropertyGroup):
@@ -147,4 +153,18 @@ class ProscenioSceneProps(PropertyGroup):
     )
     quick_armature: PointerProperty(  # type: ignore[valid-type]
         type=ProscenioQuickArmatureProps,
+    )
+    active_armature: PointerProperty(  # type: ignore[valid-type]
+        name="Active armature",
+        description=(
+            "The armature every Proscenio skeleton operation targets - "
+            "Quick Armature appends bones here, IK / pose helpers act on "
+            "this rig, and the writer exports it. Set explicitly via the "
+            "Skeleton subpanel to avoid surprises in scenes with more "
+            "than one armature; if unset, the operators auto-detect a "
+            "sensible target (active object > single scene armature > "
+            "Proscenio.QuickRig fallback)."
+        ),
+        type=_Object,
+        poll=_is_armature,
     )

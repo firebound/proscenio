@@ -65,33 +65,50 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
+        scene_props = getattr(context.scene, "proscenio", None)
+        # Active-armature picker is always visible: in zero-armature
+        # scenes it stays empty (Quick Armature will create QuickRig
+        # and auto-populate it); otherwise the user picks the rig that
+        # every Proscenio skeleton op targets, instead of relying on
+        # whatever object Blender treats as active.
+        if scene_props is not None:
+            row = layout.row(align=True)
+            row.label(text="", icon="ARMATURE_DATA")
+            row.prop(scene_props, "active_armature", text="")
         if not armatures:
             row = layout.row()
             row.alert = True
             row.label(text="no Armature in scene", icon="ERROR")
             return
-        first = armatures[0]
-        bones = getattr(first.data, "bones", [])
-        layout.label(text=f"Armature '{first.name}' - {len(bones)} bone(s)")
-        if len(armatures) > 1:
+        target = (
+            scene_props.active_armature
+            if scene_props is not None and scene_props.active_armature is not None
+            else armatures[0]
+        )
+        bones = getattr(target.data, "bones", [])
+        layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
+        if len(armatures) > 1 and (
+            scene_props is None or scene_props.active_armature is None
+        ):
             row = layout.row()
             row.alert = True
             row.label(
-                text=f"{len(armatures)} armatures - writer uses the first only",
+                text=(
+                    f"{len(armatures)} armatures - pick one above so every "
+                    "Proscenio skeleton op targets the same rig"
+                ),
                 icon="ERROR",
             )
-        if bones:
-            scene_props = getattr(context.scene, "proscenio", None)
-            if scene_props is not None:
-                layout.template_list(
-                    "PROSCENIO_UL_bones",
-                    "",
-                    first.data,
-                    "bones",
-                    scene_props,
-                    "active_bone_index",
-                    rows=min(max(len(bones), 3), 8),
-                )
+        if bones and scene_props is not None:
+            layout.template_list(
+                "PROSCENIO_UL_bones",
+                "",
+                target.data,
+                "bones",
+                scene_props,
+                "active_bone_index",
+                rows=min(max(len(bones), 3), 8),
+            )
         if context.mode == "POSE":
             layout.separator()
             layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")

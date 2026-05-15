@@ -38,10 +38,35 @@ def hydrate_existing_objects() -> None:
         hydrate_object(obj)
 
 
+def auto_populate_active_armature() -> None:
+    """Pre-fill ``scene.proscenio.active_armature`` when unambiguous.
+
+    SPEC 012.2 hybrid Opcao A.5: when the user opens a `.blend` whose
+    scene contains exactly one armature and the Proscenio pointer is
+    still empty, set it. The picker in the Skeleton subpanel then
+    visibly reflects the rig that every Proscenio skeleton operation
+    will target, eliminating the surprise where the picker reads
+    "empty" but Quick Armature still author bones into the only
+    armature in the scene via the auto-detect heuristic.
+    """
+    try:
+        scenes = list(bpy.data.scenes)
+    except AttributeError:
+        return
+    for scene in scenes:
+        proscenio = getattr(scene, "proscenio", None)
+        if proscenio is None or proscenio.active_armature is not None:
+            continue
+        armatures = [obj for obj in scene.objects if obj.type == "ARMATURE"]
+        if len(armatures) == 1:
+            proscenio.active_armature = armatures[0]
+
+
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
 def on_blend_load(_filepath: str) -> None:
     """Re-hydrate every time a `.blend` finishes loading."""
     hydrate_existing_objects()
+    auto_populate_active_armature()
 
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
@@ -69,3 +94,4 @@ def deferred_hydrate() -> None:
     property data is real and persistent.
     """
     hydrate_existing_objects()
+    auto_populate_active_armature()

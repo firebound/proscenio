@@ -19,7 +19,6 @@ from bpy.props import BoolProperty
 from mathutils import Quaternion, Vector
 
 from ..core.bpy_helpers.modal_overlay import (  # type: ignore[import-not-found]
-    PanelAlign,
     draw_circle_3d,
     draw_dashed_line_3d,
     draw_line_3d,
@@ -74,10 +73,7 @@ _ANCHOR_RADIUS = 0.05
 _ANCHOR_SEGMENTS = 12
 _PREVIEW_LINE_WIDTH = 2.0
 
-_CHEATSHEET_TITLE = "Quick Armature"
-_CHEATSHEET_OUTSIDE_WARNING = "cursor outside canvas - move back to author bones"
-_CHEATSHEET_MARGIN_PX = 24
-_CHEATSHEET_ALIGN: PanelAlign = "bottom-center"
+_CHEATSHEET_OUTSIDE_LABEL = "outside canvas"
 _CHEATSHEET_WARNING_TEXT_COLOR = (1.0, 0.55, 0.55, 1.0)
 
 _FRONT_ORTHO_TOLERANCE = 1e-4
@@ -133,7 +129,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _target_armature_name: ClassVar[str] = _QUICK_RIG_NAME
     _cursor_world: ClassVar[tuple[float, float, float] | None] = None
     _preview_handle_3d: ClassVar[Any] = None
-    _cheatsheet_handle_2d: ClassVar[Any] = None
     _created_armature_this_session: ClassVar[bool] = False
     _restore_view_perspective: ClassVar[str | None] = None
     _restore_view_location: ClassVar[Vector | None] = None
@@ -153,6 +148,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_screen_y: ClassVar[int] = 0
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
+    _view3d_header_appended: ClassVar[bool] = False
     # Wave 12.2 state: chord vocabulary, axis lock, grid snap, undo
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
@@ -178,13 +174,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # modal session continues running invisibly.
         if (
             cls._preview_handle_3d is not None
-            or cls._cheatsheet_handle_2d is not None
             or cls._cursor_warning_handle_2d is not None
+            or cls._statusbar_appended
+            or cls._view3d_header_appended
         ):
             self._unregister_handlers()
-            workspace = context.workspace
-            if workspace is not None:
-                workspace.status_text_set(None)
 
         cls._drag_head = None
         cls._drag_press_point = None
@@ -198,7 +192,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._cursor_screen_x = 0
         cls._cursor_screen_y = 0
         cls._preview_handle_3d = None
-        cls._cheatsheet_handle_2d = None
         cls._cursor_warning_handle_2d = None
         cls._created_armature_this_session = False
         cls._restore_view_perspective = None
@@ -246,9 +239,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if self.lock_to_front_ortho:
             self._snap_to_front_ortho(context)
 
-        workspace = context.workspace
-        if workspace is not None:
-            workspace.status_text_set(_build_status_bar_text(cls))
+        # Status bar text intentionally NOT set: the STATUSBAR header
+        # append (registered in _register_handlers) renders the chord
+        # vocabulary with real Blender event icons in the same bar,
+        # so an extra plain-text status line would just duplicate.
         self._register_handlers(context)
         context.window_manager.modal_handler_add(self)
         report_info(self, "modal active")
@@ -520,6 +514,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         target = resolve_skeleton_target(context)
         if target is not None:
             cls._target_armature_name = target.name
+            # Propagate the resolved target to the explicit pointer so
+            # the Skeleton picker visibly reflects it on the next
+            # redraw. Skip when the pointer already matches to avoid
+            # a redundant write triggering a depsgraph update.
+            scene_props = getattr(context.scene, "proscenio", None)
+            if scene_props is not None and scene_props.active_armature is not target:
+                scene_props.active_armature = target
             return target
         # No explicit pointer, no active armature, no single-armature
         # heuristic - fall back to Proscenio.QuickRig (creating it on
@@ -766,20 +767,25 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._preview_handle_3d = bpy.types.SpaceView3D.draw_handler_add(
             _draw_preview_3d, (cls,), "WINDOW", "POST_VIEW"
         )
-        cls._cheatsheet_handle_2d = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_cheatsheet_2d, (cls, context.region), "WINDOW", "POST_PIXEL"
-        )
         cls._cursor_warning_handle_2d = bpy.types.SpaceView3D.draw_handler_add(
             _draw_cursor_warning_2d, (cls,), "WINDOW", "POST_PIXEL"
         )
-        # Inject the chord cheatsheet into Blender's bottom STATUS BAR
-        # so the user sees real EVENT_* icons (mouse, modifier keys)
-        # next to each binding. Append-style hook is the safe pattern:
-        # we do not own the header layout, only add a draw callback to
-        # the existing one and remove it on exit.
+        # Two icon-rich hint surfaces, both sourced from Blender's
+        # native UILayout API so the icons match the rest of the
+        # editor: the bottom STATUSBAR (canonical modal hint home,
+        # like knife tool / loop cut) and the 3D viewport header
+        # (so the user does not have to look away from the canvas).
+        # POST_PIXEL cheatsheet was retired - the unicode-glyph
+        # approximation could never match the native icons here.
         if not cls._statusbar_appended:
-            bpy.types.STATUSBAR_HT_header.append(_draw_statusbar_quick_armature)
+            # Prepend (left) so the cheatsheet sits where Blender's
+            # own modal tools place their hints; right side stays for
+            # Blender's statistics widgets.
+            bpy.types.STATUSBAR_HT_header.prepend(_draw_statusbar_quick_armature)
             cls._statusbar_appended = True
+        if not cls._view3d_header_appended:
+            bpy.types.VIEW3D_HT_header.append(_draw_view3d_header_quick_armature)
+            cls._view3d_header_appended = True
 
     def _unregister_handlers(self) -> None:
         cls = type(self)
@@ -789,12 +795,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                     cls._preview_handle_3d, "WINDOW"
                 )
             cls._preview_handle_3d = None
-        if cls._cheatsheet_handle_2d is not None:
-            with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.SpaceView3D.draw_handler_remove(
-                    cls._cheatsheet_handle_2d, "WINDOW"
-                )
-            cls._cheatsheet_handle_2d = None
         if cls._cursor_warning_handle_2d is not None:
             with contextlib.suppress(ValueError, RuntimeError):
                 bpy.types.SpaceView3D.draw_handler_remove(
@@ -805,6 +805,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             with contextlib.suppress(ValueError, RuntimeError):
                 bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
             cls._statusbar_appended = False
+        if cls._view3d_header_appended:
+            with contextlib.suppress(ValueError, RuntimeError):
+                bpy.types.VIEW3D_HT_header.remove(_draw_view3d_header_quick_armature)
+            cls._view3d_header_appended = False
 
     def _count_session_bones(self) -> int:
         cls = type(self)
@@ -834,9 +838,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls = type(self)
         bones_created = self._count_session_bones()
         self._unregister_handlers()
-        workspace = context.workspace
-        if workspace is not None:
-            workspace.status_text_set(None)
         self._restore_view()
         self._restore_selection(context)
         self._sweep_empty_armature()
@@ -1114,58 +1115,6 @@ def _draw_axis_guideline(
     draw_line_3d(start, end, color, line_width=_PREVIEW_LINE_WIDTH)
 
 
-def _build_cheatsheet_lines(
-    cls: type[PROSCENIO_OT_quick_armature],
-) -> tuple[str, ...]:
-    """Compose the 3-line modifier cheatsheet honouring the active mode.
-
-    Vocabulary matches Blender's bone parenting terminology:
-
-    - ``connected`` = parented + ``use_connect=True`` (head snaps to
-      parent.tail, Blender E extrude convention).
-    - ``unparented`` = bone has no parent.
-    - ``disconnected`` = parented + ``use_connect=False`` (head free).
-
-    The chord line swaps when ``default_chain`` is OFF so the press
-    semantics always match the documented copy. The optional last
-    line is the cursor-outside-canvas warning.
-    """
-    title = _CHEATSHEET_TITLE
-    if cls._default_chain:
-        line_chord = (
-            "drag = connected  |  Shift = unparented  |  Alt = disconnected  "
-            "|  X / Z = axis lock  |  Ctrl = grid snap"
-        )
-    else:
-        line_chord = (
-            "drag = unparented  |  Shift = connected  |  Alt = disconnected  "
-            "|  X / Z = axis lock  |  Ctrl = grid snap"
-        )
-    line_actions = (
-        "Ctrl+Z = undo  |  Ctrl+Shift+Z = redo  "
-        "|  Enter = confirm  |  Esc/RMB = exit"
-    )
-    lines: tuple[str, ...] = (title, line_chord, line_actions)
-    if not cls._cursor_in_canvas:
-        lines = (*lines, _CHEATSHEET_OUTSIDE_WARNING)
-    return lines
-
-
-def _draw_cheatsheet_2d(
-    cls: type[PROSCENIO_OT_quick_armature],
-    region: bpy.types.Region,
-) -> None:
-    if region is None:
-        return
-    draw_text_panel_2d(
-        _build_cheatsheet_lines(cls),
-        region_width=region.width,
-        region_height=region.height,
-        align=_CHEATSHEET_ALIGN,
-        margin=_CHEATSHEET_MARGIN_PX,
-    )
-
-
 def _draw_cursor_warning_2d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     """Render a tooltip near the cursor when it leaves the canvas."""
     if cls._cursor_in_canvas:
@@ -1193,27 +1142,23 @@ def _draw_cursor_warning_2d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     )
 
 
-def _draw_statusbar_quick_armature(
-    self: bpy.types.Header,
-    _context: bpy.types.Context,
+def _emit_chord_layout(
+    layout: bpy.types.UILayout,
+    cls: type[PROSCENIO_OT_quick_armature],
 ) -> None:
-    """Render the chord cheatsheet inline in the bottom STATUS BAR.
+    """Shared chord rendering for the STATUSBAR + 3D viewport headers.
 
-    Uses Blender's native ``EVENT_*`` and ``MOUSE_*`` icons via
+    Uses Blender's native ``EVENT_*`` / ``MOUSE_*`` icons via
     ``layout.label(icon=...)`` so the hint visually matches Blender's
     own modal status bar (knife tool, loop cut, etc).
     """
-    cls = PROSCENIO_OT_quick_armature
-    layout = self.layout
-    layout.separator_spacer()
-
-    # Drag chord
     if cls._default_chain:
         connect_label = "connected"
         unparented_label = "unparented"
     else:
         connect_label = "unparented"
         unparented_label = "connected"
+
     row = layout.row(align=True)
     row.label(text="", icon="MOUSE_LMB_DRAG")
     row.label(text=connect_label)
@@ -1230,7 +1175,6 @@ def _draw_statusbar_quick_armature(
     row.label(text="", icon="MOUSE_LMB_DRAG")
     row.label(text="disconnected")
 
-    # Live modifiers
     row = layout.row(align=True)
     row.label(text="", icon="EVENT_X")
     row.label(text="/")
@@ -1241,7 +1185,6 @@ def _draw_statusbar_quick_armature(
     row.label(text="", icon="EVENT_CTRL")
     row.label(text="grid snap")
 
-    # Actions
     row = layout.row(align=True)
     row.label(text="", icon="EVENT_CTRL")
     row.label(text="+")
@@ -1257,6 +1200,34 @@ def _draw_statusbar_quick_armature(
     row.label(text="exit")
 
 
+def _draw_statusbar_quick_armature(
+    self: bpy.types.Header,
+    _context: bpy.types.Context,
+) -> None:
+    """Render the chord cheatsheet on the LEFT side of the STATUS BAR."""
+    layout = self.layout
+    _emit_chord_layout(layout, PROSCENIO_OT_quick_armature)
+    # Push Blender's default statistics widgets to the right edge so
+    # they keep their conventional spot.
+    layout.separator_spacer()
+
+
+def _draw_view3d_header_quick_armature(
+    self: bpy.types.Header,
+    _context: bpy.types.Context,
+) -> None:
+    """Render the chord cheatsheet inside the 3D viewport's own header.
+
+    Same vocabulary + icons as the status bar; placed past Blender's
+    existing header content via ``separator_spacer()`` so the hint
+    sits on the right edge of the viewport header instead of pushing
+    Blender's mode / select / view dropdowns around.
+    """
+    layout = self.layout
+    layout.separator_spacer()
+    _emit_chord_layout(layout, PROSCENIO_OT_quick_armature)
+
+
 def _sweep_orphan_handlers() -> None:
     """Remove draw handlers leaked across script reloads.
 
@@ -1267,7 +1238,6 @@ def _sweep_orphan_handlers() -> None:
     """
     for attr in (
         "_preview_handle_3d",
-        "_cheatsheet_handle_2d",
         "_cursor_warning_handle_2d",
     ):
         handle = getattr(PROSCENIO_OT_quick_armature, attr, None)
@@ -1280,6 +1250,10 @@ def _sweep_orphan_handlers() -> None:
         with contextlib.suppress(ValueError, RuntimeError):
             bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
         PROSCENIO_OT_quick_armature._statusbar_appended = False
+    if getattr(PROSCENIO_OT_quick_armature, "_view3d_header_appended", False):
+        with contextlib.suppress(ValueError, RuntimeError):
+            bpy.types.VIEW3D_HT_header.remove(_draw_view3d_header_quick_armature)
+        PROSCENIO_OT_quick_armature._view3d_header_appended = False
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_quick_armature,)

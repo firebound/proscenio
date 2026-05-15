@@ -66,6 +66,16 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         layout = self.layout
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
         scene_props = getattr(context.scene, "proscenio", None)
+        # Single-armature scenes auto-fill the picker so it never
+        # shows "empty" while the panel below clearly says it is
+        # working on the only available rig. Idempotent write -
+        # subsequent draws find the pointer set, skip the assign.
+        if (
+            scene_props is not None
+            and scene_props.active_armature is None
+            and len(armatures) == 1
+        ):
+            scene_props.active_armature = armatures[0]
         # Active-armature picker is always visible: in zero-armature
         # scenes it stays empty (Quick Armature will create QuickRig
         # and auto-populate it); otherwise the user picks the rig that

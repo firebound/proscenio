@@ -103,7 +103,33 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             )
         layout.separator()
         layout.operator("proscenio.quick_armature", text="Quick Armature", icon="GREASEPENCIL")
+        _draw_quick_armature_defaults(layout, context)
         layout.operator("proscenio.create_slot", text="Create Slot", icon="LINK_BLEND")
+
+
+def _draw_quick_armature_defaults(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+) -> None:
+    """Inline sub-box exposing the SPEC 012 D15 Quick Armature defaults.
+
+    Settings live on ``scene.proscenio.quick_armature`` so they ride
+    with the .blend file and let one-off documents ship their own
+    preferred prefix / snap / chord vocabulary without touching the
+    user's global preferences.
+    """
+    scene_props = getattr(context.scene, "proscenio", None)
+    if scene_props is None:
+        return
+    qa_props = getattr(scene_props, "quick_armature", None)
+    if qa_props is None:
+        return
+    box = layout.box()
+    box.label(text="Quick Armature defaults", icon="SETTINGS")
+    box.prop(qa_props, "lock_to_front_ortho")
+    box.prop(qa_props, "default_chain")
+    box.prop(qa_props, "name_prefix")
+    box.prop(qa_props, "snap_increment")
 
 
 _classes: tuple[type, ...] = (

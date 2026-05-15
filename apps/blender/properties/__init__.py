@@ -50,12 +50,13 @@ from ..core.hydrate import (  # type: ignore[import-not-found]
 )
 from ._handlers import deferred_hydrate, on_blend_load, on_blend_save_pre
 from .object_props import ProscenioObjectProps
-from .scene_props import ProscenioSceneProps
+from .scene_props import ProscenioQuickArmatureProps, ProscenioSceneProps
 from .validation_issue import ProscenioValidationIssue
 
 _classes: tuple[type, ...] = (
     ProscenioObjectProps,
     ProscenioValidationIssue,
+    ProscenioQuickArmatureProps,
     ProscenioSceneProps,
 )
 

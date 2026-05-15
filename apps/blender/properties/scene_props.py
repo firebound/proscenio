@@ -12,11 +12,56 @@ from bpy.props import (
     CollectionProperty,
     FloatProperty,
     IntProperty,
+    PointerProperty,
     StringProperty,
 )
 from bpy.types import PropertyGroup
 
 from .validation_issue import ProscenioValidationIssue
+
+
+class ProscenioQuickArmatureProps(PropertyGroup):
+    """SPEC 012 Wave 12.2 defaults for the Quick Armature modal."""
+
+    lock_to_front_ortho: BoolProperty(  # type: ignore[valid-type]
+        name="Lock to Front Orthographic",
+        description=(
+            "On invoke, snap the active 3D viewport to Front Orthographic so "
+            "bones land on the Y=0 picture plane. Restores the prior view on "
+            "exit when the user has not orbited mid-modal."
+        ),
+        default=True,
+    )
+    name_prefix: StringProperty(  # type: ignore[valid-type]
+        name="Bone name prefix",
+        description=(
+            "Prefix for auto-named bones (e.g. 'def' produces 'def.000', "
+            "'def.001'). Whitespace is stripped; empty falls back to 'qbone'."
+        ),
+        default="qbone",
+    )
+    default_chain: BoolProperty(  # type: ignore[valid-type]
+        name="Default = chain connected",
+        description=(
+            "When ON (recommended), no-modifier drag chains the new bone to "
+            "the last one (head snaps to parent's tail, matches Blender's E "
+            "extrude reflex). Hold Shift to start a new root instead. When "
+            "OFF, the legacy SPEC 012.1 vocabulary applies: no-modifier = "
+            "unparented root, Shift = chain (no connect)."
+        ),
+        default=True,
+    )
+    snap_increment: FloatProperty(  # type: ignore[valid-type]
+        name="Snap increment",
+        description=(
+            "World-unit grid step applied while Ctrl is held during drag. "
+            "Set to 1.0 to align bones to whole world units (matches PPU=100 "
+            "pixel-perfect cutout authoring)."
+        ),
+        default=1.0,
+        min=0.001,
+        soft_max=10.0,
+    )
 
 
 class ProscenioSceneProps(PropertyGroup):
@@ -99,4 +144,7 @@ class ProscenioSceneProps(PropertyGroup):
         description="Selected row in the Proscenio outliner UIList",
         default=0,
         min=0,
+    )
+    quick_armature: PointerProperty(  # type: ignore[valid-type]
+        type=ProscenioQuickArmatureProps,
     )

@@ -298,14 +298,18 @@ def extract_contour_pair(
     """
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")
-    outer = extract_outer_contour(alpha, threshold, margin_px)
+    # Outer ALWAYS gets at least 1 cell of dilation for safety.
+    # Without it, the mesh boundary sits at the LEFT edge of the
+    # rightmost True cell, which is INSIDE the alpha silhouette on
+    # the right side (pixel_contour_to_world places verts at cell
+    # left/top corners; for cells that border background on the
+    # right, this puts the vert several source pixels INSIDE the
+    # alpha). 1-cell safety dilation pushes the boundary out by 1
+    # cell on every side so coverage approaches 100% even at
+    # margin_pixels=0 (single-contour mode).
+    outer_dilate = max(1, margin_px)
+    outer = extract_outer_contour(alpha, threshold, outer_dilate)
     if margin_px == 0:
-        # No dilate / erode = outer and inner would trace the same
-        # alpha boundary, producing duplicate constraints in the
-        # downstream triangulator. Treat as single-contour mode
-        # (no annulus) - this is the recommended default per smoke
-        # validation; annulus only ships as an opt-in for users who
-        # explicitly want extra edge-loop density at the boundary.
         return (outer, [])
     inner = extract_inner_contour(alpha, threshold, margin_px)
     return (outer, inner)

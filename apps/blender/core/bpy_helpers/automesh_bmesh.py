@@ -46,6 +46,7 @@ from ..automesh_geometry import (
     arc_length_resample,
     build_annulus_edge_pairs,
     laplacian_smooth,
+    to_float_contour,
 )
 
 if TYPE_CHECKING:
@@ -314,7 +315,9 @@ def build_automesh(
             "threshold or increasing the resolution"
         )
 
-    outer_world_raw = pixel_contour_to_world(outer_pixels, downscale_factor, world_scale)
+    outer_world_raw = pixel_contour_to_world(
+        to_float_contour(outer_pixels), downscale_factor, world_scale
+    )
     outer_world = arc_length_resample(
         laplacian_smooth(outer_world_raw, _SMOOTH_ITERATIONS),
         target_contour_vertices,
@@ -322,7 +325,9 @@ def build_automesh(
 
     inner_world: Contour2D = []
     if len(inner_pixels) >= 3:
-        inner_world_raw = pixel_contour_to_world(inner_pixels, downscale_factor, world_scale)
+        inner_world_raw = pixel_contour_to_world(
+            to_float_contour(inner_pixels), downscale_factor, world_scale
+        )
         # Inner contour uses ~half the outer vertex count so the
         # ring of triangles between loops has reasonable aspect ratio.
         inner_target = max(3, target_contour_vertices // 2)

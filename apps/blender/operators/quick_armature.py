@@ -27,7 +27,7 @@ from ..core.bpy_helpers.modal_overlay import (  # type: ignore[import-not-found]
 from ..core.bpy_helpers.viewport_math import (  # type: ignore[import-not-found]
     mouse_event_to_plane_point,
 )
-from ..core.quick_armature_math import (
+from ..core.quick_armature_math import (  # type: ignore[import-not-found]
     DEFAULT_NAME_PREFIX as _DEFAULT_NAME_PREFIX_CORE,
 )
 from ..core.quick_armature_math import (
@@ -52,9 +52,9 @@ from ..core.quick_armature_math import (
 from ..core.quick_armature_math import (
     snap_world_point_xz as _snap_world_point_xz,
 )
-from ..core.report import report_error, report_info, report_warn
-from ..core.skeleton_target import resolve_skeleton_target
-from ..core.viewport_state import is_front_ortho
+from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ..core.skeleton_target import resolve_skeleton_target  # type: ignore[import-not-found]
+from ..core.viewport_state import is_front_ortho  # type: ignore[import-not-found]
 
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 

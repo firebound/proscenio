@@ -100,7 +100,10 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     # world) so sprite_1..9 read left-to-right on screen in Blender's
     # Front Orthographic view (where world +X maps to screen LEFT,
     # matching the UV flip in _build_sprite_quad).
-    cx = ((GRID_COLS - 1) / 2.0 - col) * GRID_SPACING
+    # Center grid around origin. Blender's default Front Ortho looks
+    # from -Y so world +X maps to screen RIGHT; col=0 maps to -X (grid
+    # left) so sprite_1 reads at the screen left.
+    cx = (col - (GRID_COLS - 1) / 2.0) * GRID_SPACING
     cz = ((GRID_ROWS - 1) / 2.0 - row) * GRID_SPACING
 
     w = FRAME_W / PIXELS_PER_UNIT
@@ -118,15 +121,14 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     )
     mesh.update()
     uv = mesh.uv_layers.new(name="UVMap")
-    # UVs flipped on U so the PIL image appears unmirrored in Blender's
-    # Front Orthographic view (world +X maps to screen LEFT in this
-    # convention; without the flip, the texture renders mirrored, which
-    # is invisible on symmetric sprites like blink_eyes but obvious on
-    # asymmetric content like the atlas_pack digits).
-    uv.data[0].uv = (1.0, 0.0)
-    uv.data[1].uv = (0.0, 0.0)
-    uv.data[2].uv = (0.0, 1.0)
-    uv.data[3].uv = (1.0, 1.0)
+    # Direct UV mapping (matches shared_atlas convention). World +X
+    # displays at screen RIGHT in Blender's default Front Ortho
+    # (looking from -Y); direct UV + cx-not-inverted produces digits
+    # readable left-to-right in the viewport.
+    uv.data[0].uv = (0.0, 0.0)
+    uv.data[1].uv = (1.0, 0.0)
+    uv.data[2].uv = (1.0, 1.0)
+    uv.data[3].uv = (0.0, 1.0)
 
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)

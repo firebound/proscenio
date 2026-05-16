@@ -295,23 +295,25 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
 
 ### 1.15 SPEC 013 Wave 13.1 - Automesh from sprite
 
-Status: **pendente** - operator + panel chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender. Run após primeiro impl commit.
+Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
 
-Pré-requisitos: workbench com sprite plane image-textured + (opcional) armature de 3 ossos na cena para validar D15 density-under-bones.
+Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone arm chain (`shoulder` -> `elbow` -> `wrist`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
+
+**Importante:** nunca `Ctrl+S` após smoke - fixture é tracked + smoke reescreve mesh in-place. Se salvar acidentalmente, regenera via `python scripts/fixtures/automesh/draw_layers.py` + `blender --background --python scripts/fixtures/automesh/build_blend.py`.
 
 Sequência:
 
-- [ ] T1 - Sidebar mostra `Skinning` subpanel quando sprite plane mesh está ativo. Subpanel está OCULTO quando active object não é mesh.
+- [ ] T1 - Open `automesh.blend`. Sidebar mostra `Skinning` subpanel quando sprite plane mesh (hand / blob / lshape / ring) está ativo. Subpanel está OCULTO quando seleciona `automesh.arm` (armature, não mesh).
 - [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
 - [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
-- [ ] T4 - Click `Automesh from Sprite` em mesh sem material/texture image -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
-- [ ] T5 - Click em mesh com texture image válida -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado).
+- [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
+- [ ] T5 - Select `blob` -> click Automesh -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (verify malformed - documentar comportamento per spec D2 "no holes" contract).
 - [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
 - [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
-- [ ] T8 - Density-under-bones OFF + automesh -> interior uniform (verts espalhados uniforme no annulus).
-- [ ] T9 - Density-under-bones ON + picker armature with deform bones in same XZ region as sprite -> interior tem MAIS verts perto das bone segments (verify visual: triangulação mais densa no eixo dos bones).
-- [ ] T10 - Density-under-bones ON + picker armature SET mas sem deform bones -> INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
-- [ ] T11 - Density-under-bones ON + picker NÃO SET -> INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
+- [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh -> interior uniform (verts espalhados uniforme no annulus).
+- [ ] T9 - Set picker = `automesh.arm` no Skeleton panel. Select `hand` + density-under-bones ON + Automesh -> interior tem MAIS verts perto das bone segments shoulder/elbow/wrist (visual: triangulação mais densa ao longo do eixo X onde o arm chain cruza o hand).
+- [ ] T10 - Density-under-bones ON + create new empty armature sem bones (`Add > Armature > Empty`) + set picker -> Automesh -> INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
+- [ ] T11 - Density-under-bones ON + clear picker (Skeleton panel > x button) + Automesh -> INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
 - [ ] T12 - Resolution muito baixo (0.01) + sprite small -> contour < 3 verts -> ERROR `automesh failed: automesh outer contour too short - try lowering the alpha threshold or increasing the resolution`.
 - [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
 - [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.

@@ -37,6 +37,7 @@ rightmouse
 sessão
 SHADERFX
 statictext
+Steiner
 Subbox
 subclassing
 subfolders
@@ -44,3 +45,8 @@ tofile
 toggla
 Toon
 visualisers
+annulus
+automesh
+landaram
+lshape
+workbench

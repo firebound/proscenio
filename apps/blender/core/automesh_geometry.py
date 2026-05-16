@@ -201,11 +201,48 @@ def relax_contour(
     return arc_length_resample(smoothed, target_vertex_count)
 
 
+def find_best_inner_rotation(
+    outer: Contour2D,
+    inner: Contour2D,
+) -> int:
+    """Inner contour rotation offset minimizing radial bridge length.
+
+    Returns ``k`` such that bridging ``outer[i]`` to
+    ``inner[(i + k) % N]`` produces the shortest total bridge edges
+    across the annulus. Used by the bpy bridge before building the
+    annulus topology: bridges that cross the annulus diagonally
+    create huge skinny triangles, while bridges aligned radially
+    produce clean strip triangulation.
+
+    Requires equal-length contours. Returns 0 for empty inner.
+    Pure data, no numpy - O(N^2) but N is small (32-64 vertices)
+    so the worst-case is ~4k operations.
+    """
+    if not inner:
+        return 0
+    n = len(outer)
+    if n != len(inner) or n == 0:
+        return 0
+    best_offset = 0
+    best_total = float("inf")
+    for offset in range(n):
+        total = 0.0
+        for i in range(n):
+            ox, oz = outer[i]
+            ix, iz = inner[(i + offset) % n]
+            total += (ox - ix) ** 2 + (oz - iz) ** 2
+        if total < best_total:
+            best_total = total
+            best_offset = offset
+    return best_offset
+
+
 def build_annulus_edge_pairs(
     outer_count: int,
     inner_count: int,
+    bridge_offset: int = 0,
 ) -> list[tuple[int, int]]:
-    """Build the closed-loop edge index pairs for the annulus topology.
+    """Build the edge index pairs for the annulus topology.
 
     Returns a list of ``(start_index, end_index)`` pairs that the
     bpy bridge feeds into ``bmesh.ops.triangle_fill``. Layout:
@@ -213,11 +250,20 @@ def build_annulus_edge_pairs(
     * Vertices 0..outer_count-1 = outer contour, cyclic edges.
     * Vertices outer_count..outer_count+inner_count-1 = inner
       contour, cyclic edges.
+    * When ``outer_count == inner_count`` AND > 0, radial bridge
+      edges connect outer[i] to inner[(i + bridge_offset) %
+      outer_count]. ``bridge_offset`` is computed by
+      :func:`find_best_inner_rotation` from the actual contour
+      geometry so the bridges are aligned (radial) rather than
+      crossing the annulus diagonally.
 
-    Cyclic edges only - no bridging edges between the two loops.
-    ``triangle_fill`` performs constrained Delaunay triangulation
-    on the planar region bounded by both closed loops, producing
-    the annulus (ring of triangles between outer and inner).
+    Without bridges, ``triangle_fill`` runs constrained Delaunay
+    on the two cyclic loops alone and produces spiky fan-shaped
+    triangles when outer / inner densities are mismatched (or
+    even when matched, the Delaunay solver lacks the constraint
+    to align outer vs inner verts). With bridges + matching
+    counts, the result is a clean strip of trapezoids that
+    Delaunay triangulates as 2N regular triangles.
 
     Pure-data helper so the test can assert the index pattern
     without instantiating a bmesh.
@@ -236,4 +282,15 @@ def build_annulus_edge_pairs(
         offset = outer_count
         for index in range(inner_count):
             edges.append((offset + index, offset + (index + 1) % inner_count))
+        # Radial bridges (annulus strip topology) when outer and
+        # inner counts match. Without these, triangle_fill produces
+        # spiky fan triangles between the two loops because the
+        # constrained Delaunay has nothing to anchor the radial
+        # alignment to. With them, the annulus triangulates as N
+        # quads (= 2N triangles) with predictable proportions.
+        if outer_count == inner_count:
+            normalized_offset = bridge_offset % outer_count
+            for index in range(outer_count):
+                inner_index = (index + normalized_offset) % inner_count
+                edges.append((index, offset + inner_index))
     return edges

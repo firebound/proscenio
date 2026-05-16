@@ -24,6 +24,7 @@ from core.automesh_geometry import (  # noqa: E402  - sys.path setup above
     Contour2D,
     arc_length_resample,
     build_annulus_edge_pairs,
+    find_best_inner_rotation,
     laplacian_smooth,
     perimeter_length,
     relax_contour,
@@ -200,10 +201,60 @@ class TestBuildAnnulusEdgePairs:
         inner = [(4, 5), (5, 6), (6, 4)]
         assert edges == outer + inner
 
-    def test_no_bridge_edges_between_loops(self) -> None:
-        # triangle_fill in bmesh produces the annulus; bridges would
-        # confuse the Delaunay triangulator.
+    def test_no_bridge_edges_when_counts_mismatch(self) -> None:
+        # Bridges only emit when outer / inner have the same vertex
+        # count; mismatched counts fall back to two cyclic loops and
+        # let triangle_fill bridge them via constrained Delaunay.
         edges = build_annulus_edge_pairs(6, 4)
         for start, end in edges:
             same_loop = (start < 6 and end < 6) or (start >= 6 and end >= 6)
             assert same_loop, f"unexpected bridge edge {(start, end)}"
+
+    def test_matching_counts_emit_radial_bridges(self) -> None:
+        # outer + inner cyclic = 8 edges; plus 4 bridges = 12 total.
+        edges = build_annulus_edge_pairs(4, 4, bridge_offset=0)
+        assert len(edges) == 12
+        # Last 4 entries are the bridges outer[i] -> inner[i + offset].
+        bridges = edges[-4:]
+        expected = [(0, 4), (1, 5), (2, 6), (3, 7)]
+        assert bridges == expected
+
+    def test_bridge_offset_rotates_inner_alignment(self) -> None:
+        # offset=2 should rotate the inner side of every bridge by 2.
+        edges = build_annulus_edge_pairs(4, 4, bridge_offset=2)
+        bridges = edges[-4:]
+        expected = [(0, 6), (1, 7), (2, 4), (3, 5)]
+        assert bridges == expected
+
+    def test_bridge_offset_wraps_via_modulo(self) -> None:
+        # offset beyond inner_count wraps cleanly via % operator.
+        edges = build_annulus_edge_pairs(4, 4, bridge_offset=6)
+        bridges = edges[-4:]
+        # 6 % 4 = 2, so equivalent to offset=2.
+        expected = [(0, 6), (1, 7), (2, 4), (3, 5)]
+        assert bridges == expected
+
+
+class TestFindBestInnerRotation:
+    def test_aligned_contours_return_zero(self) -> None:
+        outer = [(2.0, 0.0), (0.0, 2.0), (-2.0, 0.0), (0.0, -2.0)]
+        inner = [(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)]
+        # Inner already aligned with outer (same orientation).
+        assert find_best_inner_rotation(outer, inner) == 0
+
+    def test_inner_rotated_by_one_recovers_offset(self) -> None:
+        outer = [(2.0, 0.0), (0.0, 2.0), (-2.0, 0.0), (0.0, -2.0)]
+        # Inner ring rotated one step clockwise (index 0 sits at
+        # what was index 1's angular position).
+        inner = [(0.0, -1.0), (1.0, 0.0), (0.0, 1.0), (-1.0, 0.0)]
+        # Offset that brings inner back into outer alignment is 1.
+        assert find_best_inner_rotation(outer, inner) == 1
+
+    def test_mismatched_lengths_return_zero(self) -> None:
+        outer = [(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0)]
+        inner = [(0.5, 0.0), (0.0, 0.5)]
+        assert find_best_inner_rotation(outer, inner) == 0
+
+    def test_empty_inner_returns_zero(self) -> None:
+        outer = [(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0)]
+        assert find_best_inner_rotation(outer, []) == 0

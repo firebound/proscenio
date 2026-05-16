@@ -45,6 +45,7 @@ from ..automesh_geometry import (
     Contour2D,
     arc_length_resample,
     build_annulus_edge_pairs,
+    find_best_inner_rotation,
     laplacian_smooth,
     to_float_contour,
 )
@@ -134,9 +135,7 @@ def pixel_contour_to_world(
     if world_scale <= 0.0:
         raise ValueError(f"world_scale must be > 0, got {world_scale}")
     if source_width <= 0 or source_height <= 0:
-        raise ValueError(
-            f"source dimensions must be positive, got {source_width}x{source_height}"
-        )
+        raise ValueError(f"source dimensions must be positive, got {source_width}x{source_height}")
     factor = world_scale / downscale_factor
     half_w = source_width * world_scale / 2.0
     half_h = source_height * world_scale / 2.0
@@ -330,7 +329,16 @@ def build_automesh(
     message rather than a stack trace.
     """
     alpha_grid = read_alpha_grid(image, downscale_factor)
-    outer_pixels, inner_pixels = extract_contour_pair(alpha_grid, alpha_threshold, margin_pixels)
+    # margin_pixels is expressed in SOURCE image pixels so the user's
+    # mental model matches what they author in Photoshop / Pillow.
+    # The contour walker operates on the downscaled grid, so we scale
+    # the dilate/erode kernel size by downscale_factor to keep the
+    # effective margin invariant. Without this, margin=5 + downscale=
+    # 0.25 dilates 5 cells of a 50x50 grid = 20 source pixels = way
+    # more aggressive than the user expects (regression caught in
+    # smoke validation).
+    grid_margin = max(0, round(margin_pixels * downscale_factor))
+    outer_pixels, inner_pixels = extract_contour_pair(alpha_grid, alpha_threshold, grid_margin)
     if len(outer_pixels) < 3:
         raise ValueError(
             "automesh outer contour too short - try lowering the alpha "
@@ -359,12 +367,15 @@ def build_automesh(
             source_width,
             source_height,
         )
-        # Inner contour uses ~half the outer vertex count so the
-        # ring of triangles between loops has reasonable aspect ratio.
-        inner_target = max(3, target_contour_vertices // 2)
+        # Inner contour uses the SAME vertex count as outer so the
+        # annulus can be triangulated as a clean strip of trapezoids
+        # via radial bridge edges (see build_annulus_edge_pairs).
+        # The old half-count heuristic forced constrained Delaunay to
+        # bridge mismatched densities + produced spiky fan triangles
+        # (regression caught in smoke validation).
         inner_world = arc_length_resample(
             laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS),
-            inner_target,
+            target_contour_vertices,
         )
 
     interior_points = interior_points_for_annulus(
@@ -388,7 +399,11 @@ def build_automesh(
     bm.verts.ensure_lookup_table()
 
     boundary_verts = outer_verts + inner_verts
-    edge_pairs = build_annulus_edge_pairs(len(outer_verts), len(inner_verts))
+    # Bridge offset = inner rotation that minimizes total radial
+    # bridge length, so the strip triangulation gets clean nearly-
+    # parallel sides instead of crossing the annulus diagonally.
+    bridge_offset = find_best_inner_rotation(outer_world, inner_world)
+    edge_pairs = build_annulus_edge_pairs(len(outer_verts), len(inner_verts), bridge_offset)
     bmesh_edges = []
     for start_index, end_index in edge_pairs:
         edge = bm.edges.new((boundary_verts[start_index], boundary_verts[end_index]))

@@ -97,9 +97,13 @@ class ProscenioSkinningProps(PropertyGroup):
         name="Alpha threshold",
         description=(
             "Pixels with alpha strictly above this value contribute "
-            "to the silhouette. 127 matches COA Tools 2 default."
+            "to the silhouette. Default 1 includes EVERY visible "
+            "pixel (even faint anti-alias edges) - the safe choice "
+            "for sprite skinning where losing pixels at the boundary "
+            "is unacceptable. Raise to 127 to ignore anti-alias edges "
+            "(matches COA Tools 2 convention but cuts AA pixels)."
         ),
-        default=127,
+        default=1,
         min=0,
         max=255,
     )

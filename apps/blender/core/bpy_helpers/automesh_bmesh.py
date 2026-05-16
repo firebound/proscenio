@@ -439,10 +439,19 @@ def _build_mesh_via_delaunay(
                 (inner_offset + i, inner_offset + (i + 1) % inner_count)
             )
 
-    # output_type=5 = CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES.
-    # Returns triangulation that is safe to push into bmesh, with
-    # the inner ring auto-detected as a hole.
-    output_type = 5 if inner_count >= 3 else 4
+    # Delaunay output_type enum (BLI_delaunay_2d.h):
+    #   0 CDT_FULL: convex hull triangulation
+    #   1 CDT_INSIDE: triangles enclosed by constraints
+    #   2 CDT_INSIDE_WITH_HOLES: like 1 + auto-detect holes
+    #   3 CDT_CONSTRAINTS: ONLY constraint edges (no fill - bug we hit)
+    #   4 CDT_CONSTRAINTS_VALID_BMESH: like 3 + bmesh-valid
+    #   5 CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES: like 4 + holes
+    #
+    # PR #51 smoke caught the bug: we were using 4 / 5 which omit
+    # interior triangulation entirely, so the resulting mesh had
+    # verts + boundary edges but NO faces. Use 1 / 2 to get the
+    # full Delaunay fill of the constrained region.
+    output_type = 2 if inner_count >= 3 else 1
     result = mathutils.geometry.delaunay_2d_cdt(
         all_coords,
         edges_constraint,
@@ -453,13 +462,26 @@ def _build_mesh_via_delaunay(
     )
     out_verts, _out_edges, out_faces, _orig_v, _orig_e, _orig_f = result
 
+    print(
+        f"[automesh] delaunay output_type={output_type} "
+        f"input={len(all_coords)}v/{len(edges_constraint)}e "
+        f"output={len(out_verts)}v/{len(out_faces)}f"
+    )
+
     bm_verts = [bm.verts.new((v[0], 0.0, v[1])) for v in out_verts]
     bm.verts.ensure_lookup_table()
     added = 0
+    failed = 0
     for face in out_faces:
-        with contextlib.suppress(ValueError):
+        try:
             bm.faces.new([bm_verts[i] for i in face])
             added += 1
+        except ValueError as exc:
+            failed += 1
+            if failed <= 5:
+                print(f"[automesh] face skipped ({exc}): indices={face}")
+    if failed:
+        print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
     return added
 
 
@@ -650,7 +672,24 @@ def build_automesh(
     """
     if debug_stage in ("off", "final"):
         clear_debug_objects(obj)
+    print(
+        f"[automesh] === BEGIN obj={obj.name} image={image.name} "
+        f"{image.size[0]}x{image.size[1]} downscale={downscale_factor} "
+        f"alpha_threshold={alpha_threshold} margin_pixels={margin_pixels} "
+        f"contour_vertices={target_contour_vertices} "
+        f"interior_spacing={interior_spacing} "
+        f"density_under_bones={'yes' if bone_segments else 'no'} "
+        f"debug_stage={debug_stage}"
+    )
     alpha_grid = read_alpha_grid(image, downscale_factor)
+    grid_h = len(alpha_grid)
+    grid_w = len(alpha_grid[0]) if grid_h else 0
+    nonzero = sum(1 for row in alpha_grid for px in row if px > 0)
+    above_thr = sum(1 for row in alpha_grid for px in row if px > alpha_threshold)
+    print(
+        f"[automesh] alpha_grid {grid_w}x{grid_h} cells "
+        f"nonzero={nonzero} above_threshold({alpha_threshold})={above_thr}"
+    )
     # margin_pixels is expressed in SOURCE image pixels so the user's
     # mental model matches what they author in Photoshop / Pillow.
     # The contour walker operates on the downscaled grid, so we scale
@@ -661,6 +700,10 @@ def build_automesh(
     # smoke validation).
     grid_margin = max(0, round(margin_pixels * downscale_factor))
     outer_pixels, inner_pixels = extract_contour_pair(alpha_grid, alpha_threshold, grid_margin)
+    print(
+        f"[automesh] contour_pair grid_margin={grid_margin} "
+        f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)}"
+    )
     if len(outer_pixels) < 3:
         raise ValueError(
             "automesh outer contour too short - try lowering the alpha "
@@ -675,6 +718,14 @@ def build_automesh(
         source_width,
         source_height,
     )
+    if outer_world_raw:
+        xs = [p[0] for p in outer_world_raw]
+        ys = [p[1] for p in outer_world_raw]
+        print(
+            f"[automesh] outer_world_raw bbox "
+            f"x=[{min(xs):.4f},{max(xs):.4f}] z=[{min(ys):.4f},{max(ys):.4f}] "
+            f"first={outer_world_raw[0]} last={outer_world_raw[-1]}"
+        )
     inner_world_raw: Contour2D = []
     if len(inner_pixels) >= 3:
         inner_world_raw = pixel_contour_to_world(
@@ -713,6 +764,10 @@ def build_automesh(
     inner_world: Contour2D = (
         arc_length_resample(inner_smoothed, target_contour_vertices) if inner_smoothed else []
     )
+    print(
+        f"[automesh] resampled outer={len(outer_world)} inner={len(inner_world)} "
+        f"target={target_contour_vertices}"
+    )
 
     if debug_stage == "resampled":
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
@@ -741,8 +796,14 @@ def build_automesh(
     # silhouette in PR #51 smoke.
     boundary_for_filter = list(outer_world) + list(inner_world)
     min_separation = max(interior_spacing * 0.5, 1e-3)
+    before_filter = len(interior_points)
     interior_points = filter_points_too_close_to_boundary(
         interior_points, boundary_for_filter, min_separation
+    )
+    print(
+        f"[automesh] interior_points generated={before_filter} "
+        f"kept_after_filter={len(interior_points)} "
+        f"min_separation={min_separation:.4f}"
     )
 
     if debug_stage == "interior_points":
@@ -816,6 +877,10 @@ def build_automesh(
     if not preserve_base_quad:
         _remove_base_sprite_verts(obj, base_group_index)
     mesh.update()
+    print(
+        f"[automesh] === END mesh now has "
+        f"{len(mesh.vertices)} verts, {len(mesh.polygons)} faces"
+    )
 
     return {
         "outer_verts": len(outer_world),

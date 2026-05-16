@@ -111,7 +111,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
     )
     alpha_threshold: IntProperty(  # type: ignore[valid-type]
         name="Alpha threshold",
-        default=127,
+        default=1,
         min=0,
         max=255,
     )

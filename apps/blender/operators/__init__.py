@@ -16,6 +16,7 @@ Submodules:
 - driver            - Drive sprite from bone (5.1.d.1)
 - pose_library      - Save Pose to Library, Bake Current Pose
 - quick_armature    - Quick Armature modal (5.1.d.3)
+- skeleton_target   - Set Proscenio active armature pointer (SPEC 012.2)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -34,6 +35,7 @@ from . import (
     pose_library,
     quick_armature,
     selection,
+    skeleton_target,
     slot,
     uv_authoring,
 )
@@ -48,6 +50,7 @@ def register() -> None:
     uv_authoring.register()
     driver.register()
     pose_library.register()
+    skeleton_target.register()
     quick_armature.register()
     slot.register()
     atlas_pack.register()
@@ -59,6 +62,7 @@ def unregister() -> None:
     atlas_pack.unregister()
     slot.unregister()
     quick_armature.unregister()
+    skeleton_target.unregister()
     pose_library.unregister()
     driver.unregister()
     uv_authoring.unregister()

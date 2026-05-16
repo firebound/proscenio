@@ -38,10 +38,87 @@ def hydrate_existing_objects() -> None:
         hydrate_object(obj)
 
 
+def auto_populate_active_armature() -> None:
+    """Pre-fill ``scene.proscenio.active_armature`` when unambiguous.
+
+    SPEC 012.2 hybrid Opcao A.5: when the user opens a `.blend` whose
+    scene contains exactly one armature and the Proscenio pointer is
+    still empty, set it. The picker in the Skeleton subpanel then
+    visibly reflects the rig that every Proscenio skeleton operation
+    will target, eliminating the surprise where the picker reads
+    "empty" but Quick Armature still author bones into the only
+    armature in the scene via the auto-detect heuristic.
+    """
+    try:
+        scenes = list(bpy.data.scenes)
+    except AttributeError:
+        return
+    for scene in scenes:
+        proscenio = getattr(scene, "proscenio", None)
+        if proscenio is None or proscenio.active_armature is not None:
+            continue
+        armatures = [obj for obj in scene.objects if obj.type == "ARMATURE"]
+        if len(armatures) == 1:
+            proscenio.active_armature = armatures[0]
+
+
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
 def on_blend_load(_filepath: str) -> None:
     """Re-hydrate every time a `.blend` finishes loading."""
     hydrate_existing_objects()
+    auto_populate_active_armature()
+
+
+@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
+def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph) -> None:
+    """Keep ``scene.proscenio.active_armature`` in sync with reality.
+
+    Blender nulls the PointerProperty automatically when the referenced
+    Object data block is deleted, but if the user only unlinked the
+    armature from the scene (or renamed via Outliner) the pointer can
+    end up dangling: it still resolves to an Object that is no longer
+    visible in this scene. The handler clears that case so the picker
+    visibly matches what skeleton ops can actually target, then tags
+    every VIEW_3D area for redraw so the panel updates without forcing
+    the user to mouse over it.
+
+    Wrapped in a broad ``Exception`` guard: depsgraph callbacks fire
+    inside Blender's draw / event loop, and a Python exception bubbling
+    out at that point can leave the C side mid-state. The handler is
+    advisory - swallowing failures here is strictly better than risking
+    a follow-up crash on the next gizmo / overlay draw.
+    """
+    try:
+        proscenio = getattr(scene, "proscenio", None)
+        if proscenio is None:
+            return
+        pointer = proscenio.active_armature
+        if pointer is None:
+            return
+        try:
+            if pointer.name in scene.objects and pointer.type == "ARMATURE":
+                return
+        except ReferenceError:
+            # Pointer references a freed datablock. Treat as stale.
+            pass
+        proscenio.active_armature = None
+        _tag_view3d_areas_redraw()
+    except Exception:  # depsgraph hook safety - swallow to protect draw cycle
+        # Last-resort safety: never let an addon-side error kill the
+        # Blender draw cycle. Diagnostic logging would land in the
+        # operator INFO bar (not visible from a depsgraph callback) so
+        # we silently swallow.
+        pass
+
+
+def _tag_view3d_areas_redraw() -> None:
+    window_manager = getattr(bpy.context, "window_manager", None)
+    if window_manager is None:
+        return
+    for window in window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
 
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
@@ -69,3 +146,4 @@ def deferred_hydrate() -> None:
     property data is real and persistent.
     """
     hydrate_existing_objects()
+    auto_populate_active_armature()

@@ -176,6 +176,86 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 **Sessão 1.14 (10-mai-2026):** vários problemas de UX impedem teste cabal. Bug do plano Z=0 + falta de preview + falta de feedback visual modal + sem control de connect/disconnect parent durante o drag. Refator grande necessário antes do operator virar útil. Caveats e sugestões loggados em UI_FEEDBACK.md "Quick Armature operator" + "Skeleton panel". Usuário escolheu **skipar tests restantes** e mover pra próxima seção. Voltar quando refator estiver feita.
 
+#### 1.14 re-test pos-SPEC-012.1 (Wave 12.1 ship)
+
+Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que **nao** mudam no Wave 12.2 inversion D10 + axis lock D11 + grid snap D12 + panel D15). Full suite fica deferida pra pos-Wave-12.2 ship.
+
+**Smoke set (Wave 12.1 estavel - sem retrabalho previsto):**
+
+- [x] **T1 Auto-snap Front Ortho on invoke.** PASS. Snap dispara, INFO bar + status bar + cheatsheet bottom-center todos corretos. System Console `_log_view` mostra pre-snap PERSP + post-snap ORTHO com matriz Front identity.
+- [x] **T2 View restore on exit (sem user-move).** PASS. View retornou exato (loc/rot/dist matching pre-snap snapshot). INFO bar `view restored to pre-snap` + `confirmed/cancelled`. Bug inicial (matrix tolerance demais estrita) fixado migrando comparison pra decomposed values (location + rotation Quaternion + distance + perspective) em `_view_pose_equal` com tolerance 1e-3.
+- [x] **T2b View kept on exit (com user-move).** PASS. User rotaciona via middle-click; exit detecta diff (rotation > tolerance) -> view kept. INFO bar `view kept (user-moved during modal)`. Bug original (saltava pra angulo aleatorio) resolvido com decomposed comparison + restore via decomposed assign.
+- [x] **T4 Preview line + anchor circle.** PASS. Linha laranja + circulo 12-segments aparecem durante drag, atualizam smooth. Bonus regression encontrado e corrigido: clicks fora do canvas (panel/header/toolbar) disparavam tentativas de bone -> filter `_event_in_invoke_region` agora compara `event.mouse_x/y` contra rect WINDOW region resolvido via `_find_window_region` + itera overlay regions e rejeita se cursor cair em qualquer um. Bonus QoL: cursor fora da canvas vira preview vermelho `(0.9, 0.25, 0.25, 0.85)` + cheatsheet ganha 3a linha "cursor outside canvas - move back to author bones" + tooltip `outside canvas` perto do cursor (POST_PIXEL handler).
+- [x] **T8 Empty QuickRig sweep on cancel.** PASS. Esc imediato sem bones não deixa orphan no Outliner.
+- [x] **T9 Sweep só se operator criou.** PASS. Re-invocar com QuickRig com bones de sessão anterior + Esc imediato preserva o rig (sweep só age em rig criado nesta sessão via `_created_armature_this_session` flag).
+- [x] **T-Enter confirm.** PASS. Enter + Numpad Enter ambos disparam exit com `confirmed`. INFO bar reporta count correto.
+- [x] **T-Selection restore.** PASS. Active object pre-invoke restaurado pos-exit (selection set inteira via snapshot/restore em `_snapshot_selection`/`_restore_selection`). `Numpad .` (frame selected) zoom no mesh original, NAO no QuickRig.
+
+**Drive-by bugs descobertos + corrigidos durante sessão:**
+
+- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente em `specs/012-quick-armature-ux/TODO.md` Wave 12.2.
+- `view_matrix` 4x4 acumula float drift entre mode toggles -> falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
+- `context.region` em modal handler congela em invoke; quando invocado via N-panel button aponta UI sidebar. Fix: snapshot WINDOW region via `_find_window_region(context.area)` + filter via `event.mouse_x/y` contra rect.
+- WINDOW region rect cobre área inteira do viewport (panels overlay são sobrepostos). Filtering apenas pelo WINDOW rect deixava clicks em panel passar. Fix: itera todas regions da área; rejeita se cursor cair em qualquer overlay (UI/TOOLS/HEADER/ASSET_SHELF).
+- Double-invoke (user clica botao Quick Armature 2x sem sair do primeiro modal) empilhava handlers. Fix: invoke detecta handles existentes + sweep antes de re-init.
+- `_log_view` pre-snap + post-snap + exit (before/after restore decision) printados pro System Console permitiram debug rapido das comparison e restore paths.
+
+**Smoke deferidos (mudam comportamento no Wave 12.2 - testar apos ship 12.2):**
+
+- T3 Opt-out F3 (`lock_to_front_ortho`) - vai ganhar UI no painel (D15).
+- T5 Cheatsheet texto - layout muda de 2 -> 3 linhas + novos chords (D11, D12, D14).
+- T6 Bone creation default - inverte (D10: LMB sozinho = chain, antes = unparented root).
+- T7 Shift chain - inverte (D10: Shift = new root, antes = chain).
+- T9 Sweep só se operator criou (corner case) - logic igual mas retesta com chord vocab novo.
+- T10 Reload scripts safety - reteste apos chord vocab + panel mudancas.
+- T11 Esc com bones criados - logic igual mas confirma INFO bar message com chord vocab final.
+- Axis lock (D11) X/Z toggle + linha colorida no preview.
+- Grid snap (D12) Ctrl held + alinhamento por increment configuravel.
+- In-modal undo/redo (D7) Ctrl+Z / Ctrl+Shift+Z.
+- Naming prefix (D2) com Scene PG override + F3 redo override.
+- Panel "Quick Armature defaults" sub-box (D15) - lock_to_front_ortho checkbox, prefix, default_chain, snap_increment.
+
+**Trigger pra re-test full suite:** Wave 12.2 PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
+
+#### 1.14 re-test pos-SPEC-012.2 (Wave 12.2 ship + iterative refinement)
+
+Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.1 + 12.2 + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
+
+**Wave 12.2 features (todos confirmados em smoke iterativo):**
+
+- [x] **T-ChordInvert (D10).** PASS. LMB sem modifier chains connected; Shift+LMB = unparented; Alt+LMB = parented disconnected. Cheatsheet + status bar atualizam quando `default_chain` toggla.
+- [x] **T-AxisLock (D11).** PASS. X / Z toggle axis lock; press 2x clears. Linha colorida vermelha (X) ou azul (Z) renderiza através do head antes do PRESS.
+- [x] **T-GridSnap (D12).** PASS. Ctrl held arredonda cursor X/Z pro `snap_increment` configurado no Scene PG. Y preservado (picture plane).
+- [x] **T-UndoRedo (D7).** PASS. Ctrl+Z dentro do modal remove ultimo bone; Ctrl+Shift+Z replays. New PRESS clears redo stack.
+- [x] **T-NamingPrefix (D2).** PASS. PG `name_prefix` aplicado nos auto-named bones; sanitize whitespace.
+- [x] **T-PanelSubbox (D15).** PASS. Skeleton subpanel renderiza sub-box "Quick Armature defaults" com 4 fields. Valores persistem no .blend.
+- [x] **T-DashedDisconnected.** PASS. Alt+drag mostra linha tracejada amarela do parent.tail ao novo head.
+- [x] **T-StatusBarIcons + ViewportHeader.** PASS. Status bar bottom-left + viewport header top renderizam chord vocabulary com ícones nativos Blender (`MOUSE_LMB_DRAG`, `EVENT_SHIFT/ALT/CTRL/X/Z/RETURN/ESC`).
+- [x] **T-ActiveArmaturePicker (Opção 3 hybrid).** PASS. Picker no topo da Skeleton subpanel; explicit pointer é fonte única de verdade no operator-time; auto-populate via `load_post` + `deferred_hydrate` handler quando scene tem armature única.
+- [x] **T-AutoPromoteQuickRig.** PASS. Quick Armature cria QuickRig + auto-promove pointer pro picker.
+- [x] **T-StaleClearOnDelete.** PASS. `on_depsgraph_update` handler limpa pointer quando armature deletada + tag VIEW_3D pra redraw imediato.
+
+**Refinement commits (iterative feedback do user):**
+
+- `16c7995` chord refinement (Blender nomenclatura: connected/unparented/disconnected) + Alt chord + parent.tail anchor + color-coded preview + target armature
+- `254d03f` dashed preview line + statusbar icons + active armature pointer
+- `69aff3d` single hint location + viewport header icons + picker auto-fill + drop POST_PIXEL cheatsheet
+- `43b4d36` drop draw-time picker auto-fill (ID write crash) + register hint convention em blender-dev.md
+- `a4f0eec` picker é fonte única de verdade (drop heuristics no resolver, manter só no handler) + INFO box + `proscenio.set_active_armature` operator
+- `7d5a099` vertical armature buttons + stale picker auto-clear via depsgraph handler
+- `9eb5a52` respect Blender auto-rename (`arm_obj.name` em vez de literal pra evitar shadow por orphan)
+- `ff12680` defensive try/except no `on_depsgraph_update` + crash gizmo log em BUGS_FOUND
+
+**Drive-by bugs descobertos + corrigidos durante Wave 12.2 sessão:**
+
+- `_target_armature_name` literal vs Blender auto-rename `.001` quando data block orphan existia. Fix: storage `arm_obj.name`.
+- Picker draw-time mutation crashed com `AttributeError: Writing to ID classes in this context is not allowed`. Fix: drop draw-time write; handler `auto_populate_active_armature` no `load_post` + `deferred_hydrate` cobre initial fill; mutação explícita via operator pra deletion ou button.
+- Stale picker apos delete da armature. Fix: novo `on_depsgraph_update` handler limpa pointer + tag_redraw.
+
+**Crash isolado (1x) durante smoke:** Blender 5.1.1 NULL write em `gizmo_button2d_draw` após `view3d.snap_cursor_to_center`. Stack trace 100% Blender internals + AMD GPU driver loaded. User identificou como driver issue pós-restart. Defensive `try/except` adicionado no `on_depsgraph_update` mesmo assim. Logged in `tests/BUGS_FOUND.md` como suspeito upstream/driver, severity low, trigger pra escalar: 2x+ repro.
+
+**Status final Wave 12.2:** todas features locked do STUDY D1-D15 implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
+
 ### 1.15 Pose library
 
 - [!] "Save Pose to Library": com armature em pose mode, pose name -> action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em BUGS_FOUND.md.

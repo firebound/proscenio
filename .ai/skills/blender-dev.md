@@ -86,6 +86,17 @@ For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-fe
 - Always `unregister()` cleanly - leaked classes break reload.
 - Lint: `ruff check apps/blender/`. Format: `ruff format apps/blender/`. Type-check: `mypy` against the addon's pyproject.
 
+## Modal operators with in-viewport overlay
+
+Pattern lifted from SPEC 012.1 (`operators/quick_armature.py`). Reusable for any operator that needs preview feedback while a modal session is active.
+
+- **Two draw handlers per operator.** Register one `POST_VIEW` handler on `bpy.types.SpaceView3D` for world-space hints (preview line, anchor circle); register one `POST_PIXEL` handler for screen-space hints (modifier cheatsheet, status header). Store both handles as class attributes so they survive any modal exit path.
+- **Single unregister helper.** Call `_unregister_handlers(self)` from `_finish`, `cancel`, and every error-return path. Wrap each `draw_handler_remove` in `contextlib.suppress(ValueError, RuntimeError)` so reload-scripts paths that already dropped the handle do not raise.
+- **Sweep orphans on addon `unregister()`.** When the addon is disabled or reloaded, walk the operator's class attributes and remove any leftover handles before the operator class itself is unregistered. Cheap insurance against Blender's reload-scripts loop.
+- **Geometry helpers stay bpy-free.** Vertex math (`build_circle_vertices`, `build_rect_vertices`) lives under `core/modal_overlay_geometry.py` so pytest can verify it without booting Blender. The bpy-bound wrappers (`draw_line_3d`, `draw_circle_3d`, `draw_text_panel_2d`) live under `core/bpy_helpers/modal_overlay.py` and consume those vertices.
+- **Tag area for redraw on `MOUSEMOVE`.** Modal handlers do not redraw spontaneously; call `context.area.tag_redraw()` after updating any state the draw handler reads. Cap the work to mouse-event cadence - no timers needed.
+- **Snapshot-and-restore view state.** If the operator changes `view_perspective` or `view_matrix` (auto-snap to a specific orientation), save the originals in `invoke` and restore them in every exit path. Operators should not silently mutate user view state.
+
 ## Authoring panel overview
 
 The addon ships a `Proscenio` sidebar tab in the 3D Viewport (open with **N**). Subpanels expose every Proscenio knob - sprite type and metadata, skeleton helpers, slot anchors, animation summary, atlas pack / apply / unpack, validation issues, export controls, diagnostics. Each subpanel header carries a status badge (`godot-ready` / `blender-only` / `planned` / `out-of-scope`) and a `?` button that opens an in-panel help popup.
@@ -112,9 +123,22 @@ The writer turns Blender vertex groups into the `weights` array on a `polygon`-t
 
 A sprite without any vertex groups stays rigid-attached (parent of `Bone2D`). `sprite_frame` sprites ignore weights entirely.
 
+## Modal operator hint placement (SPEC 012.2 convention)
+
+Standard for **every** modal operator that needs to surface a chord cheatsheet:
+
+- **Bottom STATUS BAR (canonical, always wired):** append a draw callback via `bpy.types.STATUSBAR_HT_header.prepend(fn)` so the chord vocabulary lands on the LEFT of the bottom bar (where Blender's own modal tools place their hints - knife tool, loop cut). The right side stays for Blender's stats widgets.
+- **3D viewport header (optional):** append a second draw callback via `bpy.types.VIEW3D_HT_header.append(fn)` when the operator runs inside a VIEW_3D and benefits from a hint visible without looking down (drawing-style modals, e.g. Quick Armature). Use `layout.separator_spacer()` first so the hint sits on the right edge of the viewport header instead of pushing Blender's mode/select/view dropdowns around. Both callbacks share a single `_emit_chord_layout(layout, cls)` helper so the vocabulary stays in sync.
+- **Render real Blender icons** via `layout.label(text="", icon="MOUSE_LMB_DRAG")`, `EVENT_SHIFT`, `EVENT_ALT`, `EVENT_CTRL`, `EVENT_X`, `EVENT_Z`, `EVENT_RETURN`, `EVENT_ESC`, etc. Do NOT render text-only POST_PIXEL "cheatsheets" for chord hints - they cannot match the native icons and become noise next to the real ones.
+- **Cleanup is mandatory.** Track each registration with a class-level `bool` (`_statusbar_appended`, `_view3d_header_appended`); remove via `bpy.types.STATUSBAR_HT_header.remove(fn)` and `bpy.types.VIEW3D_HT_header.remove(fn)` in every exit path (`_finish`, `cancel`, error returns) AND in the addon's `unregister()` orphan sweep.
+- **POST_PIXEL is reserved for cursor-tracking overlays** (preview lines in 3D space, tooltips that follow the cursor, axis guidelines). Static chord vocabulary belongs in the headers, not in the canvas.
+
+Reference implementation: `apps/blender/operators/quick_armature.py` (`_emit_chord_layout`, `_draw_statusbar_quick_armature`, `_draw_view3d_header_quick_armature`).
+
 ## Common pitfalls
 
 - Reloading addons leaks registered classes - always `unregister()` cleanly.
 - `bpy.context` differs between operator and panel scope - read it carefully.
 - File paths: use `bpy.path.abspath()` to resolve `//` relative paths.
 - Drivers and handlers registered at register time must clean up in `unregister()`.
+- **Never write to ID data blocks (Scene, Object, etc) from within `Panel.draw`.** Blender raises `AttributeError: Writing to ID classes in this context is not allowed`. Auto-fill / sync logic that mutates a PG must run from `bpy.app.handlers.load_post`, `depsgraph_update_post`, a deferred timer, or an explicit operator. Reading is always safe.

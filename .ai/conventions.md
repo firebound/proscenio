@@ -84,7 +84,7 @@ GDScript 2.0 has full static typing. The plugin is 100% typed.
 ### Python (Blender addon, scripts)
 
 - Full type hints on every function signature.
-- `from __future__ import annotations` at the top of new files.
+- `from __future__ import annotations` at the top of new files - with one carve-out: any class registered via `bpy.utils.register_class` (Operator, PropertyGroup, Panel, Header, etc.) that **declares `bpy.props.*Property` annotations and references TYPE_CHECKING-only types in sibling `ClassVar` annotations** must drop PEP 563 from that file. Blender 5.x calls `typing.get_type_hints(cls)` at register time and a single `NameError` from a TYPE_CHECKING-imported name aborts the whole annotation walk silently, so no bpy.props ever promotes to RNA. Import the referenced types at module top (not under `TYPE_CHECKING`) and document the constraint in the module docstring. See `apps/blender/operators/quick_armature.py` for the reference setup and `tests/BUGS_FOUND.md` post-mortem for the long-form rationale.
 - Strict static analysis is part of CI; warnings fail the build. `Any` is allowed only at the `bpy` boundary, documented inline.
 - Prefer `@dataclass` / `TypedDict` over loose dicts when shape is known. Use `Literal[...]` over raw strings for closed value sets (track type, interpolation, severity, ...).
 

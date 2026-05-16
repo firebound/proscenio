@@ -113,10 +113,12 @@ class TestArcLengthResample:
             arc_length_resample([(0.0, 0.0), (1.0, 1.0)], 8)
 
     def test_zero_perimeter_raises(self) -> None:
-        with pytest.raises(ValueError, match="zero perimeter"):
-            arc_length_resample(
-                [(1.0, 1.0), (1.0, 1.0), (1.0, 1.0)], 8
-            )
+        # Dedupe collapses the 3 identical points to 1 before the
+        # perimeter check, so the raised error names the dedupe path
+        # rather than "zero perimeter". Both express the same intent:
+        # degenerate contour refused.
+        with pytest.raises(ValueError, match="collapses to <3|zero perimeter"):
+            arc_length_resample([(1.0, 1.0), (1.0, 1.0), (1.0, 1.0)], 8)
 
     def test_output_count_matches_target(self) -> None:
         contour = _square_contour(10.0)
@@ -159,8 +161,14 @@ class TestRelaxContour:
     def test_pipeline_outputs_requested_count(self) -> None:
         # 8-pixel staircase smoothed + resampled to 32 verts.
         pixel = [
-            (0, 0), (1, 0), (1, 1), (2, 1),
-            (2, 2), (3, 2), (3, 3), (0, 3),
+            (0, 0),
+            (1, 0),
+            (1, 1),
+            (2, 1),
+            (2, 2),
+            (3, 2),
+            (3, 3),
+            (0, 3),
         ]
         out = relax_contour(pixel, smooth_iterations=3, target_vertex_count=32)
         assert len(out) == 32

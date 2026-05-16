@@ -193,6 +193,18 @@ def trace_contour(mask: BinaryMask, start: ContourPoint) -> Contour:
     previous_direction = 4
     steps = 0
 
+    # Simple stopping criterion: terminate on the first revisit to
+    # ``start``. This is correct for the simple closed contours that
+    # alpha-threshold + binary morphology produce on a sprite
+    # silhouette (every silhouette is a single-loop alpha island
+    # after dilate / erode by the standard automesh margin). The
+    # strict Pavlidis-Jacob "revisit AND same incoming search
+    # direction" criterion was prototyped against this code (PR #51
+    # review feedback) but rejected: it requires careful pre-move
+    # vs post-move ordering to avoid double-counting start AND it
+    # only matters for figure-eight contours that the addon never
+    # generates. The defensive ``_MAX_CONTOUR_STEPS`` cap below is
+    # the ultimate guard against pathological inputs.
     while steps < _MAX_CONTOUR_STEPS:
         steps += 1
         search_start = (previous_direction + 2) % 8

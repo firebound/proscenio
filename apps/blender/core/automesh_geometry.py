@@ -24,6 +24,7 @@ pixel int coords via the resolution + scale factor.
 from __future__ import annotations
 
 import math
+from itertools import pairwise
 
 ContourPoint2D = tuple[float, float]
 Contour2D = list[ContourPoint2D]
@@ -102,6 +103,21 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
         raise ValueError(f"target_count must be >= 3, got {target_count}")
     if len(contour) < 3:
         raise ValueError("contour must have at least 3 vertices to resample")
+
+    # Dedupe consecutive identical points up front so the sampling
+    # loop never has to handle zero-length edges. The earlier path
+    # (skip-and-continue on zero length) could emit duplicate
+    # samples and drift the arc-length distribution because the
+    # current edge_index was never advanced past the degenerate edge
+    # (regression caught in PR #51 review).
+    deduped: Contour2D = [contour[0]]
+    for prev, point in pairwise(contour):
+        if point != prev:
+            deduped.append(point)
+    if len(deduped) < 3:
+        raise ValueError("contour collapses to <3 unique points after dedupe - cannot resample")
+    contour = deduped
+
     total = perimeter_length(contour)
     if total <= 0.0:
         raise ValueError("contour has zero perimeter - cannot resample")
@@ -112,7 +128,6 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
     edge_start = contour[0]
     edge_end = contour[1]
     edge_length = math.hypot(edge_end[0] - edge_start[0], edge_end[1] - edge_start[1])
-    distance_into_edge = 0.0
 
     for sample in range(target_count):
         target_distance = sample * step
@@ -123,8 +138,11 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
             edge_end = contour[(edge_index + 1) % len(contour)]
             edge_length = math.hypot(edge_end[0] - edge_start[0], edge_end[1] - edge_start[1])
             accumulated = edge_index_start_distance(contour, edge_index)
-        # Edge case: zero-length edge. Skip forward.
         if edge_length <= 0.0:
+            # Defensive only - dedupe above eliminates zero-length
+            # edges. Reached only if a future caller passes
+            # already-deduped contour with collinear degenerate
+            # points slipping through. Snap to edge start.
             output.append(edge_start)
             continue
         distance_into_edge = target_distance - accumulated

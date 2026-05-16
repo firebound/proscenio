@@ -36,21 +36,56 @@ def bounding_box(contour: list[Point2D]) -> tuple[float, float, float, float]:
     return (min(xs), min(ys), max(xs), max(ys))
 
 
+_BOUNDARY_EPSILON = 1e-9
+
+
+def _point_on_segment(
+    px: float,
+    py: float,
+    ax: float,
+    ay: float,
+    bx: float,
+    by: float,
+) -> bool:
+    """True when ``(px, py)`` lies within epsilon of segment AB."""
+    abx, aby = bx - ax, by - ay
+    apx, apy = px - ax, py - ay
+    seg_length_sq = abx * abx + aby * aby
+    if seg_length_sq <= 0.0:
+        return abs(apx) < _BOUNDARY_EPSILON and abs(apy) < _BOUNDARY_EPSILON
+    ratio = (apx * abx + apy * aby) / seg_length_sq
+    if not -_BOUNDARY_EPSILON <= ratio <= 1.0 + _BOUNDARY_EPSILON:
+        return False
+    closest_x = ax + ratio * abx
+    closest_y = ay + ratio * aby
+    return (px - closest_x) ** 2 + (py - closest_y) ** 2 < _BOUNDARY_EPSILON
+
+
 def point_in_polygon(point: Point2D, polygon: list[Point2D]) -> bool:
     """Even-odd-rule point-in-polygon test for closed simple contours.
 
     Returns ``True`` when the point lies strictly inside the closed
-    polygon, ``False`` on or outside. Used to clip generated interior
-    candidates to the actual annulus (inside outer AND outside
-    inner). Performance is linear in the polygon vertex count - fine
-    for the few-hundred-vertex contours Proscenio's automesh
-    produces after resampling.
+    polygon, ``False`` on the boundary or outside. The explicit
+    boundary check up front is what enforces "on the edge = outside"
+    per the contract - the raw ray-casting below is indeterminate
+    for points sitting exactly on a polygon segment and would
+    otherwise leak the rare-but-possible edge case (regression
+    caught in PR #51 review).
+
+    Performance is linear in the polygon vertex count - fine for
+    the few-hundred-vertex contours Proscenio's automesh produces
+    after resampling.
     """
     if len(polygon) < 3:
         return False
     px, py = point
-    inside = False
     count = len(polygon)
+    for index in range(count):
+        x0, y0 = polygon[index]
+        x1, y1 = polygon[(index + 1) % count]
+        if _point_on_segment(px, py, x0, y0, x1, y1):
+            return False
+    inside = False
     for index in range(count):
         x0, y0 = polygon[index]
         x1, y1 = polygon[(index + 1) % count]

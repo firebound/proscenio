@@ -49,7 +49,7 @@ from ..automesh_geometry import (
 )
 
 if TYPE_CHECKING:
-    from bpy.types import Image, Object
+    from bpy.types import Bone, Image, Object
 
 
 BASE_SPRITE_GROUP_NAME = "proscenio_base_sprite"
@@ -123,50 +123,63 @@ def pixel_contour_to_world(
 def collect_bone_segments(
     armature_obj: Object,
 ) -> list[BoneSegment2D]:
-    """Extract bone segments as XZ-plane pairs from an armature.
+    """Extract bone segments as world-space XZ-plane pairs.
 
     Walks ``armature_obj.data.edit_bones`` (or ``bones`` when not in
     Edit Mode) and emits ``((head_x, head_z), (tail_x, tail_z))`` for
     each deform-flagged bone. Y components are dropped since
     Proscenio bones live on the Y=0 picture plane per SPEC 012
     convention.
+
+    Head / tail are transformed by ``armature_obj.matrix_world`` so
+    the segments live in the same world space as the sprite contours
+    that the density helper compares them against. Without this, the
+    density-under-bones path silently misaligns whenever the armature
+    has any object-level transform (location, rotation, scale) - the
+    sprite's contour points are world-space, the bones would be in
+    armature-local space, and they'd never line up.
     """
     armature_data = armature_obj.data
-    bones: Sequence = (
+    matrix_world = armature_obj.matrix_world
+    bones: Sequence[Bone] = (
         armature_data.edit_bones
         if hasattr(armature_data, "edit_bones") and armature_data.edit_bones
         else armature_data.bones
     )
     segments: list[BoneSegment2D] = []
     for bone in bones:
-        head = bone.head
-        tail = bone.tail
         if not bone.use_deform:
             continue
-        segments.append(((head.x, head.z), (tail.x, tail.z)))
+        head_world = matrix_world @ bone.head
+        tail_world = matrix_world @ bone.tail
+        segments.append(((head_world.x, head_world.z), (tail_world.x, tail_world.z)))
     return segments
 
 
-def _ensure_base_sprite_group(obj: Object) -> int:
-    """Return the index of the ``proscenio_base_sprite`` group, creating it.
+def _initialize_base_sprite_group(obj: Object) -> tuple[int, bool]:
+    """Ensure ``proscenio_base_sprite`` exists; flag current verts only on first run.
 
-    Convenience for the regen path: when an existing mesh has no
-    base-sprite group (legacy or fresh import), we create one and
-    flag the current vertices as the base before generating new
-    geometry. Idempotent.
+    Returns ``(group_index, is_fresh)``. ``is_fresh`` is True when the
+    group did not exist before this call - meaning every vertex
+    currently on the mesh is part of the original UV-pinned base + we
+    flag them all so the regen-delete step preserves them.
+
+    On subsequent runs (group already present) we do NOT re-flag the
+    current verts. The previously-generated automesh geometry already
+    sits in the mesh; flagging it now would promote it to "base" and
+    the next ``_delete_non_base_geometry`` call would skip it,
+    causing the mesh to accumulate vertices unbounded across reruns
+    (regression caught in PR #51 review).
     """
     group = obj.vertex_groups.get(BASE_SPRITE_GROUP_NAME)
-    if group is None:
-        group = obj.vertex_groups.new(name=BASE_SPRITE_GROUP_NAME)
-    return group.index
-
-
-def _flag_existing_verts_as_base(obj: Object, group_index: int) -> None:
-    """Add every current vertex to the base-sprite group at weight 1.0."""
+    if group is not None:
+        return group.index, False
+    group = obj.vertex_groups.new(name=BASE_SPRITE_GROUP_NAME)
     mesh = obj.data
     indices = list(range(len(mesh.vertices)))
     if indices:
-        obj.vertex_groups[group_index].add(indices, 1.0, "REPLACE")
+        group.add(indices, 1.0, "REPLACE")
+    return group.index, True
 
 
 def _delete_non_base_geometry(obj: Object, group_index: int) -> None:
@@ -190,6 +203,80 @@ def _delete_non_base_geometry(obj: Object, group_index: int) -> None:
     bmesh.ops.delete(bm, geom=to_remove, context="VERTS")
     bm.to_mesh(mesh)
     bm.free()
+
+
+def _point_in_triangle_xz(
+    px: float,
+    pz: float,
+    ax: float,
+    az: float,
+    bx: float,
+    bz: float,
+    cx: float,
+    cz: float,
+) -> bool:
+    """Half-plane test for a point against an XZ triangle.
+
+    Returns True for the closed triangle (boundary included). Pure
+    math, no numpy. Used by :func:`_insert_interior_points` to find
+    which triangle of the just-triangulated annulus contains each
+    Steiner point before splitting that triangle around the point.
+    """
+
+    def sign(p1x: float, p1z: float, p2x: float, p2z: float, p3x: float, p3z: float) -> float:
+        return (p1x - p3x) * (p2z - p3z) - (p2x - p3x) * (p1z - p3z)
+
+    d1 = sign(px, pz, ax, az, bx, bz)
+    d2 = sign(px, pz, bx, bz, cx, cz)
+    d3 = sign(px, pz, cx, cz, ax, az)
+    has_neg = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
+    has_pos = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
+    return not (has_neg and has_pos)
+
+
+def _insert_interior_points(
+    bm: bmesh.types.BMesh,
+    interior_points: list[tuple[float, float]],
+) -> int:
+    """Split annulus triangles to incorporate Steiner points.
+
+    For each ``(x, z)`` in ``interior_points``, locate the triangle
+    in the bmesh whose XZ projection contains the point + split it
+    into three triangles fanned around a new center vertex created
+    at ``(x, 0.0, z)``. Returns the count of successfully inserted
+    points (some may fall outside every triangle due to float drift
+    or annulus boundary inconsistency - those are silently skipped
+    so the operator never raises mid-build).
+    """
+    inserted = 0
+    bm.faces.ensure_lookup_table()
+    for px, pz in interior_points:
+        target_face = None
+        for face in bm.faces:
+            if len(face.verts) != 3:
+                continue
+            v0, v1, v2 = face.verts
+            if _point_in_triangle_xz(px, pz, v0.co.x, v0.co.z, v1.co.x, v1.co.z, v2.co.x, v2.co.z):
+                target_face = face
+                break
+        if target_face is None:
+            continue
+        v0, v1, v2 = list(target_face.verts)
+        new_vert = bm.verts.new((px, 0.0, pz))
+        bm.faces.remove(target_face)
+        try:
+            bm.faces.new((v0, v1, new_vert))
+            bm.faces.new((v1, v2, new_vert))
+            bm.faces.new((v2, v0, new_vert))
+            inserted += 1
+        except ValueError:
+            # bm.faces.new raises ValueError when the face already
+            # exists. Defensive: skip the duplicate; the new vert
+            # remains as a loose vertex in this rare path (less
+            # bad than crashing the operator).
+            pass
+        bm.faces.ensure_lookup_table()
+    return inserted
 
 
 def build_automesh(
@@ -253,8 +340,7 @@ def build_automesh(
         bone_density_factor=bone_density_factor,
     )
 
-    base_group_index = _ensure_base_sprite_group(obj)
-    _flag_existing_verts_as_base(obj, base_group_index)
+    base_group_index, _is_fresh = _initialize_base_sprite_group(obj)
     _delete_non_base_geometry(obj, base_group_index)
 
     mesh = obj.data
@@ -263,7 +349,6 @@ def build_automesh(
 
     outer_verts = [bm.verts.new((x, 0.0, y)) for (x, y) in outer_world]
     inner_verts = [bm.verts.new((x, 0.0, y)) for (x, y) in inner_world]
-    interior_verts = [bm.verts.new((x, 0.0, y)) for (x, y) in interior_points]
     bm.verts.ensure_lookup_table()
 
     boundary_verts = outer_verts + inner_verts
@@ -280,6 +365,16 @@ def build_automesh(
         use_dissolve=False,
     )
 
+    # Insert interior Steiner points into the just-triangulated annulus
+    # (D15 density-under-bones). triangle_fill leaves loose verts
+    # disconnected, so a naive ``bm.verts.new`` for each interior
+    # point produced dangling vertices that never appeared in the
+    # final triangulation (regression caught in PR #51 review).
+    # We triangulate the annulus first, then for each interior point
+    # locate the containing triangle and split it into three new
+    # triangles around a new center vertex.
+    interior_inserted = _insert_interior_points(bm, interior_points)
+
     bm.to_mesh(mesh)
     bm.free()
     mesh.update()
@@ -287,7 +382,7 @@ def build_automesh(
     return {
         "outer_verts": len(outer_verts),
         "inner_verts": len(inner_verts),
-        "interior_verts": len(interior_verts),
+        "interior_verts": interior_inserted,
         "total_verts": len(mesh.vertices),
         "total_faces": len(mesh.polygons),
     }

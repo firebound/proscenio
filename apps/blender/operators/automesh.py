@@ -27,29 +27,50 @@ from bpy.props import (
     IntProperty,
 )
 
-from ..core.bpy_helpers.automesh_bmesh import (
+from ..core.bpy_helpers.automesh_bmesh import (  # type: ignore[import-not-found]
     build_automesh,
     collect_bone_segments,
 )
-from ..core.report import report_error, report_info, report_warn
+from ..core.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
+
+
+def _find_tex_image(material: bpy.types.Material | None) -> bpy.types.Image | None:
+    """Return the first non-empty TEX_IMAGE node in ``material``."""
+    if material is None or not material.use_nodes or material.node_tree is None:
+        return None
+    for node in material.node_tree.nodes:
+        if node.type == "TEX_IMAGE" and node.image is not None:
+            return node.image
+    return None
 
 
 def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
-    """Find the first image texture in the mesh's material slots.
+    """Find the image texture used for automesh, prioritizing the active material.
 
-    Walks the active material's node tree for a ``TEX_IMAGE`` node;
-    if none, falls back to the first material on the mesh that has
-    one. Returns ``None`` when the mesh has no image-textured
-    material - the operator pre-flight reports an actionable error
-    in that case.
+    Walks the active material's node tree first because that is
+    what the user sees in the shader editor + the natural choice
+    for "this sprite's texture" on multi-material meshes (e.g.
+    layered sprites with separate albedo / glow materials). Falls
+    back to scanning every slot only when the active material has
+    no image texture. Returns ``None`` when nothing is found - the
+    operator pre-flight surfaces an actionable error in that case.
     """
-    materials = list(obj.data.materials) if obj.data else []
-    for material in materials:
-        if material is None or not material.use_nodes:
+    if obj.data is None:
+        return None
+    active_material = getattr(obj, "active_material", None)
+    image = _find_tex_image(active_material)
+    if image is not None:
+        return image
+    for material in obj.data.materials:
+        if material is active_material:
             continue
-        for node in material.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                return node.image
+        image = _find_tex_image(material)
+        if image is not None:
+            return image
     return None
 
 

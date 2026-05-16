@@ -293,7 +293,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
   - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` - filename do primeiro Image Texture node descoberto.
   - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
-### 1.15 SPEC 013 Wave 13.1 - Automesh from sprite
+### 1.19 SPEC 013 Wave 13.1 - Automesh from sprite
 
 Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
 

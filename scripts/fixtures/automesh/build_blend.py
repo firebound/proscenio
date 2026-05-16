@@ -47,7 +47,9 @@ SPRITE_SIZE = FRAME / PIXELS_PER_UNIT
 
 def main() -> None:
     expected_pngs = ("hand.png", "blob.png", "lshape.png", "ring.png")
-    missing = [LAYERS_DIR / name for name in expected_pngs if not (LAYERS_DIR / name).exists()]
+    missing = [
+        LAYERS_DIR / name for name in expected_pngs if not (LAYERS_DIR / name).exists()
+    ]
     if missing:
         names = ", ".join(str(p.name) for p in missing)
         print(
@@ -184,8 +186,17 @@ def _rewrite_image_to_relpath() -> None:
             continue
         try:
             img.filepath = bpy.path.relpath(img.filepath)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            # bpy.path.relpath raises ValueError on Windows when the
+            # image lives on a different drive letter from the .blend.
+            # Falling back to the absolute path is OK because Blender
+            # still resolves it; only the fixture-portability promise
+            # weakens. Surface a one-line warning so the developer
+            # knows their generated .blend is machine-specific.
+            print(
+                f"[build_automesh] keeping absolute path for {img.name} ({exc})",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":

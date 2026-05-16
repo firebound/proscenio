@@ -56,9 +56,7 @@ def build_rect_vertices(
     ``[bl, br, tr, bl, tr, tl]`` where ``bl`` is bottom-left etc.
     """
     if x_max <= x_min or y_max <= y_min:
-        raise ValueError(
-            f"degenerate rect: ({x_min},{y_min})..({x_max},{y_max})"
-        )
+        raise ValueError(f"degenerate rect: ({x_min},{y_min})..({x_max},{y_max})")
     bl = (x_min, y_min)
     br = (x_max, y_min)
     tr = (x_max, y_max)

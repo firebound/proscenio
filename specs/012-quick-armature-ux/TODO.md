@@ -1,6 +1,6 @@
 # SPEC 012 - TODO
 
-Quick Armature UX overhaul. See [STUDY.md](STUDY.md) for the full design + decisions D1-D9. Two waves, one PR each. Wave 1 closes the "inviabiliza" gap surfaced in [tests/MANUAL_TESTING.md:167-177](../../tests/MANUAL_TESTING.md#L167-L177); Wave 2 is productivity polish.
+Quick Armature UX overhaul. See [STUDY.md](STUDY.md) for the full design + decisions D1-D16 (D1-D9 locked at planning time, D10-D15 added with Wave 12.2, D16 emerged mid-iteration). Wave 12.1 + Wave 12.2 + 9 iterative refinement commits shipped together on PR #50. Wave 12.1 closed the "inviabiliza" gap surfaced in [tests/MANUAL_TESTING.md:167-177](../../tests/MANUAL_TESTING.md#L167-L177); Wave 12.2 layered the productivity polish; the refinement log below records each post-Wave-12.2 delta with commit hash + user-feedback rationale.
 
 ## Decision lock-in
 

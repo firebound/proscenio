@@ -73,7 +73,6 @@ _ANCHOR_RADIUS = 0.05
 _ANCHOR_SEGMENTS = 12
 _PREVIEW_LINE_WIDTH = 2.0
 
-_CHEATSHEET_OUTSIDE_LABEL = "outside canvas"
 _CHEATSHEET_WARNING_TEXT_COLOR = (1.0, 0.55, 0.55, 1.0)
 
 _FRONT_ORTHO_TOLERANCE = 1e-4
@@ -218,9 +217,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._name_prefix = _sanitize_prefix(
             pg.name_prefix if pg is not None else _DEFAULT_NAME_PREFIX
         )
-        cls._snap_increment = (
-            float(pg.snap_increment) if pg is not None else 1.0
-        )
+        cls._snap_increment = float(pg.snap_increment) if pg is not None else 1.0
         cls._invoke_area = context.area
         # ``context.region`` is whichever region had focus when the
         # operator fired. When invoked via the N-panel button it points
@@ -393,16 +390,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # tests/BUGS_FOUND.md.
         cls = type(self)
         if event.value == "PRESS":
-            raw_press_point = mouse_event_to_plane_point(
-                context, event, plane_axis="Y"
-            )
+            raw_press_point = mouse_event_to_plane_point(context, event, plane_axis="Y")
             # Apply grid snap to head so chained bones share an aligned
             # origin. Axis lock is only meaningful between PRESS and
             # RELEASE so head itself is unaffected by the lock.
             if raw_press_point is not None and cls._ctrl_held:
-                raw_press_point = _snap_world_point_xz(
-                    raw_press_point, cls._snap_increment
-                )
+                raw_press_point = _snap_world_point_xz(raw_press_point, cls._snap_increment)
             cls._drag_press_point = raw_press_point
             cls._shift_held = bool(event.shift)
             cls._alt_held = bool(event.alt)
@@ -415,9 +408,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             # tail at commit time; reflect that in the live preview so
             # the user sees the actual bone shape (parent.tail -> cursor)
             # rather than a misleading press_point -> cursor line.
-            cls._drag_head = self._effective_drag_head(
-                raw_press_point, cls._press_mode
-            )
+            cls._drag_head = self._effective_drag_head(raw_press_point, cls._press_mode)
             if context.area is not None:
                 context.area.tag_redraw()
             return {"RUNNING_MODAL"}
@@ -564,9 +555,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if armature is None:
             return
         prev_active = context.view_layer.objects.active
-        prev_selected = [
-            obj for obj in context.view_layer.objects if obj.select_get()
-        ]
+        prev_selected = [obj for obj in context.view_layer.objects if obj.select_get()]
         for obj in context.view_layer.objects:
             obj.select_set(False)
         armature.select_set(True)
@@ -579,9 +568,9 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             bone_name = _format_bone_name(cls._name_prefix, len(edit_bones))
             new_bone = edit_bones.new(bone_name)
             last = cls._last_bone_name
-            parent_bone = edit_bones[last] if (
-                parent_to_last and last and last in edit_bones
-            ) else None
+            parent_bone = (
+                edit_bones[last] if (parent_to_last and last and last in edit_bones) else None
+            )
             if parent_bone is not None and connect:
                 # Snap head to the parent's tail so chained bones share
                 # an exact junction (Blender E extrude convention).
@@ -642,9 +631,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")
             if prev_active is not None:
                 context.view_layer.objects.active = prev_active
-        cls._last_bone_name = (
-            cls._session_records[-1].name if cls._session_records else ""
-        )
+        cls._last_bone_name = cls._session_records[-1].name if cls._session_records else ""
         report_info(self, f"undone '{record.name}'")
         if context.area is not None:
             context.area.tag_redraw()
@@ -799,15 +786,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls = type(self)
         if cls._preview_handle_3d is not None:
             with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.SpaceView3D.draw_handler_remove(
-                    cls._preview_handle_3d, "WINDOW"
-                )
+                bpy.types.SpaceView3D.draw_handler_remove(cls._preview_handle_3d, "WINDOW")
             cls._preview_handle_3d = None
         if cls._cursor_warning_handle_2d is not None:
             with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.SpaceView3D.draw_handler_remove(
-                    cls._cursor_warning_handle_2d, "WINDOW"
-                )
+                bpy.types.SpaceView3D.draw_handler_remove(cls._cursor_warning_handle_2d, "WINDOW")
             cls._cursor_warning_handle_2d = None
         if cls._statusbar_appended:
             with contextlib.suppress(ValueError, RuntimeError):
@@ -891,21 +874,11 @@ def _is_confirm_event(event: bpy.types.Event) -> bool:
 
 
 def _is_undo_event(event: bpy.types.Event) -> bool:
-    return (
-        event.type == "Z"
-        and event.value == "PRESS"
-        and event.ctrl
-        and not event.shift
-    )
+    return event.type == "Z" and event.value == "PRESS" and event.ctrl and not event.shift
 
 
 def _is_redo_event(event: bpy.types.Event) -> bool:
-    return (
-        event.type == "Z"
-        and event.value == "PRESS"
-        and event.ctrl
-        and event.shift
-    )
+    return event.type == "Z" and event.value == "PRESS" and event.ctrl and event.shift
 
 
 def _is_axis_lock_event(event: bpy.types.Event) -> bool:
@@ -960,10 +933,7 @@ def _point_in_region_rect(x: int, y: int, region: bpy.types.Region) -> bool:
     All Blender regions report ``x``/``y``/``width``/``height`` in
     window pixel coords, matching ``event.mouse_x`` / ``mouse_y``.
     """
-    return (
-        region.x <= x <= region.x + region.width
-        and region.y <= y <= region.y + region.height
-    )
+    return region.x <= x <= region.x + region.width and region.y <= y <= region.y + region.height
 
 
 def _find_window_region(area: bpy.types.Area) -> bpy.types.Region | None:
@@ -1016,9 +986,7 @@ def _rv3d_is_front_ortho(rv3d: bpy.types.RegionView3D) -> bool:
     matrix_rows: list[list[float]] = [
         [float(rotation[row][col]) for col in range(3)] for row in range(3)
     ]
-    return is_front_ortho(
-        rv3d.view_perspective, matrix_rows, tolerance=_FRONT_ORTHO_TOLERANCE
-    )
+    return is_front_ortho(rv3d.view_perspective, matrix_rows, tolerance=_FRONT_ORTHO_TOLERANCE)
 
 
 def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:

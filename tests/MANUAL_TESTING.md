@@ -219,7 +219,7 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 
 #### 1.14 re-test pos-SPEC-012.2 (Wave 12.2 ship + iterative refinement)
 
-Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.1 + 12.2 + 7 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
+Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.1 + 12.2 + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
 
 **Wave 12.2 features (todos confirmados em smoke iterativo):**
 

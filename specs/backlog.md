@@ -65,6 +65,18 @@ A Blender operator that adds a properly configured ortho camera for pixel-perfec
 
 **Resolved by [SPEC 012](012-quick-armature-ux/STUDY.md)** Wave 12.1 - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same wave.
 
+### Quick Armature Wave 12.3 candidates
+
+Items deferred from [SPEC 012](012-quick-armature-ux/STUDY.md) STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new SPEC, only a 012.3 wave (or a smaller iteration PR) when demand justifies the work.
+
+- **Pick-parent-in-viewport.** `Shift+click` an existing bone tip during the modal to re-target the next bone's parent. Useful for branching skeletons (humanoid second-chain off the spine) without exiting the operator. Medium effort; chord vocabulary already has `Shift+click` available because the press-time `Shift+drag` reads only on PRESS+drag combo. Highest user value on the deferred list.
+- **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the SPEC 012 RESEARCH addendum.
+- **Mirror auto-suffix `_L`/`_R`** when X-Mirror is enabled in the armature data. Auto-creates the symmetric pair on each press so humanoid rigs save half the work. Small effort but only pays off with a humanoid fixture - currently no Proscenio fixture exercises symmetric rigs end-to-end.
+- **Numeric length input.** `Tab` to type `0.5` Enter (Blender E-extrude convention). Bigger lift because it needs a text-input field on a modal operator; precision authoring win when implemented.
+- **D11 local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
+
+The remaining SPEC 012 deferred items are now [`successor SPECs`](012-quick-armature-ux/STUDY.md#successor-considerations): auto-attach mesh / sprite to bone (needs SPEC 004 maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
+
 ### Blender 4.3 legacy actions compatibility
 
 `writer._action_fcurves` falls back to `action.fcurves` when present. Untested against Blender 4.2 LTS - may need fixture-based regression once the addon is shipped.

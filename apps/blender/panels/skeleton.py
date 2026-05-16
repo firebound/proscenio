@@ -84,24 +84,15 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             row.alert = True
             row.label(text="no Armature in scene", icon="ERROR")
             return
-        explicit_target = (
-            scene_props.active_armature
-            if scene_props is not None
-            else None
-        )
+        explicit_target = scene_props.active_armature if scene_props is not None else None
         if explicit_target is not None:
             bones = getattr(explicit_target.data, "bones", [])
-            layout.label(
-                text=f"Armature '{explicit_target.name}' - {len(bones)} bone(s)"
-            )
+            layout.label(text=f"Armature '{explicit_target.name}' - {len(bones)} bone(s)")
         elif armatures:
             box = layout.box()
             row = box.row()
             row.label(
-                text=(
-                    "no rig picked - skeleton ops will create a new "
-                    "Proscenio.QuickRig"
-                ),
+                text=("no rig picked - skeleton ops will create a new Proscenio.QuickRig"),
                 icon="INFO",
             )
             box.label(text="Use existing instead:")
@@ -117,11 +108,7 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                     icon="ARMATURE_DATA",
                 )
                 op.armature_name = arm.name
-        if (
-            explicit_target is not None
-            and bones
-            and scene_props is not None
-        ):
+        if explicit_target is not None and bones and scene_props is not None:
             layout.template_list(
                 "PROSCENIO_UL_bones",
                 "",

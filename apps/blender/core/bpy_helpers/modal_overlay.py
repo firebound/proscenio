@@ -88,17 +88,28 @@ def draw_dashed_line_3d(
     step = dash_length + gap_length
     if step <= 0.0:
         return
+    # Hard cap on dash segments so a pathological dash_length /
+    # gap_length combination (e.g. someone wires a snap_increment or
+    # bone-length-derived value that ends up sub-pixel) cannot lock
+    # the draw thread. 2_000 segments cover any sane preview line at
+    # any zoom in Proscenio's 2D-cutout workspace - beyond that we
+    # silently clamp.
+    max_segments = 2_000
+    if total / step > max_segments:
+        step = total / max_segments
     inv_total = 1.0 / total
     ux = dx * inv_total
     uy = dy * inv_total
     uz = dz * inv_total
     vertices: list[tuple[float, float, float]] = []
     travelled = 0.0
-    while travelled < total:
+    segments = 0
+    while travelled < total and segments < max_segments:
         seg_end = min(travelled + dash_length, total)
         vertices.append((sx + ux * travelled, sy + uy * travelled, sz + uz * travelled))
         vertices.append((sx + ux * seg_end, sy + uy * seg_end, sz + uz * seg_end))
         travelled += step
+        segments += 1
     if not vertices:
         return
     shader = _shader()

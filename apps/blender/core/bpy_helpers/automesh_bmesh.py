@@ -33,6 +33,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal
 
 import bmesh
+import mathutils
 
 from ..alpha_contour import (
     AlphaGrid,
@@ -392,6 +393,75 @@ def _remove_base_sprite_verts(obj: Object, group_index: int) -> None:
     bm.free()
 
 
+def _fill_inner_via_delaunay(
+    bm: bmesh.types.BMesh,
+    inner_verts: list[bmesh.types.BMVert],
+    inner_world: list[tuple[float, float]],
+    interior_points: list[tuple[float, float]],
+) -> int:
+    """Constrained Delaunay triangulation of the inner area + Steiner.
+
+    Uses ``mathutils.geometry.delaunay_2d_cdt`` (Blender built-in
+    Constrained Delaunay) to triangulate the polygon bounded by the
+    inner ring with the Steiner interior points as additional verts.
+
+    The previous path (``bmesh.ops.triangle_fill`` on the inner ring
+    n-gon + Steiner fan-split insertion) produced spiky fan-shaped
+    triangulation because triangle_fill on a closed convex n-gon
+    does fan triangulation by default - all triangles share one
+    vertex - and Steiner insertion preserves the spike pattern by
+    fan-splitting individual triangles. Delaunay does the right
+    thing globally: every triangle's circumcircle contains no other
+    vertex, which minimizes the worst-case inscribed angle and
+    produces well-shaped triangles throughout.
+
+    Reuses existing ``inner_verts`` for boundary verts (via
+    ``orig_verts`` mapping returned by ``delaunay_2d_cdt``) so the
+    inner ring stays connected to the annulus strip built by
+    ``_build_annulus_strip``. New bmesh verts are created only for
+    interior Steiner points.
+
+    Returns the count of triangle faces added.
+    """
+    n = len(inner_world)
+    if n == 0:
+        return 0
+    input_coords: list[tuple[float, float]] = list(inner_world) + list(interior_points)
+    input_edges: list[tuple[int, int]] = [(i, (i + 1) % n) for i in range(n)]
+
+    result = mathutils.geometry.delaunay_2d_cdt(
+        input_coords,
+        input_edges,
+        [],
+        1,
+        1e-6,
+        True,
+    )
+    out_verts, _out_edges, out_faces, orig_v, _orig_e, _orig_f = result
+
+    delaunay_to_bm: list[bmesh.types.BMVert] = []
+    for out_idx, out_coord in enumerate(out_verts):
+        input_indices = orig_v[out_idx]
+        reused: bmesh.types.BMVert | None = None
+        for inp_idx in input_indices:
+            if inp_idx < n:
+                reused = inner_verts[inp_idx]
+                break
+        if reused is not None:
+            delaunay_to_bm.append(reused)
+        else:
+            new_vert = bm.verts.new((out_coord[0], 0.0, out_coord[1]))
+            delaunay_to_bm.append(new_vert)
+
+    bm.verts.ensure_lookup_table()
+    added = 0
+    for face in out_faces:
+        with contextlib.suppress(ValueError):
+            bm.faces.new([delaunay_to_bm[i] for i in face])
+            added += 1
+    return added
+
+
 def _build_annulus_strip(
     bm: bmesh.types.BMesh,
     outer_verts: list[bmesh.types.BMVert],
@@ -549,7 +619,15 @@ def build_automesh(
         emit_contour_debug(obj, "raw_contours", outer_world_raw, inner_world_raw)
         return _debug_stage_report("raw_contours", len(outer_world_raw), len(inner_world_raw))
 
-    outer_smoothed = laplacian_smooth(outer_world_raw, _SMOOTH_ITERATIONS)
+    # Smooth ONLY the inner contour. The outer must stay at-or-
+    # outside the actual alpha boundary - Laplacian shrinks convex
+    # corners inward by ~1 px per pass, which would cut into the
+    # silhouette pixels even with the dilate margin (regression
+    # caught in PR #51 smoke - mesh boundary going INSIDE the
+    # sprite alpha at bottom of the blob). Outer keeps its raw
+    # pixel-staircase shape; arc-length resample alone gives even
+    # vertex spacing without shrinkage.
+    outer_smoothed = outer_world_raw
     inner_smoothed = (
         laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS) if inner_world_raw else []
     )
@@ -617,35 +695,24 @@ def build_automesh(
     bm.verts.ensure_lookup_table()
 
     if inner_verts and len(outer_verts) == len(inner_verts):
-        # Annulus strip: N cells of 2 triangles each directly between
-        # outer and inner. Provides the dense edge-loop ring near the
-        # silhouette boundary for fine border deformation control.
+        # Annulus strip: N cells of 2 triangles each between outer
+        # and inner. Provides the dense edge-loop ring near the
+        # silhouette for fine border deformation control.
         _build_annulus_strip(bm, outer_verts, inner_verts, bridge_offset)
-        # Fill the INNER area too. The annulus strip construction
-        # implicitly created edges between consecutive inner verts
-        # (via the second triangle of each cell: outer[next] ->
-        # inner[next] -> inner[curr]). We re-fetch those existing
-        # edges via bm.edges.get instead of creating new ones (which
-        # would raise "this edge exists"). Then triangle_fill
-        # triangulates the inner ring as a single closed loop n-gon.
-        inner_edges = []
-        for i in range(len(inner_verts)):
-            v0 = inner_verts[i]
-            v1 = inner_verts[(i + 1) % len(inner_verts)]
-            edge = bm.edges.get((v0, v1))
-            if edge is None:
-                edge = bm.edges.new((v0, v1))
-            inner_edges.append(edge)
-        bmesh.ops.triangle_fill(
-            bm,
-            edges=inner_edges,
-            use_beauty=True,
-            use_dissolve=False,
-        )
+        # Fill INNER area via proper Constrained Delaunay over the
+        # inner ring + Steiner interior points. Previously used
+        # bmesh.ops.triangle_fill + post-Steiner-insertion which
+        # produced fan-spiky triangles because triangle_fill on an
+        # n-gon does fan triangulation by default + Steiner fan-
+        # splits preserve the spikes (regression caught in PR #51
+        # smoke). mathutils.geometry.delaunay_2d_cdt gives proper
+        # Delaunay with all points constrained inside the inner
+        # ring boundary.
+        _fill_inner_via_delaunay(bm, inner_verts, inner_world, interior_points)
     else:
         # Fallback for thin silhouettes with no inner ring: fill the
-        # outer loop as a single n-gon polygon. No bridges, no
-        # orientation issue.
+        # outer loop as a single n-gon polygon. Steiner insertion
+        # still does fan-splits afterwards (no Delaunay path here).
         outer_edges = [
             bm.edges.new((outer_verts[i], outer_verts[(i + 1) % len(outer_verts)]))
             for i in range(len(outer_verts))
@@ -677,6 +744,12 @@ def build_automesh(
     # We triangulate the annulus first, then for each interior point
     # locate the containing triangle and split it into three new
     # triangles around a new center vertex.
+    # Steiner points are inserted in BOTH paths:
+    # - Annulus path: Delaunay handled inner-area points; insertion
+    #   still picks up points landing inside annulus strip cells.
+    # - Fallback path: triangle_fill output is one fan; insertion
+    #   fan-splits triangles around each point (best we can do
+    #   without Delaunay for the no-inner case).
     interior_inserted = _insert_interior_points(bm, interior_points)
 
     # Recalculate normals so all faces point the same way (Blender

@@ -150,6 +150,33 @@ Productivity layer on top of first cut. Each item is a self-contained refinement
 - **Sidecar import / export.** Operator to dump the weight sidecar JSON to a file + load from a file. Enables version-controlled weight backups outside the .blend. Trigger: user asks to back up weight work to git.
 - **Brush settings curve presets.** Quick-select brush curve presets named for common 2D tasks ("Hard edge", "Soft falloff", "Crease", "Smooth blend") via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
 
+### User-drawn density markers (post-smoke feedback, Wave 13.2 candidate)
+
+User vision from PR #51 smoke discussion: artist draws on the sprite (grease pencil or GPU overlay similar to Quick Armature hint surfaces) to mark regions of interest (muscle bulges, cloth folds, joint creases) that should get extra edge-loop density in the automesh. The marks would translate into additional Steiner point clusters when the operator runs, giving fine-grained deformation control where the artist knows it matters.
+
+Implementation sketch:
+
+- New modal operator `proscenio.automesh_density_markers` activated from Skinning panel button.
+- Modal uses GPU overlay (lift `core/bpy_helpers/modal_overlay.py` scaffold from SPEC 012) - paint-style stroke captures world XZ positions.
+- Marks stored on the sprite mesh as a custom property (`proscenio_density_marks: list[(x, z, weight)]`) so they persist + can be regenerated alongside the mesh.
+- Automesh operator reads marks at build time; each mark spawns N extra Steiner points within `weight` radius.
+- Per-mark color in the GPU overlay differentiates muscle / fold / crease types.
+
+Trigger: real character authoring session reveals this is the blocker for production-quality deformation.
+
+### Sprite-changed-in-Photoshop workflow (D6 sidecar, Wave 13.1 next commit)
+
+User concern from PR #51 smoke: "what happens if the user alters the sprite in Photoshop after automesh + bind? We need a way to preserve work + regen with minimal adjustment."
+
+This is exactly the D6 weight sidecar from STUDY.md - the differentiator. Workflow:
+
+1. After bind, snapshot vertex weights + UVs into a JSON sidecar on the mesh object (`obj["proscenio_weight_sidecar"]`) keyed by ALPHA-STABLE anchors (silhouette features like fingertip pixels, not vertex indices).
+2. User edits PNG in Photoshop, re-exports.
+3. Automesh regen: detects sidecar exists -> generates new mesh -> for each new vertex, finds nearest sidecar anchor and projects weight + UV onto it.
+4. Provenance overlay shows which verts got reprojected weights (cyan), which are fresh seeds (gray), which the user touched (white).
+
+Wave 13.1 next commit per TODO.md "13.1.d - Weight sidecar + reproject (D6) - the differentiator" section.
+
 ## Wave 13.3 - aspirational (deferred further)
 
 - **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator: given two child meshes sharing a parent bone, generate the seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Requires both child-mesh detection (which sprites are on which side of the articulation) and a custom seam generator (boundary-following triangulation). Trigger: humanoid fixture lands + user complains about inner-elbow gap.

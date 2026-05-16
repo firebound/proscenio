@@ -217,6 +217,45 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 
 **Trigger pra re-test full suite:** Wave 12.2 PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
 
+#### 1.14 re-test pos-SPEC-012.2 (Wave 12.2 ship + iterative refinement)
+
+Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.1 + 12.2 + 7 refinement commits via PR #50). Status apos rounds iterativos de feedback do user:
+
+**Wave 12.2 features (todos confirmados em smoke iterativo):**
+
+- [x] **T-ChordInvert (D10).** PASS. LMB sem modifier chains connected; Shift+LMB = unparented; Alt+LMB = parented disconnected. Cheatsheet + status bar atualizam quando `default_chain` toggla.
+- [x] **T-AxisLock (D11).** PASS. X / Z toggle axis lock; press 2x clears. Linha colorida vermelha (X) ou azul (Z) renderiza atraves do head antes do PRESS.
+- [x] **T-GridSnap (D12).** PASS. Ctrl held arredonda cursor X/Z pro `snap_increment` configurado no Scene PG. Y preservado (picture plane).
+- [x] **T-UndoRedo (D7).** PASS. Ctrl+Z dentro do modal remove ultimo bone; Ctrl+Shift+Z replays. New PRESS clears redo stack.
+- [x] **T-NamingPrefix (D2).** PASS. PG `name_prefix` aplicado nos auto-named bones; sanitize whitespace.
+- [x] **T-PanelSubbox (D15).** PASS. Skeleton subpanel renderiza sub-box "Quick Armature defaults" com 4 fields. Valores persistem no .blend.
+- [x] **T-DashedDisconnected.** PASS. Alt+drag mostra linha tracejada amarela do parent.tail ao novo head.
+- [x] **T-StatusBarIcons + ViewportHeader.** PASS. Status bar bottom-left + viewport header top renderizam chord vocabulary com icones nativos Blender (`MOUSE_LMB_DRAG`, `EVENT_SHIFT/ALT/CTRL/X/Z/RETURN/ESC`).
+- [x] **T-ActiveArmaturePicker (Opcao 3 hybrid).** PASS. Picker no topo da Skeleton subpanel; explicit pointer e fonte unica de verdade no operator-time; auto-populate via `load_post` + `deferred_hydrate` handler quando scene tem armature unica.
+- [x] **T-AutoPromoteQuickRig.** PASS. Quick Armature cria QuickRig + auto-promove pointer pro picker.
+- [x] **T-StaleClearOnDelete.** PASS. `on_depsgraph_update` handler limpa pointer quando armature deletada + tag VIEW_3D pra redraw imediato.
+
+**Refinement commits (iterative feedback do user):**
+
+- `16c7995` chord refinement (Blender nomenclatura: connected/unparented/disconnected) + Alt chord + parent.tail anchor + color-coded preview + target armature
+- `254d03f` dashed preview line + statusbar icons + active armature pointer
+- `69aff3d` single hint location + viewport header icons + picker auto-fill + drop POST_PIXEL cheatsheet
+- `43b4d36` drop draw-time picker auto-fill (ID write crash) + register hint convention em blender-dev.md
+- `a4f0eec` picker e fonte unica de verdade (drop heuristics no resolver, manter so no handler) + INFO box + `proscenio.set_active_armature` operator
+- `7d5a099` vertical armature buttons + stale picker auto-clear via depsgraph handler
+- `9eb5a52` respect Blender auto-rename (`arm_obj.name` em vez de literal pra evitar shadow por orphan)
+- `ff12680` defensive try/except no `on_depsgraph_update` + crash gizmo log em BUGS_FOUND
+
+**Drive-by bugs descobertos + corrigidos durante Wave 12.2 sessao:**
+
+- `_target_armature_name` literal vs Blender auto-rename `.001` quando data block orphan existia. Fix: storage `arm_obj.name`.
+- Picker draw-time mutation crashed com `AttributeError: Writing to ID classes in this context is not allowed`. Fix: drop draw-time write; handler `auto_populate_active_armature` no `load_post` + `deferred_hydrate` cobre initial fill; mutacao explicita via operator pra deletion ou button.
+- Stale picker apos delete da armature. Fix: novo `on_depsgraph_update` handler limpa pointer + tag_redraw.
+
+**Crash isolado (1x) durante smoke:** Blender 5.1.1 NULL write em `gizmo_button2d_draw` apos `view3d.snap_cursor_to_center`. Stack trace 100% Blender internals + AMD GPU driver loaded. User identificou como driver issue pos-restart. Defensive `try/except` adicionado no `on_depsgraph_update` mesmo assim. Logged in `tests/BUGS_FOUND.md` como suspeito upstream/driver, severity low, trigger pra escalar: 2x+ repro.
+
+**Status final Wave 12.2:** todas features locked do STUDY D1-D15 implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
+
 ### 1.15 Pose library
 
 - [!] "Save Pose to Library": com armature em pose mode, pose name -> action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em BUGS_FOUND.md.

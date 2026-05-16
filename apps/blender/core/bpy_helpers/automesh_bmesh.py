@@ -102,23 +102,45 @@ def pixel_contour_to_world(
     contour: Contour2D,
     downscale_factor: float,
     world_scale: float,
+    source_width: int,
+    source_height: int,
 ) -> Contour2D:
-    """Convert pixel-coordinate contour to world XZ units.
+    """Convert pixel-coordinate contour to mesh-local XZ units.
 
-    Pixel coordinates are (image-space x, image-space y). World
-    coordinates are (world X, world Z) on the Y=0 picture plane.
+    Pixel coordinates are (image-space x, image-space y) in the
+    downscaled grid that the alpha walker produced. Output
+    coordinates are mesh-local (X, Z) centered on the sprite's
+    origin, ready to be written into the bmesh - when Blender then
+    applies the object's location the contour lands aligned with
+    the textured plane.
+
     Image Y grows downward in raster space; world Z grows upward in
-    Blender's right-handed system - so the conversion flips Y to
-    Z with a sign change. ``world_scale`` converts pixel units to
+    Blender's right-handed system - the conversion flips Y to Z
+    with a sign change. ``world_scale`` converts pixel units to
     world units (typically ``1 / pixels_per_unit`` from the scene
     PG so the imported sprite matches its rendered scale).
+
+    The centering subtracts half the sprite extent from each axis
+    so pixel (0, 0) lands at mesh-local (-half_w, +half_h) - the
+    top-left corner of a centered quad - rather than (0, 0). Without
+    this the generated annulus sat in the bottom-right quadrant of
+    the textured plane (regression caught during smoke validation).
+    ``source_width`` / ``source_height`` are the original image
+    dimensions (NOT the downscaled grid dimensions), matching how
+    the textured plane was sized at fixture-author time.
     """
     if downscale_factor <= 0.0:
         raise ValueError(f"downscale_factor must be > 0, got {downscale_factor}")
     if world_scale <= 0.0:
         raise ValueError(f"world_scale must be > 0, got {world_scale}")
+    if source_width <= 0 or source_height <= 0:
+        raise ValueError(
+            f"source dimensions must be positive, got {source_width}x{source_height}"
+        )
     factor = world_scale / downscale_factor
-    return [(x * factor, -y * factor) for (x, y) in contour]
+    half_w = source_width * world_scale / 2.0
+    half_h = source_height * world_scale / 2.0
+    return [(x * factor - half_w, half_h - y * factor) for (x, y) in contour]
 
 
 def collect_bone_segments(
@@ -315,8 +337,13 @@ def build_automesh(
             "threshold or increasing the resolution"
         )
 
+    source_width, source_height = image.size[0], image.size[1]
     outer_world_raw = pixel_contour_to_world(
-        to_float_contour(outer_pixels), downscale_factor, world_scale
+        to_float_contour(outer_pixels),
+        downscale_factor,
+        world_scale,
+        source_width,
+        source_height,
     )
     outer_world = arc_length_resample(
         laplacian_smooth(outer_world_raw, _SMOOTH_ITERATIONS),
@@ -326,7 +353,11 @@ def build_automesh(
     inner_world: Contour2D = []
     if len(inner_pixels) >= 3:
         inner_world_raw = pixel_contour_to_world(
-            to_float_contour(inner_pixels), downscale_factor, world_scale
+            to_float_contour(inner_pixels),
+            downscale_factor,
+            world_scale,
+            source_width,
+            source_height,
         )
         # Inner contour uses ~half the outer vertex count so the
         # ring of triangles between loops has reasonable aspect ratio.

@@ -23,13 +23,18 @@ from typing import ClassVar
 import bpy
 from bpy.props import (
     BoolProperty,
+    EnumProperty,
     FloatProperty,
     IntProperty,
 )
 
 from ..core.bpy_helpers.automesh_bmesh import (  # type: ignore[import-not-found]
+    _STAGE_BY_INDEX,
     build_automesh,
     collect_bone_segments,
+)
+from ..core.bpy_helpers.automesh_debug import (  # type: ignore[import-not-found]
+    clear_debug_objects,
 )
 from ..core.report import (  # type: ignore[import-not-found]
     report_error,
@@ -144,6 +149,25 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
         min=1,
         max=8,
     )
+    debug_stage: EnumProperty(  # type: ignore[valid-type]
+        name="Debug stage",
+        description="Stop the pipeline at a stage + emit a debug companion",
+        items=[
+            ("off", "Off", "Full pipeline"),
+            ("raw_contours", "1 Raw contours", "Pixel-stair contours, pre-smoothing"),
+            ("smoothed", "2 Smoothed", "Post-Laplacian contours"),
+            ("resampled", "3 Resampled", "Post-arc-length verts that enter the bmesh"),
+            ("interior_points", "4 Interior points", "Steiner points pre-insertion"),
+            ("bridges", "5 Bridges", "Outer + inner + radial bridge edges, no fill"),
+            (
+                "fill_no_interior",
+                "6 Triangle fill",
+                "After triangle_fill, before interior insertion",
+            ),
+            ("final", "Final", "Full pipeline + clear prior debug companions"),
+        ],
+        default="off",
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -165,6 +189,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 self.density_under_bones = bool(skinning.automesh_density_under_bones)
                 self.bone_radius = float(skinning.automesh_bone_radius)
                 self.bone_factor = int(skinning.automesh_bone_factor)
+                self.debug_stage = str(skinning.debug_stage)
         return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -232,25 +257,73 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 bone_segments=bone_segments,
                 bone_density_radius=self.bone_radius if bone_segments else 0.0,
                 bone_density_factor=self.bone_factor if bone_segments else 1,
+                debug_stage=self.debug_stage,  # type: ignore[arg-type]
             )
         except ValueError as exc:
             report_error(self, f"automesh failed: {exc}")
             return {"CANCELLED"}
 
-        report_info(
-            self,
-            (
-                f"automesh built: {counters['outer_verts']} outer + "
-                f"{counters['inner_verts']} inner + "
-                f"{counters['interior_verts']} interior = "
-                f"{counters['total_verts']} total, "
-                f"{counters['total_faces']} faces"
-            ),
-        )
+        stage_index = counters.get("_debug_stage_index", 0)
+        stage_label = _STAGE_BY_INDEX.get(stage_index, "off")
+        if stage_label not in ("off", "final"):
+            extras = ""
+            if "bridge_offset" in counters:
+                extras = f", bridge_offset={counters['bridge_offset']}"
+            report_info(
+                self,
+                (
+                    f"automesh DEBUG '{stage_label}': "
+                    f"{counters['outer_verts']} outer + "
+                    f"{counters['inner_verts']} inner + "
+                    f"{counters['interior_verts']} interior"
+                    f"{extras} (companion in Proscenio.Debug collection)"
+                ),
+            )
+        else:
+            report_info(
+                self,
+                (
+                    f"automesh built: {counters['outer_verts']} outer + "
+                    f"{counters['inner_verts']} inner + "
+                    f"{counters['interior_verts']} interior = "
+                    f"{counters['total_verts']} total, "
+                    f"{counters['total_faces']} faces"
+                ),
+            )
         return {"FINISHED"}
 
 
-_classes: tuple[type, ...] = (PROSCENIO_OT_automesh_from_sprite,)
+class PROSCENIO_OT_clear_automesh_debug(bpy.types.Operator):
+    """Remove every automesh debug companion for the active sprite."""
+
+    bl_idname = "proscenio.clear_automesh_debug"
+    bl_label = "Proscenio: Clear Automesh Debug"
+    bl_description = (
+        "Remove every wireframe debug companion (raw contours / smoothed "
+        "/ resampled / interior points / bridges / triangle fill) for the "
+        "active sprite. Companions live in the Proscenio.Debug collection"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        return obj is not None and obj.type == "MESH"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj = context.active_object
+        if obj is None or obj.type != "MESH":
+            report_error(self, "active object must be a mesh")
+            return {"CANCELLED"}
+        removed = clear_debug_objects(obj)
+        report_info(self, f"removed {removed} debug companion(s) for '{obj.name}'")
+        return {"FINISHED"}
+
+
+_classes: tuple[type, ...] = (
+    PROSCENIO_OT_automesh_from_sprite,
+    PROSCENIO_OT_clear_automesh_debug,
+)
 
 
 def register() -> None:

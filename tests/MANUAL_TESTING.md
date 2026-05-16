@@ -318,7 +318,18 @@ Sequência:
 - [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
 - [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
 - [ ] T15 - Reload Scripts após automesh ON -> operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
-- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` retorna 87 pass.
+- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` retorna 94+ pass.
+
+**Debug stages** (Skinning > Debug pipeline sub-box):
+
+- [ ] T17 - Stage = "1 Raw contours" + Automesh `blob` -> companion `blob_debug_raw_contours` aparece em collection `Proscenio.Debug`, wireframe mostra contornos pixel-stair (não smoothed). Mesh original `blob` permanece intacta (não foi reescrita).
+- [ ] T18 - Stage = "2 Smoothed" -> companion `blob_debug_smoothed` mostra contornos arredondados após 3 passes Laplacian.
+- [ ] T19 - Stage = "3 Resampled" -> companion `blob_debug_resampled` mostra outer/inner verts equispaçados (64 outer + 64 inner).
+- [ ] T20 - Stage = "4 Interior points" -> companion `blob_debug_interior_points` mostra Steiner points distribuídos no annulus (sem connectivity edges).
+- [ ] T21 - Stage = "5 Bridges" -> companion `blob_debug_bridges` mostra outer + inner cyclic + radial bridges (sem triangulação ainda). User pode visualmente verificar se bridges estão alinhadas radialmente ou cruzando o annulus diagonalmente (bug).
+- [ ] T22 - Stage = "6 Triangle fill" -> mesh `blob` agora MOSTRA o annulus pós-triangle_fill mas SEM interior Steiner inseridos. User vê o strip de trapézios cru.
+- [ ] T23 - Stage = "Final" + Automesh -> full pipeline + companions debug são limpas automaticamente.
+- [ ] T24 - Click `Clear Debug Companions` button -> todos companions `blob_debug_*` removidos da collection `Proscenio.Debug` em uma operação.
 
 Bugs encontrados durante smoke vão para `tests/BUGS_FOUND.md`.
 

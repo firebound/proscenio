@@ -53,6 +53,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
             picker_row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
 
         _draw_automesh_box(layout, skinning_props)
+        _draw_debug_box(layout, skinning_props)
 
 
 def _draw_automesh_box(
@@ -79,6 +80,30 @@ def _draw_automesh_box(
         "proscenio.automesh_from_sprite",
         text="Automesh from Sprite",
         icon="MOD_REMESH",
+    )
+
+
+def _draw_debug_box(
+    layout: bpy.types.UILayout,
+    skinning_props: bpy.types.PropertyGroup | None,
+) -> None:
+    """Sub-box exposing the Automesh debug stage enum + clear button.
+
+    Stage selection survives to the operator via ProscenioSkinningProps
+    so the user can pick a stage from the panel and click the main
+    Automesh button (which reads the PG at invoke time). The Clear
+    button below is a separate operator that nukes every debug
+    companion for the active sprite.
+    """
+    if skinning_props is None:
+        return
+    box = layout.box()
+    box.label(text="Debug pipeline", icon="EXPERIMENTAL")
+    box.prop(skinning_props, "debug_stage", text="")
+    box.operator(
+        "proscenio.clear_automesh_debug",
+        text="Clear Debug Companions",
+        icon="TRASH",
     )
 
 

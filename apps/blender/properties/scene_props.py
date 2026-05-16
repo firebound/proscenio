@@ -10,6 +10,7 @@ from __future__ import annotations
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
+    EnumProperty,
     FloatProperty,
     IntProperty,
     PointerProperty,
@@ -169,6 +170,58 @@ class ProscenioSkinningProps(PropertyGroup):
         default=2,
         min=1,
         max=8,
+    )
+    debug_stage: EnumProperty(  # type: ignore[valid-type]
+        name="Debug stage",
+        description=(
+            "Stop the automesh pipeline at the named stage + emit a "
+            "wireframe companion object into the Proscenio.Debug "
+            "collection so the user can inspect intermediate output. "
+            "Off / Final run the full pipeline normally; non-final "
+            "stages skip the bmesh write into the active sprite"
+        ),
+        items=[
+            ("off", "Off", "Run the full pipeline, no debug companions"),
+            (
+                "raw_contours",
+                "1 - Raw contours",
+                "Stop after Moore Neighbour tracing + world conversion; "
+                "shows pixel-stair contours before any smoothing",
+            ),
+            (
+                "smoothed",
+                "2 - Smoothed",
+                "Stop after Laplacian smoothing of the raw contours",
+            ),
+            (
+                "resampled",
+                "3 - Resampled",
+                "Stop after arc-length resampling; these are the actual verts that enter the bmesh",
+            ),
+            (
+                "interior_points",
+                "4 - Interior points",
+                "Stop after generating Steiner interior points (uniform grid + bone-aware density)",
+            ),
+            (
+                "bridges",
+                "5 - Bridges",
+                "Stop after computing radial bridge offset; shows the "
+                "outer + inner verts + planned bridge edges (no fill)",
+            ),
+            (
+                "fill_no_interior",
+                "6 - Triangle fill (no interior)",
+                "Stop after bmesh.ops.triangle_fill; mesh shows the "
+                "strip annulus before interior Steiner points are inserted",
+            ),
+            (
+                "final",
+                "Final",
+                "Run the full pipeline AND clear any prior debug companions for the sprite",
+            ),
+        ],
+        default="off",
     )
 
 

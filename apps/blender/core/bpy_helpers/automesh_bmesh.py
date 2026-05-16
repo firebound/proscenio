@@ -29,7 +29,7 @@ calls). Operator + panel live in their own modules and call
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import bmesh
 
@@ -49,6 +49,12 @@ from ..automesh_geometry import (
     laplacian_smooth,
     to_float_contour,
 )
+from .automesh_debug import (
+    clear_debug_objects,
+    emit_bridges_debug,
+    emit_contour_debug,
+    emit_points_debug,
+)
 
 if TYPE_CHECKING:
     from bpy.types import Bone, Image, Object
@@ -65,6 +71,28 @@ _SMOOTH_ITERATIONS = 3
 before triangulation. Three passes is the COA Tools 2 default and
 empirically the sweet spot between staircase suppression and
 silhouette drift."""
+
+
+DebugStage = Literal[
+    "off",
+    "raw_contours",
+    "smoothed",
+    "resampled",
+    "interior_points",
+    "bridges",
+    "fill_no_interior",
+    "final",
+]
+"""Debug stages the operator can stop at + visualize.
+
+Each non-``off`` stage runs the pipeline up to that point, emits
+a companion wireframe object via ``automesh_debug``, and returns
+early (no bmesh write into the active sprite). The user can step
+through stages to pinpoint which step produced bad output.
+
+``final`` matches ``off`` behavior except it clears any prior
+debug companions for the sprite so reruns leave the scene clean.
+"""
 
 
 def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
@@ -301,6 +329,51 @@ def _insert_interior_points(
     return inserted
 
 
+def _debug_stage_report(
+    stage: DebugStage,
+    outer_count: int,
+    inner_count: int,
+    interior_count: int = 0,
+    bridge_offset: int | None = None,
+    total_verts: int | None = None,
+    total_faces: int | None = None,
+) -> dict[str, int]:
+    """Build the counter dict the operator surfaces after a debug stop.
+
+    Reuses the same key shape as the normal ``build_automesh``
+    return so the operator's INFO formatter has one code path,
+    plus a ``debug_stage`` marker the operator surfaces in the
+    user-facing report.
+    """
+    report: dict[str, int] = {
+        "outer_verts": outer_count,
+        "inner_verts": inner_count,
+        "interior_verts": interior_count,
+        "total_verts": total_verts if total_verts is not None else 0,
+        "total_faces": total_faces if total_faces is not None else 0,
+    }
+    # Encode stage label by stuffing the enum index - keeps the
+    # dict[str, int] signature so existing call sites stay typed.
+    # Operator reads the literal string back via _STAGE_INDEX.
+    report["_debug_stage_index"] = _STAGE_INDEX[stage]
+    if bridge_offset is not None:
+        report["bridge_offset"] = bridge_offset
+    return report
+
+
+_STAGE_INDEX: dict[DebugStage, int] = {
+    "off": 0,
+    "raw_contours": 1,
+    "smoothed": 2,
+    "resampled": 3,
+    "interior_points": 4,
+    "bridges": 5,
+    "fill_no_interior": 6,
+    "final": 7,
+}
+_STAGE_BY_INDEX: dict[int, DebugStage] = {value: key for key, value in _STAGE_INDEX.items()}
+
+
 def build_automesh(
     obj: Object,
     image: Image,
@@ -314,6 +387,7 @@ def build_automesh(
     bone_segments: list[BoneSegment2D] | None = None,
     bone_density_radius: float = 0.0,
     bone_density_factor: int = 1,
+    debug_stage: DebugStage = "off",
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -323,11 +397,20 @@ def build_automesh(
     INFO report: ``{"outer_verts", "inner_verts", "interior_verts",
     "total_verts", "total_faces"}``.
 
+    When ``debug_stage`` is non-``off``, the pipeline runs up to
+    that stage, emits a companion wireframe object into the
+    ``Proscenio.Debug`` collection, then returns early without
+    touching the active mesh. The counters dict carries
+    ``{"debug_stage": <name>, "debug_outer_verts": N, ...}`` so
+    the operator surfaces the snapshot in the INFO report.
+
     Raises ``ValueError`` when the alpha silhouette is empty or
     the image cannot be sampled - the operator pre-flight catches
     these before getting here so the user sees an actionable
     message rather than a stack trace.
     """
+    if debug_stage in ("off", "final"):
+        clear_debug_objects(obj)
     alpha_grid = read_alpha_grid(image, downscale_factor)
     # margin_pixels is expressed in SOURCE image pixels so the user's
     # mental model matches what they author in Photoshop / Pillow.
@@ -353,12 +436,7 @@ def build_automesh(
         source_width,
         source_height,
     )
-    outer_world = arc_length_resample(
-        laplacian_smooth(outer_world_raw, _SMOOTH_ITERATIONS),
-        target_contour_vertices,
-    )
-
-    inner_world: Contour2D = []
+    inner_world_raw: Contour2D = []
     if len(inner_pixels) >= 3:
         inner_world_raw = pixel_contour_to_world(
             to_float_contour(inner_pixels),
@@ -367,16 +445,31 @@ def build_automesh(
             source_width,
             source_height,
         )
-        # Inner contour uses the SAME vertex count as outer so the
-        # annulus can be triangulated as a clean strip of trapezoids
-        # via radial bridge edges (see build_annulus_edge_pairs).
-        # The old half-count heuristic forced constrained Delaunay to
-        # bridge mismatched densities + produced spiky fan triangles
-        # (regression caught in smoke validation).
-        inner_world = arc_length_resample(
-            laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS),
-            target_contour_vertices,
-        )
+
+    if debug_stage == "raw_contours":
+        emit_contour_debug(obj, "raw_contours", outer_world_raw, inner_world_raw)
+        return _debug_stage_report("raw_contours", len(outer_world_raw), len(inner_world_raw))
+
+    outer_smoothed = laplacian_smooth(outer_world_raw, _SMOOTH_ITERATIONS)
+    inner_smoothed = (
+        laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS) if inner_world_raw else []
+    )
+
+    if debug_stage == "smoothed":
+        emit_contour_debug(obj, "smoothed", outer_smoothed, inner_smoothed)
+        return _debug_stage_report("smoothed", len(outer_smoothed), len(inner_smoothed))
+
+    outer_world = arc_length_resample(outer_smoothed, target_contour_vertices)
+    # Inner contour uses the SAME vertex count as outer so the
+    # annulus can be triangulated as a clean strip of trapezoids
+    # via radial bridge edges (see build_annulus_edge_pairs).
+    inner_world: Contour2D = (
+        arc_length_resample(inner_smoothed, target_contour_vertices) if inner_smoothed else []
+    )
+
+    if debug_stage == "resampled":
+        emit_contour_debug(obj, "resampled", outer_world, inner_world)
+        return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
     interior_points = interior_points_for_annulus(
         outer_world,
@@ -386,6 +479,26 @@ def build_automesh(
         bone_density_radius=bone_density_radius,
         bone_density_factor=bone_density_factor,
     )
+
+    if debug_stage == "interior_points":
+        emit_points_debug(obj, "interior_points", interior_points)
+        return _debug_stage_report(
+            "interior_points",
+            len(outer_world),
+            len(inner_world),
+            interior_count=len(interior_points),
+        )
+
+    # Bridge offset = inner rotation that minimizes total radial
+    # bridge length, so the strip triangulation gets clean nearly-
+    # parallel sides instead of crossing the annulus diagonally.
+    bridge_offset = find_best_inner_rotation(outer_world, inner_world)
+
+    if debug_stage == "bridges":
+        emit_bridges_debug(obj, "bridges", outer_world, inner_world, bridge_offset)
+        return _debug_stage_report(
+            "bridges", len(outer_world), len(inner_world), bridge_offset=bridge_offset
+        )
 
     base_group_index, _is_fresh = _initialize_base_sprite_group(obj)
     _delete_non_base_geometry(obj, base_group_index)
@@ -399,10 +512,6 @@ def build_automesh(
     bm.verts.ensure_lookup_table()
 
     boundary_verts = outer_verts + inner_verts
-    # Bridge offset = inner rotation that minimizes total radial
-    # bridge length, so the strip triangulation gets clean nearly-
-    # parallel sides instead of crossing the annulus diagonally.
-    bridge_offset = find_best_inner_rotation(outer_world, inner_world)
     edge_pairs = build_annulus_edge_pairs(len(outer_verts), len(inner_verts), bridge_offset)
     bmesh_edges = []
     for start_index, end_index in edge_pairs:
@@ -415,6 +524,18 @@ def build_automesh(
         use_beauty=True,
         use_dissolve=False,
     )
+
+    if debug_stage == "fill_no_interior":
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.update()
+        return _debug_stage_report(
+            "fill_no_interior",
+            len(outer_world),
+            len(inner_world),
+            total_verts=len(mesh.vertices),
+            total_faces=len(mesh.polygons),
+        )
 
     # Insert interior Steiner points into the just-triangulated annulus
     # (D15 density-under-bones). triangle_fill leaves loose verts

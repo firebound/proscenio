@@ -117,7 +117,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
     )
     margin_pixels: IntProperty(  # type: ignore[valid-type]
         name="Margin (px)",
-        default=5,
+        default=0,
         min=0,
         max=100,
     )

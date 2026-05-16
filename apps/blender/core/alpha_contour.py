@@ -299,5 +299,13 @@ def extract_contour_pair(
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")
     outer = extract_outer_contour(alpha, threshold, margin_px)
+    if margin_px == 0:
+        # No dilate / erode = outer and inner would trace the same
+        # alpha boundary, producing duplicate constraints in the
+        # downstream triangulator. Treat as single-contour mode
+        # (no annulus) - this is the recommended default per smoke
+        # validation; annulus only ships as an opt-in for users who
+        # explicitly want extra edge-loop density at the boundary.
+        return (outer, [])
     inner = extract_inner_contour(alpha, threshold, margin_px)
     return (outer, inner)

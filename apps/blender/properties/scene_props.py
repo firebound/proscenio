@@ -104,14 +104,18 @@ class ProscenioSkinningProps(PropertyGroup):
         max=255,
     )
     automesh_margin_pixels: IntProperty(  # type: ignore[valid-type]
-        name="Boundary margin",
+        name="Boundary margin (annulus)",
         description=(
-            "Dilate (outer) / erode (inner) the contour by this many "
-            "pixels. Controls annulus thickness - higher values give "
-            "thicker silhouette ring of edge loops. Zero falls back "
-            "to a single-contour flat triangulation."
+            "Source-pixel margin that builds an ANNULUS topology "
+            "(dilated outer ring + eroded inner ring + Constrained "
+            "Delaunay between them). Zero (default) skips the annulus "
+            "and produces a single-contour flat triangulation - the "
+            "common case for 2D skinning (matches Spine / DragonBones). "
+            "Set > 0 only when you want extra edge-loop density at the "
+            "silhouette for fine border deformation control (cape, "
+            "hair, ribbon)."
         ),
-        default=5,
+        default=0,
         min=0,
         max=100,
     )

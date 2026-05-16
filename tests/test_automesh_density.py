@@ -28,6 +28,7 @@ from core.automesh_density import (  # noqa: E402  - sys.path setup above
     bounding_box,
     distance_to_segment,
     filter_inside_annulus,
+    filter_points_too_close_to_boundary,
     interior_points_for_annulus,
     point_in_polygon,
     uniform_interior_grid,
@@ -190,6 +191,36 @@ class TestBoneAwareSubdivision:
         out = bone_aware_subdivision(base, bones, 5.0, 4)
         # factor=4 means 3 extras per influenced point.
         assert len(out) == 4
+
+
+class TestFilterPointsTooCloseToBoundary:
+    def test_zero_distance_returns_all(self) -> None:
+        points: list[Point2D] = [(0.0, 0.0), (1.0, 1.0)]
+        boundary: list[Point2D] = [(0.5, 0.5)]
+        out = filter_points_too_close_to_boundary(points, boundary, 0.0)
+        assert out == points
+
+    def test_empty_boundary_returns_all(self) -> None:
+        points: list[Point2D] = [(0.0, 0.0), (1.0, 1.0)]
+        out = filter_points_too_close_to_boundary(points, [], 0.5)
+        assert out == points
+
+    def test_drops_points_within_threshold(self) -> None:
+        points: list[Point2D] = [
+            (0.0, 0.0),  # exactly on boundary -> drop
+            (0.05, 0.0),  # within 0.1 threshold -> drop
+            (1.0, 0.0),  # far away -> keep
+        ]
+        boundary: list[Point2D] = [(0.0, 0.0)]
+        out = filter_points_too_close_to_boundary(points, boundary, 0.1)
+        assert out == [(1.0, 0.0)]
+
+    def test_keeps_points_at_exact_threshold(self) -> None:
+        # Strictly less than threshold is dropped; equal is kept.
+        points: list[Point2D] = [(0.1, 0.0)]
+        boundary: list[Point2D] = [(0.0, 0.0)]
+        out = filter_points_too_close_to_boundary(points, boundary, 0.1)
+        assert out == [(0.1, 0.0)]
 
 
 class TestInteriorPointsForAnnulus:

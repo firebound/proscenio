@@ -41,6 +41,7 @@ from ..alpha_contour import (
 )
 from ..automesh_density import (
     BoneSegment2D,
+    filter_points_too_close_to_boundary,
     interior_points_for_annulus,
 )
 from ..automesh_geometry import (
@@ -730,6 +731,18 @@ def build_automesh(
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,
         bone_density_factor=bone_density_factor,
+    )
+
+    # Drop Steiner points landing within half-spacing of any boundary
+    # vert - otherwise Constrained Delaunay keeps both as distinct
+    # verts (the default epsilon=1e-6 snap is much tighter than the
+    # closeness we get from a uniform grid randomly landing near a
+    # contour vert). Visible as "phantom" verts clustered at the
+    # silhouette in PR #51 smoke.
+    boundary_for_filter = list(outer_world) + list(inner_world)
+    min_separation = max(interior_spacing * 0.5, 1e-3)
+    interior_points = filter_points_too_close_to_boundary(
+        interior_points, boundary_for_filter, min_separation
     )
 
     if debug_stage == "interior_points":

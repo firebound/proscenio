@@ -222,6 +222,44 @@ def bone_aware_subdivision(
     return output
 
 
+def filter_points_too_close_to_boundary(
+    points: list[Point2D],
+    boundary_verts: list[Point2D],
+    min_distance: float,
+) -> list[Point2D]:
+    """Drop Steiner points within ``min_distance`` of any boundary vert.
+
+    Constrained Delaunay does not auto-merge near-coincident verts
+    when they sit just above the snap epsilon (default 1e-6). Result:
+    pairs of clustered verts at the boundary where a grid Steiner
+    point happened to land within a fraction of a pixel of an outer
+    contour vert (regression caught in PR #51 smoke - visible as
+    "phantom" close verts near the silhouette edge).
+
+    Pre-filter on the pure-Python side keeps the Steiner grid clean
+    before it enters Delaunay; downstream sees only well-separated
+    points and produces well-shaped triangles.
+
+    O(N * M) where N = Steiner candidates, M = boundary verts. Both
+    small in practice (~100 each); cost negligible.
+    """
+    if min_distance <= 0.0 or not boundary_verts:
+        return list(points)
+    threshold_sq = min_distance * min_distance
+    kept: list[Point2D] = []
+    for px, py in points:
+        too_close = False
+        for bx, by in boundary_verts:
+            dx = px - bx
+            dy = py - by
+            if dx * dx + dy * dy < threshold_sq:
+                too_close = True
+                break
+        if not too_close:
+            kept.append((px, py))
+    return kept
+
+
 def interior_points_for_annulus(
     outer: list[Point2D],
     inner: list[Point2D],

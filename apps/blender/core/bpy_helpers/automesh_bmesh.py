@@ -28,6 +28,7 @@ calls). Operator + panel live in their own modules and call
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal
 
@@ -44,7 +45,6 @@ from ..automesh_density import (
 from ..automesh_geometry import (
     Contour2D,
     arc_length_resample,
-    build_annulus_edge_pairs,
     find_best_inner_rotation,
     laplacian_smooth,
     to_float_contour,
@@ -329,6 +329,41 @@ def _insert_interior_points(
     return inserted
 
 
+def _build_annulus_strip(
+    bm: bmesh.types.BMesh,
+    outer_verts: list[bmesh.types.BMVert],
+    inner_verts: list[bmesh.types.BMVert],
+    bridge_offset: int,
+) -> None:
+    """Build N cells of 2 triangles each across the outer/inner ring.
+
+    Cell i connects outer[i], outer[(i+1) % N], inner[i + offset],
+    inner[(i+1) % N + offset] - 4 verts forming a trapezoid. Each
+    trapezoid splits into two triangles along the outer[i+1]->
+    inner[i + offset] diagonal. Result: 2N triangles forming a
+    clean strip annulus, no orientation ambiguity, no triangulator
+    misdetection of the inner ring as a fillable face.
+
+    Defensive: ``bm.faces.new`` raises ``ValueError`` if the face
+    already exists or if verts are collinear. We swallow + continue
+    so a single bad cell does not abort the whole strip.
+    """
+    n = len(outer_verts)
+    if n == 0 or n != len(inner_verts):
+        return
+    normalized_offset = bridge_offset % n
+    for i in range(n):
+        next_i = (i + 1) % n
+        inner_curr = (i + normalized_offset) % n
+        inner_next = (next_i + normalized_offset) % n
+        # Triangle 1: outer[i] -> outer[next_i] -> inner[inner_curr]
+        # Triangle 2: outer[next_i] -> inner[inner_next] -> inner[inner_curr]
+        with contextlib.suppress(ValueError):
+            bm.faces.new((outer_verts[i], outer_verts[next_i], inner_verts[inner_curr]))
+        with contextlib.suppress(ValueError):
+            bm.faces.new((outer_verts[next_i], inner_verts[inner_next], inner_verts[inner_curr]))
+
+
 def _debug_stage_report(
     stage: DebugStage,
     outer_count: int,
@@ -511,19 +546,31 @@ def build_automesh(
     inner_verts = [bm.verts.new((x, 0.0, y)) for (x, y) in inner_world]
     bm.verts.ensure_lookup_table()
 
-    boundary_verts = outer_verts + inner_verts
-    edge_pairs = build_annulus_edge_pairs(len(outer_verts), len(inner_verts), bridge_offset)
-    bmesh_edges = []
-    for start_index, end_index in edge_pairs:
-        edge = bm.edges.new((boundary_verts[start_index], boundary_verts[end_index]))
-        bmesh_edges.append(edge)
-
-    bmesh.ops.triangle_fill(
-        bm,
-        edges=bmesh_edges,
-        use_beauty=True,
-        use_dissolve=False,
-    )
+    if inner_verts and len(outer_verts) == len(inner_verts):
+        # Annulus strip: build N cells of 2 triangles each directly.
+        # bmesh.ops.triangle_fill with both loops + bridges in same
+        # orientation mis-detected the inner ring as a fillable face
+        # and fan-triangulated the hole (regression caught in smoke
+        # validation; visible as spiky verticals crossing the annulus
+        # center). Manual quad-split has no orientation ambiguity:
+        # we know exactly which pairs of outer / inner verts belong
+        # to each cell after find_best_inner_rotation aligned them.
+        _build_annulus_strip(bm, outer_verts, inner_verts, bridge_offset)
+    else:
+        # Fallback for thin silhouettes with no inner ring: fill the
+        # outer loop as a single n-gon polygon, then triangulate via
+        # bmesh.ops.triangulate. No bridges involved so the
+        # orientation issue does not occur.
+        outer_edges = [
+            bm.edges.new((outer_verts[i], outer_verts[(i + 1) % len(outer_verts)]))
+            for i in range(len(outer_verts))
+        ]
+        bmesh.ops.triangle_fill(
+            bm,
+            edges=outer_edges,
+            use_beauty=True,
+            use_dissolve=False,
+        )
 
     if debug_stage == "fill_no_interior":
         bm.to_mesh(mesh)

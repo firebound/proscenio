@@ -43,7 +43,7 @@ Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users auth
 
 ### Skinning weights export
 
-Vertex group weights are read in the inspector but the writer only emits rigid attachment. Phase 2 (SPEC 003) is the planned home for this - see SPEC 000 Q3.
+**Resolved by [SPEC 003](003-skinning-weights/STUDY.md)** - writer normalizes per-vertex weight sums and emits the bone-major `weights` array; Godot importer (`polygon_builder.gd`) branches into `Polygon2D.skeleton` + `add_bone()` when weights are present. **Authoring side resolved by [SPEC 013](013-weight-paint-automesh/STUDY.md)** Wave 13.1 - pure-Python automesh, planar-proximity bind, weight paint modal wrapper with 2D-safe preset, weight sidecar that survives mesh regen.
 
 ### Atlas region authoring helper
 
@@ -76,6 +76,28 @@ Items deferred from [SPEC 012](012-quick-armature-ux/STUDY.md) STUDY out-of-scop
 - **D11 local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
 
 The remaining SPEC 012 deferred items are now [`successor SPECs`](012-quick-armature-ux/STUDY.md#successor-considerations): auto-attach mesh / sprite to bone (needs SPEC 004 maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
+
+### SPEC 013 Wave 13.2 candidates (weight paint + automesh productivity)
+
+Items locked as Wave 13.2 in [SPEC 013](013-weight-paint-automesh/STUDY.md) Design surface > Out of scope + [TODO Wave 13.2](013-weight-paint-automesh/TODO.md#wave-132---productivity-polish-deferred). Each is a self-contained productivity refinement on top of the Wave 13.1 first cut; they do not require a new SPEC, only a 013.2 wave when demand justifies the work.
+
+- **Soft vs Hard bone toggle (D16, Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
+- **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value Wave 13.2 candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
+- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active) and applies the same algorithm against the picker armature. Trigger: imported-character workflow with N sprites + 1 rig stresses this.
+- **Weight transfer between sprites.** `proscenio.copy_weights_to_selected` operator. Active mesh = source; selected meshes = targets; nearest-world-position vertex lookup copies weight dict. Solves COA Tools 2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73). Foundational for Live2D-style line / colour / shadow layered sprites.
+- **Live pose-mode preview in weight paint.** Scrub bone to posed angle / see deformation / scrub back without leaving Edit Weights modal. Adds pose-scrub overlay + hotkey to toggle rest pose. Trigger: user wants verify weights vs deformed pose without modal exit.
+- **Sidecar import / export.** Operator dumps weight sidecar JSON to file + loads from file. Enables version-controlled weight backups outside the `.blend`. Trigger: user asks to back up weight work to git.
+- **Brush curve presets dropdown.** Quick-select brush curve presets named for common 2D tasks (Hard edge / Soft falloff / Crease / Smooth blend) via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
+
+### SPEC 013 Wave 13.3 candidates (aspirational)
+
+Heavier lifts than Wave 13.2; each is a candidate for a follow-up SPEC if the demand surfaces. Listed here so the future reader sees what was considered + why deferred.
+
+- **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator: given two child meshes sharing a parent bone, generate the seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Requires both child-mesh detection (which sprites belong to which side of the articulation) and a custom seam generator (boundary-following triangulation). Trigger: humanoid fixture lands + user complains about inner-elbow gap.
+- **Cubism Glue equivalent.** Seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations). Trigger: layered-sprite use case stresses this.
+- **Smart-Bone-style corrective drivers (Moho lift).** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle, the addon emits a driver. Belongs in SPEC 014 (animation system) not SPEC 013 (authoring), but listed here for visibility because the trigger is the same as Auto-Patch.
+- **Mirror humanoid binding.** One mesh on one side, click to mirror to other. Couples to symmetric rigs. Trigger: first humanoid fixture lands end-to-end.
+- **Bezier brush stroke for alpha-boundary trace.** Adds a D1.B free-draw path on top of D1.A one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (D12 helpers already in place from Wave 13.1).
 
 ### Blender 4.3 legacy actions compatibility
 

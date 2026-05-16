@@ -527,13 +527,21 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # first invoke).
         existing = context.scene.objects.get(_QUICK_RIG_NAME)
         if existing is not None and existing.type == "ARMATURE":
-            cls._target_armature_name = _QUICK_RIG_NAME
+            # Always store the actual scene-object name (after Blender's
+            # dedupe pass), never the literal _QUICK_RIG_NAME. If a
+            # stale orphan data block exists in bpy.data, ``bpy.data
+            # .objects.new(_QUICK_RIG_NAME, ...)`` returns a name like
+            # ``"Proscenio.QuickRig.001"`` and storing the literal here
+            # would make ``_create_bone`` silently drop every drag
+            # because ``scene.objects.get("Proscenio.QuickRig")`` would
+            # not find the freshly linked .001 object.
+            cls._target_armature_name = existing.name
             return existing
         arm_data = bpy.data.armatures.new(_QUICK_RIG_NAME)
         arm_obj = bpy.data.objects.new(_QUICK_RIG_NAME, arm_data)
         context.scene.collection.objects.link(arm_obj)
         cls._created_armature_this_session = True
-        cls._target_armature_name = _QUICK_RIG_NAME
+        cls._target_armature_name = arm_obj.name
         # Auto-promote the freshly created QuickRig to the explicit
         # active_armature pointer so subsequent skeleton ops see the
         # same target without surprise.

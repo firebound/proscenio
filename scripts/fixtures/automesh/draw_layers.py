@@ -67,25 +67,43 @@ def _to_8bit(color: tuple[float, float, float, float]) -> tuple[int, int, int, i
 
 
 def _draw_hand() -> Canvas:
-    """Stylized hand silhouette: 3-finger palm + thumb + extended index.
+    """Stylized hand silhouette: palm + 4 fingers + thumb.
 
-    Tuned so the contour walker has to round 4 distinct finger tips,
-    walk the gaps between fingers, and follow the curved palm edge.
+    Anatomical layout for a right-hand-facing-viewer pose:
+    - Palm: rounded rectangle in the lower-center of the canvas.
+    - 4 fingers (index, middle, ring, pinkie) extending up from the
+      palm top, decreasing in height pinkie -> middle for the
+      typical hand silhouette.
+    - Thumb: angled rounded rectangle off the LEFT side of the palm
+      mid-height, the classic "T-shape" of a flat hand.
+    Tuned so the contour walker has to round 5 distinct fingertips,
+    walk 4 inter-finger gaps + 1 thumb-palm seam, and follow the
+    curved palm edge.
     """
     canvas = Canvas.empty(FRAME, FRAME)
     fill(canvas, BG)
     draw = ImageDraw.Draw(canvas.image)
     color = _to_8bit(HAND_COLOR)
-    palm_box = (60, 90, 145, 175)
-    draw.rounded_rectangle(palm_box, radius=18, fill=color)
+    # Palm: lower half of the canvas, centered.
+    palm_box = (65, 95, 145, 175)
+    draw.rounded_rectangle(palm_box, radius=16, fill=color)
+    # 4 fingers extending UP from palm top (y=95). Heights vary:
+    # middle longest, index + ring slightly shorter, pinkie shortest.
+    # Each finger is ~16px wide with 4px gaps between.
     fingers = (
-        (72, 30, 90, 110),
-        (95, 25, 113, 105),
-        (118, 30, 136, 110),
-        (135, 65, 165, 130),
+        (68, 35, 84, 100),   # index
+        (88, 25, 104, 100),  # middle (tallest)
+        (108, 30, 124, 100), # ring
+        (128, 45, 144, 100), # pinkie (shortest)
     )
     for x0, y0, x1, y1 in fingers:
-        draw.rounded_rectangle((x0, y0, x1, y1), radius=10, fill=color)
+        draw.rounded_rectangle((x0, y0, x1, y1), radius=8, fill=color)
+    # Thumb: slimmer rounded rectangle off the LEFT side of palm at
+    # mid-height. Roughly finger-thickness (20px wide, vs 16px
+    # finger width) and tall-ish (50px) so silhouette reads as a
+    # thumb, not a ball stuck to the palm. Overlaps palm left edge
+    # (x=65) by 3px to stay one connected blob.
+    draw.rounded_rectangle((48, 100, 68, 150), radius=8, fill=color)
     return canvas
 
 

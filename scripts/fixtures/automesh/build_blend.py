@@ -153,10 +153,16 @@ def _build_sprite_quad(
     )
     mesh.update()
     uv = mesh.uv_layers.new(name="UVMap")
-    uv.data[0].uv = (1.0, 0.0)
-    uv.data[1].uv = (0.0, 0.0)
-    uv.data[2].uv = (0.0, 1.0)
-    uv.data[3].uv = (1.0, 1.0)
+    # Direct UV mapping (matches shared_atlas convention). The
+    # atlas_pack-derived U-flip was a misapplied workaround for
+    # Blender's Front Ortho view direction; in the actual default
+    # Front Ortho (-Y look direction) it causes a horizontal mirror
+    # of the texture on the sprite plane (visible as wrist on wrong
+    # side for asymmetric content).
+    uv.data[0].uv = (0.0, 0.0)
+    uv.data[1].uv = (1.0, 0.0)
+    uv.data[2].uv = (1.0, 1.0)
+    uv.data[3].uv = (0.0, 1.0)
 
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)

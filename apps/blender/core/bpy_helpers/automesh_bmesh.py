@@ -134,8 +134,23 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     # margin setting.
     grid: AlphaGrid = [[0] * target_w for _ in range(target_h)]
     block_size = max(1, round(1.0 / downscale_factor))
+    # Y-flip on read: Blender image.pixels[] is stored bottom-up
+    # (OpenGL convention - pixels[0] is the visual BOTTOM-LEFT of
+    # the PIL-saved PNG). Downstream code treats grid[0] as the
+    # visual TOP of the image (PIL natural convention) so we flip
+    # the source-Y index when reading. Without this flip, the mesh
+    # silhouette ends up upside-down relative to the texture: mesh
+    # extracted from PIL-bottom of alpha (read at grid[0] via the
+    # un-flipped index) lands at world top after
+    # pixel_contour_to_world, but the texture rendered at world top
+    # is the visual top (Blender samples pixels[(H-1)*W] for v=1).
+    # User-visible result: hand mesh has palm at top + fingers
+    # pointing down, while the texture displays palm at bottom +
+    # fingers pointing up - mesh shape and texture pattern do not
+    # align.
     for target_y in range(target_h):
-        source_y_start = min(int(target_y / downscale_factor), source_h - 1)
+        flipped_target_y = target_h - 1 - target_y
+        source_y_start = min(int(flipped_target_y / downscale_factor), source_h - 1)
         source_y_end = min(source_y_start + block_size, source_h)
         row = grid[target_y]
         for target_x in range(target_w):
@@ -192,7 +207,18 @@ def pixel_contour_to_world(
     factor = world_scale / downscale_factor
     half_w = source_width * world_scale / 2.0
     half_h = source_height * world_scale / 2.0
-    return [(x * factor - half_w, half_h - y * factor) for (x, y) in contour]
+    # Place verts at the CENTER of each boundary cell, not the
+    # left-top corner. The corner convention biased margins by side:
+    # left/top got OUTWARD vert placement (margin), right/bottom got
+    # INWARD placement (CUT into alpha). User caught this as "top
+    # generous + bottom cuts" - asymmetric coverage.
+    # Centering moves the vert half-cell inward from corner so all
+    # 4 sides get symmetric ~half-cell-of-dilation margin.
+    half_cell = factor / 2.0
+    return [
+        (x * factor - half_w + half_cell, half_h - y * factor - half_cell)
+        for (x, y) in contour
+    ]
 
 
 def collect_bone_segments(
@@ -386,7 +412,12 @@ def _stamp_uvs(
         for loop_index in range(poly.loop_start, poly.loop_start + poly.loop_total):
             vert_index = mesh.loops[loop_index].vertex_index
             co = mesh.vertices[vert_index].co
-            u = (half_w - co.x) / (2.0 * half_w)
+            # Direct UV mapping (no U-flip). Matches the corrected
+            # fixture convention (shared_atlas-style). The
+            # atlas_pack-derived U-flip was misaligned with Blender's
+            # default Front Ortho view direction and produced a
+            # horizontal mirror on textured sprite planes.
+            u = (co.x + half_w) / (2.0 * half_w)
             v = (co.z + half_h) / (2.0 * half_h)
             uv_layer.data[loop_index].uv = (u, v)
 

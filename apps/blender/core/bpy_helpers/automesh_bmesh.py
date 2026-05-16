@@ -119,14 +119,36 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     pixels = list(image.pixels[:])
     target_w = max(1, int(source_w * downscale_factor))
     target_h = max(1, int(source_h * downscale_factor))
+    # Conservative downsample: each target cell = MAX alpha across
+    # all source pixels mapping to it (not NEAREST single sample).
+    # NEAREST would lose boundary pixels when the sampled source
+    # cell happens to be background while neighbors are foreground -
+    # silhouette shrinks inward by up to 1 downsampled cell, which
+    # at downscale=0.25 = 4 source pixels of lost coverage. User
+    # smoke caught this as "mesh boundary cuts inside the alpha"
+    # (PR #51 - INADIMISSÍVEL per user). MAX aggregation guarantees
+    # any visible pixel anywhere in the source block keeps the
+    # target cell foreground, so the silhouette expands by AT MOST
+    # 1 downsampled cell (= 4 source pixels at 0.25) outward. Acts
+    # as a built-in 1-pixel safety margin without the explicit
+    # margin setting.
     grid: AlphaGrid = [[0] * target_w for _ in range(target_h)]
+    block_size = max(1, round(1.0 / downscale_factor))
     for target_y in range(target_h):
-        source_y = min(int(target_y / downscale_factor), source_h - 1)
+        source_y_start = min(int(target_y / downscale_factor), source_h - 1)
+        source_y_end = min(source_y_start + block_size, source_h)
         row = grid[target_y]
         for target_x in range(target_w):
-            source_x = min(int(target_x / downscale_factor), source_w - 1)
-            alpha_index = (source_y * source_w + source_x) * 4 + 3
-            row[target_x] = int(pixels[alpha_index] * 255)
+            source_x_start = min(int(target_x / downscale_factor), source_w - 1)
+            source_x_end = min(source_x_start + block_size, source_w)
+            max_alpha = 0
+            for sy in range(source_y_start, source_y_end):
+                for sx in range(source_x_start, source_x_end):
+                    alpha_index = (sy * source_w + sx) * 4 + 3
+                    alpha = int(pixels[alpha_index] * 255)
+                    if alpha > max_alpha:
+                        max_alpha = alpha
+            row[target_x] = max_alpha
     return grid
 
 
@@ -850,7 +872,7 @@ def build_automesh(
     # - dense edge-loop band near silhouette comes for free because
     #   outer + inner verts constrained close together in a thin
     #   ring; Delaunay produces dense triangles between them
-    triangles_added = _build_mesh_via_delaunay(
+    _triangles_added = _build_mesh_via_delaunay(
         bm, outer_world, inner_world, interior_points
     )
 
@@ -866,7 +888,13 @@ def build_automesh(
             total_faces=len(mesh.polygons),
         )
 
-    interior_inserted = max(0, triangles_added - 2 * len(outer_world))
+    # Interior count = actual Steiner points that survived the
+    # filter + landed in the Delaunay output. Previously this was
+    # derived as (triangles - 2*outer) which made no sense after
+    # dropping the annulus strip (the formula assumed strip
+    # triangulation that no longer exists). Report the real Steiner
+    # count so the INFO line is meaningful.
+    interior_inserted = len(interior_points)
 
     # Recalculate normals so all faces point the same way.
     bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))

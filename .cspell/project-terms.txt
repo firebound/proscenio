@@ -1,5 +1,5 @@
 anims
-atraves
+através
 bboxes
 cheatsheet
 dejavu
@@ -12,15 +12,15 @@ esac
 frontmost
 goldens
 hframed
-icones
+ícones
 Jukka
 Jylänki
 keyframing
 leftmouse
 lineterm
 lipsync
-mutacao
-Opcao
+mutação
+Opção
 PLACEATBEGINNING
 PLACEATEND
 playhead
@@ -34,7 +34,7 @@ renameable
 reparent
 renderable
 rightmouse
-sessao
+sessão
 SHADERFX
 statictext
 Subbox

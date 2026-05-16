@@ -12,7 +12,7 @@ Distinto de UI_FEEDBACK.md (que cobre polish, não comportamento).
 
 ### Blender 5.1.1 crash em gizmo_button2d_draw apos view3d.snap_cursor_to_center (suspeito upstream)
 
-**Repro:** intermitente. Sessao SPEC 012.2 manual smoke (15-mai-2026): apos clear do active_armature picker + invoke Quick Armature + algumas operacoes de viewport, Blender crashou em `EXCEPTION_ACCESS_VIOLATION (NULL write)`. Last logged op: `bpy.ops.view3d.snap_cursor_to_center()`. Re-roda do mesmo workflow nao reproduziu.
+**Repro:** intermitente. Sessão SPEC 012.2 manual smoke (15-mai-2026): após clear do active_armature picker + invoke Quick Armature + algumas operações de viewport, Blender crashou em `EXCEPTION_ACCESS_VIOLATION (NULL write)`. Last logged op: `bpy.ops.view3d.snap_cursor_to_center()`. Re-roda do mesmo workflow não reproduziu.
 
 **Stack trace:**
 
@@ -28,37 +28,37 @@ blender.exe: DRW_draw_view
 blender.exe: view3d_main_region_draw
 ```
 
-**Analise:** stack 100% Blender internals. Nenhum frame Proscenio. `imm_draw_circle_fill_3d` (filled circle) nao e chamado pelos nossos overlays - usamos `LINE_LOOP` via `draw_circle_3d`. Modules carregados incluem AMD GPU drivers (`atio6axx.dll`, `amdihk64.dll`). Provavel: bug Blender 5.1.1 gizmo drawing OU AMD driver issue.
+**Análise:** stack 100% Blender internals. Nenhum frame Proscenio. `imm_draw_circle_fill_3d` (filled circle) não é chamado pelos nossos overlays - usamos `LINE_LOOP` via `draw_circle_3d`. Modules carregados incluem AMD GPU drivers (`atio6axx.dll`, `amdihk64.dll`). Provável: bug Blender 5.1.1 gizmo drawing OU AMD driver issue.
 
-**Mitigacao defensive (SPEC 012.2):** `on_depsgraph_update` handler (`apps/blender/properties/_handlers.py`) wrapped em `try/except Exception` blanket - depsgraph callbacks rodam dentro do draw/event loop e exception bubble-out pode deixar C side mid-state, candidato pra trigger crashes em draw subsequente. Handler agora swallow silenciosamente.
+**Mitigação defensive (SPEC 012.2):** `on_depsgraph_update` handler (`apps/blender/properties/_handlers.py`) wrapped em `try/except Exception` blanket - depsgraph callbacks rodam dentro do draw/event loop e exception bubble-out pode deixar C side mid-state, candidato pra trigger crashes em draw subsequente. Handler agora swallow silenciosamente.
 
-**Severity:** low - intermitente, nao reproduzido na re-tentativa, fora do nosso codigo. Mantido watch caso vire recorrente.
+**Severity:** low - intermitente, não reproduzido na re-tentativa, fora do nosso código. Mantido watch caso vire recorrente.
 
-**Trigger pra escalar:** se reproduzir 2x+ em sessoes diferentes -> file Blender bug report com este stack trace.
+**Trigger pra escalar:** se reproduzir 2x+ em sessões diferentes -> file Blender bug report com este stack trace.
 
 ### bpy.props annotations falham em Operator com PEP 563 + ClassVar referenciando tipo TYPE_CHECKING-only
 
 **Repro original (SPEC 012.1):** `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
 
-**Causa real (post-mortem refinado em SPEC 012.2 audit):** o problema **nao** e PEP 563 em si. E a combinacao tripla:
+**Causa real (post-mortem refinado em SPEC 012.2 audit):** o problema **não** é PEP 563 em si. É a combinação tripla:
 
 1. `from __future__ import annotations` (PEP 563) ativo no arquivo
-2. ClassVar annotation referenciando tipo so importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
+2. ClassVar annotation referenciando tipo só importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
 3. Blender 5.1's `register_class` chama `typing.get_type_hints(cls)` que tenta evaluar TODAS as annotation strings contra module globals
 
-`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix so existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk -> nenhuma `_PropertyDeferred` promove pra RNA -> `self.<prop>` quebra.
+`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix só existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk -> nenhuma `_PropertyDeferred` promove pra RNA -> `self.<prop>` quebra.
 
-Confirmado via headless `--background --python` instrumentando `get_type_hints`. Apos remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registracao volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagogica + consistencia.
+Confirmado via headless `--background --python` instrumentando `get_type_hints`. Após remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registração volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagógica + consistência.
 
-**Audit codebase-wide (SPEC 012.2):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso e ARTEFATO de `bl_rna.properties.keys()` nao expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
+**Audit codebase-wide (SPEC 012.2):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso é ARTEFATO de `bl_rna.properties.keys()` não expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
 
-**Conclusao:** o bug se manifesta APENAS quando o combo das 3 condicoes acima ocorre. Todos os outros operators usam ClassVar so com tipos builtin (`set[str]`) e nao tem TYPE_CHECKING import referenciado em ClassVar - imunes ao bug. Sem fix necessario em demais operators.
+**Conclusão:** o bug se manifesta APENAS quando o combo das 3 condições acima ocorre. Todos os outros operators usam ClassVar só com tipos builtin (`set[str]`) e não tem TYPE_CHECKING import referenciado em ClassVar - imunes ao bug. Sem fix necessário em demais operators.
 
 **Fix aplicado em SPEC 012.1 (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
 
-**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` so existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug e silent + dificil de debugar (annotation walk falha sem erro visivel; so `self.<prop>` raises AttributeError tarde).
+**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` só existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug é silent + difícil de debugar (annotation walk falha sem erro visível; só `self.<prop>` raises AttributeError tarde).
 
-**Severity (revisado):** medium - bug e raro (precisa o combo especifico) mas custa horas pra debugar quando aparece.
+**Severity (revisado):** medium - bug é raro (precisa o combo específico) mas custa horas pra debugar quando aparece.
 
 ### Snap to UV bounds: IndexError em edit mode
 

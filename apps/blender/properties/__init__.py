@@ -55,13 +55,18 @@ from ._handlers import (
     on_depsgraph_update,
 )
 from .object_props import ProscenioObjectProps
-from .scene_props import ProscenioQuickArmatureProps, ProscenioSceneProps
+from .scene_props import (
+    ProscenioQuickArmatureProps,
+    ProscenioSceneProps,
+    ProscenioSkinningProps,
+)
 from .validation_issue import ProscenioValidationIssue
 
 _classes: tuple[type, ...] = (
     ProscenioObjectProps,
     ProscenioValidationIssue,
     ProscenioQuickArmatureProps,
+    ProscenioSkinningProps,
     ProscenioSceneProps,
 )
 

@@ -293,6 +293,33 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
   - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` - filename do primeiro Image Texture node descoberto.
   - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
+### 1.15 SPEC 013 Wave 13.1 - Automesh from sprite
+
+Status: **pendente** - operator + panel chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender. Run após primeiro impl commit.
+
+Pré-requisitos: workbench com sprite plane image-textured + (opcional) armature de 3 ossos na cena para validar D15 density-under-bones.
+
+Sequência:
+
+- [ ] T1 - Sidebar mostra `Skinning` subpanel quando sprite plane mesh está ativo. Subpanel está OCULTO quando active object não é mesh.
+- [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
+- [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
+- [ ] T4 - Click `Automesh from Sprite` em mesh sem material/texture image -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
+- [ ] T5 - Click em mesh com texture image válida -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado).
+- [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
+- [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
+- [ ] T8 - Density-under-bones OFF + automesh -> interior uniform (verts espalhados uniforme no annulus).
+- [ ] T9 - Density-under-bones ON + picker armature with deform bones in same XZ region as sprite -> interior tem MAIS verts perto das bone segments (verify visual: triangulação mais densa no eixo dos bones).
+- [ ] T10 - Density-under-bones ON + picker armature SET mas sem deform bones -> INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
+- [ ] T11 - Density-under-bones ON + picker NÃO SET -> INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
+- [ ] T12 - Resolution muito baixo (0.01) + sprite small -> contour < 3 verts -> ERROR `automesh failed: automesh outer contour too short - try lowering the alpha threshold or increasing the resolution`.
+- [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
+- [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
+- [ ] T15 - Reload Scripts após automesh ON -> operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
+- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` retorna 87 pass.
+
+Bugs encontrados durante smoke vão para `tests/BUGS_FOUND.md`.
+
 ---
 
 ## 2. Apps/Godot

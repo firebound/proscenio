@@ -70,6 +70,108 @@ class ProscenioQuickArmatureProps(PropertyGroup):
     )
 
 
+class ProscenioSkinningProps(PropertyGroup):
+    """SPEC 013 Wave 13.1 defaults for the Skinning subpanel.
+
+    Holds the knobs that the Automesh + Bind + Edit Weights
+    operators read at invoke time. Stored on the scene so the
+    settings persist across .blend reloads and surface in the
+    panel for in-context tuning (matching the SPEC 012 D15
+    pattern for Quick Armature defaults).
+    """
+
+    automesh_resolution: FloatProperty(  # type: ignore[valid-type]
+        name="Mesh resolution",
+        description=(
+            "Image downscale factor for the alpha contour walker. "
+            "1.0 = full image, 0.25 = quarter-pixel (default - safe "
+            "for typical HD sprites). Lower values produce more "
+            "vertices but cost quadratically more time."
+        ),
+        default=0.25,
+        min=0.01,
+        max=1.0,
+    )
+    automesh_alpha_threshold: IntProperty(  # type: ignore[valid-type]
+        name="Alpha threshold",
+        description=(
+            "Pixels with alpha strictly above this value contribute "
+            "to the silhouette. 127 matches COA Tools 2 default."
+        ),
+        default=127,
+        min=0,
+        max=255,
+    )
+    automesh_margin_pixels: IntProperty(  # type: ignore[valid-type]
+        name="Boundary margin",
+        description=(
+            "Dilate (outer) / erode (inner) the contour by this many "
+            "pixels. Controls annulus thickness - higher values give "
+            "thicker silhouette ring of edge loops. Zero falls back "
+            "to a single-contour flat triangulation."
+        ),
+        default=5,
+        min=0,
+        max=100,
+    )
+    automesh_contour_vertices: IntProperty(  # type: ignore[valid-type]
+        name="Contour vertices",
+        description=(
+            "Target vertex count for the outer contour after Laplacian "
+            "smoothing + arc-length resampling. Inner contour uses "
+            "half this count. Higher = smoother silhouette + more "
+            "deformation control + more triangles."
+        ),
+        default=64,
+        min=8,
+        max=512,
+    )
+    automesh_interior_spacing: FloatProperty(  # type: ignore[valid-type]
+        name="Interior spacing",
+        description=(
+            "World-unit spacing for the interior Steiner-point grid "
+            "fed into bmesh.ops.triangle_fill. Lower = denser interior "
+            "= more triangles that can deform under bone influence. "
+            "Tune against the sprite's world-unit scale (pixels per unit "
+            "in the scene props)."
+        ),
+        default=0.1,
+        min=0.001,
+        soft_max=2.0,
+    )
+    automesh_density_under_bones: BoolProperty(  # type: ignore[valid-type]
+        name="Density follows bones",
+        description=(
+            "When ON and the picker armature has deform bones, add "
+            "extra interior triangles near each bone segment so the "
+            "mesh has more density where deformation actually happens. "
+            "OFF falls back to uniform interior density."
+        ),
+        default=True,
+    )
+    automesh_bone_radius: FloatProperty(  # type: ignore[valid-type]
+        name="Bone influence radius",
+        description=(
+            "World-unit radius around each bone segment within which "
+            "the density-under-bones subdivision applies."
+        ),
+        default=0.5,
+        min=0.01,
+        soft_max=5.0,
+    )
+    automesh_bone_factor: IntProperty(  # type: ignore[valid-type]
+        name="Bone density factor",
+        description=(
+            "Multiplier for interior point density near bones. "
+            "1 = same as uniform, 2 = double, 4 = quadruple. Diminishing "
+            "returns above 4."
+        ),
+        default=2,
+        min=1,
+        max=8,
+    )
+
+
 class ProscenioSceneProps(PropertyGroup):
     """Scene-level Proscenio settings - sticky export path, default ppu."""
 
@@ -153,6 +255,9 @@ class ProscenioSceneProps(PropertyGroup):
     )
     quick_armature: PointerProperty(  # type: ignore[valid-type]
         type=ProscenioQuickArmatureProps,
+    )
+    skinning: PointerProperty(  # type: ignore[valid-type]
+        type=ProscenioSkinningProps,
     )
     active_armature: PointerProperty(  # type: ignore[valid-type]
         name="Active armature",

@@ -11,6 +11,7 @@ Submodules per concern:
 - active_sprite.py   - PROSCENIO_PT_active_sprite + 9 helpers
 - active_slot.py     - PROSCENIO_PT_active_slot + attachment helpers
 - skeleton.py        - PROSCENIO_PT_skeleton + UL_bones
+- skinning.py        - PROSCENIO_PT_skinning (SPEC 013 Wave 13.1)
 - outliner.py        - PROSCENIO_PT_outliner + UL_sprite_outliner
 - animation.py       - PROSCENIO_PT_animation + UL_actions
 - atlas.py           - PROSCENIO_PT_atlas + packer box
@@ -34,6 +35,7 @@ from . import (
     help,
     outliner,
     skeleton,
+    skinning,
     validation,
 )
 
@@ -66,6 +68,7 @@ def register() -> None:
     active_sprite.register()
     active_slot.register()
     skeleton.register()
+    skinning.register()
     outliner.register()
     animation.register()
     atlas.register()
@@ -83,6 +86,7 @@ def unregister() -> None:
     atlas.unregister()
     animation.unregister()
     outliner.unregister()
+    skinning.unregister()
     skeleton.unregister()
     active_slot.unregister()
     active_sprite.unregister()

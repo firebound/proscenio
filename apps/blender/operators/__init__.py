@@ -17,6 +17,7 @@ Submodules:
 - pose_library      - Save Pose to Library, Bake Current Pose
 - quick_armature    - Quick Armature modal (5.1.d.3)
 - skeleton_target   - Set Proscenio active armature pointer (SPEC 012.2)
+- automesh          - PNG sprite -> annulus mesh (SPEC 013 Wave 13.1)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -28,6 +29,7 @@ from . import (
     atlas_pack,
     authoring_camera,
     authoring_ik,
+    automesh,
     driver,
     export_flow,
     help_dispatch,
@@ -52,6 +54,7 @@ def register() -> None:
     pose_library.register()
     skeleton_target.register()
     quick_armature.register()
+    automesh.register()
     slot.register()
     atlas_pack.register()
     import_photoshop.register()
@@ -61,6 +64,7 @@ def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
     slot.unregister()
+    automesh.unregister()
     quick_armature.unregister()
     skeleton_target.unregister()
     pose_library.unregister()

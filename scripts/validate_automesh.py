@@ -202,8 +202,15 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
     image = _resolve_image(sprite_obj)
     coverage_pct: float | None = None
     leak_count = 0
+    leak_records: list[dict[str, object]] = []
+    quadrants: dict[str, int] = {}
     if image is not None and triangles:
-        coverage_pct, leak_count = _measure_coverage(image, triangles)
+        debug_dir = REPO_ROOT / "scripts" / "validate_automesh_debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        debug_png = debug_dir / f"{sprite_obj.name}_coverage.png"
+        coverage_pct, leak_count, leak_records, quadrants = _measure_coverage(
+            image, triangles, debug_png
+        )
 
     return {
         "verts": len(verts),
@@ -214,19 +221,31 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
         "uv_out_of_range_loops": uv_out_of_range,
         "coverage_pct": coverage_pct,
         "leak_count": leak_count,
+        "leak_quadrants": quadrants,
+        # First 30 leak records inline; full list in report JSON only
+        # when leak_count > 0 to keep noise down.
+        "leak_records_sample": leak_records[:30],
     }
 
 
 def _measure_coverage(
     image: bpy.types.Image,
     triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]],
-) -> tuple[float, int]:
-    """Return (coverage_pct, leak_count) over foreground alpha pixels.
+    debug_png_path: Path | None = None,
+) -> tuple[float, int, list[dict[str, object]], dict[str, int]]:
+    """Exhaustive coverage measurement of every foreground alpha pixel.
 
-    Walks every other source pixel; for each pixel above threshold
-    (alpha > 0), projects to mesh-local XZ + tests if inside any
-    triangle. Leak = foreground pixel that falls OUTSIDE every
-    triangle. Coverage = 1 - leaks / sampled_foreground.
+    Visits EVERY pixel (no sample_step skip). For each pixel with
+    alpha > 0:
+    - Compute its EXACT world position using cell-center convention
+      that matches pixel_contour_to_world in the bridge.
+    - Test point-in-triangle against the full triangle list.
+    - If outside every triangle, log a leak record + count by
+      quadrant (TL/TR/BL/BR) to expose any geometric asymmetry.
+
+    Optionally writes a debug PNG: red pixel = leak, green pixel =
+    covered, transparent = alpha 0. Save next to the JSON report so
+    the user can see EXACTLY which pixels were cut without guessing.
     """
     pixels = list(image.pixels[:])
     w, h = image.size[0], image.size[1]
@@ -234,26 +253,84 @@ def _measure_coverage(
     world_scale = 1.0 / pixels_per_unit
     half_w = w * world_scale / 2.0
     half_h = h * world_scale / 2.0
-    sample_step = 2
+    half_cell = world_scale / 2.0
     fg = 0
-    leaks = 0
-    for y in range(0, h, sample_step):
-        for x in range(0, w, sample_step):
+    leaks_records: list[dict[str, object]] = []
+    quadrants = {"TL": 0, "TR": 0, "BL": 0, "BR": 0}
+    debug_image: list[int] | None = None
+    if debug_png_path is not None:
+        debug_image = [0, 0, 0, 0] * (w * h)
+
+    for y in range(h):
+        for x in range(w):
             alpha = int(pixels[(y * w + x) * 4 + 3] * 255)
             if alpha <= 0:
                 continue
             fg += 1
-            wx = x * world_scale - half_w
-            wz = half_h - y * world_scale
+            # World coords using CELL-CENTER convention to match the
+            # mesh's pixel_contour_to_world placement (+ half_cell
+            # offset on each axis). Visual-Y flip mirrors the
+            # bridge's Y-flip-on-read.
+            wx = x * world_scale - half_w + half_cell
+            visual_y = h - 1 - y
+            wz = half_h - visual_y * world_scale - half_cell
             inside_any = False
             for a, b, c in triangles:
                 if _point_in_triangle_xz(wx, wz, a, b, c):
                     inside_any = True
                     break
-            if not inside_any:
-                leaks += 1
-    coverage = 1.0 - (leaks / fg) if fg else 1.0
-    return (coverage, leaks)
+            if inside_any:
+                if debug_image is not None:
+                    idx = (y * w + x) * 4
+                    debug_image[idx] = 0      # R
+                    debug_image[idx + 1] = 200  # G
+                    debug_image[idx + 2] = 0    # B
+                    debug_image[idx + 3] = 255
+            else:
+                visual_y_for_quadrant = h - 1 - y
+                quadrant_x = "L" if x < w / 2 else "R"
+                quadrant_y = "T" if visual_y_for_quadrant > h / 2 else "B"
+                quadrants[quadrant_y + quadrant_x] += 1
+                leaks_records.append({
+                    "pixel_x": x,
+                    "pixel_y_storage": y,
+                    "pixel_y_visual_pil": visual_y_for_quadrant,
+                    "alpha": alpha,
+                    "world_x": round(wx, 6),
+                    "world_z": round(wz, 6),
+                    "quadrant": quadrant_y + quadrant_x,
+                })
+                if debug_image is not None:
+                    idx = (y * w + x) * 4
+                    debug_image[idx] = 255    # R
+                    debug_image[idx + 1] = 0    # G
+                    debug_image[idx + 2] = 0    # B
+                    debug_image[idx + 3] = 255
+
+    if debug_image is not None and debug_png_path is not None:
+        _write_debug_png(debug_png_path, w, h, debug_image)
+
+    coverage = 1.0 - (len(leaks_records) / fg) if fg else 1.0
+    return (coverage, len(leaks_records), leaks_records, quadrants)
+
+
+def _write_debug_png(path: Path, w: int, h: int, rgba_bytes: list[int]) -> None:
+    """Write an RGBA image to ``path`` via Blender's image API.
+
+    Pure-Blender (no PIL dep at validate time). Pixels are written
+    in Blender's bottom-up convention; since our debug_image was
+    populated using ``y`` iterated in storage order (also bottom-up),
+    the visual output matches the source image orientation pixel-for-
+    pixel.
+    """
+    name = f"_debug_{path.stem}"
+    if name in bpy.data.images:
+        bpy.data.images.remove(bpy.data.images[name])
+    img = bpy.data.images.new(name, width=w, height=h, alpha=True)
+    img.pixels[:] = [c / 255.0 for c in rgba_bytes]
+    img.filepath_raw = str(path)
+    img.file_format = "PNG"
+    img.save()
 
 
 def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, object]:
@@ -347,9 +424,26 @@ def main() -> None:
         coverage = m["coverage_pct"]
         if coverage is not None:
             print(
-                f"  coverage={coverage:.4f} leaks={m['leak_count']} "
+                f"  coverage={coverage:.6f} leaks={m['leak_count']} "
                 f"mean_area={m['mean_area']:.6f}"
             )
+            quadrants = m.get("leak_quadrants") or {}
+            if any(quadrants.values()):
+                print(
+                    f"  leaks_by_quadrant TL={quadrants.get('TL', 0)} "
+                    f"TR={quadrants.get('TR', 0)} BL={quadrants.get('BL', 0)} "
+                    f"BR={quadrants.get('BR', 0)}"
+                )
+            sample = m.get("leak_records_sample") or []
+            if sample:
+                print(f"  first {min(5, len(sample))} leak pixels:")
+                for rec in sample[:5]:
+                    print(
+                        f"    pixel=({rec['pixel_x']}, "
+                        f"PIL_y={rec['pixel_y_visual_pil']}) "
+                        f"alpha={rec['alpha']} "
+                        f"world=({rec['world_x']}, {rec['world_z']})"
+                    )
         if inv["warnings"]:
             for w in inv["warnings"]:
                 print(f"  WARN: {w}")

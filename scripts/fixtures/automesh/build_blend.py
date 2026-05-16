@@ -6,18 +6,20 @@ Run with::
 
 Loads 4 PNGs produced by ``draw_layers.py`` from disk and builds:
 
-- 3-bone arm armature (``automesh.arm``: ``shoulder`` -> ``elbow`` ->
-  ``wrist``) positioned across the X axis at Z=0 so the hand sprite
-  sits under the chain - exercises SPEC 013 D15 density-under-bones
-  end-to-end (the hand mesh gets thicker triangulation near each
-  bone segment when automesh runs against the picker).
+- 3-bone vertical hand armature (``automesh.hand_rig``:
+  ``wrist`` -> ``palm`` -> ``fingertip``) positioned along the Z
+  axis at X=-3 so the chain follows the hand's natural deformation
+  direction (palm flex + finger bend). Exercises SPEC 013 D15
+  density-under-bones end-to-end (the hand mesh gets thicker
+  triangulation along the chain when automesh runs against the
+  picker).
 - 4 sprite plane meshes (``hand``, ``blob``, ``lshape``, ``ring``),
   each 200x200 px (2.0 world units side at PPU=100), each with its
   own image-textured material referencing the matching PNG. Sprites
   are spread across the workbench so the user can select one at a
   time without overlapping geometry.
-- ``hand`` is parented to ``automesh.arm`` (other sprites stay free
-  to keep the smoke checklist's "automesh without picker" case
+- ``hand`` is parented to ``automesh.hand_rig`` (other sprites stay
+  free to keep the smoke checklist's "automesh without picker" case
   trivially testable - select blob / lshape / ring + run automesh
   + verify uniform interior density falls back gracefully).
 
@@ -58,7 +60,7 @@ def main() -> None:
         )
         sys.exit(1)
     _wipe_blend()
-    armature_obj = _build_arm_chain()
+    armature_obj = _build_hand_chain()
     sprite_layout = (
         ("hand", -3.0, 0.0, True),
         ("blob", 0.0, 0.0, False),
@@ -86,33 +88,45 @@ def _wipe_blend() -> None:
             collection.remove(collection[0])
 
 
-def _build_arm_chain() -> bpy.types.Object:
-    """3-bone arm chain along world +X positioned over the hand sprite.
+def _build_hand_chain() -> bpy.types.Object:
+    """3-bone vertical hand chain positioned over the hand sprite.
 
-    The hand sprite sits at world X=-3, Z=0 with 2.0-unit extent.
-    Bones span shoulder (X=-4, Z=0) -> elbow (X=-3.3, Z=0) ->
-    wrist (X=-2.6, Z=0) so they actually cross the hand mesh's bbox
-    in the X axis, which is the configuration density-under-bones
-    needs to make a visible difference in the triangulation.
+    The hand sprite sits at world (-3, 0, 0) with 2.0-unit extent and
+    fingers pointing in world +Z (image-space top). Bones run vertical
+    along the Z axis at X=-3 so they follow the natural deformation
+    direction of the hand (palm flex + finger bend), matching how a
+    real 2D rigger would lay down a hand chain:
+
+        fingertip (Z=+0.7)   |
+                             |
+        palm      (Z=+0.0)   |
+                             |
+        wrist     (Z=-0.8)   |
+
+    Density-under-bones now clusters triangles along the vertical
+    centerline of the hand - readable as "more deformation control
+    where the fingers and palm bend" rather than the previous
+    horizontal layout that made density cluster across the palm width
+    for no anatomical reason.
     """
-    arm_data = bpy.data.armatures.new("automesh.arm")
-    arm_obj = bpy.data.objects.new("automesh.arm", arm_data)
+    arm_data = bpy.data.armatures.new("automesh.hand_rig")
+    arm_obj = bpy.data.objects.new("automesh.hand_rig", arm_data)
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    shoulder = arm_data.edit_bones.new("shoulder")
-    shoulder.head = (-4.0, 0.0, 0.0)
-    shoulder.tail = (-3.3, 0.0, 0.0)
-    elbow = arm_data.edit_bones.new("elbow")
-    elbow.head = (-3.3, 0.0, 0.0)
-    elbow.tail = (-2.6, 0.0, 0.0)
-    elbow.parent = shoulder
-    elbow.use_connect = True
     wrist = arm_data.edit_bones.new("wrist")
-    wrist.head = (-2.6, 0.0, 0.0)
-    wrist.tail = (-2.0, 0.0, 0.0)
-    wrist.parent = elbow
-    wrist.use_connect = True
+    wrist.head = (-3.0, 0.0, -0.8)
+    wrist.tail = (-3.0, 0.0, -0.3)
+    palm = arm_data.edit_bones.new("palm")
+    palm.head = (-3.0, 0.0, -0.3)
+    palm.tail = (-3.0, 0.0, 0.2)
+    palm.parent = wrist
+    palm.use_connect = True
+    fingertip = arm_data.edit_bones.new("fingertip")
+    fingertip.head = (-3.0, 0.0, 0.2)
+    fingertip.tail = (-3.0, 0.0, 0.7)
+    fingertip.parent = palm
+    fingertip.use_connect = True
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

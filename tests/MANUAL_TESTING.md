@@ -297,13 +297,13 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
 
 Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
 
-Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone arm chain (`shoulder` -> `elbow` -> `wrist`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
+Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone vertical hand chain (`wrist` -> `palm` -> `fingertip`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
 
 **Importante:** nunca `Ctrl+S` após smoke - fixture é tracked + smoke reescreve mesh in-place. Se salvar acidentalmente, regenera via `python scripts/fixtures/automesh/draw_layers.py` + `blender --background --python scripts/fixtures/automesh/build_blend.py`.
 
 Sequência:
 
-- [ ] T1 - Open `automesh.blend`. Sidebar mostra `Skinning` subpanel quando sprite plane mesh (hand / blob / lshape / ring) está ativo. Subpanel está OCULTO quando seleciona `automesh.arm` (armature, não mesh).
+- [ ] T1 - Open `automesh.blend`. Sidebar mostra `Skinning` subpanel quando sprite plane mesh (hand / blob / lshape / ring) está ativo. Subpanel está OCULTO quando seleciona `automesh.hand_rig` (armature, não mesh).
 - [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
 - [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
 - [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
@@ -311,7 +311,7 @@ Sequência:
 - [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
 - [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
 - [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh -> interior uniform (verts espalhados uniforme no annulus).
-- [ ] T9 - Set picker = `automesh.arm` no Skeleton panel. Select `hand` + density-under-bones ON + Automesh -> interior tem MAIS verts perto das bone segments shoulder/elbow/wrist (visual: triangulação mais densa ao longo do eixo X onde o arm chain cruza o hand).
+- [ ] T9 - Set picker = `automesh.hand_rig` no Skeleton panel. Select `hand` + density-under-bones ON + Automesh -> interior tem MAIS verts perto das bone segments wrist/palm/fingertip (visual: triangulação mais densa ao longo do eixo Z central onde o hand chain corre verticalmente, do pulso ao topo dos dedos).
 - [ ] T10 - Density-under-bones ON + create new empty armature sem bones (`Add > Armature > Empty`) + set picker -> Automesh -> INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
 - [ ] T11 - Density-under-bones ON + clear picker (Skeleton panel > x button) + Automesh -> INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
 - [ ] T12 - Resolution muito baixo (0.01) + sprite small -> contour < 3 verts -> ERROR `automesh failed: automesh outer contour too short - try lowering the alpha threshold or increasing the resolution`.

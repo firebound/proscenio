@@ -1,6 +1,6 @@
 # automesh fixture (SPEC 013 Wave 13.1)
 
-Workbench for the **SPEC 013 automesh from sprite** operator + future Wave 13.1 bind / weight paint / sidecar follow-ups. Four sprite planes with image-textured materials plus a 3-bone arm chain positioned over the hand sprite - feeds the smoke checklist in [`tests/MANUAL_TESTING.md` section 1.15](../../../tests/MANUAL_TESTING.md) end-to-end.
+Workbench for the **SPEC 013 automesh from sprite** operator + future Wave 13.1 bind / weight paint / sidecar follow-ups. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the smoke checklist in [`tests/MANUAL_TESTING.md` section 1.19](../../../tests/MANUAL_TESTING.md) end-to-end.
 
 ## Directory layout
 
@@ -20,8 +20,8 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 | Element | Detail |
 | --- | --- |
-| Armature `automesh.arm` | 3-bone chain `shoulder` -> `elbow` -> `wrist`, connected, along world +X from X=-4 to X=-2. Positioned so the chain crosses the hand sprite's bbox (SPEC 013 D15 density-under-bones smoke). |
-| Sprite `hand` | 2.0x2.0 unit quad at world (-3, 0, 0), parented to `automesh.arm`. Image-textured with `pillow_layers/hand.png`. The density-under-bones smoke target. |
+| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` -> `palm` -> `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so SPEC 013 D15 density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
+| Sprite `hand` | 2.0x2.0 unit quad at world (-3, 0, 0), parented to `automesh.hand_rig`. Image-textured with `pillow_layers/hand.png`. The density-under-bones smoke target. |
 | Sprite `blob` | 2.0x2.0 unit quad at world (0, 0, 0), unparented. Smooth convex baseline. |
 | Sprite `lshape` | 2.0x2.0 unit quad at world (3, 0, 0), unparented. Concave hull stress test. |
 | Sprite `ring` | 2.0x2.0 unit quad at world (0, 0, -3), unparented. Alpha-hole edge case. |
@@ -63,6 +63,6 @@ See [`tests/MANUAL_TESTING.md` section 1.15](../../../tests/MANUAL_TESTING.md) f
 5. Tune props in the Automesh sub-box.
 6. Click `Automesh from Sprite` button.
 
-For density-under-bones smoke: Skeleton panel > set picker to `automesh.arm` > Skinning panel > select `hand` sprite > enable density-under-bones > Automesh. Compare visual against OFF.
+For density-under-bones smoke: Skeleton panel > set picker to `automesh.hand_rig` > Skinning panel > select `hand` sprite > enable density-under-bones > Automesh. Compare visual against OFF.
 
 **Important:** never `Ctrl+S` after smoke. The fixture is tracked + the smoke flow rewrites mesh geometry in place. If you accidentally save, regenerate via `build_blend.py`.

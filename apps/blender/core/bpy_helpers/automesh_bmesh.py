@@ -621,18 +621,21 @@ def build_automesh(
         # outer and inner. Provides the dense edge-loop ring near the
         # silhouette boundary for fine border deformation control.
         _build_annulus_strip(bm, outer_verts, inner_verts, bridge_offset)
-        # Fill the INNER area too (everything inside the inner ring)
-        # so the mesh covers the whole silhouette, not just the
-        # boundary ring. The annulus stays as a secondary inner edge
-        # loop providing extra density near the border; the interior
-        # gets normal Delaunay triangulation via triangle_fill on the
-        # inner cyclic edges as a single closed loop. Single loop has
-        # no orientation ambiguity so the previous fan-triangulation
-        # bug does not recur here.
-        inner_edges = [
-            bm.edges.new((inner_verts[i], inner_verts[(i + 1) % len(inner_verts)]))
-            for i in range(len(inner_verts))
-        ]
+        # Fill the INNER area too. The annulus strip construction
+        # implicitly created edges between consecutive inner verts
+        # (via the second triangle of each cell: outer[next] ->
+        # inner[next] -> inner[curr]). We re-fetch those existing
+        # edges via bm.edges.get instead of creating new ones (which
+        # would raise "this edge exists"). Then triangle_fill
+        # triangulates the inner ring as a single closed loop n-gon.
+        inner_edges = []
+        for i in range(len(inner_verts)):
+            v0 = inner_verts[i]
+            v1 = inner_verts[(i + 1) % len(inner_verts)]
+            edge = bm.edges.get((v0, v1))
+            if edge is None:
+                edge = bm.edges.new((v0, v1))
+            inner_edges.append(edge)
         bmesh.ops.triangle_fill(
             bm,
             edges=inner_edges,

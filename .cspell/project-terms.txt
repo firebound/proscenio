@@ -31,8 +31,8 @@ proscenio
 Proscenio
 regenerable
 renameable
-reparent
 renderable
+reparent
 rightmouse
 sessão
 SHADERFX

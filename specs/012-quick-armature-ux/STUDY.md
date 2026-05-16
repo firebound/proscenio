@@ -1,6 +1,6 @@
 # SPEC 012 - Quick Armature UX overhaul
 
-Status: **decisions locked**, ready for TODO authoring. D1-D9 closed (see Design decisions section below). Implementation split into Wave 1 (preview + lifecycle hygiene + Front-Ortho snap) and Wave 2 (modifiers + naming + in-modal undo).
+Status: **SHIPPED via PR #50**. D1-D16 closed (see Design decisions section below). Implementation landed across Wave 12.1 (preview + lifecycle hygiene + Front-Ortho snap), Wave 12.2 (modifiers + naming + in-modal undo + panel sub-box), and a series of iterative refinements (chord vocabulary aligned to Blender, Alt+drag for disconnected, icon-rich hint surfaces, active-armature picker contract). See the "Refinement log" section in [TODO.md](TODO.md) for a commit-by-commit delta vs the originally locked design.
 
 ## Problem
 
@@ -339,6 +339,7 @@ Two parallel draw handlers, both registered in `invoke` and removed in `_finish`
 | D13 | Angle snap during drag | **C** defer to future SPEC | future |
 | D14 | `Ctrl` chord re-route | **A** Ctrl = grid snap, re-reserve `Alt` for bone-tip-snap | 2 |
 | D15 | Panel exposure for Quick Armature defaults | **C** Scene PG + Skeleton subpanel inline | 2 |
+| D16 | Active armature picker as single source of truth (post-Wave-12.2 refinement) | **B** picker is the contract; heuristics only at load time | refinement |
 
 Each section below preserves the option set + rationale for posterity.
 
@@ -395,6 +396,8 @@ Esc + RMB are the conventional Blender exit gestures but not obvious to new user
 
 **Locked: D5.A.** Floating buttons in viewport need hit-testing in modal which is non-trivial and visually noisy. Header text is cheap and discoverable. The confirmation dialog (D5.D) is a half-step worth considering if the operator gains an explicit "discard" path - but with Ctrl+Z available inside the modal, a user who regrets their bones can undo them one-by-one without exiting. Defer the confirm dialog.
 
+**Refinement (post-Wave-12.2, commit `69aff3d`):** the chord-cheatsheet hint moved from POST_PIXEL text overlays to two icon-rich native Blender surfaces: `STATUSBAR_HT_header.prepend(_draw_statusbar_quick_armature)` for the bottom bar (left edge - where Blender's own knife / loop-cut tools place their hints) and `VIEW3D_HT_header.append(_draw_view3d_header_quick_armature)` for the 3D viewport's own header (so the user does not have to look away from the canvas). Both reuse a shared `_emit_chord_layout(layout, cls)` helper and render `MOUSE_LMB_DRAG`, `EVENT_SHIFT`, `EVENT_ALT`, `EVENT_CTRL`, `EVENT_X` / `Z`, `EVENT_RETURN`, `EVENT_ESC` via `layout.label(text="", icon=...)`. The POST_PIXEL cheatsheet was retired (text-only could never match the native icons next to it); the cursor-outside-canvas POST_PIXEL tooltip stayed because it is cursor-tracking, not a chord cheatsheet. Documented as a project-wide modal-hint convention in `.ai/skills/blender-dev.md`.
+
 ### D6 - Modifier-list cheatsheet: always visible or toggleable?
 
 The in-viewport overlay listing `Shift = chain | Ctrl+Shift = connected | ...` is a discoverability win. Question is screen real-estate.
@@ -425,6 +428,8 @@ The new "chain connected" modifier needs a chord that does not collide with Blen
 
 **Locked: D8.C.** `Ctrl+Shift` covers the immediate need (chain + connect). Reserving `Ctrl` alone for a future use prevents painting ourselves into a corner. Dragonbones-style auto-snap-to-nearby-bone-tip is a clear successor - claim the chord now.
 
+**Refinement (D10 + D14 supersede D8, commit `16c7995`):** the D10 inversion folded "chain + connect" into the no-modifier default, which removed the need for an explicit `Ctrl+Shift` chord. The connect modifier slot was reallocated to `Alt+drag` = parented + disconnected (parented bone with the head left at the user's press point - covers the branching-skeleton case that originally motivated D8). `Ctrl` got reallocated to grid snap by D12 / D14. Net chord vocabulary at landed shape: `LMB` = connected, `Shift+LMB` = unparented, `Alt+LMB` = disconnected, `Ctrl held during drag` = grid snap, `X` / `Z` = axis lock, `Ctrl+Z` / `Ctrl+Shift+Z` = in-modal undo / redo.
+
 ### D9 - Shipping in waves vs single SPEC
 
 SPEC 012 is large. Single drop or multiple commits?
@@ -448,6 +453,8 @@ Survey (see complementary research above): Blender's `E` extrude chains connecte
 **Locked: D10.B.** Audience reading. Blender users hit `E` reflexively to extrude bones. Spine users expect chain by default. The "I started a new chain by accident" mistake is recoverable via in-modal `Ctrl+Z` (Wave 12.2). The "I have to hold Shift for every bone of a chain" friction is constant. Inverting trades a rare mistake recovery for constant ergonomic wins.
 
 D10.C is over-engineered; the audience consensus is strong enough to lock a default. If a user really wants free-root default, they can wrap the operator in a custom keymap with `lock_to_front_ortho=True` and a hypothetical `default_chain=False` option - but the consensus does not require shipping the option in Wave 12.2.
+
+**Refinement (commit `16c7995`):** the chord labels were renamed during user-feedback rounds to match Blender's bone-parenting terminology exactly. "Chain connected" became `connected` (parented + ``use_connect=True``); "new root" became `unparented` (no parent at all - "root" was misleading because it implied a fresh skeleton tree). `disconnected` (parented + ``use_connect=False``) was added as the Alt-modifier mode to cover branching chains. The decision (chain-by-default with Shift for the exception) is unchanged; only the surface vocabulary was made faithful. The `default_chain` PG toggle from D15 still lets a user fall back to the SPEC 012.1 vocabulary if needed; cheatsheet copy and operator behaviour both honour it.
 
 ### D11 - Axis lock during drag (X / Z keys)
 
@@ -489,6 +496,8 @@ D8 reserved `Ctrl` alone for a future "snap to nearby bone tip" gesture. D12.B c
 
 **Locked: D14.A.** Blender convention is `Ctrl`=snap-to-grid universally; users will press it reflexively. Reserving it for a hypothetical future feature wastes the most-discoverable chord. `Alt` is free in this operator today. If/when the bone-tip-snap lands, it can claim `Alt`.
 
+**Refinement (commit `16c7995`):** `Alt` was reallocated for the new `disconnected` chord (parented bone with the head left at the press point - see D8 / D10 refinements). The bone-tip-snap reservation moves yet again to a future successor; no chord currently waits for it. If the feature ever lands, candidates are `Shift+Alt` (live modifier after press) or a new operator-mode toggle (`bone-tip-snap` button on the panel that flips the operator's mode for the next drag).
+
 ### D15 - Panel exposure for Quick Armature defaults
 
 Wave 12.2 adds several configurable values: `name_prefix` (D2), `lock_to_front_ortho` default, `default_chain` (D10), `snap_increment` (D12). Where do they surface?
@@ -527,7 +536,30 @@ class ProscenioQuickArmatureProps(PropertyGroup):
 
 Operator reads from `context.scene.proscenio.quick_armature.<field>` in `invoke` when its own option is at sentinel ("inherit"). F3 redo override = explicit operator option value.
 
-**Out of scope for D15:** AddonPreferences (a `.blend`-spanning preference). Revisit if a user opens 5 different rig `.blend`s in a session and wants the same prefix across all of them. Until then, document-centric defaults are simpler. (the items session 1.14 cited as showstoppers). Wave 2 covers the items that make the operator pleasant for serial use. Wave 1 alone is shippable - a user can author bones today, just inefficiently; Wave 1 closes the "inviabiliza" gap. Wave 2 is the productivity polish.
+**Out of scope for D15:** AddonPreferences (a `.blend`-spanning preference). Revisit if a user opens 5 different rig `.blend`s in a session and wants the same prefix across all of them. Until then, document-centric defaults are simpler.
+
+**Refinement (commit `cefd30d` then `a4f0eec`):** the F3-redo override layer was scoped down at landing time. Only `lock_to_front_ortho` stayed as an operator-level option; `name_prefix` / `default_chain` / `snap_increment` are PG-only (edited in the panel sub-box). The user can still override per-invocation by editing the PG before invoking - the panel sub-box is always visible. The unused operator-option layer dropped to save plumbing without losing the document-centric guarantee.
+
+### D16 - Active armature picker as the single source of truth (post-Wave-12.2 refinement)
+
+This decision was made mid-iteration, after the first round of Wave 12.2 manual smoke surfaced that the operator's "auto-detect active object as target" heuristic surprised the user in scenes with more than one armature. Added here for completeness so the landed shape has its own decision record.
+
+**Problem:** Quick Armature originally always created `Proscenio.QuickRig`. A successor refinement let the operator target the active armature object when one was selected, falling back to QuickRig otherwise. That fix introduced its own surprise: clearing the panel picker via the "x" button reset the explicit target, but the heuristic kept resurrecting "the only armature in scene" as the target. The warning copy ("skeleton ops will create a new Proscenio.QuickRig") was lying because the heuristic was still running.
+
+- **D16.A - Keep multi-step heuristic in the resolver.** Explicit picker > active object > single-armature scene > QuickRig.
+- **D16.B - Picker is the only source of truth at operator time.** Heuristics live exclusively in a load-time handler (`auto_populate_active_armature`) that pre-fills the picker on file open / addon enable. Once the user clears the picker, that intent is respected: the operator falls back to the QuickRig path on the next invoke.
+- **D16.C - Add an explicit "use heuristic" toggle on the panel.** Lets the user opt back into heuristic resolution while keeping the picker as the visible label.
+
+**Locked: D16.B.** The picker UI is the contract: what the user sees in the panel must equal what the operator targets. Anything else turns the warning copy ("no rig picked - skeleton ops will create a new Proscenio.QuickRig") into a lie. Heuristics still pre-populate the picker (load_post + deferred_hydrate handler + a `on_depsgraph_update` handler that clears the pointer when the targeted rig is deleted / unlinked) so a fresh user with a single-armature scene never sees an empty picker by accident. When the picker is empty and the scene has armatures, the panel surfaces an `INFO`-styled box with one-click "Use existing instead: `<RigA>`" buttons stacked vertically, via the new `proscenio.set_active_armature` operator. C is over-engineered.
+
+**Implementation summary:**
+
+- `scene.proscenio.active_armature: PointerProperty(type=Object, poll=is_armature)` in `properties/scene_props.py`.
+- `core/skeleton_target.py::resolve_skeleton_target` reads the pointer only; no fallback heuristics.
+- `properties/_handlers.py::auto_populate_active_armature` fires on `load_post` + `deferred_hydrate` timer + (via `on_depsgraph_update`) every depsgraph tick; the depsgraph handler also clears the pointer when the referenced armature is deleted / unlinked and tags VIEW_3D areas for redraw.
+- `panels/skeleton.py` always shows the picker; when empty + armatures exist, surfaces the warning + button row.
+- `operators/skeleton_target.py` ships `PROSCENIO_OT_set_active_armature` for the panel buttons (panel `draw` cannot mutate the pointer directly; Blender forbids ID writes from a `Panel.draw` cycle).
+- `operators/quick_armature.py::_ensure_armature` auto-promotes the freshly created QuickRig to the picker so the next invoke sees it without surprise. Stores `arm_obj.name` (post-dedup) instead of the literal `_QUICK_RIG_NAME` so an orphan data block never shadows the live rig.
 
 ## Architectural patterns + tradeoffs
 

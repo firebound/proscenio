@@ -81,16 +81,37 @@ def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph)
     visibly matches what skeleton ops can actually target, then tags
     every VIEW_3D area for redraw so the panel updates without forcing
     the user to mouse over it.
+
+    Wrapped in a broad ``Exception`` guard: depsgraph callbacks fire
+    inside Blender's draw / event loop, and a Python exception bubbling
+    out at that point can leave the C side mid-state. The handler is
+    advisory - swallowing failures here is strictly better than risking
+    a follow-up crash on the next gizmo / overlay draw.
     """
-    proscenio = getattr(scene, "proscenio", None)
-    if proscenio is None:
-        return
-    pointer = proscenio.active_armature
-    if pointer is None:
-        return
-    if pointer.name in scene.objects and pointer.type == "ARMATURE":
-        return
-    proscenio.active_armature = None
+    try:
+        proscenio = getattr(scene, "proscenio", None)
+        if proscenio is None:
+            return
+        pointer = proscenio.active_armature
+        if pointer is None:
+            return
+        try:
+            if pointer.name in scene.objects and pointer.type == "ARMATURE":
+                return
+        except ReferenceError:
+            # Pointer references a freed datablock. Treat as stale.
+            pass
+        proscenio.active_armature = None
+        _tag_view3d_areas_redraw()
+    except Exception:  # depsgraph hook safety - swallow to protect draw cycle
+        # Last-resort safety: never let an addon-side error kill the
+        # Blender draw cycle. Diagnostic logging would land in the
+        # operator INFO bar (not visible from a depsgraph callback) so
+        # we silently swallow.
+        pass
+
+
+def _tag_view3d_areas_redraw() -> None:
     window_manager = getattr(bpy.context, "window_manager", None)
     if window_manager is None:
         return

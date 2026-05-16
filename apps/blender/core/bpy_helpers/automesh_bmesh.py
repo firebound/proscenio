@@ -57,6 +57,7 @@ from .automesh_debug import (
 )
 
 if TYPE_CHECKING:
+    import bpy
     from bpy.types import Bone, Image, Object
 
 
@@ -329,6 +330,68 @@ def _insert_interior_points(
     return inserted
 
 
+def _stamp_uvs(
+    mesh: bpy.types.Mesh,
+    source_width: int,
+    source_height: int,
+    world_scale: float,
+) -> None:
+    """Auto-stamp UV coordinates on every loop via linear XZ -> UV mapping.
+
+    Sprite plane convention (matches fixture build_blend.py): U is
+    flipped horizontally so the PIL-authored PNG reads unmirrored in
+    Front Orthographic view; V follows world Z (bottom=0, top=1).
+    Math:
+
+        u = (half_w - x) / (2 * half_w)  -- U flipped, x in [-half_w, +half_w]
+        v = (z + half_h) / (2 * half_h)  -- V matches Z, z in [-half_h, +half_h]
+
+    Without this stamp, automesh-generated verts inherit no UVs and
+    the textured material renders garbage / wrong region per face.
+    """
+    if not mesh.uv_layers:
+        mesh.uv_layers.new(name="UVMap")
+    uv_layer = mesh.uv_layers.active
+    if uv_layer is None:
+        return
+    half_w = source_width * world_scale / 2.0
+    half_h = source_height * world_scale / 2.0
+    if half_w <= 0.0 or half_h <= 0.0:
+        return
+    for poly in mesh.polygons:
+        for loop_index in range(poly.loop_start, poly.loop_start + poly.loop_total):
+            vert_index = mesh.loops[loop_index].vertex_index
+            co = mesh.vertices[vert_index].co
+            u = (half_w - co.x) / (2.0 * half_w)
+            v = (co.z + half_h) / (2.0 * half_h)
+            uv_layer.data[loop_index].uv = (u, v)
+
+
+def _remove_base_sprite_verts(obj: Object, group_index: int) -> None:
+    """Delete the 4 verts flagged in proscenio_base_sprite via bmesh.
+
+    Called by default after the automesh build so the original quad
+    corners do not linger as loose vertices. Toggle off via the
+    ``preserve_base_quad`` operator option when the user has UV /
+    weight customization on the original quad that they want to
+    keep around for manual stitching.
+    """
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    deform_layer = bm.verts.layers.deform.verify()
+    to_remove = [
+        vert
+        for vert in bm.verts
+        if group_index in vert[deform_layer] and vert[deform_layer].get(group_index, 0.0) > 0.0
+    ]
+    if to_remove:
+        bmesh.ops.delete(bm, geom=to_remove, context="VERTS")
+    bm.to_mesh(mesh)
+    bm.free()
+
+
 def _build_annulus_strip(
     bm: bmesh.types.BMesh,
     outer_verts: list[bmesh.types.BMVert],
@@ -423,6 +486,7 @@ def build_automesh(
     bone_density_radius: float = 0.0,
     bone_density_factor: int = 1,
     debug_stage: DebugStage = "off",
+    preserve_base_quad: bool = False,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -506,9 +570,15 @@ def build_automesh(
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
+    # Steiner points cover the ENTIRE silhouette interior (not just
+    # the annulus ring) so we can fill the inner area too. The
+    # bone-aware density still applies wherever bones cross the
+    # silhouette. Passing inner=[] tells the helper "everything
+    # inside outer is fair game" instead of "only between outer and
+    # inner".
     interior_points = interior_points_for_annulus(
         outer_world,
-        inner_world,
+        [],
         interior_spacing,
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,
@@ -547,20 +617,32 @@ def build_automesh(
     bm.verts.ensure_lookup_table()
 
     if inner_verts and len(outer_verts) == len(inner_verts):
-        # Annulus strip: build N cells of 2 triangles each directly.
-        # bmesh.ops.triangle_fill with both loops + bridges in same
-        # orientation mis-detected the inner ring as a fillable face
-        # and fan-triangulated the hole (regression caught in smoke
-        # validation; visible as spiky verticals crossing the annulus
-        # center). Manual quad-split has no orientation ambiguity:
-        # we know exactly which pairs of outer / inner verts belong
-        # to each cell after find_best_inner_rotation aligned them.
+        # Annulus strip: N cells of 2 triangles each directly between
+        # outer and inner. Provides the dense edge-loop ring near the
+        # silhouette boundary for fine border deformation control.
         _build_annulus_strip(bm, outer_verts, inner_verts, bridge_offset)
+        # Fill the INNER area too (everything inside the inner ring)
+        # so the mesh covers the whole silhouette, not just the
+        # boundary ring. The annulus stays as a secondary inner edge
+        # loop providing extra density near the border; the interior
+        # gets normal Delaunay triangulation via triangle_fill on the
+        # inner cyclic edges as a single closed loop. Single loop has
+        # no orientation ambiguity so the previous fan-triangulation
+        # bug does not recur here.
+        inner_edges = [
+            bm.edges.new((inner_verts[i], inner_verts[(i + 1) % len(inner_verts)]))
+            for i in range(len(inner_verts))
+        ]
+        bmesh.ops.triangle_fill(
+            bm,
+            edges=inner_edges,
+            use_beauty=True,
+            use_dissolve=False,
+        )
     else:
         # Fallback for thin silhouettes with no inner ring: fill the
-        # outer loop as a single n-gon polygon, then triangulate via
-        # bmesh.ops.triangulate. No bridges involved so the
-        # orientation issue does not occur.
+        # outer loop as a single n-gon polygon. No bridges, no
+        # orientation issue.
         outer_edges = [
             bm.edges.new((outer_verts[i], outer_verts[(i + 1) % len(outer_verts)]))
             for i in range(len(outer_verts))
@@ -594,8 +676,16 @@ def build_automesh(
     # triangles around a new center vertex.
     interior_inserted = _insert_interior_points(bm, interior_points)
 
+    # Recalculate normals so all faces point the same way (Blender
+    # auto-detects from edge orientation but triangle_fill on a
+    # CW-traced inner loop can produce inverted faces).
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+
     bm.to_mesh(mesh)
     bm.free()
+    _stamp_uvs(mesh, source_width, source_height, world_scale)
+    if not preserve_base_quad:
+        _remove_base_sprite_verts(obj, base_group_index)
     mesh.update()
 
     return {

@@ -149,6 +149,15 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
         min=1,
         max=8,
     )
+    preserve_base_quad: BoolProperty(  # type: ignore[valid-type]
+        name="Preserve base quad",
+        description=(
+            "Keep the 4 original quad corner vertices after automesh. "
+            "OFF (default) deletes them for a clean mesh; ON preserves "
+            "them as loose verts for manual stitching"
+        ),
+        default=False,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description="Stop the pipeline at a stage + emit a debug companion",
@@ -189,6 +198,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 self.density_under_bones = bool(skinning.automesh_density_under_bones)
                 self.bone_radius = float(skinning.automesh_bone_radius)
                 self.bone_factor = int(skinning.automesh_bone_factor)
+                self.preserve_base_quad = bool(skinning.preserve_base_quad)
                 self.debug_stage = str(skinning.debug_stage)
         return self.execute(context)
 
@@ -258,6 +268,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 bone_density_radius=self.bone_radius if bone_segments else 0.0,
                 bone_density_factor=self.bone_factor if bone_segments else 1,
                 debug_stage=self.debug_stage,  # type: ignore[arg-type]
+                preserve_base_quad=self.preserve_base_quad,
             )
         except ValueError as exc:
             report_error(self, f"automesh failed: {exc}")

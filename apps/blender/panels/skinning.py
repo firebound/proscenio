@@ -71,6 +71,8 @@ def _draw_automesh_box(
         col.prop(skinning_props, "automesh_contour_vertices")
         col.prop(skinning_props, "automesh_interior_spacing")
         col.separator()
+        col.prop(skinning_props, "preserve_base_quad")
+        col.separator()
         col.prop(skinning_props, "automesh_density_under_bones")
         sub = col.column(align=True)
         sub.active = bool(skinning_props.automesh_density_under_bones)

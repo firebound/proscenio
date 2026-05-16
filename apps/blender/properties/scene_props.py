@@ -171,6 +171,19 @@ class ProscenioSkinningProps(PropertyGroup):
         min=1,
         max=8,
     )
+    preserve_base_quad: BoolProperty(  # type: ignore[valid-type]
+        name="Preserve base quad",
+        description=(
+            "Keep the 4 original quad corner vertices (in the "
+            "proscenio_base_sprite vertex group) as loose verts after "
+            "automesh runs. OFF (default) deletes them so the mesh "
+            "is clean. ON preserves them so the user can manually "
+            "stitch custom UV / weight work that lived on the quad "
+            "(useful when the user has hand-tweaked the base before "
+            "automesh and wants to merge the work afterwards)"
+        ),
+        default=False,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

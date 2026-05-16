@@ -8,9 +8,9 @@ Blender. The operator imports these from
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, TypeAlias
 
-AxisLock = Literal["X", "Z"] | None
+AxisLock: TypeAlias = Literal["X", "Z"] | None
 
 DEFAULT_NAME_PREFIX = "qbone"
 

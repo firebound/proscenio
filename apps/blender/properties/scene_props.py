@@ -23,7 +23,7 @@ from .validation_issue import ProscenioValidationIssue
 
 def _is_armature(_self: PropertyGroup, obj: _Object) -> bool:
     """PointerProperty poll: only Armature objects qualify as targets."""
-    return obj.type == "ARMATURE"
+    return bool(obj.type == "ARMATURE")
 
 
 class ProscenioQuickArmatureProps(PropertyGroup):

@@ -8,9 +8,9 @@ bpy-bound ``core/bpy_helpers/modal_overlay.py`` consumes these.
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import Literal, TypeAlias
 
-PlaneAxis = Literal["X", "Y", "Z"]
+PlaneAxis: TypeAlias = Literal["X", "Y", "Z"]
 
 
 def build_circle_vertices(

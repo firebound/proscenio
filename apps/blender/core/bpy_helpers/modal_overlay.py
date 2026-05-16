@@ -25,7 +25,8 @@ import blf
 import gpu
 from gpu_extras.batch import batch_for_shader
 
-from ..modal_overlay_geometry import (  # type: ignore[import-not-found]
+from ..modal_overlay_geometry import (
+    PlaneAxis,
     build_circle_vertices,
     build_rect_vertices,
 )
@@ -127,7 +128,7 @@ def draw_circle_3d(
     center: tuple[float, float, float],
     radius: float,
     color: tuple[float, float, float, float],
-    plane_axis: str = "Y",
+    plane_axis: PlaneAxis = "Y",
     segments: int = 12,
     line_width: float = 2.0,
 ) -> None:

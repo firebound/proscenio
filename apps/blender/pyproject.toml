@@ -57,6 +57,19 @@ disallow_subclassing_any = false
 # fake-bpy-module exists but pinning to it is fragile across Blender releases.
 # Treat them as Any-typed at the import boundary.
 [[tool.mypy.overrides]]
-module = ["bpy", "bpy.*", "bpy_extras.*", "mathutils", "mathutils.*", "numpy", "numpy.*"]
+module = [
+    "bpy",
+    "bpy.*",
+    "bpy_extras.*",
+    "blf",
+    "gpu",
+    "gpu.*",
+    "gpu_extras",
+    "gpu_extras.*",
+    "mathutils",
+    "mathutils.*",
+    "numpy",
+    "numpy.*",
+]
 ignore_missing_imports = true
 follow_imports = "skip"

@@ -27,38 +27,34 @@ from ..core.bpy_helpers.modal_overlay import (  # type: ignore[import-not-found]
 from ..core.bpy_helpers.viewport_math import (  # type: ignore[import-not-found]
     mouse_event_to_plane_point,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     DEFAULT_NAME_PREFIX as _DEFAULT_NAME_PREFIX_CORE,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
-    AxisLock as _AxisLockCore,
-)
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
+    AxisLock,
     PressMode,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     apply_axis_lock as _apply_axis_lock,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     format_bone_name as _format_bone_name,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     resolve_press_mode as _resolve_press_mode,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     resolve_press_mode_label as _resolve_press_mode_label,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     sanitize_prefix as _sanitize_prefix,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
+from ..core.quick_armature_math import (
     snap_world_point_xz as _snap_world_point_xz,
 )
-from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
-from ..core.skeleton_target import resolve_skeleton_target  # type: ignore[import-not-found]
-from ..core.viewport_state import is_front_ortho  # type: ignore[import-not-found]
-
-AxisLock = _AxisLockCore
+from ..core.report import report_error, report_info, report_warn
+from ..core.skeleton_target import resolve_skeleton_target
+from ..core.viewport_state import is_front_ortho
 
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 
@@ -874,11 +870,11 @@ def _is_confirm_event(event: bpy.types.Event) -> bool:
 
 
 def _is_undo_event(event: bpy.types.Event) -> bool:
-    return event.type == "Z" and event.value == "PRESS" and event.ctrl and not event.shift
+    return bool(event.type == "Z" and event.value == "PRESS" and event.ctrl and not event.shift)
 
 
 def _is_redo_event(event: bpy.types.Event) -> bool:
-    return event.type == "Z" and event.value == "PRESS" and event.ctrl and event.shift
+    return bool(event.type == "Z" and event.value == "PRESS" and event.ctrl and event.shift)
 
 
 def _is_axis_lock_event(event: bpy.types.Event) -> bool:
@@ -888,7 +884,7 @@ def _is_axis_lock_event(event: bpy.types.Event) -> bool:
     intercepts that branch). Pressing with Shift would conflict with
     the chain modifier; for now we ignore Shift+X / Shift+Z.
     """
-    return (
+    return bool(
         event.type in {"X", "Z"}
         and event.value == "PRESS"
         and not event.ctrl
@@ -933,7 +929,9 @@ def _point_in_region_rect(x: int, y: int, region: bpy.types.Region) -> bool:
     All Blender regions report ``x``/``y``/``width``/``height`` in
     window pixel coords, matching ``event.mouse_x`` / ``mouse_y``.
     """
-    return region.x <= x <= region.x + region.width and region.y <= y <= region.y + region.height
+    return bool(
+        region.x <= x <= region.x + region.width and region.y <= y <= region.y + region.height
+    )
 
 
 def _find_window_region(area: bpy.types.Area) -> bpy.types.Region | None:
@@ -978,7 +976,7 @@ def _view_pose_equal(
     diff_x = abs(rot.x - other_rot.x)
     diff_y = abs(rot.y - other_rot.y)
     diff_z = abs(rot.z - other_rot.z)
-    return max(diff_w, diff_x, diff_y, diff_z) <= rotation_tolerance
+    return bool(max(diff_w, diff_x, diff_y, diff_z) <= rotation_tolerance)
 
 
 def _rv3d_is_front_ortho(rv3d: bpy.types.RegionView3D) -> bool:
@@ -986,7 +984,9 @@ def _rv3d_is_front_ortho(rv3d: bpy.types.RegionView3D) -> bool:
     matrix_rows: list[list[float]] = [
         [float(rotation[row][col]) for col in range(3)] for row in range(3)
     ]
-    return is_front_ortho(rv3d.view_perspective, matrix_rows, tolerance=_FRONT_ORTHO_TOLERANCE)
+    return bool(
+        is_front_ortho(rv3d.view_perspective, matrix_rows, tolerance=_FRONT_ORTHO_TOLERANCE)
+    )
 
 
 def _draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:

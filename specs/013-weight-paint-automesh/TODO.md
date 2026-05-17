@@ -51,22 +51,76 @@ Pick features per dependency notes; not all need shipping in a single PR. Recomm
 
 ### Code-quality cleanup (prerequisite for everything else)
 
-Sonar warnings + cognitive-complexity drift surfaced during PR #51 review iteration:
+Branch: `refactor/spec-013-cleanup`.
 
-- Cognitive complexity overshoots (limit 15): `_measure_coverage`=47, `_check_invariants`=22, `_build_mesh_via_delaunay`=20, `read_alpha_grid`=18, `build_automesh`=17-18, `extract_contours` / `extract_holes` helpers around 15-22.
-- Tuple-repeat in SPRITE_BOUNDS branches (S1871).
-- Duplicate branch in validator's flood-fill helper (S1871).
-- Module-internal helpers not extracted: hole detection flood-fill + Steiner filter both inline in larger functions.
-- Conventions vs `.ai/conventions.md`: `build_automesh` past the 300 LOC smell threshold; helpers grown across hole-support iteration not split into a dedicated submodule under `core/`.
+Sonar local + warnings emitted during PR #51 review iteration:
 
-Goals:
+**Hot spots (cognitive complexity, limit = 15)**:
 
-- Drive every cognitive-complexity warning to <= 15 by extracting named helpers (each stage of `build_automesh` becomes a private function with a single concern; feeds the interactive modal feature below which needs each stage as a callable).
-- Split `automesh_bmesh.py` if past 350 LOC - candidates: `automesh_cdt.py` for the Delaunay layer, `automesh_hole_prune.py` for the post-process face prune.
-- De-dup SPRITE_BOUNDS shape (single TypedDict + named fields).
-- Run validator + headless + pytest after each refactor; gate on zero behavior drift.
+| File:Line | Function | Cognitive |
+| --- | --- | --- |
+| `scripts/validate_automesh.py:316` | `_measure_coverage` | 47 |
+| `apps/blender/core/alpha_contour.py:125` | `erode` | 31 |
+| `scripts/validate_automesh.py:521` | `main` | 30 |
+| `apps/blender/operators/automesh.py:205` | `execute` | 24 |
+| `apps/blender/core/alpha_contour.py:92` | `dilate` | 22 |
+| `scripts/validate_automesh.py:477` | `_check_invariants` | 20+ |
+| `apps/blender/core/bpy_helpers/automesh_bmesh.py:498` | `_build_mesh_via_delaunay` | 20 |
+| `scripts/validate_automesh.py:159` | `_resolve_image` | 19 |
+| `scripts/validate_automesh.py:270` | `measure_mesh` | 18 |
+| `apps/blender/core/bpy_helpers/automesh_bmesh.py:102` | `read_alpha_grid` | 18 |
+| `apps/blender/core/bpy_helpers/automesh_bmesh.py:757` | `build_automesh` | 18 |
 
-Cost: ~1-2 days. Low risk thanks to validator + 313 pytest gate. Lands BEFORE bind so bind builds on clean foundation.
+**Other**:
+
+- `automesh_bmesh.py` = 1063 LOC (3.5x the 300 LOC smell threshold).
+- `validate_automesh.py` = 660 LOC (2x threshold).
+- `_point_in_triangle_xz` duplicated across `automesh_bmesh.py` + `validate_automesh.py` (DRY violation).
+- `_fill_inner_via_delaunay` + `_build_annulus_strip` in `automesh_bmesh.py` = DEAD CODE after the single-pass CDT refactor (no callers found via grep). Delete in cleanup.
+- SPRITE_BOUNDS shape repeated 5 times in validator (S1871).
+- Validator's duplicate-branch in argparse setup (S1871).
+- Sonar S101 false positives on `PROSCENIO_OT_*` / `PROSCENIO_PT_*` (46 across project) - configure Sonar to ignore the same way ruff already does.
+
+**Concrete checklist (each item = 1 commit)**:
+
+1. Configure `sonar-project.properties` to ignore S101 on `PROSCENIO_OT_/PT_` class names.
+2. Delete dead code (`_fill_inner_via_delaunay`, `_build_annulus_strip`) from `automesh_bmesh.py`.
+3. Extract `apps/blender/core/geometry_2d.py` with shared `point_in_triangle_xz`. Update both callers; delete dups.
+4. Refactor `alpha_contour.dilate` + `erode` (cognitive 22 / 31). Extract `_single_dilate_pass` + `_single_erode_pass` helpers; outer loops become thin wrappers.
+5. Reorganize automesh into a domain package:
+   - `apps/blender/core/automesh/` package with:
+     - `__init__.py` (re-exports public surface)
+     - `contour.py` (current `alpha_contour.py` content)
+     - `geometry.py` (current `automesh_geometry.py` content)
+     - `density.py` (current `automesh_density.py` content)
+   - `apps/blender/core/bpy_helpers/automesh/` package with:
+     - `__init__.py` (re-exports `build_automesh`)
+     - `bridge.py` (orchestrator + read_alpha_grid + pixel_contour_to_world)
+     - `cdt.py` (`_build_mesh_via_delaunay` + `_delete_faces_inside_holes`)
+     - `base_sprite.py` (vertex group `_initialize` / `_delete` / `_remove`)
+     - `uv.py` (`_stamp_uvs`)
+     - `debug.py` (current `automesh_debug.py` content)
+6. Refactor `build_automesh` (1063 LOC monolith). Extract per-stage helpers: `_extract_contours_world`, `_smooth_resample`, `_compute_interior_steiners`, `_apply_cdt_to_mesh`. Orchestrator becomes < 60 LOC.
+7. Refactor `_measure_coverage` (cognitive 47). Extract `_iterate_pixels`, `_classify_pixel`, `_paint_debug_pixel`, `_record_leak`.
+8. Refactor validator main (cognitive 30). Extract `_filter_ci_safe_sprites`, `_print_report`, `_write_report_json`.
+9. Split `scripts/validate_automesh.py` into a package `scripts/validate_automesh/`:
+   - `__main__.py` (CLI + main)
+   - `coverage.py` (`_measure_coverage` + `_compute_hole_pixel_mask`)
+   - `invariants.py` (`_check_invariants` + `SPRITE_BOUNDS`)
+   - `debug_png.py` (`_write_debug_png`)
+   - `addon_loader.py` (`_load_and_register_addon`)
+10. SPRITE_BOUNDS dedup (S1871). Define `SpriteInvariants` `@dataclass` with named fields; SPRITE_BOUNDS becomes `dict[str, SpriteInvariants]`.
+11. Reorganize tests: `tests/automesh/` subdir with `test_contour.py`, `test_geometry.py`, `test_density.py`, `test_holes.py`. Pytest auto-discover continues working via root conftest.
+12. Validate after each commit: `pytest tests/`, `blender --background --python apps/blender/tests/run_tests.py`, `blender --background --python scripts/validate_automesh.py -- --ci-only`. Zero behaviour drift gate.
+
+**Project convention adopted by this cleanup**: domain packages for features. `core/<feature>/` + `core/bpy_helpers/<feature>/`. Applies forward only - other features (`atlas_packer`, `skeleton_target`, ...) migrate when next touched. No big-bang.
+
+**Out of scope for this wave**:
+
+- Pushing pytest coverage to Sonar (separate post-cleanup chore).
+- Migrating non-automesh features to the new domain-package layout (gradual when touched).
+
+Cost: ~1.5-2 days. Low risk thanks to validator + 313 pytest + headless fixture-diff gate.
 
 ### Planar proximity bind (D4 + D5 + D11)
 

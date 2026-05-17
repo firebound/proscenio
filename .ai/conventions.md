@@ -55,6 +55,9 @@ Every concern lives in its own module; `__init__.py` orchestrates registration o
 - Addon root chains `register()` / `unregister()` of `properties`, `operators`, `panels` in dependency order (properties first; panels last).
 - `operators/`, `panels/`, `properties/` are packages, not single files. Each subpackage `__init__.py` is a thin orchestrator that imports topical submodules and calls each submodule's `register()` / `unregister()` in turn. No operator or panel class definitions live in `__init__.py`.
 - One submodule per topical concern. Aim for around 300 LOC per submodule. Above that, ask whether the file has absorbed multiple concerns - if yes, split. Treat the budget as a smell threshold, not a hard ceiling.
+- **Single Responsibility at function level too.** If a function does 3 distinct steps separated by blank-line "paragraphs" or by comments like `# Step 2: ...`, those are 3 helper extractions waiting to happen. Cognitive complexity > 15 (Sonar S3776) is the mechanical signal; the readability signal is the same one humans use when their eyes glaze over scrolling past the function. Extract before either signal fires twice on the same function.
+- **No premature abstraction.** Three similar lines is not a Repository. Two operators that read the same property are not a Service. Patterns earn their keep by removing duplication that ALREADY exists - never by anticipating duplication that might. Reach for `@dataclass` / `TypedDict` / `Literal` first; reach for inheritance / mixins / registries only when concrete duplication has accumulated and a one-line constructor swap would not have solved it.
+- **Domain packages for features.** When a feature grows past one or two modules, group its files in a domain package: `core/<feature>/` for pure-Python helpers + `core/bpy_helpers/<feature>/` for the bpy-bound bridge. The package's `__init__.py` re-exports the public surface (functions / classes external callers use). New features adopt this layout from day one; existing flat-laid features migrate when next touched - no big-bang reorganization. The goal is "open `core/` and see domains, not 30 mixed files".
 - Cross-cutting helpers shared by sibling submodules go in a `_helpers.py` (or similar private-prefixed module) - the underscore signals "module-internal, not the public API".
 - `core/` holds bpy-free helpers. Direct children of `core/` import nothing from `bpy` at module top. They may lazy-import `bpy` inside one function and accept `Any`-typed inputs.
 - `core/bpy_helpers/` (or equivalent) holds bpy-bound helpers. Modules there import `bpy` at module top. Tests either patch `bpy` first or skip when running outside Blender.
@@ -113,7 +116,7 @@ A single pre-commit pipeline runs the per-language formatters and linters (ruff 
 
 - Strict mypy for the Blender addon's typed surface. `Any` only at the `bpy` boundary, documented inline.
 - Strict gdlint with typed-everything, `class_name` required, no untyped signals.
-- Ruff with the standard quality lint families enabled (errors, imports, bugbear, pyupgrade, naming, ruff-specific, simplify). Blender's `CATEGORY_OT_*` / `CATEGORY_PT_*` naming requirements are exempted from the naming family.
+- Ruff with the standard quality lint families enabled (errors, imports, bugbear, pyupgrade, naming, ruff-specific, simplify). Blender's `CATEGORY_OT_*` / `CATEGORY_PT_*` naming requirements are exempted from the naming family. The same exemption is mirrored in `sonar-project.properties` via `sonar.issue.ignore.multicriteria` for python:S101 - Sonar does not read ruff config, so any tooling that gates on Sonar issues must carry the exemption too.
 - `tsc --noEmit` typecheck for the Photoshop plugin.
 - A repo-wide spell-checker with project-specific dictionaries.
 

@@ -41,6 +41,16 @@ FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.ble
 ADDON_PATH = REPO_ROOT / "apps" / "blender"
 ADDON_PACKAGE = "proscenio"
 
+# Mount apps/blender on sys.path so the validator can import
+# bpy-free helpers under ``core/`` directly (same pattern the
+# pytest suite under ``tests/test_*.py`` uses). The full addon
+# register cycle still happens in _load_and_register_addon below
+# so ``bpy.ops.proscenio.*`` resolves.
+if str(ADDON_PATH) not in sys.path:
+    sys.path.insert(0, str(ADDON_PATH))
+
+from core.geometry_2d import point_in_triangle_xz  # noqa: E402
+
 
 def _load_and_register_addon() -> None:
     """Mount apps/blender as the ``proscenio`` package + run register().
@@ -66,6 +76,7 @@ def _load_and_register_addon() -> None:
         sys.modules[ADDON_PACKAGE] = module
         spec.loader.exec_module(module)
     sys.modules[ADDON_PACKAGE].register()
+
 
 # Per-sprite tolerance bounds. Sprite-specific because each silhouette
 # has different alpha coverage / contour complexity. Bounds were
@@ -225,22 +236,6 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
             if node.type == "TEX_IMAGE" and node.image is not None:
                 return node.image
     return None
-
-
-def _point_in_triangle_xz(px: float, pz: float, a, b, c) -> bool:
-    """Half-plane test for a point against an XZ-projected triangle."""
-
-    def sign(
-        p1x: float, p1z: float, p2x: float, p2z: float, p3x: float, p3z: float
-    ) -> float:
-        return (p1x - p3x) * (p2z - p3z) - (p2x - p3x) * (p1z - p3z)
-
-    d1 = sign(px, pz, a[0], a[1], b[0], b[1])
-    d2 = sign(px, pz, b[0], b[1], c[0], c[1])
-    d3 = sign(px, pz, c[0], c[1], a[0], a[1])
-    has_neg = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
-    has_pos = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
-    return not (has_neg and has_pos)
 
 
 def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
@@ -418,8 +413,8 @@ def _measure_coverage(
             visual_y = h - 1 - y
             wz = half_h - visual_y * world_scale - half_cell
             inside_any = False
-            for a, b, c in triangles:
-                if _point_in_triangle_xz(wx, wz, a, b, c):
+            for triangle in triangles:
+                if point_in_triangle_xz((wx, wz), triangle):
                     inside_any = True
                     break
             if alpha <= 0:

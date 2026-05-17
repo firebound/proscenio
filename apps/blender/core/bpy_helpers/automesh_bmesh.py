@@ -51,6 +51,7 @@ from ..automesh_geometry import (
     laplacian_smooth,
     to_float_contour,
 )
+from ..geometry_2d import point_in_triangle_xz
 from .automesh_debug import (
     clear_debug_objects,
     emit_bridges_debug,
@@ -305,35 +306,6 @@ def _delete_non_base_geometry(obj: Object, group_index: int) -> None:
     bm.free()
 
 
-def _point_in_triangle_xz(
-    px: float,
-    pz: float,
-    ax: float,
-    az: float,
-    bx: float,
-    bz: float,
-    cx: float,
-    cz: float,
-) -> bool:
-    """Half-plane test for a point against an XZ triangle.
-
-    Returns True for the closed triangle (boundary included). Pure
-    math, no numpy. Used by :func:`_insert_interior_points` to find
-    which triangle of the just-triangulated annulus contains each
-    Steiner point before splitting that triangle around the point.
-    """
-
-    def sign(p1x: float, p1z: float, p2x: float, p2z: float, p3x: float, p3z: float) -> float:
-        return (p1x - p3x) * (p2z - p3z) - (p2x - p3x) * (p1z - p3z)
-
-    d1 = sign(px, pz, ax, az, bx, bz)
-    d2 = sign(px, pz, bx, bz, cx, cz)
-    d3 = sign(px, pz, cx, cz, ax, az)
-    has_neg = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
-    has_pos = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
-    return not (has_neg and has_pos)
-
-
 def _insert_interior_points(
     bm: bmesh.types.BMesh,
     interior_points: list[tuple[float, float]],
@@ -356,7 +328,10 @@ def _insert_interior_points(
             if len(face.verts) != 3:
                 continue
             v0, v1, v2 = face.verts
-            if _point_in_triangle_xz(px, pz, v0.co.x, v0.co.z, v1.co.x, v1.co.z, v2.co.x, v2.co.z):
+            if point_in_triangle_xz(
+                (px, pz),
+                ((v0.co.x, v0.co.z), (v1.co.x, v1.co.z), (v2.co.x, v2.co.z)),
+            ):
                 target_face = face
                 break
         if target_face is None:

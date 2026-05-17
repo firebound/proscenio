@@ -42,21 +42,27 @@ FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.ble
 # has different alpha coverage / contour complexity. Bounds were
 # calibrated by running the current pipeline manually + adding 30%
 # headroom on each side.
-SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
+SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int | bool]] = {
     "blob": {
         "verts": (200, 400),
         "faces": (350, 700),
         "min_coverage": 0.98,
         # No holes -> mesh covering any transparent pixel is a bug.
         "max_hole_bleed": 0,
+        # ci_safe = True means the per-pixel validator finishes
+        # quickly enough to gate a CI job (~1-3s on a 200x200
+        # source). Larger fixtures are local-only.
+        "ci_safe": True,
     },
     "lshape": {
         "verts": (120, 350),
         "faces": (200, 600),
         "min_coverage": 0.96,
         "max_hole_bleed": 0,
+        "ci_safe": True,
     },
     "ring": {
+        "ci_safe": True,
         "verts": (150, 400),
         "faces": (200, 700),
         "min_coverage": 0.95,
@@ -75,6 +81,7 @@ SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
         "max_hole_bleed": 1500,
     },
     "hand": {
+        "ci_safe": True,
         "verts": (180, 450),
         "faces": (300, 800),
         # Hand silhouette has tight concave gaps between fingers that
@@ -87,6 +94,11 @@ SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
         "max_hole_bleed": 0,
     },
     "swirl": {
+        # NOT ci_safe - 512x512 source = ~250k pixels per validator
+        # pass times ~1000+ triangles in pure Python triangle test
+        # = ~30s+ on CI workers. Use --ci-only to skip; run locally
+        # via plain --skip-large=false or full invocation.
+        "ci_safe": False,
         # 400x400 AA sprite with TWO holes (8-shape). Doubles the
         # vert + face budget vs the 200x200 sprites because the
         # downsampled grid is 100x100 and each silhouette pixel is
@@ -131,6 +143,16 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=1,
         help="alpha_threshold operator option (default 1 = include AA edges)",
+    )
+    parser.add_argument(
+        "--ci-only",
+        action="store_true",
+        help=(
+            "Skip sprites flagged ci_safe=False in SPRITE_BOUNDS. The "
+            "per-pixel coverage check is O(source_pixels * triangles) "
+            "in pure Python; larger fixtures (>= ~256x256 source) push "
+            "the runtime past practical CI budget."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -486,6 +508,12 @@ def _check_invariants(
     faces = metrics["faces"]
     if not isinstance(faces, int) or faces <= 0:
         failures.append("mesh has 0 faces (CRITICAL - no triangulation)")
+    triangles = metrics["triangles"]
+    if not isinstance(triangles, int) or triangles <= 0:
+        failures.append(
+            "mesh has 0 TRIANGLE faces (CRITICAL - non-triangle polygons "
+            "only; coverage check cannot run)"
+        )
     if metrics["degenerate_triangles"]:
         warnings.append(f"{metrics['degenerate_triangles']} degenerate triangles")
     if metrics["uv_out_of_range_loops"]:
@@ -503,8 +531,13 @@ def _check_invariants(
             failures.append(f"face count {faces} outside expected [{lo}, {hi}]")
     min_coverage = bounds.get("min_coverage")
     coverage = metrics["coverage_pct"]
-    if isinstance(min_coverage, float) and isinstance(coverage, float):
-        if coverage < min_coverage:
+    if isinstance(min_coverage, float):
+        if not isinstance(coverage, float):
+            failures.append(
+                "coverage measurement unavailable (image missing or no "
+                "triangles) - cannot enforce min_coverage invariant"
+            )
+        elif coverage < min_coverage:
             failures.append(
                 f"coverage {coverage:.4f} below minimum {min_coverage:.4f} "
                 f"({metrics['leak_count']} alpha pixels NOT covered by mesh)"
@@ -524,6 +557,15 @@ def main() -> None:
     args = parse_args()
     load_fixture()
     sprites = list(SPRITE_BOUNDS.keys())
+    if args.ci_only:
+        skipped = [n for n in sprites if not SPRITE_BOUNDS[n].get("ci_safe", True)]
+        sprites = [n for n in sprites if SPRITE_BOUNDS[n].get("ci_safe", True)]
+        if skipped:
+            print(
+                f"[validate] --ci-only: skipping {len(skipped)} non-CI-safe sprite(s): "
+                f"{', '.join(skipped)}",
+                flush=True,
+            )
     report = run_validation(sprites, args)
     print()
     print("=" * 60)

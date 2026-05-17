@@ -51,7 +51,10 @@ class TestResolvePressMode:
         ) == (True, False)
 
     def test_legacy_no_modifier_returns_unparented(self) -> None:
-        assert resolve_press_mode(shift_held=False, default_chain=False) == (False, False)
+        assert resolve_press_mode(shift_held=False, default_chain=False) == (
+            False,
+            False,
+        )
 
     def test_legacy_with_shift_returns_disconnected(self) -> None:
         # SPEC 012.1 shipped Shift = parent + use_connect=False; the
@@ -63,29 +66,44 @@ class TestResolvePressModeLabel:
     """Same chord matrix returned as Blender-aligned labels."""
 
     def test_default_no_modifier_is_connected(self) -> None:
-        assert resolve_press_mode_label(
-            shift_held=False, alt_held=False, default_chain=True
-        ) == "connected"
+        assert (
+            resolve_press_mode_label(
+                shift_held=False, alt_held=False, default_chain=True
+            )
+            == "connected"
+        )
 
     def test_default_shift_is_unparented(self) -> None:
-        assert resolve_press_mode_label(
-            shift_held=True, alt_held=False, default_chain=True
-        ) == "unparented"
+        assert (
+            resolve_press_mode_label(
+                shift_held=True, alt_held=False, default_chain=True
+            )
+            == "unparented"
+        )
 
     def test_alt_label_is_disconnected(self) -> None:
-        assert resolve_press_mode_label(
-            shift_held=False, alt_held=True, default_chain=True
-        ) == "disconnected"
+        assert (
+            resolve_press_mode_label(
+                shift_held=False, alt_held=True, default_chain=True
+            )
+            == "disconnected"
+        )
 
     def test_legacy_no_modifier_is_unparented(self) -> None:
-        assert resolve_press_mode_label(
-            shift_held=False, alt_held=False, default_chain=False
-        ) == "unparented"
+        assert (
+            resolve_press_mode_label(
+                shift_held=False, alt_held=False, default_chain=False
+            )
+            == "unparented"
+        )
 
     def test_legacy_shift_is_disconnected(self) -> None:
-        assert resolve_press_mode_label(
-            shift_held=True, alt_held=False, default_chain=False
-        ) == "disconnected"
+        assert (
+            resolve_press_mode_label(
+                shift_held=True, alt_held=False, default_chain=False
+            )
+            == "disconnected"
+        )
 
 
 class TestSnapWorldPointXz:

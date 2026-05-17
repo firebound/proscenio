@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.automesh.density import (  # noqa: E402  - sys.path setup above
@@ -77,8 +77,12 @@ class TestPointInPolygon:
     def test_concave_l_shape(self) -> None:
         # L shape: long vertical bar + foot
         l_shape = [
-            (0.0, 0.0), (3.0, 0.0), (3.0, 1.0),
-            (1.0, 1.0), (1.0, 5.0), (0.0, 5.0),
+            (0.0, 0.0),
+            (3.0, 0.0),
+            (3.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 5.0),
+            (0.0, 5.0),
         ]
         assert point_in_polygon((0.5, 0.5), l_shape) is True
         assert point_in_polygon((0.5, 4.0), l_shape) is True
@@ -251,8 +255,12 @@ class TestInteriorPointsForAnnulus:
         bones: list[BoneSegment2D] = [((0.0, 5.0), (10.0, 5.0))]
         uniform = interior_points_for_annulus(outer, [], 2.0)
         with_bones = interior_points_for_annulus(
-            outer, [], 2.0, bone_segments=bones,
-            bone_density_radius=5.0, bone_density_factor=1,
+            outer,
+            [],
+            2.0,
+            bone_segments=bones,
+            bone_density_radius=5.0,
+            bone_density_factor=1,
         )
         assert len(with_bones) == len(uniform)
 
@@ -261,7 +269,11 @@ class TestInteriorPointsForAnnulus:
         bones: list[BoneSegment2D] = [((0.0, 10.0), (20.0, 10.0))]
         uniform = interior_points_for_annulus(outer, [], 4.0)
         with_bones = interior_points_for_annulus(
-            outer, [], 4.0, bone_segments=bones,
-            bone_density_radius=6.0, bone_density_factor=2,
+            outer,
+            [],
+            4.0,
+            bone_segments=bones,
+            bone_density_radius=6.0,
+            bone_density_factor=2,
         )
         assert len(with_bones) > len(uniform)

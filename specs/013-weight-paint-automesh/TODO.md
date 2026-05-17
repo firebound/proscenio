@@ -1,11 +1,20 @@
 # SPEC 013 - TODO
 
-Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design + decisions D1-D16 (locked at planning time after 9-tool survey + 6-theme community-pain synthesis). Wave 13.1 = first cut (D1-D15 minus D16). Wave 13.2 = productivity polish (Animate soft/hard, Moho region painting, weight transfer between sprites, multi-mesh batch bind). Wave 13.3+ = aspirational (Auto-Patch, Glue equivalent).
+Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design + decisions D1-D16 (locked at planning time after 9-tool survey + 6-theme community-pain synthesis).
+
+Waves:
+
+- **Wave 13.1** = first cut, SHIPPED (automesh + hole-support amendment via PR #51).
+- **Wave 13.2** = follow-up features that close the bind / paint / sidecar / interactive-authoring story. Features listed by name; pick the order at start-of-wave per dependency notes below.
+- **Wave 13.3** = productivity polish (region painting, multi-mesh batch, weight transfer, soft/hard bone toggle, etc).
+- **Wave 13.4** = aspirational (Auto-Patch joint cover, Cubism Glue equivalent, Smart Bones).
+
+Sub-letter numbering (13.1.a / 13.1.b / 13.1.c …) was tried in iteration and got noisy fast. Each wave now holds named features instead. Commit history retains the old labels for the PR #51 work.
 
 ## Decision lock-in
 
 - [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
-- [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1.b):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
+- [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1, hole support):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
 - [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
 - [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. No default-bind code path may call `parent_with_automatic_weights` blind.
 - [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY (no BONE_HEAT in first cut).
@@ -19,266 +28,192 @@ Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design
 - [ ] D13 - subpanel placement = new `Skinning` subpanel parallel to `Skeleton` in the Proscenio sidebar.
 - [ ] D14 - symmetry mirror axis source = picker armature mirror flag (single source of truth, parallel to SPEC 012 D16 contract).
 - [ ] D15 - density-under-bones automesh = ON by default when picker has armature, OFF otherwise; reuse picker bone positions.
-- [ ] D16 - soft vs hard bone toggle = defer to Wave 13.2 (first cut covers via `bind_init_mode` PROXIMITY vs SINGLE_NEAREST).
+- [ ] D16 - soft vs hard bone toggle = defer to Wave 13.3 (Wave 13.2 covers via `bind_init_mode` PROXIMITY vs SINGLE_NEAREST).
 
-## Wave 13.1.b' - code-quality cleanup of shipped automesh (post-merge)
+## Wave 13.1 - SHIPPED (PR #51)
 
-Tracking the drift logged after PR #51 merged. Sonar local + warnings emitted during PR review surfaced:
+First-cut automesh + alpha hole support. Lifted Spine / COA2's "no holes" restriction so Proscenio differentiates from both surveyed tools.
 
-- Cognitive complexity overshoots (limit 15): `_measure_coverage`=47, `_check_invariants`=22, `_build_mesh_via_delaunay`=20, `read_alpha_grid`=18, `build_automesh`=17-18, `extract_contours`/`extract_holes` helpers around 15-22.
+What landed:
+
+- Pure-Python alpha contour walker (Moore neighbour + 4/8 binary morphology); zero third-party Python deps.
+- Annulus topology with outer + inner contour + interior Steiner points fed into Constrained Delaunay (`mathutils.geometry.delaunay_2d_cdt`).
+- Alpha hole detection: background islands fully enclosed by foreground are traced as constraint loops + cut out via centroid post-process face prune. Loose edges / verts cleaned after.
+- Density-under-bones (D15): when picker armature exists, Steiner points cluster along bone segments.
+- `proscenio_base_sprite` vertex group preserves the original 4 quad corners across regens (D3).
+- Debug pipeline stages (raw_contours / smoothed / resampled / interior_points / bridges / fill_no_interior / final): each emits a wireframe companion in the `Proscenio.Debug` collection without committing to the active mesh (except `fill_no_interior` + `final` which do commit, intentionally).
+- 5 fixtures (blob / lshape / hand / ring / swirl). Swirl is hi-res AA 512x512 "8-shape" with 2 holes - smoke target for the multi-hole + smooth-curvilinear silhouette paths.
+- Headless `validate_automesh.py` per-pixel coverage + hole-bleed metrics + RGBA debug PNG output. Wired into CI via `--ci-only` filter that skips heavyweight fixtures (swirl) to keep CI runtime under budget.
+
+## Wave 13.2 - follow-up features
+
+Pick features per dependency notes; not all need shipping in a single PR. Recommended start order: cleanup → bind → paint → sidecar → panel → interactive modal → docs.
+
+### Code-quality cleanup (prerequisite for everything else)
+
+Sonar warnings + cognitive-complexity drift surfaced during PR #51 review iteration:
+
+- Cognitive complexity overshoots (limit 15): `_measure_coverage`=47, `_check_invariants`=22, `_build_mesh_via_delaunay`=20, `read_alpha_grid`=18, `build_automesh`=17-18, `extract_contours` / `extract_holes` helpers around 15-22.
 - Tuple-repeat in SPRITE_BOUNDS branches (S1871).
-- Duplicate branch in validator's flood-fill helper (S1871, ~lines 205-211).
+- Duplicate branch in validator's flood-fill helper (S1871).
 - Module-internal helpers not extracted: hole detection flood-fill + Steiner filter both inline in larger functions.
-- Conventions violations vs `.ai/conventions.md`: `build_automesh` past the 300 LOC smell threshold; helpers that grew across the hole-support iteration not split into their own submodule under `core/`.
+- Conventions vs `.ai/conventions.md`: `build_automesh` past the 300 LOC smell threshold; helpers grown across hole-support iteration not split into a dedicated submodule under `core/`.
 
 Goals:
 
-- Drive every cognitive-complexity warning to <= 15 by extracting named helpers (each stage of `build_automesh` becomes a private function with a single concern; this also feeds the Wave 13.1.g interactive modal which needs each stage as a callable).
-- Split `automesh_bmesh.py` if it crosses 350 LOC after refactor - candidates: separate `automesh_cdt.py` for the Delaunay layer, `automesh_hole_prune.py` for the post-process face prune.
+- Drive every cognitive-complexity warning to <= 15 by extracting named helpers (each stage of `build_automesh` becomes a private function with a single concern; feeds the interactive modal feature below which needs each stage as a callable).
+- Split `automesh_bmesh.py` if past 350 LOC - candidates: `automesh_cdt.py` for the Delaunay layer, `automesh_hole_prune.py` for the post-process face prune.
 - De-dup SPRITE_BOUNDS shape (single TypedDict + named fields).
-- Run the full validator + headless + pytest after each refactor; gate on zero behavior drift.
+- Run validator + headless + pytest after each refactor; gate on zero behavior drift.
 
-Cost: ~1-2 days. Low risk thanks to the validator + 313 pytest gate. Refactor lands BEFORE Wave 13.1.b original (planar proximity bind) so the bind operator builds against a clean foundation.
+Cost: ~1-2 days. Low risk thanks to validator + 313 pytest gate. Lands BEFORE bind so bind builds on clean foundation.
 
-## Wave 13.1 - core surface (Blender)
+### Planar proximity bind (D4 + D5 + D11)
 
-Branch: `feat/spec-013-weight-paint-automesh` (or split into 13.1.a automesh + 13.1.b bind + 13.1.c paint per PR-size budget). Target: ship D1-D15 in ~5 commits + tests + docs + smoke.
+Bind a mesh to a bone chain via a custom planar-distance algorithm that never hits the bone-heat solver; surface structured diagnosis when something goes wrong.
 
-**Goal:** make weight painting in Proscenio tractable for the average 2D cutout user. After this wave a user can take a PNG sprite + a Quick-Armature-authored rig and produce a bound, weighted, exportable mesh in under 5 minutes without leaving the addon's panel.
+- `core/planar_proximity.py` (pure Python, bpy-free): per-vertex weights as `1 / distance_to_segment ^ falloff_power` normalized across bones, hard cutoff at configurable max distance. Default falloff_power = 2.0.
+- `core/bind_diagnosis.py`: pre-flight checks. Each returns `BindDiagnosis(kind, severity, message, hint)` covering unapplied scale, flipped normals, overlapping verts, isolated islands, bones outside mesh bbox.
+- `core/skinning_modes.py`: `BindMode = Literal["PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]` + `bind_weights_for_mode(mode, ...)` dispatcher.
+- `operators/bind_mesh.py`: `PROSCENIO_OT_bind_mesh_to_armature`. Reads `scene.proscenio.skinning.bind_init_mode`. F3 redo override. Armature source = picker (SPEC 012 D16); fails fast with structured guidance if picker unset.
+- Pre-flight runs before any weight calculation; severity `error` aborts with INFO report + suggested fix; severity `warn` continues.
+- Writes vertex groups via `obj.vertex_groups.new` + `vertex_groups[name].add(...)`. Always normalizes per-vertex sums to 1 (SPEC 003 D1 writer contract).
+- Sidecar capture hook (D6 foundation): immediately after bind, write `obj["proscenio_weight_sidecar"]` snapshot keyed by UV.
+- Optional `use_bone_heat` BoolProperty (default False) for users who insist; ungated in panel, F3 only per D4.
 
-### 13.1.a - Pure-Python automesh (D1 + D2 + D3 + D15)
+Tests (pytest, bpy-free):
 
-**Goal:** turn a sprite (image-textured plane OR imported `[mesh]` layer) into an annulus mesh whose density follows the picker armature's bones, without any third-party Python dependencies.
+- `tests/test_planar_proximity.py` - 4-vertex square + 1 bone gives weight 1.0; 2 equidistant bones give 0.5 / 0.5; bone outside max distance gives 0.
+- `tests/test_skinning_modes.py` - each enum case produces expected shape; EMPTY = zero-weights; SINGLE_NEAREST never emits weight on more than one bone per vertex.
+- `tests/test_bind_diagnosis.py` - SimpleNamespace mocks exercise each diagnosis kind.
 
-- [ ] `core/alpha_contour.py` (pure Python, bpy-free): walk the alpha channel via Moore neighbour contour tracing. Input = `list[list[int]]` alpha grid (0-255). Output = outer + inner contour as `list[tuple[int, int]]`. Configurable threshold + margin (pixel dilate / erode).
-- [ ] `core/automesh_geometry.py` (pure Python, bpy-free): given outer + inner contours, build annulus topology vertex list + edge list ready for `triangle_fill`. Resampling via Laplacian smoothing (3 iterations) + arc-length resample to even spacing. Configurable interior subdivision density.
-- [ ] `core/automesh_density.py` (pure Python, bpy-free): given bone segments (list of `(head_xz, tail_xz)`) + base interior vertex grid, return additional subdivision points clustered within configurable radius of each bone segment. Falls back to uniform density when no bones given.
-- [ ] `core/bpy_helpers/automesh_bmesh.py` (bpy-bound): consumes pure-Python output from above; reads `bpy.types.Image.pixels` buffer (flat float array, 4 channels) into the alpha grid format; writes annulus topology via `bmesh.ops.triangle_fill`; tags the original quad's 4 verts in `proscenio_base_sprite` vertex group before any regen; re-runs delete only verts NOT in `proscenio_base_sprite`.
-- [ ] `operators/automesh.py` - `PROSCENIO_OT_automesh_from_sprite`. `bl_options = {"REGISTER", "UNDO"}`. Reads `scene.proscenio.skinning.{automesh_resolution, automesh_alpha_threshold, automesh_margin, automesh_density_under_bones}`. F3 redo panel exposes overrides.
-- [ ] Operator pre-flight: detect missing image texture, zero-area alpha (all-transparent sprite), oversized image (warn at >4096 dim per side), missing picker armature when `automesh_density_under_bones` is True (auto-fallback to uniform with INFO report).
-- [ ] Operator integrates with SPEC 011 `[mesh]`-tagged imports: preserves `proscenio_psd_kind = "mesh"` custom property; merges with existing topology rather than replacing when the mesh already has non-base-sprite verts (warn + offer "Replace all" via redo).
+### Weight paint modal wrapper (D7 + D8 + D9 + D10 + D12 + D14)
 
-**Tests** (pytest, bpy-free):
+One-button entry into a 2D-safe weight paint context with custom overlay + hard guarantees on exit cleanup + ESC handling.
 
-- [ ] `tests/test_alpha_contour.py` - synthetic 8x8 / 16x16 / 64x64 alpha grids covering: square sprite, L-shape, donut (Wave 13.1.b: validates `extract_holes` + `extract_contours` returns the hole boundary, mesh cuts out hole region), single-pixel sprite (degenerate fallback), all-transparent (raises ValueError).
-- [ ] `tests/test_automesh_geometry.py` - annulus vertex/edge count invariants, contour-smoothing convergence (3 iterations -> stable point positions), arc-length resample maintains expected vertex count.
-- [ ] `tests/test_automesh_density.py` - bone-density subdivision adds verts within radius of bone segments, fallback to uniform when no bones, vertex count scales linearly with bone count.
+- `core/paint_preset_2d.py`: frozen `PaintPresetSnapshot` dataclass with 8 brush toggles. `apply_preset(snapshot)` returns previous values for restore.
+- `core/bpy_helpers/paint_preset_bind.py`: reads / writes `context.tool_settings.weight_paint`. Mirror axis pulled from `scene.proscenio.active_armature` mirror flag (D14).
+- `core/bpy_helpers/weight_overlay.py`: GPU `draw_handler_add` callback drawing 6px filled discs per vertex coloured by active vertex group weight via 6-stop colorband. Alpha 0 for zero-weight verts. Toggle to draw provenance instead (D6 hook).
+- `operators/edit_weights.py`: `PROSCENIO_OT_edit_weights_modal`. Snapshot brush + viewport + Bone Collections + active + selection on invoke; switch armature to POSE, mesh to WEIGHT_PAINT, apply 2D preset, auto-select vertex group matching first selected pose bone, register overlay + header pill. ESC = hard exit (D10). `WINDOW_DEACTIVATE` triggers in-flight stroke flush. D12 tablet release via `event.pressure` when available. `_finish` / `cancel` restore via try/finally; wraps cumulative paint in single undo push.
+- `core/bone_collection_visibility.py`: Bone Collections visibility (Blender 4.0+) instead of COA2's `bone.hide` global flag. Snapshot + restore round-trip.
+- Header pill via `_draw_statusbar_edit_weights` (reuse SPEC 012 D6 chord-layout helper). Icons: `EVENT_ESC`, `MOD_MIRROR`, `BRUSHES_ALL`.
+- Crash safety: any exception hits `_finish` via try/except/finally; log to console; report INFO with restoration message.
 
-### 13.1.b - Planar proximity bind (D4 + D5 + D11)
+Tests (pytest, bpy-free):
 
-**Goal:** bind a mesh to a bone chain via a custom planar-distance algorithm that never hits the bone-heat solver, and surface structured diagnosis when something goes wrong.
+- `tests/test_paint_preset_2d.py` - apply_preset returns prior values; idempotent restore.
+- `tests/test_bone_collection_visibility.py` - snapshot + restore via SimpleNamespace mocks; covers empty-collections + Blender-3.x-fallback.
+- Modal smoke deferred to MANUAL_TESTING.md.
 
-- [ ] `core/planar_proximity.py` (pure Python, bpy-free): given vertex positions (`list[tuple[float, float]]` on XZ plane) + bone segments (`list[tuple[head_xz, tail_xz, name]]`), return per-vertex weights as `dict[bone_name, list[float]]`. Algorithm = `1 / distance_to_segment ^ falloff_power` normalized across bones, with hard cutoff at configurable max distance. Default falloff_power = 2.0.
-- [ ] `core/bind_diagnosis.py` (pure Python + bpy boundary): pre-flight checks. Each check returns `BindDiagnosis(kind: Literal["scale", "normals", "overlap", "islands", "bone_bbox"], severity: Literal["error", "warn"], message: str, hint: str)`. Boundary helper `collect_diagnoses_for_object(obj, armature) -> list[BindDiagnosis]` wraps bpy reads.
-- [ ] `core/skinning_modes.py` (pure Python, bpy-free): `BindMode = Literal["PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]` + `bind_weights_for_mode(mode, vertex_positions, bone_segments) -> dict[str, list[float]]`. Dispatch by mode; PROXIMITY delegates to `planar_proximity`, SINGLE_NEAREST picks closest bone per vertex, ENVELOPE uses bone envelope radius, EMPTY returns all-zero dict.
-- [ ] `operators/bind_mesh.py` - `PROSCENIO_OT_bind_mesh_to_armature`. Reads `scene.proscenio.skinning.bind_init_mode`. F3 redo override. Source of armature = picker (SPEC 012 D16); fails fast with structured guidance if picker is unset.
-- [ ] Pre-flight runs before any weight calculation; severity `error` aborts with INFO report + suggested fixes; severity `warn` continues with WARNING. Each diagnosis kind has a documented remedy string.
-- [ ] Bind writes vertex groups via `obj.vertex_groups.new` + `vertex_groups[name].add(index_list, weight, "REPLACE")`. Always normalizes per-vertex sums to 1 (matching SPEC 003 D1 writer contract; user gets canonical weights even before paint).
-- [ ] Sidecar capture hook (per D6): immediately after bind, write `obj["proscenio_weight_sidecar"]` snapshot of the just-generated weights keyed by UV.
-- [ ] Operator option `use_bone_heat: BoolProperty(default=False, description="Use Blender's heat-diffusion (legacy / experimental)")` for users who insist - per D4 this is opt-in only and ungated, including in panel UI (only F3 redo).
+### Weight sidecar + reproject (D6) - the differentiator
 
-**Tests** (pytest, bpy-free):
+Make automesh regen non-destructive. Once a user has painted weights, regenerating the mesh at a different resolution preserves their work via UV-anchored re-projection.
 
-- [ ] `tests/test_planar_proximity.py` - 4-vertex square + 1 bone gives all 4 verts weight 1.0 to that bone; 2 bones equidistant give 0.5 / 0.5; bone outside max distance gives 0.
-- [ ] `tests/test_skinning_modes.py` - each enum case produces expected shape; EMPTY returns zero-weights; SINGLE_NEAREST never emits weight on more than one bone per vertex.
-- [ ] `tests/test_bind_diagnosis.py` - synthetic objects via SimpleNamespace exercise each diagnosis kind: unapplied scale, flipped normal (manually constructed face), overlapping verts (two verts at same coord), isolated islands (two disjoint face groups), bones outside bbox.
+- `core/weight_sidecar.py`: `WeightSidecar` dataclass with vertex_group_names + entries (uv_anchor + weights + provenance) + mesh_topology_hash.
+- `core/weight_reproject.py`: `reproject(sidecar, new_vertex_uvs)`. For each new vertex, find 3 nearest UV anchors, barycentric-interpolate weights, mark `reprojected`. Verts with no close anchor fall back to proximity seed, marked `auto_seed`.
+- `core/bpy_helpers/sidecar_io.py`: serialize to JSON, write to `obj["proscenio_weight_sidecar"]` Custom Property (survives addon disable per SPEC 005 storage rules).
+- Automesh integration: when `scene.proscenio.skinning.preserve_on_regen` is True and object has non-zero sidecar entries: snapshot current weights, regenerate mesh, reproject onto new topology, INFO with counts.
+- `operators/restore_weight_snapshot.py`: `PROSCENIO_OT_restore_weight_snapshot`. Re-applies sidecar to current mesh without regen.
+- Provenance hooks: bind tags all verts `auto_seed`; edit weights modal tags painted verts `user_paint` via diff. Panel pill: "187 paint / 42 seed / 0 reprojected".
+- Vertex provenance overlay toggle on weight overlay (user_paint = white outline, auto_seed = gray, reprojected = cyan).
 
-### 13.1.c - Weight paint modal wrapper (D7 + D8 + D9 + D10 + D12 + D14)
+Tests (pytest, bpy-free):
 
-**Goal:** one-button entry into a 2D-safe weight paint context with custom overlay, with hard guarantees on exit cleanup and ESC handling.
+- `tests/test_weight_sidecar.py` - serialize/deserialize round-trip, topology hash detects changes, JSON shape stable.
+- `tests/test_weight_reproject.py` - identical-topology = no-op; coarser-to-finer interpolates correctly; verts with no close anchor fall back to auto_seed.
 
-- [ ] `core/paint_preset_2d.py` (pure Python, bpy-free): pure-data record of brush settings to apply / restore. `PaintPresetSnapshot` frozen dataclass with all 8 toggles (Front Faces Only, Falloff Shape, brush radius, Auto Normalize, Use Symmetry X/Y/Z, brush Strength). `apply_preset(snapshot) -> PaintPresetSnapshot` returns previous values for restore.
-- [ ] `core/bpy_helpers/paint_preset_bind.py` (bpy-bound): reads brush settings from `context.tool_settings.weight_paint`, calls pure-Python apply, writes back. Mirror axis pulled from `scene.proscenio.active_armature` mirror flag (D14).
-- [ ] `core/bpy_helpers/weight_overlay.py` (bpy-bound): GPU `draw_handler_add` callback drawing 6px filled discs per vertex coloured by the active vertex group weight via a 6-stop colorband (red->orange->yellow-green->green->cyan->blue). Alpha 0 for zero-weight verts. Optional toggle to draw provenance instead of value (D6 hook).
-- [ ] `operators/edit_weights.py` - `PROSCENIO_OT_edit_weights_modal`. Modal flow:
-  - `invoke`: snapshot brush + viewport + Bone Collections + active object + selection. Switch armature to POSE; mesh to WEIGHT_PAINT; apply 2D paint preset; auto-select vertex group matching first selected pose bone; register `weight_overlay` draw handler; register `STATUSBAR_HT_header.prepend` icon hint ("ESC exit | Mirror: ON | 2D preset: ON"); register `VIEW3D_HT_header.append` matching hint (lift SPEC 012 D6 pattern).
-  - `modal`: ESC = hard exit (D10), pass-through for all paint events (Blender brush owns LMB/MOUSEMOVE), `WINDOW_DEACTIVATE` triggers a "release in-flight stroke" guard via `bpy.ops.paint.weight_paint('INVOKE_DEFAULT', stroke=[])` no-op to flush Blender's brush state. D12 tablet pressure release uses `event.pressure` introspection when available.
-  - `_finish` / `cancel`: restore brush + viewport + Bone Collections + active + selection via `try/finally`. Unregister handlers + headers. Wraps cumulative paint in single `bpy.ops.ed.undo_push(message="Edit Weights: N strokes")`.
-- [ ] `core/bone_collection_visibility.py` (bpy-bound): replace COA2's `bone.hide` global-flag approach with Blender 4.0+ Bone Collections visibility (`armature.data.collections[i].is_visible`). Snapshot + restore round-trip; undo-stack-aware.
-- [ ] Header pill renders via `_draw_statusbar_edit_weights(self, context)` reused-pattern from SPEC 012 D6 refinement (`_emit_chord_layout` helper). Pill icons: `EVENT_ESC`, `MOD_MIRROR`, `BRUSHES_ALL` (or similar 2D-paint-indicating icon).
-- [ ] Crash safety: any exception in modal body or in `invoke` body must hit `_finish` via `try/except/finally` so the user never wakes up with bones hidden or brush in wrong state. Log to console; report INFO with restoration message.
+Sprite-changed-in-Photoshop workflow (from PR #51 smoke discussion) is exactly this feature: artist edits PNG, re-exports, automesh regen reprojects weights via UV anchors instead of forcing manual repaint.
 
-**Tests** (pytest, bpy-free):
+### PropertyGroup + Skinning panel (D13)
 
-- [ ] `tests/test_paint_preset_2d.py` - apply_preset returns prior values; round-trip via `apply_preset(apply_preset(snap).previous) == snap` (idempotent restore).
-- [ ] `tests/test_bone_collection_visibility.py` - snapshot + restore via SimpleNamespace mocks; covers empty-collections edge case and Blender-3.x-fallback (when `data.collections` does not exist).
-- [ ] Headless modal tests deferred - modal state is hard to exercise without booting Blender; manual smoke covers it. Document the smoke checklist in `tests/MANUAL_TESTING.md`.
-
-### 13.1.d - Weight sidecar + reproject (D6) - **the differentiator**
-
-**Goal:** make automesh regen non-destructive. Once a user has painted weights, regenerating the mesh at a different resolution preserves their work via UV-anchored re-projection.
-
-- [ ] `core/weight_sidecar.py` (pure Python, bpy-free): `WeightSidecar` dataclass:
-  - `vertex_group_names: list[str]`
-  - `entries: list[WeightSidecarEntry]` where entry = `(uv_anchor: tuple[float, float], weights: dict[group_name, float], provenance: Literal["user_paint", "auto_seed", "reprojected"])`
-  - `mesh_topology_hash: str` (sha1 of vertex count + face indices, used to detect topology change)
-- [ ] `core/weight_reproject.py` (pure Python, bpy-free): `reproject(sidecar, new_vertex_uvs) -> dict[group_name, list[float]]`. For each new vertex, find the 3 nearest UV anchors in the sidecar (KD-tree or simple sort for small meshes), barycentric-interpolate weights, mark as `reprojected` provenance. Verts with no close-enough anchor fall back to fresh proximity seed and are marked `auto_seed`.
-- [ ] `core/bpy_helpers/sidecar_io.py` (bpy-bound): serialize WeightSidecar to JSON, write to `obj["proscenio_weight_sidecar"]` Custom Property (raw CP, not PG - survives addon disable per SPEC 005 storage rules). Read back on demand.
-- [ ] `operators/automesh.py` (13.1.a above): when `scene.proscenio.skinning.preserve_on_regen` is True and the object has an existing sidecar with non-zero entries, automatically: (a) snapshot current weights into sidecar refresh, (b) regenerate mesh, (c) call `reproject` to seed weights on new topology, (d) report INFO with counts ("Restored 187 user-paint vertices, seeded 42 new vertices from proximity").
-- [ ] `operators/restore_weight_snapshot.py` - `PROSCENIO_OT_restore_weight_snapshot`. Re-applies the sidecar to the current mesh without regen (useful when user's last automatic reproject went wrong).
-- [ ] Provenance hooks: bind operator (13.1.b) tags all vertices `auto_seed` after first bind; edit weights modal (13.1.c) tags any vertex the user paints `user_paint` via a pre/post-modal diff. Provenance pill in the panel: "187 paint / 42 seed / 0 reprojected."
-- [ ] Vertex provenance overlay: weight overlay (13.1.c) gains a toggle to recolour discs by provenance instead of weight value (user_paint = white outline, auto_seed = gray, reprojected = cyan).
-
-**Tests** (pytest, bpy-free):
-
-- [ ] `tests/test_weight_sidecar.py` - serialize/deserialize round-trip, topology hash detects changes, JSON shape stable.
-- [ ] `tests/test_weight_reproject.py` - identical-topology reproject = no-op (every vert matches its own UV anchor); coarser-to-finer mesh reproject interpolates correctly; verts with no close anchor fall back to auto_seed; provenance counters match expected.
-
-### 13.1.e - PropertyGroup + panel + integration (D13)
-
-- [ ] `properties/scene_props.py` extend with `ProscenioSkinningProps` PropertyGroup (per STUDY Design surface > Property model). Pointer wired on `ProscenioSceneProps.skinning`.
-- [ ] `panels/skinning.py` - new `PROSCENIO_PT_skinning` subpanel parallel to `PROSCENIO_PT_skeleton`. Layout:
-  - "Picker armature" row (mirror of Skeleton picker, read-only view + jump-to-Skeleton-panel button if unset).
-  - "Automesh" sub-box: resolution / alpha threshold / margin / density-under-bones toggle + `Automesh from Sprite` button.
+- `properties/scene_props.py`: `ProscenioSkinningProps` PropertyGroup. Pointer wired on `ProscenioSceneProps.skinning`.
+- `panels/skinning.py`: `PROSCENIO_PT_skinning` subpanel parallel to `PROSCENIO_PT_skeleton`. Layout:
+  - "Picker armature" row (mirror of Skeleton picker, read-only).
+  - "Automesh" sub-box: resolution / alpha threshold / margin / density-under-bones + `Automesh from Sprite` button.
   - "Bind" sub-box: `bind_init_mode` dropdown + `Bind to Picker Armature` button.
-  - "Edit Weights" sub-box: 2D preset toggle + `Edit Weights` button (launches modal).
-  - "Snapshot" sub-box: preserve-on-regen toggle + `Restore Snapshot` button + sidecar provenance counts ("187 paint / 42 seed / 0 reprojected" if sidecar exists, else "no snapshot").
-- [ ] Panel polling: only show subpanel when active object is mesh-type. Show "Pick an armature in Skeleton panel" warning when picker is unset.
-- [ ] Operator buttons disabled with explanatory tooltip when prerequisites unmet (e.g. `Edit Weights` disabled with "Bind to picker armature first" when no vertex groups exist).
-- [ ] F3 search discoverability: all 5 operators registered with descriptive `bl_label`. `bl_description` short and links to the panel.
+  - "Edit Weights" sub-box: 2D preset toggle + `Edit Weights` button.
+  - "Snapshot" sub-box: preserve-on-regen toggle + `Restore Snapshot` button + sidecar provenance counts.
+- Panel polling: only show when active object is mesh-type. Warn when picker is unset.
+- Operator buttons disabled with tooltip when prerequisites unmet.
+- F3 search discoverability: all 5 operators registered with descriptive `bl_label`.
 
-### 13.1.f - Docs + smoke
+### Interactive modal automesh authoring
 
-**Docs:**
+User reflection after PR #51: one-shot produces over-dense meshes for simple sprites AND user has no in-flight course correction. Modal lifts each existing debug stage to interactive preview.
 
-- [ ] [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) gains "Weight paint modal pattern" subsection (companion to SPEC 012's "Modal overlay pattern" and "Modal operator hint placement"). Covers the snapshot + apply + restore pattern + try/finally crash safety + Bone Collections visibility approach.
-- [ ] [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) gains "Pure-Python contour walking" subsection documenting why automesh does not use OpenCV (constraint reasoning + COA2 adoption lesson).
-- [ ] [`.ai/skills/format-spec.md`](../../.ai/skills/format-spec.md) - "Skinning weights" section already covers the wire format (SPEC 003). Cross-reference SPEC 013 as the authoring story.
-- [ ] [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.md) - new section 1.15 "SPEC 013 weight paint + automesh" with smoke checklist (T1 invoke automesh on a hand sprite, T2 verify annulus topology, T3 bind to picker chain, T4 enter edit weights modal, T5 paint a few strokes, T6 regen automesh at higher resolution, T7 verify weights restored + provenance counts).
+Proposed pipeline (each step = a modal stage the user can step forward / backward through):
 
-**Smoke fixture:**
+1. **Outer contour preview.** GPU overlay of the outer polyline. User adjusts resolution / alpha threshold / margin via N-panel; preview re-runs live.
+2. **Inner subdivision loops.** N concentric inner-loop polylines (morphological erosions of the outer at increasing kernel sizes). User picks count + spacing via slider. These are CONSTRAINT edges the eventual Delaunay respects, giving user control over where edge loops sit before any face exists.
+3. **User-pointed interest points.** Free-draw / click overlay where user marks Steiner points to preserve (muscle bulges, fold seams). Unifies with the user-drawn density markers idea below but at coarser level (single points, not painted regions).
+4. **Steiner preview.** GPU dots for the full Steiner cluster (uniform / bone-density / user-pointed) before any triangulation. User refines spacing / density per region.
+5. **Apply.** Run CDT with outer + inner loops + holes + user Steiners + bone Steiners as constraints; post-process face prune; write to mesh.
 
-- [ ] Reuse `examples/generated/atlas_pack/atlas_pack_workbench.blend` (SPEC 012 smoke fixture). Add a hand-sized sprite + 3-bone arm chain if not already present; the existing rig should already exercise the flow.
-- [ ] Manual smoke per checklist above, before merge. Log results in MANUAL_TESTING.md per the live-logging convention.
-
-**Manual verification** (logged in `tests/MANUAL_TESTING.md` 1.15):
-
-- [ ] Reload-Scripts safety smoke - re-run "Reload Scripts" after entering Edit Weights modal; verify no orphan draw handlers, no panel crash, brush state restored.
-- [ ] Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects.
-- [ ] Headless Blender script via `--background --python` to confirm registration / unregister cycle clean.
-
-## Wave 13.2 - productivity polish (deferred)
-
-Productivity layer on top of first cut. Each item is a self-contained refinement; ship in a follow-up PR or fold into iteration of an existing wave when the trigger lands.
-
-- **Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on the vertex group's metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind operator re-derives weights respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
-- **Bone strength region painting (Moho lift).** Per-bone elliptical/capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Trigger: user feedback that the proximity default doesn't give enough control for shapes like long hair or tails.
-- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); applies the same algorithm to each against the picker armature. Useful for character imports with N sprites + 1 rig. Trigger: imported-character workflow stresses this.
-- **Weight transfer between sprites.** `proscenio.copy_weights_to_selected` operator. Takes source mesh (active) + N target meshes (selected); for each vertex in each target, look up nearest source vertex by world position + copy its weight dict. Solves COA2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73). Foundational for Live2D-style line / colour / shadow layered sprites.
-- **Live pose-mode preview in weight paint.** "Scrub the bone to a posed angle, see how the mesh deforms, scrub back" without leaving Edit Weights modal. Adds a pose-scrub overlay + a hotkey to toggle rest pose. Trigger: user wants to verify weight changes against a deformed pose without exiting the modal.
-- **Sidecar import / export.** Operator to dump the weight sidecar JSON to a file + load from a file. Enables version-controlled weight backups outside the .blend. Trigger: user asks to back up weight work to git.
-- **Brush settings curve presets.** Quick-select brush curve presets named for common 2D tasks ("Hard edge", "Soft falloff", "Crease", "Smooth blend") via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
-
-### User-drawn density markers (post-smoke feedback, Wave 13.2 candidate)
-
-User vision from PR #51 smoke discussion: artist draws on the sprite (grease pencil or GPU overlay similar to Quick Armature hint surfaces) to mark regions of interest (muscle bulges, cloth folds, joint creases) that should get extra edge-loop density in the automesh. The marks would translate into additional Steiner point clusters when the operator runs, giving fine-grained deformation control where the artist knows it matters.
+Restructures `build_automesh` from "one function that produces a mesh" into "a state machine that surfaces each pipeline stage as an interactive preview". The current debug stages are the SKELETON of this state machine; the modal lifts each from "print + debug wireframe" to "GPU overlay + user input + step forward".
 
 Implementation sketch:
 
-- New modal operator `proscenio.automesh_density_markers` activated from Skinning panel button.
-- Modal uses GPU overlay (lift `core/bpy_helpers/modal_overlay.py` scaffold from SPEC 012) - paint-style stroke captures world XZ positions.
-- Marks stored on the sprite mesh as a custom property (`proscenio_density_marks: list[(x, z, weight)]`) so they persist + can be regenerated alongside the mesh.
-- Automesh operator reads marks at build time; each mark spawns N extra Steiner points within `weight` radius.
-- Per-mark color in the GPU overlay differentiates muscle / fold / crease types.
+- New modal operator `proscenio.automesh_authoring` (parallel to current `automesh_from_sprite`, NOT replacing - one-shot stays as the quick path).
+- Modal uses same GPU overlay scaffold as Quick Armature (`core/bpy_helpers/modal_overlay.py`). Header pill shows current stage + ESC=cancel + ENTER=next + BACKSPACE=prev.
+- Each stage's parameters in `scene.proscenio.skinning.authoring_*` so the user can resume mid-modal after a viewport interaction.
+- Inner subdivision loops = N polylines computed as morphological erosions of outer contour. Reuses `dilate`/`erode` from `alpha_contour`.
+- User-pointed Steiners stored on mesh as `proscenio_user_steiners: list[(x, z)]` Custom Property; persist across regens.
+- Final apply pipes everything into existing `_build_mesh_via_delaunay` + `_delete_faces_inside_holes` chain.
 
-Trigger: real character authoring session reveals this is the blocker for production-quality deformation.
+Open decisions when this feature starts (need a `/brainstorming` session):
 
-### Interactive multi-step mesh authoring (post-Wave-13.1.b reflection, Wave 13.1.g / 13.2 candidate)
-
-User vision after the hole-support iteration: the current one-shot automesh produces meshes that are denser than the user wants for sprites that do not need fine deformation, AND the user has no way to course-correct in flight. Proposed evolution: the automesh operator becomes a MULTI-STEP MODAL that mirrors the existing debug-stage scaffold but with user input at each stage, instead of a single click that commits everything.
-
-Proposed pipeline (each step is a modal stage the user can step forward / backward through):
-
-1. **Outer contour preview.** Run alpha trace, show the outer polyline as a GPU overlay. User can adjust resolution / alpha threshold / margin via N-panel; preview re-runs live.
-2. **Inner subdivision loops.** Instead of jumping straight to Steiner-point interior fill, draw N concentric inner-loop polylines (think: edge-loop bands moving inward from the silhouette by even steps). User picks how many loops + spacing via a slider. These are CONSTRAINT edges that the eventual Delaunay will respect, giving the user control over "where the edge loops sit" before any face exists.
-3. **User-pointed interest points.** Free-draw / click overlay where the user marks vertices they want preserved as Steiner points (muscle bulges, fold seams, hard-deform regions). Unifies with the existing "user-drawn density markers" Wave 13.2 candidate but at a coarser level (single points, not painted regions).
-4. **Steiner preview.** Show the Steiner point cluster (uniform / bone-density / user-pointed) as GPU dots before any triangulation. User can refine spacing / density per region; preview re-runs.
-5. **Apply.** Commit: run CDT with outer + inner loops + holes + user Steiners + bone Steiners as constraints; post-process face prune; write to mesh.
-
-This restructures `build_automesh` from "one function that produces a mesh" into "a state machine that surfaces each pipeline stage as an interactive preview". The current debug stages (`raw_contours`, `smoothed`, `resampled`, `interior_points`, `bridges`, `fill_no_interior`, `final`) are the SKELETON of this state machine; the modal lifts each stage from "print + emit wireframe debug object" to "GPU overlay + user input + step forward".
-
-Implementation sketch:
-
-- New modal operator `proscenio.automesh_authoring` (parallel to current `automesh_from_sprite`, NOT replacing - one-shot stays as "quick start").
-- Modal uses the same GPU overlay scaffold as Quick Armature (`core/bpy_helpers/modal_overlay.py`) for the preview surfaces. Header pill shows current stage + ESC=cancel + ENTER=next stage + BACKSPACE=previous stage.
-- Each stage's parameters live in `scene.proscenio.skinning.authoring_*` PropertyGroup fields so the user can resume mid-modal after a viewport interaction.
-- Inner-subdivision loops = N polylines computed as morphological erosions of the outer contour at increasing kernel sizes. Reuses `dilate`/`erode` helpers from `alpha_contour`.
-- User-pointed Steiners stored on the mesh as `proscenio_user_steiners: list[(x, z)]` Custom Property; persist across regens so re-running the modal does not lose user input.
-- Final apply pipes everything into the existing `_build_mesh_via_delaunay` + `_delete_faces_inside_holes` chain; CDT receives outer + inner loops + user Steiners + bone Steiners as constraints, hole post-prune runs as today.
-
-Trade-offs vs current one-shot:
-
-- Pro: user gets exactly the density they want where they want it; no over-meshing on simple sprites; production-quality control without leaving the addon.
-- Pro: existing one-shot stays as the "no time, ship it" path - this modal is opt-in.
-- Pro: the debug-stage scaffold is already 80% of the skeleton needed; refactor focuses on lifting each stage to interactive.
-- Con: doubles the operator surface; more UX to teach.
-- Con: modal lifecycle hygiene (try/finally + ESC + WINDOW_DEACTIVATE) is the same hard discipline as SPEC 012 + Wave 13.1.c paint modal - high test cost.
-- Con: depends on Wave 13.1.c modal scaffold landing first, OR ships its own scaffold (risk of duplicated patterns).
-
-Open decisions when this wave starts:
-
-- Does the modal REPLACE one-shot or COEXIST? (Recommendation: coexist - one-shot is the quick path, modal is the production path.)
-- Inner loops as N concentric erosions, OR as user-drawn polylines, OR both?
-- Is the modal a SPEC 013 amendment (13.1.g) or a follow-up SPEC entirely (013.b "Interactive automesh authoring")? Depends on how invasive the refactor lands.
-- Sidecar interaction: do user-pointed Steiners join the weight sidecar (Wave 13.1.d) keyed by UV anchor for survival across regen?
+- Does the modal REPLACE one-shot or COEXIST? (Recommendation: coexist.)
+- Inner loops as N concentric erosions, OR user-drawn polylines, OR both?
+- User-pointed Steiners join the weight sidecar (keyed by UV anchor) for survival across regen?
 
 Prerequisites:
 
-- Wave 13.1.c modal scaffold (paint wrapper) shipped - provides the modal-lifecycle patterns this needs to lift.
-- Code-quality cleanup of current `build_automesh` complete - lifting each stage to interactive is much harder against the current cognitive-47 monolith.
+- Code-quality cleanup complete (cognitive-47 monolith is hostile to per-stage lifting).
+- Weight paint modal scaffold shipped (provides modal-lifecycle patterns to lift).
 
-Trigger: user wants production-quality control over mesh density per region without falling back to manual edit-mode authoring.
+### Docs + smoke
 
-### Sprite-changed-in-Photoshop workflow (D6 sidecar, Wave 13.1 next commit)
+- `.ai/skills/blender-dev.md` gains "Weight paint modal pattern" subsection (companion to SPEC 012's modal overlay + hint placement patterns). Covers snapshot + apply + restore + try/finally crash safety + Bone Collections visibility.
+- `.ai/skills/blender-dev.md` gains "Pure-Python contour walking" subsection documenting why automesh does not use OpenCV.
+- `.ai/skills/format-spec.md` cross-reference SPEC 013 as the authoring story for SPEC 003's weights wire format.
+- `tests/MANUAL_TESTING.md` 1.19 extends with T-cases for bind / edit / snapshot / reproject.
+- Reload-Scripts safety smoke - re-run "Reload Scripts" after entering Edit Weights modal; verify no orphan draw handlers, no panel crash, brush state restored.
+- Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects.
+- Headless Blender script via `--background --python` to confirm registration / unregister cycle clean.
 
-User concern from PR #51 smoke: "what happens if the user alters the sprite in Photoshop after automesh + bind? We need a way to preserve work + regen with minimal adjustment."
+## Wave 13.3 - productivity polish
 
-This is exactly the D6 weight sidecar from STUDY.md - the differentiator. Workflow:
+Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its own PR when the trigger lands.
 
-1. After bind, snapshot vertex weights + UVs into a JSON sidecar on the mesh object (`obj["proscenio_weight_sidecar"]`) keyed by ALPHA-STABLE anchors (silhouette features like fingertip pixels, not vertex indices).
-2. User edits PNG in Photoshop, re-exports.
-3. Automesh regen: detects sidecar exists -> generates new mesh -> for each new vertex, finds nearest sidecar anchor and projects weight + UV onto it.
-4. Provenance overlay shows which verts got reprojected weights (cyan), which are fresh seeds (gray), which the user touched (white).
+- **Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on vertex group metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind re-derives respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains proximity bleed is too soft on a specific limb.
+- **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone to grow / shrink radius. Region drives initial weight map procedurally. Trigger: proximity default does not give enough control for shapes like long hair or tails.
+- **User-drawn density markers (PR #51 smoke feedback).** Artist paints on sprite (grease pencil or GPU overlay) to mark regions of interest (muscle bulges, cloth folds, joint creases). Marks translate into extra Steiner point clusters at automesh time. Distinct from Wave 13.2's interactive modal at coarse level: this is painted REGIONS persisted on the mesh, modal is per-point clicks during authoring. Implementation sketch: `proscenio_density_marks: list[(x, z, weight, kind)]` Custom Property; per-mark color in the overlay differentiates kinds (muscle / fold / crease).
+- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); same algorithm against picker armature. Useful for character imports with N sprites + 1 rig.
+- **Weight transfer between sprites.** `proscenio.copy_weights_to_selected`. Source mesh (active) + N target meshes (selected); for each target vertex, look up nearest source vertex by world position + copy weight dict. Solves COA2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73).
+- **Live pose-mode preview in weight paint.** Scrub the bone to a posed angle, see how the mesh deforms, scrub back without leaving Edit Weights modal. Pose-scrub overlay + hotkey to toggle rest pose.
+- **Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
+- **Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
+- **Bezier brush stroke for alpha-boundary trace.** Wave 13.2's free-draw alternative to the alpha-trace one-shot. Adds D1.B to the paradigm enum when real workflows demand it.
 
-Wave 13.1 next commit per TODO.md "13.1.d - Weight sidecar + reproject (D6) - the differentiator" section.
+## Wave 13.4 - aspirational
 
-## Wave 13.3 - aspirational (deferred further)
-
-- **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator: given two child meshes sharing a parent bone, generate the seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Requires both child-mesh detection (which sprites are on which side of the articulation) and a custom seam generator (boundary-following triangulation). Trigger: humanoid fixture lands + user complains about inner-elbow gap.
-- **Cubism Glue equivalent.** Operator that seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations). Trigger: layered-sprite use case stresses this.
-- **Smart-Bone-style corrective drivers.** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle and the addon emits a driver. Goes into SPEC 014 (animation system) not SPEC 013 (authoring).
+- **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator. Given two child meshes sharing a parent bone, generate seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Trigger: humanoid fixture lands + user complains about inner-elbow gap.
+- **Cubism Glue equivalent.** Operator that seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations).
+- **Smart-Bone-style corrective drivers.** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle and the addon emits a driver. Goes into SPEC 014 (animation system) not SPEC 013.
 - **Mirror humanoid binding.** One mesh on one side, click to mirror to the other. Couples to symmetric rigs. Trigger: first humanoid fixture lands.
 
-## Refinement log (post-Wave-13.1 iterative feedback)
-
-Empty at SPEC creation time. Populate as manual-smoke feedback rounds + post-merge polish land.
+## Refinement log
 
 | Commit | Change | Why |
 | --- | --- | --- |
-| PR #51 merged | Wave 13.1.a + 13.1.b (hole-support amendment) shipped | First-cut automesh + D2 amendment lifting Spine/COA2's "no holes" restriction; 5 fixtures including AA swirl with 2 holes |
-| post-merge | Wave 13.1.b' cleanup added to TODO | Sonar warnings + cognitive-complexity drift surfaced during PR review iteration; foundation needs cleanup before bind/paint/sidecar build on top |
-| post-merge | Wave 13.1.g interactive modal added to TODO | User reflection: one-shot produces over-dense meshes for simple sprites + no in-flight course correction; modal lifts each existing debug stage to interactive user-facing preview |
+| PR #51 merged | Wave 13.1 shipped (automesh + hole-support amendment) | First-cut automesh + D2 amendment lifting Spine / COA2's "no holes" restriction; 5 fixtures including AA swirl with 2 holes |
+| post-merge | Wave 13.2 cleanup feature added | Sonar warnings + cognitive-complexity drift surfaced during PR review iteration; foundation needs cleanup before bind / paint / sidecar build on top |
+| post-merge | Wave 13.2 interactive modal feature added | User reflection: one-shot produces over-dense meshes for simple sprites + no in-flight course correction; modal lifts each existing debug stage to interactive user-facing preview |
+| post-merge | Wave numbering deflattened (dropped 13.1.a / 13.1.b / 13.1.c …) | Sub-letter scheme got noisy fast; each wave now holds named features. Commit history retains old labels for PR #51 work |
 
-## Out of scope (deferred to Wave 13.2 / 13.3 / successor SPECs / backlog)
+## Out of scope (permanently)
 
-Per [STUDY out-of-scope](STUDY.md#out-of-scope-deferred-to-successor-specs-or-backlog), still deferred:
-
-- Auto-attach mesh to slot (couples to SPEC 004 maturity).
-- Bezier brush stroke for alpha-boundary trace (Wave 13.2 if D1.B free-draw is added; first cut ships D1.A one-shot only).
-- GPU-accelerated weight sampling (no consumer until 5000+ vertex meshes show perf complaint).
-- Live2D-style deformer paradigm (different SPEC entirely; Proscenio is bone-based).
-- Smart-Bone-style corrective drivers (SPEC 014+, couples to animation).
-- Cubism Glue equivalent (Wave 13.3).
-- Mirror humanoid binding (Wave 13.3 + needs symmetric humanoid fixture).
-- Multi-mesh batch bind (Wave 13.2).
-- Weight transfer between sprites (Wave 13.2).
-- Live pose-mode preview in weight paint (Wave 13.2).
-- Sidecar import / export to external file (Wave 13.2).
-- Soft vs Hard bone toggle as runtime per-bone flag (Wave 13.2 per D16).
-- Bone strength region painting (Wave 13.2 per Moho lift).
-- Auto-Patch joint cover (Wave 13.3 per Harmony lift).
-
-Permanently rejected:
+Rejected for SPEC 013; do not propose again without re-opening the decision:
 
 - OpenCV / numpy as install-time dependency (COA2 adoption lesson per Constraints + D1).
 - Bone-heat solver as default bind algorithm (D4).
@@ -287,6 +222,6 @@ Permanently rejected:
 
 ## Successor SPECs
 
-- **SPEC 014 (planned: animation polish)** - inherits weight-aware vertex-group machinery from this SPEC; Smart-Bone-style driver-based correctives would land there.
+- **SPEC 014 (planned: animation polish)** - inherits weight-aware vertex-group machinery; Smart-Bone-style corrective drivers land there.
 - **SPEC 004 (slots)** maturity unlocks auto-attach mesh to slot + per-slot weight variations.
-- **A future "Quick Mesh" operator** (mentioned in SPEC 012 successor list) is the direct sibling to automesh - lift the modal scaffold from this SPEC's `13.1.c` Edit Weights wrapper if pursued.
+- **A future "Quick Mesh" operator** (mentioned in SPEC 012 successor list) is the direct sibling to automesh - lift the modal scaffold from Wave 13.2's Edit Weights wrapper if pursued.

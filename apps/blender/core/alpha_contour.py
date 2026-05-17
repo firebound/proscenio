@@ -18,6 +18,8 @@ the scales Proscenio targets (alpha grids downscaled to
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 AlphaGrid = list[list[int]]
 BinaryMask = list[list[bool]]
 ContourPoint = tuple[int, int]
@@ -89,6 +91,73 @@ def _grid_dimensions(grid: BinaryMask) -> tuple[int, int]:
     return (len(grid[0]), len(grid))
 
 
+def _has_foreground_neighbour(mask: BinaryMask, x: int, y: int, width: int, height: int) -> bool:
+    """True iff any 4-neighbour of ``(x, y)`` is foreground (in-bounds)."""
+    for dx, dy in _NEIGHBOUR_OFFSETS_4:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < width and 0 <= ny < height and mask[ny][nx]:
+            return True
+    return False
+
+
+def _touches_background_or_border(
+    mask: BinaryMask, x: int, y: int, width: int, height: int
+) -> bool:
+    """True iff any 4-neighbour of ``(x, y)`` is background OR out-of-bounds."""
+    for dx, dy in _NEIGHBOUR_OFFSETS_4:
+        nx, ny = x + dx, y + dy
+        if not (0 <= nx < width and 0 <= ny < height):
+            return True
+        if not mask[ny][nx]:
+            return True
+    return False
+
+
+def _dilate_once(mask: BinaryMask, width: int, height: int) -> BinaryMask:
+    """One dilation pass - every background cell adjacent to foreground flips on."""
+    result: BinaryMask = [row[:] for row in mask]
+    for y in range(height):
+        row_mask = mask[y]
+        row_result = result[y]
+        for x in range(width):
+            if not row_mask[x] and _has_foreground_neighbour(mask, x, y, width, height):
+                row_result[x] = True
+    return result
+
+
+def _erode_once(mask: BinaryMask, width: int, height: int) -> BinaryMask:
+    """One erosion pass - every foreground cell touching background / border flips off."""
+    result: BinaryMask = [row[:] for row in mask]
+    for y in range(height):
+        row_mask = mask[y]
+        row_result = result[y]
+        for x in range(width):
+            if row_mask[x] and _touches_background_or_border(mask, x, y, width, height):
+                row_result[x] = False
+    return result
+
+
+_SinglePass = Callable[[BinaryMask, int, int], BinaryMask]
+
+
+def _apply_morphology(mask: BinaryMask, iterations: int, single_pass: _SinglePass) -> BinaryMask:
+    """Repeatedly apply ``single_pass(mask, w, h)`` for ``iterations`` rounds.
+
+    Shared loop body for :func:`dilate` + :func:`erode`. Iterations
+    must be non-negative; 0 returns a defensive copy so callers can
+    mutate the result freely.
+    """
+    if iterations < 0:
+        raise ValueError(f"iterations must be >= 0, got {iterations}")
+    if iterations == 0:
+        return [row[:] for row in mask]
+    width, height = _grid_dimensions(mask)
+    current = mask
+    for _ in range(iterations):
+        current = single_pass(current, width, height)
+    return current
+
+
 def dilate(mask: BinaryMask, iterations: int) -> BinaryMask:
     """Binary dilation with a 4-connected kernel, ``iterations`` passes.
 
@@ -98,28 +167,7 @@ def dilate(mask: BinaryMask, iterations: int) -> BinaryMask:
     Python loop; acceptable at the scales Proscenio targets thanks
     to the upstream downscale step.
     """
-    if iterations < 0:
-        raise ValueError(f"iterations must be >= 0, got {iterations}")
-    if iterations == 0:
-        return [row[:] for row in mask]
-    width, height = _grid_dimensions(mask)
-    current = mask
-    for _ in range(iterations):
-        previous = current
-        result: BinaryMask = [row[:] for row in previous]
-        for y in range(height):
-            row_prev = previous[y]
-            row_result = result[y]
-            for x in range(width):
-                if row_prev[x]:
-                    continue
-                for dx, dy in _NEIGHBOUR_OFFSETS_4:
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < width and 0 <= ny < height and previous[ny][nx]:
-                        row_result[x] = True
-                        break
-        current = result
-    return current
+    return _apply_morphology(mask, iterations, _dilate_once)
 
 
 def erode(mask: BinaryMask, iterations: int) -> BinaryMask:
@@ -129,34 +177,7 @@ def erode(mask: BinaryMask, iterations: int) -> BinaryMask:
     the grid border) into False. Used to produce the inner contour
     of the annulus topology. Inverse semantics of :func:`dilate`.
     """
-    if iterations < 0:
-        raise ValueError(f"iterations must be >= 0, got {iterations}")
-    if iterations == 0:
-        return [row[:] for row in mask]
-    width, height = _grid_dimensions(mask)
-    current = mask
-    for _ in range(iterations):
-        previous = current
-        result: BinaryMask = [row[:] for row in previous]
-        for y in range(height):
-            row_prev = previous[y]
-            row_result = result[y]
-            for x in range(width):
-                if not row_prev[x]:
-                    continue
-                eroded = False
-                for dx, dy in _NEIGHBOUR_OFFSETS_4:
-                    nx, ny = x + dx, y + dy
-                    if not (0 <= nx < width and 0 <= ny < height):
-                        eroded = True
-                        break
-                    if not previous[ny][nx]:
-                        eroded = True
-                        break
-                if eroded:
-                    row_result[x] = False
-        current = result
-    return current
+    return _apply_morphology(mask, iterations, _erode_once)
 
 
 def find_first_boundary(mask: BinaryMask) -> ContourPoint | None:

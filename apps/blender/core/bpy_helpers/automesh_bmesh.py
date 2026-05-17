@@ -479,6 +479,19 @@ def _delete_faces_inside_holes(
                 break
     if to_remove:
         bmesh.ops.delete(bm, geom=to_remove, context="FACES_ONLY")
+        # Pruning faces alone leaves the constraint edges of the
+        # hole loop AND the CDT-internal edges spanning the hole
+        # region as wireframe artefacts (visible as "spokes"
+        # crossing the cutout in viewport, even though no face
+        # covers them). Drop any edge without an incident face,
+        # then any vert without an incident edge, so the result
+        # is a clean cutout.
+        loose_edges = [e for e in bm.edges if len(e.link_faces) == 0]
+        if loose_edges:
+            bmesh.ops.delete(bm, geom=loose_edges, context="EDGES")
+        loose_verts = [v for v in bm.verts if len(v.link_edges) == 0]
+        if loose_verts:
+            bmesh.ops.delete(bm, geom=loose_verts, context="VERTS")
     return len(to_remove)
 
 

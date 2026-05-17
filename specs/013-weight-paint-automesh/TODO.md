@@ -21,6 +21,25 @@ Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design
 - [ ] D15 - density-under-bones automesh = ON by default when picker has armature, OFF otherwise; reuse picker bone positions.
 - [ ] D16 - soft vs hard bone toggle = defer to Wave 13.2 (first cut covers via `bind_init_mode` PROXIMITY vs SINGLE_NEAREST).
 
+## Wave 13.1.b' - code-quality cleanup of shipped automesh (post-merge)
+
+Tracking the drift logged after PR #51 merged. Sonar local + warnings emitted during PR review surfaced:
+
+- Cognitive complexity overshoots (limit 15): `_measure_coverage`=47, `_check_invariants`=22, `_build_mesh_via_delaunay`=20, `read_alpha_grid`=18, `build_automesh`=17-18, `extract_contours`/`extract_holes` helpers around 15-22.
+- Tuple-repeat in SPRITE_BOUNDS branches (S1871).
+- Duplicate branch in validator's flood-fill helper (S1871, ~lines 205-211).
+- Module-internal helpers not extracted: hole detection flood-fill + Steiner filter both inline in larger functions.
+- Conventions violations vs `.ai/conventions.md`: `build_automesh` past the 300 LOC smell threshold; helpers that grew across the hole-support iteration not split into their own submodule under `core/`.
+
+Goals:
+
+- Drive every cognitive-complexity warning to <= 15 by extracting named helpers (each stage of `build_automesh` becomes a private function with a single concern; this also feeds the Wave 13.1.g interactive modal which needs each stage as a callable).
+- Split `automesh_bmesh.py` if it crosses 350 LOC after refactor - candidates: separate `automesh_cdt.py` for the Delaunay layer, `automesh_hole_prune.py` for the post-process face prune.
+- De-dup SPRITE_BOUNDS shape (single TypedDict + named fields).
+- Run the full validator + headless + pytest after each refactor; gate on zero behavior drift.
+
+Cost: ~1-2 days. Low risk thanks to the validator + 313 pytest gate. Refactor lands BEFORE Wave 13.1.b original (planar proximity bind) so the bind operator builds against a clean foundation.
+
 ## Wave 13.1 - core surface (Blender)
 
 Branch: `feat/spec-013-weight-paint-automesh` (or split into 13.1.a automesh + 13.1.b bind + 13.1.c paint per PR-size budget). Target: ship D1-D15 in ~5 commits + tests + docs + smoke.
@@ -164,6 +183,52 @@ Implementation sketch:
 
 Trigger: real character authoring session reveals this is the blocker for production-quality deformation.
 
+### Interactive multi-step mesh authoring (post-Wave-13.1.b reflection, Wave 13.1.g / 13.2 candidate)
+
+User vision after the hole-support iteration: the current one-shot automesh produces meshes that are denser than the user wants for sprites that do not need fine deformation, AND the user has no way to course-correct in flight. Proposed evolution: the automesh operator becomes a MULTI-STEP MODAL that mirrors the existing debug-stage scaffold but with user input at each stage, instead of a single click that commits everything.
+
+Proposed pipeline (each step is a modal stage the user can step forward / backward through):
+
+1. **Outer contour preview.** Run alpha trace, show the outer polyline as a GPU overlay. User can adjust resolution / alpha threshold / margin via N-panel; preview re-runs live.
+2. **Inner subdivision loops.** Instead of jumping straight to Steiner-point interior fill, draw N concentric inner-loop polylines (think: edge-loop bands moving inward from the silhouette by even steps). User picks how many loops + spacing via a slider. These are CONSTRAINT edges that the eventual Delaunay will respect, giving the user control over "where the edge loops sit" before any face exists.
+3. **User-pointed interest points.** Free-draw / click overlay where the user marks vertices they want preserved as Steiner points (muscle bulges, fold seams, hard-deform regions). Unifies with the existing "user-drawn density markers" Wave 13.2 candidate but at a coarser level (single points, not painted regions).
+4. **Steiner preview.** Show the Steiner point cluster (uniform / bone-density / user-pointed) as GPU dots before any triangulation. User can refine spacing / density per region; preview re-runs.
+5. **Apply.** Commit: run CDT with outer + inner loops + holes + user Steiners + bone Steiners as constraints; post-process face prune; write to mesh.
+
+This restructures `build_automesh` from "one function that produces a mesh" into "a state machine that surfaces each pipeline stage as an interactive preview". The current debug stages (`raw_contours`, `smoothed`, `resampled`, `interior_points`, `bridges`, `fill_no_interior`, `final`) are the SKELETON of this state machine; the modal lifts each stage from "print + emit wireframe debug object" to "GPU overlay + user input + step forward".
+
+Implementation sketch:
+
+- New modal operator `proscenio.automesh_authoring` (parallel to current `automesh_from_sprite`, NOT replacing - one-shot stays as "quick start").
+- Modal uses the same GPU overlay scaffold as Quick Armature (`core/bpy_helpers/modal_overlay.py`) for the preview surfaces. Header pill shows current stage + ESC=cancel + ENTER=next stage + BACKSPACE=previous stage.
+- Each stage's parameters live in `scene.proscenio.skinning.authoring_*` PropertyGroup fields so the user can resume mid-modal after a viewport interaction.
+- Inner-subdivision loops = N polylines computed as morphological erosions of the outer contour at increasing kernel sizes. Reuses `dilate`/`erode` helpers from `alpha_contour`.
+- User-pointed Steiners stored on the mesh as `proscenio_user_steiners: list[(x, z)]` Custom Property; persist across regens so re-running the modal does not lose user input.
+- Final apply pipes everything into the existing `_build_mesh_via_delaunay` + `_delete_faces_inside_holes` chain; CDT receives outer + inner loops + user Steiners + bone Steiners as constraints, hole post-prune runs as today.
+
+Trade-offs vs current one-shot:
+
+- Pro: user gets exactly the density they want where they want it; no over-meshing on simple sprites; production-quality control without leaving the addon.
+- Pro: existing one-shot stays as the "no time, ship it" path - this modal is opt-in.
+- Pro: the debug-stage scaffold is already 80% of the skeleton needed; refactor focuses on lifting each stage to interactive.
+- Con: doubles the operator surface; more UX to teach.
+- Con: modal lifecycle hygiene (try/finally + ESC + WINDOW_DEACTIVATE) is the same hard discipline as SPEC 012 + Wave 13.1.c paint modal - high test cost.
+- Con: depends on Wave 13.1.c modal scaffold landing first, OR ships its own scaffold (risk of duplicated patterns).
+
+Open decisions when this wave starts:
+
+- Does the modal REPLACE one-shot or COEXIST? (Recommendation: coexist - one-shot is the quick path, modal is the production path.)
+- Inner loops as N concentric erosions, OR as user-drawn polylines, OR both?
+- Is the modal a SPEC 013 amendment (13.1.g) or a follow-up SPEC entirely (013.b "Interactive automesh authoring")? Depends on how invasive the refactor lands.
+- Sidecar interaction: do user-pointed Steiners join the weight sidecar (Wave 13.1.d) keyed by UV anchor for survival across regen?
+
+Prerequisites:
+
+- Wave 13.1.c modal scaffold (paint wrapper) shipped - provides the modal-lifecycle patterns this needs to lift.
+- Code-quality cleanup of current `build_automesh` complete - lifting each stage to interactive is much harder against the current cognitive-47 monolith.
+
+Trigger: user wants production-quality control over mesh density per region without falling back to manual edit-mode authoring.
+
 ### Sprite-changed-in-Photoshop workflow (D6 sidecar, Wave 13.1 next commit)
 
 User concern from PR #51 smoke: "what happens if the user alters the sprite in Photoshop after automesh + bind? We need a way to preserve work + regen with minimal adjustment."
@@ -190,7 +255,9 @@ Empty at SPEC creation time. Populate as manual-smoke feedback rounds + post-mer
 
 | Commit | Change | Why |
 | --- | --- | --- |
-| _-_ | _Wave 13.1 not shipped yet; log opens on first refinement commit_ | _-_ |
+| PR #51 merged | Wave 13.1.a + 13.1.b (hole-support amendment) shipped | First-cut automesh + D2 amendment lifting Spine/COA2's "no holes" restriction; 5 fixtures including AA swirl with 2 holes |
+| post-merge | Wave 13.1.b' cleanup added to TODO | Sonar warnings + cognitive-complexity drift surfaced during PR review iteration; foundation needs cleanup before bind/paint/sidecar build on top |
+| post-merge | Wave 13.1.g interactive modal added to TODO | User reflection: one-shot produces over-dense meshes for simple sprites + no in-flight course correction; modal lifts each existing debug stage to interactive user-facing preview |
 
 ## Out of scope (deferred to Wave 13.2 / 13.3 / successor SPECs / backlog)
 

@@ -78,13 +78,29 @@ def _draw_arrow(canvas: Canvas, frame: int) -> None:
     cy = canvas.height / 2.0
     half = canvas.width / 2.0 - 4
     if frame == 0:
-        tip, base_a, base_b = (cx, cy - half), (cx - half, cy + half), (cx + half, cy + half)
+        tip, base_a, base_b = (
+            (cx, cy - half),
+            (cx - half, cy + half),
+            (cx + half, cy + half),
+        )
     elif frame == 1:
-        tip, base_a, base_b = (cx + half, cy), (cx - half, cy - half), (cx - half, cy + half)
+        tip, base_a, base_b = (
+            (cx + half, cy),
+            (cx - half, cy - half),
+            (cx - half, cy + half),
+        )
     elif frame == 2:
-        tip, base_a, base_b = (cx, cy + half), (cx - half, cy - half), (cx + half, cy - half)
+        tip, base_a, base_b = (
+            (cx, cy + half),
+            (cx - half, cy - half),
+            (cx + half, cy - half),
+        )
     else:
-        tip, base_a, base_b = (cx - half, cy), (cx + half, cy - half), (cx + half, cy + half)
+        tip, base_a, base_b = (
+            (cx - half, cy),
+            (cx + half, cy - half),
+            (cx + half, cy + half),
+        )
     triangle(canvas, tip, base_a, base_b, ARROW_COLOR)
 
 

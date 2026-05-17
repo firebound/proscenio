@@ -188,7 +188,9 @@ def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Objec
     return obj
 
 
-def _install_driver(sprite_obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
+def _install_driver(
+    sprite_obj: bpy.types.Object, armature_obj: bpy.types.Object
+) -> None:
     """Wire ``mouth_drive`` Z rotation to ``sprite.proscenio.frame``.
 
     Mirrors what the ``Drive from Bone`` panel operator does:

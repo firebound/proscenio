@@ -135,6 +135,20 @@ Standard for **every** modal operator that needs to surface a chord cheatsheet:
 
 Reference implementation: `apps/blender/operators/quick_armature.py` (`_emit_chord_layout`, `_draw_statusbar_quick_armature`, `_draw_view3d_header_quick_armature`).
 
+## Pure-Python image processing (SPEC 013 Wave 13.1 convention)
+
+The addon refuses third-party Python deps at runtime (no OpenCV, no numpy, no Pillow). COA Tools 2's `cv2` requirement is its single biggest adoption blocker - corp / ISP firewalls block PyPI, version mismatches break ABI on manual cv2 copies, see [Aodaruma/coa_tools2#94](https://github.com/Aodaruma/coa_tools2/issues/94) + [#107](https://github.com/Aodaruma/coa_tools2/issues/107). Proscenio implements alpha-channel image processing in plain Python loops at the scales the addon targets (sprites downscaled to <=256x256 before tracing).
+
+Pattern when an operator needs image processing:
+
+- **bpy bridge reads `bpy.types.Image.pixels`** (flat float RGBA array) into a `list[list[int]]` alpha grid via a downscale factor. The downscale lets pure-Python morphology scale to HD source PNGs without quadratic cost on the full image.
+- **Pure helpers in `core/`** (no `bpy` import) do the math: Moore Neighbour contour tracing + 4-connectivity binary morphology (dilate / erode) + Laplacian smoothing + arc-length resampling + point-in-polygon clipping + distance-to-segment. Each helper is unit-tested in isolation.
+- **Pure helpers produce float-tuple outputs** the bpy bridge converts to world XZ coordinates on the Y=0 picture plane (Proscenio convention, parallel to SPEC 012 axis lock).
+- **bpy bridge writes back via `bmesh`** - `bmesh.new()`, add verts + edges, `bmesh.ops.triangle_fill(edges=..., use_beauty=True)` for the Delaunay triangulation, `bm.to_mesh(mesh)`, `bm.free()`.
+- **Cap defensive iteration limits** in any walker (`_MAX_CONTOUR_STEPS=200_000` in alpha_contour) so a pathological input cannot hang the Blender UI thread.
+
+Reference implementation: `apps/blender/core/alpha_contour.py` (pure walker), `apps/blender/core/automesh_geometry.py` (smoothing + resample), `apps/blender/core/automesh_density.py` (interior points + bone-aware density), `apps/blender/core/bpy_helpers/automesh_bmesh.py` (bridge), `apps/blender/operators/automesh.py` (operator), `tests/test_alpha_contour.py` + `tests/test_automesh_geometry.py` + `tests/test_automesh_density.py` (87 cases covering the pure side).
+
 ## Common pitfalls
 
 - Reloading addons leaks registered classes - always `unregister()` cleanly.

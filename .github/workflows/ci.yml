@@ -105,6 +105,11 @@ jobs:
         run: |
           ~/blender/blender --background \
             --python apps/blender/tests/run_tests.py
+      - name: Validate automesh (per-pixel coverage + hole bleed, ci-safe sprites only)
+        run: |
+          ~/blender/blender --background \
+            --python scripts/validate_automesh.py \
+            -- --ci-only
 
   test-godot:
     runs-on: ubuntu-latest

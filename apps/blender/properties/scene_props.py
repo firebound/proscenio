@@ -10,6 +10,7 @@ from __future__ import annotations
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
+    EnumProperty,
     FloatProperty,
     IntProperty,
     PointerProperty,
@@ -67,6 +68,181 @@ class ProscenioQuickArmatureProps(PropertyGroup):
         default=1.0,
         min=0.001,
         soft_max=10.0,
+    )
+
+
+class ProscenioSkinningProps(PropertyGroup):
+    """SPEC 013 Wave 13.1 defaults for the Skinning subpanel.
+
+    Holds the knobs that the Automesh + Bind + Edit Weights
+    operators read at invoke time. Stored on the scene so the
+    settings persist across .blend reloads and surface in the
+    panel for in-context tuning (matching the SPEC 012 D15
+    pattern for Quick Armature defaults).
+    """
+
+    automesh_resolution: FloatProperty(  # type: ignore[valid-type]
+        name="Mesh resolution",
+        description=(
+            "Image downscale factor for the alpha contour walker. "
+            "1.0 = full image, 0.25 = quarter-pixel (default - safe "
+            "for typical HD sprites). Lower values produce more "
+            "vertices but cost quadratically more time."
+        ),
+        default=0.25,
+        min=0.01,
+        max=1.0,
+    )
+    automesh_alpha_threshold: IntProperty(  # type: ignore[valid-type]
+        name="Alpha threshold",
+        description=(
+            "Pixels with alpha strictly above this value contribute "
+            "to the silhouette. Default 1 includes EVERY visible "
+            "pixel (even faint anti-alias edges) - the safe choice "
+            "for sprite skinning where losing pixels at the boundary "
+            "is unacceptable. Raise to 127 to ignore anti-alias edges "
+            "(matches COA Tools 2 convention but cuts AA pixels)."
+        ),
+        default=1,
+        min=0,
+        max=255,
+    )
+    automesh_margin_pixels: IntProperty(  # type: ignore[valid-type]
+        name="Boundary margin (annulus)",
+        description=(
+            "Source-pixel margin that builds an ANNULUS topology "
+            "(dilated outer ring + eroded inner ring + Constrained "
+            "Delaunay between them). Zero (default) skips the annulus "
+            "and produces a single-contour flat triangulation - the "
+            "common case for 2D skinning (matches Spine / DragonBones). "
+            "Set > 0 only when you want extra edge-loop density at the "
+            "silhouette for fine border deformation control (cape, "
+            "hair, ribbon)."
+        ),
+        default=0,
+        min=0,
+        max=100,
+    )
+    automesh_contour_vertices: IntProperty(  # type: ignore[valid-type]
+        name="Contour vertices",
+        description=(
+            "Target vertex count for the outer contour after Laplacian "
+            "smoothing + arc-length resampling. Inner contour uses "
+            "half this count. Higher = smoother silhouette + more "
+            "deformation control + more triangles."
+        ),
+        default=64,
+        min=8,
+        max=512,
+    )
+    automesh_interior_spacing: FloatProperty(  # type: ignore[valid-type]
+        name="Interior spacing",
+        description=(
+            "World-unit spacing for the interior Steiner-point grid "
+            "fed into bmesh.ops.triangle_fill. Lower = denser interior "
+            "= more triangles that can deform under bone influence. "
+            "Tune against the sprite's world-unit scale (pixels per unit "
+            "in the scene props)."
+        ),
+        default=0.1,
+        min=0.001,
+        soft_max=2.0,
+    )
+    automesh_density_under_bones: BoolProperty(  # type: ignore[valid-type]
+        name="Density follows bones",
+        description=(
+            "When ON and the picker armature has deform bones, add "
+            "extra interior triangles near each bone segment so the "
+            "mesh has more density where deformation actually happens. "
+            "OFF falls back to uniform interior density."
+        ),
+        default=True,
+    )
+    automesh_bone_radius: FloatProperty(  # type: ignore[valid-type]
+        name="Bone influence radius",
+        description=(
+            "World-unit radius around each bone segment within which "
+            "the density-under-bones subdivision applies."
+        ),
+        default=0.5,
+        min=0.01,
+        soft_max=5.0,
+    )
+    automesh_bone_factor: IntProperty(  # type: ignore[valid-type]
+        name="Bone density factor",
+        description=(
+            "Multiplier for interior point density near bones. "
+            "1 = same as uniform, 2 = double, 4 = quadruple. Diminishing "
+            "returns above 4."
+        ),
+        default=2,
+        min=1,
+        max=8,
+    )
+    preserve_base_quad: BoolProperty(  # type: ignore[valid-type]
+        name="Preserve base quad",
+        description=(
+            "Keep the 4 original quad corner vertices (in the "
+            "proscenio_base_sprite vertex group) as loose verts after "
+            "automesh runs. OFF (default) deletes them so the mesh "
+            "is clean. ON preserves them so the user can manually "
+            "stitch custom UV / weight work that lived on the quad "
+            "(useful when the user has hand-tweaked the base before "
+            "automesh and wants to merge the work afterwards)"
+        ),
+        default=False,
+    )
+    debug_stage: EnumProperty(  # type: ignore[valid-type]
+        name="Debug stage",
+        description=(
+            "Stop the automesh pipeline at the named stage + emit a "
+            "wireframe companion object into the Proscenio.Debug "
+            "collection so the user can inspect intermediate output. "
+            "Off / Final run the full pipeline normally; non-final "
+            "stages skip the bmesh write into the active sprite"
+        ),
+        items=[
+            ("off", "Off", "Run the full pipeline, no debug companions"),
+            (
+                "raw_contours",
+                "1 - Raw contours",
+                "Stop after Moore Neighbour tracing + world conversion; "
+                "shows pixel-stair contours before any smoothing",
+            ),
+            (
+                "smoothed",
+                "2 - Smoothed",
+                "Stop after Laplacian smoothing of the raw contours",
+            ),
+            (
+                "resampled",
+                "3 - Resampled",
+                "Stop after arc-length resampling; these are the actual verts that enter the bmesh",
+            ),
+            (
+                "interior_points",
+                "4 - Interior points",
+                "Stop after generating Steiner interior points (uniform grid + bone-aware density)",
+            ),
+            (
+                "bridges",
+                "5 - Bridges",
+                "Stop after computing radial bridge offset; shows the "
+                "outer + inner verts + planned bridge edges (no fill)",
+            ),
+            (
+                "fill_no_interior",
+                "6 - Triangle fill (no interior)",
+                "Stop after bmesh.ops.triangle_fill; mesh shows the "
+                "strip annulus before interior Steiner points are inserted",
+            ),
+            (
+                "final",
+                "Final",
+                "Run the full pipeline AND clear any prior debug companions for the sprite",
+            ),
+        ],
+        default="off",
     )
 
 
@@ -153,6 +329,9 @@ class ProscenioSceneProps(PropertyGroup):
     )
     quick_armature: PointerProperty(  # type: ignore[valid-type]
         type=ProscenioQuickArmatureProps,
+    )
+    skinning: PointerProperty(  # type: ignore[valid-type]
+        type=ProscenioSkinningProps,
     )
     active_armature: PointerProperty(  # type: ignore[valid-type]
         name="Active armature",

@@ -5,7 +5,7 @@ Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design
 ## Decision lock-in
 
 - [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
-- [ ] D2 - mesh topology shape = annulus (outer + inner contour + `bmesh.ops.triangle_fill`).
+- [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1.b):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
 - [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
 - [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. No default-bind code path may call `parent_with_automatic_weights` blind.
 - [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY (no BONE_HEAT in first cut).
@@ -41,7 +41,7 @@ Branch: `feat/spec-013-weight-paint-automesh` (or split into 13.1.a automesh + 1
 
 **Tests** (pytest, bpy-free):
 
-- [ ] `tests/test_alpha_contour.py` - synthetic 8x8 / 16x16 / 64x64 alpha grids covering: square sprite, L-shape, donut (validates outer-only since "no holes" follows Spine contract), single-pixel sprite (degenerate fallback), all-transparent (raises ValueError).
+- [ ] `tests/test_alpha_contour.py` - synthetic 8x8 / 16x16 / 64x64 alpha grids covering: square sprite, L-shape, donut (Wave 13.1.b: validates `extract_holes` + `extract_contours` returns the hole boundary, mesh cuts out hole region), single-pixel sprite (degenerate fallback), all-transparent (raises ValueError).
 - [ ] `tests/test_automesh_geometry.py` - annulus vertex/edge count invariants, contour-smoothing convergence (3 iterations -> stable point positions), arc-length resample maintains expected vertex count.
 - [ ] `tests/test_automesh_density.py` - bone-density subdivision adds verts within radius of bone segments, fallback to uniform when no bones, vertex count scales linearly with bone count.
 
@@ -149,6 +149,33 @@ Productivity layer on top of first cut. Each item is a self-contained refinement
 - **Live pose-mode preview in weight paint.** "Scrub the bone to a posed angle, see how the mesh deforms, scrub back" without leaving Edit Weights modal. Adds a pose-scrub overlay + a hotkey to toggle rest pose. Trigger: user wants to verify weight changes against a deformed pose without exiting the modal.
 - **Sidecar import / export.** Operator to dump the weight sidecar JSON to a file + load from a file. Enables version-controlled weight backups outside the .blend. Trigger: user asks to back up weight work to git.
 - **Brush settings curve presets.** Quick-select brush curve presets named for common 2D tasks ("Hard edge", "Soft falloff", "Crease", "Smooth blend") via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
+
+### User-drawn density markers (post-smoke feedback, Wave 13.2 candidate)
+
+User vision from PR #51 smoke discussion: artist draws on the sprite (grease pencil or GPU overlay similar to Quick Armature hint surfaces) to mark regions of interest (muscle bulges, cloth folds, joint creases) that should get extra edge-loop density in the automesh. The marks would translate into additional Steiner point clusters when the operator runs, giving fine-grained deformation control where the artist knows it matters.
+
+Implementation sketch:
+
+- New modal operator `proscenio.automesh_density_markers` activated from Skinning panel button.
+- Modal uses GPU overlay (lift `core/bpy_helpers/modal_overlay.py` scaffold from SPEC 012) - paint-style stroke captures world XZ positions.
+- Marks stored on the sprite mesh as a custom property (`proscenio_density_marks: list[(x, z, weight)]`) so they persist + can be regenerated alongside the mesh.
+- Automesh operator reads marks at build time; each mark spawns N extra Steiner points within `weight` radius.
+- Per-mark color in the GPU overlay differentiates muscle / fold / crease types.
+
+Trigger: real character authoring session reveals this is the blocker for production-quality deformation.
+
+### Sprite-changed-in-Photoshop workflow (D6 sidecar, Wave 13.1 next commit)
+
+User concern from PR #51 smoke: "what happens if the user alters the sprite in Photoshop after automesh + bind? We need a way to preserve work + regen with minimal adjustment."
+
+This is exactly the D6 weight sidecar from STUDY.md - the differentiator. Workflow:
+
+1. After bind, snapshot vertex weights + UVs into a JSON sidecar on the mesh object (`obj["proscenio_weight_sidecar"]`) keyed by ALPHA-STABLE anchors (silhouette features like fingertip pixels, not vertex indices).
+2. User edits PNG in Photoshop, re-exports.
+3. Automesh regen: detects sidecar exists -> generates new mesh -> for each new vertex, finds nearest sidecar anchor and projects weight + UV onto it.
+4. Provenance overlay shows which verts got reprojected weights (cyan), which are fresh seeds (gray), which the user touched (white).
+
+Wave 13.1 next commit per TODO.md "13.1.d - Weight sidecar + reproject (D6) - the differentiator" section.
 
 ## Wave 13.3 - aspirational (deferred further)
 

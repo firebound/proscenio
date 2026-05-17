@@ -61,6 +61,8 @@ module = [
     "bpy",
     "bpy.*",
     "bpy_extras.*",
+    "bmesh",
+    "bmesh.*",
     "blf",
     "gpu",
     "gpu.*",

@@ -83,8 +83,12 @@ def main() -> None:
     slot_empty = _build_slot_empty(armature_obj)
     # 1mm of stagger between attachments along bone-Y so Eevee never
     # has to disambiguate coplanar quads if both end up visible.
-    _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, depth_offset=-0.001)
-    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, depth_offset=-0.002)
+    _build_attachment(
+        "club", CLUB_PATH, slot_empty, is_default=True, depth_offset=-0.001
+    )
+    _build_attachment(
+        "sword", SWORD_PATH, slot_empty, is_default=False, depth_offset=-0.002
+    )
     _build_swing_action(armature_obj)
     _build_swap_action(slot_empty)
     _save_blend()

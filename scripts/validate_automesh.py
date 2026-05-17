@@ -638,77 +638,109 @@ def _check_invariants(
     return {"failures": failures, "warnings": warnings}
 
 
-def main() -> None:
-    args = parse_args()
-    _load_and_register_addon()
-    load_fixture()
-    sprites = list(SPRITE_BOUNDS.keys())
-    if args.ci_only:
-        skipped = [n for n in sprites if not SPRITE_BOUNDS[n].get("ci_safe", True)]
-        sprites = [n for n in sprites if SPRITE_BOUNDS[n].get("ci_safe", True)]
-        if skipped:
-            print(
-                f"[validate] --ci-only: skipping {len(skipped)} non-CI-safe sprite(s): "
-                f"{', '.join(skipped)}",
-                flush=True,
-            )
-    report = run_validation(sprites, args)
+def _filter_sprites_for_ci(sprites: list[str], ci_only: bool) -> list[str]:
+    """Drop sprites flagged ``ci_safe=False`` when ``--ci-only`` is set."""
+    if not ci_only:
+        return sprites
+    skipped = [n for n in sprites if not SPRITE_BOUNDS[n].get("ci_safe", True)]
+    kept = [n for n in sprites if SPRITE_BOUNDS[n].get("ci_safe", True)]
+    if skipped:
+        print(
+            f"[validate] --ci-only: skipping {len(skipped)} non-CI-safe sprite(s): "
+            f"{', '.join(skipped)}",
+            flush=True,
+        )
+    return kept
+
+
+def _print_leak_quadrants(quadrants: dict[str, int]) -> None:
+    """Print the TL/TR/BL/BR breakdown when any quadrant accumulated leaks."""
+    if not any(quadrants.values()):
+        return
+    print(
+        f"  leaks_by_quadrant TL={quadrants.get('TL', 0)} "
+        f"TR={quadrants.get('TR', 0)} BL={quadrants.get('BL', 0)} "
+        f"BR={quadrants.get('BR', 0)}"
+    )
+
+
+def _print_leak_sample(sample: list[dict[str, object]]) -> None:
+    """Print the first up-to-5 leak records (pixel coord + world coord)."""
+    if not sample:
+        return
+    print(f"  first {min(5, len(sample))} leak pixels:")
+    for rec in sample[:5]:
+        print(
+            f"    pixel=({rec['pixel_x']}, "
+            f"PIL_y={rec['pixel_y_visual_pil']}) "
+            f"alpha={rec['alpha']} "
+            f"world=({rec['world_x']}, {rec['world_z']})"
+        )
+
+
+def _print_sprite_report(name: str, payload: dict[str, object]) -> None:
+    """Print the per-sprite block (metrics + leaks + invariant verdicts)."""
+    m = payload["metrics"]
+    inv = payload["invariants"]
+    status = "PASS" if not inv["failures"] else "FAIL"
+    print(f"\n[{status}] {name}:")
+    print(
+        f"  verts={m['verts']} faces={m['faces']} "
+        f"triangles={m['triangles']} degenerate={m['degenerate_triangles']}"
+    )
+    coverage = m["coverage_pct"]
+    if coverage is not None:
+        print(
+            f"  coverage={coverage:.6f} leaks={m['leak_count']} "
+            f"hole_bleed={m.get('hole_bleed_count', 0)} "
+            f"mean_area={m['mean_area']:.6f}"
+        )
+        _print_leak_quadrants(m.get("leak_quadrants") or {})
+        _print_leak_sample(m.get("leak_records_sample") or [])
+    for warn in inv["warnings"]:
+        print(f"  WARN: {warn}")
+    for fail in inv["failures"]:
+        print(f"  FAIL: {fail}")
+
+
+def _print_report(report: dict[str, object]) -> int:
+    """Print the full report + return the number of failure-level issues."""
     print()
     print("=" * 60)
     print("AUTOMESH VALIDATION REPORT")
     print("=" * 60)
     for name, payload in report["sprites"].items():
-        m = payload["metrics"]
-        inv = payload["invariants"]
-        status = "PASS" if not inv["failures"] else "FAIL"
-        print(f"\n[{status}] {name}:")
-        print(
-            f"  verts={m['verts']} faces={m['faces']} "
-            f"triangles={m['triangles']} degenerate={m['degenerate_triangles']}"
-        )
-        coverage = m["coverage_pct"]
-        if coverage is not None:
-            print(
-                f"  coverage={coverage:.6f} leaks={m['leak_count']} "
-                f"hole_bleed={m.get('hole_bleed_count', 0)} "
-                f"mean_area={m['mean_area']:.6f}"
-            )
-            quadrants = m.get("leak_quadrants") or {}
-            if any(quadrants.values()):
-                print(
-                    f"  leaks_by_quadrant TL={quadrants.get('TL', 0)} "
-                    f"TR={quadrants.get('TR', 0)} BL={quadrants.get('BL', 0)} "
-                    f"BR={quadrants.get('BR', 0)}"
-                )
-            sample = m.get("leak_records_sample") or []
-            if sample:
-                print(f"  first {min(5, len(sample))} leak pixels:")
-                for rec in sample[:5]:
-                    print(
-                        f"    pixel=({rec['pixel_x']}, "
-                        f"PIL_y={rec['pixel_y_visual_pil']}) "
-                        f"alpha={rec['alpha']} "
-                        f"world=({rec['world_x']}, {rec['world_z']})"
-                    )
-        if inv["warnings"]:
-            for w in inv["warnings"]:
-                print(f"  WARN: {w}")
-        for f in inv["failures"]:
-            print(f"  FAIL: {f}")
+        _print_sprite_report(name, payload)
     print("\n" + "=" * 60)
     total_failures = len(report["failures"])
     if total_failures:
         print(f"VALIDATION FAILED: {total_failures} issue(s)")
-        for f in report["failures"]:
-            print(f"  - {f}")
+        for fail in report["failures"]:
+            print(f"  - {fail}")
     else:
         print("VALIDATION PASSED")
     print("=" * 60)
-    if args.report is not None:
-        args.report.parent.mkdir(parents=True, exist_ok=True)
-        with args.report.open("w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, default=str)
-        print(f"\nReport written to {args.report}")
+    return total_failures
+
+
+def _write_json_report(report: dict[str, object], path: Path | None) -> None:
+    """Optionally serialize the report to ``path`` (skip when path is None)."""
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"\nReport written to {path}")
+
+
+def main() -> None:
+    args = parse_args()
+    _load_and_register_addon()
+    load_fixture()
+    sprites = _filter_sprites_for_ci(list(SPRITE_BOUNDS.keys()), args.ci_only)
+    report = run_validation(sprites, args)
+    total_failures = _print_report(report)
+    _write_json_report(report, args.report)
     sys.exit(0 if total_failures == 0 else 1)
 
 

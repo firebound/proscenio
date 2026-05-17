@@ -37,6 +37,7 @@ def bounding_box(contour: list[Point2D]) -> tuple[float, float, float, float]:
 
 
 _BOUNDARY_EPSILON = 1e-9
+_BOUNDARY_EPSILON_SQ = _BOUNDARY_EPSILON * _BOUNDARY_EPSILON
 
 
 def _point_on_segment(
@@ -58,7 +59,11 @@ def _point_on_segment(
         return False
     closest_x = ax + ratio * abx
     closest_y = ay + ratio * aby
-    return (px - closest_x) ** 2 + (py - closest_y) ** 2 < _BOUNDARY_EPSILON
+    # Compare squared distance against squared epsilon - mixing
+    # squared LHS with linear epsilon widened the on-edge band to
+    # ~31um at the default 1e-9 epsilon, excluding valid interior
+    # points within that distance of the boundary.
+    return (px - closest_x) ** 2 + (py - closest_y) ** 2 < _BOUNDARY_EPSILON_SQ
 
 
 def point_in_polygon(point: Point2D, polygon: list[Point2D]) -> bool:

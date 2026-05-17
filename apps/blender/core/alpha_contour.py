@@ -46,6 +46,18 @@ _NEIGHBOUR_OFFSETS_4: tuple[tuple[int, int], ...] = (
 """Four Von Neumann neighbours used by binary morphology kernels."""
 
 
+HOLE_SAFETY_DILATE_CELLS: int = 1
+"""Foreground dilation applied to the mask before hole detection
+(SPEC 013 D2 amendment). Symmetric to the outer 1-cell safety
+dilate: dilating the foreground SHRINKS each hole by 1 cell so the
+mesh-side hole cutout sits INSIDE the actual alpha hole boundary,
+guaranteeing the mesh never cuts an alpha pixel around the hole's
+inner silhouette edge. Trades a tiny mesh-over-transparent bleed
+band (~2% of hole area at downscale=0.25) for the alpha-safety
+invariant the user demands. Erode-instead-of-dilate was prototyped
+and rejected: even 1-cell erosion eats alpha around the hole edge."""
+
+
 _MAX_CONTOUR_STEPS: int = 200_000
 """Defensive cap on Moore-Neighbour tracing - protects against
 pathological inputs that would otherwise loop indefinitely. Above
@@ -276,6 +288,74 @@ def extract_inner_contour(
     return trace_contour(mask, seed)
 
 
+def _flood_fill(
+    mask: BinaryMask,
+    visited: BinaryMask,
+    seeds: list[ContourPoint],
+) -> None:
+    """Mark every ``True`` cell reachable from ``seeds`` as visited.
+
+    Mutates ``visited`` in place. Used twice by :func:`extract_holes`:
+    once to flag "outside" background reachable from the grid border,
+    once to flag a freshly traced hole region so subsequent scans do
+    not re-trace it.
+    """
+    width, height = _grid_dimensions(mask)
+    stack = list(seeds)
+    while stack:
+        x, y = stack.pop()
+        if not (0 <= x < width and 0 <= y < height):
+            continue
+        if visited[y][x] or not mask[y][x]:
+            continue
+        visited[y][x] = True
+        for dx, dy in _NEIGHBOUR_OFFSETS_4:
+            stack.append((x + dx, y + dy))
+
+
+def extract_holes(mask: BinaryMask) -> list[Contour]:
+    """Trace contours of background islands fully enclosed by foreground.
+
+    A "hole" is a region of False cells in ``mask`` that does not
+    reach the grid border. The grid border is treated as the
+    boundary between sprite and image padding, so background
+    reachable from the border is the surrounding empty area, not
+    a hole.
+
+    Returns one closed contour per hole, walked clockwise on the
+    INVERTED mask (= counter-clockwise on the original foreground).
+    CDT (``mathutils.geometry.delaunay_2d_cdt``) treats nested
+    closed loops as holes via ``output_type=2``, regardless of
+    orientation, so the caller can append each contour to the
+    constraint edge set directly.
+
+    Implementation: flood-fill from every border background cell
+    to mark "outside" pixels, then scan the remaining background
+    pixels for hole seeds and trace each connected island once
+    via the standard Moore-Neighbour walker on the inverted mask.
+    """
+    width, height = _grid_dimensions(mask)
+    inverted: BinaryMask = [[not cell for cell in row] for row in mask]
+    visited: BinaryMask = [[False] * width for _ in range(height)]
+
+    border_seeds: list[ContourPoint] = []
+    for x in range(width):
+        border_seeds.append((x, 0))
+        border_seeds.append((x, height - 1))
+    for y in range(height):
+        border_seeds.append((0, y))
+        border_seeds.append((width - 1, y))
+    _flood_fill(inverted, visited, border_seeds)
+
+    holes: list[Contour] = []
+    for y in range(height):
+        for x in range(width):
+            if inverted[y][x] and not visited[y][x]:
+                holes.append(trace_contour(inverted, (x, y)))
+                _flood_fill(inverted, visited, [(x, y)])
+    return holes
+
+
 def extract_contour_pair(
     alpha: AlphaGrid,
     threshold: int,
@@ -283,18 +363,36 @@ def extract_contour_pair(
 ) -> tuple[Contour, Contour]:
     """Extract paired outer+inner contours for annulus topology (D2).
 
-    ``margin_px`` controls the annulus thickness: the outer contour
-    is the silhouette dilated by ``margin_px``, the inner is the
-    silhouette eroded by ``margin_px``. Returning both contours
-    is the input the annulus builder in
-    ``core/automesh_geometry.py`` needs to lay down the ring of
-    edge loops near the silhouette + the interior fill that COA
-    Tools 2's automesh ships and that deforms cleanly under bone
-    chains.
+    Convenience back-compat wrapper around :func:`extract_contours`
+    that drops the holes list. Existing callers (and unit tests)
+    that do not need hole-aware triangulation can keep using this.
 
-    The inner contour can be empty when the silhouette is too
-    thin for the requested erosion - the caller falls back to a
-    flat triangulation in that case.
+    See :func:`extract_contours` for the full signature.
+    """
+    outer, inner, _holes = extract_contours(alpha, threshold, margin_px)
+    return (outer, inner)
+
+
+def extract_contours(
+    alpha: AlphaGrid,
+    threshold: int,
+    margin_px: int,
+) -> tuple[Contour, Contour, list[Contour]]:
+    """Extract outer contour + inner annulus ring + per-hole contours.
+
+    Builds on the annulus topology of :func:`extract_contour_pair`
+    by also returning every alpha hole inside the silhouette. The
+    bpy bridge feeds the hole contours to CDT as additional
+    constraint loops so the mesh excludes the hole interior - SPEC
+    013 D2 amendment (Proscenio differentiates from Spine + COA2
+    here, which both refuse to support holes).
+
+    ``margin_px`` controls the OUTER annulus thickness exactly as
+    in :func:`extract_contour_pair`. Holes are detected on the
+    same dilated outer mask so a hole that the user wanted treated
+    as a hole survives the 1-cell safety dilation; hairline alpha
+    gaps narrower than the safety dilation are intentionally
+    swallowed so they do not produce noise mesh holes.
     """
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")
@@ -308,8 +406,26 @@ def extract_contour_pair(
     # cell on every side so coverage approaches 100% even at
     # margin_pixels=0 (single-contour mode).
     outer_dilate = max(1, margin_px)
-    outer = extract_outer_contour(alpha, threshold, outer_dilate)
+    raw_mask = binarize(alpha, threshold)
+    outer_mask = dilate(raw_mask, outer_dilate) if outer_dilate > 0 else raw_mask
+    seed = find_first_boundary(outer_mask)
+    if seed is None:
+        raise ValueError(
+            "alpha grid contains no foreground pixels above the threshold; "
+            "check the image alpha channel and the threshold setting"
+        )
+    outer = trace_contour(outer_mask, seed)
+    # Detect holes on a foreground DILATED by 1 cell. Dilating
+    # foreground shrinks each hole by 1 cell, which places the
+    # mesh-side hole boundary INSIDE the alpha hole - guaranteeing
+    # the mesh never cuts alpha at the hole's inner silhouette
+    # (user invariant: never cut alpha). The flip side is a small
+    # bleed band of mesh covering ~1 cell of transparent pixels at
+    # the hole edge; this is the symmetric analogue of the outer
+    # safety margin.
+    hole_mask = dilate(raw_mask, HOLE_SAFETY_DILATE_CELLS)
+    holes = extract_holes(hole_mask)
     if margin_px == 0:
-        return (outer, [])
+        return (outer, [], holes)
     inner = extract_inner_contour(alpha, threshold, margin_px)
-    return (outer, inner)
+    return (outer, inner, holes)

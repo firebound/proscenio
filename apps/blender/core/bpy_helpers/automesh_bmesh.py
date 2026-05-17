@@ -37,12 +37,13 @@ import mathutils
 
 from ..alpha_contour import (
     AlphaGrid,
-    extract_contour_pair,
+    extract_contours,
 )
 from ..automesh_density import (
     BoneSegment2D,
     filter_points_too_close_to_boundary,
     interior_points_for_annulus,
+    point_in_polygon,
 )
 from ..automesh_geometry import (
     Contour2D,
@@ -446,11 +447,47 @@ def _remove_base_sprite_verts(obj: Object, group_index: int) -> None:
     bm.free()
 
 
+def _delete_faces_inside_holes(
+    bm: bmesh.types.BMesh,
+    holes_world: list[list[tuple[float, float]]],
+) -> int:
+    """Delete every BMFace whose XZ centroid lies inside any hole loop.
+
+    CDT's nested-loop hole detection is sensitive to winding +
+    epsilon settings that the bridge's Y-flip pipeline does not
+    cleanly satisfy. This post-process gives a deterministic
+    fallback: triangulate everything, then prune. Loose verts left
+    behind (interior verts already filtered against holes) are
+    cleaned up by the standard bmesh.ops.delete VERTS context.
+
+    Returns the count of faces removed.
+    """
+    if not holes_world:
+        return 0
+    bm.faces.ensure_lookup_table()
+    to_remove: list[bmesh.types.BMFace] = []
+    for face in list(bm.faces):
+        verts = face.verts
+        if not verts:
+            continue
+        n = len(verts)
+        cx = sum(v.co.x for v in verts) / n
+        cz = sum(v.co.z for v in verts) / n
+        for hole in holes_world:
+            if point_in_polygon((cx, cz), hole):
+                to_remove.append(face)
+                break
+    if to_remove:
+        bmesh.ops.delete(bm, geom=to_remove, context="FACES_ONLY")
+    return len(to_remove)
+
+
 def _build_mesh_via_delaunay(
     bm: bmesh.types.BMesh,
     outer_world: list[tuple[float, float]],
     inner_world: list[tuple[float, float]],
     interior_points: list[tuple[float, float]],
+    holes_world: list[list[tuple[float, float]]] | None = None,
 ) -> int:
     """Single-pass Constrained Delaunay Triangulation for the entire mesh.
 
@@ -460,10 +497,12 @@ def _build_mesh_via_delaunay(
 
     - Treat outer + inner cyclic edges as hard constraints (must
       appear in the output).
-    - Auto-detect the inner ring as a HOLE via output_type=5
-      (CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES) so the interior of
+    - Auto-detect the inner ring AND every hole loop as HOLEs via
+      ``output_type=2`` (CDT_INSIDE_WITH_HOLES) so the interior of
       the inner ring is correctly excluded from triangulation when
-      it is a hole / kept as fill region when it isn't.
+      it is a hole / kept as fill region when it isn't, AND every
+      alpha hole detected by :func:`alpha_contour.extract_holes`
+      gets cut out of the mesh.
     - Include Steiner interior points as additional verts from the
       start so they participate in the Delaunay rather than being
       fan-split into an existing fan triangulation afterwards.
@@ -477,6 +516,7 @@ def _build_mesh_via_delaunay(
     inner_count = len(inner_world)
     if outer_count < 3:
         return 0
+    holes = list(holes_world) if holes_world else []
 
     all_coords: list[tuple[float, float]] = (
         list(outer_world) + list(inner_world) + list(interior_points)
@@ -488,6 +528,18 @@ def _build_mesh_via_delaunay(
         inner_offset = outer_count
         for i in range(inner_count):
             edges_constraint.append((inner_offset + i, inner_offset + (i + 1) % inner_count))
+    # Append every alpha hole as a closed constraint loop. CDT's
+    # output_type=2 detects nested loops automatically; orientation
+    # does not matter for hole detection.
+    hole_offset = len(all_coords)
+    for hole in holes:
+        if len(hole) < 3:
+            continue
+        start = hole_offset
+        all_coords.extend(hole)
+        for i in range(len(hole)):
+            edges_constraint.append((start + i, start + (i + 1) % len(hole)))
+        hole_offset += len(hole)
 
     # Delaunay output_type enum (BLI_delaunay_2d.h):
     #   0 CDT_FULL: convex hull triangulation
@@ -501,7 +553,7 @@ def _build_mesh_via_delaunay(
     # interior triangulation entirely, so the resulting mesh had
     # verts + boundary edges but NO faces. Use 1 / 2 to get the
     # full Delaunay fill of the constrained region.
-    output_type = 2 if inner_count >= 3 else 1
+    output_type = 2 if (inner_count >= 3 or holes) else 1
     result = mathutils.geometry.delaunay_2d_cdt(
         all_coords,
         edges_constraint,
@@ -754,10 +806,17 @@ def build_automesh(
     # more aggressive than the user expects (regression caught in
     # smoke validation).
     grid_margin = max(0, round(margin_pixels * downscale_factor))
-    outer_pixels, inner_pixels = extract_contour_pair(alpha_grid, alpha_threshold, grid_margin)
+    outer_pixels, inner_pixels, hole_pixels = extract_contours(
+        alpha_grid, alpha_threshold, grid_margin
+    )
+    # SPEC 013 D2 amendment: per-hole closed contours feed CDT as
+    # additional constraint loops so the mesh excludes alpha holes
+    # (donut interior, eye sockets, etc.). Proscenio differentiates
+    # from Spine + COA Tools 2 here - both refuse to support holes.
     print(
         f"[automesh] contour_pair grid_margin={grid_margin} "
-        f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)}"
+        f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)} "
+        f"holes={len(hole_pixels)} ({[len(h) for h in hole_pixels]})"
     )
     if len(outer_pixels) < 3:
         raise ValueError(
@@ -790,6 +849,17 @@ def build_automesh(
             source_width,
             source_height,
         )
+    holes_world_raw: list[Contour2D] = [
+        pixel_contour_to_world(
+            to_float_contour(h),
+            downscale_factor,
+            world_scale,
+            source_width,
+            source_height,
+        )
+        for h in hole_pixels
+        if len(h) >= 3
+    ]
 
     if debug_stage == "raw_contours":
         emit_contour_debug(obj, "raw_contours", outer_world_raw, inner_world_raw)
@@ -819,8 +889,20 @@ def build_automesh(
     inner_world: Contour2D = (
         arc_length_resample(inner_smoothed, target_contour_vertices) if inner_smoothed else []
     )
+    # Holes: arc-length resample only (NO Laplacian smoothing). Same
+    # reasoning as outer (smoothing shrinks convex corners inward by
+    # ~1 px per pass, which would shrink the mesh-side hole cutout
+    # back below the alpha hole and bleed mesh over transparent
+    # pixels). Resample target proportional to outer so big holes
+    # get more verts; minimum 8 keeps triangles around tiny holes
+    # reasonable.
+    holes_world: list[Contour2D] = []
+    for raw in holes_world_raw:
+        hole_target = max(8, target_contour_vertices // 4)
+        holes_world.append(arc_length_resample(raw, hole_target))
     print(
         f"[automesh] resampled outer={len(outer_world)} inner={len(inner_world)} "
+        f"holes_total_verts={sum(len(h) for h in holes_world)} "
         f"target={target_contour_vertices}"
     )
 
@@ -842,6 +924,21 @@ def build_automesh(
         bone_density_radius=bone_density_radius,
         bone_density_factor=bone_density_factor,
     )
+    # Drop Steiner points that fall inside any hole - CDT excludes
+    # the hole region from triangulation, so a Steiner there would
+    # become a loose vertex with no incident face.
+    if holes_world:
+        before_hole_filter = len(interior_points)
+        interior_points = [
+            point
+            for point in interior_points
+            if not any(point_in_polygon(point, hole) for hole in holes_world)
+        ]
+        print(
+            f"[automesh] interior_points dropped_inside_holes="
+            f"{before_hole_filter - len(interior_points)} "
+            f"(of {before_hole_filter})"
+        )
 
     # Drop Steiner points landing within half-spacing of any boundary
     # vert - otherwise Constrained Delaunay keeps both as distinct
@@ -905,7 +1002,13 @@ def build_automesh(
     # - dense edge-loop band near silhouette comes for free because
     #   outer + inner verts constrained close together in a thin
     #   ring; Delaunay produces dense triangles between them
-    _build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points)
+    _build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
+    # Post-process: CDT's automatic hole detection is unreliable with
+    # the bridge's Y-flip orientation flow, so we explicitly delete
+    # any triangle whose centroid lies inside a detected hole. This
+    # is deterministic + independent of CDT's winding heuristics.
+    if holes_world:
+        _delete_faces_inside_holes(bm, holes_world)
 
     if debug_stage == "fill_no_interior":
         bm.to_mesh(mesh)

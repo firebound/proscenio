@@ -25,6 +25,8 @@ from core.alpha_contour import (  # noqa: E402  - sys.path setup above
     dilate,
     erode,
     extract_contour_pair,
+    extract_contours,
+    extract_holes,
     extract_inner_contour,
     extract_outer_contour,
     find_first_boundary,
@@ -268,3 +270,63 @@ class TestExtractContourPair:
         # except possibly the start match used by Jacob's stop).
         unique = set(outer)
         assert len(unique) == len(outer)
+
+
+def _donut_alpha(size: int, hole_inset: int) -> AlphaGrid:
+    """Filled square with a centered transparent hole of side ``size - 2*hole_inset``."""
+    grid: AlphaGrid = [[255 for _ in range(size)] for _ in range(size)]
+    for y in range(hole_inset, size - hole_inset):
+        for x in range(hole_inset, size - hole_inset):
+            grid[y][x] = 0
+    return grid
+
+
+class TestExtractHoles:
+    def test_solid_silhouette_has_no_holes(self) -> None:
+        mask = binarize(_square_alpha(8, inset=1), 127)
+        assert extract_holes(mask) == []
+
+    def test_single_hole_detected(self) -> None:
+        mask = binarize(_donut_alpha(10, hole_inset=4), 127)
+        holes = extract_holes(mask)
+        assert len(holes) == 1
+        # Hole is the 2x2 transparent center: 4 boundary cells.
+        assert len(holes[0]) >= 1
+
+    def test_border_background_not_a_hole(self) -> None:
+        # An inset square's surrounding transparent border is NOT a hole.
+        mask = binarize(_square_alpha(10, inset=2), 127)
+        assert extract_holes(mask) == []
+
+    def test_multiple_holes_detected(self) -> None:
+        grid: AlphaGrid = [[255 for _ in range(12)] for _ in range(12)]
+        # Two disjoint 2x2 holes at (3,3) and (7,7).
+        for y in range(3, 5):
+            for x in range(3, 5):
+                grid[y][x] = 0
+        for y in range(7, 9):
+            for x in range(7, 9):
+                grid[y][x] = 0
+        mask = binarize(grid, 127)
+        holes = extract_holes(mask)
+        assert len(holes) == 2
+
+
+class TestExtractContours:
+    def test_donut_yields_outer_plus_hole(self) -> None:
+        alpha = _donut_alpha(12, hole_inset=4)
+        outer, inner, holes = extract_contours(alpha, 127, 0)
+        assert len(outer) >= 4
+        assert inner == []  # margin=0 single-contour mode
+        assert len(holes) == 1
+
+    def test_solid_yields_no_holes(self) -> None:
+        alpha = _square_alpha(8, inset=1)
+        _outer, _inner, holes = extract_contours(alpha, 127, 1)
+        assert holes == []
+
+    def test_back_compat_pair_drops_holes(self) -> None:
+        alpha = _donut_alpha(12, hole_inset=4)
+        outer, _inner = extract_contour_pair(alpha, 127, 0)
+        outer2, _inner2, _holes = extract_contours(alpha, 127, 0)
+        assert outer == outer2

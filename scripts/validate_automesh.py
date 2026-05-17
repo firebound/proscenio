@@ -42,22 +42,37 @@ FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.ble
 # has different alpha coverage / contour complexity. Bounds were
 # calibrated by running the current pipeline manually + adding 30%
 # headroom on each side.
-SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float]] = {
+SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
     "blob": {
         "verts": (200, 400),
         "faces": (350, 700),
         "min_coverage": 0.98,
+        # No holes -> mesh covering any transparent pixel is a bug.
+        "max_hole_bleed": 0,
     },
     "lshape": {
         "verts": (120, 350),
         "faces": (200, 600),
         "min_coverage": 0.96,
+        "max_hole_bleed": 0,
     },
     "ring": {
         "verts": (150, 400),
         "faces": (200, 700),
-        # Ring has alpha hole - coverage check excludes the hole pixels.
         "min_coverage": 0.95,
+        # SPEC 013 D2 amendment - ring is the hole-support smoke
+        # target. Hard invariant: leaks=0 (mesh NEVER cuts alpha).
+        # Achieved by detecting holes on a 1-cell-DILATED foreground
+        # so the mesh-hole boundary sits INSIDE the alpha hole. The
+        # flip side: mesh covers a band of transparent hole pixels
+        # along the outer hole edge. At downscale=0.25 the band can
+        # reach ~50% of small holes (the donut hole is 12 cells wide
+        # on the downscaled grid; shrinking by 1 cell on each side
+        # leaves a 10-cell mesh cutout = ~70% area). Bumping
+        # downscale toward 1.0 or upscaling the hole contour after
+        # detection are Wave 13.2+ work. For now, accept the bleed
+        # band as the price of "never cut alpha".
+        "max_hole_bleed": 1500,
     },
     "hand": {
         "verts": (180, 450),
@@ -69,6 +84,7 @@ SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float]] = {
         # (downscale=1.0, adaptive resolution, or morphological
         # closing) can raise this to 0.98+.
         "min_coverage": 0.96,
+        "max_hole_bleed": 0,
     },
 }
 
@@ -147,7 +163,9 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
 def _point_in_triangle_xz(px: float, pz: float, a, b, c) -> bool:
     """Half-plane test for a point against an XZ-projected triangle."""
 
-    def sign(p1x: float, p1z: float, p2x: float, p2z: float, p3x: float, p3z: float) -> float:
+    def sign(
+        p1x: float, p1z: float, p2x: float, p2z: float, p3x: float, p3z: float
+    ) -> float:
         return (p1x - p3x) * (p2z - p3z) - (p2x - p3x) * (p1z - p3z)
 
     d1 = sign(px, pz, a[0], a[1], b[0], b[1])
@@ -162,7 +180,9 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
     """Inspect the generated mesh + return metrics + invariant flags."""
     mesh = sprite_obj.data
     verts = [v.co for v in mesh.vertices]
-    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
+    triangles: list[
+        tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
+    ] = []
     degenerate = 0
     areas: list[float] = []
     for poly in mesh.polygons:
@@ -203,12 +223,13 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
     leak_count = 0
     leak_records: list[dict[str, object]] = []
     quadrants: dict[str, int] = {}
+    bleed_count = 0
     if image is not None and triangles:
         debug_dir = REPO_ROOT / "scripts" / "validate_automesh_debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
         debug_png = debug_dir / f"{sprite_obj.name}_coverage.png"
-        coverage_pct, leak_count, leak_records, quadrants = _measure_coverage(
-            image, triangles, debug_png
+        coverage_pct, leak_count, leak_records, quadrants, bleed_count = (
+            _measure_coverage(image, triangles, debug_png)
         )
 
     return {
@@ -224,14 +245,67 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
         # First 30 leak records inline; full list in report JSON only
         # when leak_count > 0 to keep noise down.
         "leak_records_sample": leak_records[:30],
+        # SPEC 013 D2 amendment: mesh-over-transparent-pixel count.
+        # Non-zero indicates hole-aware CDT failed to exclude an alpha
+        # gap. Zero is the invariant for hole-supporting sprites
+        # (ring etc.).
+        "hole_bleed_count": bleed_count,
     }
+
+
+def _compute_hole_pixel_mask(
+    pixels: list[float],
+    w: int,
+    h: int,
+) -> list[list[bool]]:
+    """True for transparent pixels fully enclosed by alpha foreground.
+
+    Flood-fills transparent pixels reachable from the image border;
+    the remainder are alpha holes. Mirrors the bridge-side
+    ``alpha_contour.extract_holes`` logic but operates on the raw
+    full-resolution pixel grid (no downscaling) so the validator
+    measures against ground truth, not the operator's downsampled
+    view.
+    """
+    transparent: list[list[bool]] = [
+        [int(pixels[(y * w + x) * 4 + 3] * 255) <= 0 for x in range(w)]
+        for y in range(h)
+    ]
+    visited: list[list[bool]] = [[False] * w for _ in range(h)]
+    stack: list[tuple[int, int]] = []
+    for x in range(w):
+        if transparent[0][x]:
+            stack.append((x, 0))
+        if transparent[h - 1][x]:
+            stack.append((x, h - 1))
+    for y in range(h):
+        if transparent[y][0]:
+            stack.append((0, y))
+        if transparent[y][w - 1]:
+            stack.append((w - 1, y))
+    while stack:
+        x, y = stack.pop()
+        if not (0 <= x < w and 0 <= y < h):
+            continue
+        if visited[y][x] or not transparent[y][x]:
+            continue
+        visited[y][x] = True
+        stack.append((x + 1, y))
+        stack.append((x - 1, y))
+        stack.append((x, y + 1))
+        stack.append((x, y - 1))
+    return [
+        [transparent[y][x] and not visited[y][x] for x in range(w)] for y in range(h)
+    ]
 
 
 def _measure_coverage(
     image: bpy.types.Image,
-    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]],
+    triangles: list[
+        tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
+    ],
     debug_png_path: Path | None = None,
-) -> tuple[float, int, list[dict[str, object]], dict[str, int]]:
+) -> tuple[float, int, list[dict[str, object]], dict[str, int], int]:
     """Exhaustive coverage measurement of every foreground alpha pixel.
 
     Visits EVERY pixel (no sample_step skip). For each pixel with
@@ -260,12 +334,15 @@ def _measure_coverage(
     if debug_png_path is not None:
         debug_image = [0, 0, 0, 0] * (w * h)
 
+    # Pre-compute which transparent pixels are HOLE pixels (alpha=0
+    # surrounded by alpha>0) versus EXTERIOR pixels (alpha=0 reachable
+    # from the image border). Hole bleed = mesh over hole pixel = bug.
+    # Margin bleed = mesh over exterior pixel = expected safety dilate.
+    hole_mask = _compute_hole_pixel_mask(pixels, w, h)
+    bleed_count = 0
     for y in range(h):
         for x in range(w):
             alpha = int(pixels[(y * w + x) * 4 + 3] * 255)
-            if alpha <= 0:
-                continue
-            fg += 1
             # World coords using CELL-CENTER convention to match the
             # mesh's pixel_contour_to_world placement (+ half_cell
             # offset on each axis). Visual-Y flip mirrors the
@@ -278,39 +355,58 @@ def _measure_coverage(
                 if _point_in_triangle_xz(wx, wz, a, b, c):
                     inside_any = True
                     break
+            if alpha <= 0:
+                # Transparent pixel. Only count as "hole bleed" when
+                # it lives inside the alpha silhouette (i.e. is part
+                # of an alpha hole). Exterior transparent pixels
+                # covered by mesh are the expected safety-margin band
+                # produced by the 1-cell dilate + conservative MAX
+                # downsample.
+                if inside_any and hole_mask[y][x]:
+                    bleed_count += 1
+                    if debug_image is not None:
+                        idx = (y * w + x) * 4
+                        debug_image[idx] = 0
+                        debug_image[idx + 1] = 100
+                        debug_image[idx + 2] = 255
+                        debug_image[idx + 3] = 255
+                continue
+            fg += 1
             if inside_any:
                 if debug_image is not None:
                     idx = (y * w + x) * 4
-                    debug_image[idx] = 0      # R
+                    debug_image[idx] = 0  # R
                     debug_image[idx + 1] = 200  # G
-                    debug_image[idx + 2] = 0    # B
+                    debug_image[idx + 2] = 0  # B
                     debug_image[idx + 3] = 255
             else:
                 visual_y_for_quadrant = h - 1 - y
                 quadrant_x = "L" if x < w / 2 else "R"
                 quadrant_y = "T" if visual_y_for_quadrant > h / 2 else "B"
                 quadrants[quadrant_y + quadrant_x] += 1
-                leaks_records.append({
-                    "pixel_x": x,
-                    "pixel_y_storage": y,
-                    "pixel_y_visual_pil": visual_y_for_quadrant,
-                    "alpha": alpha,
-                    "world_x": round(wx, 6),
-                    "world_z": round(wz, 6),
-                    "quadrant": quadrant_y + quadrant_x,
-                })
+                leaks_records.append(
+                    {
+                        "pixel_x": x,
+                        "pixel_y_storage": y,
+                        "pixel_y_visual_pil": visual_y_for_quadrant,
+                        "alpha": alpha,
+                        "world_x": round(wx, 6),
+                        "world_z": round(wz, 6),
+                        "quadrant": quadrant_y + quadrant_x,
+                    }
+                )
                 if debug_image is not None:
                     idx = (y * w + x) * 4
-                    debug_image[idx] = 255    # R
-                    debug_image[idx + 1] = 0    # G
-                    debug_image[idx + 2] = 0    # B
+                    debug_image[idx] = 255  # R
+                    debug_image[idx + 1] = 0  # G
+                    debug_image[idx + 2] = 0  # B
                     debug_image[idx + 3] = 255
 
     if debug_image is not None and debug_png_path is not None:
         _write_debug_png(debug_png_path, w, h, debug_image)
 
     coverage = 1.0 - (len(leaks_records) / fg) if fg else 1.0
-    return (coverage, len(leaks_records), leaks_records, quadrants)
+    return (coverage, len(leaks_records), leaks_records, quadrants, bleed_count)
 
 
 def _write_debug_png(path: Path, w: int, h: int, rgba_bytes: list[int]) -> None:
@@ -338,9 +434,7 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
     for sprite_name in sprites:
         sprite_obj = bpy.data.objects.get(sprite_name)
         if sprite_obj is None or sprite_obj.type != "MESH":
-            report["failures"].append(
-                f"sprite '{sprite_name}' missing or not a mesh"
-            )
+            report["failures"].append(f"sprite '{sprite_name}' missing or not a mesh")
             continue
         bpy.context.view_layer.objects.active = sprite_obj
         sprite_obj.select_set(True)
@@ -399,6 +493,14 @@ def _check_invariants(
                 f"coverage {coverage:.4f} below minimum {min_coverage:.4f} "
                 f"({metrics['leak_count']} alpha pixels NOT covered by mesh)"
             )
+    max_bleed = bounds.get("max_hole_bleed")
+    bleed = metrics["hole_bleed_count"]
+    if isinstance(max_bleed, int) and isinstance(bleed, int):
+        if bleed > max_bleed:
+            failures.append(
+                f"hole bleed {bleed} above maximum {max_bleed} "
+                f"(mesh covers transparent pixels - hole-aware CDT failed)"
+            )
     return {"failures": failures, "warnings": warnings}
 
 
@@ -424,6 +526,7 @@ def main() -> None:
         if coverage is not None:
             print(
                 f"  coverage={coverage:.6f} leaks={m['leak_count']} "
+                f"hole_bleed={m.get('hole_bleed_count', 0)} "
                 f"mean_area={m['mean_area']:.6f}"
             )
             quadrants = m.get("leak_quadrants") or {}

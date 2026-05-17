@@ -29,6 +29,7 @@ exit code on any invariant failure for CI integration.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -37,6 +38,34 @@ import bpy  # type: ignore[import-not-found]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.blend"
+ADDON_PATH = REPO_ROOT / "apps" / "blender"
+ADDON_PACKAGE = "proscenio"
+
+
+def _load_and_register_addon() -> None:
+    """Mount apps/blender as the ``proscenio`` package + run register().
+
+    The automesh validator invokes the operator via ``bpy.ops.proscenio.
+    automesh_from_sprite``, which requires the addon's classes to be
+    registered with Blender. The headless CI runner has no user-installed
+    addon, so we mount the on-disk source directly under the manifest
+    package name and call register() ourselves. Mirrors the pattern used
+    by ``apps/blender/tests/run_tests.py`` for module loading; the
+    register() call is the extra step needed for operator access.
+    """
+    if ADDON_PACKAGE not in sys.modules:
+        init_path = ADDON_PATH / "__init__.py"
+        spec = importlib.util.spec_from_file_location(
+            ADDON_PACKAGE,
+            init_path,
+            submodule_search_locations=[str(ADDON_PATH)],
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"could not build import spec for {init_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[ADDON_PACKAGE] = module
+        spec.loader.exec_module(module)
+    sys.modules[ADDON_PACKAGE].register()
 
 # Per-sprite tolerance bounds. Sprite-specific because each silhouette
 # has different alpha coverage / contour complexity. Bounds were
@@ -555,6 +584,7 @@ def _check_invariants(
 
 def main() -> None:
     args = parse_args()
+    _load_and_register_addon()
     load_fixture()
     sprites = list(SPRITE_BOUNDS.keys())
     if args.ci_only:

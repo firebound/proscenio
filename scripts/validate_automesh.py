@@ -32,6 +32,7 @@ import argparse
 import importlib.util
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import bpy  # type: ignore[import-not-found]
@@ -361,6 +362,113 @@ def _compute_hole_pixel_mask(
     ]
 
 
+_DEBUG_COLOUR_COVERED = (0, 200, 0, 255)
+_DEBUG_COLOUR_LEAK = (255, 0, 0, 255)
+_DEBUG_COLOUR_HOLE_BLEED = (0, 100, 255, 255)
+
+
+@dataclass(frozen=True)
+class _CoverageContext:
+    """Pre-computed per-image values that every pixel classification needs.
+
+    Bundles the alpha buffer + triangle list + hole mask + world-coord
+    scaling constants + the debug image buffer in a single read-only
+    record so ``_classify_pixel`` stays under the 13-argument limit
+    without having to plumb a dozen positionals through the inner loop.
+    """
+
+    w: int
+    h: int
+    pixels: list[float]
+    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]]
+    hole_mask: list[list[bool]]
+    world_scale: float
+    half_w: float
+    half_h: float
+    half_cell: float
+    debug_image: list[int] | None
+
+
+def _paint_debug_pixel(
+    debug_image: list[int] | None,
+    pixel_index: int,
+    rgba: tuple[int, int, int, int],
+) -> None:
+    """Write one RGBA pixel into the flat debug-image buffer."""
+    if debug_image is None:
+        return
+    idx = pixel_index * 4
+    debug_image[idx] = rgba[0]
+    debug_image[idx + 1] = rgba[1]
+    debug_image[idx + 2] = rgba[2]
+    debug_image[idx + 3] = rgba[3]
+
+
+def _pixel_world_coords(
+    x: int, y: int, ctx: _CoverageContext
+) -> tuple[float, float]:
+    """Cell-center world coords for source pixel ``(x, y)``.
+
+    Matches the mesh's ``pixel_contour_to_world`` cell-center
+    placement (+ half_cell offset on each axis) + the bridge's
+    Y-flip-on-read convention so the validator measures against
+    the same geometry the operator built.
+    """
+    visual_y = ctx.h - 1 - y
+    wx = x * ctx.world_scale - ctx.half_w + ctx.half_cell
+    wz = ctx.half_h - visual_y * ctx.world_scale - ctx.half_cell
+    return wx, wz
+
+
+def _classify_pixel(
+    x: int,
+    y: int,
+    ctx: _CoverageContext,
+    leaks_records: list[dict[str, object]],
+    quadrants: dict[str, int],
+) -> tuple[int, int]:
+    """Classify pixel ``(x, y)`` against the mesh + paint the debug buffer.
+
+    Returns ``(fg_increment, bleed_increment)`` so the caller can
+    keep the counters without juggling locals in the inner loop.
+    Leak records + quadrant counts are mutated in-place via the
+    passed-in collections (kept separate from ctx because they
+    accumulate across calls).
+    """
+    alpha = int(ctx.pixels[(y * ctx.w + x) * 4 + 3] * 255)
+    pixel_index = y * ctx.w + x
+    wx, wz = _pixel_world_coords(x, y, ctx)
+    inside_any = any(point_in_triangle_xz((wx, wz), t) for t in ctx.triangles)
+    if alpha <= 0:
+        # Transparent pixel. Only count as "hole bleed" when it sits
+        # inside the alpha silhouette (= part of a detected hole).
+        # Exterior transparent covered by mesh is the expected
+        # safety-margin band from the 1-cell dilate + MAX downsample.
+        if inside_any and ctx.hole_mask[y][x]:
+            _paint_debug_pixel(ctx.debug_image, pixel_index, _DEBUG_COLOUR_HOLE_BLEED)
+            return 0, 1
+        return 0, 0
+    if inside_any:
+        _paint_debug_pixel(ctx.debug_image, pixel_index, _DEBUG_COLOUR_COVERED)
+        return 1, 0
+    _paint_debug_pixel(ctx.debug_image, pixel_index, _DEBUG_COLOUR_LEAK)
+    visual_y = ctx.h - 1 - y
+    quadrant = ("T" if visual_y > ctx.h / 2 else "B") + ("L" if x < ctx.w / 2 else "R")
+    quadrants[quadrant] += 1
+    leaks_records.append(
+        {
+            "pixel_x": x,
+            "pixel_y_storage": y,
+            "pixel_y_visual_pil": visual_y,
+            "alpha": alpha,
+            "world_x": round(wx, 6),
+            "world_z": round(wz, 6),
+            "quadrant": quadrant,
+        }
+    )
+    return 1, 0
+
+
 def _measure_coverage(
     image: bpy.types.Image,
     triangles: list[
@@ -368,104 +476,57 @@ def _measure_coverage(
     ],
     debug_png_path: Path | None = None,
 ) -> tuple[float, int, list[dict[str, object]], dict[str, int], int]:
-    """Exhaustive coverage measurement of every foreground alpha pixel.
+    """Exhaustive coverage measurement of every source pixel.
 
-    Visits EVERY pixel (no sample_step skip). For each pixel with
-    alpha > 0:
-    - Compute its EXACT world position using cell-center convention
-      that matches pixel_contour_to_world in the bridge.
-    - Test point-in-triangle against the full triangle list.
-    - If outside every triangle, log a leak record + count by
-      quadrant (TL/TR/BL/BR) to expose any geometric asymmetry.
+    Visits EVERY pixel (no sample_step skip) and routes each through
+    ``_classify_pixel``, which:
 
-    Optionally writes a debug PNG: red pixel = leak, green pixel =
-    covered, transparent = alpha 0. Save next to the JSON report so
-    the user can see EXACTLY which pixels were cut without guessing.
+    - Maps to world coords via cell-center convention matching the
+      mesh's ``pixel_contour_to_world`` placement.
+    - Tests point-in-triangle against the full triangle list.
+    - Routes to one of three bins: covered alpha (green), leaked
+      alpha = mesh failed to cover (red, with per-quadrant +
+      per-record bookkeeping), or hole bleed = mesh over transparent
+      pixel inside a detected alpha hole (blue).
+
+    Pre-computes the hole-pixel mask via flood-fill from the image
+    border so the bleed check can distinguish exterior safety margin
+    from real hole bleed without re-scanning the alpha grid per
+    pixel.
+
+    Optionally writes a debug PNG via Blender's image API
+    (no PIL dep). Pixel ordering matches Blender's bottom-up
+    convention (validator iterates in storage order); visual output
+    aligns with the source PNG pixel-for-pixel.
     """
     pixels = list(image.pixels[:])
     w, h = image.size[0], image.size[1]
-    pixels_per_unit = 100.0
-    world_scale = 1.0 / pixels_per_unit
-    half_w = w * world_scale / 2.0
-    half_h = h * world_scale / 2.0
-    half_cell = world_scale / 2.0
+    world_scale = 1.0 / 100.0
+    ctx = _CoverageContext(
+        w=w,
+        h=h,
+        pixels=pixels,
+        triangles=triangles,
+        hole_mask=_compute_hole_pixel_mask(pixels, w, h),
+        world_scale=world_scale,
+        half_w=w * world_scale / 2.0,
+        half_h=h * world_scale / 2.0,
+        half_cell=world_scale / 2.0,
+        debug_image=[0, 0, 0, 0] * (w * h) if debug_png_path is not None else None,
+    )
+
     fg = 0
+    bleed_count = 0
     leaks_records: list[dict[str, object]] = []
     quadrants = {"TL": 0, "TR": 0, "BL": 0, "BR": 0}
-    debug_image: list[int] | None = None
-    if debug_png_path is not None:
-        debug_image = [0, 0, 0, 0] * (w * h)
-
-    # Pre-compute which transparent pixels are HOLE pixels (alpha=0
-    # surrounded by alpha>0) versus EXTERIOR pixels (alpha=0 reachable
-    # from the image border). Hole bleed = mesh over hole pixel = bug.
-    # Margin bleed = mesh over exterior pixel = expected safety dilate.
-    hole_mask = _compute_hole_pixel_mask(pixels, w, h)
-    bleed_count = 0
     for y in range(h):
         for x in range(w):
-            alpha = int(pixels[(y * w + x) * 4 + 3] * 255)
-            # World coords using CELL-CENTER convention to match the
-            # mesh's pixel_contour_to_world placement (+ half_cell
-            # offset on each axis). Visual-Y flip mirrors the
-            # bridge's Y-flip-on-read.
-            wx = x * world_scale - half_w + half_cell
-            visual_y = h - 1 - y
-            wz = half_h - visual_y * world_scale - half_cell
-            inside_any = False
-            for triangle in triangles:
-                if point_in_triangle_xz((wx, wz), triangle):
-                    inside_any = True
-                    break
-            if alpha <= 0:
-                # Transparent pixel. Only count as "hole bleed" when
-                # it lives inside the alpha silhouette (i.e. is part
-                # of an alpha hole). Exterior transparent pixels
-                # covered by mesh are the expected safety-margin band
-                # produced by the 1-cell dilate + conservative MAX
-                # downsample.
-                if inside_any and hole_mask[y][x]:
-                    bleed_count += 1
-                    if debug_image is not None:
-                        idx = (y * w + x) * 4
-                        debug_image[idx] = 0
-                        debug_image[idx + 1] = 100
-                        debug_image[idx + 2] = 255
-                        debug_image[idx + 3] = 255
-                continue
-            fg += 1
-            if inside_any:
-                if debug_image is not None:
-                    idx = (y * w + x) * 4
-                    debug_image[idx] = 0  # R
-                    debug_image[idx + 1] = 200  # G
-                    debug_image[idx + 2] = 0  # B
-                    debug_image[idx + 3] = 255
-            else:
-                visual_y_for_quadrant = h - 1 - y
-                quadrant_x = "L" if x < w / 2 else "R"
-                quadrant_y = "T" if visual_y_for_quadrant > h / 2 else "B"
-                quadrants[quadrant_y + quadrant_x] += 1
-                leaks_records.append(
-                    {
-                        "pixel_x": x,
-                        "pixel_y_storage": y,
-                        "pixel_y_visual_pil": visual_y_for_quadrant,
-                        "alpha": alpha,
-                        "world_x": round(wx, 6),
-                        "world_z": round(wz, 6),
-                        "quadrant": quadrant_y + quadrant_x,
-                    }
-                )
-                if debug_image is not None:
-                    idx = (y * w + x) * 4
-                    debug_image[idx] = 255  # R
-                    debug_image[idx + 1] = 0  # G
-                    debug_image[idx + 2] = 0  # B
-                    debug_image[idx + 3] = 255
+            fg_inc, bleed_inc = _classify_pixel(x, y, ctx, leaks_records, quadrants)
+            fg += fg_inc
+            bleed_count += bleed_inc
 
-    if debug_image is not None and debug_png_path is not None:
-        _write_debug_png(debug_png_path, w, h, debug_image)
+    if ctx.debug_image is not None and debug_png_path is not None:
+        _write_debug_png(debug_png_path, w, h, ctx.debug_image)
 
     coverage = 1.0 - (len(leaks_records) / fg) if fg else 1.0
     return (coverage, len(leaks_records), leaks_records, quadrants, bleed_count)

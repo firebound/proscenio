@@ -130,13 +130,24 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
         bpy.context.view_layer.objects.active = sprite_obj
         sprite_obj.select_set(True)
         try:
-            bpy.ops.proscenio.automesh_from_sprite(
+            op_result = bpy.ops.proscenio.automesh_from_sprite(
                 margin_pixels=args.margin_pixels,
                 alpha_threshold=args.alpha_threshold,
                 debug_stage="off",
             )
         except Exception as exc:
             report["failures"].append(f"{sprite_name}: operator raised: {exc}")
+            continue
+        # bpy.ops returns a set containing one of FINISHED / CANCELLED
+        # / RUNNING_MODAL / PASS_THROUGH. CANCELLED is silent (no
+        # exception) but means the operator aborted before writing to
+        # the mesh - measuring the unchanged mesh would produce a false
+        # PASS. Treat anything except FINISHED as a failure.
+        if "FINISHED" not in op_result:
+            report["failures"].append(
+                f"{sprite_name}: operator returned {sorted(op_result)} "
+                "(expected {'FINISHED'}); mesh not updated"
+            )
             continue
         metrics = measure_mesh(sprite_obj)
         bounds = SPRITE_BOUNDS.get(sprite_name)

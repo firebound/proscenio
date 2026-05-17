@@ -144,7 +144,10 @@ def capsule(canvas: Canvas, color: RGBA, padding: int = 1) -> None:
             fill=fill_color,
         )
         canvas.draw.ellipse(
-            [(padding, padding + h - 1 - 2 * radius), (padding + w - 1, padding + h - 1)],
+            [
+                (padding, padding + h - 1 - 2 * radius),
+                (padding + w - 1, padding + h - 1),
+            ],
             fill=fill_color,
         )
     else:
@@ -164,7 +167,10 @@ def capsule(canvas: Canvas, color: RGBA, padding: int = 1) -> None:
             fill=fill_color,
         )
         canvas.draw.ellipse(
-            [(padding + w - 1 - 2 * radius, padding), (padding + w - 1, padding + h - 1)],
+            [
+                (padding + w - 1 - 2 * radius, padding),
+                (padding + w - 1, padding + h - 1),
+            ],
             fill=fill_color,
         )
 

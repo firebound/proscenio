@@ -37,22 +37,34 @@ def _section(title: str) -> None:
 def _dump_scenes() -> None:
     _section("SCENES")
     for scene in bpy.data.scenes:
-        print(f"  scene: {scene.name}  fps={scene.render.fps}  frames={scene.frame_start}-{scene.frame_end}")
+        print(
+            f"  scene: {scene.name}  fps={scene.render.fps}  frames={scene.frame_start}-{scene.frame_end}"
+        )
 
 
 def _dump_objects() -> None:
     _section("OBJECTS")
     for obj in bpy.data.objects:
-        print(f"  - name='{obj.name}'  type={obj.type}  parent={obj.parent.name if obj.parent else None}")
-        print(f"      location={_fmt_vec(obj.location)}  rotation_euler={_fmt_vec(obj.rotation_euler)}  scale={_fmt_vec(obj.scale)}")
+        print(
+            f"  - name='{obj.name}'  type={obj.type}  parent={obj.parent.name if obj.parent else None}"
+        )
+        print(
+            f"      location={_fmt_vec(obj.location)}  rotation_euler={_fmt_vec(obj.rotation_euler)}  scale={_fmt_vec(obj.scale)}"
+        )
         if obj.parent_type == "BONE":
             print(f"      parent_bone='{obj.parent_bone}'")
 
 
 def _dump_bone(bone) -> None:
-    print(f"    bone: '{bone.name}'  parent={bone.parent.name if bone.parent else None}")
-    print(f"      head={_fmt_vec(bone.head)}  tail={_fmt_vec(bone.tail)}  length={bone.length:.4f}")
-    print(f"      head_local={_fmt_vec(bone.head_local)}  tail_local={_fmt_vec(bone.tail_local)}")
+    print(
+        f"    bone: '{bone.name}'  parent={bone.parent.name if bone.parent else None}"
+    )
+    print(
+        f"      head={_fmt_vec(bone.head)}  tail={_fmt_vec(bone.tail)}  length={bone.length:.4f}"
+    )
+    print(
+        f"      head_local={_fmt_vec(bone.head_local)}  tail_local={_fmt_vec(bone.tail_local)}"
+    )
     print("      matrix_local rows:")
     for row in bone.matrix_local:
         print(f"        {_fmt_vec(row)}")
@@ -67,7 +79,9 @@ def _dump_armatures() -> None:
 
 
 def _dump_mesh(mesh) -> None:
-    print(f"  mesh: '{mesh.name}'  verts={len(mesh.vertices)}  polys={len(mesh.polygons)}  uv_layers={len(mesh.uv_layers)}")
+    print(
+        f"  mesh: '{mesh.name}'  verts={len(mesh.vertices)}  polys={len(mesh.polygons)}  uv_layers={len(mesh.uv_layers)}"
+    )
     for v in mesh.vertices[:6]:
         groups = [(g.group, g.weight) for g in v.groups]
         print(f"    v[{v.index}]={_fmt_vec(v.co)}  groups={groups}")
@@ -88,7 +102,9 @@ def _dump_vertex_groups() -> None:
     for obj in bpy.data.objects:
         if obj.type != "MESH":
             continue
-        print(f"  obj '{obj.name}' vertex_groups: {[vg.name for vg in obj.vertex_groups]}")
+        print(
+            f"  obj '{obj.name}' vertex_groups: {[vg.name for vg in obj.vertex_groups]}"
+        )
 
 
 def _dump_material(mat) -> None:
@@ -97,7 +113,9 @@ def _dump_material(mat) -> None:
         return
     for node in mat.node_tree.nodes:
         if node.type == "TEX_IMAGE" and node.image:
-            print(f"    image: name='{node.image.name}'  filepath='{node.image.filepath}'  size={node.image.size[:]}")
+            print(
+                f"    image: name='{node.image.name}'  filepath='{node.image.filepath}'  size={node.image.size[:]}"
+            )
 
 
 def _dump_materials() -> None:
@@ -108,11 +126,17 @@ def _dump_materials() -> None:
 
 def _dump_action(action) -> None:
     frame_range = action.frame_range
-    print(f"  action: '{action.name}'  frame_range={frame_range[0]:.1f}-{frame_range[1]:.1f}  fcurves={len(action.fcurves)}")
+    print(
+        f"  action: '{action.name}'  frame_range={frame_range[0]:.1f}-{frame_range[1]:.1f}  fcurves={len(action.fcurves)}"
+    )
     for fc in action.fcurves:
-        print(f"    fcurve: data_path='{fc.data_path}'  array_index={fc.array_index}  keys={len(fc.keyframe_points)}")
+        print(
+            f"    fcurve: data_path='{fc.data_path}'  array_index={fc.array_index}  keys={len(fc.keyframe_points)}"
+        )
         for kp in fc.keyframe_points[:5]:
-            print(f"      kp: time={kp.co[0]:.2f}  value={kp.co[1]:.4f}  interp={kp.interpolation}")
+            print(
+                f"      kp: time={kp.co[0]:.2f}  value={kp.co[1]:.4f}  interp={kp.interpolation}"
+            )
 
 
 def _dump_actions() -> None:

@@ -42,9 +42,9 @@ TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
 # Frame index -> (mouth_open_height_ratio, has_tongue)
 FRAMES: tuple[tuple[int, float, bool], ...] = (
     (0, 0.7, False),  # open
-    (1, 0.4, True),   # mid-open with tongue
+    (1, 0.4, True),  # mid-open with tongue
     (2, 0.05, False),  # closed (lip line)
-    (3, 0.6, True),   # talking shape
+    (3, 0.6, True),  # talking shape
 )
 
 

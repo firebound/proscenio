@@ -42,7 +42,9 @@ def main() -> None:
         canvas = Canvas.empty(SIZE, SIZE)
         fill(canvas, color)
         canvas.save(LAYERS_DIR / f"{name}.png")
-    print(f"[draw_slot_cycle] wrote {len(ATTACHMENTS)} attachment(s) under {LAYERS_DIR}")
+    print(
+        f"[draw_slot_cycle] wrote {len(ATTACHMENTS)} attachment(s) under {LAYERS_DIR}"
+    )
 
 
 if __name__ == "__main__":

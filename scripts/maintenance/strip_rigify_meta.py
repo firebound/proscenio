@@ -53,7 +53,10 @@ def main() -> None:
     targets = _collect_target_armatures()
     if not targets:
         scope = f"object {OBJECT_FILTER!r}" if OBJECT_FILTER else "any"
-        print(f"[strip_rigify_meta] no armature matched ({scope}) - skipping", file=sys.stderr)
+        print(
+            f"[strip_rigify_meta] no armature matched ({scope}) - skipping",
+            file=sys.stderr,
+        )
         sys.exit(0)
 
     changes = 0
@@ -92,7 +95,9 @@ def _collect_target_armatures() -> list[bpy.types.Object]:
     return out
 
 
-def _rename_metarig_data(arm_obj: bpy.types.Object, arm_data: bpy.types.Armature) -> int:
+def _rename_metarig_data(
+    arm_obj: bpy.types.Object, arm_data: bpy.types.Armature
+) -> int:
     """Match the data block name to the object name when it still says ``metarig*``."""
     if not arm_data.name.lower().startswith("metarig"):
         return 0
@@ -198,7 +203,9 @@ def _strip_pose_bone_rigify(arm_obj: bpy.types.Object) -> int:
         # is a PointerProperty group that always exists when the addon is
         # loaded, so checking its existence is not a meaningful signal;
         # reset alongside ``rigify_type`` for completeness without counting.
-        if not (hasattr(pose_bone, "rigify_type") and getattr(pose_bone, "rigify_type", "")):
+        if not (
+            hasattr(pose_bone, "rigify_type") and getattr(pose_bone, "rigify_type", "")
+        ):
             continue
         pose_bone.property_unset("rigify_type")
         if hasattr(pose_bone, "rigify_parameters"):
@@ -294,7 +301,9 @@ def _strip_proscenio_drivers() -> int:
             obj.driver_remove(path)
         if paths:
             _reset_driven_props(obj, paths)
-            print(f"[strip_rigify_meta] removed {len(paths)} driver(s) on {obj.name!r}: {paths}")
+            print(
+                f"[strip_rigify_meta] removed {len(paths)} driver(s) on {obj.name!r}: {paths}"
+            )
         total += len(paths)
     return total
 

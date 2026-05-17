@@ -4,7 +4,7 @@ Run with::
 
     python scripts/fixtures/automesh/draw_layers.py
 
-Pure Python - no Blender required. Produces 4 PNGs under
+Pure Python - no Blender required. Produces 5 PNGs under
 ``examples/generated/automesh/pillow_layers/`` that
 exercise different alpha silhouette shapes the SPEC 013 automesh
 operator needs to handle:
@@ -44,7 +44,7 @@ operator needs to handle:
                     in the downscale + contour pipeline.
 
 Accompanying ``build_blend.py`` assembles the .blend that wires
-these PNGs into 4 sprite planes + a 3-bone arm chain positioned
+these PNGs into 5 sprite planes + a 3-bone arm chain positioned
 over the hand.
 """
 

@@ -96,10 +96,6 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
 
     col = idx % GRID_COLS
     row = idx // GRID_COLS
-    # Center the grid around world origin. cx is inverted (col=0 -> +X
-    # world) so sprite_1..9 read left-to-right on screen in Blender's
-    # Front Orthographic view (where world +X maps to screen LEFT,
-    # matching the UV flip in _build_sprite_quad).
     # Center grid around origin. Blender's default Front Ortho looks
     # from -Y so world +X maps to screen RIGHT; col=0 maps to -X (grid
     # left) so sprite_1 reads at the screen left.

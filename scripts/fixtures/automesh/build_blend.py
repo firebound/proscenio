@@ -4,7 +4,7 @@ Run with::
 
     blender --background --python scripts/fixtures/automesh/build_blend.py
 
-Loads 4 PNGs produced by ``draw_layers.py`` from disk and builds:
+Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
 
 - 3-bone vertical hand armature (``automesh.hand_rig``:
   ``wrist`` -> ``palm`` -> ``fingertip``) positioned along the Z
@@ -13,11 +13,13 @@ Loads 4 PNGs produced by ``draw_layers.py`` from disk and builds:
   density-under-bones end-to-end (the hand mesh gets thicker
   triangulation along the chain when automesh runs against the
   picker).
-- 4 sprite plane meshes (``hand``, ``blob``, ``lshape``, ``ring``),
-  each 200x200 px (2.0 world units side at PPU=100), each with its
-  own image-textured material referencing the matching PNG. Sprites
-  are spread across the workbench so the user can select one at a
-  time without overlapping geometry.
+- 5 sprite plane meshes (``hand``, ``blob``, ``lshape``, ``ring``,
+  ``swirl``). First four are 200x200 px (2-unit quad at PPU=100);
+  ``swirl`` is a 512x512 AA hi-res hole-support smoke target
+  (5.12-unit quad). Each has its own image-textured material
+  referencing the matching PNG. Sprites are spread across the
+  workbench so the user can select one at a time without
+  overlapping geometry.
 - ``hand`` is parented to ``automesh.hand_rig`` (other sprites stay
   free to keep the smoke checklist's "automesh without picker" case
   trivially testable - select blob / lshape / ring + run automesh

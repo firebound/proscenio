@@ -86,6 +86,20 @@ SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
         "min_coverage": 0.96,
         "max_hole_bleed": 0,
     },
+    "swirl": {
+        # 400x400 AA sprite with TWO holes (8-shape). Doubles the
+        # vert + face budget vs the 200x200 sprites because the
+        # downsampled grid is 100x100 and each silhouette pixel is
+        # a candidate contour cell.
+        "verts": (400, 1200),
+        "faces": (700, 2400),
+        "min_coverage": 0.97,
+        # Two holes -> bleed band ~2x the single-hole ring case at
+        # the same downscale + 1-cell safety dilate. Measured ~3960
+        # against the AA 8-shape fixture; 5000 leaves headroom for
+        # future fixture tweaks without flapping the invariant.
+        "max_hole_bleed": 5000,
+    },
 }
 
 DEGENERATE_AREA_EPSILON = 1e-8

@@ -32,6 +32,16 @@ operator needs to handle:
                     face-prune drops triangles inside the hole.
                     Proscenio differentiates from Spine + COA
                     Tools 2 by lifting their "no holes" restriction.
+- ``swirl.png``   - hi-res anti-aliased S-curve stroke ring (the
+                    silhouette is the curve's outline, the curve's
+                    interior is a hole). Stresses both the contour
+                    walker (smooth curvilinear silhouette, not a
+                    primitive shape) AND the hole detector
+                    (irregularly-shaped hole, not a perfect circle).
+                    Drawn at 4x supersampling + bilinear downsample
+                    so the alpha edge fades smoothly instead of
+                    pixel-staircasing - exposes any aliasing bias
+                    in the downscale + contour pipeline.
 
 Accompanying ``build_blend.py`` assembles the .blend that wires
 these PNGs into 4 sprite planes + a 3-bone arm chain positioned
@@ -43,7 +53,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from _draw import Canvas, fill  # noqa: E402
@@ -53,11 +63,14 @@ FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "automesh"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 
 FRAME = 200
+SWIRL_FRAME = 400  # hi-res target for the AA swirl fixture
+SWIRL_SUPERSAMPLE = 4  # 4x supersample then bilinear downsample
 BG = (0.0, 0.0, 0.0, 0.0)
 HAND_COLOR = (0.95, 0.78, 0.62, 1.0)
 BLOB_COLOR = (0.30, 0.65, 0.85, 1.0)
 L_COLOR = (0.55, 0.30, 0.80, 1.0)
 RING_COLOR = (0.95, 0.55, 0.20, 1.0)
+SWIRL_COLOR = (0.35, 0.75, 0.45, 1.0)
 
 
 def _to_8bit(color: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
@@ -140,6 +153,67 @@ def _draw_ring() -> Canvas:
     return canvas
 
 
+def _draw_swirl() -> Canvas:
+    """Anti-aliased "8" / double-loop silhouette with a hole in each lobe.
+
+    Two stacked filled ellipses (top + bottom) form the outer
+    silhouette - smooth curvilinear shape, not a primitive. A
+    smaller knockout ellipse inside EACH lobe produces one alpha
+    hole per lobe = 2 holes total. Exercises the hole detector's
+    multi-hole path AND the contour walker's smooth-curve handling
+    on the same fixture.
+
+    AA via 4x supersample + bilinear downsample. PIL has no native
+    AA on ``ellipse`` / ``polygon``; supersample-then-shrink is the
+    standard trick (area averaging across the 4x grid fakes the
+    fractional coverage at the edge).
+    """
+    hi = SWIRL_FRAME * SWIRL_SUPERSAMPLE
+    hi_image = Image.new("RGBA", (hi, hi), _to_8bit(BG))
+    hi_draw = ImageDraw.Draw(hi_image)
+    color = _to_8bit(SWIRL_COLOR)
+
+    cx = hi / 2.0
+    # Each lobe: ellipse centered at cx, with vertical radius half
+    # the canvas minus margin. Lobes overlap by ~10% so the
+    # silhouette is one connected blob (single outer contour).
+    lobe_rx = hi * 0.22
+    lobe_ry = hi * 0.26
+    top_cy = hi * 0.32
+    bot_cy = hi * 0.68
+    hi_draw.ellipse(
+        (cx - lobe_rx, top_cy - lobe_ry, cx + lobe_rx, top_cy + lobe_ry),
+        fill=color,
+    )
+    hi_draw.ellipse(
+        (cx - lobe_rx, bot_cy - lobe_ry, cx + lobe_rx, bot_cy + lobe_ry),
+        fill=color,
+    )
+
+    # Two knockout ellipses - one inside each lobe. Each cleanly
+    # smaller than the lobe so the alpha hole is fully enclosed
+    # (the hole detector requires border-unreachable background).
+    hole_rx = hi * 0.10
+    hole_ry = hi * 0.12
+    hi_draw.ellipse(
+        (cx - hole_rx, top_cy - hole_ry, cx + hole_rx, top_cy + hole_ry),
+        fill=_to_8bit(BG),
+    )
+    hi_draw.ellipse(
+        (cx - hole_rx, bot_cy - hole_ry, cx + hole_rx, bot_cy + hole_ry),
+        fill=_to_8bit(BG),
+    )
+
+    final = hi_image.resize((SWIRL_FRAME, SWIRL_FRAME), Image.BILINEAR)
+    canvas = Canvas(
+        width=SWIRL_FRAME,
+        height=SWIRL_FRAME,
+        image=final,
+        draw=ImageDraw.Draw(final),
+    )
+    return canvas
+
+
 def main() -> None:
     LAYERS_DIR.mkdir(parents=True, exist_ok=True)
     artifacts = (
@@ -147,6 +221,7 @@ def main() -> None:
         ("blob.png", _draw_blob()),
         ("lshape.png", _draw_lshape()),
         ("ring.png", _draw_ring()),
+        ("swirl.png", _draw_swirl()),
     )
     for name, canvas in artifacts:
         canvas.save(LAYERS_DIR / name)

@@ -43,12 +43,14 @@ LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 BLEND_PATH = FIXTURE_DIR / "automesh.blend"
 
 FRAME = 200
+SWIRL_FRAME = 400
 PIXELS_PER_UNIT = 100.0
 SPRITE_SIZE = FRAME / PIXELS_PER_UNIT
+SWIRL_SPRITE_SIZE = SWIRL_FRAME / PIXELS_PER_UNIT
 
 
 def main() -> None:
-    expected_pngs = ("hand.png", "blob.png", "lshape.png", "ring.png")
+    expected_pngs = ("hand.png", "blob.png", "lshape.png", "ring.png", "swirl.png")
     missing = [
         LAYERS_DIR / name for name in expected_pngs if not (LAYERS_DIR / name).exists()
     ]
@@ -62,13 +64,16 @@ def main() -> None:
     _wipe_blend()
     armature_obj = _build_hand_chain()
     sprite_layout = (
-        ("hand", -3.0, 0.0, True),
-        ("blob", 0.0, 0.0, False),
-        ("lshape", 3.0, 0.0, False),
-        ("ring", 0.0, -3.0, False),
+        ("hand", -3.0, 0.0, SPRITE_SIZE, True),
+        ("blob", 0.0, 0.0, SPRITE_SIZE, False),
+        ("lshape", 3.0, 0.0, SPRITE_SIZE, False),
+        ("ring", 0.0, -3.0, SPRITE_SIZE, False),
+        # Swirl is 400x400 -> 4-unit quad; offset further so it does
+        # not overlap the row of 200x200 sprites at z=0.
+        ("swirl", 0.0, 3.5, SWIRL_SPRITE_SIZE, False),
     )
-    for name, cx, cz, parent_to_arm in sprite_layout:
-        _build_sprite_quad(name, cx, cz, armature_obj if parent_to_arm else None)
+    for name, cx, cz, size, parent_to_arm in sprite_layout:
+        _build_sprite_quad(name, cx, cz, size, armature_obj if parent_to_arm else None)
     _save_blend()
     _rewrite_image_to_relpath()
     bpy.ops.wm.save_mainfile()
@@ -135,11 +140,12 @@ def _build_sprite_quad(
     name: str,
     cx: float,
     cz: float,
+    size: float,
     parent_armature: bpy.types.Object | None,
 ) -> bpy.types.Object:
-    """Build a 2.0x2.0 unit sprite quad at (cx, 0, cz)."""
+    """Build a ``size`` x ``size`` unit sprite quad at (cx, 0, cz)."""
     png_path = LAYERS_DIR / f"{name}.png"
-    half = SPRITE_SIZE / 2.0
+    half = size / 2.0
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(
         vertices=[

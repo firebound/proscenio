@@ -23,12 +23,15 @@ operator needs to handle:
                     without giving up (Spine `Trace` documents
                     concave support; this is the local regression
                     guard for it).
-- ``ring.png``    - donut / ring (alpha hole in the middle). Per
-                    Spine docs the addon does NOT support holes;
-                    this fixture is included specifically so smoke
-                    runs surface how Proscenio degrades when the
-                    user violates that contract (outer contour
-                    walks the outside; inner contour intersects).
+- ``ring.png``    - donut / ring (alpha hole in the middle). Hole
+                    support smoke target (SPEC 013 D2 amendment,
+                    Wave 13.1.b). Validates that
+                    ``alpha_contour.extract_holes`` detects the
+                    centered cutout, the bridge passes it as a
+                    CDT constraint loop, and the post-process
+                    face-prune drops triangles inside the hole.
+                    Proscenio differentiates from Spine + COA
+                    Tools 2 by lifting their "no holes" restriction.
 
 Accompanying ``build_blend.py`` assembles the .blend that wires
 these PNGs into 4 sprite planes + a 3-bone arm chain positioned
@@ -91,10 +94,10 @@ def _draw_hand() -> Canvas:
     # middle longest, index + ring slightly shorter, pinkie shortest.
     # Each finger is ~16px wide with 4px gaps between.
     fingers = (
-        (68, 35, 84, 100),   # index
+        (68, 35, 84, 100),  # index
         (88, 25, 104, 100),  # middle (tallest)
-        (108, 30, 124, 100), # ring
-        (128, 45, 144, 100), # pinkie (shortest)
+        (108, 30, 124, 100),  # ring
+        (128, 45, 144, 100),  # pinkie (shortest)
     )
     for x0, y0, x1, y1 in fingers:
         draw.rounded_rectangle((x0, y0, x1, y1), radius=8, fill=color)

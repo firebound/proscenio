@@ -5,7 +5,7 @@ Weight paint ergonomics + automesh. See [STUDY.md](STUDY.md) for the full design
 ## Decision lock-in
 
 - [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
-- [ ] D2 - mesh topology shape = annulus (outer + inner contour + `bmesh.ops.triangle_fill`).
+- [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1.b):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
 - [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
 - [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. No default-bind code path may call `parent_with_automatic_weights` blind.
 - [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY (no BONE_HEAT in first cut).
@@ -41,7 +41,7 @@ Branch: `feat/spec-013-weight-paint-automesh` (or split into 13.1.a automesh + 1
 
 **Tests** (pytest, bpy-free):
 
-- [ ] `tests/test_alpha_contour.py` - synthetic 8x8 / 16x16 / 64x64 alpha grids covering: square sprite, L-shape, donut (validates outer-only since "no holes" follows Spine contract), single-pixel sprite (degenerate fallback), all-transparent (raises ValueError).
+- [ ] `tests/test_alpha_contour.py` - synthetic 8x8 / 16x16 / 64x64 alpha grids covering: square sprite, L-shape, donut (Wave 13.1.b: validates `extract_holes` + `extract_contours` returns the hole boundary, mesh cuts out hole region), single-pixel sprite (degenerate fallback), all-transparent (raises ValueError).
 - [ ] `tests/test_automesh_geometry.py` - annulus vertex/edge count invariants, contour-smoothing convergence (3 iterations -> stable point positions), arc-length resample maintains expected vertex count.
 - [ ] `tests/test_automesh_density.py` - bone-density subdivision adds verts within radius of bone segments, fallback to uniform when no bones, vertex count scales linearly with bone count.
 

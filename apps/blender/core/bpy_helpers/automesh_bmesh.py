@@ -28,7 +28,6 @@ calls). Operator + panel live in their own modules and call
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal
 
@@ -598,110 +597,6 @@ def _build_mesh_via_delaunay(
     if failed:
         print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
     return added
-
-
-def _fill_inner_via_delaunay(
-    bm: bmesh.types.BMesh,
-    inner_verts: list[bmesh.types.BMVert],
-    inner_world: list[tuple[float, float]],
-    interior_points: list[tuple[float, float]],
-) -> int:
-    """Constrained Delaunay triangulation of the inner area + Steiner.
-
-    Uses ``mathutils.geometry.delaunay_2d_cdt`` (Blender built-in
-    Constrained Delaunay) to triangulate the polygon bounded by the
-    inner ring with the Steiner interior points as additional verts.
-
-    The previous path (``bmesh.ops.triangle_fill`` on the inner ring
-    n-gon + Steiner fan-split insertion) produced spiky fan-shaped
-    triangulation because triangle_fill on a closed convex n-gon
-    does fan triangulation by default - all triangles share one
-    vertex - and Steiner insertion preserves the spike pattern by
-    fan-splitting individual triangles. Delaunay does the right
-    thing globally: every triangle's circumcircle contains no other
-    vertex, which minimizes the worst-case inscribed angle and
-    produces well-shaped triangles throughout.
-
-    Reuses existing ``inner_verts`` for boundary verts (via
-    ``orig_verts`` mapping returned by ``delaunay_2d_cdt``) so the
-    inner ring stays connected to the annulus strip built by
-    ``_build_annulus_strip``. New bmesh verts are created only for
-    interior Steiner points.
-
-    Returns the count of triangle faces added.
-    """
-    n = len(inner_world)
-    if n == 0:
-        return 0
-    input_coords: list[tuple[float, float]] = list(inner_world) + list(interior_points)
-    input_edges: list[tuple[int, int]] = [(i, (i + 1) % n) for i in range(n)]
-
-    result = mathutils.geometry.delaunay_2d_cdt(
-        input_coords,
-        input_edges,
-        [],
-        1,
-        1e-6,
-        True,
-    )
-    out_verts, _out_edges, out_faces, orig_v, _orig_e, _orig_f = result
-
-    delaunay_to_bm: list[bmesh.types.BMVert] = []
-    for out_idx, out_coord in enumerate(out_verts):
-        input_indices = orig_v[out_idx]
-        reused: bmesh.types.BMVert | None = None
-        for inp_idx in input_indices:
-            if inp_idx < n:
-                reused = inner_verts[inp_idx]
-                break
-        if reused is not None:
-            delaunay_to_bm.append(reused)
-        else:
-            new_vert = bm.verts.new((out_coord[0], 0.0, out_coord[1]))
-            delaunay_to_bm.append(new_vert)
-
-    bm.verts.ensure_lookup_table()
-    added = 0
-    for face in out_faces:
-        with contextlib.suppress(ValueError):
-            bm.faces.new([delaunay_to_bm[i] for i in face])
-            added += 1
-    return added
-
-
-def _build_annulus_strip(
-    bm: bmesh.types.BMesh,
-    outer_verts: list[bmesh.types.BMVert],
-    inner_verts: list[bmesh.types.BMVert],
-    bridge_offset: int,
-) -> None:
-    """Build N cells of 2 triangles each across the outer/inner ring.
-
-    Cell i connects outer[i], outer[(i+1) % N], inner[i + offset],
-    inner[(i+1) % N + offset] - 4 verts forming a trapezoid. Each
-    trapezoid splits into two triangles along the outer[i+1]->
-    inner[i + offset] diagonal. Result: 2N triangles forming a
-    clean strip annulus, no orientation ambiguity, no triangulator
-    misdetection of the inner ring as a fillable face.
-
-    Defensive: ``bm.faces.new`` raises ``ValueError`` if the face
-    already exists or if verts are collinear. We swallow + continue
-    so a single bad cell does not abort the whole strip.
-    """
-    n = len(outer_verts)
-    if n == 0 or n != len(inner_verts):
-        return
-    normalized_offset = bridge_offset % n
-    for i in range(n):
-        next_i = (i + 1) % n
-        inner_curr = (i + normalized_offset) % n
-        inner_next = (next_i + normalized_offset) % n
-        # Triangle 1: outer[i] -> outer[next_i] -> inner[inner_curr]
-        # Triangle 2: outer[next_i] -> inner[inner_next] -> inner[inner_curr]
-        with contextlib.suppress(ValueError):
-            bm.faces.new((outer_verts[i], outer_verts[next_i], inner_verts[inner_curr]))
-        with contextlib.suppress(ValueError):
-            bm.faces.new((outer_verts[next_i], inner_verts[inner_next], inner_verts[inner_curr]))
 
 
 def _debug_stage_report(

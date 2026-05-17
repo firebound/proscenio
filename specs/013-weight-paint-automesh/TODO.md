@@ -103,12 +103,13 @@ Sonar local + warnings emitted during PR #51 review iteration:
 6. Refactor `build_automesh` (1063 LOC monolith). Extract per-stage helpers: `_extract_contours_world`, `_smooth_resample`, `_compute_interior_steiners`, `_apply_cdt_to_mesh`. Orchestrator becomes < 60 LOC.
 7. Refactor `_measure_coverage` (cognitive 47). Extract `_iterate_pixels`, `_classify_pixel`, `_paint_debug_pixel`, `_record_leak`.
 8. Refactor validator main (cognitive 30). Extract `_filter_ci_safe_sprites`, `_print_report`, `_write_report_json`.
-9. Split `scripts/validate_automesh.py` into a package `scripts/validate_automesh/`:
-   - `__main__.py` (CLI + main)
-   - `coverage.py` (`_measure_coverage` + `_compute_hole_pixel_mask`)
-   - `invariants.py` (`_check_invariants` + `SPRITE_BOUNDS`)
-   - `debug_png.py` (`_write_debug_png`)
-   - `addon_loader.py` (`_load_and_register_addon`)
+9. Split validator into package `scripts/automesh_validator/` (keep `scripts/validate_automesh.py` as a thin shim so CI + manual invocations stay on the same path):
+   - `cli.py` (argparse + `main` orchestrator)
+   - `coverage.py` (`measure_coverage` + `compute_hole_pixel_mask` + `_classify_pixel` + `CoverageContext`)
+   - `invariants.py` (`SpriteInvariants` + `SPRITE_BOUNDS` + `check_invariants`)
+   - `measurement.py` (`measure_mesh` + `run_validation` + `_resolve_image`)
+   - `report.py` (console + JSON output formatting)
+   - `addon_loader.py` (`load_and_register_addon` + `ensure_core_on_sys_path`)
 10. SPRITE_BOUNDS dedup (S1871). Define `SpriteInvariants` `@dataclass` with named fields; SPRITE_BOUNDS becomes `dict[str, SpriteInvariants]`.
 11. Reorganize tests: `tests/automesh/` subdir with `test_contour.py`, `test_geometry.py`, `test_density.py`, `test_holes.py`. Pytest auto-discover continues working via root conftest.
 12. Validate after each commit: `pytest tests/`, `blender --background --python apps/blender/tests/run_tests.py`, `blender --background --python scripts/validate_automesh.py -- --ci-only`. Zero behaviour drift gate.

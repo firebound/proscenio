@@ -479,15 +479,23 @@ def _compute_steiner_points(
 
     1. ``interior_points_for_annulus`` produces a candidate grid
        (uniform OR bone-clustered when picker armature is set).
-    2. Points falling inside any detected hole are dropped - CDT
-       excludes the hole region, so a Steiner there would become
-       a loose vertex with no incident face.
+       ``inner_world`` is passed so the helper skips points inside
+       the inner ring when the user opted into the annulus topology
+       (margin_pixels > 0); without it, points inside the ring
+       would survive into CDT only to become loose verts after the
+       inner ring's hole exclusion (regression flagged in PR #52
+       review). When ``inner_world`` is empty (margin_pixels = 0,
+       default), the helper treats the whole outer interior as fair
+       game - unchanged behavior.
+    2. Points falling inside any detected alpha hole are dropped -
+       CDT excludes the hole region, so a Steiner there would
+       become a loose vertex with no incident face.
     3. Points within half-spacing of any boundary vert are dropped
        to avoid CDT phantom-vert duplication.
     """
     interior_points = interior_points_for_annulus(
         outer_world,
-        [],
+        inner_world,
         interior_spacing,
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,

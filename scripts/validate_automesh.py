@@ -79,82 +79,101 @@ def _load_and_register_addon() -> None:
     sys.modules[ADDON_PACKAGE].register()
 
 
+@dataclass(frozen=True)
+class SpriteInvariants:
+    """Per-sprite tolerance bounds the validator enforces.
+
+    Each field has a single, named meaning - replaces a 5-key dict
+    that read different at every access site (5x ``bounds.get(key,
+    default)`` instead of typed attribute access). The frozen
+    semantics make the SPRITE_BOUNDS table act as a constant lookup.
+    """
+
+    verts: tuple[int, int]
+    """Inclusive [min, max] expected vertex count for the generated mesh."""
+
+    faces: tuple[int, int]
+    """Inclusive [min, max] expected face count for the generated mesh."""
+
+    min_coverage: float
+    """Required fraction of alpha pixels covered by some triangle (0..1)."""
+
+    max_hole_bleed: int
+    """Allowed count of transparent hole pixels covered by mesh.
+
+    Zero for solid sprites; >0 for hole-support fixtures where the
+    1-cell safety dilate leaves a small bleed band along each hole
+    boundary (see SPEC 013 D2 amendment)."""
+
+    ci_safe: bool = True
+    """True when the per-pixel validator finishes inside the CI budget.
+
+    The check is O(source_pixels * triangles); sprites larger than
+    ~256x256 source push the runtime past practical CI use and ship
+    with ``ci_safe=False``. The ``--ci-only`` CLI flag drops them."""
+
+
 # Per-sprite tolerance bounds. Sprite-specific because each silhouette
 # has different alpha coverage / contour complexity. Bounds were
 # calibrated by running the current pipeline manually + adding 30%
 # headroom on each side.
-SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int | bool]] = {
-    "blob": {
-        "verts": (200, 400),
-        "faces": (350, 700),
-        "min_coverage": 0.98,
-        # No holes -> mesh covering any transparent pixel is a bug.
-        "max_hole_bleed": 0,
-        # ci_safe = True means the per-pixel validator finishes
-        # quickly enough to gate a CI job (~1-3s on a 200x200
-        # source). Larger fixtures are local-only.
-        "ci_safe": True,
-    },
-    "lshape": {
-        "verts": (120, 350),
-        "faces": (200, 600),
-        "min_coverage": 0.96,
-        "max_hole_bleed": 0,
-        "ci_safe": True,
-    },
-    "ring": {
-        "ci_safe": True,
-        "verts": (150, 400),
-        "faces": (200, 700),
-        "min_coverage": 0.95,
-        # SPEC 013 D2 amendment - ring is the hole-support smoke
-        # target. Hard invariant: leaks=0 (mesh NEVER cuts alpha).
-        # Achieved by detecting holes on a 1-cell-DILATED foreground
-        # so the mesh-hole boundary sits INSIDE the alpha hole. The
-        # flip side: mesh covers a band of transparent hole pixels
-        # along the outer hole edge. At downscale=0.25 the band can
-        # reach ~50% of small holes (the donut hole is 12 cells wide
-        # on the downscaled grid; shrinking by 1 cell on each side
-        # leaves a 10-cell mesh cutout = ~70% area). Bumping
-        # downscale toward 1.0 or upscaling the hole contour after
-        # detection are Wave 13.2+ work. For now, accept the bleed
-        # band as the price of "never cut alpha".
-        "max_hole_bleed": 1500,
-    },
-    "hand": {
-        "ci_safe": True,
-        "verts": (180, 450),
-        "faces": (300, 800),
-        # Hand silhouette has tight concave gaps between fingers that
-        # the conservative downsample at 0.25 cannot perfectly enclose
-        # (each gap is ~4 source pixels = 1 downsampled cell). 96%
-        # threshold acknowledges the known limitation; future work
-        # (downscale=1.0, adaptive resolution, or morphological
-        # closing) can raise this to 0.98+.
-        "min_coverage": 0.96,
-        "max_hole_bleed": 0,
-    },
-    "swirl": {
-        # NOT ci_safe - 512x512 source = ~250k pixels per validator
-        # pass times ~1000+ triangles in pure Python triangle test
-        # = ~30s+ on CI workers. Use --ci-only to skip; run locally
-        # via plain --skip-large=false or full invocation.
-        "ci_safe": False,
-        # 400x400 AA sprite with TWO holes (8-shape). Doubles the
-        # vert + face budget vs the 200x200 sprites because the
-        # downsampled grid is 100x100 and each silhouette pixel is
-        # a candidate contour cell.
-        "verts": (400, 1200),
-        "faces": (700, 2400),
-        "min_coverage": 0.97,
-        # Two holes -> bleed band ~2x the single-hole ring case. At
-        # 512-pixel source the hole pixel count scales by (512/200)^2
-        # ~6.5x ring's ~2025 hole pixels, so the bleed band scales
-        # similarly. Measured 5224 against the AA 8-shape fixture;
-        # 6500 leaves headroom for AA-edge variation without
-        # flapping the invariant.
-        "max_hole_bleed": 6500,
-    },
+SPRITE_BOUNDS: dict[str, SpriteInvariants] = {
+    "blob": SpriteInvariants(
+        verts=(200, 400),
+        faces=(350, 700),
+        min_coverage=0.98,
+        max_hole_bleed=0,
+    ),
+    "lshape": SpriteInvariants(
+        verts=(120, 350),
+        faces=(200, 600),
+        min_coverage=0.96,
+        max_hole_bleed=0,
+    ),
+    # ring: SPEC 013 D2 amendment - hole-support smoke target. Hard
+    # invariant: leaks=0 (mesh NEVER cuts alpha). Achieved by detecting
+    # holes on a 1-cell-DILATED foreground so the mesh-hole boundary
+    # sits INSIDE the alpha hole. Flip side: mesh covers a band of
+    # transparent hole pixels along the outer hole edge. At downscale
+    # =0.25 the band can reach ~50% of small holes (the donut hole is
+    # 12 cells wide on the downscaled grid; shrinking by 1 cell on
+    # each side leaves a 10-cell cutout). Bumping downscale toward
+    # 1.0 or upscaling the hole contour after detection are Wave 13.3
+    # work. For now, accept the bleed band as the price of "never
+    # cut alpha".
+    "ring": SpriteInvariants(
+        verts=(150, 400),
+        faces=(200, 700),
+        min_coverage=0.95,
+        max_hole_bleed=1500,
+    ),
+    # hand: silhouette has tight concave gaps between fingers that the
+    # conservative downsample at 0.25 cannot perfectly enclose (each
+    # gap is ~4 source pixels = 1 downsampled cell). 96% threshold
+    # acknowledges the known limitation; future work (downscale=1.0,
+    # adaptive resolution, or morphological closing) can raise to
+    # 0.98+.
+    "hand": SpriteInvariants(
+        verts=(180, 450),
+        faces=(300, 800),
+        min_coverage=0.96,
+        max_hole_bleed=0,
+    ),
+    # swirl: 400x400 AA sprite with TWO holes (8-shape). NOT ci_safe -
+    # 512x512 source = ~250k pixels per validator pass times ~1000+
+    # triangles in pure Python = ~30s+ on CI workers. Use --ci-only
+    # to skip; full invocation runs it locally. Vert / face budget
+    # doubles vs the 200x200 sprites since the downsampled grid is
+    # 100x100. Bleed bound ~2x ring at this source size; measured
+    # 5224 against the AA 8-shape fixture, 6500 leaves AA-edge
+    # headroom.
+    "swirl": SpriteInvariants(
+        verts=(400, 1200),
+        faces=(700, 2400),
+        min_coverage=0.97,
+        max_hole_bleed=6500,
+        ci_safe=False,
+    ),
 }
 
 DEGENERATE_AREA_EPSILON = 1e-8
@@ -571,7 +590,7 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
             report["failures"].append(f"{sprite_name}: operator raised: {exc}")
             continue
         metrics = measure_mesh(sprite_obj)
-        bounds = SPRITE_BOUNDS.get(sprite_name, {})
+        bounds = SPRITE_BOUNDS.get(sprite_name)
         invariants = _check_invariants(metrics, bounds)
         report["sprites"][sprite_name] = {
             "metrics": metrics,
@@ -585,7 +604,7 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
 
 def _check_invariants(
     metrics: dict[str, object],
-    bounds: dict[str, tuple[int, int] | float],
+    bounds: SpriteInvariants | None,
 ) -> dict[str, object]:
     """Assert critical invariants per sprite + collect warning messages."""
     failures: list[str] = []
@@ -603,33 +622,31 @@ def _check_invariants(
         warnings.append(f"{metrics['degenerate_triangles']} degenerate triangles")
     if metrics["uv_out_of_range_loops"]:
         warnings.append(f"{metrics['uv_out_of_range_loops']} UV loops outside [0,1]")
+    if bounds is None:
+        return {"failures": failures, "warnings": warnings}
     verts = metrics["verts"]
-    vert_bounds = bounds.get("verts")
-    if isinstance(vert_bounds, tuple) and isinstance(verts, int):
-        lo, hi = vert_bounds
+    if isinstance(verts, int):
+        lo, hi = bounds.verts
         if not lo <= verts <= hi:
             failures.append(f"vert count {verts} outside expected [{lo}, {hi}]")
-    face_bounds = bounds.get("faces")
-    if isinstance(face_bounds, tuple) and isinstance(faces, int):
-        lo, hi = face_bounds
+    if isinstance(faces, int):
+        lo, hi = bounds.faces
         if not lo <= faces <= hi:
             failures.append(f"face count {faces} outside expected [{lo}, {hi}]")
-    min_coverage = bounds.get("min_coverage")
     coverage = metrics["coverage_pct"]
-    if isinstance(min_coverage, float):
-        if not isinstance(coverage, float):
-            failures.append(
-                "coverage measurement unavailable (image missing or no "
-                "triangles) - cannot enforce min_coverage invariant"
-            )
-        elif coverage < min_coverage:
-            failures.append(
-                f"coverage {coverage:.4f} below minimum {min_coverage:.4f} "
-                f"({metrics['leak_count']} alpha pixels NOT covered by mesh)"
-            )
-    max_bleed = bounds.get("max_hole_bleed")
+    if not isinstance(coverage, float):
+        failures.append(
+            "coverage measurement unavailable (image missing or no "
+            "triangles) - cannot enforce min_coverage invariant"
+        )
+    elif coverage < bounds.min_coverage:
+        failures.append(
+            f"coverage {coverage:.4f} below minimum {bounds.min_coverage:.4f} "
+            f"({metrics['leak_count']} alpha pixels NOT covered by mesh)"
+        )
     bleed = metrics["hole_bleed_count"]
-    if isinstance(max_bleed, int) and isinstance(bleed, int):
+    if isinstance(bleed, int):
+        max_bleed = bounds.max_hole_bleed
         if bleed > max_bleed:
             failures.append(
                 f"hole bleed {bleed} above maximum {max_bleed} "
@@ -642,8 +659,8 @@ def _filter_sprites_for_ci(sprites: list[str], ci_only: bool) -> list[str]:
     """Drop sprites flagged ``ci_safe=False`` when ``--ci-only`` is set."""
     if not ci_only:
         return sprites
-    skipped = [n for n in sprites if not SPRITE_BOUNDS[n].get("ci_safe", True)]
-    kept = [n for n in sprites if SPRITE_BOUNDS[n].get("ci_safe", True)]
+    skipped = [n for n in sprites if not SPRITE_BOUNDS[n].ci_safe]
+    kept = [n for n in sprites if SPRITE_BOUNDS[n].ci_safe]
     if skipped:
         print(
             f"[validate] --ci-only: skipping {len(skipped)} non-CI-safe sprite(s): "

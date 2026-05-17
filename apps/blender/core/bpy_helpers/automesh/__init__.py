@@ -13,9 +13,9 @@ the public surface through this package; internal split between
 
 from __future__ import annotations
 
+from .base_sprite import BASE_SPRITE_GROUP_NAME
 from .bridge import _STAGE_BY_INDEX as _STAGE_BY_INDEX
 from .bridge import (
-    BASE_SPRITE_GROUP_NAME,
     DebugStage,
     build_automesh,
     collect_bone_segments,

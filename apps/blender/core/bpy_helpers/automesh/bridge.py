@@ -32,7 +32,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal
 
 import bmesh
-import mathutils
 
 from ...automesh import (
     AlphaGrid,
@@ -47,23 +46,22 @@ from ...automesh import (
     point_in_polygon,
     to_float_contour,
 )
-from ...geometry_2d import point_in_triangle_xz
+from .base_sprite import (
+    delete_non_base_geometry,
+    initialize_base_sprite_group,
+    remove_base_sprite_verts,
+)
+from .cdt import build_mesh_via_delaunay, delete_faces_inside_holes
 from .debug import (
     clear_debug_objects,
     emit_bridges_debug,
     emit_contour_debug,
     emit_points_debug,
 )
+from .uv import stamp_uvs
 
 if TYPE_CHECKING:
-    import bpy
     from bpy.types import Bone, Image, Object
-
-
-BASE_SPRITE_GROUP_NAME = "proscenio_base_sprite"
-"""Vertex group flagged on the original 4 quad corners so automesh
-regen knows which verts to preserve. Lifted from COA Tools 2's
-``coa_base_sprite`` pattern per SPEC 013 D3."""
 
 
 _SMOOTH_ITERATIONS = 3
@@ -251,323 +249,6 @@ def collect_bone_segments(
         tail_world = matrix_world @ bone.tail
         segments.append(((head_world.x, head_world.z), (tail_world.x, tail_world.z)))
     return segments
-
-
-def _initialize_base_sprite_group(obj: Object) -> tuple[int, bool]:
-    """Ensure ``proscenio_base_sprite`` exists; flag current verts only on first run.
-
-    Returns ``(group_index, is_fresh)``. ``is_fresh`` is True when the
-    group did not exist before this call - meaning every vertex
-    currently on the mesh is part of the original UV-pinned base + we
-    flag them all so the regen-delete step preserves them.
-
-    On subsequent runs (group already present) we do NOT re-flag the
-    current verts. The previously-generated automesh geometry already
-    sits in the mesh; flagging it now would promote it to "base" and
-    the next ``_delete_non_base_geometry`` call would skip it,
-    causing the mesh to accumulate vertices unbounded across reruns
-    (regression caught in PR #51 review).
-    """
-    group = obj.vertex_groups.get(BASE_SPRITE_GROUP_NAME)
-    if group is not None:
-        return group.index, False
-    group = obj.vertex_groups.new(name=BASE_SPRITE_GROUP_NAME)
-    mesh = obj.data
-    indices = list(range(len(mesh.vertices)))
-    if indices:
-        group.add(indices, 1.0, "REPLACE")
-    return group.index, True
-
-
-def _delete_non_base_geometry(obj: Object, group_index: int) -> None:
-    """Remove every vertex NOT in the base-sprite group from the mesh.
-
-    Used as the first step of a regen so the original 4 quad
-    corners survive while everything automesh generated is wiped.
-    Goes through bmesh because plain ``mesh.vertices`` does not
-    support per-vertex removal cleanly.
-    """
-    mesh = obj.data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bm.verts.ensure_lookup_table()
-    deform_layer = bm.verts.layers.deform.verify()
-    to_remove = [
-        vert
-        for vert in bm.verts
-        if group_index not in vert[deform_layer] or vert[deform_layer].get(group_index, 0.0) <= 0.0
-    ]
-    bmesh.ops.delete(bm, geom=to_remove, context="VERTS")
-    bm.to_mesh(mesh)
-    bm.free()
-
-
-def _insert_interior_points(
-    bm: bmesh.types.BMesh,
-    interior_points: list[tuple[float, float]],
-) -> int:
-    """Split annulus triangles to incorporate Steiner points.
-
-    For each ``(x, z)`` in ``interior_points``, locate the triangle
-    in the bmesh whose XZ projection contains the point + split it
-    into three triangles fanned around a new center vertex created
-    at ``(x, 0.0, z)``. Returns the count of successfully inserted
-    points (some may fall outside every triangle due to float drift
-    or annulus boundary inconsistency - those are silently skipped
-    so the operator never raises mid-build).
-    """
-    inserted = 0
-    bm.faces.ensure_lookup_table()
-    for px, pz in interior_points:
-        target_face = None
-        for face in bm.faces:
-            if len(face.verts) != 3:
-                continue
-            v0, v1, v2 = face.verts
-            if point_in_triangle_xz(
-                (px, pz),
-                ((v0.co.x, v0.co.z), (v1.co.x, v1.co.z), (v2.co.x, v2.co.z)),
-            ):
-                target_face = face
-                break
-        if target_face is None:
-            continue
-        v0, v1, v2 = list(target_face.verts)
-        new_vert = bm.verts.new((px, 0.0, pz))
-        bm.faces.remove(target_face)
-        try:
-            bm.faces.new((v0, v1, new_vert))
-            bm.faces.new((v1, v2, new_vert))
-            bm.faces.new((v2, v0, new_vert))
-            inserted += 1
-        except ValueError:
-            # bm.faces.new raises ValueError when the face already
-            # exists. Defensive: skip the duplicate; the new vert
-            # remains as a loose vertex in this rare path (less
-            # bad than crashing the operator).
-            pass
-        bm.faces.ensure_lookup_table()
-    return inserted
-
-
-def _stamp_uvs(
-    mesh: bpy.types.Mesh,
-    source_width: int,
-    source_height: int,
-    world_scale: float,
-) -> None:
-    """Auto-stamp UV coordinates on every loop via linear XZ -> UV mapping.
-
-    Sprite plane convention (matches fixture build_blend.py): U is
-    flipped horizontally so the PIL-authored PNG reads unmirrored in
-    Front Orthographic view; V follows world Z (bottom=0, top=1).
-    Math:
-
-        u = (half_w - x) / (2 * half_w)  -- U flipped, x in [-half_w, +half_w]
-        v = (z + half_h) / (2 * half_h)  -- V matches Z, z in [-half_h, +half_h]
-
-    Without this stamp, automesh-generated verts inherit no UVs and
-    the textured material renders garbage / wrong region per face.
-    """
-    if not mesh.uv_layers:
-        mesh.uv_layers.new(name="UVMap")
-    uv_layer = mesh.uv_layers.active
-    if uv_layer is None:
-        return
-    half_w = source_width * world_scale / 2.0
-    half_h = source_height * world_scale / 2.0
-    if half_w <= 0.0 or half_h <= 0.0:
-        return
-    for poly in mesh.polygons:
-        for loop_index in range(poly.loop_start, poly.loop_start + poly.loop_total):
-            vert_index = mesh.loops[loop_index].vertex_index
-            co = mesh.vertices[vert_index].co
-            # Direct UV mapping (no U-flip). Matches the corrected
-            # fixture convention (shared_atlas-style). The
-            # atlas_pack-derived U-flip was misaligned with Blender's
-            # default Front Ortho view direction and produced a
-            # horizontal mirror on textured sprite planes.
-            u = (co.x + half_w) / (2.0 * half_w)
-            v = (co.z + half_h) / (2.0 * half_h)
-            uv_layer.data[loop_index].uv = (u, v)
-
-
-def _remove_base_sprite_verts(obj: Object, group_index: int) -> None:
-    """Delete the 4 verts flagged in proscenio_base_sprite via bmesh.
-
-    Called by default after the automesh build so the original quad
-    corners do not linger as loose vertices. Toggle off via the
-    ``preserve_base_quad`` operator option when the user has UV /
-    weight customization on the original quad that they want to
-    keep around for manual stitching.
-    """
-    mesh = obj.data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bm.verts.ensure_lookup_table()
-    deform_layer = bm.verts.layers.deform.verify()
-    to_remove = [
-        vert
-        for vert in bm.verts
-        if group_index in vert[deform_layer] and vert[deform_layer].get(group_index, 0.0) > 0.0
-    ]
-    if to_remove:
-        bmesh.ops.delete(bm, geom=to_remove, context="VERTS")
-    bm.to_mesh(mesh)
-    bm.free()
-
-
-def _delete_faces_inside_holes(
-    bm: bmesh.types.BMesh,
-    holes_world: list[list[tuple[float, float]]],
-) -> int:
-    """Delete every BMFace whose XZ centroid lies inside any hole loop.
-
-    CDT's nested-loop hole detection is sensitive to winding +
-    epsilon settings that the bridge's Y-flip pipeline does not
-    cleanly satisfy. This post-process gives a deterministic
-    fallback: triangulate everything, then prune. Loose verts left
-    behind (interior verts already filtered against holes) are
-    cleaned up by the standard bmesh.ops.delete VERTS context.
-
-    Returns the count of faces removed.
-    """
-    if not holes_world:
-        return 0
-    bm.faces.ensure_lookup_table()
-    to_remove: list[bmesh.types.BMFace] = []
-    for face in list(bm.faces):
-        verts = face.verts
-        if not verts:
-            continue
-        n = len(verts)
-        cx = sum(v.co.x for v in verts) / n
-        cz = sum(v.co.z for v in verts) / n
-        for hole in holes_world:
-            if point_in_polygon((cx, cz), hole):
-                to_remove.append(face)
-                break
-    if to_remove:
-        bmesh.ops.delete(bm, geom=to_remove, context="FACES_ONLY")
-        # Pruning faces alone leaves the constraint edges of the
-        # hole loop AND the CDT-internal edges spanning the hole
-        # region as wireframe artefacts (visible as "spokes"
-        # crossing the cutout in viewport, even though no face
-        # covers them). Drop any edge without an incident face,
-        # then any vert without an incident edge, so the result
-        # is a clean cutout.
-        loose_edges = [e for e in bm.edges if len(e.link_faces) == 0]
-        if loose_edges:
-            bmesh.ops.delete(bm, geom=loose_edges, context="EDGES")
-        loose_verts = [v for v in bm.verts if len(v.link_edges) == 0]
-        if loose_verts:
-            bmesh.ops.delete(bm, geom=loose_verts, context="VERTS")
-    return len(to_remove)
-
-
-def _build_mesh_via_delaunay(
-    bm: bmesh.types.BMesh,
-    outer_world: list[tuple[float, float]],
-    inner_world: list[tuple[float, float]],
-    interior_points: list[tuple[float, float]],
-    holes_world: list[list[tuple[float, float]]] | None = None,
-) -> int:
-    """Single-pass Constrained Delaunay Triangulation for the entire mesh.
-
-    Replaces the prior 3-pass pipeline (manual annulus strip +
-    inner-area fill + Steiner insertion) with one
-    ``mathutils.geometry.delaunay_2d_cdt`` call configured to:
-
-    - Treat outer + inner cyclic edges as hard constraints (must
-      appear in the output).
-    - Auto-detect the inner ring AND every hole loop as HOLEs via
-      ``output_type=2`` (CDT_INSIDE_WITH_HOLES) so the interior of
-      the inner ring is correctly excluded from triangulation when
-      it is a hole / kept as fill region when it isn't, AND every
-      alpha hole detected by :func:`alpha_contour.extract_holes`
-      gets cut out of the mesh.
-    - Include Steiner interior points as additional verts from the
-      start so they participate in the Delaunay rather than being
-      fan-split into an existing fan triangulation afterwards.
-    - Produce BMesh-valid output (no degenerate / self-intersecting
-      faces, no edge duplicates) so bm.faces.new always succeeds
-      without "this edge exists" exceptions.
-
-    Returns the count of faces added.
-    """
-    outer_count = len(outer_world)
-    inner_count = len(inner_world)
-    if outer_count < 3:
-        return 0
-    holes = list(holes_world) if holes_world else []
-
-    all_coords: list[tuple[float, float]] = (
-        list(outer_world) + list(inner_world) + list(interior_points)
-    )
-    edges_constraint: list[tuple[int, int]] = []
-    for i in range(outer_count):
-        edges_constraint.append((i, (i + 1) % outer_count))
-    if inner_count >= 3:
-        inner_offset = outer_count
-        for i in range(inner_count):
-            edges_constraint.append((inner_offset + i, inner_offset + (i + 1) % inner_count))
-    # Append every alpha hole as a closed constraint loop. CDT's
-    # output_type=2 detects nested loops automatically; orientation
-    # does not matter for hole detection.
-    hole_offset = len(all_coords)
-    for hole in holes:
-        if len(hole) < 3:
-            continue
-        start = hole_offset
-        all_coords.extend(hole)
-        for i in range(len(hole)):
-            edges_constraint.append((start + i, start + (i + 1) % len(hole)))
-        hole_offset += len(hole)
-
-    # Delaunay output_type enum (BLI_delaunay_2d.h):
-    #   0 CDT_FULL: convex hull triangulation
-    #   1 CDT_INSIDE: triangles enclosed by constraints
-    #   2 CDT_INSIDE_WITH_HOLES: like 1 + auto-detect holes
-    #   3 CDT_CONSTRAINTS: ONLY constraint edges (no fill - bug we hit)
-    #   4 CDT_CONSTRAINTS_VALID_BMESH: like 3 + bmesh-valid
-    #   5 CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES: like 4 + holes
-    #
-    # PR #51 smoke caught the bug: we were using 4 / 5 which omit
-    # interior triangulation entirely, so the resulting mesh had
-    # verts + boundary edges but NO faces. Use 1 / 2 to get the
-    # full Delaunay fill of the constrained region.
-    output_type = 2 if (inner_count >= 3 or holes) else 1
-    result = mathutils.geometry.delaunay_2d_cdt(
-        all_coords,
-        edges_constraint,
-        [],
-        output_type,
-        1e-6,
-        True,
-    )
-    out_verts, _out_edges, out_faces, _orig_v, _orig_e, _orig_f = result
-
-    print(
-        f"[automesh] delaunay output_type={output_type} "
-        f"input={len(all_coords)}v/{len(edges_constraint)}e "
-        f"output={len(out_verts)}v/{len(out_faces)}f"
-    )
-
-    bm_verts = [bm.verts.new((v[0], 0.0, v[1])) for v in out_verts]
-    bm.verts.ensure_lookup_table()
-    added = 0
-    failed = 0
-    for face in out_faces:
-        try:
-            bm.faces.new([bm_verts[i] for i in face])
-            added += 1
-        except ValueError as exc:
-            failed += 1
-            if failed <= 5:
-                print(f"[automesh] face skipped ({exc}): indices={face}")
-    if failed:
-        print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
-    return added
 
 
 def _debug_stage_report(
@@ -857,8 +538,8 @@ def build_automesh(
             "bridges", len(outer_world), len(inner_world), bridge_offset=bridge_offset
         )
 
-    base_group_index, _is_fresh = _initialize_base_sprite_group(obj)
-    _delete_non_base_geometry(obj, base_group_index)
+    base_group_index, _is_fresh = initialize_base_sprite_group(obj)
+    delete_non_base_geometry(obj, base_group_index)
 
     mesh = obj.data
     bm = bmesh.new()
@@ -881,13 +562,13 @@ def build_automesh(
     # - dense edge-loop band near silhouette comes for free because
     #   outer + inner verts constrained close together in a thin
     #   ring; Delaunay produces dense triangles between them
-    _build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
+    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
     # Post-process: CDT's automatic hole detection is unreliable with
     # the bridge's Y-flip orientation flow, so we explicitly delete
     # any triangle whose centroid lies inside a detected hole. This
     # is deterministic + independent of CDT's winding heuristics.
     if holes_world:
-        _delete_faces_inside_holes(bm, holes_world)
+        delete_faces_inside_holes(bm, holes_world)
 
     if debug_stage == "fill_no_interior":
         bm.to_mesh(mesh)
@@ -914,9 +595,9 @@ def build_automesh(
 
     bm.to_mesh(mesh)
     bm.free()
-    _stamp_uvs(mesh, source_width, source_height, world_scale)
+    stamp_uvs(mesh, source_width, source_height, world_scale)
     if not preserve_base_quad:
-        _remove_base_sprite_verts(obj, base_group_index)
+        remove_base_sprite_verts(obj, base_group_index)
     mesh.update()
     print(f"[automesh] === END mesh now has {len(mesh.vertices)} verts, {len(mesh.polygons)} faces")
 

@@ -94,11 +94,13 @@ SPRITE_BOUNDS: dict[str, dict[str, tuple[int, int] | float | int]] = {
         "verts": (400, 1200),
         "faces": (700, 2400),
         "min_coverage": 0.97,
-        # Two holes -> bleed band ~2x the single-hole ring case at
-        # the same downscale + 1-cell safety dilate. Measured ~3960
-        # against the AA 8-shape fixture; 5000 leaves headroom for
-        # future fixture tweaks without flapping the invariant.
-        "max_hole_bleed": 5000,
+        # Two holes -> bleed band ~2x the single-hole ring case. At
+        # 512-pixel source the hole pixel count scales by (512/200)^2
+        # ~6.5x ring's ~2025 hole pixels, so the bleed band scales
+        # similarly. Measured 5224 against the AA 8-shape fixture;
+        # 6500 leaves headroom for AA-edge variation without
+        # flapping the invariant.
+        "max_hole_bleed": 6500,
     },
 }
 

@@ -43,9 +43,12 @@ LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 BLEND_PATH = FIXTURE_DIR / "automesh.blend"
 
 FRAME = 200
-SWIRL_FRAME = 400
+SWIRL_FRAME = 512
 PIXELS_PER_UNIT = 100.0
 SPRITE_SIZE = FRAME / PIXELS_PER_UNIT
+# Bridge uses world_scale = 1 / PIXELS_PER_UNIT regardless of
+# sprite size, so the quad MUST match source_w / PPU for the mesh
+# to land aligned with the textured plane. 512 / 100 = 5.12.
 SWIRL_SPRITE_SIZE = SWIRL_FRAME / PIXELS_PER_UNIT
 
 
@@ -68,9 +71,9 @@ def main() -> None:
         ("blob", 0.0, 0.0, SPRITE_SIZE, False),
         ("lshape", 3.0, 0.0, SPRITE_SIZE, False),
         ("ring", 0.0, -3.0, SPRITE_SIZE, False),
-        # Swirl is 400x400 -> 4-unit quad; offset further so it does
-        # not overlap the row of 200x200 sprites at z=0.
-        ("swirl", 0.0, 3.5, SWIRL_SPRITE_SIZE, False),
+        # Swirl is 512x512 -> 5.12-unit quad; offset above the row
+        # of 200x200 sprites so the bigger footprint does not overlap.
+        ("swirl", 0.0, 4.5, SWIRL_SPRITE_SIZE, False),
     )
     for name, cx, cz, size, parent_to_arm in sprite_layout:
         _build_sprite_quad(name, cx, cz, size, armature_obj if parent_to_arm else None)

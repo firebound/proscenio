@@ -63,7 +63,12 @@ FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "automesh"
 LAYERS_DIR = FIXTURE_DIR / "pillow_layers"
 
 FRAME = 200
-SWIRL_FRAME = 400  # hi-res target for the AA swirl fixture
+SWIRL_FRAME = 512  # hi-res AA fixture. 512 picks up the alpha
+# gradient across a 128-cell downsampled contour grid (vs 50 cells
+# for the 200-pixel sprites) so the boundary reads smooth instead
+# of stair-stepped, while keeping the per-pixel validator runtime
+# tractable (~250k pixels per swirl pass; 1024 was ~1M and pushed
+# validator latency past a minute).
 SWIRL_SUPERSAMPLE = 4  # 4x supersample then bilinear downsample
 BG = (0.0, 0.0, 0.0, 0.0)
 HAND_COLOR = (0.95, 0.78, 0.62, 1.0)

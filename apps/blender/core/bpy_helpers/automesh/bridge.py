@@ -34,25 +34,21 @@ from typing import TYPE_CHECKING, Literal
 import bmesh
 import mathutils
 
-from ..alpha_contour import (
+from ...automesh import (
     AlphaGrid,
-    extract_contours,
-)
-from ..automesh_density import (
     BoneSegment2D,
-    filter_points_too_close_to_boundary,
-    interior_points_for_annulus,
-    point_in_polygon,
-)
-from ..automesh_geometry import (
     Contour2D,
     arc_length_resample,
+    extract_contours,
+    filter_points_too_close_to_boundary,
     find_best_inner_rotation,
+    interior_points_for_annulus,
     laplacian_smooth,
+    point_in_polygon,
     to_float_contour,
 )
-from ..geometry_2d import point_in_triangle_xz
-from .automesh_debug import (
+from ...geometry_2d import point_in_triangle_xz
+from .debug import (
     clear_debug_objects,
     emit_bridges_debug,
     emit_contour_debug,

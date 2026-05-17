@@ -20,7 +20,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.automesh_geometry import (  # noqa: E402  - sys.path setup above
+from core.automesh.geometry import (  # noqa: E402  - sys.path setup above
     Contour2D,
     arc_length_resample,
     build_annulus_edge_pairs,

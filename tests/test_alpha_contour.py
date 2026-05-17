@@ -18,7 +18,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.alpha_contour import (  # noqa: E402  - sys.path setup above
+from core.automesh.contour import (  # noqa: E402  - sys.path setup above
     AlphaGrid,
     BinaryMask,
     binarize,

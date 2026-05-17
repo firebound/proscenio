@@ -28,13 +28,11 @@ from bpy.props import (
     IntProperty,
 )
 
-from ..core.bpy_helpers.automesh_bmesh import (  # type: ignore[import-not-found]
+from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     _STAGE_BY_INDEX,
     build_automesh,
-    collect_bone_segments,
-)
-from ..core.bpy_helpers.automesh_debug import (  # type: ignore[import-not-found]
     clear_debug_objects,
+    collect_bone_segments,
 )
 from ..core.report import (  # type: ignore[import-not-found]
     report_error,

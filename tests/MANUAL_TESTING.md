@@ -318,7 +318,7 @@ Sequência:
 - [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
 - [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
 - [ ] T15 - Reload Scripts após automesh ON -> operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
-- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` retorna 94+ pass.
+- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` termina com sucesso (todos os testes desse comando passam).
 
 **Debug stages** (Skinning > Debug pipeline sub-box):
 

@@ -93,6 +93,28 @@ debug companions for the sprite so reruns leave the scene clean.
 """
 
 
+def _max_alpha_in_block(
+    pixels: list[float],
+    source_w: int,
+    sx_start: int,
+    sx_end: int,
+    sy_start: int,
+    sy_end: int,
+) -> int:
+    """Max alpha (0-255) over the source pixel rectangle ``[sx, sy)``.
+
+    Inner loop of the conservative MAX downsample. Lifted into its
+    own helper to keep ``read_alpha_grid`` itself a flat loop.
+    """
+    max_alpha = 0
+    for sy in range(sy_start, sy_end):
+        for sx in range(sx_start, sx_end):
+            alpha = int(pixels[(sy * source_w + sx) * 4 + 3] * 255)
+            if alpha > max_alpha:
+                max_alpha = alpha
+    return max_alpha
+
+
 def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     """Read an image's alpha channel into a downscaled int grid.
 
@@ -102,6 +124,24 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     contour tracing because pure-Python morphology + tracing scale
     quadratically with pixel count; the silhouette is recoverable
     from ~256x256 even for HD sprites.
+
+    Conservative MAX downsample: each target cell = MAX alpha
+    across all source pixels mapping to it (not NEAREST single
+    sample). NEAREST would lose boundary pixels when the sampled
+    source cell happens to be background while neighbors are
+    foreground - silhouette shrinks inward by up to 1 downsampled
+    cell (= 4 source pixels at downscale=0.25). MAX guarantees the
+    silhouette expands by AT MOST 1 downsampled cell outward, acting
+    as a built-in 1-pixel safety margin without the explicit margin
+    setting. Caught in PR #51 smoke as "mesh boundary cuts inside
+    the alpha" (user demand: never cut alpha).
+
+    Y-flip on read: Blender ``image.pixels[]`` is stored bottom-up
+    (OpenGL convention - ``pixels[0]`` is the visual BOTTOM-LEFT of
+    the PIL-saved PNG). Downstream code treats ``grid[0]`` as the
+    visual TOP (PIL convention), so the source-Y index is flipped
+    on read. Without the flip the mesh silhouette ends up upside-
+    down relative to the texture rendered on the sprite plane.
 
     Out-of-range ``downscale_factor`` raises ``ValueError`` so the
     operator's pre-flight surfaces a clear error message.
@@ -114,51 +154,19 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     pixels = list(image.pixels[:])
     target_w = max(1, int(source_w * downscale_factor))
     target_h = max(1, int(source_h * downscale_factor))
-    # Conservative downsample: each target cell = MAX alpha across
-    # all source pixels mapping to it (not NEAREST single sample).
-    # NEAREST would lose boundary pixels when the sampled source
-    # cell happens to be background while neighbors are foreground -
-    # silhouette shrinks inward by up to 1 downsampled cell, which
-    # at downscale=0.25 = 4 source pixels of lost coverage. User
-    # smoke caught this as "mesh boundary cuts inside the alpha"
-    # (PR #51 - INADIMISSÍVEL per user). MAX aggregation guarantees
-    # any visible pixel anywhere in the source block keeps the
-    # target cell foreground, so the silhouette expands by AT MOST
-    # 1 downsampled cell (= 4 source pixels at 0.25) outward. Acts
-    # as a built-in 1-pixel safety margin without the explicit
-    # margin setting.
     grid: AlphaGrid = [[0] * target_w for _ in range(target_h)]
     block_size = max(1, round(1.0 / downscale_factor))
-    # Y-flip on read: Blender image.pixels[] is stored bottom-up
-    # (OpenGL convention - pixels[0] is the visual BOTTOM-LEFT of
-    # the PIL-saved PNG). Downstream code treats grid[0] as the
-    # visual TOP of the image (PIL natural convention) so we flip
-    # the source-Y index when reading. Without this flip, the mesh
-    # silhouette ends up upside-down relative to the texture: mesh
-    # extracted from PIL-bottom of alpha (read at grid[0] via the
-    # un-flipped index) lands at world top after
-    # pixel_contour_to_world, but the texture rendered at world top
-    # is the visual top (Blender samples pixels[(H-1)*W] for v=1).
-    # User-visible result: hand mesh has palm at top + fingers
-    # pointing down, while the texture displays palm at bottom +
-    # fingers pointing up - mesh shape and texture pattern do not
-    # align.
     for target_y in range(target_h):
         flipped_target_y = target_h - 1 - target_y
-        source_y_start = min(int(flipped_target_y / downscale_factor), source_h - 1)
-        source_y_end = min(source_y_start + block_size, source_h)
+        sy_start = min(int(flipped_target_y / downscale_factor), source_h - 1)
+        sy_end = min(sy_start + block_size, source_h)
         row = grid[target_y]
         for target_x in range(target_w):
-            source_x_start = min(int(target_x / downscale_factor), source_w - 1)
-            source_x_end = min(source_x_start + block_size, source_w)
-            max_alpha = 0
-            for sy in range(source_y_start, source_y_end):
-                for sx in range(source_x_start, source_x_end):
-                    alpha_index = (sy * source_w + sx) * 4 + 3
-                    alpha = int(pixels[alpha_index] * 255)
-                    if alpha > max_alpha:
-                        max_alpha = alpha
-            row[target_x] = max_alpha
+            sx_start = min(int(target_x / downscale_factor), source_w - 1)
+            sx_end = min(sx_start + block_size, source_w)
+            row[target_x] = _max_alpha_in_block(
+                pixels, source_w, sx_start, sx_end, sy_start, sy_end
+            )
     return grid
 
 
@@ -301,6 +309,264 @@ _STAGE_INDEX: dict[DebugStage, int] = {
 _STAGE_BY_INDEX: dict[int, DebugStage] = {value: key for key, value in _STAGE_INDEX.items()}
 
 
+def _log_begin(
+    obj: Object,
+    image: Image,
+    downscale_factor: float,
+    alpha_threshold: int,
+    margin_pixels: int,
+    target_contour_vertices: int,
+    interior_spacing: float,
+    bone_segments: list[BoneSegment2D] | None,
+    debug_stage: DebugStage,
+) -> None:
+    print(
+        f"[automesh] === BEGIN obj={obj.name} image={image.name} "
+        f"{image.size[0]}x{image.size[1]} downscale={downscale_factor} "
+        f"alpha_threshold={alpha_threshold} margin_pixels={margin_pixels} "
+        f"contour_vertices={target_contour_vertices} "
+        f"interior_spacing={interior_spacing} "
+        f"density_under_bones={'yes' if bone_segments else 'no'} "
+        f"debug_stage={debug_stage}"
+    )
+
+
+def _read_alpha_and_extract_contours(
+    image: Image,
+    downscale_factor: float,
+    alpha_threshold: int,
+    margin_pixels: int,
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]], list[list[tuple[int, int]]]]:
+    """Read alpha grid + extract outer / inner / hole pixel contours.
+
+    Encapsulates the alpha-grid read + contour extraction with the
+    margin scaling rule (source-pixel margin -> downscaled-grid
+    kernel size). Raises ``ValueError`` when the outer contour is
+    too short to triangulate.
+    """
+    alpha_grid = read_alpha_grid(image, downscale_factor)
+    grid_h = len(alpha_grid)
+    grid_w = len(alpha_grid[0]) if grid_h else 0
+    nonzero = sum(1 for row in alpha_grid for px in row if px > 0)
+    above_thr = sum(1 for row in alpha_grid for px in row if px > alpha_threshold)
+    print(
+        f"[automesh] alpha_grid {grid_w}x{grid_h} cells "
+        f"nonzero={nonzero} above_threshold({alpha_threshold})={above_thr}"
+    )
+    # margin_pixels is expressed in SOURCE image pixels so the user's
+    # mental model matches what they author in Photoshop / Pillow.
+    # Scale by downscale_factor so margin=5 + downscale=0.25 still
+    # corresponds to ~5 source pixels and not 5 grid cells (= 20
+    # source pixels). Regression caught in PR #51 smoke.
+    grid_margin = max(0, round(margin_pixels * downscale_factor))
+    outer_pixels, inner_pixels, hole_pixels = extract_contours(
+        alpha_grid, alpha_threshold, grid_margin
+    )
+    # SPEC 013 D2 amendment: hole contours feed CDT as additional
+    # constraint loops so the mesh excludes alpha holes. Proscenio
+    # differentiates from Spine + COA Tools 2 here - both refuse
+    # to support holes.
+    print(
+        f"[automesh] contour_pair grid_margin={grid_margin} "
+        f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)} "
+        f"holes={len(hole_pixels)} ({[len(h) for h in hole_pixels]})"
+    )
+    if len(outer_pixels) < 3:
+        raise ValueError(
+            "automesh outer contour too short - try lowering the alpha "
+            "threshold or increasing the resolution"
+        )
+    return outer_pixels, inner_pixels, hole_pixels
+
+
+def _to_world_space(
+    outer_pixels: list[tuple[int, int]],
+    inner_pixels: list[tuple[int, int]],
+    hole_pixels: list[list[tuple[int, int]]],
+    downscale_factor: float,
+    world_scale: float,
+    source_width: int,
+    source_height: int,
+) -> tuple[Contour2D, Contour2D, list[Contour2D]]:
+    """Convert all pixel-space contours to world-space."""
+    outer_world_raw = pixel_contour_to_world(
+        to_float_contour(outer_pixels),
+        downscale_factor,
+        world_scale,
+        source_width,
+        source_height,
+    )
+    if outer_world_raw:
+        xs = [p[0] for p in outer_world_raw]
+        ys = [p[1] for p in outer_world_raw]
+        print(
+            f"[automesh] outer_world_raw bbox "
+            f"x=[{min(xs):.4f},{max(xs):.4f}] z=[{min(ys):.4f},{max(ys):.4f}] "
+            f"first={outer_world_raw[0]} last={outer_world_raw[-1]}"
+        )
+    inner_world_raw: Contour2D = []
+    if len(inner_pixels) >= 3:
+        inner_world_raw = pixel_contour_to_world(
+            to_float_contour(inner_pixels),
+            downscale_factor,
+            world_scale,
+            source_width,
+            source_height,
+        )
+    holes_world_raw: list[Contour2D] = [
+        pixel_contour_to_world(
+            to_float_contour(h),
+            downscale_factor,
+            world_scale,
+            source_width,
+            source_height,
+        )
+        for h in hole_pixels
+        if len(h) >= 3
+    ]
+    return outer_world_raw, inner_world_raw, holes_world_raw
+
+
+def _smooth_and_resample(
+    outer_world_raw: Contour2D,
+    inner_world_raw: Contour2D,
+    holes_world_raw: list[Contour2D],
+    target_contour_vertices: int,
+) -> tuple[Contour2D, Contour2D, list[Contour2D]]:
+    """Apply Laplacian smoothing (inner only) + arc-length resample.
+
+    Outer + holes skip smoothing because Laplacian shrinks convex
+    corners inward by ~1 px per pass, which would cut alpha at the
+    silhouette / bleed mesh over transparent at hole edges.
+    Inner contour smooths because it is the eroded version of the
+    silhouette and the inward shrink is desired there.
+
+    Hole target vert count scales as outer/4 with a minimum of 8 so
+    tiny holes still produce reasonable triangles.
+    """
+    outer_smoothed = outer_world_raw
+    inner_smoothed = (
+        laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS) if inner_world_raw else []
+    )
+    outer_world = arc_length_resample(outer_smoothed, target_contour_vertices)
+    inner_world: Contour2D = (
+        arc_length_resample(inner_smoothed, target_contour_vertices) if inner_smoothed else []
+    )
+    hole_target = max(8, target_contour_vertices // 4)
+    holes_world: list[Contour2D] = [
+        arc_length_resample(raw, hole_target) for raw in holes_world_raw
+    ]
+    print(
+        f"[automesh] resampled outer={len(outer_world)} inner={len(inner_world)} "
+        f"holes_total_verts={sum(len(h) for h in holes_world)} "
+        f"target={target_contour_vertices}"
+    )
+    return outer_world, inner_world, holes_world
+
+
+def _compute_steiner_points(
+    outer_world: Contour2D,
+    inner_world: Contour2D,
+    holes_world: list[Contour2D],
+    interior_spacing: float,
+    bone_segments: list[BoneSegment2D] | None,
+    bone_density_radius: float,
+    bone_density_factor: int,
+) -> list[tuple[float, float]]:
+    """Generate + filter Steiner interior points.
+
+    Three-step funnel:
+
+    1. ``interior_points_for_annulus`` produces a candidate grid
+       (uniform OR bone-clustered when picker armature is set).
+    2. Points falling inside any detected hole are dropped - CDT
+       excludes the hole region, so a Steiner there would become
+       a loose vertex with no incident face.
+    3. Points within half-spacing of any boundary vert are dropped
+       to avoid CDT phantom-vert duplication.
+    """
+    interior_points = interior_points_for_annulus(
+        outer_world,
+        [],
+        interior_spacing,
+        bone_segments=bone_segments,
+        bone_density_radius=bone_density_radius,
+        bone_density_factor=bone_density_factor,
+    )
+    if holes_world:
+        before_hole_filter = len(interior_points)
+        interior_points = [
+            point
+            for point in interior_points
+            if not any(point_in_polygon(point, hole) for hole in holes_world)
+        ]
+        print(
+            f"[automesh] interior_points dropped_inside_holes="
+            f"{before_hole_filter - len(interior_points)} "
+            f"(of {before_hole_filter})"
+        )
+    boundary_for_filter = list(outer_world) + list(inner_world)
+    min_separation = max(interior_spacing * 0.5, 1e-3)
+    before_filter = len(interior_points)
+    interior_points = filter_points_too_close_to_boundary(
+        interior_points, boundary_for_filter, min_separation
+    )
+    print(
+        f"[automesh] interior_points generated={before_filter} "
+        f"kept_after_filter={len(interior_points)} "
+        f"min_separation={min_separation:.4f}"
+    )
+    return interior_points
+
+
+def _triangulate_into_bmesh(
+    obj: Object,
+    outer_world: Contour2D,
+    inner_world: Contour2D,
+    interior_points: list[tuple[float, float]],
+    holes_world: list[Contour2D],
+) -> tuple[int, object]:
+    """Run CDT into a bmesh + apply the hole-face post-prune.
+
+    Returns ``(base_group_index, bm)`` so the orchestrator can
+    decide whether to commit the bmesh (final path) or write +
+    free without finalize (debug fill_no_interior).
+    """
+    base_group_index, _is_fresh = initialize_base_sprite_group(obj)
+    delete_non_base_geometry(obj, base_group_index)
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
+    if holes_world:
+        # CDT's automatic hole detection is unreliable against the
+        # bridge's Y-flip orientation flow; the centroid post-prune
+        # is the deterministic fallback (see cdt.py).
+        delete_faces_inside_holes(bm, holes_world)
+    return base_group_index, bm
+
+
+def _finalize_mesh(
+    obj: Object,
+    bm: object,
+    base_group_index: int,
+    source_width: int,
+    source_height: int,
+    world_scale: float,
+    preserve_base_quad: bool,
+) -> None:
+    """Commit bmesh to mesh + stamp UVs + drop base sprite verts."""
+    mesh = obj.data
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))  # type: ignore[attr-defined]
+    bm.to_mesh(mesh)  # type: ignore[attr-defined]
+    bm.free()  # type: ignore[attr-defined]
+    stamp_uvs(mesh, source_width, source_height, world_scale)
+    if not preserve_base_quad:
+        remove_base_sprite_verts(obj, base_group_index)
+    mesh.update()
+    print(f"[automesh] === END mesh now has {len(mesh.vertices)} verts, {len(mesh.polygons)} faces")
+
+
 def build_automesh(
     obj: Object,
     image: Image,
@@ -339,185 +605,60 @@ def build_automesh(
     """
     if debug_stage in ("off", "final"):
         clear_debug_objects(obj)
-    print(
-        f"[automesh] === BEGIN obj={obj.name} image={image.name} "
-        f"{image.size[0]}x{image.size[1]} downscale={downscale_factor} "
-        f"alpha_threshold={alpha_threshold} margin_pixels={margin_pixels} "
-        f"contour_vertices={target_contour_vertices} "
-        f"interior_spacing={interior_spacing} "
-        f"density_under_bones={'yes' if bone_segments else 'no'} "
-        f"debug_stage={debug_stage}"
+    _log_begin(
+        obj,
+        image,
+        downscale_factor,
+        alpha_threshold,
+        margin_pixels,
+        target_contour_vertices,
+        interior_spacing,
+        bone_segments,
+        debug_stage,
     )
-    alpha_grid = read_alpha_grid(image, downscale_factor)
-    grid_h = len(alpha_grid)
-    grid_w = len(alpha_grid[0]) if grid_h else 0
-    nonzero = sum(1 for row in alpha_grid for px in row if px > 0)
-    above_thr = sum(1 for row in alpha_grid for px in row if px > alpha_threshold)
-    print(
-        f"[automesh] alpha_grid {grid_w}x{grid_h} cells "
-        f"nonzero={nonzero} above_threshold({alpha_threshold})={above_thr}"
-    )
-    # margin_pixels is expressed in SOURCE image pixels so the user's
-    # mental model matches what they author in Photoshop / Pillow.
-    # The contour walker operates on the downscaled grid, so we scale
-    # the dilate/erode kernel size by downscale_factor to keep the
-    # effective margin invariant. Without this, margin=5 + downscale=
-    # 0.25 dilates 5 cells of a 50x50 grid = 20 source pixels = way
-    # more aggressive than the user expects (regression caught in
-    # smoke validation).
-    grid_margin = max(0, round(margin_pixels * downscale_factor))
-    outer_pixels, inner_pixels, hole_pixels = extract_contours(
-        alpha_grid, alpha_threshold, grid_margin
-    )
-    # SPEC 013 D2 amendment: per-hole closed contours feed CDT as
-    # additional constraint loops so the mesh excludes alpha holes
-    # (donut interior, eye sockets, etc.). Proscenio differentiates
-    # from Spine + COA Tools 2 here - both refuse to support holes.
-    print(
-        f"[automesh] contour_pair grid_margin={grid_margin} "
-        f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)} "
-        f"holes={len(hole_pixels)} ({[len(h) for h in hole_pixels]})"
-    )
-    if len(outer_pixels) < 3:
-        raise ValueError(
-            "automesh outer contour too short - try lowering the alpha "
-            "threshold or increasing the resolution"
-        )
 
+    outer_pixels, inner_pixels, hole_pixels = _read_alpha_and_extract_contours(
+        image, downscale_factor, alpha_threshold, margin_pixels
+    )
     source_width, source_height = image.size[0], image.size[1]
-    outer_world_raw = pixel_contour_to_world(
-        to_float_contour(outer_pixels),
+    outer_world_raw, inner_world_raw, holes_world_raw = _to_world_space(
+        outer_pixels,
+        inner_pixels,
+        hole_pixels,
         downscale_factor,
         world_scale,
         source_width,
         source_height,
     )
-    if outer_world_raw:
-        xs = [p[0] for p in outer_world_raw]
-        ys = [p[1] for p in outer_world_raw]
-        print(
-            f"[automesh] outer_world_raw bbox "
-            f"x=[{min(xs):.4f},{max(xs):.4f}] z=[{min(ys):.4f},{max(ys):.4f}] "
-            f"first={outer_world_raw[0]} last={outer_world_raw[-1]}"
-        )
-    inner_world_raw: Contour2D = []
-    if len(inner_pixels) >= 3:
-        inner_world_raw = pixel_contour_to_world(
-            to_float_contour(inner_pixels),
-            downscale_factor,
-            world_scale,
-            source_width,
-            source_height,
-        )
-    holes_world_raw: list[Contour2D] = [
-        pixel_contour_to_world(
-            to_float_contour(h),
-            downscale_factor,
-            world_scale,
-            source_width,
-            source_height,
-        )
-        for h in hole_pixels
-        if len(h) >= 3
-    ]
-
     if debug_stage == "raw_contours":
         emit_contour_debug(obj, "raw_contours", outer_world_raw, inner_world_raw)
         return _debug_stage_report("raw_contours", len(outer_world_raw), len(inner_world_raw))
 
-    # Smooth ONLY the inner contour. The outer must stay at-or-
-    # outside the actual alpha boundary - Laplacian shrinks convex
-    # corners inward by ~1 px per pass, which would cut into the
-    # silhouette pixels even with the dilate margin (regression
-    # caught in PR #51 smoke - mesh boundary going INSIDE the
-    # sprite alpha at bottom of the blob). Outer keeps its raw
-    # pixel-staircase shape; arc-length resample alone gives even
-    # vertex spacing without shrinkage.
-    outer_smoothed = outer_world_raw
-    inner_smoothed = (
-        laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS) if inner_world_raw else []
+    outer_world, inner_world, holes_world = _smooth_and_resample(
+        outer_world_raw, inner_world_raw, holes_world_raw, target_contour_vertices
     )
-
     if debug_stage == "smoothed":
+        # Smoothed = post-Laplacian, pre-resample. Snapshot the
+        # intermediate state by re-running Laplacian without resample.
+        outer_smoothed = outer_world_raw
+        inner_smoothed = (
+            laplacian_smooth(inner_world_raw, _SMOOTH_ITERATIONS) if inner_world_raw else []
+        )
         emit_contour_debug(obj, "smoothed", outer_smoothed, inner_smoothed)
         return _debug_stage_report("smoothed", len(outer_smoothed), len(inner_smoothed))
-
-    outer_world = arc_length_resample(outer_smoothed, target_contour_vertices)
-    # Inner contour uses the SAME vertex count as outer so the
-    # annulus can be triangulated as a clean strip of trapezoids
-    # via radial bridge edges (see build_annulus_edge_pairs).
-    inner_world: Contour2D = (
-        arc_length_resample(inner_smoothed, target_contour_vertices) if inner_smoothed else []
-    )
-    # Holes: arc-length resample only (NO Laplacian smoothing). Same
-    # reasoning as outer (smoothing shrinks convex corners inward by
-    # ~1 px per pass, which would shrink the mesh-side hole cutout
-    # back below the alpha hole and bleed mesh over transparent
-    # pixels). Resample target proportional to outer so big holes
-    # get more verts; minimum 8 keeps triangles around tiny holes
-    # reasonable.
-    holes_world: list[Contour2D] = []
-    for raw in holes_world_raw:
-        hole_target = max(8, target_contour_vertices // 4)
-        holes_world.append(arc_length_resample(raw, hole_target))
-    print(
-        f"[automesh] resampled outer={len(outer_world)} inner={len(inner_world)} "
-        f"holes_total_verts={sum(len(h) for h in holes_world)} "
-        f"target={target_contour_vertices}"
-    )
-
     if debug_stage == "resampled":
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
-    # Steiner points cover the ENTIRE silhouette interior (not just
-    # the annulus ring) so we can fill the inner area too. The
-    # bone-aware density still applies wherever bones cross the
-    # silhouette. Passing inner=[] tells the helper "everything
-    # inside outer is fair game" instead of "only between outer and
-    # inner".
-    interior_points = interior_points_for_annulus(
+    interior_points = _compute_steiner_points(
         outer_world,
-        [],
+        inner_world,
+        holes_world,
         interior_spacing,
-        bone_segments=bone_segments,
-        bone_density_radius=bone_density_radius,
-        bone_density_factor=bone_density_factor,
+        bone_segments,
+        bone_density_radius,
+        bone_density_factor,
     )
-    # Drop Steiner points that fall inside any hole - CDT excludes
-    # the hole region from triangulation, so a Steiner there would
-    # become a loose vertex with no incident face.
-    if holes_world:
-        before_hole_filter = len(interior_points)
-        interior_points = [
-            point
-            for point in interior_points
-            if not any(point_in_polygon(point, hole) for hole in holes_world)
-        ]
-        print(
-            f"[automesh] interior_points dropped_inside_holes="
-            f"{before_hole_filter - len(interior_points)} "
-            f"(of {before_hole_filter})"
-        )
-
-    # Drop Steiner points landing within half-spacing of any boundary
-    # vert - otherwise Constrained Delaunay keeps both as distinct
-    # verts (the default epsilon=1e-6 snap is much tighter than the
-    # closeness we get from a uniform grid randomly landing near a
-    # contour vert). Visible as "phantom" verts clustered at the
-    # silhouette in PR #51 smoke.
-    boundary_for_filter = list(outer_world) + list(inner_world)
-    min_separation = max(interior_spacing * 0.5, 1e-3)
-    before_filter = len(interior_points)
-    interior_points = filter_points_too_close_to_boundary(
-        interior_points, boundary_for_filter, min_separation
-    )
-    print(
-        f"[automesh] interior_points generated={before_filter} "
-        f"kept_after_filter={len(interior_points)} "
-        f"min_separation={min_separation:.4f}"
-    )
-
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)
         return _debug_stage_report(
@@ -527,52 +668,20 @@ def build_automesh(
             interior_count=len(interior_points),
         )
 
-    # Bridge offset = inner rotation that minimizes total radial
-    # bridge length, so the strip triangulation gets clean nearly-
-    # parallel sides instead of crossing the annulus diagonally.
     bridge_offset = find_best_inner_rotation(outer_world, inner_world)
-
     if debug_stage == "bridges":
         emit_bridges_debug(obj, "bridges", outer_world, inner_world, bridge_offset)
         return _debug_stage_report(
             "bridges", len(outer_world), len(inner_world), bridge_offset=bridge_offset
         )
 
-    base_group_index, _is_fresh = initialize_base_sprite_group(obj)
-    delete_non_base_geometry(obj, base_group_index)
-
-    mesh = obj.data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-
-    # Unified single-pass Constrained Delaunay 2D Triangulation.
-    # Replaces the prior 3-pass pipeline (manual annulus strip +
-    # inner-area triangle_fill + Steiner fan-split insertion) that
-    # produced phantom verts, overlapping edges, and overlapping
-    # faces because the passes did not coordinate. Delaunay handles
-    # everything in one shot:
-    #
-    # - outer + inner cyclic edges = boundary constraints
-    # - inner ring auto-detected as a hole via output_type=5
-    #   (CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES)
-    # - Steiner interior points participate in the triangulation
-    #   from the start, not as post-process fan splits
-    # - output is guaranteed BMesh-valid (no degenerate / self-
-    #   intersecting faces, no edge duplicates)
-    # - dense edge-loop band near silhouette comes for free because
-    #   outer + inner verts constrained close together in a thin
-    #   ring; Delaunay produces dense triangles between them
-    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
-    # Post-process: CDT's automatic hole detection is unreliable with
-    # the bridge's Y-flip orientation flow, so we explicitly delete
-    # any triangle whose centroid lies inside a detected hole. This
-    # is deterministic + independent of CDT's winding heuristics.
-    if holes_world:
-        delete_faces_inside_holes(bm, holes_world)
-
+    base_group_index, bm = _triangulate_into_bmesh(
+        obj, outer_world, inner_world, interior_points, holes_world
+    )
     if debug_stage == "fill_no_interior":
-        bm.to_mesh(mesh)
-        bm.free()
+        mesh = obj.data
+        bm.to_mesh(mesh)  # type: ignore[attr-defined]
+        bm.free()  # type: ignore[attr-defined]
         mesh.update()
         return _debug_stage_report(
             "fill_no_interior",
@@ -582,29 +691,18 @@ def build_automesh(
             total_faces=len(mesh.polygons),
         )
 
-    # Interior count = actual Steiner points that survived the
-    # filter + landed in the Delaunay output. Previously this was
-    # derived as (triangles - 2*outer) which made no sense after
-    # dropping the annulus strip (the formula assumed strip
-    # triangulation that no longer exists). Report the real Steiner
-    # count so the INFO line is meaningful.
-    interior_inserted = len(interior_points)
-
-    # Recalculate normals so all faces point the same way.
-    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-
-    bm.to_mesh(mesh)
-    bm.free()
-    stamp_uvs(mesh, source_width, source_height, world_scale)
-    if not preserve_base_quad:
-        remove_base_sprite_verts(obj, base_group_index)
-    mesh.update()
-    print(f"[automesh] === END mesh now has {len(mesh.vertices)} verts, {len(mesh.polygons)} faces")
-
+    _finalize_mesh(
+        obj, bm, base_group_index, source_width, source_height, world_scale, preserve_base_quad
+    )
+    mesh = obj.data
     return {
         "outer_verts": len(outer_world),
         "inner_verts": len(inner_world),
-        "interior_verts": interior_inserted,
+        # Interior count = Steiner points that survived hole + boundary
+        # filters. The Delaunay pass may absorb / merge some near-
+        # boundary; len(interior_points) is the input count, not the
+        # final mesh count - good enough for the INFO report.
+        "interior_verts": len(interior_points),
         "total_verts": len(mesh.vertices),
         "total_faces": len(mesh.polygons),
     }

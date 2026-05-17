@@ -267,7 +267,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 bone_segments=bone_segments,
                 bone_density_radius=self.bone_radius if bone_segments else 0.0,
                 bone_density_factor=self.bone_factor if bone_segments else 1,
-                debug_stage=self.debug_stage,  # type: ignore[arg-type]
+                debug_stage=self.debug_stage,
                 preserve_base_quad=self.preserve_base_quad,
             )
         except ValueError as exc:

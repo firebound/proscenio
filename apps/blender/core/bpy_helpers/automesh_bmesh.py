@@ -216,8 +216,7 @@ def pixel_contour_to_world(
     # 4 sides get symmetric ~half-cell-of-dilation margin.
     half_cell = factor / 2.0
     return [
-        (x * factor - half_w + half_cell, half_h - y * factor - half_cell)
-        for (x, y) in contour
+        (x * factor - half_w + half_cell, half_h - y * factor - half_cell) for (x, y) in contour
     ]
 
 
@@ -488,9 +487,7 @@ def _build_mesh_via_delaunay(
     if inner_count >= 3:
         inner_offset = outer_count
         for i in range(inner_count):
-            edges_constraint.append(
-                (inner_offset + i, inner_offset + (i + 1) % inner_count)
-            )
+            edges_constraint.append((inner_offset + i, inner_offset + (i + 1) % inner_count))
 
     # Delaunay output_type enum (BLI_delaunay_2d.h):
     #   0 CDT_FULL: convex hull triangulation
@@ -684,6 +681,11 @@ _STAGE_INDEX: dict[DebugStage, int] = {
     "fill_no_interior": 6,
     "final": 7,
 }
+# Reverse map - the operator uses this to decode the integer index
+# the bridge stashes in the counters dict back into a human-readable
+# stage label for the INFO report. Looks unused from inside this
+# module (CodeQL flagged it) but is part of the bridge's public
+# surface; deleting it breaks the operator import.
 _STAGE_BY_INDEX: dict[int, DebugStage] = {value: key for key, value in _STAGE_INDEX.items()}
 
 
@@ -903,9 +905,7 @@ def build_automesh(
     # - dense edge-loop band near silhouette comes for free because
     #   outer + inner verts constrained close together in a thin
     #   ring; Delaunay produces dense triangles between them
-    _triangles_added = _build_mesh_via_delaunay(
-        bm, outer_world, inner_world, interior_points
-    )
+    _build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points)
 
     if debug_stage == "fill_no_interior":
         bm.to_mesh(mesh)
@@ -936,10 +936,7 @@ def build_automesh(
     if not preserve_base_quad:
         _remove_base_sprite_verts(obj, base_group_index)
     mesh.update()
-    print(
-        f"[automesh] === END mesh now has "
-        f"{len(mesh.vertices)} verts, {len(mesh.polygons)} faces"
-    )
+    print(f"[automesh] === END mesh now has {len(mesh.vertices)} verts, {len(mesh.polygons)} faces")
 
     return {
         "outer_verts": len(outer_world),

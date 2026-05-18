@@ -29,21 +29,35 @@ def load_fixture() -> None:
     bpy.ops.wm.open_mainfile(filepath=str(FIXTURE_PATH))
 
 
+def _first_tex_image_in_material(
+    mat: bpy.types.Material | None,
+) -> bpy.types.Image | None:
+    """Return the first TEX_IMAGE node's image in ``mat``, or None."""
+    if mat is None or not mat.use_nodes:
+        return None
+    for node in mat.node_tree.nodes:
+        if node.type == "TEX_IMAGE" and node.image is not None:
+            return node.image
+    return None
+
+
 def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
-    """Find the first TEX_IMAGE node image on the mesh's materials."""
+    """Find the first TEX_IMAGE node image across the mesh's materials.
+
+    Priority: the active material first (matches what the operator
+    uses), then every other material slot. Returns ``None`` when no
+    material exposes a texture - the operator's pre-flight catches
+    this case earlier with an actionable error.
+    """
     if obj.data is None:
         return None
-    active = getattr(obj, "active_material", None)
-    if active is not None and active.use_nodes:
-        for node in active.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                return node.image
+    found = _first_tex_image_in_material(getattr(obj, "active_material", None))
+    if found is not None:
+        return found
     for mat in obj.data.materials:
-        if mat is None or not mat.use_nodes:
-            continue
-        for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                return node.image
+        found = _first_tex_image_in_material(mat)
+        if found is not None:
+            return found
     return None
 
 
@@ -78,10 +92,10 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
 
     uv_out_of_range = 0
     if mesh.uv_layers.active is not None:
+        # 1e-3 epsilon tolerates float rounding around the [0, 1]
+        # edges without flagging legitimate boundary verts.
         for uv in mesh.uv_layers.active.data:
-            if not (0.0 - 1e-3 <= uv.uv[0] <= 1.0 + 1e-3):
-                uv_out_of_range += 1
-            elif not (0.0 - 1e-3 <= uv.uv[1] <= 1.0 + 1e-3):
+            if any(not (-1e-3 <= component <= 1.0 + 1e-3) for component in uv.uv):
                 uv_out_of_range += 1
 
     image = _resolve_image(sprite_obj)

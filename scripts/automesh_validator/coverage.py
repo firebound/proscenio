@@ -49,6 +49,42 @@ class CoverageContext:
     debug_image: list[int] | None
 
 
+def _border_seeds(
+    transparent: list[list[bool]], w: int, h: int
+) -> list[tuple[int, int]]:
+    """Collect every transparent pixel on the image border (flood-fill seeds)."""
+    seeds: list[tuple[int, int]] = []
+    for x in range(w):
+        if transparent[0][x]:
+            seeds.append((x, 0))
+        if transparent[h - 1][x]:
+            seeds.append((x, h - 1))
+    for y in range(h):
+        if transparent[y][0]:
+            seeds.append((0, y))
+        if transparent[y][w - 1]:
+            seeds.append((w - 1, y))
+    return seeds
+
+
+def _flood_fill_outside(
+    transparent: list[list[bool]], w: int, h: int
+) -> list[list[bool]]:
+    """Mark every transparent pixel reachable from the border as visited."""
+    visited: list[list[bool]] = [[False] * w for _ in range(h)]
+    stack: list[tuple[int, int]] = _border_seeds(transparent, w, h)
+    while stack:
+        x, y = stack.pop()
+        if not (0 <= x < w and 0 <= y < h) or visited[y][x] or not transparent[y][x]:
+            continue
+        visited[y][x] = True
+        stack.append((x + 1, y))
+        stack.append((x - 1, y))
+        stack.append((x, y + 1))
+        stack.append((x, y - 1))
+    return visited
+
+
 def compute_hole_pixel_mask(pixels: list[float], w: int, h: int) -> list[list[bool]]:
     """True for transparent pixels fully enclosed by alpha foreground.
 
@@ -63,29 +99,7 @@ def compute_hole_pixel_mask(pixels: list[float], w: int, h: int) -> list[list[bo
         [int(pixels[(y * w + x) * 4 + 3] * 255) <= 0 for x in range(w)]
         for y in range(h)
     ]
-    visited: list[list[bool]] = [[False] * w for _ in range(h)]
-    stack: list[tuple[int, int]] = []
-    for x in range(w):
-        if transparent[0][x]:
-            stack.append((x, 0))
-        if transparent[h - 1][x]:
-            stack.append((x, h - 1))
-    for y in range(h):
-        if transparent[y][0]:
-            stack.append((0, y))
-        if transparent[y][w - 1]:
-            stack.append((w - 1, y))
-    while stack:
-        x, y = stack.pop()
-        if not (0 <= x < w and 0 <= y < h):
-            continue
-        if visited[y][x] or not transparent[y][x]:
-            continue
-        visited[y][x] = True
-        stack.append((x + 1, y))
-        stack.append((x - 1, y))
-        stack.append((x, y + 1))
-        stack.append((x, y - 1))
+    visited = _flood_fill_outside(transparent, w, h)
     return [
         [transparent[y][x] and not visited[y][x] for x in range(w)] for y in range(h)
     ]

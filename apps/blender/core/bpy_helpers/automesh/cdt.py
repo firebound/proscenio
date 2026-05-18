@@ -39,7 +39,7 @@ def delete_faces_inside_holes(
         return 0
     bm.faces.ensure_lookup_table()
     to_remove: list[bmesh.types.BMFace] = []
-    for face in list(bm.faces):
+    for face in bm.faces:
         verts = face.verts
         if not verts:
             continue
@@ -59,6 +59,74 @@ def delete_faces_inside_holes(
         if loose_verts:
             bmesh.ops.delete(bm, geom=loose_verts, context="VERTS")
     return len(to_remove)
+
+
+def _cyclic_loop_edges(start_index: int, count: int) -> list[tuple[int, int]]:
+    """Build the N edges that close a closed loop of ``count`` verts.
+
+    Verts are assumed to be laid out contiguously in some flat coord
+    array starting at ``start_index``. Cyclic = last edge wraps to
+    the start.
+    """
+    return [(start_index + i, start_index + (i + 1) % count) for i in range(count)]
+
+
+def _build_cdt_inputs(
+    outer_world: list[tuple[float, float]],
+    inner_world: list[tuple[float, float]],
+    interior_points: list[tuple[float, float]],
+    holes: list[list[tuple[float, float]]],
+) -> tuple[list[tuple[float, float]], list[tuple[int, int]]]:
+    """Assemble the ``(coords, constraint_edges)`` CDT inputs.
+
+    Layout in the flat coord array:
+    ``outer + inner + interior + each_hole_in_order``.
+    Constraint edges close each contour loop in place.
+    """
+    outer_count = len(outer_world)
+    inner_count = len(inner_world)
+    all_coords: list[tuple[float, float]] = (
+        list(outer_world) + list(inner_world) + list(interior_points)
+    )
+    edges_constraint = _cyclic_loop_edges(0, outer_count)
+    if inner_count >= 3:
+        edges_constraint.extend(_cyclic_loop_edges(outer_count, inner_count))
+    hole_offset = len(all_coords)
+    for hole in holes:
+        if len(hole) < 3:
+            continue
+        all_coords.extend(hole)
+        edges_constraint.extend(_cyclic_loop_edges(hole_offset, len(hole)))
+        hole_offset += len(hole)
+    return all_coords, edges_constraint
+
+
+def _commit_cdt_faces(
+    bm: bmesh.types.BMesh,
+    out_verts: list[tuple[float, float]],
+    out_faces: list[list[int]],
+) -> int:
+    """Materialize CDT-output verts + faces into the bmesh.
+
+    Returns count of successfully added faces. ``bm.faces.new`` raises
+    ``ValueError`` on degenerate / duplicate-edge faces; we swallow
+    and log up to 5 per call so the operator never aborts mid-build.
+    """
+    bm_verts = [bm.verts.new((v[0], 0.0, v[1])) for v in out_verts]
+    bm.verts.ensure_lookup_table()
+    added = 0
+    failed = 0
+    for face in out_faces:
+        try:
+            bm.faces.new([bm_verts[i] for i in face])
+            added += 1
+        except ValueError as exc:
+            failed += 1
+            if failed <= 5:
+                print(f"[automesh] face skipped ({exc}): indices={face}")
+    if failed:
+        print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
+    return added
 
 
 def build_mesh_via_delaunay(
@@ -88,49 +156,26 @@ def build_mesh_via_delaunay(
       without "this edge exists" exceptions.
 
     Returns the count of faces added.
+
+    Delaunay output_type enum (BLI_delaunay_2d.h):
+        0 CDT_FULL                                 - convex hull triangulation
+        1 CDT_INSIDE                                - triangles enclosed by constraints
+        2 CDT_INSIDE_WITH_HOLES                     - like 1 + auto-detect holes
+        3 CDT_CONSTRAINTS                           - ONLY constraint edges (no fill)
+        4 CDT_CONSTRAINTS_VALID_BMESH               - like 3 + bmesh-valid
+        5 CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES    - like 4 + holes
+
+    PR #51 smoke caught the bug: we were using 4 / 5 which omit
+    interior triangulation entirely. Use 1 / 2 to get the full
+    Delaunay fill of the constrained region.
     """
-    outer_count = len(outer_world)
-    inner_count = len(inner_world)
-    if outer_count < 3:
+    if len(outer_world) < 3:
         return 0
     holes = list(holes_world) if holes_world else []
-
-    all_coords: list[tuple[float, float]] = (
-        list(outer_world) + list(inner_world) + list(interior_points)
+    all_coords, edges_constraint = _build_cdt_inputs(
+        outer_world, inner_world, interior_points, holes
     )
-    edges_constraint: list[tuple[int, int]] = []
-    for i in range(outer_count):
-        edges_constraint.append((i, (i + 1) % outer_count))
-    if inner_count >= 3:
-        inner_offset = outer_count
-        for i in range(inner_count):
-            edges_constraint.append((inner_offset + i, inner_offset + (i + 1) % inner_count))
-    # Append every alpha hole as a closed constraint loop. CDT's
-    # output_type=2 detects nested loops automatically; orientation
-    # does not matter for hole detection.
-    hole_offset = len(all_coords)
-    for hole in holes:
-        if len(hole) < 3:
-            continue
-        start = hole_offset
-        all_coords.extend(hole)
-        for i in range(len(hole)):
-            edges_constraint.append((start + i, start + (i + 1) % len(hole)))
-        hole_offset += len(hole)
-
-    # Delaunay output_type enum (BLI_delaunay_2d.h):
-    #   0 CDT_FULL: convex hull triangulation
-    #   1 CDT_INSIDE: triangles enclosed by constraints
-    #   2 CDT_INSIDE_WITH_HOLES: like 1 + auto-detect holes
-    #   3 CDT_CONSTRAINTS: ONLY constraint edges (no fill - bug we hit)
-    #   4 CDT_CONSTRAINTS_VALID_BMESH: like 3 + bmesh-valid
-    #   5 CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES: like 4 + holes
-    #
-    # PR #51 smoke caught the bug: we were using 4 / 5 which omit
-    # interior triangulation entirely, so the resulting mesh had
-    # verts + boundary edges but NO faces. Use 1 / 2 to get the
-    # full Delaunay fill of the constrained region.
-    output_type = 2 if (inner_count >= 3 or holes) else 1
+    output_type = 2 if (len(inner_world) >= 3 or holes) else 1
     result = mathutils.geometry.delaunay_2d_cdt(
         all_coords,
         edges_constraint,
@@ -140,25 +185,9 @@ def build_mesh_via_delaunay(
         True,
     )
     out_verts, _out_edges, out_faces, _orig_v, _orig_e, _orig_f = result
-
     print(
         f"[automesh] delaunay output_type={output_type} "
         f"input={len(all_coords)}v/{len(edges_constraint)}e "
         f"output={len(out_verts)}v/{len(out_faces)}f"
     )
-
-    bm_verts = [bm.verts.new((v[0], 0.0, v[1])) for v in out_verts]
-    bm.verts.ensure_lookup_table()
-    added = 0
-    failed = 0
-    for face in out_faces:
-        try:
-            bm.faces.new([bm_verts[i] for i in face])
-            added += 1
-        except ValueError as exc:
-            failed += 1
-            if failed <= 5:
-                print(f"[automesh] face skipped ({exc}): indices={face}")
-    if failed:
-        print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
-    return added
+    return _commit_cdt_faces(bm, out_verts, out_faces)

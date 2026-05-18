@@ -101,19 +101,11 @@ SPRITE_BOUNDS: dict[str, SpriteInvariants] = {
 }
 
 
-def check_invariants(
-    metrics: dict[str, object],
-    bounds: SpriteInvariants | None,
-) -> dict[str, object]:
-    """Assert critical invariants per sprite + collect warning messages.
+def _check_topology_critical(metrics: dict[str, object]) -> tuple[list[str], list[str]]:
+    """Topology-only invariants - run for every sprite (no bounds needed).
 
-    Returns ``{"failures": [...], "warnings": [...]}`` so the caller
-    can decide PASS / FAIL based on failures + bubble warnings into
-    the report without aborting.
-
-    When ``bounds`` is None (sprite not in SPRITE_BOUNDS), only the
-    "mesh has faces / triangles / no degenerate / UVs in range"
-    invariants run - no per-sprite tolerance enforcement.
+    Returns ``(failures, warnings)`` from the four cheapest checks
+    (faces > 0, triangles > 0, no degenerate, UVs in [0,1]).
     """
     failures: list[str] = []
     warnings: list[str] = []
@@ -130,17 +122,32 @@ def check_invariants(
         warnings.append(f"{metrics['degenerate_triangles']} degenerate triangles")
     if metrics["uv_out_of_range_loops"]:
         warnings.append(f"{metrics['uv_out_of_range_loops']} UV loops outside [0,1]")
-    if bounds is None:
-        return {"failures": failures, "warnings": warnings}
+    return failures, warnings
+
+
+def _check_count_bounds(
+    metrics: dict[str, object], bounds: SpriteInvariants
+) -> list[str]:
+    """Vert + face count must fall inside the per-sprite [min, max] bands."""
+    failures: list[str] = []
     verts = metrics["verts"]
     if isinstance(verts, int):
         lo, hi = bounds.verts
         if not lo <= verts <= hi:
             failures.append(f"vert count {verts} outside expected [{lo}, {hi}]")
+    faces = metrics["faces"]
     if isinstance(faces, int):
         lo, hi = bounds.faces
         if not lo <= faces <= hi:
             failures.append(f"face count {faces} outside expected [{lo}, {hi}]")
+    return failures
+
+
+def _check_coverage_and_bleed(
+    metrics: dict[str, object], bounds: SpriteInvariants
+) -> list[str]:
+    """Per-pixel coverage + hole bleed bounds (the alpha invariants)."""
+    failures: list[str] = []
     coverage = metrics["coverage_pct"]
     if not isinstance(coverage, float):
         failures.append(
@@ -158,4 +165,25 @@ def check_invariants(
             f"hole bleed {bleed} above maximum {bounds.max_hole_bleed} "
             f"(mesh covers transparent pixels - hole-aware CDT failed)"
         )
+    return failures
+
+
+def check_invariants(
+    metrics: dict[str, object],
+    bounds: SpriteInvariants | None,
+) -> dict[str, object]:
+    """Assert critical invariants per sprite + collect warning messages.
+
+    Returns ``{"failures": [...], "warnings": [...]}`` so the caller
+    can decide PASS / FAIL based on failures + bubble warnings into
+    the report without aborting.
+
+    When ``bounds`` is None (sprite not in SPRITE_BOUNDS), only the
+    topology invariants run - no per-sprite tolerance enforcement.
+    """
+    failures, warnings = _check_topology_critical(metrics)
+    if bounds is None:
+        return {"failures": failures, "warnings": warnings}
+    failures.extend(_check_count_bounds(metrics, bounds))
+    failures.extend(_check_coverage_and_bleed(metrics, bounds))
     return {"failures": failures, "warnings": warnings}

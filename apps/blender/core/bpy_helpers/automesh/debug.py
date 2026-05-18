@@ -59,12 +59,16 @@ def clear_debug_objects(sprite_obj: Object, stage: str | None = None) -> int:
     """
     prefix = f"{sprite_obj.name}_debug_"
     target_name = _debug_object_name(sprite_obj, stage) if stage else None
+    # Two-phase delete: collect matching objects first, then remove
+    # them. Removing during iteration mutates ``bpy.data.objects``
+    # and would skip elements / crash on the live iterator.
+    to_remove = [
+        obj
+        for obj in bpy.data.objects
+        if obj.name.startswith(prefix) and (target_name is None or obj.name == target_name)
+    ]
     removed = 0
-    for obj in list(bpy.data.objects):
-        if not obj.name.startswith(prefix):
-            continue
-        if target_name is not None and obj.name != target_name:
-            continue
+    for obj in to_remove:
         mesh = obj.data
         bpy.data.objects.remove(obj, do_unlink=True)
         if mesh is not None and mesh.users == 0:

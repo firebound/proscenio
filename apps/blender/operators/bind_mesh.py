@@ -100,9 +100,10 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        if self.use_bone_heat:
-            return self._delegate_to_bone_heat(context, armature)
-
+        # D11 contract: ALL bind paths (planar + bone-heat opt-in) get
+        # the 5 pre-flight checks. Bone-heat fails for the same reasons
+        # our diagnoses catch + the raw Blender error is cryptic; honour
+        # "never raw stack trace" by aborting early with our hints.
         findings = collect_diagnoses_for_object(obj, armature)
         errors = [f for f in findings if f.severity == "error"]
         warns = [f for f in findings if f.severity == "warn"]
@@ -112,6 +113,9 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             return {"CANCELLED"}
         for finding in warns:
             report_info(self, f"{finding.message} - {finding.hint}")
+
+        if self.use_bone_heat:
+            return self._delegate_to_bone_heat(context, armature)
 
         try:
             counters = apply_bind(
@@ -130,6 +134,11 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
                 self,
                 f"{counters['orphan_verts']} verts have no bone in range - "
                 "increase max_distance or move armature closer",
+            )
+        if counters["groups_wiped"] > 0:
+            report_info(
+                self,
+                f"removed {counters['groups_wiped']} non-base vertex group(s) before bind",
             )
         report_info(
             self,

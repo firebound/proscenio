@@ -15,7 +15,7 @@ from pathlib import Path
 import bpy
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 ADDON_PATH = REPO_ROOT / "apps" / "blender"
 ADDON_PACKAGE = "proscenio"
 FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.blend"

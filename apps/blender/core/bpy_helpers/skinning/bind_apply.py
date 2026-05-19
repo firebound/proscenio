@@ -56,14 +56,20 @@ def _bone_segments_xz(
 
 
 def _adaptive_max_distance(armature: bpy.types.Object) -> float:
-    """1.5 * max extent of the armature's world-space bbox."""
+    """1.5 * max extent of the armature's deform-bone world-space bbox.
+
+    Only deform bones count - control bones (IK targets, helpers) can sit
+    far from the mesh and would inflate the extent past anything useful
+    to a proximity bind.
+    """
     matrix_world = armature.matrix_world
-    if not armature.data.bones:
+    deform_bones = [b for b in armature.data.bones if b.use_deform]
+    if not deform_bones:
         return 1.0
     xs: list[float] = []
     ys: list[float] = []
     zs: list[float] = []
-    for bone in armature.data.bones:
+    for bone in deform_bones:
         for point in (matrix_world @ bone.head_local, matrix_world @ bone.tail_local):
             xs.append(point.x)
             ys.append(point.y)
@@ -104,19 +110,18 @@ def apply_bind(
     ``bones_used`` (count of bones in armature deform set).
     """
     bone_segments = _bone_segments_xz(armature)
-    effective_max = (
-        max_distance
-        if max_distance >= 0.0
-        else _adaptive_max_distance(armature)
-    )
+    effective_max = max_distance if max_distance >= 0.0 else _adaptive_max_distance(armature)
     effective_radii = (
-        envelope_radii
-        if envelope_radii is not None
-        else _collect_envelope_radii(armature)
+        envelope_radii if envelope_radii is not None else _collect_envelope_radii(armature)
     )
 
+    # Coord-space contract: bones come out of _bone_segments_xz already
+    # in world XZ (matrix_world applied). Verts must match - using raw
+    # v.co would be local-space and distort every distance when the
+    # mesh has any transform (location / rotation / scale).
     mesh = obj.data
-    vert_positions_xz = [(v.co.x, v.co.z) for v in mesh.vertices]
+    obj_world = obj.matrix_world
+    vert_positions_xz = [((obj_world @ v.co).x, (obj_world @ v.co).z) for v in mesh.vertices]
 
     weights = bind_weights_for_mode(
         mode,

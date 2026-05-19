@@ -256,7 +256,6 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 - **Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
 - **Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
 - **Bezier brush stroke for alpha-boundary trace.** Wave 13.2's free-draw alternative to the alpha-trace one-shot. Adds D1.B to the paradigm enum when real workflows demand it.
-- **Fixture builder -Y normals fix.** `scripts/fixtures/automesh/build_blend.py:_build_sprite_quad` emits quads with -Y face normals because the `from_pydata` corner order is read clockwise from +Y. Bind preflight rejects -Y normals (correctly), so `apps/blender/tests/operators/test_bind_mesh.py` works around this with a `_flip_normals_to_positive_y` helper. Real users hit +Y normals after running automesh (`bmesh.ops.recalc_face_normals`). Fix: reverse face winding in `_build_sprite_quad` (or call `bmesh.ops.recalc_face_normals` before saving), regenerate `automesh.blend`, drop the helper from the test file. Trigger: any time the fixture is regenerated, or when adding new operator tests that bind to fresh sprite quads.
 
 ## Wave 13.4 - aspirational
 
@@ -273,7 +272,8 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 | post-merge | Wave 13.2 cleanup feature added | Sonar warnings + cognitive-complexity drift surfaced during PR review iteration; foundation needs cleanup before bind / paint / sidecar build on top |
 | post-merge | Wave 13.2 interactive modal feature added | User reflection: one-shot produces over-dense meshes for simple sprites + no in-flight course correction; modal lifts each existing debug stage to interactive user-facing preview |
 | post-merge | Wave numbering deflattened (dropped 13.1.a / 13.1.b / 13.1.c …) | Sub-letter scheme got noisy fast; each wave now holds named features. Commit history retains old labels for PR #51 work |
-| post-merge (Wave 13.2 bind) | Wave 13.2 bind shipped; bind-design.md spec + plan linked; Wave 13.3 fixture-builder followup added | Headless operator pytest pattern proven; fixture quad winding wart surfaced + workarounded in tests, real fix deferred to 13.3 |
+| post-merge (Wave 13.2 bind) | Wave 13.2 bind shipped; bind-design.md spec + plan linked | Headless operator pytest pattern proven |
+| post-merge (Wave 13.2 bind) | diagnose_flipped_normals convention inverted (Y>=0 = flipped, was Y<=0); `_flip_normals_to_positive_y` workaround removed from headless test | Proscenio Front Ortho convention: camera at -Y looking +Y; sprite "facing camera" = normal in -Y. Verified against automesh output (432/432 faces at Y=-1). Original assumption (+Y = correct) was inverted; fixture builder is NOT buggy, was the diagnose check |
 
 ## Out of scope (permanently)
 

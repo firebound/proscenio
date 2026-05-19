@@ -26,7 +26,13 @@ BoneSegment3D = tuple[Vec3, Vec3, str]
 _SCALE_EPS = 1e-4
 _OVERLAP_EPS = 1e-5
 _NORMAL_FLIP_EPS = 0.0
-"""Y component <= 0 counts as flipped on the picture plane."""
+"""Y component >= 0 counts as flipped on the picture plane.
+
+Proscenio convention: sprites face the camera in Blender's Front Ortho
+view (numpad 1, camera at -Y looking toward +Y). A sprite "facing the
+camera" therefore has its face normal in the -Y direction (Y < 0).
+Verified against ``automesh_from_sprite`` output: 100% of generated
+faces land at Y == -1.0 post-CDT + recalc_face_normals."""
 
 
 @dataclass(frozen=True)
@@ -52,15 +58,20 @@ def diagnose_scale(scale_xyz: Vec3) -> BindDiagnosis | None:
 
 
 def diagnose_flipped_normals(face_normals: list[Vec3]) -> BindDiagnosis | None:
-    """Error when any face normal points into the picture (Y <= 0)."""
-    flipped = sum(1 for n in face_normals if n[1] <= _NORMAL_FLIP_EPS)
+    """Error when any face normal points away from the camera (Y >= 0).
+
+    Proscenio sprites face the camera in Front Ortho = normal in -Y.
+    Anything at Y >= 0 is back-facing, which on a 2D picture plane
+    means the sprite is invisible to the user. See ``_NORMAL_FLIP_EPS``.
+    """
+    flipped = sum(1 for n in face_normals if n[1] >= _NORMAL_FLIP_EPS)
     if flipped == 0:
         return None
     return BindDiagnosis(
         kind="normals",
         severity="error",
-        message=f"{flipped}/{len(face_normals)} face normals point into picture plane",
-        hint="select all + Mesh -> Normals -> Recalculate Outside",
+        message=f"{flipped}/{len(face_normals)} face normals point away from camera",
+        hint="select all + Mesh -> Normals -> Recalculate Outside (or Flip)",
     )
 
 

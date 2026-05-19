@@ -4,30 +4,8 @@ from __future__ import annotations
 
 import json
 
-import bmesh
 import bpy
 import pytest
-
-
-def _flip_normals_to_positive_y(obj: bpy.types.Object) -> None:
-    """Force every face on a sprite quad to face +Y.
-
-    The automesh fixture's ``from_pydata`` quads come out with -Y
-    normals (Blender's ngon winding interprets the (-,-,+,-) corner
-    order as clockwise from +Y). The bind operator's preflight
-    rejects -Y normals because they signal a sprite facing away
-    from the camera. Real users hit +Y normals after running automesh
-    first (``bmesh.ops.recalc_face_normals``); the test fixture
-    skips that step so the test setup mirrors it here.
-    """
-    bm = bmesh.new()
-    try:
-        bm.from_mesh(obj.data)
-        bmesh.ops.reverse_faces(bm, faces=list(bm.faces))
-        bm.to_mesh(obj.data)
-    finally:
-        bm.free()
-    obj.data.update()
 
 
 def _activate(name: str) -> bpy.types.Object:
@@ -36,7 +14,6 @@ def _activate(name: str) -> bpy.types.Object:
     for other in bpy.context.selected_objects:
         other.select_set(False)
     obj.select_set(True)
-    _flip_normals_to_positive_y(obj)
     return obj
 
 

@@ -34,15 +34,18 @@ def test_diagnose_scale_within_eps_passes():
     assert diagnose_scale((1.00005, 0.99995, 1.0)) is None
 
 
-def test_diagnose_normals_all_up_returns_none():
-    assert diagnose_flipped_normals([(0.0, 1.0, 0.0), (0.0, 1.0, 0.0)]) is None
+def test_diagnose_normals_all_facing_camera_returns_none():
+    # Proscenio convention: -Y = facing camera (Front Ortho). Correct state.
+    assert diagnose_flipped_normals([(0.0, -1.0, 0.0), (0.0, -1.0, 0.0)]) is None
 
 
-def test_diagnose_normals_any_flipped_returns_error():
-    d = diagnose_flipped_normals([(0.0, 1.0, 0.0), (0.0, -1.0, 0.0)])
+def test_diagnose_normals_any_back_facing_returns_error():
+    # Mixed: one good (-Y), one bad (+Y). Operator must abort.
+    d = diagnose_flipped_normals([(0.0, -1.0, 0.0), (0.0, 1.0, 0.0)])
     assert d is not None
     assert d.kind == "normals"
     assert d.severity == "error"
+    assert "1/2" in d.message
 
 
 def test_diagnose_overlap_no_pairs_returns_none():

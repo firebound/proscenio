@@ -27,11 +27,17 @@ _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5
 
 
-def _wipe_non_base_groups(obj: bpy.types.Object) -> None:
-    """Remove every vertex group except the UV-anchor base sprite group."""
+def _wipe_non_base_groups(obj: bpy.types.Object) -> int:
+    """Remove every vertex group except the UV-anchor base sprite group.
+
+    Returns the number of groups removed. Operator surfaces it when > 0
+    so users notice manually-painted groups (e.g. ``extra_decoration``)
+    that bind discards.
+    """
     to_remove = [g for g in obj.vertex_groups if g.name != _BASE_SPRITE_GROUP]
     for group in to_remove:
         obj.vertex_groups.remove(group)
+    return len(to_remove)
 
 
 def _bone_segments_xz(
@@ -121,7 +127,14 @@ def apply_bind(
         envelope_radii=effective_radii,
     )
 
-    _wipe_non_base_groups(obj)
+    # Atomicity: clear any prior sidecar BEFORE we wipe vertex groups.
+    # If a downstream write raises after the wipe, the user is left with
+    # empty groups + NO sidecar (fresh-seed state on next bind) instead
+    # of empty groups + stale sidecar pointing at the old topology, which
+    # the reproject wave would honour and seed bogus weights from.
+    if _SIDECAR_KEY in obj:
+        del obj[_SIDECAR_KEY]
+    groups_wiped = _wipe_non_base_groups(obj)
     for bone_name in weights:
         obj.vertex_groups.new(name=bone_name)
     for bone_name, per_vert_weights in weights.items():
@@ -148,4 +161,5 @@ def apply_bind(
         "orphan_verts": orphan_verts,
         "groups_created": len(weights),
         "bones_used": len(bone_segments),
+        "groups_wiped": groups_wiped,
     }

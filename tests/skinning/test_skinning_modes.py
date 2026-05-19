@@ -62,6 +62,20 @@ def test_envelope_inside_radius_full_outside_zero():
     assert out["A"] == [1.0, 0.0]
 
 
+def test_envelope_two_overlapping_bones_split_weight():
+    # vert at origin sits inside BOTH bone envelopes (radius 2.0 covers
+    # both bones at distance 0 and 1). Per-vert sum must = 1.0 (D5 +
+    # SPEC bind-design 119); each bone gets 0.5 (1/N share).
+    out = bind_weights_for_mode(
+        "ENVELOPE",
+        [(0.0, 0.0)],
+        [((0.0, 0.0), (0.0, 0.0), "A"), ((1.0, 0.0), (1.0, 0.0), "B")],
+        envelope_radii={"A": 2.0, "B": 2.0},
+    )
+    assert math.isclose(out["A"][0], 0.5)
+    assert math.isclose(out["B"][0], 0.5)
+
+
 def test_envelope_missing_radius_dict_defaults_zero():
     out = bind_weights_for_mode(
         "ENVELOPE",

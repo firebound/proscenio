@@ -70,14 +70,27 @@ def _envelope(
     bones: list[BoneSegmentNamed2D],
     radii: dict[str, float],
 ) -> dict[str, list[float]]:
+    """Per-vert weight 1/N across the N bones whose envelope covers it.
+
+    Spec ``bind-design.md:119`` requires per-vert normalization so a vert
+    inside K overlapping envelopes contributes weight 1.0 total (1/K to
+    each bone), not K. Without this, Blender's Auto-Normalize silently
+    rebalances at deform time and the user sees unpredictable weight
+    redistribution.
+    """
     out: dict[str, list[float]] = {name: [0.0] * len(verts) for _, _, name in bones}
     for vert_idx, vert in enumerate(verts):
+        hits: list[str] = []
         for head, tail, name in bones:
             if name not in radii:
                 continue
-            radius = radii[name]
-            if distance_to_segment(vert, (head, tail)) <= radius:
-                out[name][vert_idx] = 1.0
+            if distance_to_segment(vert, (head, tail)) <= radii[name]:
+                hits.append(name)
+        if not hits:
+            continue
+        share = 1.0 / len(hits)
+        for name in hits:
+            out[name][vert_idx] = share
     return out
 
 

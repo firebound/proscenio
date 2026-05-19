@@ -70,6 +70,28 @@ def test_from_json_rejects_wrong_version():
         from_json(payload)
 
 
+def test_from_json_rejects_bad_json():
+    import pytest
+
+    with pytest.raises(ValueError, match="invalid sidecar JSON"):
+        from_json("{not-json")
+
+
+def test_from_json_rejects_non_object_root():
+    import pytest
+
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        from_json("[1, 2, 3]")
+
+
+def test_from_json_rejects_missing_topology_hash():
+    import pytest
+
+    payload = json.dumps({"version": 1, "vertex_group_names": [], "entries": []})
+    with pytest.raises(ValueError, match="missing mesh_topology_hash"):
+        from_json(payload)
+
+
 def test_weight_sidecar_is_frozen():
     sidecar = WeightSidecar(
         version=1, vertex_group_names=["arm"], mesh_topology_hash="xyz", entries=[]

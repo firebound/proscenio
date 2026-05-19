@@ -41,9 +41,7 @@ def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str
     return hashlib.sha1(payload).hexdigest()
 
 
-def build_minimal_stub(
-    vertex_group_names: list[str], topology_hash: str
-) -> WeightSidecar:
+def build_minimal_stub(vertex_group_names: list[str], topology_hash: str) -> WeightSidecar:
     """Build the version-1 empty-entries stub bind writes."""
     return WeightSidecar(
         version=SIDECAR_VERSION,
@@ -59,13 +57,25 @@ def to_json(sidecar: WeightSidecar) -> str:
 
 
 def from_json(payload: str) -> WeightSidecar:
-    """Parse + validate version. Raises ValueError on version mismatch."""
-    data = json.loads(payload)
-    version = int(data.get("version", -1))
+    """Parse + validate version + structure. Always raises ValueError on failure.
+
+    Callers get one exception type to catch regardless of what went wrong
+    (bad JSON / non-object root / missing required field / wrong version).
+    """
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid sidecar JSON payload") from exc
+    if not isinstance(data, dict):
+        raise ValueError("sidecar payload must be a JSON object")
+    try:
+        version = int(data.get("version", -1))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("sidecar version is invalid") from exc
     if version != SIDECAR_VERSION:
-        raise ValueError(
-            f"sidecar version {version} unsupported (expected {SIDECAR_VERSION})"
-        )
+        raise ValueError(f"sidecar version {version} unsupported (expected {SIDECAR_VERSION})")
+    if "mesh_topology_hash" not in data:
+        raise ValueError("sidecar missing mesh_topology_hash")
     return WeightSidecar(
         version=version,
         vertex_group_names=list(data.get("vertex_group_names", [])),

@@ -141,6 +141,25 @@ Cheap to write, expensive to skip. In Python, raise `RuntimeError` at the bounda
 
 Golden-fixture tests for both writer and importer. Negative-case fixtures (intentionally invalid payloads) live alongside the positive ones and assert that the consumer surfaces the right error.
 
+### Headless operator pytest pattern
+
+Introduced by SPEC 013.2 Wave 13.2 bind. Use this layer when an operator's behavior depends on bpy state (vertex groups, custom properties, scene PG) that pure pytest cannot exercise.
+
+Layout:
+
+- Tests live under `apps/blender/tests/operators/<feature>.py`.
+- `apps/blender/tests/operators/conftest.py` mounts the addon as `proscenio`, calls `register()`, and provides the `automesh_fixture` fixture (fresh-loads `examples/generated/automesh/automesh.blend` per test).
+- `apps/blender/tests/run_operator_tests.py` is the CI entry: `blender --background --python apps/blender/tests/run_operator_tests.py` runs `pytest.main` on the operators dir.
+
+When a new operator needs this layer:
+
+1. Create `apps/blender/tests/operators/test_<operator>.py`.
+2. Use the `automesh_fixture` (or write a new fixture if a different .blend is needed).
+3. Assert against `bpy.data` / `bpy.context` state + the operator's return set. Note: `bpy.ops` raises `RuntimeError` when an operator reports `{"ERROR"}` and returns `{"CANCELLED"}` - use `pytest.raises(RuntimeError, match="...")` for tests that exercise the abort path.
+4. CI already runs every test in the operators dir - no workflow edits needed.
+
+Trade-off: each test pays the cost of loading the fixture .blend (~hundreds of ms). Keep tests focused; share setup via fixtures, not via test ordering.
+
 ## Versioning
 
 Three independent SemVer streams plus one integer schema version per cross-component format:

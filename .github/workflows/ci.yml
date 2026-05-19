@@ -110,6 +110,13 @@ jobs:
           ~/blender/blender --background \
             --python scripts/validate_automesh.py \
             -- --ci-only
+      - name: Install pytest into Blender's bundled Python
+        run: |
+          ~/blender/blender --background --python-expr "import ensurepip; ensurepip.bootstrap(); import subprocess, sys; subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pytest'])"
+      - name: Headless operator tests
+        run: |
+          ~/blender/blender --background \
+            --python apps/blender/tests/run_operator_tests.py
 
   test-godot:
     runs-on: ubuntu-latest

@@ -123,24 +123,31 @@ Sonar local + warnings emitted during PR #51 review iteration:
 
 Cost: ~1.5-2 days. Low risk thanks to validator + 313 pytest + headless fixture-diff gate.
 
-### Planar proximity bind (D4 + D5 + D11)
+### Planar proximity bind (D4 + D5 + D11) - SHIPPED on `feat/spec-013.2-bind`
 
 Bind a mesh to a bone chain via a custom planar-distance algorithm that never hits the bone-heat solver; surface structured diagnosis when something goes wrong.
 
-- `core/planar_proximity.py` (pure Python, bpy-free): per-vertex weights as `1 / distance_to_segment ^ falloff_power` normalized across bones, hard cutoff at configurable max distance. Default falloff_power = 2.0.
-- `core/bind_diagnosis.py`: pre-flight checks. Each returns `BindDiagnosis(kind, severity, message, hint)` covering unapplied scale, flipped normals, overlapping verts, isolated islands, bones outside mesh bbox.
-- `core/skinning_modes.py`: `BindMode = Literal["PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]` + `bind_weights_for_mode(mode, ...)` dispatcher.
-- `operators/bind_mesh.py`: `PROSCENIO_OT_bind_mesh_to_armature`. Reads `scene.proscenio.skinning.bind_init_mode`. F3 redo override. Armature source = picker (SPEC 012 D16); fails fast with structured guidance if picker unset.
-- Pre-flight runs before any weight calculation; severity `error` aborts with INFO report + suggested fix; severity `warn` continues.
-- Writes vertex groups via `obj.vertex_groups.new` + `vertex_groups[name].add(...)`. Always normalizes per-vertex sums to 1 (SPEC 003 D1 writer contract).
-- Sidecar capture hook (D6 foundation): immediately after bind, write `obj["proscenio_weight_sidecar"]` snapshot keyed by UV.
-- Optional `use_bone_heat` BoolProperty (default False) for users who insist; ungated in panel, F3 only per D4.
+Spec: [`bind-design.md`](bind-design.md).
+Plan: [`docs/superpowers/plans/2026-05-17-spec-013.2-bind.md`](../../docs/superpowers/plans/2026-05-17-spec-013.2-bind.md).
 
-Tests (pytest, bpy-free):
+What landed:
 
-- `tests/test_planar_proximity.py` - 4-vertex square + 1 bone gives weight 1.0; 2 equidistant bones give 0.5 / 0.5; bone outside max distance gives 0.
-- `tests/test_skinning_modes.py` - each enum case produces expected shape; EMPTY = zero-weights; SINGLE_NEAREST never emits weight on more than one bone per vertex.
-- `tests/test_bind_diagnosis.py` - SimpleNamespace mocks exercise each diagnosis kind.
+- Pure modules under `apps/blender/core/skinning/`: `planar_proximity.py` (1/dist^power normalized), `bind_diagnosis.py` (5 D11 pre-flight checks), `skinning_modes.py` (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY dispatcher), `sidecar_schema.py` (WeightSidecar stub + topology hash). 32 pure pytest tests covering them.
+- bpy-bound helpers under `apps/blender/core/bpy_helpers/skinning/`: `diagnose_collect.py` (KD-tree overlap above 1k verts) + `bind_apply.py` (vertex group write + sidecar JSON stamp).
+- Operator `apps/blender/operators/bind_mesh.py` -> `PROSCENIO_OT_bind_mesh_to_armature` with F3 properties (bind_init_mode / falloff_power / max_distance / use_bone_heat).
+- Sidecar stub: `obj["proscenio_weight_sidecar"]` JSON written atomically AFTER vertex groups succeed. Wave 13.2-sidecar wave populates `entries` later.
+- NEW test layer: headless operator pytest at `apps/blender/tests/operators/test_bind_mesh.py` (6 tests via `blender --background --python apps/blender/tests/run_operator_tests.py`). Pattern documented in `.ai/conventions.md` "Headless operator pytest pattern".
+- CI wired: `Headless operator tests` step added to `test-blender` job; pytest installed into Blender's bundled Python at job start.
+- MANUAL_TESTING.md gained one UI-only residue entry (1.20) for the panel button + F3 redo smoke; everything else covered headless.
+
+Out of scope (deferred):
+
+- Coverage report pipeline (pytest-cov + sonar push).
+- Hypothesis property-based testing.
+- ENVELOPE radii editor UI (Wave 13.2-paint owns it; bind alone exposes radii via per-bone `proscenio_envelope_radius` Custom Property + fallback 1.0).
+- Scene PropertyGroup persistence for bind_init_mode / falloff_power / max_distance (Wave 13.2-panel).
+- Sidecar `entries` population + reproject (Wave 13.2-sidecar).
+- BONE_HEAT BindMode enum value (bone-heat stays behind F3-only opt-in BoolProperty per D4).
 
 ### Weight paint modal wrapper (D7 + D8 + D9 + D10 + D12 + D14)
 
@@ -265,6 +272,8 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 | post-merge | Wave 13.2 cleanup feature added | Sonar warnings + cognitive-complexity drift surfaced during PR review iteration; foundation needs cleanup before bind / paint / sidecar build on top |
 | post-merge | Wave 13.2 interactive modal feature added | User reflection: one-shot produces over-dense meshes for simple sprites + no in-flight course correction; modal lifts each existing debug stage to interactive user-facing preview |
 | post-merge | Wave numbering deflattened (dropped 13.1.a / 13.1.b / 13.1.c …) | Sub-letter scheme got noisy fast; each wave now holds named features. Commit history retains old labels for PR #51 work |
+| post-merge (Wave 13.2 bind) | Wave 13.2 bind shipped; bind-design.md spec + plan linked | Headless operator pytest pattern proven |
+| post-merge (Wave 13.2 bind) | diagnose_flipped_normals convention inverted (Y>=0 = flipped, was Y<=0); `_flip_normals_to_positive_y` workaround removed from headless test | Proscenio Front Ortho convention: camera at -Y looking +Y; sprite "facing camera" = normal in -Y. Verified against automesh output (432/432 faces at Y=-1). Original assumption (+Y = correct) was inverted; fixture builder is NOT buggy, was the diagnose check |
 
 ## Out of scope (permanently)
 

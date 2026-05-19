@@ -18,6 +18,7 @@ Submodules:
 - quick_armature    - Quick Armature modal (5.1.d.3)
 - skeleton_target   - Set Proscenio active armature pointer (SPEC 012.2)
 - automesh          - PNG sprite -> annulus mesh (SPEC 013 Wave 13.1)
+- bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (SPEC 013.2 Wave 13.2)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -30,6 +31,7 @@ from . import (
     authoring_camera,
     authoring_ik,
     automesh,
+    bind_mesh,
     driver,
     export_flow,
     help_dispatch,
@@ -55,6 +57,7 @@ def register() -> None:
     skeleton_target.register()
     quick_armature.register()
     automesh.register()
+    bind_mesh.register()
     slot.register()
     atlas_pack.register()
     import_photoshop.register()
@@ -64,6 +67,7 @@ def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
     slot.unregister()
+    bind_mesh.unregister()
     automesh.unregister()
     quick_armature.unregister()
     skeleton_target.unregister()

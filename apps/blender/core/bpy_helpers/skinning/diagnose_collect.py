@@ -26,8 +26,12 @@ from ...skinning.bind_diagnosis import (
 if TYPE_CHECKING:
     from ...skinning.bind_diagnosis import BBox, BoneSegment3D, Vec3
 
-_KDTREE_THRESHOLD = 1000
-"""Vert count above which the KD-tree overlap check beats O(n^2)."""
+_KDTREE_THRESHOLD = 256
+"""Vert count above which the KD-tree overlap check beats O(n^2).
+
+256 is a 16x16 grid - typical automesh downsampled-grid output already
+crosses this. KD-tree is O(n log n) build + O(n log n) range query;
+worth paying the constant overhead even at moderate mesh sizes."""
 
 _KDTREE_RADIUS = 1e-5
 """Same epsilon as the pure overlap check (``_OVERLAP_EPS``)."""
@@ -59,7 +63,7 @@ def _mesh_world_bbox(obj: bpy.types.Object) -> BBox:
 
 
 def _overlap_pairs_kdtree(vert_positions: list[Vec3]) -> int:
-    """KD-tree pair count for large meshes (beats O(n^2) above ~1k verts)."""
+    """KD-tree pair count for meshes above _KDTREE_THRESHOLD verts."""
     tree = kdtree.KDTree(len(vert_positions))
     for index, pos in enumerate(vert_positions):
         tree.insert(pos, index)

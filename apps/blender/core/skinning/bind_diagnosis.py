@@ -78,7 +78,7 @@ def diagnose_overlapping_verts(
         ax, ay, az = vert_positions[i]
         for j in range(i + 1, count):
             bx, by, bz = vert_positions[j]
-            if math.hypot(ax - bx, math.hypot(ay - by, az - bz)) <= eps:
+            if math.hypot(ax - bx, ay - by, az - bz) <= eps:
                 pairs += 1
     if pairs == 0:
         return None

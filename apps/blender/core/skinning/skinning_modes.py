@@ -41,9 +41,7 @@ def bind_weights_for_mode(
     raise ValueError(f"unknown BindMode: {mode!r}")
 
 
-def _empty(
-    verts: list[Point2D], bones: list[BoneSegmentNamed2D]
-) -> dict[str, list[float]]:
+def _empty(verts: list[Point2D], bones: list[BoneSegmentNamed2D]) -> dict[str, list[float]]:
     return {name: [0.0] * len(verts) for _, _, name in bones}
 
 

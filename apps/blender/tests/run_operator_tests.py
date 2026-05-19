@@ -27,7 +27,7 @@ def main() -> int:
         print(
             "FAIL: pytest not installed in Blender's bundled Python. "
             "Install via: blender --background --python-expr "
-            "\"import ensurepip; ensurepip.bootstrap(); import subprocess, sys; "
+            '"import ensurepip; ensurepip.bootstrap(); import subprocess, sys; '
             "subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pytest'])\"",
             file=sys.stderr,
         )

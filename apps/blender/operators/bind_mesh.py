@@ -60,16 +60,14 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
     max_distance: FloatProperty(  # type: ignore[valid-type]
         name="Max distance",
         description=(
-            "Bones beyond this distance contribute zero. -1 = adaptive "
-            "(1.5x armature bbox)"
+            "Bones beyond this distance contribute zero. -1 = adaptive (1.5x armature bbox)"
         ),
         default=-1.0,
     )
     use_bone_heat: BoolProperty(  # type: ignore[valid-type]
         name="Use bone heat (legacy)",
         description=(
-            "OPT-IN ONLY (D4) - delegate to bpy.ops.object.parent_set"
-            "(ARMATURE_AUTO). Default OFF"
+            "OPT-IN ONLY (D4) - delegate to bpy.ops.object.parent_set(ARMATURE_AUTO). Default OFF"
         ),
         default=False,
     )

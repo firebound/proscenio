@@ -1,11 +1,12 @@
 """BindMode dispatcher (SPEC 013.2 bind, D5).
 
 Translates a chosen ``BindMode`` to a per-bone-per-vert weight
-matrix. PROXIMITY delegates to ``compute_proximity_weights`` per
-vert + transposes. SINGLE_NEAREST picks the nearest bone per vert
-(weight 1.0, tie-break = first in input order). ENVELOPE assigns
-weight 1.0 inside the bone's radius, 0.0 outside. EMPTY emits
-all-zero weights.
+matrix, or None for BONE_HEAT sentinel. PROXIMITY delegates to
+``compute_proximity_weights`` per vert + transposes. SINGLE_NEAREST
+picks the nearest bone per vert (weight 1.0, tie-break = first in
+input order). ENVELOPE assigns weight 1.0 inside the bone's radius,
+0.0 outside. EMPTY emits all-zero weights. BONE_HEAT signals the bpy
+caller to delegate to Blender's parent_set ARMATURE_AUTO instead.
 
 Pure Python: zero bpy import.
 """
@@ -17,7 +18,7 @@ from typing import Literal
 from ..automesh.density import distance_to_segment
 from .planar_proximity import BoneSegmentNamed2D, Point2D, compute_proximity_weights
 
-BindMode = Literal["PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]
+BindMode = Literal["BONE_HEAT", "PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]
 
 
 def bind_weights_for_mode(
@@ -28,8 +29,15 @@ def bind_weights_for_mode(
     falloff_power: float = 2.0,
     max_distance: float | None = None,
     envelope_radii: dict[str, float] | None = None,
-) -> dict[str, list[float]]:
-    """Per-bone list of per-vert weights. Dispatches by mode."""
+) -> dict[str, list[float]] | None:
+    """Per-bone list of per-vert weights, or None for BONE_HEAT sentinel.
+
+    BONE_HEAT signals the bpy caller to delegate to Blender's
+    parent_set ARMATURE_AUTO; pure module returns None and the caller
+    runs the bpy.ops branch instead of computing weights here.
+    """
+    if mode == "BONE_HEAT":
+        return None
     if mode == "EMPTY":
         return _empty(vert_positions_xz, bone_segments)
     if mode == "SINGLE_NEAREST":

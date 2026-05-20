@@ -434,7 +434,7 @@ Mapping current state to first-cut patterns above:
 The SPEC splits into five concerns:
 
 1. **Mesh generation (automesh).** Pure-Python alpha-contour walker (Moore neighbour or marching squares on `bpy.types.Image.pixels` buffer - no OpenCV) builds outer + inner contour + annulus triangulation. Configurable resolution, alpha threshold, margin. Re-runnable with `coa_base_sprite`-style preservation anchor.
-2. **Bone binding + initial weights.** Custom planar-distance falloff algorithm (NOT bone heat). Takes the active mesh + the active armature picker's target, walks the bone chain, creates one vertex group per bone, seeds with planar proximity weights. Fallback to "empty groups" and "1.0 to single nearest" modes. Pre-flight checks before any call to vanilla `parent_with_automatic_weights` (kept as fallback only on explicit user request).
+2. **Bone binding + initial weights.** AMENDED Wave 13.2-panel: default is now Blender's native bone heat (`parent_with_automatic_weights`) - 2D pickers with bones tangent to the picture plane don't hit the failure mode D4 originally guarded against, and bone heat produces visibly better falloff. Proscenio's custom planar-distance falloff algorithm + envelope + single-nearest + empty modes remain available as opt-in fallbacks via the `bind_init_mode` enum (panel dropdown + F3 redo). Pre-flight diagnoses (D11) run before EVERY bind path including BONE_HEAT. See D4 / D5 amendments.
 3. **Weight paint modal wrapper.** One-button enter / exit. On invoke: snapshot vertex groups, force 2D-safe brush preset (Front Faces Only off, 2D Falloff on, brush radius in screen pixels), enable Auto Normalize, switch armature to POSE + mesh to WEIGHT_PAINT, auto-select vertex group matching first selected bone. Custom GPU overlay (colorband discs per vertex, lifted from COA2). On exit: restore everything. ESC = hard exit. Tablet RELEASE detection via `event.pressure==0` + `WINDOW_DEACTIVATE` + timer fallback.
 4. **Iteration loop (weight preservation).** Sidecar JSON stored on the mesh object as `obj["proscenio_weight_sidecar"]` (raw Custom Property, durable through addon disable). Captures (a) vertex group names, (b) per-vertex weights keyed by alpha-stable UV anchors (not vertex indices), (c) mesh-data-hash baseline. On automesh regen: detect topology change, reproject sidecar onto new vertices via nearest-UV-neighbour interpolation, emit "weight provenance" report (X paint vertices restored, Y new vertices seeded from proximity falloff). Vertex provenance overlay distinguishes the three sources visually.
 5. **Subpanel + operator surface.** New `Skinning` subpanel parallel to `Skeleton` in the Proscenio sidebar. Buttons: `Automesh from Sprite`, `Bind to Picker Armature`, `Edit Weights` (modal wrapper), `Mirror Weights`, `Restore Snapshot`. Header pill shows picker armature + current bind mode + 2D paint preset status.
@@ -522,8 +522,8 @@ Lives at `scene.proscenio.skinning`. Naming pattern parallel to `scene.proscenio
 | D1 | Automesh paradigm | **A** alpha-trace one-shot (pure-Python, no OpenCV) | 1 |
 | D2 | Mesh topology shape | **B** annulus (outer + inner contour + triangle_fill) | 1 |
 | D3 | Mesh data preservation anchor | **A** `proscenio_base_sprite` vertex group | 1 |
-| D4 | Bone heat solver usage | **C** explicit user opt-in only, NEVER default | 1 |
-| D5 | Initial bind algorithm default | **C** planar proximity falloff (custom, NOT bone heat) | 1 |
+| D4 | Bone heat solver usage | **C** explicit user opt-in only, NEVER default (AMENDED Wave 13.2-panel: BONE_HEAT now allowed as default for 2D pickers) | 1 |
+| D5 | Initial bind algorithm default | **C** planar proximity falloff (AMENDED Wave 13.2-panel: BONE_HEAT becomes default; planar proximity demoted to fallback) | 1 |
 | D6 | Weight preservation through mesh regen | **A** sidecar JSON keyed by UV anchors + auto-reproject | 1 |
 | D7 | Weight paint modal wrapper | **A** one-button enter / exit, auto-restore on exit + crash | 1 |
 | D8 | 2D paint preset application | **A** auto-apply on Edit Weights modal enter, header pill visible | 1 |
@@ -572,6 +572,8 @@ Each section below preserves the option set + rationale for posterity.
 
 **Locked: D4.C.** Bone heat fails on the exact topology Proscenio targets (planar 2D meshes). Every survey signal (Stack Exchange #1 question, T45493, T70834, T37685) confirms this. Defaulting to it would replicate the worst pain in vanilla Blender 2D rigging. Power users who *want* bone heat for specific topology can opt in via the F3 redo or by switching `bind_init_mode` to a future "BONE_HEAT" enum value (currently not even an option in D5). The right default is planar proximity (D5.C).
 
+**Amended (Wave 13.2-panel, 2026-05-20):** BONE_HEAT is now allowed as the DEFAULT bind mode for the 2D picker workflow. Original D4 was guarding against COA Tools 2's bone-heat failure mode for 3D characters; that failure mode does not apply when bones are tangent to the sprite picture plane (the common 2D case). Real-world manual smoke on PR #54 showed Blender's bone heat produces visibly better falloff than our planar proximity (which spreads weight across all bones in range, washing out gradients). Proscenio's PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY modes remain available as F3-redo + panel-dropdown opt-in fallbacks for cases where bone heat fails or finer control is needed. The 5 D11 pre-flight diagnoses still run before EVERY bind path including BONE_HEAT.
+
 ### D5 - Initial bind algorithm default
 
 - D5.A - Empty vertex groups only. User paints from zero.
@@ -581,6 +583,8 @@ Each section below preserves the option set + rationale for posterity.
 - D5.E - Single nearest. 1.0 weight to the closest bone per vertex (hard binding).
 
 **Locked: D5.C as default, D5.A / D5.B / D5.E offered via `bind_init_mode` enum, D5.D dropped from defaults per D4.** Planar proximity is the algorithm Animate uses (proximity-based) and DragonBones uses ("relative position"); it is robust on planar meshes by construction, gives sane initial weights for most rigs, and degrades gracefully (worst case: bones far from mesh get 0 weight, which is correct). Envelope (D5.B) is reasonable as a "more rigid" alternative for cutout-style rigs where bleed between body parts is undesired. Empty (D5.A) and Single Nearest (D5.E) cover the manual-paint and hard-binding cases respectively. Bone heat dropped from defaults per D4.
+
+**Amended (Wave 13.2-panel, 2026-05-20):** D5.D (bone heat) is now ADDED to the `bind_init_mode` enum AND becomes the default per the D4 amendment. The "known to fail on planar meshes" claim was specific to COA Tools 2's 3D-character bone-heat use case; for 2D pickers with bones tangent to the picture plane, Blender's bone heat produces visibly better falloff than D5.C (planar proximity). New default ordering: D5.D (BONE_HEAT) default; D5.C (PROXIMITY) / D5.B (ENVELOPE) / D5.E (SINGLE_NEAREST) / D5.A (EMPTY) remain available as opt-in fallbacks via the panel dropdown + F3 redo. See D4 amendment for the trigger event (PR #54 manual smoke).
 
 ### D6 - Weight preservation through mesh regen
 

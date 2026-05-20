@@ -103,3 +103,14 @@ def test_invalid_mode_raises():
             [(0.0, 0.0)],
             [((0.0, 0.0), (0.0, 0.0), "A")],
         )
+
+
+def test_bone_heat_mode_returns_none():
+    # BONE_HEAT is a sentinel; bpy caller delegates to Blender's
+    # parent_set ARMATURE_AUTO instead of computing weights here.
+    out = bind_weights_for_mode(
+        "BONE_HEAT",
+        [(0.0, 0.0)],
+        [((0.0, 0.0), (0.0, 0.0), "A")],
+    )
+    assert out is None

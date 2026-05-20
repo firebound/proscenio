@@ -16,8 +16,8 @@ Sub-letter numbering (13.1.a / 13.1.b / 13.1.c …) was tried in iteration and g
 - [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
 - [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1, hole support):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
 - [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
-- [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. No default-bind code path may call `parent_with_automatic_weights` blind.
-- [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY (no BONE_HEAT in first cut).
+- [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. **Amended (Wave 13.2-panel):** BONE_HEAT now allowed as default for 2D pickers; D11 pre-flight still runs before every bind path. See STUDY.md D4 amendment for trigger.
+- [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY. **Amended (Wave 13.2-panel):** enum gains BONE_HEAT as 5th value AND becomes the default; planar proximity demoted to fallback per D4 amendment.
 - [ ] D6 - weight preservation through mesh regen = sidecar JSON keyed by UV anchors + auto-reproject on regen + visible provenance overlay.
 - [ ] D7 - weight paint modal wrapper = one-button enter / exit, auto-restore on exit + crash; lift COA2 `COATOOLS2_OT_EditWeights` pattern (fixed: Bone Collections instead of `bone.hide` global, `try/finally` restore, ESC hard-exit).
 - [ ] D8 - 2D paint preset = auto-apply on modal enter (`Front Faces Only=False`, `Falloff=Projected`, brush radius in screen px, `Auto Normalize=True`); header pill "2D paint preset: ON".
@@ -147,7 +147,6 @@ Out of scope (deferred):
 - ENVELOPE radii editor UI (Wave 13.2-paint owns it; bind alone exposes radii via per-bone `proscenio_envelope_radius` Custom Property + fallback 1.0).
 - Scene PropertyGroup persistence for bind_init_mode / falloff_power / max_distance (Wave 13.2-panel).
 - Sidecar `entries` population + reproject (Wave 13.2-sidecar).
-- BONE_HEAT BindMode enum value (bone-heat stays behind F3-only opt-in BoolProperty per D4).
 
 ### Weight paint modal wrapper (D7 + D8 + D9 + D10 + D12 + D14)
 
@@ -186,18 +185,29 @@ Tests (pytest, bpy-free):
 
 Sprite-changed-in-Photoshop workflow (from PR #51 smoke discussion) is exactly this feature: artist edits PNG, re-exports, automesh regen reprojects weights via UV anchors instead of forcing manual repaint.
 
-### PropertyGroup + Skinning panel (D13)
+### PropertyGroup + Skinning panel (D13) - SHIPPED on `feat/spec-013.2-panel`
 
-- `properties/scene_props.py`: `ProscenioSkinningProps` PropertyGroup. Pointer wired on `ProscenioSceneProps.skinning`.
-- `panels/skinning.py`: `PROSCENIO_PT_skinning` subpanel parallel to `PROSCENIO_PT_skeleton`. Layout:
-  - "Picker armature" row (mirror of Skeleton picker, read-only).
-  - "Automesh" sub-box: resolution / alpha threshold / margin / density-under-bones + `Automesh from Sprite` button.
-  - "Bind" sub-box: `bind_init_mode` dropdown + `Bind to Picker Armature` button.
-  - "Edit Weights" sub-box: 2D preset toggle + `Edit Weights` button.
-  - "Snapshot" sub-box: preserve-on-regen toggle + `Restore Snapshot` button + sidecar provenance counts.
-- Panel polling: only show when active object is mesh-type. Warn when picker is unset.
-- Operator buttons disabled with tooltip when prerequisites unmet.
-- F3 search discoverability: all 5 operators registered with descriptive `bl_label`.
+Wave 13.2-panel: Bind sub-box landed in the existing `PROSCENIO_PT_skinning` panel; bind operator pivots to BONE_HEAT default (D4 amendment).
+
+Spec: [`panel-design.md`](panel-design.md).
+Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-panel.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-panel.md).
+
+What landed:
+
+- `ProscenioSkinningProps` gains `bind_init_mode` (5-value enum, default BONE_HEAT) + `bind_falloff_power` + `bind_max_distance`. Settings persist across `.blend` reloads.
+- `BindMode` literal gains `BONE_HEAT` value. `bind_weights_for_mode` returns None for BONE_HEAT (sentinel for the bpy caller to delegate to Blender).
+- `apply_bind` dispatches to `_apply_bone_heat` (delegates to `bpy.ops.object.parent_set(ARMATURE_AUTO)`) when mode is BONE_HEAT; same counters shape + sidecar JSON as the algorithm path.
+- `PROSCENIO_OT_bind_mesh_to_armature` removes `use_bone_heat` BoolProperty, expands enum, adds `invoke()` reading PG defaults, surfaces "try PROXIMITY as fallback" hint when bone heat fails.
+- `PROSCENIO_PT_skinning` gains `_draw_bind_box` helper between Automesh and Debug sub-boxes. Mode dropdown + button; button disabled when picker armature missing.
+- Headless tests updated: happy_path + sidecar tests now exercise BONE_HEAT default; new test pins PROXIMITY fallback path.
+- MANUAL_TESTING 1.20 rewritten with concrete panel steps for both BONE_HEAT default + disabled-button-when-picker-missing.
+
+Out of scope (deferred):
+
+- Edit Weights sub-box (Wave 13.2-paint).
+- Snapshot sub-box (Wave 13.2-sidecar).
+- F3 menu binding (cross-cutting addon change, separate concern).
+- Fixing the projection bug + tightening falloff in PROXIMITY (PROXIMITY is now a rarely-used fallback; low priority).
 
 ### Interactive modal automesh authoring
 
@@ -274,13 +284,13 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 | post-merge | Wave numbering deflattened (dropped 13.1.a / 13.1.b / 13.1.c …) | Sub-letter scheme got noisy fast; each wave now holds named features. Commit history retains old labels for PR #51 work |
 | post-merge (Wave 13.2 bind) | Wave 13.2 bind shipped; bind-design.md spec + plan linked | Headless operator pytest pattern proven |
 | post-merge (Wave 13.2 bind) | diagnose_flipped_normals convention inverted (Y>=0 = flipped, was Y<=0); `_flip_normals_to_positive_y` workaround removed from headless test | Proscenio Front Ortho convention: camera at -Y looking +Y; sprite "facing camera" = normal in -Y. Verified against automesh output (432/432 faces at Y=-1). Original assumption (+Y = correct) was inverted; fixture builder is NOT buggy, was the diagnose check |
+| post-merge (Wave 13.2-panel) | D4 amended - BONE_HEAT allowed as default bind mode; Skinning panel gains Bind sub-box | Manual smoke on PR #54 surfaced bone heat produces better falloff for 2D pickers; F3-only access for bind was a UX blocker. Pivot resolves both |
 
 ## Out of scope (permanently)
 
 Rejected for SPEC 013; do not propose again without re-opening the decision:
 
 - OpenCV / numpy as install-time dependency (COA2 adoption lesson per Constraints + D1).
-- Bone-heat solver as default bind algorithm (D4).
 - Per-brush mirror as the source of truth (D14).
 - ESC as deselect-only inside any draw modal (D10).
 

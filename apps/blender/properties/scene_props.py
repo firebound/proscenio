@@ -192,6 +192,64 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=False,
     )
+    bind_init_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Bind mode",
+        description=(
+            "Algorithm used by Bind to Picker Armature. BONE_HEAT delegates "
+            "to Blender's native Parent w/ Auto Weights (recommended for "
+            "sprites with bones co-planar with the picture plane). PROXIMITY "
+            "/ ENVELOPE / SINGLE_NEAREST / EMPTY are Proscenio fallbacks for "
+            "edge cases (off-sprite armatures, manual paint baseline)."
+        ),
+        items=[
+            (
+                "BONE_HEAT",
+                "Bone Heat (Blender native)",
+                "Delegate to Blender's Parent w/ Auto Weights. Default; best for 2D pickers",
+            ),
+            (
+                "PROXIMITY",
+                "Proximity (1/d^p)",
+                "Per-bone 1/distance^falloff_power normalized in XZ. Fallback when bone heat fails",
+            ),
+            (
+                "ENVELOPE",
+                "Envelope",
+                "Weight 1.0 inside per-bone radius (read from bone Custom Property), "
+                "0 outside, then per-vert normalized",
+            ),
+            (
+                "SINGLE_NEAREST",
+                "Single nearest",
+                "Each vert gets weight 1.0 in its nearest bone, 0 in others",
+            ),
+            (
+                "EMPTY",
+                "Empty",
+                "All-zero baseline for manual paint workflows",
+            ),
+        ],
+        default="BONE_HEAT",
+    )
+    bind_falloff_power: FloatProperty(  # type: ignore[valid-type]
+        name="Bind falloff power",
+        description=(
+            "Exponent for 1/dist^power per-vert weight (PROXIMITY mode only). "
+            "Higher values = tighter local influence. 2.0 (inverse square) "
+            "matches Spine / DragonBones convention."
+        ),
+        default=2.0,
+        min=0.5,
+        max=8.0,
+    )
+    bind_max_distance: FloatProperty(  # type: ignore[valid-type]
+        name="Bind max distance",
+        description=(
+            "Bones beyond this distance contribute zero (PROXIMITY mode only). "
+            "-1 = adaptive (1.5x armature deform-bone bbox extent)."
+        ),
+        default=-1.0,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

@@ -106,19 +106,21 @@ def apply_bind(
     """Bind ``obj`` to ``armature`` weights. Returns counters dict.
 
     Counters: ``verts_bound`` (total verts), ``orphan_verts``
-    (sum-of-weights < eps), ``groups_created`` (one per deform bone),
-    ``bones_used`` (count of bones in armature deform set).
+    (sum-of-weights < eps), ``groups_created``, ``bones_used``,
+    ``groups_wiped``. BONE_HEAT dispatches to ``_apply_bone_heat``
+    which delegates to Blender's parent_set ARMATURE_AUTO; other
+    modes use the planar proximity / envelope / single-nearest /
+    empty algorithms.
     """
+    if mode == "BONE_HEAT":
+        return _apply_bone_heat(obj, armature)
+
     bone_segments = _bone_segments_xz(armature)
     effective_max = max_distance if max_distance >= 0.0 else _adaptive_max_distance(armature)
     effective_radii = (
         envelope_radii if envelope_radii is not None else _collect_envelope_radii(armature)
     )
 
-    # Coord-space contract: bones come out of _bone_segments_xz already
-    # in world XZ (matrix_world applied). Verts must match - using raw
-    # v.co would be local-space and distort every distance when the
-    # mesh has any transform (location / rotation / scale).
     mesh = obj.data
     obj_world = obj.matrix_world
     vert_positions_xz = [((obj_world @ v.co).x, (obj_world @ v.co).z) for v in mesh.vertices]
@@ -131,12 +133,9 @@ def apply_bind(
         max_distance=effective_max if mode == "PROXIMITY" else None,
         envelope_radii=effective_radii,
     )
+    # weights is guaranteed non-None here because BONE_HEAT is handled above
+    assert weights is not None
 
-    # Atomicity: clear any prior sidecar BEFORE we wipe vertex groups.
-    # If a downstream write raises after the wipe, the user is left with
-    # empty groups + NO sidecar (fresh-seed state on next bind) instead
-    # of empty groups + stale sidecar pointing at the old topology, which
-    # the reproject wave would honour and seed bogus weights from.
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
     groups_wiped = _wipe_non_base_groups(obj)
@@ -168,3 +167,63 @@ def apply_bind(
         "bones_used": len(bone_segments),
         "groups_wiped": groups_wiped,
     }
+
+
+def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[str, int]:
+    """Delegate weight computation to Blender's parent_set ARMATURE_AUTO.
+
+    Wipes any prior sidecar BEFORE the bpy.ops call (atomicity per
+    fix(spec-013.2)); stamps the version-1 stub AFTER on success.
+    Failure raises RuntimeError upward - operator surfaces a hint
+    about trying PROXIMITY as fallback.
+    """
+    if _SIDECAR_KEY in obj:
+        del obj[_SIDECAR_KEY]
+    groups_wiped = _wipe_non_base_groups(obj)
+
+    deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
+    prior_active = bpy.context.view_layer.objects.active
+    prior_selected = list(bpy.context.selected_objects)
+    try:
+        for other in prior_selected:
+            other.select_set(False)
+        obj.select_set(True)
+        armature.select_set(True)
+        bpy.context.view_layer.objects.active = armature
+        bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    finally:
+        bpy.context.view_layer.objects.active = prior_active
+
+    topology_hash = compute_topology_hash(
+        len(obj.data.vertices),
+        [list(p.vertices) for p in obj.data.polygons],
+    )
+    sidecar = build_minimal_stub(deform_bone_names, topology_hash)
+    obj[_SIDECAR_KEY] = to_json(sidecar)
+
+    orphan_verts = _count_orphans(obj, deform_bone_names)
+    return {
+        "verts_bound": len(obj.data.vertices),
+        "orphan_verts": orphan_verts,
+        "groups_created": len(deform_bone_names),
+        "bones_used": len(deform_bone_names),
+        "groups_wiped": groups_wiped,
+    }
+
+
+def _count_orphans(obj: bpy.types.Object, bone_names: list[str]) -> int:
+    """Count verts whose total weight across bone groups is below eps.
+
+    Blender's bone heat may leave verts unweighted when the bone
+    geometry doesn't reach them. Surface them so the operator can
+    WARN the user.
+    """
+    bone_groups = {
+        obj.vertex_groups[name].index for name in bone_names if name in obj.vertex_groups
+    }
+    orphans = 0
+    for vert in obj.data.vertices:
+        total = sum(g.weight for g in vert.groups if g.group in bone_groups)
+        if total < _ORPHAN_EPS:
+            orphans += 1
+    return orphans

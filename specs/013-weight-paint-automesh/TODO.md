@@ -16,8 +16,8 @@ Sub-letter numbering (13.1.a / 13.1.b / 13.1.c …) was tried in iteration and g
 - [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
 - [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1, hole support):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
 - [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
-- [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. No default-bind code path may call `parent_with_automatic_weights` blind.
-- [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY (no BONE_HEAT in first cut).
+- [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. **Amended (Wave 13.2-panel):** BONE_HEAT now allowed as default for 2D pickers; D11 pre-flight still runs before every bind path. See STUDY.md D4 amendment for trigger.
+- [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY. **Amended (Wave 13.2-panel):** enum gains BONE_HEAT as 5th value AND becomes the default; planar proximity demoted to fallback per D4 amendment.
 - [ ] D6 - weight preservation through mesh regen = sidecar JSON keyed by UV anchors + auto-reproject on regen + visible provenance overlay.
 - [ ] D7 - weight paint modal wrapper = one-button enter / exit, auto-restore on exit + crash; lift COA2 `COATOOLS2_OT_EditWeights` pattern (fixed: Bone Collections instead of `bone.hide` global, `try/finally` restore, ESC hard-exit).
 - [ ] D8 - 2D paint preset = auto-apply on modal enter (`Front Faces Only=False`, `Falloff=Projected`, brush radius in screen px, `Auto Normalize=True`); header pill "2D paint preset: ON".
@@ -147,7 +147,6 @@ Out of scope (deferred):
 - ENVELOPE radii editor UI (Wave 13.2-paint owns it; bind alone exposes radii via per-bone `proscenio_envelope_radius` Custom Property + fallback 1.0).
 - Scene PropertyGroup persistence for bind_init_mode / falloff_power / max_distance (Wave 13.2-panel).
 - Sidecar `entries` population + reproject (Wave 13.2-sidecar).
-- BONE_HEAT BindMode enum value (bone-heat stays behind F3-only opt-in BoolProperty per D4).
 
 ### Weight paint modal wrapper (D7 + D8 + D9 + D10 + D12 + D14)
 
@@ -292,7 +291,6 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 Rejected for SPEC 013; do not propose again without re-opening the decision:
 
 - OpenCV / numpy as install-time dependency (COA2 adoption lesson per Constraints + D1).
-- Bone-heat solver as default bind algorithm (D4).
 - Per-brush mirror as the source of truth (D14).
 - ESC as deselect-only inside any draw modal (D10).
 

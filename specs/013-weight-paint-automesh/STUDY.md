@@ -572,6 +572,8 @@ Each section below preserves the option set + rationale for posterity.
 
 **Locked: D4.C.** Bone heat fails on the exact topology Proscenio targets (planar 2D meshes). Every survey signal (Stack Exchange #1 question, T45493, T70834, T37685) confirms this. Defaulting to it would replicate the worst pain in vanilla Blender 2D rigging. Power users who *want* bone heat for specific topology can opt in via the F3 redo or by switching `bind_init_mode` to a future "BONE_HEAT" enum value (currently not even an option in D5). The right default is planar proximity (D5.C).
 
+**Amended (Wave 13.2-panel, 2026-05-20):** BONE_HEAT is now allowed as the DEFAULT bind mode for the 2D picker workflow. Original D4 was guarding against COA Tools 2's bone-heat failure mode for 3D characters; that failure mode does not apply when bones are tangent to the sprite picture plane (the common 2D case). Real-world manual smoke on PR #54 showed Blender's bone heat produces visibly better falloff than our planar proximity (which spreads weight across all bones in range, washing out gradients). Proscenio's PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY modes remain available as F3-redo + panel-dropdown opt-in fallbacks for cases where bone heat fails or finer control is needed. The 5 D11 pre-flight diagnoses still run before EVERY bind path including BONE_HEAT.
+
 ### D5 - Initial bind algorithm default
 
 - D5.A - Empty vertex groups only. User paints from zero.

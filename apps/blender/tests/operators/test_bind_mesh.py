@@ -24,7 +24,8 @@ def _set_picker(name: str) -> None:
 def test_bind_happy_path(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
-    result = bpy.ops.proscenio.bind_mesh_to_armature(bind_init_mode="PROXIMITY")
+    # No explicit mode - exercise the BONE_HEAT default landing from PG
+    result = bpy.ops.proscenio.bind_mesh_to_armature()
     assert "FINISHED" in result
     group_names = {g.name for g in obj.vertex_groups}
     assert {"wrist", "palm", "fingertip"} <= group_names
@@ -64,13 +65,22 @@ def test_bind_preserves_base_sprite_group_on_rerun(automesh_fixture):
 def test_bind_writes_sidecar_stub(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
-    bpy.ops.proscenio.bind_mesh_to_armature(bind_init_mode="PROXIMITY")
+    bpy.ops.proscenio.bind_mesh_to_armature()  # default = BONE_HEAT
     payload = obj.get("proscenio_weight_sidecar")
     assert payload is not None
     sidecar = json.loads(payload)
     assert sidecar["version"] == 1
     assert sidecar["entries"] == []
     assert "wrist" in sidecar["vertex_group_names"]
+
+
+def test_bind_explicit_proximity_still_works(automesh_fixture):
+    """Power-user fallback path: explicit PROXIMITY still computes weights."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    result = bpy.ops.proscenio.bind_mesh_to_armature(bind_init_mode="PROXIMITY")
+    assert "FINISHED" in result
+    assert {"wrist", "palm", "fingertip"} <= {g.name for g in obj.vertex_groups}
 
 
 def test_bind_single_nearest_one_bone_per_vert(automesh_fixture):

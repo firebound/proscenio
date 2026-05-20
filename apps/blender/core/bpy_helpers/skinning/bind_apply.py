@@ -9,6 +9,8 @@ the version-1 stub the Wave 13.2-sidecar wave consumes.
 
 from __future__ import annotations
 
+import contextlib
+
 import bpy
 
 from ...skinning.planar_proximity import BoneSegmentNamed2D
@@ -192,6 +194,15 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
         bpy.context.view_layer.objects.active = armature
         bpy.ops.object.parent_set(type="ARMATURE_AUTO")
     finally:
+        # Restore the full selection state, not just the active object.
+        # parent_set leaves obj + armature selected; user's pre-bind
+        # selection should survive an in-or-out success/failure.
+        obj.select_set(False)
+        armature.select_set(False)
+        for prior in prior_selected:
+            # ReferenceError = object was removed mid-operation; skip silently.
+            with contextlib.suppress(ReferenceError):
+                prior.select_set(True)
         bpy.context.view_layer.objects.active = prior_active
 
     topology_hash = compute_topology_hash(

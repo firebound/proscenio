@@ -1,12 +1,13 @@
-"""Bind mesh to picker armature via planar proximity (SPEC 013.2).
+"""Bind mesh to picker armature (SPEC 013.2).
 
-Avoids Blender's bone-heat solver by default (D4). Surfaces 5 pre-flight
+Defaults to Blender's bone-heat solver (D4). Surfaces 5 pre-flight
 diagnoses (D11) before touching geometry. Writes a WeightSidecar stub
 the Wave 13.2-sidecar wave consumes for reproject.
 
-F3 redo exposes mode + falloff_power + max_distance + use_bone_heat
-opt-in. Scene PropertyGroup persistence is the panel wave's
-responsibility - this operator stands alone with its F3 properties.
+F3 redo exposes bind_init_mode enum (BONE_HEAT default, PROXIMITY/ENVELOPE/
+SINGLE_NEAREST/EMPTY fallbacks) + falloff_power + max_distance.
+Scene PropertyGroup persistence (panel) reads into invoke() so panel
++ F3 both reflect persisted settings.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty, FloatProperty
+from bpy.props import EnumProperty, FloatProperty
 
 from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     apply_bind,
@@ -28,27 +29,49 @@ from ..core.report import (  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
-    """Bind the active mesh to the picker armature without bone-heat."""
+    """Bind the active mesh to the picker armature."""
 
     bl_idname = "proscenio.bind_mesh_to_armature"
     bl_label = "Proscenio: Bind Mesh to Picker Armature"
     bl_description = (
-        "Bind the active mesh to the Proscenio picker armature using a "
-        "planar 1/dist^power falloff. Surfaces pre-flight diagnoses (scale, "
-        "normals, overlap, islands, bone bbox) before touching geometry. "
-        "Writes a sidecar stub the reproject wave consumes"
+        "Bind the active mesh to the Proscenio picker armature. Default mode "
+        "delegates to Blender's bone heat (best for 2D pickers); Proscenio's "
+        "planar proximity / envelope / single-nearest / empty modes are "
+        "available as F3-redo fallbacks. Surfaces 5 pre-flight diagnoses + "
+        "writes a sidecar stub the reproject wave consumes"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     bind_init_mode: EnumProperty(  # type: ignore[valid-type]
         name="Bind mode",
         items=[
-            ("PROXIMITY", "Proximity", "1/dist^power normalized (default)"),
-            ("ENVELOPE", "Envelope", "Per-bone radius from Custom Property"),
-            ("SINGLE_NEAREST", "Single nearest", "One bone per vert, weight 1.0"),
-            ("EMPTY", "Empty", "All-zero weights (manual paint baseline)"),
+            (
+                "BONE_HEAT",
+                "Bone Heat (Blender native)",
+                "Delegate to Blender's Parent w/ Auto Weights (default)",
+            ),
+            (
+                "PROXIMITY",
+                "Proximity (1/d^p)",
+                "Per-bone 1/distance^falloff_power normalized (Proscenio fallback)",
+            ),
+            (
+                "ENVELOPE",
+                "Envelope",
+                "Per-bone radius from bone Custom Property",
+            ),
+            (
+                "SINGLE_NEAREST",
+                "Single nearest",
+                "One bone per vert, weight 1.0",
+            ),
+            (
+                "EMPTY",
+                "Empty",
+                "All-zero baseline for manual paint",
+            ),
         ],
-        default="PROXIMITY",
+        default="BONE_HEAT",
     )
     falloff_power: FloatProperty(  # type: ignore[valid-type]
         name="Falloff power",
@@ -60,22 +83,25 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
     max_distance: FloatProperty(  # type: ignore[valid-type]
         name="Max distance",
         description=(
-            "Bones beyond this distance contribute zero. -1 = adaptive (1.5x armature bbox)"
+            "Bones beyond this distance contribute zero (PROXIMITY only). "
+            "-1 = adaptive (1.5x armature bbox)"
         ),
         default=-1.0,
-    )
-    use_bone_heat: BoolProperty(  # type: ignore[valid-type]
-        name="Use bone heat (legacy)",
-        description=(
-            "OPT-IN ONLY (D4) - delegate to bpy.ops.object.parent_set(ARMATURE_AUTO). Default OFF"
-        ),
-        default=False,
     )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
         return obj is not None and obj.type == "MESH"
+
+    def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        scene_props = getattr(context.scene, "proscenio", None)
+        skinning = getattr(scene_props, "skinning", None) if scene_props else None
+        if skinning is not None:
+            self.bind_init_mode = str(skinning.bind_init_mode)
+            self.falloff_power = float(skinning.bind_falloff_power)
+            self.max_distance = float(skinning.bind_max_distance)
+        return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
@@ -98,10 +124,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        # D11 contract: ALL bind paths (planar + bone-heat opt-in) get
-        # the 5 pre-flight checks. Bone-heat fails for the same reasons
-        # our diagnoses catch + the raw Blender error is cryptic; honour
-        # "never raw stack trace" by aborting early with our hints.
+        # D11 contract: ALL bind paths run pre-flight diagnoses.
         findings = collect_diagnoses_for_object(obj, armature)
         errors = [f for f in findings if f.severity == "error"]
         warns = [f for f in findings if f.severity == "warn"]
@@ -112,9 +135,6 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         for finding in warns:
             report_info(self, f"{finding.message} - {finding.hint}")
 
-        if self.use_bone_heat:
-            return self._delegate_to_bone_heat(context, armature)
-
         try:
             counters = apply_bind(
                 obj,
@@ -123,6 +143,16 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
                 falloff_power=self.falloff_power,
                 max_distance=self.max_distance,
             )
+        except RuntimeError as exc:
+            if self.bind_init_mode == "BONE_HEAT":
+                report_error(
+                    self,
+                    f"bone-heat failed: {exc}. Try mode=PROXIMITY as fallback "
+                    "(Skinning panel > Bind mode dropdown)",
+                )
+            else:
+                report_error(self, f"bind failed: {exc}")
+            return {"CANCELLED"}
         except Exception as exc:
             report_error(self, f"bind failed: {exc}")
             return {"CANCELLED"}
@@ -145,23 +175,6 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
                 f"bones ({counters['orphan_verts']} orphans). Mode={self.bind_init_mode}"
             ),
         )
-        return {"FINISHED"}
-
-    def _delegate_to_bone_heat(
-        self, context: bpy.types.Context, armature: bpy.types.Object
-    ) -> set[str]:
-        """Legacy bone-heat opt-in path (D4). Surface raw Blender errors."""
-        prior_active = context.view_layer.objects.active
-        try:
-            armature.select_set(True)
-            context.view_layer.objects.active = armature
-            bpy.ops.object.parent_set(type="ARMATURE_AUTO")
-        except RuntimeError as exc:
-            report_error(self, f"bone-heat failed: {exc}")
-            return {"CANCELLED"}
-        finally:
-            context.view_layer.objects.active = prior_active
-        report_info(self, "bone-heat bind delegated to Blender (legacy path)")
         return {"FINISHED"}
 
 

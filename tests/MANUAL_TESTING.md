@@ -333,21 +333,26 @@ Sequência:
 
 Bugs encontrados durante smoke vão para `tests/BUGS_FOUND.md`.
 
-### 1.20 SPEC 013.2 Bind Mesh to Armature - UI residue
+### 1.20 SPEC 013.2 Bind Mesh to Armature - panel + BONE_HEAT default
 
-T1 - Panel button vs F3 redo (UI only; headless pytest covers behavior):
+T1 - Panel button + BONE_HEAT default:
 
-Setup: open `examples/generated/automesh/automesh.blend`, pick the `automesh.hand_rig` armature in the Skeleton subpanel, select the `hand` sprite.
+Setup: open `examples/generated/automesh/automesh.blend`, pick `automesh.hand_rig` in the Skeleton subpanel, select the `hand` sprite.
 
-1. Sidebar (N) > Proscenio > Skinning subpanel > click **Bind to Picker Armature** button.
-2. Confirm INFO report appears in the info bar: `Proscenio: bind: N verts to 3 bones...`.
-3. Press F3 > type "bind" > pick the operator.
-4. Confirm all 4 properties visible in F3: `Bind mode` dropdown (4 options), `Falloff power`, `Max distance`, `Use bone heat (legacy)`.
-5. Toggle `Bind mode` dropdown and confirm all 4 entries: Proximity / Envelope / Single nearest / Empty.
+1. Sidebar (N) > Proscenio > Skinning subpanel > **Bind to picker** sub-box appears between Automesh and Debug.
+2. Mode dropdown defaults to "Bone Heat (Blender native)". Click **Bind to Picker Armature** button.
+3. Info bar: `Proscenio: bind: N verts to 3 bones (M morphans). Mode=BONE_HEAT`.
+4. Switch to Weight Paint mode. Object Data Properties (green icon) > Vertex Groups lists `wrist` / `palm` / `fingertip`. Click one - viewport shows a blue-to-red gradient.
+5. Switch dropdown to "Proximity (1/d^p)" + click again. Confirms fallback path still ships.
+6. Object Properties > Custom Properties > `proscenio_weight_sidecar` JSON re-stamped (topology hash matches new geometry).
 
-NOTE: the Skinning panel button itself is the responsibility of Wave 13.2-panel. Bind ships F3-only access; the panel button entry above is FORWARD-LOOKING - step 1 will fail until the panel wave wires it up. Steps 3-5 work today.
+T2 - Disabled when picker missing:
 
-(Coverage of bind correctness lives in `apps/blender/tests/operators/test_bind_mesh.py` - run headless via `blender --background --python apps/blender/tests/run_operator_tests.py`.)
+1. Skeleton subpanel > clear picker armature (X button next to the picker selector).
+2. Skinning > **Bind to Picker Armature** button is greyed out.
+3. Re-set picker > button re-enables.
+
+(Headless coverage: `apps/blender/tests/operators/test_bind_mesh.py` - 7 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure algorithm coverage in `tests/skinning/` - 37 tests.)
 
 ---
 

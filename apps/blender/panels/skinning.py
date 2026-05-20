@@ -53,6 +53,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
             picker_row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
 
         _draw_automesh_box(layout, skinning_props)
+        _draw_bind_box(layout, skinning_props, picker)
         _draw_debug_box(layout, skinning_props)
 
 
@@ -82,6 +83,35 @@ def _draw_automesh_box(
         "proscenio.automesh_from_sprite",
         text="Automesh from Sprite",
         icon="MOD_REMESH",
+    )
+
+
+def _draw_bind_box(
+    layout: bpy.types.UILayout,
+    skinning_props: bpy.types.PropertyGroup | None,
+    picker: bpy.types.Object | None,
+) -> None:
+    """Sub-box for the Bind to Picker Armature operator.
+
+    Surfaces the Bind mode dropdown (BONE_HEAT default + 4 Proscenio
+    fallbacks) and the run button. Button greys out when no picker
+    armature is set in the Skeleton panel - the most common cause of
+    bind failure, caught visually instead of via post-click ERROR.
+
+    falloff_power + max_distance are not surfaced here; they reach
+    the user via F3 redo after the operator runs, keeping the panel
+    UI focused on the common case.
+    """
+    box = layout.box()
+    box.label(text="Bind to picker", icon="LINK_BLEND")
+    if skinning_props is not None:
+        box.prop(skinning_props, "bind_init_mode", text="Mode")
+    row = box.row()
+    row.enabled = picker is not None
+    row.operator(
+        "proscenio.bind_mesh_to_armature",
+        text="Bind to Picker Armature",
+        icon="MOD_ARMATURE",
     )
 
 

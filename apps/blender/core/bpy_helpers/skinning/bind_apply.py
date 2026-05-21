@@ -1,10 +1,11 @@
-"""Apply bind weights to a bpy mesh + write the WeightSidecar stub.
+"""Apply bind weights to a bpy mesh + stamp the populated WeightSidecar.
 
 Wipes every vertex group EXCEPT ``proscenio_base_sprite`` (D3 UV
 anchor must survive), recreates one group per deform bone, then
 populates per-vert weights from the chosen ``BindMode``. After
-weights succeed, stamps ``obj["proscenio_weight_sidecar"]`` with
-the version-1 stub the Wave 13.2-sidecar wave consumes.
+weights succeed, builds a populated ``WeightSidecar`` via
+``snapshot_sidecar`` and stamps it onto
+``obj["proscenio_weight_sidecar"]`` tagged ``provenance="auto_seed"``.
 """
 
 from __future__ import annotations
@@ -155,7 +156,8 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
     """Delegate weight computation to Blender's parent_set ARMATURE_AUTO.
 
     Wipes any prior sidecar BEFORE the bpy.ops call (atomicity per
-    fix(spec-013.2)); stamps the version-1 stub AFTER on success.
+    fix(spec-013.2)); stamps a populated WeightSidecar via
+    ``snapshot_sidecar`` (provenance="auto_seed") AFTER on success.
     Failure raises RuntimeError upward - operator surfaces a hint
     about trying PROXIMITY as fallback.
     """

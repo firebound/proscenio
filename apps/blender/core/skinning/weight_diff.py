@@ -20,7 +20,12 @@ def diff_weights(
 
     Missing vert in ``after`` (group removed by paint) counts as changed.
     Missing vert in ``before`` (group gained by paint) counts as changed.
+
+    Raises ValueError when eps is negative - silent acceptance would mark
+    every vert as touched and corrupt the provenance flip.
     """
+    if eps < 0.0:
+        raise ValueError(f"eps must be non-negative (got {eps!r})")
     touched: set[int] = set()
     for vert_idx, prior in before.items():
         current = after.get(vert_idx)

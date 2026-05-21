@@ -47,10 +47,14 @@ class StrokeDiffTracker:
             return 0
         group = self._obj.vertex_groups.get(self._active_group_name)
         if group is None:
+            self._snapshot = {}
+            self._active_group_name = None
             return 0
         current = _read_group_weights(self._obj, group.index)
         touched = diff_weights(self._snapshot, current)
         if not touched:
+            self._snapshot = {}
+            self._active_group_name = None
             return 0
         new_entries: list[SidecarEntry] = []
         for vert_idx, entry in enumerate(self._sidecar.entries):
@@ -72,6 +76,7 @@ class StrokeDiffTracker:
         )
         self._obj[_SIDECAR_KEY] = to_json(self._sidecar)
         self._snapshot = {}
+        self._active_group_name = None
         return len(touched)
 
     @property

@@ -2,7 +2,7 @@
 
 Status: design locked 2026-05-21. Decisions taken autonomously per user delegation; UX-touching items confirmed via questions.
 
-Scope: one-button entry into a 2D-safe weight paint context with custom GPU provenance overlay, per-stroke `user_paint` provenance tagging, hard exit guarantees, and `Edit Weights` sub-box in the Skinning panel. Closes D6 (provenance overlay GPU draw), D7 (modal wrapper), D8 (2D paint preset), D9 (paint diff tagging), D10 (ESC hard-exit), D12 (tablet release), D14 (Bone Collections visibility).
+Scope: one-button entry into a 2D-safe weight paint context with custom GPU provenance overlay, per-stroke `user_paint` provenance tagging, hard exit guarantees, and `Edit Weights` sub-box in the Skinning panel. Closes D6 (provenance overlay GPU draw), D7 (modal wrapper - includes Bone Collections visibility snapshot per COA2 lift), D8 (2D paint preset), D9 (paint diff tagging), D10 (ESC hard-exit), D12 (tablet release), D14 (mirror axis source from picker rig).
 
 Foundation: Wave 13.2-sidecar shipped (entries populated, `show_provenance_overlay` PG flag reserved, `SidecarEntry.provenance` literal supports `auto_seed` / `user_paint` / `reprojected`).
 

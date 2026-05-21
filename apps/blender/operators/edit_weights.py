@@ -66,30 +66,10 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         return obj.get(_SIDECAR_KEY) is not None
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            report_error(self, "active object must be a mesh")
+        preconditions = _validate_invoke_preconditions(self, context)
+        if preconditions is None:
             return {"CANCELLED"}
-        scene_props = getattr(context.scene, "proscenio", None)
-        armature = getattr(scene_props, "active_armature", None) if scene_props else None
-        if armature is None or armature.type != "ARMATURE":
-            report_error(self, "no picker armature - pick one in Skeleton panel first")
-            return {"CANCELLED"}
-        payload = obj.get(_SIDECAR_KEY)
-        if payload is None:
-            report_error(self, "no sidecar - run Bind to Picker Armature first")
-            return {"CANCELLED"}
-        try:
-            sidecar = from_json(payload)
-        except ValueError as exc:
-            report_error(self, f"existing sidecar is corrupt: {exc} - re-bind to reset")
-            return {"CANCELLED"}
-        if not sidecar.entries:
-            report_error(self, "sidecar has no entries (pre-wave bind) - re-bind to populate")
-            return {"CANCELLED"}
-        if len(obj.vertex_groups) == 0:
-            report_error(self, "mesh has no vertex groups - run Bind first")
-            return {"CANCELLED"}
+        obj, armature, scene_props, sidecar = preconditions
 
         skinning = getattr(scene_props, "skinning", None)
         prior_overlay = (
@@ -172,6 +152,47 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
             with contextlib.suppress(ValueError, RuntimeError):
                 bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_edit_weights)
             type(self)._statusbar_appended = False
+
+
+def _validate_invoke_preconditions(
+    operator: bpy.types.Operator, context: bpy.types.Context
+) -> tuple[bpy.types.Object, bpy.types.Object, bpy.types.PropertyGroup, object] | None:
+    """Run all invoke-time guards; return (obj, armature, scene_props, sidecar) or None.
+
+    Reports the relevant ERROR via the operator on each failure path so the
+    caller just returns CANCELLED on None.
+    """
+    obj = context.active_object
+    if obj is None or obj.type != "MESH":
+        report_error(operator, "active object must be a mesh")
+        return None
+    scene_props = getattr(context.scene, "proscenio", None)
+    armature = getattr(scene_props, "active_armature", None) if scene_props else None
+    if armature is None or armature.type != "ARMATURE":
+        report_error(operator, "no picker armature - pick one in Skeleton panel first")
+        return None
+    payload = obj.get(_SIDECAR_KEY)
+    if payload is None:
+        report_error(operator, "no sidecar - run Bind to Picker Armature first")
+        return None
+    try:
+        sidecar = from_json(payload)
+    except ValueError as exc:
+        report_error(operator, f"existing sidecar is corrupt: {exc} - re-bind to reset")
+        return None
+    if not sidecar.entries:
+        report_error(operator, "sidecar has no entries (pre-wave bind) - re-bind to populate")
+        return None
+    if len(sidecar.entries) != len(obj.data.vertices):
+        report_error(
+            operator,
+            "sidecar/topology mismatch - re-bind to the current mesh topology",
+        )
+        return None
+    if len(obj.vertex_groups) == 0:
+        report_error(operator, "mesh has no vertex groups - run Bind first")
+        return None
+    return obj, armature, scene_props, sidecar
 
 
 def _auto_select_active_group(obj: bpy.types.Object, armature: bpy.types.Object) -> None:

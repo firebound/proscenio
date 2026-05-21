@@ -77,10 +77,12 @@ def _draw_callback(obj: bpy.types.Object, mode: OverlayMode) -> None:
     shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
     gpu.state.blend_set("ALPHA")
     gpu.state.point_size_set(_DISC_SIZE)
-    for color, positions in color_groups.items():
-        batch = batch_for_shader(shader, "POINTS", {"pos": positions})
-        shader.bind()
-        shader.uniform_float("color", color)
-        batch.draw(shader)
-    gpu.state.point_size_set(1.0)
-    gpu.state.blend_set("NONE")
+    try:
+        for color, positions in color_groups.items():
+            batch = batch_for_shader(shader, "POINTS", {"pos": positions})
+            shader.bind()
+            shader.uniform_float("color", color)
+            batch.draw(shader)
+    finally:
+        gpu.state.point_size_set(1.0)
+        gpu.state.blend_set("NONE")

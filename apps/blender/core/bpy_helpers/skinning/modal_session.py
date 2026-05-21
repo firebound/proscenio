@@ -78,8 +78,9 @@ def restore(context: bpy.types.Context, session: EditWeightsSession) -> None:
 
 
 def _restore_selection(context: bpy.types.Context, session: EditWeightsSession) -> None:
-    for obj in context.selected_objects:
-        obj.select_set(False)
+    for obj in list(context.selected_objects):
+        with contextlib.suppress(RuntimeError, ReferenceError):
+            obj.select_set(False)
     for name in session.prior_selected_names:
         obj = bpy.data.objects.get(name)
         if obj is not None:

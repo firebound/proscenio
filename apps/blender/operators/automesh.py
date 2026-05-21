@@ -34,6 +34,10 @@ from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     clear_debug_objects,
     collect_bone_segments,
 )
+from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+    maybe_post_regen_reproject,
+    maybe_pre_regen_snapshot,
+)
 from ..core.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -252,6 +256,10 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
 
         world_scale = 1.0 / _resolve_pixels_per_unit(context)
 
+        scene_props = getattr(context.scene, "proscenio", None)
+        picker_armature = getattr(scene_props, "active_armature", None) if scene_props else None
+        prior_sidecar = maybe_pre_regen_snapshot(obj, picker_armature)
+
         try:
             counters = build_automesh(
                 obj,
@@ -297,6 +305,16 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                     f"{counters['interior_verts']} interior = "
                     f"{counters['total_verts']} total, "
                     f"{counters['total_faces']} faces"
+                ),
+            )
+        if prior_sidecar is not None and picker_armature is not None:
+            sidecar_counts = maybe_post_regen_reproject(obj, picker_armature, prior_sidecar)
+            report_info(
+                self,
+                (
+                    f"sidecar: {sidecar_counts['reprojected']} reprojected + "
+                    f"{sidecar_counts['auto_seed']} auto-seed of "
+                    f"{sidecar_counts['total']} verts"
                 ),
             )
         return {"FINISHED"}

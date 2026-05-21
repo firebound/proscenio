@@ -356,6 +356,72 @@ T2 - Disabled when picker missing:
 
 ---
 
+### 1.21 SPEC 013.2 Sidecar - snapshot + reproject + restore
+
+**Fixture:** `examples/generated/automesh/automesh.blend`
+
+T1 - Bind populates sidecar entries:
+
+1. Open the fixture in Blender (5.1+).
+2. Select `hand`, set picker armature to `automesh.hand_rig` (Skeleton panel).
+3. Click Skinning panel > Bind to picker > **Bind to Picker Armature**.
+4. Object Properties > Custom Properties > expand `proscenio_weight_sidecar`.
+
+Expected: JSON has non-empty `entries` list (one per vert), each entry has `uv_anchor` (length-2 array), `weights` (object), and `provenance: "auto_seed"`. Skinning panel > Snapshot pill shows `0 paint / N seed / 0 reprojected` where N = mesh vert count.
+
+T2 - Automesh regen preserves weights:
+
+1. Continue from T1 (sidecar populated, hand bound).
+2. Switch to Weight Paint mode; note the wrist group's gradient pattern.
+3. Switch back to Object mode.
+4. Skinning panel > Snapshot > confirm "Preserve weights on regen" is ON (default).
+5. Skinning panel > Automesh from Sprite > change Mesh resolution to 0.5.
+6. Click **Automesh from Sprite**.
+
+Expected: info bar reads `sidecar: X reprojected + Y auto-seed of Z verts` (X + Y = Z = new vert count). Weight Paint mode shows the wrist gradient in roughly the same physical region as before regen.
+
+T3 - Restore Weight Snapshot:
+
+1. Continue from T2 (regen done; sidecar reprojected).
+2. Switch to Weight Paint > Subtract brush > paint over part of the wrist group to set those verts to 0.
+3. Switch back to Object mode.
+4. Skinning panel > Snapshot > click **Restore Weight Snapshot**.
+
+Expected: info bar `restored N verts`. Switch back to Weight Paint - painted area returns to the post-regen gradient.
+
+T4 - Counts pill updates live:
+
+State A (fresh bind):
+
+1. Open a freshly-bound hand (T1 setup).
+
+Expected: Snapshot pill `0 paint / N seed / 0 reprojected`.
+
+State B (after regen):
+
+1. Regen with a different resolution (T2 setup).
+
+Expected: pill `0 paint / Y seed / X reprojected` where X = reprojected count + Y = auto-seed count from the status bar message.
+
+T5 - Restore disabled when no sidecar:
+
+1. Open the fixture fresh; select `hand` but do NOT bind.
+
+Expected: Snapshot sub-box shows `no sidecar (run Bind first)` + Restore button greyed out.
+
+T6 - Topology change blocks restore:
+
+1. Bind hand. Note current Snapshot pill.
+2. Skinning panel > Snapshot > turn OFF "Preserve weights on regen".
+3. Click Automesh from Sprite with a different resolution.
+4. Click Restore Weight Snapshot.
+
+Expected: status bar ERROR `topology changed since last snapshot - run Automesh from Sprite with preserve_on_regen ON to re-establish the snapshot`. Mesh weights unchanged from the post-regen wipe state.
+
+(Headless coverage: `apps/blender/tests/operators/test_automesh_regen.py` + `test_restore_snapshot.py` - 4 tests. Pure algorithm coverage: `tests/skinning/test_weight_reproject.py` + `test_sidecar_schema.py` - 18 tests.)
+
+---
+
 ## 2. Apps/Godot
 
 ### 2.1 Plugin core

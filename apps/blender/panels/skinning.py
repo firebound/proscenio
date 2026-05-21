@@ -55,6 +55,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         obj = context.active_object
         _draw_automesh_box(layout, skinning_props)
         _draw_bind_box(layout, skinning_props, picker)
+        _draw_edit_weights_box(layout, obj, picker)
         _draw_snapshot_box(layout, skinning_props, obj)
         _draw_debug_box(layout, skinning_props)
 
@@ -115,6 +116,55 @@ def _draw_bind_box(
         text="Bind to Picker Armature",
         icon="MOD_ARMATURE",
     )
+
+
+def _draw_edit_weights_box(
+    layout: bpy.types.UILayout,
+    obj: bpy.types.Object | None,
+    picker: bpy.types.Object | None,
+) -> None:
+    """Sub-box surfacing the Edit Weights modal entry button.
+
+    Button enabled only when (a) picker armature set, (b) mesh has
+    a populated sidecar (binds preceded edit). Active vertex group
+    label hints which bone the modal will start painting.
+    """
+    box = layout.box()
+    box.label(text="Edit Weights", icon="BRUSHES_ALL")
+    active_label = _active_group_label(obj)
+    box.label(text=f"Active group: {active_label}")
+    row = box.row()
+    row.enabled = _edit_weights_button_enabled(obj, picker)
+    row.operator(
+        "proscenio.edit_weights",
+        text="Edit Weights",
+        icon="BRUSHES_ALL",
+    )
+    if obj is None or obj.type != "MESH":
+        return
+    if obj.get("proscenio_weight_sidecar") is None:
+        box.label(text="bind first to enable", icon="INFO")
+
+
+def _active_group_label(obj: bpy.types.Object | None) -> str:
+    if obj is None or obj.type != "MESH":
+        return "(no mesh)"
+    if len(obj.vertex_groups) == 0:
+        return "(none)"
+    active = obj.vertex_groups.active
+    return active.name if active else "(none)"
+
+
+def _edit_weights_button_enabled(
+    obj: bpy.types.Object | None, picker: bpy.types.Object | None
+) -> bool:
+    if obj is None or obj.type != "MESH":
+        return False
+    if picker is None:
+        return False
+    if len(obj.vertex_groups) == 0:
+        return False
+    return obj.get("proscenio_weight_sidecar") is not None
 
 
 def _draw_snapshot_box(

@@ -62,7 +62,7 @@ def test_bind_preserves_base_sprite_group_on_rerun(automesh_fixture):
     assert "proscenio_base_sprite" in {g.name for g in obj.vertex_groups}
 
 
-def test_bind_writes_sidecar_stub(automesh_fixture):
+def test_bind_writes_populated_sidecar(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()  # default = BONE_HEAT
@@ -70,8 +70,12 @@ def test_bind_writes_sidecar_stub(automesh_fixture):
     assert payload is not None
     sidecar = json.loads(payload)
     assert sidecar["version"] == 1
-    assert sidecar["entries"] == []
     assert "wrist" in sidecar["vertex_group_names"]
+    assert len(sidecar["entries"]) == len(obj.data.vertices)
+    for entry in sidecar["entries"]:
+        assert entry["provenance"] == "auto_seed"
+        assert "uv_anchor" in entry
+        assert isinstance(entry["weights"], dict)
 
 
 def test_bind_explicit_proximity_still_works(automesh_fixture):

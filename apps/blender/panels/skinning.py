@@ -52,8 +52,10 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         else:
             picker_row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
 
+        obj = context.active_object
         _draw_automesh_box(layout, skinning_props)
         _draw_bind_box(layout, skinning_props, picker)
+        _draw_snapshot_box(layout, skinning_props, obj)
         _draw_debug_box(layout, skinning_props)
 
 
@@ -113,6 +115,64 @@ def _draw_bind_box(
         text="Bind to Picker Armature",
         icon="MOD_ARMATURE",
     )
+
+
+def _draw_snapshot_box(
+    layout: bpy.types.UILayout,
+    skinning_props: bpy.types.PropertyGroup | None,
+    obj: bpy.types.Object | None,
+) -> None:
+    """Sub-box surfacing the sidecar toggles + counts pill + Restore button.
+
+    Counts are recomputed live from the JSON payload stored on the
+    active mesh (single source of truth per T6 of sidecar-design).
+    Toggle for show_provenance_overlay reserves UI for Wave 13.2-paint
+    even though the GPU draw handler is not in scope this wave.
+    """
+    box = layout.box()
+    box.label(text="Snapshot", icon="FILE_TICK")
+    if skinning_props is not None:
+        box.prop(skinning_props, "preserve_on_regen")
+        box.prop(skinning_props, "show_provenance_overlay")
+    counts = _sidecar_counts(obj)
+    if counts is None:
+        box.label(text="no sidecar (run Bind first)", icon="INFO")
+    else:
+        box.label(
+            text=(
+                f"{counts['user_paint']} paint / "
+                f"{counts['auto_seed']} seed / "
+                f"{counts['reprojected']} reprojected"
+            )
+        )
+    row = box.row()
+    row.enabled = counts is not None
+    row.operator(
+        "proscenio.restore_weight_snapshot",
+        text="Restore Weight Snapshot",
+        icon="LOOP_BACK",
+    )
+
+
+def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
+    """Parse the sidecar JSON + count entries by provenance. None = no sidecar."""
+    if obj is None or obj.type != "MESH":
+        return None
+    payload = obj.get("proscenio_weight_sidecar")
+    if payload is None:
+        return None
+    try:
+        import json
+
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        return None
+    counts = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
+    for entry in data.get("entries", []) or []:
+        provenance = entry.get("provenance") if isinstance(entry, dict) else None
+        if provenance in counts:
+            counts[provenance] += 1
+    return counts
 
 
 def _draw_debug_box(

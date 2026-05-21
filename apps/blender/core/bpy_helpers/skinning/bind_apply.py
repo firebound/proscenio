@@ -1,10 +1,11 @@
-"""Apply bind weights to a bpy mesh + write the WeightSidecar stub.
+"""Apply bind weights to a bpy mesh + stamp the populated WeightSidecar.
 
 Wipes every vertex group EXCEPT ``proscenio_base_sprite`` (D3 UV
 anchor must survive), recreates one group per deform bone, then
 populates per-vert weights from the chosen ``BindMode``. After
-weights succeed, stamps ``obj["proscenio_weight_sidecar"]`` with
-the version-1 stub the Wave 13.2-sidecar wave consumes.
+weights succeed, builds a populated ``WeightSidecar`` via
+``snapshot_sidecar`` and stamps it onto
+``obj["proscenio_weight_sidecar"]`` tagged ``provenance="auto_seed"``.
 """
 
 from __future__ import annotations
@@ -14,32 +15,16 @@ import contextlib
 import bpy
 
 from ...skinning.planar_proximity import BoneSegmentNamed2D
-from ...skinning.sidecar_schema import (
-    build_minimal_stub,
-    compute_topology_hash,
-    to_json,
-)
+from ...skinning.sidecar_schema import to_json
 from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
+from ._helpers import wipe_non_base_groups
+from .sidecar_io import snapshot_sidecar
 
-_BASE_SPRITE_GROUP = "proscenio_base_sprite"
 _SIDECAR_KEY = "proscenio_weight_sidecar"
 _ENVELOPE_RADIUS_KEY = "proscenio_envelope_radius"
 _ENVELOPE_DEFAULT_RADIUS = 1.0
 _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5
-
-
-def _wipe_non_base_groups(obj: bpy.types.Object) -> int:
-    """Remove every vertex group except the UV-anchor base sprite group.
-
-    Returns the number of groups removed. Operator surfaces it when > 0
-    so users notice manually-painted groups (e.g. ``extra_decoration``)
-    that bind discards.
-    """
-    to_remove = [g for g in obj.vertex_groups if g.name != _BASE_SPRITE_GROUP]
-    for group in to_remove:
-        obj.vertex_groups.remove(group)
-    return len(to_remove)
 
 
 def _bone_segments_xz(
@@ -140,7 +125,7 @@ def apply_bind(
 
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
-    groups_wiped = _wipe_non_base_groups(obj)
+    groups_wiped = wipe_non_base_groups(obj)
     for bone_name in weights:
         obj.vertex_groups.new(name=bone_name)
     for bone_name, per_vert_weights in weights.items():
@@ -155,11 +140,7 @@ def apply_bind(
         if total < _ORPHAN_EPS:
             orphan_verts += 1
 
-    topology_hash = compute_topology_hash(
-        len(mesh.vertices),
-        [list(p.vertices) for p in mesh.polygons],
-    )
-    sidecar = build_minimal_stub(list(weights.keys()), topology_hash)
+    sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)
 
     return {
@@ -175,13 +156,14 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
     """Delegate weight computation to Blender's parent_set ARMATURE_AUTO.
 
     Wipes any prior sidecar BEFORE the bpy.ops call (atomicity per
-    fix(spec-013.2)); stamps the version-1 stub AFTER on success.
+    fix(spec-013.2)); stamps a populated WeightSidecar via
+    ``snapshot_sidecar`` (provenance="auto_seed") AFTER on success.
     Failure raises RuntimeError upward - operator surfaces a hint
     about trying PROXIMITY as fallback.
     """
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
-    groups_wiped = _wipe_non_base_groups(obj)
+    groups_wiped = wipe_non_base_groups(obj)
 
     deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
     prior_active = bpy.context.view_layer.objects.active
@@ -205,11 +187,7 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
                 prior.select_set(True)
         bpy.context.view_layer.objects.active = prior_active
 
-    topology_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
-    sidecar = build_minimal_stub(deform_bone_names, topology_hash)
+    sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)
 
     orphan_verts = _count_orphans(obj, deform_bone_names)

@@ -205,9 +205,37 @@ What landed:
 Out of scope (deferred):
 
 - Edit Weights sub-box (Wave 13.2-paint).
-- Snapshot sub-box (Wave 13.2-sidecar).
 - F3 menu binding (cross-cutting addon change, separate concern).
 - Fixing the projection bug + tightening falloff in PROXIMITY (PROXIMITY is now a rarely-used fallback; low priority).
+
+### Weight sidecar - snapshot + reproject - SHIPPED on `feat/spec-013.2-sidecar`
+
+Wave 13.2-sidecar: WeightSidecar.entries populates on bind + reprojects across automesh regen via UV-anchor barycentric interpolation. Materializes D6 (the differentiator vs Spine / COA Tools 2).
+
+Spec: [`sidecar-design.md`](sidecar-design.md).
+Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md).
+
+What landed:
+
+- `SidecarEntry(uv_anchor, weights, provenance)` dataclass + `ProvenanceKind` literal (auto_seed / user_paint / reprojected). `WeightSidecar.entries` widens to `list[SidecarEntry]`. `from_json` validates provenance values.
+- Pure `weight_reproject.py` - hand-rolled O(n) KNN + 2D barycentric over UV anchors. Zero bpy / mathutils import.
+- bpy `sidecar_io.py` - `snapshot_sidecar` builds populated sidecar from vertex_groups + active UV layer; `apply_sidecar` writes entries back. UV missing falls back to empty entries (best-effort).
+- bpy `automesh_hook.py` - `maybe_pre_regen_snapshot` + `maybe_post_regen_reproject`; T4 identical-hash short-circuit, T8 UV-missing fallback applies in BOTH paths (pre-regen snapshot returns empty entries; post-regen reproject WARNs + writes auto_seed stub - never aborts), normal reproject path replaces None results with auto_seed empty-weights.
+- `apply_bind` (both planar + BONE_HEAT paths) stamps populated `auto_seed` entries via `snapshot_sidecar` instead of empty stub.
+- `ProscenioSkinningProps` gains `preserve_on_regen` (default ON, U1) + `show_provenance_overlay` (default OFF, U2; GPU draw handler ships in Wave 13.2-paint).
+- `automesh_from_sprite` execute() brackets `build_automesh` with the pre/post hook pair; status bar reports `sidecar: X reprojected + Y auto-seed of Z verts`.
+- `PROSCENIO_OT_restore_weight_snapshot` operator - reapplies stored sidecar, errors on topology mismatch.
+- `PROSCENIO_PT_skinning` gains `_draw_snapshot_box` helper - toggles + counts pill (paint/seed/reprojected) + Restore button (greyed out without sidecar).
+- Refactor: dedupe `BASE_SPRITE_GROUP_NAME` import + extract `wipe_non_base_groups` into `_helpers.py`.
+- Headless tests: 4 new (automesh_regen x2 + restore_snapshot x2). Pure tests: 10 new (reproject x8 + entry round-trip x2). Total 47 pure + 11 headless.
+- MANUAL_TESTING 1.21 covers 6 T-cases (populate / regen / restore / counts / disabled-button / topology-error).
+
+Out of scope (deferred):
+
+- Provenance overlay GPU draw handler -> Wave 13.2-paint.
+- Live `user_paint` provenance tagging via paint modal diff -> Wave 13.2-paint.
+- Sidecar import/export to external file -> Wave 13.3.
+- `proscenio.copy_weights_to_selected` cross-mesh transfer -> Wave 13.3.
 
 ### Interactive modal automesh authoring
 
@@ -285,6 +313,7 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 | post-merge (Wave 13.2 bind) | Wave 13.2 bind shipped; bind-design.md spec + plan linked | Headless operator pytest pattern proven |
 | post-merge (Wave 13.2 bind) | diagnose_flipped_normals convention inverted (Y>=0 = flipped, was Y<=0); `_flip_normals_to_positive_y` workaround removed from headless test | Proscenio Front Ortho convention: camera at -Y looking +Y; sprite "facing camera" = normal in -Y. Verified against automesh output (432/432 faces at Y=-1). Original assumption (+Y = correct) was inverted; fixture builder is NOT buggy, was the diagnose check |
 | post-merge (Wave 13.2-panel) | D4 amended - BONE_HEAT allowed as default bind mode; Skinning panel gains Bind sub-box | Manual smoke on PR #54 surfaced bone heat produces better falloff for 2D pickers; F3-only access for bind was a UX blocker. Pivot resolves both |
+| post-merge (Wave 13.2-sidecar) | Wave 13.2-sidecar shipped - populated WeightSidecar + reproject across regen + restore operator + panel Snapshot sub-box | Materializes D6 differentiator (Spine / COA2 lose weights on regen; Proscenio survives via UV-anchor barycentric reproject) |
 
 ## Out of scope (permanently)
 

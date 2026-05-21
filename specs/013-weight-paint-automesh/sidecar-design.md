@@ -19,7 +19,7 @@ Locked decision: D6 (sidecar JSON keyed by UV anchors + auto-reproject on regen 
 | T5 | Sidecar version | Stay on v1; entries=[] = stub state, populated = post-paint state | Same shape works for both; no migration cost |
 | T6 | Counts overlay data | Recompute from entries list on draw; not persisted separately | Single source of truth; no drift |
 | T7 | Migration | Sprites bound before this wave have entries=[]; populates organically on next bind | Forward-only; no migration script needed |
-| T8 | Failure modes | UV layer missing = ERROR + abort; all entries fail reproject = fall back to fresh bind + WARN with count; corrupt sidecar = catch ValueError + treat as fresh bind | D11 spirit: actionable hints, never raw stack trace |
+| T8 | Failure modes | UV layer missing during snapshot = silently fall back to empty entries (T7 forward-only spirit); restore + post-regen reproject ERROR + abort since those require real UVs; all entries fail reproject = fall back to fresh bind + WARN with count; corrupt sidecar = catch ValueError + treat as fresh bind | D11 spirit: actionable hints, never raw stack trace |
 | T9 | Provenance diff (bind path) | `_apply_bone_heat` + algorithm path stamp all new entries with `provenance="auto_seed"` after weights computed | Bind = "all auto" baseline; paint modal (future wave) flips to `user_paint` via diff |
 | T10 | `restore_weight_snapshot` operator scope | Reapplies existing sidecar to current mesh ONLY; does NOT trigger regen | Single responsibility - "revert my recent paint to last saved state"; regen flow handled by automesh hook |
 | T11 | Automesh integration | Automesh operator gains pre/post hook: pre-regen snapshot (if PG flag + sidecar populated), post-regen reproject + apply | One operator surface; flag controls the auto-flow |
@@ -295,11 +295,11 @@ User clicks Bind to Picker Armature (any mode):
 
 | Condition | Action | Message |
 | --- | --- | --- |
-| Mesh has no UV layer | ERROR + abort | `mesh has no UV layer - sidecar requires UVs; add a UV map first` |
+| Snapshot (pre-regen): mesh has no UV layer | WARN + empty entries | `mesh has no UV layer - sidecar entries empty; bind still wrote vertex groups` |
+| Post-regen reproject: new mesh has no UV layer | WARN + auto_seed stub | `target mesh has no UVs - skipping reproject, sidecar reset to auto_seed stub` |
 | Sidecar topology_hash mismatch on Restore | ERROR + abort | `topology changed since last snapshot - automesh regen with preserve_on_regen ON to re-establish` |
 | Reproject: all entries out of range | WARN + continue with auto_seed | `{N} verts reprojected, {M} fell back to auto-seed (sprite changed significantly)` |
 | Corrupt sidecar JSON | ERROR + abort | `existing sidecar is corrupt: {ValueError msg}; re-bind to reset` |
-| Reproject: target mesh has 0 UVs | WARN + skip reproject | `target mesh has no UVs - skipping reproject; weights wiped` |
 
 ## Test plan
 

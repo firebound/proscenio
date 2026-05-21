@@ -250,6 +250,29 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=-1.0,
     )
+    preserve_on_regen: BoolProperty(  # type: ignore[valid-type]
+        name="Preserve weights on regen",
+        description=(
+            "When ON (default), running Automesh from Sprite on an already-"
+            "bound mesh snapshots the current weights, regenerates the mesh, "
+            "then reprojects the weights onto the new topology via UV anchors. "
+            "OFF lets automesh wipe weights (legacy behavior) - useful when "
+            "the sprite changed enough that interpolation would produce "
+            "nonsense."
+        ),
+        default=True,
+    )
+    show_provenance_overlay: BoolProperty(  # type: ignore[valid-type]
+        name="Show provenance overlay",
+        description=(
+            "When ON, the Weight Paint viewport colors each vert by its "
+            "weight source: cyan = reprojected (came from a regen), white "
+            "= user paint, gray = auto seed (untouched bind output). The "
+            "GPU draw handler ships in Wave 13.2-paint; this wave provides "
+            "the data + toggle so the panel layout is stable."
+        ),
+        default=False,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

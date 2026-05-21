@@ -20,26 +20,13 @@ from ...skinning.sidecar_schema import (
     to_json,
 )
 from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
+from ._helpers import wipe_non_base_groups
 
-_BASE_SPRITE_GROUP = "proscenio_base_sprite"
 _SIDECAR_KEY = "proscenio_weight_sidecar"
 _ENVELOPE_RADIUS_KEY = "proscenio_envelope_radius"
 _ENVELOPE_DEFAULT_RADIUS = 1.0
 _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5
-
-
-def _wipe_non_base_groups(obj: bpy.types.Object) -> int:
-    """Remove every vertex group except the UV-anchor base sprite group.
-
-    Returns the number of groups removed. Operator surfaces it when > 0
-    so users notice manually-painted groups (e.g. ``extra_decoration``)
-    that bind discards.
-    """
-    to_remove = [g for g in obj.vertex_groups if g.name != _BASE_SPRITE_GROUP]
-    for group in to_remove:
-        obj.vertex_groups.remove(group)
-    return len(to_remove)
 
 
 def _bone_segments_xz(
@@ -140,7 +127,7 @@ def apply_bind(
 
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
-    groups_wiped = _wipe_non_base_groups(obj)
+    groups_wiped = wipe_non_base_groups(obj)
     for bone_name in weights:
         obj.vertex_groups.new(name=bone_name)
     for bone_name, per_vert_weights in weights.items():
@@ -181,7 +168,7 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
     """
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
-    groups_wiped = _wipe_non_base_groups(obj)
+    groups_wiped = wipe_non_base_groups(obj)
 
     deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
     prior_active = bpy.context.view_layer.objects.active

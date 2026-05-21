@@ -20,8 +20,7 @@ from ...skinning.sidecar_schema import (
     WeightSidecar,
     compute_topology_hash,
 )
-
-_BASE_SPRITE_GROUP = "proscenio_base_sprite"
+from ._helpers import wipe_non_base_groups
 
 
 def snapshot_sidecar(
@@ -93,7 +92,7 @@ def apply_sidecar(obj: bpy.types.Object, sidecar: WeightSidecar) -> dict[str, in
     missing_entry_verts is > 0 when sidecar.entries length differs from
     the mesh vert count - caller surfaces it as a WARN.
     """
-    _wipe_non_base_groups(obj)
+    wipe_non_base_groups(obj)
     groups_created = 0
     for bone_name in sidecar.vertex_group_names:
         obj.vertex_groups.new(name=bone_name)
@@ -132,10 +131,3 @@ def per_vert_uv_anchors(obj: bpy.types.Object) -> list[tuple[float, float]] | No
             anchors[vert_idx] = (float(uv[0]), float(uv[1]))
             seen[vert_idx] = True
     return anchors
-
-
-def _wipe_non_base_groups(obj: bpy.types.Object) -> int:
-    to_remove = [g for g in obj.vertex_groups if g.name != _BASE_SPRITE_GROUP]
-    for group in to_remove:
-        obj.vertex_groups.remove(group)
-    return len(to_remove)

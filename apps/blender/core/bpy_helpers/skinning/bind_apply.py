@@ -14,13 +14,10 @@ import contextlib
 import bpy
 
 from ...skinning.planar_proximity import BoneSegmentNamed2D
-from ...skinning.sidecar_schema import (
-    build_minimal_stub,
-    compute_topology_hash,
-    to_json,
-)
+from ...skinning.sidecar_schema import to_json
 from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
 from ._helpers import wipe_non_base_groups
+from .sidecar_io import snapshot_sidecar
 
 _SIDECAR_KEY = "proscenio_weight_sidecar"
 _ENVELOPE_RADIUS_KEY = "proscenio_envelope_radius"
@@ -142,11 +139,7 @@ def apply_bind(
         if total < _ORPHAN_EPS:
             orphan_verts += 1
 
-    topology_hash = compute_topology_hash(
-        len(mesh.vertices),
-        [list(p.vertices) for p in mesh.polygons],
-    )
-    sidecar = build_minimal_stub(list(weights.keys()), topology_hash)
+    sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)
 
     return {
@@ -192,11 +185,7 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
                 prior.select_set(True)
         bpy.context.view_layer.objects.active = prior_active
 
-    topology_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
-    sidecar = build_minimal_stub(deform_bone_names, topology_hash)
+    sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)
 
     orphan_verts = _count_orphans(obj, deform_bone_names)

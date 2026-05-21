@@ -227,7 +227,7 @@ What landed:
 - `PROSCENIO_OT_restore_weight_snapshot` operator - reapplies stored sidecar, errors on topology mismatch.
 - `PROSCENIO_PT_skinning` gains `_draw_snapshot_box` helper - toggles + counts pill (paint/seed/reprojected) + Restore button (greyed out without sidecar).
 - Refactor: dedupe `BASE_SPRITE_GROUP_NAME` import + extract `wipe_non_base_groups` into `_helpers.py`.
-- Headless tests: 4 new (automesh_regen x2 + restore_snapshot x2). Pure tests: 8 new (reproject x6 + entry round-trip x2). Total 49 pure + 11 headless.
+- Headless tests: 4 new (automesh_regen x2 + restore_snapshot x2). Pure tests: 8 new (reproject x6 + entry round-trip x2). Total 45 pure + 11 headless.
 - MANUAL_TESTING 1.21 covers 6 T-cases (populate / regen / restore / counts / disabled-button / topology-error).
 
 Out of scope (deferred):

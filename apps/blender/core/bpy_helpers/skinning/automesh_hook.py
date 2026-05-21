@@ -39,7 +39,7 @@ def maybe_pre_regen_snapshot(
     """
     if armature is None or armature.type != "ARMATURE":
         return None
-    skinning = _get_skinning_props(obj)
+    skinning = _get_skinning_props()
     if skinning is None or not bool(getattr(skinning, "preserve_on_regen", True)):
         return None
     payload = obj.get(_SIDECAR_KEY)
@@ -125,7 +125,8 @@ def maybe_post_regen_reproject(
     }
 
 
-def _get_skinning_props(obj: bpy.types.Object) -> bpy.types.PropertyGroup | None:
+def _get_skinning_props() -> bpy.types.PropertyGroup | None:
+    """Scene-scoped Proscenio skinning PG. None when scene / addon not registered."""
     scene = bpy.context.scene
     scene_props = getattr(scene, "proscenio", None) if scene else None
     return getattr(scene_props, "skinning", None) if scene_props else None

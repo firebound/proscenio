@@ -7,6 +7,8 @@ Python. Typical sprite mesh has < 2000 verts; O(n) per query is fine.
 
 from __future__ import annotations
 
+import math
+
 from .sidecar_schema import SidecarEntry
 
 Point2D = tuple[float, float]
@@ -30,7 +32,12 @@ def reproject_entries(
     max_distance'; the caller (automesh_hook) replaces None with an
     auto_seed entry (empty weights) so downstream apply_sidecar still
     visits every vert.
+
+    Raises ValueError when ``max_distance`` is negative or non-finite -
+    silent acceptance would distort neighbor filtering.
     """
+    if not math.isfinite(max_distance) or max_distance < 0.0:
+        raise ValueError(f"max_distance must be finite + non-negative (got {max_distance!r})")
     if len(old_entries) < 3:
         return [None] * len(new_uv_anchors)
     out: list[SidecarEntry | None] = []

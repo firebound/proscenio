@@ -220,14 +220,14 @@ What landed:
 - `SidecarEntry(uv_anchor, weights, provenance)` dataclass + `ProvenanceKind` literal (auto_seed / user_paint / reprojected). `WeightSidecar.entries` widens to `list[SidecarEntry]`. `from_json` validates provenance values.
 - Pure `weight_reproject.py` - hand-rolled O(n) KNN + 2D barycentric over UV anchors. Zero bpy / mathutils import.
 - bpy `sidecar_io.py` - `snapshot_sidecar` builds populated sidecar from vertex_groups + active UV layer; `apply_sidecar` writes entries back. UV missing falls back to empty entries (best-effort).
-- bpy `automesh_hook.py` - `maybe_pre_regen_snapshot` + `maybe_post_regen_reproject`; T4 identical-hash short-circuit, T8 UV-missing fallback, normal reproject path replaces None results with auto_seed empty-weights.
+- bpy `automesh_hook.py` - `maybe_pre_regen_snapshot` + `maybe_post_regen_reproject`; T4 identical-hash short-circuit, T8 UV-missing fallback applies in BOTH paths (pre-regen snapshot returns empty entries; post-regen reproject WARNs + writes auto_seed stub - never aborts), normal reproject path replaces None results with auto_seed empty-weights.
 - `apply_bind` (both planar + BONE_HEAT paths) stamps populated `auto_seed` entries via `snapshot_sidecar` instead of empty stub.
 - `ProscenioSkinningProps` gains `preserve_on_regen` (default ON, U1) + `show_provenance_overlay` (default OFF, U2; GPU draw handler ships in Wave 13.2-paint).
 - `automesh_from_sprite` execute() brackets `build_automesh` with the pre/post hook pair; status bar reports `sidecar: X reprojected + Y auto-seed of Z verts`.
 - `PROSCENIO_OT_restore_weight_snapshot` operator - reapplies stored sidecar, errors on topology mismatch.
 - `PROSCENIO_PT_skinning` gains `_draw_snapshot_box` helper - toggles + counts pill (paint/seed/reprojected) + Restore button (greyed out without sidecar).
 - Refactor: dedupe `BASE_SPRITE_GROUP_NAME` import + extract `wipe_non_base_groups` into `_helpers.py`.
-- Headless tests: 4 new (automesh_regen x2 + restore_snapshot x2). Pure tests: 8 new (reproject x6 + entry round-trip x2). Total 45 pure + 11 headless.
+- Headless tests: 4 new (automesh_regen x2 + restore_snapshot x2). Pure tests: 10 new (reproject x8 + entry round-trip x2). Total 47 pure + 11 headless.
 - MANUAL_TESTING 1.21 covers 6 T-cases (populate / regen / restore / counts / disabled-button / topology-error).
 
 Out of scope (deferred):

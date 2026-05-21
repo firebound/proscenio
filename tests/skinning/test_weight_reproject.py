@@ -6,6 +6,8 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
@@ -85,3 +87,23 @@ def test_degenerate_collinear_triangle_returns_none():
     # Target ABOVE the line - no triangle contains it
     out = reproject_entries(old, [(0.5, 0.5)], max_distance=2.0)
     assert out == [None]
+
+
+def test_negative_max_distance_raises():
+    old = [
+        _entry((0.0, 0.0), {"A": 1.0}),
+        _entry((1.0, 0.0), {"A": 1.0}),
+        _entry((0.0, 1.0), {"A": 1.0}),
+    ]
+    with pytest.raises(ValueError, match="max_distance"):
+        reproject_entries(old, [(0.5, 0.5)], max_distance=-1.0)
+
+
+def test_non_finite_max_distance_raises():
+    old = [
+        _entry((0.0, 0.0), {"A": 1.0}),
+        _entry((1.0, 0.0), {"A": 1.0}),
+        _entry((0.0, 1.0), {"A": 1.0}),
+    ]
+    with pytest.raises(ValueError, match="max_distance"):
+        reproject_entries(old, [(0.5, 0.5)], max_distance=float("inf"))

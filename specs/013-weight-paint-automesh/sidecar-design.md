@@ -295,12 +295,11 @@ User clicks Bind to Picker Armature (any mode):
 
 | Condition | Action | Message |
 | --- | --- | --- |
-| Snapshot: mesh has no UV layer | WARN + empty entries | `mesh has no UV layer - sidecar entries empty; bind still wrote vertex groups` |
-| Restore / post-regen: mesh has no UV layer | ERROR + abort | `mesh has no UV layer - sidecar requires UVs to reproject; add a UV map first` |
+| Snapshot (pre-regen): mesh has no UV layer | WARN + empty entries | `mesh has no UV layer - sidecar entries empty; bind still wrote vertex groups` |
+| Post-regen reproject: new mesh has no UV layer | WARN + auto_seed stub | `target mesh has no UVs - skipping reproject, sidecar reset to auto_seed stub` |
 | Sidecar topology_hash mismatch on Restore | ERROR + abort | `topology changed since last snapshot - automesh regen with preserve_on_regen ON to re-establish` |
 | Reproject: all entries out of range | WARN + continue with auto_seed | `{N} verts reprojected, {M} fell back to auto-seed (sprite changed significantly)` |
 | Corrupt sidecar JSON | ERROR + abort | `existing sidecar is corrupt: {ValueError msg}; re-bind to reset` |
-| Reproject: target mesh has 0 UVs | WARN + skip reproject | `target mesh has no UVs - skipping reproject; weights wiped` |
 
 ## Test plan
 

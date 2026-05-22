@@ -19,6 +19,10 @@ def _entry(uv: tuple[float, float], weights: dict[str, float]) -> SidecarEntry:
     return SidecarEntry(uv_anchor=uv, weights=weights, provenance="auto_seed")
 
 
+def _user_entry(uv: tuple[float, float], weights: dict[str, float]) -> SidecarEntry:
+    return SidecarEntry(uv_anchor=uv, weights=weights, provenance="user_paint")
+
+
 def test_identical_topology_passes_through_with_reprojected_tag():
     old = [
         _entry((0.0, 0.0), {"A": 1.0}),
@@ -97,6 +101,31 @@ def test_negative_max_distance_raises():
     ]
     with pytest.raises(ValueError, match="max_distance"):
         reproject_entries(old, [(0.5, 0.5)], max_distance=-1.0)
+
+
+def test_user_paint_donor_propagates_to_new_entry():
+    # B1 fix - any donor with user_paint should carry the marker
+    # through reproject so artists do not silently lose their work
+    # on automesh regen.
+    old = [
+        _user_entry((0.0, 0.0), {"A": 1.0}),
+        _entry((1.0, 0.0), {"A": 1.0}),
+        _entry((0.0, 1.0), {"A": 1.0}),
+    ]
+    out = reproject_entries(old, [(0.25, 0.25)], max_distance=2.0)
+    assert out[0] is not None
+    assert out[0].provenance == "user_paint"
+
+
+def test_all_auto_seed_donors_yield_reprojected():
+    old = [
+        _entry((0.0, 0.0), {"A": 1.0}),
+        _entry((1.0, 0.0), {"A": 1.0}),
+        _entry((0.0, 1.0), {"A": 1.0}),
+    ]
+    out = reproject_entries(old, [(0.25, 0.25)], max_distance=2.0)
+    assert out[0] is not None
+    assert out[0].provenance == "reprojected"
 
 
 def test_non_finite_max_distance_raises():

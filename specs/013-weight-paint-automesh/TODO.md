@@ -325,6 +325,14 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 - **Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
 - **Bezier brush stroke for alpha-boundary trace.** Wave 13.2's free-draw alternative to the alpha-trace one-shot. Adds D1.B to the paradigm enum when real workflows demand it.
 
+### Suspect bugs - needs investigation (manual smoke 2026-05-21)
+
+Items observed during paint-wave manual smoke that may be real bugs OR test-flow confusion. Each needs an isolated headless repro before fixing.
+
+- **B1: reproject does not preserve user_paint provenance.** `weight_reproject.reproject_entries` always stamps `provenance="reprojected"` on new entries; if old entry was `user_paint`, the marker is lost on automesh regen. Spec gap (paint-design T3 + T9 do not address). Decision needed: majority-of-3-donors / any-donor / barycentric-majority / always-reprojected. Repro: bind hand, enter Edit Weights, paint visible area, exit, automesh regen with same resolution, check sidecar pill - expected user_paint > 0, observed reprojected > 0 + user_paint = 0.
+- **B2: chained automesh regen produces visually chaotic weights.** Smoke flow `bind -> paint -> regen 0.25 -> regen 0.3 -> regen 0.25` ended with weights scattered randomly across mesh (not the painted region). Reproject reports `135 seed / 114 reprojected of 249` so it "ran" but result is wrong. Hypothesis: UV anchors inconsistent across automesh runs (alpha walker produces different vert order each run, UV first-loop assignment shifts), OR barycentric blend producing wrong weights when donors are spread thin. Repro: needs headless test with 2 deterministic meshes + known weights + assert reproject preserves them within tolerance.
+- **B3: resolution 0.5 destroys silhouette (Wave 13.1 regression).** Automesh at `Mesh resolution = 0.5` produced 44 verts / 27 faces of disconnected fragments instead of low-poly hand silhouette. Lower (0.25 default) works; 0.5 falls apart. Hypothesis: Moore-neighbour walker loses adjacency at coarse pixel stride OR hole detector misfires on downscaled binary mask. Out of scope for SPEC 013.2 (lives in alpha_contour.py). Repro: `bpy.ops.proscenio.automesh_from_sprite(resolution=0.5)` on `examples/generated/automesh/automesh.blend` hand fixture.
+
 ## Wave 13.4 - aspirational
 
 - **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator. Given two child meshes sharing a parent bone, generate seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Trigger: humanoid fixture lands + user complains about inner-elbow gap.

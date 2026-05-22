@@ -196,16 +196,37 @@ def _validate_invoke_preconditions(
 
 
 def _auto_select_active_group(obj: bpy.types.Object, armature: bpy.types.Object) -> None:
-    """Pick the active vertex group from the first selected pose bone."""
+    """Pick the active vertex group from the first selected pose bone.
+
+    Best-effort - any AttributeError on the pose API (Blender version
+    drift around Bone.select / PoseBone.select) is swallowed; the modal
+    still opens with whatever vertex group was active before invoke.
+    """
     pose = getattr(armature, "pose", None)
     if pose is None:
         return
-    selected_bones = [b for b in pose.bones if b.bone.select]
+    try:
+        selected_bones = [b for b in pose.bones if _is_pose_bone_selected(b)]
+    except AttributeError:
+        return
     if not selected_bones:
         return
     first = selected_bones[0].name
     if first in obj.vertex_groups:
         obj.vertex_groups.active_index = obj.vertex_groups[first].index
+
+
+def _is_pose_bone_selected(pose_bone: bpy.types.PoseBone) -> bool:
+    """Read selection state across Blender API generations.
+
+    5.1+ exposes the flag on PoseBone directly; earlier versions kept
+    it on the underlying Bone data block. getattr with default=False
+    keeps the helper a no-op when both attribute paths are absent.
+    """
+    bone = getattr(pose_bone, "bone", None)
+    if bone is not None and hasattr(bone, "select"):
+        return bool(bone.select)
+    return bool(getattr(pose_bone, "select", False))
 
 
 def _draw_statusbar_edit_weights(self: bpy.types.Header, _context: bpy.types.Context) -> None:

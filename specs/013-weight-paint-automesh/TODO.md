@@ -237,6 +237,36 @@ Out of scope (deferred):
 - Sidecar import/export to external file -> Wave 13.3.
 - `proscenio.copy_weights_to_selected` cross-mesh transfer -> Wave 13.3.
 
+### Edit Weights modal + provenance overlay - SHIPPED on `feat/spec-013.2-paint`
+
+Wave 13.2-paint: one-button entry into 2D-safe weight paint with GPU provenance overlay, per-stroke `user_paint` flip via diff, hard ESC exit, Edit Weights sub-box in panel.
+
+Spec: [`paint-design.md`](paint-design.md).
+Plan: [`docs/superpowers/plans/2026-05-21-spec-013.2-paint.md`](../../docs/superpowers/plans/2026-05-21-spec-013.2-paint.md).
+
+What landed:
+
+- `PaintPresetSnapshot` frozen dataclass + `PRESET_2D` constant (Front Faces locked OFF per T46254 regression guard). Symmetric apply/restore.
+- Pure `weight_diff.py` - diff_weights with eps tolerance; missing-vert in either side counts as touched.
+- `bone_collection_visibility.py` - Blender 4.0+ Bone Collections snapshot/restore with 3.x bone.hide fallback. Module is bpy-free (duck-typed inputs).
+- `paint_preset_bind.py` - reads/writes tool_settings.weight_paint with defensive hasattr checks for API drift.
+- `weight_overlay.py` - POST_VIEW GPU draw handler. UNIFORM_COLOR shader; one POINTS batch per provenance color (cyan/white/gray). Mode='weight' branch reserved for Wave 13.3.
+- `stroke_diff.py` - StrokeDiffTracker class. Pre-stroke snapshot + post-stroke diff + flip touched entries' provenance to user_paint + rewrite sidecar JSON.
+- `modal_session.py` - EditWeightsSession dataclass + capture + restore. Object lookups by name so restore survives undo-driven object recreation.
+- `PROSCENIO_OT_edit_weights_modal` - mono-operator owning invoke/modal/finish. ESC hard-exit, WINDOW_DEACTIVATE flushes in-flight stroke, MOUSEMOVE+pressure=0 catches pen-lift.
+- Skinning panel gains Edit Weights sub-box between Bind + Snapshot. Button greys out when picker or sidecar missing.
+- Headless tests: 5 new. Pure tests: 11 new (paint_preset x4 + weight_diff x4 + bone_collection_visibility x3). Total 58 pure + 16 headless.
+- MANUAL_TESTING 1.22 covers 6 T-cases (enter modal / stroke / ESC restore / Reload Scripts / single undo / disabled button).
+
+Out of scope (deferred):
+
+- Weight-gradient overlay UI toggle -> Wave 13.3.
+- Per-bone soft/hard mode toggle (D16) -> Wave 13.3.
+- proscenio.copy_weights_to_selected cross-mesh transfer -> Wave 13.3.
+- Smart Bones / corrective drivers -> Wave 14+.
+- Live pose-mode preview in weight paint -> Wave 13.3.
+- Brush curve presets ("Hard edge" / "Soft falloff" / "Crease") -> Wave 13.3.
+
 ### Interactive modal automesh authoring
 
 User reflection after PR #51: one-shot produces over-dense meshes for simple sprites AND user has no in-flight course correction. Modal lifts each existing debug stage to interactive preview.
@@ -314,6 +344,7 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 | post-merge (Wave 13.2 bind) | diagnose_flipped_normals convention inverted (Y>=0 = flipped, was Y<=0); `_flip_normals_to_positive_y` workaround removed from headless test | Proscenio Front Ortho convention: camera at -Y looking +Y; sprite "facing camera" = normal in -Y. Verified against automesh output (432/432 faces at Y=-1). Original assumption (+Y = correct) was inverted; fixture builder is NOT buggy, was the diagnose check |
 | post-merge (Wave 13.2-panel) | D4 amended - BONE_HEAT allowed as default bind mode; Skinning panel gains Bind sub-box | Manual smoke on PR #54 surfaced bone heat produces better falloff for 2D pickers; F3-only access for bind was a UX blocker. Pivot resolves both |
 | post-merge (Wave 13.2-sidecar) | Wave 13.2-sidecar shipped - populated WeightSidecar + reproject across regen + restore operator + panel Snapshot sub-box | Materializes D6 differentiator (Spine / COA2 lose weights on regen; Proscenio survives via UV-anchor barycentric reproject) |
+| post-merge (Wave 13.2-paint) | Wave 13.2-paint shipped - Edit Weights modal + GPU provenance overlay + per-stroke user_paint flip + Skinning panel sub-box | Closes D6/D7/D8/D9/D10/D12/D14 - one-button entry to 2D-safe weight paint with provenance feedback the artist actually sees in the viewport |
 
 ## Out of scope (permanently)
 

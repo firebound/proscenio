@@ -422,6 +422,64 @@ Expected: status bar ERROR `topology changed since last snapshot - run Automesh 
 
 ---
 
+### 1.22 SPEC 013.2 Paint - Edit Weights modal + provenance overlay
+
+**Fixture:** `examples/generated/automesh/automesh.blend`
+
+T1 - Enter Edit Weights modal:
+
+1. Open fixture in Blender (5.1+).
+2. Select `hand`, set picker armature to `automesh.hand_rig` (Skeleton panel).
+3. Click Skinning panel > Bind to picker > **Bind to Picker Armature**.
+4. Skinning panel > Edit Weights > active group label reads `wrist` (or first VG alphabetically).
+5. Click **Edit Weights** button.
+
+Expected: viewport switches to Weight Paint mode. Provenance overlay visible - all verts show gray discs (fresh bind = all `auto_seed`). Status bar pill: `Edit Weights: ESC exit | mirror = picker.proscenio_mirror_x`.
+
+T2 - Paint stroke flips provenance:
+
+1. Continue from T1.
+2. Pick Add brush, set strength 0.5.
+3. Paint over the wrist area (single click-drag-release).
+
+Expected: on mouse release, verts in painted area flip from gray to white discs. Snapshot pill in panel updates: `N paint / M seed / 0 reprojected` where N > 0.
+
+T3 - ESC hard-exits and restores state:
+
+1. Continue from T2.
+2. Press ESC.
+
+Expected: mode returns to Object. Brush settings restored to pre-modal values. Bone visibility unchanged. `show_provenance_overlay` flag returns to prior value (default OFF; overlay disappears).
+
+T4 - Reload Scripts mid-modal:
+
+1. Bind hand, invoke Edit Weights modal, do NOT exit.
+2. Run Edit > Preferences > Reload Scripts.
+
+Expected: modal closes cleanly. No orphan GPU draw handler (no flickering shapes after reload). No Python errors in console.
+
+T5 - Single undo push:
+
+1. Bind hand. Invoke Edit Weights modal.
+2. Paint stroke A on wrist.
+3. Paint stroke B on palm.
+4. Press ESC.
+5. Press Ctrl+Z once.
+
+Expected: both strokes A + B revert to pre-modal weights. Sidecar provenance counts restored to pre-modal state.
+
+T6 - Button disabled affordance:
+
+1. Open fixture. Select hand. Do NOT bind.
+2. Skinning panel > Edit Weights button greyed out.
+3. Hint label: `bind first to enable`.
+4. Click button - nothing happens.
+5. Bind hand - button enables.
+
+(Headless coverage: `apps/blender/tests/operators/test_edit_weights_modal.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_paint_preset_2d.py` + `test_weight_diff.py` + `test_bone_collection_visibility.py` - 11 tests.)
+
+---
+
 ## 2. Apps/Godot
 
 ### 2.1 Plugin core

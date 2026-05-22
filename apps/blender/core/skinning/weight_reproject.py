@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 
-from .sidecar_schema import SidecarEntry
+from .sidecar_schema import ProvenanceKind, SidecarEntry
 
 Point2D = tuple[float, float]
 
@@ -69,7 +69,23 @@ def _reproject_one(
         (old_entries[j].weights, wb),
         (old_entries[k].weights, wc),
     )
-    return SidecarEntry(uv_anchor=target, weights=blended, provenance="reprojected")
+    provenance = _carry_user_paint_provenance((old_entries[i], old_entries[j], old_entries[k]))
+    return SidecarEntry(uv_anchor=target, weights=blended, provenance=provenance)
+
+
+def _carry_user_paint_provenance(donors: tuple[SidecarEntry, ...]) -> ProvenanceKind:
+    """Preserve user_paint marker when any donor was user-painted.
+
+    Without this, automesh regen silently demotes painted verts to
+    'reprojected' and the artist loses the visual signal that those
+    weights came from manual work. Any-donor wins is the conservative
+    choice (preserves intent) over majority-wins (could drop user paint
+    when 2 of 3 donors were auto_seed).
+    """
+    for donor in donors:
+        if donor.provenance == "user_paint":
+            return "user_paint"
+    return "reprojected"
 
 
 def _knn_3(

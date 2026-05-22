@@ -123,6 +123,20 @@ The writer turns Blender vertex groups into the `weights` array on a `polygon`-t
 
 A sprite without any vertex groups stays rigid-attached (parent of `Bone2D`). `sprite_frame` sprites ignore weights entirely.
 
+### Edit Weights modal pattern (SPEC 013.2 paint convention)
+
+The `proscenio.edit_weights` operator wraps Blender's native Weight Paint mode with a 2D-safe preset + GPU provenance overlay + per-stroke provenance tagging. Pattern when an operator needs to enter a modal paint context with restorable side effects:
+
+- **Capture session at invoke.** Snapshot the world state into a frozen dataclass (`EditWeightsSession` in `core/bpy_helpers/skinning/modal_session.py`): prior active object + selection + object mode + armature mode + paint preset + bone collection visibility + relevant PG flags. Store **names** not object refs so undo-driven object recreation cannot stale the restore path.
+- **Symmetric apply / restore.** Pure dataclasses (`PaintPresetSnapshot`) hold the desired state; bpy bridge (`paint_preset_bind.snapshot_paint_preset` / `apply_paint_preset` / `restore_paint_preset`) writes them onto `context.tool_settings.weight_paint`. Defensive `hasattr` guards tolerate Blender API drift across versions.
+- **Bone Collections visibility** (`bone_collection_visibility.py`) lifts COA Tools 2's `bone.hide` global state to Blender 4.0+ `bone_collections` per-collection `is_visible`. 3.x falls back to per-bone hide. Module is bpy-free (duck-typed inputs) so tests use `SimpleNamespace` mocks.
+- **Per-stroke diff for provenance tagging.** `StrokeDiffTracker` snapshots the active vertex group's weights on `LEFTMOUSE PRESS`; on `LEFTMOUSE RELEASE` it diffs against current weights + flips touched sidecar entries' `provenance` to `user_paint` + rewrites the sidecar JSON. `WINDOW_DEACTIVATE` + `MOUSEMOVE` with `event.pressure == 0` flush in-flight strokes so alt-tab / tablet pen-lift don't lose paint.
+- **Hard ESC + try/finally restore.** Modal's `_finish(cancel=True)` runs every cleanup step inside try/finally; restoration MUST survive partial failure (any one `select_set` raise should not abort the rest of the restore chain - wrap each step in `contextlib.suppress(RuntimeError, ReferenceError)`). Iterate `list(context.selected_objects)` (not the live coll) so mutation during cleanup doesn't skip items.
+- **Single undo push wraps cumulative paint.** Call `bpy.ops.ed.undo_push(message="Edit Weights")` once at `_finish` so `Ctrl+Z` reverts the whole modal session, not stroke by stroke.
+- **GPU overlay** lives in a sibling helper (`weight_overlay.py`) registered via `bpy.types.SpaceView3D.draw_handler_add(... "POST_VIEW")`. Group draws by color into batched `POINTS` primitives so per-vert disc rendering stays cheap regardless of vert count. Wrap the draw loop in try/finally so `gpu.state.point_size_set` + `blend_set` always reset (state leak into other overlays otherwise).
+
+Reference implementation: `apps/blender/operators/edit_weights.py` (the modal) + `apps/blender/core/bpy_helpers/skinning/` (paint_preset_bind / bone_collection_visibility / weight_overlay / stroke_diff / modal_session).
+
 ## Modal operator hint placement (SPEC 012.2 convention)
 
 Standard for **every** modal operator that needs to surface a chord cheatsheet:
@@ -148,6 +162,8 @@ Pattern when an operator needs image processing:
 - **Cap defensive iteration limits** in any walker (`_MAX_CONTOUR_STEPS=200_000` in alpha_contour) so a pathological input cannot hang the Blender UI thread.
 
 Reference implementation: `apps/blender/core/alpha_contour.py` (pure walker), `apps/blender/core/automesh_geometry.py` (smoothing + resample), `apps/blender/core/automesh_density.py` (interior points + bone-aware density), `apps/blender/core/bpy_helpers/automesh_bmesh.py` (bridge), `apps/blender/operators/automesh.py` (operator), `tests/test_alpha_contour.py` + `tests/test_automesh_geometry.py` + `tests/test_automesh_density.py` (87 cases covering the pure side).
+
+The same no-third-party-deps rule extends to the weight sidecar reproject (SPEC 013.2 sidecar wave): `apps/blender/core/skinning/weight_reproject.py` does hand-rolled O(n) KNN + 2D barycentric over UV anchors. No `mathutils.kdtree` (would couple the module to bpy), no numpy. Typical sprite mesh has < 2000 verts; O(n) per query is fine. Pure module + 10 unit tests so the algorithm is testable in vanilla Python.
 
 ## Common pitfalls
 

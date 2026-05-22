@@ -303,13 +303,13 @@ Prerequisites:
 
 ### Docs + smoke
 
-- `.ai/skills/blender-dev.md` gains "Weight paint modal pattern" subsection (companion to SPEC 012's modal overlay + hint placement patterns). Covers snapshot + apply + restore + try/finally crash safety + Bone Collections visibility.
-- `.ai/skills/blender-dev.md` gains "Pure-Python contour walking" subsection documenting why automesh does not use OpenCV.
-- `.ai/skills/format-spec.md` cross-reference SPEC 013 as the authoring story for SPEC 003's weights wire format.
-- `tests/MANUAL_TESTING.md` 1.19 extends with T-cases for bind / edit / snapshot / reproject.
-- Reload-Scripts safety smoke - re-run "Reload Scripts" after entering Edit Weights modal; verify no orphan draw handlers, no panel crash, brush state restored.
-- Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects.
-- Headless Blender script via `--background --python` to confirm registration / unregister cycle clean.
+- [x] `.ai/skills/blender-dev.md` "Edit Weights modal pattern" subsection (companion to SPEC 012's modal overlay + hint placement patterns). Covers snapshot + apply + restore + try/finally crash safety + Bone Collections visibility + per-stroke provenance diff.
+- [x] `.ai/skills/blender-dev.md` "Pure-Python image processing" extended with weight_reproject hand-rolled KNN + barycentric note (same no-third-party-deps rule extends to sidecar wave).
+- [x] `.ai/skills/format-spec.md` "Skinning weights" gains "Authoring story" subsection cross-referencing SPEC 013 waves (automesh + bind + edit + reproject + restore).
+- [x] `tests/MANUAL_TESTING.md` 1.20 (bind/panel) + 1.21 (sidecar) + 1.22 (paint) cover T-cases for bind / edit / snapshot / reproject. 1.19 reserved for Wave 13.1 automesh-only flows.
+- Reload-Scripts safety smoke - re-run "Reload Scripts" after entering Edit Weights modal; verify no orphan draw handlers, no panel crash, brush state restored. (Pending - manual T-case to add to 1.22.)
+- Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects. (Pending - manual T-case to add to 1.20 or 1.21.)
+- Headless Blender script via `--background --python` to confirm registration / unregister cycle clean. (Pending - separate effort; the existing `run_operator_tests.py` runner covers ops registration as a side effect of fixture load.)
 
 ## Wave 13.3 - productivity polish
 

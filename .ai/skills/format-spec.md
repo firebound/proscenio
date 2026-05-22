@@ -78,6 +78,18 @@ The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinnin
 
 Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites (SPEC 002) ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
 
+### Authoring story (SPEC 013)
+
+SPEC 003 defines the **wire format**; SPEC 013 defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
+
+1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV). [SPEC 013 Wave 13.1](../../specs/013-weight-paint-automesh/STUDY.md).
+2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`. [SPEC 013.2 bind + panel waves](../../specs/013-weight-paint-automesh/panel-design.md).
+3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection. [SPEC 013.2 paint wave](../../specs/013-weight-paint-automesh/paint-design.md).
+4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen. [SPEC 013.2 sidecar wave](../../specs/013-weight-paint-automesh/sidecar-design.md).
+5. **Restore Weight Snapshot** - one-click revert to the last saved sidecar; topology mismatch aborts with a hint to re-run automesh with preserve ON.
+
+The writer (SPEC 003 / `proscenio_writer`) reads the final vertex groups and emits the `weights` array - it does not care which authoring path produced them.
+
 ## Versioning policy
 
 - `format_version` is integer, monotonic.

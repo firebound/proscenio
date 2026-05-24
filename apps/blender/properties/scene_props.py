@@ -273,6 +273,29 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=False,
     )
+    authoring_inner_loop_count: IntProperty(  # type: ignore[valid-type]
+        name="Inner loops",
+        description=(
+            "Concentric inner polylines computed via morphological erosion of "
+            "the outer contour during interactive modal authoring. Higher count "
+            "= more edge loops the CDT respects = more deformation control near "
+            "the silhouette boundary. 0 disables inner loops"
+        ),
+        default=2,
+        min=0,
+        max=10,
+    )
+    authoring_inner_loop_spacing: FloatProperty(  # type: ignore[valid-type]
+        name="Inner loop spacing",
+        description=(
+            "World-unit gap between adjacent inner loops in the authoring "
+            "modal. Smaller = denser loops near the boundary; larger = single "
+            "loop closer to mesh center"
+        ),
+        default=0.15,
+        min=0.01,
+        soft_max=1.0,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

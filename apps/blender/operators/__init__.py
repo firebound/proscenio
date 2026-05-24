@@ -18,6 +18,7 @@ Submodules:
 - quick_armature    - Quick Armature modal (5.1.d.3)
 - skeleton_target   - Set Proscenio active armature pointer (SPEC 012.2)
 - automesh          - PNG sprite -> annulus mesh (SPEC 013 Wave 13.1)
+- automesh_authoring - PROSCENIO_OT_automesh_authoring modal (SPEC 013.2 interactive-modal)
 - bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (SPEC 013.2 Wave 13.2)
 - restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (SPEC 013.2 sidecar)
 - edit_weights      - PROSCENIO_OT_edit_weights_modal (SPEC 013.2 paint)
@@ -33,6 +34,7 @@ from . import (
     authoring_camera,
     authoring_ik,
     automesh,
+    automesh_authoring,
     bind_mesh,
     driver,
     edit_weights,
@@ -61,6 +63,7 @@ def register() -> None:
     skeleton_target.register()
     quick_armature.register()
     automesh.register()
+    automesh_authoring.register()
     bind_mesh.register()
     restore_weight_snapshot.register()
     edit_weights.register()
@@ -76,6 +79,7 @@ def unregister() -> None:
     edit_weights.unregister()
     restore_weight_snapshot.unregister()
     bind_mesh.unregister()
+    automesh_authoring.unregister()
     automesh.unregister()
     quick_armature.unregister()
     skeleton_target.unregister()

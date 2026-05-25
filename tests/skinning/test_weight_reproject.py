@@ -63,10 +63,21 @@ def test_far_anchor_falls_back_to_none():
     assert out == [None]
 
 
-def test_fewer_than_three_old_entries_returns_none():
-    # Caller is expected to fall back to auto_seed.
+def test_fewer_than_three_old_entries_falls_back_to_nearest():
+    # B2 fix: 1-2 donors in range no longer auto_seeds. Inherits nearest
+    # donor's weights so the user does not lose paint on chained regens.
     old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((1.0, 0.0), {"A": 1.0})]
-    out = reproject_entries(old, [(0.5, 0.0)], max_distance=2.0)
+    out = reproject_entries(old, [(0.3, 0.0)], max_distance=2.0)
+    assert out[0] is not None
+    assert out[0].weights == {"A": 1.0}
+    assert out[0].provenance == "reprojected"
+
+
+def test_zero_donors_in_range_still_returns_none():
+    # Only when NO donor exists in range do we fall back to caller-side
+    # auto_seed (caller knows the target is truly out of mesh scope).
+    old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((0.1, 0.0), {"A": 1.0})]
+    out = reproject_entries(old, [(10.0, 10.0)], max_distance=0.5)
     assert out == [None]
 
 
@@ -81,16 +92,35 @@ def test_single_bone_weight_preserved_under_interpolation():
     assert math.isclose(out[0].weights["only"], 1.0, abs_tol=1e-3)
 
 
-def test_degenerate_collinear_triangle_returns_none():
-    # 3 collinear neighbors -> barycentric undefined -> caller auto_seeds
+def test_degenerate_collinear_triangle_falls_back_to_nearest():
+    # B2 fix: when barycentric returns None (target outside the donor
+    # triangle, OR donors collinear so triangle is degenerate), fall back
+    # to nearest donor instead of auto_seed. Prior behavior dropped
+    # weights at every silhouette-boundary vert and produced the chaotic
+    # weight pattern seen during paint-wave smoke.
     old = [
         _entry((0.0, 0.0), {"A": 1.0}),
         _entry((0.5, 0.0), {"A": 1.0}),
         _entry((1.0, 0.0), {"A": 1.0}),
     ]
-    # Target ABOVE the line - no triangle contains it
     out = reproject_entries(old, [(0.5, 0.5)], max_distance=2.0)
-    assert out == [None]
+    assert out[0] is not None
+    assert out[0].weights == {"A": 1.0}
+    assert out[0].provenance == "reprojected"
+
+
+def test_user_paint_carried_through_nearest_fallback():
+    # When the nearest-fallback fires (B2 fix), the donor's user_paint
+    # provenance must still propagate so artist marks survive the regen.
+    old = [
+        _user_entry((0.0, 0.0), {"A": 1.0}),
+        _entry((0.5, 0.0), {"A": 1.0}),
+        _entry((1.0, 0.0), {"A": 1.0}),
+    ]
+    # Target above the line -> barycentric fails -> nearest is (0,0)
+    out = reproject_entries(old, [(0.0, 0.5)], max_distance=2.0)
+    assert out[0] is not None
+    assert out[0].provenance == "user_paint"
 
 
 def test_negative_max_distance_raises():

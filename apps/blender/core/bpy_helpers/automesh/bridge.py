@@ -527,6 +527,34 @@ def _compute_steiner_points(
     return interior_points
 
 
+def _merge_extra_steiners(
+    auto_interior: list[tuple[float, float]],
+    extra_steiners: list[tuple[float, float]],
+    outer_world: Contour2D,
+    holes_world: list[Contour2D],
+) -> list[tuple[float, float]]:
+    """Merge user-placed Steiner points into the auto-computed interior.
+
+    Filters extras the same way `_compute_steiner_points` filters the
+    auto grid: drop anything outside the outer silhouette, drop anything
+    inside an alpha hole. Skips the half-spacing boundary check because
+    the user explicitly placed these (they may want a point near the
+    silhouette edge for joint-cover deformation control).
+
+    Used by the interactive modal authoring operator to forward the
+    points the artist clicked during Stage 3 (USER_STEINERS) into the
+    final mesh at Stage 5 (APPLY).
+    """
+    accepted: list[tuple[float, float]] = []
+    for point in extra_steiners:
+        if not point_in_polygon(point, outer_world):
+            continue
+        if any(point_in_polygon(point, hole) for hole in holes_world):
+            continue
+        accepted.append(point)
+    return list(auto_interior) + accepted
+
+
 def _triangulate_into_bmesh(
     obj: Object,
     outer_world: Contour2D,
@@ -590,6 +618,7 @@ def build_automesh(
     bone_density_factor: int = 1,
     debug_stage: DebugStage = "off",
     preserve_base_quad: bool = False,
+    extra_steiners: list[tuple[float, float]] | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -667,6 +696,10 @@ def build_automesh(
         bone_density_radius,
         bone_density_factor,
     )
+    if extra_steiners:
+        interior_points = _merge_extra_steiners(
+            interior_points, extra_steiners, outer_world, holes_world
+        )
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)
         return _debug_stage_report(

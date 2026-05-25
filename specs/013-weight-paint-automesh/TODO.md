@@ -49,11 +49,18 @@ What landed:
 
 Pick features per dependency notes; not all need shipping in a single PR. Recommended start order: cleanup → bind → paint → sidecar → panel → interactive modal → docs.
 
-### Code-quality cleanup (prerequisite for everything else)
+### Code-quality cleanup (prerequisite for everything else) - DONE (organically through Wave 13.2)
 
-Branch: `refactor/spec-013-cleanup`.
+**Status (audit 2026-05-25):** all 5 checklist items below ended up shipped silently across Wave 13.2-bind / sidecar / paint / interactive-modal PRs. The prerequisite flag is removed; no separate cleanup PR needed. Validated:
 
-Sonar local + warnings emitted during PR #51 review iteration:
+- `apps/blender/core/automesh/` + `apps/blender/core/bpy_helpers/automesh/` domain packages exist (item 5)
+- `apps/blender/core/automesh/geometry.py` exposes shared geometry helpers (item 3 equivalent)
+- `dilate` + `erode` are 3-line wrappers around `_apply_morphology` (item 4)
+- `_fill_inner_via_delaunay` + `_build_annulus_strip` not found in grep (item 2)
+- `sonar-project.properties` has `python:S101` ignore for `apps/blender/operators/**/*.py` etc (item 1)
+- `validate_automesh.py` shrunk from 660 LOC -> 48 LOC (refactor went further than the checklist asked)
+
+Original checklist preserved below for audit trail. Sonar warnings emitted during PR #51 review iteration:
 
 **Hot spots (cognitive complexity, limit = 15)**:
 
@@ -330,7 +337,7 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 Items observed during paint-wave manual smoke that may be real bugs OR test-flow confusion. Each needs an isolated headless repro before fixing.
 
 - **B1: reproject does not preserve user_paint provenance.** ~~`weight_reproject.reproject_entries` always stamps `provenance="reprojected"` on new entries; if old entry was `user_paint`, the marker is lost on automesh regen.~~ **FIXED** on branch `fix/spec-013-reproject-preserves-user-paint`: `_carry_user_paint_provenance` propagates `user_paint` when any of the 3 barycentric donor anchors carried that marker (any-donor wins, conservative choice for preserving artist intent). +2 pure tests.
-- **B2: chained automesh regen produces visually chaotic weights.** Smoke flow `bind -> paint -> regen 0.25 -> regen 0.3 -> regen 0.25` ended with weights scattered randomly across mesh (not the painted region). Reproject reports `135 seed / 114 reprojected of 249` so it "ran" but result is wrong. Hypothesis: UV anchors inconsistent across automesh runs (alpha walker produces different vert order each run, UV first-loop assignment shifts), OR barycentric blend producing wrong weights when donors are spread thin. Repro: needs headless test with 2 deterministic meshes + known weights + assert reproject preserves them within tolerance.
+- **B2: chained automesh regen produces visually chaotic weights.** ~~Smoke flow `bind -> paint -> regen 0.25 -> regen 0.3 -> regen 0.25` ended with weights scattered randomly across mesh.~~ **FIXED on branch `refactor/spec-013-cleanup`** (this PR). Confirmed root cause was tight `max_distance=0.1` default in UV space + barycentric path returned None whenever target sat outside the 3-donor triangle (boundary verts almost always). Fix: (a) bump default to 0.5; (b) nearest-neighbor fallback when <3 donors found OR barycentric returns None. Only returns None when zero donors exist. +2 pure tests added; existing collinear + fewer-than-3 tests rewritten to assert the new fallback. user_paint provenance carries through fallback.
 - **B3: resolution 0.5 destroys silhouette (Wave 13.1 regression).** Automesh at `Mesh resolution = 0.5` produced 44 verts / 27 faces of disconnected fragments instead of low-poly hand silhouette. Lower (0.25 default) works; 0.5 falls apart. Hypothesis: Moore-neighbour walker loses adjacency at coarse pixel stride OR hole detector misfires on downscaled binary mask. Out of scope for SPEC 013.2 (lives in alpha_contour.py). Repro: `bpy.ops.proscenio.automesh_from_sprite(resolution=0.5)` on `examples/generated/automesh/automesh.blend` hand fixture.
 
 ## Wave 13.4 - aspirational

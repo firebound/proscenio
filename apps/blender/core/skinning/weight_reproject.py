@@ -24,21 +24,34 @@ def reproject_entries(
     old_entries: list[SidecarEntry],
     new_uv_anchors: list[Point2D],
     *,
-    max_distance: float = 0.1,
+    max_distance: float = 0.5,
 ) -> list[SidecarEntry | None]:
     """Per new anchor, return an interpolated SidecarEntry or None.
 
-    None signals 'no triangle of old anchors covers this target within
-    max_distance'; the caller (automesh_hook) replaces None with an
-    auto_seed entry (empty weights) so downstream apply_sidecar still
-    visits every vert.
+    Tries barycentric blend over 3 nearest donors first. Falls back to
+    nearest-neighbor weight inheritance when (a) fewer than 3 donors lie
+    within max_distance OR (b) the target sits outside the triangle the
+    3 nearest donors form. Only returns None when NO donor exists within
+    max_distance (truly out of range).
+
+    The fallback exists because dropping straight from "3-donor barycentric"
+    to "auto_seed empty weights" produces visible weight corruption after
+    automesh regen (B2 from Wave 13.2-paint smoke). Inheriting the nearest
+    donor's weights is strictly better than empty: Blender's Auto-Normalize
+    smooths the resulting per-vert pattern, and the artist's painted
+    regions stay anchored where the source mesh had them.
+
+    Default max_distance bumped from 0.1 to 0.5 in B2 fix - 0.1 was too
+    tight for typical sprite UV space (full sprite covers up to 1.0 in
+    each axis; 0.1 = 10% would-be neighborhood missed half the verts
+    when the new mesh's anchor density differed slightly from the old).
 
     Raises ValueError when ``max_distance`` is negative or non-finite -
     silent acceptance would distort neighbor filtering.
     """
     if not math.isfinite(max_distance) or max_distance < 0.0:
         raise ValueError(f"max_distance must be finite + non-negative (got {max_distance!r})")
-    if len(old_entries) < 3:
+    if not old_entries:
         return [None] * len(new_uv_anchors)
     out: list[SidecarEntry | None] = []
     for target in new_uv_anchors:
@@ -52,8 +65,10 @@ def _reproject_one(
     max_distance: float,
 ) -> SidecarEntry | None:
     neighbors = _knn_3(old_entries, target, max_distance)
-    if len(neighbors) < 3:
+    if not neighbors:
         return None
+    if len(neighbors) < 3:
+        return _nearest_neighbor_entry(target, old_entries, neighbors)
     i, j, k = neighbors[0][0], neighbors[1][0], neighbors[2][0]
     a, b, c = (
         old_entries[i].uv_anchor,
@@ -62,7 +77,7 @@ def _reproject_one(
     )
     bary = _barycentric_2d(target, a, b, c)
     if bary is None:
-        return None
+        return _nearest_neighbor_entry(target, old_entries, neighbors)
     wa, wb, wc = bary
     blended = _blend_weights(
         (old_entries[i].weights, wa),
@@ -71,6 +86,29 @@ def _reproject_one(
     )
     provenance = _carry_user_paint_provenance((old_entries[i], old_entries[j], old_entries[k]))
     return SidecarEntry(uv_anchor=target, weights=blended, provenance=provenance)
+
+
+def _nearest_neighbor_entry(
+    target: Point2D,
+    old_entries: list[SidecarEntry],
+    neighbors: list[tuple[int, float]],
+) -> SidecarEntry:
+    """Fallback when barycentric blend not possible (fewer than 3 donors
+    in range, OR target outside the donor triangle). Inherits the nearest
+    donor's weights + carries its provenance verbatim.
+
+    neighbors must be non-empty; caller already checked. Distances in the
+    tuple come from _knn_3 (squared, ascending), so neighbors[0] is the
+    closest.
+    """
+    nearest_idx = neighbors[0][0]
+    donor = old_entries[nearest_idx]
+    provenance: ProvenanceKind = "user_paint" if donor.provenance == "user_paint" else "reprojected"
+    return SidecarEntry(
+        uv_anchor=target,
+        weights=dict(donor.weights),
+        provenance=provenance,
+    )
 
 
 def _carry_user_paint_provenance(donors: tuple[SidecarEntry, ...]) -> ProvenanceKind:

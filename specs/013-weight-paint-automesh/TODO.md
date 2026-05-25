@@ -267,7 +267,40 @@ Out of scope (deferred):
 - Live pose-mode preview in weight paint -> Wave 13.3.
 - Brush curve presets ("Hard edge" / "Soft falloff" / "Crease") -> Wave 13.3.
 
-### Interactive modal automesh authoring
+### Interactive modal automesh - SHIPPED on `feat/spec-013.2-interactive-modal`
+
+Wave 13.2-interactive-modal: 5-stage modal preview of the automesh pipeline. Each stage (outer contour / inner loops / user Steiner points / Steiner preview / apply) shows a GPU overlay; sliders re-run live; user Steiners click-place + persist via Custom Property. Final APPLY pipes through build_automesh + Wave 13.2-sidecar reproject so existing weights survive.
+
+Spec: [`interactive-modal-design.md`](interactive-modal-design.md).
+Plan: [`docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md`](../../docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md).
+
+What landed:
+
+- `AuthoringStage` IntEnum + `StageParams` (frozen, equality-based dirty detection) + `StageOutput` (mutable, accumulates across stages).
+- Pure `erosion_loops.py` - hand-rolled wrapper around contour.erode + find_first_boundary + trace_contour. Computes N successively-eroded inner loops from a base mask.
+- bpy `authoring_session.py` - capture/restore prior viewport state via name-based object lookups.
+- bpy `authoring_overlay.py` - POST_VIEW GPU draw handlers per stage. UNIFORM_COLOR shader (shared with modal_overlay). LINE_STRIP for polylines + POINTS for dots. All GPU state wrapped in try/finally so failures do not leak point_size or blend.
+- bpy `authoring_pipeline.py` - per-stage compute + apply_mesh terminal helper. apply_mesh invokes maybe_pre_regen_snapshot + maybe_post_regen_reproject from Wave 13.2-sidecar so existing weights survive APPLY (B1 fix preserves user_paint provenance).
+- `PROSCENIO_OT_automesh_authoring` modal operator - invoke captures session + computes OUTER + registers overlay + starts 100ms TIMER. ENTER advances; BACKSPACE retreats; ESC cancels. LEFTMOUSE (USER_STEINERS) click-places; Shift+LEFTMOUSE deletes nearest within world threshold. TIMER polls StageParams + recomputes current stage on PG diff (throttled slider re-run).
+- Skinning panel gains Automesh authoring sub-box between Automesh one-shot + Bind. Coexists - one-shot stays as the quick path.
+- ProscenioSkinningProps gains authoring_inner_loop_count (default 2) + authoring_inner_loop_spacing (default 0.15).
+- Headless tests: 5 new. Pure tests: 8 new (erosion_loops x5 + authoring_stages x3). Total 69 pure + 21 headless.
+- MANUAL_TESTING 1.23 covers 6 T-cases (enter modal / slider live re-run / click placement / shift-click delete / APPLY commit / APPLY preserves weights).
+
+Known gap (deferred to Wave 13.3 or build_automesh extension PR):
+
+- **apply_mesh does not consume output.user_steiners + output.inner_loops at APPLY.** build_automesh today does its own full pipeline; the modal's previewed inner loops + user-placed Steiners are PREVIEW-ONLY. Custom Property persistence is in place so a future build_automesh extension (accept optional user_steiners + inner_loops_override constraints) can honor them without further modal changes. Cleanup prerequisite (cognitive-47 build_automesh refactor) becomes a blocker for closing this gap.
+
+Out of scope (deferred):
+
+- User-drawn inner loops (free-draw polylines as CDT constraint edges) -> Wave 13.3.
+- Drag-stroke Steiner placement (multiple points per drag) -> Wave 13.3.
+- Brush stroke for alpha-boundary trace (D1.B paradigm enum) -> Wave 13.3.
+- Stage 4 editable Steiners (drag-to-move, delete-with-X) -> Wave 13.3.
+- Pose-mode preview mid-modal -> Wave 13.3.
+- build_automesh extension to honor authoring inputs at APPLY -> blocking on cleanup prerequisite.
+
+### Interactive modal automesh authoring (original brainstorm sketch, superseded by SHIPPED block above)
 
 User reflection after PR #51: one-shot produces over-dense meshes for simple sprites AND user has no in-flight course correction. Modal lifts each existing debug stage to interactive preview.
 
@@ -353,6 +386,7 @@ Items observed during paint-wave manual smoke that may be real bugs OR test-flow
 | post-merge (Wave 13.2-panel) | D4 amended - BONE_HEAT allowed as default bind mode; Skinning panel gains Bind sub-box | Manual smoke on PR #54 surfaced bone heat produces better falloff for 2D pickers; F3-only access for bind was a UX blocker. Pivot resolves both |
 | post-merge (Wave 13.2-sidecar) | Wave 13.2-sidecar shipped - populated WeightSidecar + reproject across regen + restore operator + panel Snapshot sub-box | Materializes D6 differentiator (Spine / COA2 lose weights on regen; Proscenio survives via UV-anchor barycentric reproject) |
 | post-merge (Wave 13.2-paint) | Wave 13.2-paint shipped - Edit Weights modal + GPU provenance overlay + per-stroke user_paint flip + Skinning panel sub-box | Closes D6/D7/D8/D9/D10/D12/D14 - one-button entry to 2D-safe weight paint with provenance feedback the artist actually sees in the viewport |
+| post-merge (Wave 13.2-interactive-modal) | Wave 13.2-interactive-modal shipped - 5-stage modal preview of the automesh pipeline + click-placed user Steiners + sidecar reproject on APPLY | Closes "Interactive modal automesh authoring" TODO item; preview-only at APPLY (build_automesh extension follows once cleanup prereq lands); coexists with one-shot automesh_from_sprite |
 
 ## Out of scope (permanently)
 

@@ -480,6 +480,62 @@ T6 - Button disabled affordance:
 
 ---
 
+### 1.23 SPEC 013.2 Interactive modal automesh
+
+**Fixture:** `examples/generated/automesh/automesh.blend`
+
+T1 - Enter modal at OUTER stage:
+
+1. Open fixture in Blender (5.1+).
+2. Select `hand`.
+3. Skinning panel > Automesh authoring > **Automesh (modal)**.
+
+Expected: viewport shows cyan polyline tracing the hand silhouette (OUTER stage overlay). Status bar pill: `Automesh Authoring: next | back | cancel` with ENTER / BACKSPACE / ESC icons.
+
+T2 - Slider re-runs throttled:
+
+1. Continue from T1.
+2. Skinning panel > Automesh from sprite > scrub `Mesh resolution` slider.
+
+Expected: cyan polyline re-runs live (~100ms throttle). Stops responding only when slider stops.
+
+T3 - Advance to USER_STEINERS + click placement:
+
+1. Continue from T1. Press ENTER twice.
+2. Stage is USER_STEINERS (prior overlays dim).
+3. Left-click inside the silhouette at 3 different locations.
+
+Expected: each click adds a yellow dot at the clicked point. Object Properties > Custom Properties > `proscenio_user_steiners` updates after each click (refresh by clicking the dropdown).
+
+T4 - Shift+click deletes nearest:
+
+1. Continue from T3.
+2. Shift+left-click within ~0.05 world units of an existing yellow dot.
+
+Expected: nearest dot disappears.
+
+T5 - APPLY commits mesh:
+
+1. Continue from T4. Press ENTER twice more (STEINER_PREVIEW, then APPLY).
+2. STEINER_PREVIEW shows red dots for all interior Steiners + yellow user dots still visible.
+3. ENTER on STEINER_PREVIEW triggers APPLY.
+
+Expected: mesh commits via build_automesh. Info bar: `Authoring applied: N verts, M faces`. Modal exits (FINISHED). Viewport returns to Object mode + prior selection restored.
+
+NOTE: at APPLY today, user Steiner points + custom inner loops are PREVIEW-ONLY. build_automesh re-runs its own pipeline; user inputs do not yet alter the final mesh. Persistence is in place (Custom Property), but a future build_automesh extension is needed to consume them. Tracked as a follow-up under Wave 13.3.
+
+T6 - APPLY with prior bind preserves weights:
+
+1. Bind hand first (Skinning > Bind to picker > Bind to Picker Armature).
+2. Snapshot pill shows `0 paint / N seed / 0 reprojected`.
+3. Invoke Automesh (modal). Advance through stages. APPLY at stage 5.
+
+Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via Wave 13.2-sidecar hook). If you painted any verts as user_paint via Edit Weights between bind and modal, the user_paint count must survive APPLY (B1 fix carries user_paint provenance through reproject).
+
+(Headless coverage: `apps/blender/tests/operators/test_automesh_authoring.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_erosion_loops.py` + `test_authoring_stages.py` - 8 tests.)
+
+---
+
 ## 2. Apps/Godot
 
 ### 2.1 Plugin core

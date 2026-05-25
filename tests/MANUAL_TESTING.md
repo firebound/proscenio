@@ -84,18 +84,18 @@ Workbench file: `examples/generated/slot_swap/slot_swap.blend` (arm + slot Empty
 
 Em workbench limpo:
 
-- [x] **Path A**: pose mode + bone selecionado -> "Create Slot" -> Empty `<bone>.slot` parent_type=BONE. Validado em slot_swap_workbench.
-- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes. **Bug:** posição do slot fica errada quando seed mesh tem parent (mesh "pula" pra outro canto da cena ao virar attachment). Bug em BUGS_FOUND.md.
-- [x] DnD mesh -> slot Empty no outliner reparenteia (Blender 5.1 suporta DnD reparent no outliner - confirmado via docs oficiais). Também funciona via `Ctrl+P` ou shift modifier. Attachment aparece no panel após reparent.
+- [x] **Path A**: pose mode + bone selecionado -> Skeleton panel > "Create Slot" -> Empty `<bone>.slot` parent_type=BONE (testado em slot_swap_workbench, criou `arm.slot`)
+- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes, parent herdado do seed mesh. **Bug**: novo Empty fica em posição errada quando seed mesh já tem parent (BUGS_FOUND.md). Reparenting funciona, posicionamento não.
+- [x] DnD mesh -> slot Empty no outliner: reparenteia, attachment aparece no panel. (User report: plain drag não funcionou, precisou Ctrl+P ou Shift+drag em Blender 5.1.1 -- divergente da doc oficial.)
 
 ### 1.6 Slot validation
 
 Em slot_swap_workbench / scenario custom (doll_slots retired):
 
-- [ ] Slot sem children: erro vermelho "no MESH children" (não testado explicitamente nesta sessão)
-- [!] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child". **Bug:** validator lê PG only, edits direto na CP não são detectados. Bug em BUGS_FOUND.md.
-- [ ] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo (não testado)
-- [!] Bone-transform keys em slot child (`club` com `club.action` keyframando location): warning "carries bone-transform keyframes". **Bug:** validator não dispara warning - `club.action` com keys de location passou silencioso. Bug em BUGS_FOUND.md.
+- [x] Slot sem children: erro vermelho "no MESH children" (inline em Active Slot panel + linha clicável em Validation panel após click "Validate" no Export panel)
+- [!] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child". **2 bugs combinados:** (a) CP edit não dispara PG update (Blender API limitation), (b) validator lê PG só, ignora valor real do CP. Falsos negativos. BUGS_FOUND.md.
+- [~] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo. Deferred -- slot_swap só tem 1 bone, precisa fixture com 2+ bones pra testar.
+- [!] Bone-transform keys em slot child: validator NÃO detecta. Insert Keyframe em location do club (filho de slot Empty), nenhum warning. Bug em BUGS_FOUND.md.
 - [!] Slot attachments flaggadas como "no parent bone" (false positive). **Bug:** validator dispara em attachment que tá legitimamente parented ao slot Empty (que por sua vez é parented ao bone). Bug em BUGS_FOUND.md.
 - [~] Validate button -> resultados aparecem no Validation subpanel. **UI feedback:** botão Validate mora no Export panel, não no Validation panel - confunde usuário. Feedback em UI_FEEDBACK.md.
 - [~] Click issue na Validation panel -> seleciona objeto offending. Funciona via outliner, mas viewport não reflete se objeto está com `hide_viewport=True` (caso comum em slot non-default attachments). Feedback em UI_FEEDBACK.md.

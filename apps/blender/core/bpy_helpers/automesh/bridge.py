@@ -531,15 +531,18 @@ def _merge_extra_steiners(
     auto_interior: list[tuple[float, float]],
     extra_steiners: list[tuple[float, float]],
     outer_world: Contour2D,
+    inner_world: Contour2D,
     holes_world: list[Contour2D],
 ) -> list[tuple[float, float]]:
     """Merge user-placed Steiner points into the auto-computed interior.
 
     Filters extras the same way `_compute_steiner_points` filters the
     auto grid: drop anything outside the outer silhouette, drop anything
-    inside an alpha hole. Skips the half-spacing boundary check because
-    the user explicitly placed these (they may want a point near the
-    silhouette edge for joint-cover deformation control).
+    inside the inner annulus ring (excluded from CDT fill, so a vert
+    there would become a loose vertex with no incident face), drop
+    anything inside an alpha hole. Skips the half-spacing boundary
+    check because the user explicitly placed these (they may want a
+    point near the silhouette edge for joint-cover deformation control).
 
     Used by the interactive modal authoring operator to forward the
     points the artist clicked during Stage 3 (USER_STEINERS) into the
@@ -548,6 +551,8 @@ def _merge_extra_steiners(
     accepted: list[tuple[float, float]] = []
     for point in extra_steiners:
         if not point_in_polygon(point, outer_world):
+            continue
+        if inner_world and point_in_polygon(point, inner_world):
             continue
         if any(point_in_polygon(point, hole) for hole in holes_world):
             continue
@@ -698,7 +703,7 @@ def build_automesh(
     )
     if extra_steiners:
         interior_points = _merge_extra_steiners(
-            interior_points, extra_steiners, outer_world, holes_world
+            interior_points, extra_steiners, outer_world, inner_world, holes_world
         )
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)

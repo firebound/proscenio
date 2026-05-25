@@ -12,7 +12,6 @@ import traceback
 from typing import ClassVar
 
 import bpy
-from mathutils import Vector  # noqa: F401  # re-exported for downstream test stubs
 
 from ..core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
@@ -134,7 +133,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         try:
             if event.type == "ESC":
                 return self._finish(context, cancel=True)
-            if event.type == "RET" and event.value == "PRESS":
+            if event.type in {"RET", "NUMPAD_ENTER"} and event.value == "PRESS":
                 return self._advance(context)
             if event.type == "BACK_SPACE" and event.value == "PRESS":
                 return self._retreat(context)
@@ -146,7 +145,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 if event.shift:
                     return self._delete_nearest_steiner(context, event)
                 return self._add_steiner(context, event)
-            if event.type == "TIMER":
+            if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
                 current = _snapshot_params(context)
                 if current != self._last_params:
                     self._recompute_current_stage(context, current)

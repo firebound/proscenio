@@ -113,8 +113,14 @@ def read_user_steiners(obj: bpy.types.Object) -> list[Point2D]:
         return []
     points: list[Point2D] = []
     for item in data:
-        if isinstance(item, (list, tuple)) and len(item) == 2:
-            points.append((float(item[0]), float(item[1])))
+        if not (isinstance(item, (list, tuple)) and len(item) == 2):
+            continue
+        try:
+            x = float(item[0])
+            z = float(item[1])
+        except (TypeError, ValueError):
+            continue
+        points.append((x, z))
     return points
 
 

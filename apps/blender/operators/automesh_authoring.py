@@ -54,10 +54,11 @@ from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
 _TIMER_INTERVAL = 0.1
 _STEINER_DELETE_THRESHOLD_WORLD = 0.05
 _STAGE_NAMES = {
-    AuthoringStage.OUTER: "Outer contour",
-    AuthoringStage.INNER_LOOPS: "Inner loops",
-    AuthoringStage.USER_STEINERS: "User Steiner points",
-    AuthoringStage.STEINER_PREVIEW: "Steiner preview",
+    AuthoringStage.OUTER: "1/5 Outer contour",
+    AuthoringStage.INNER_LOOPS: "2/5 Inner loops",
+    AuthoringStage.USER_STEINERS: "3/5 User Steiner points (LMB add / Shift+LMB delete)",
+    AuthoringStage.STEINER_PREVIEW: "4/5 Steiner preview",
+    AuthoringStage.APPLY: "5/5 Apply",
 }
 
 
@@ -82,6 +83,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     _last_params: StageParams | None
     _timer: bpy.types.Timer | None
     _statusbar_appended: bool = False
+    _current_stage_label: str = _STAGE_NAMES[AuthoringStage.OUTER]
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -114,10 +116,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         try:
             self._output.outer = compute_outer(obj, image, params)
             self._handles = register_overlay(self._stage, self._output)
+            type(self)._current_stage_label = _STAGE_NAMES[self._stage]
             self._timer = context.window_manager.event_timer_add(
                 _TIMER_INTERVAL, window=context.window
             )
             self._append_statusbar()
+            _tag_redraw_view3d(context)
         except Exception as exc:
             report_error(self, f"Authoring setup failed: {exc} - restoring state")
             self._finish(context, cancel=True)
@@ -194,14 +198,18 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             )
             return self._finish(context, cancel=False)
         self._stage = next_stage
+        type(self)._current_stage_label = _STAGE_NAMES[self._stage]
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
     def _retreat(self, context: bpy.types.Context) -> set[str]:
         if self._stage == AuthoringStage.OUTER:
             return {"PASS_THROUGH"}
         self._stage = AuthoringStage(self._stage - 1)
+        type(self)._current_stage_label = _STAGE_NAMES[self._stage]
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
     def _recompute_current_stage(self, context: bpy.types.Context, params: StageParams) -> None:
@@ -226,6 +234,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 params,
             )
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        _tag_redraw_view3d(context)
 
     def _add_steiner(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         obj = context.active_object
@@ -237,6 +246,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._output.user_steiners.append(world_xz)
         write_user_steiners(obj, self._output.user_steiners)
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
     def _delete_nearest_steiner(
@@ -262,6 +272,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         del self._output.user_steiners[nearest_idx]
         write_user_steiners(obj, self._output.user_steiners)
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
@@ -362,7 +373,7 @@ def _draw_statusbar_authoring(self: bpy.types.Header, _context: bpy.types.Contex
     layout = self.layout
     row = layout.row(align=True)
     row.label(text="", icon="MOD_REMESH")
-    row.label(text="Automesh Authoring:")
+    row.label(text=f"Automesh Authoring: {PROSCENIO_OT_automesh_authoring._current_stage_label}")
     row = layout.row(align=True)
     row.label(text="", icon="EVENT_RETURN")
     row.label(text="next")
@@ -372,6 +383,22 @@ def _draw_statusbar_authoring(self: bpy.types.Header, _context: bpy.types.Contex
     row = layout.row(align=True)
     row.label(text="", icon="EVENT_ESC")
     row.label(text="cancel")
+
+
+def _tag_redraw_view3d(context: bpy.types.Context) -> None:
+    """Trigger a viewport repaint so GPU overlay updates land without
+    user interaction (zoom/pan). Iterates every VIEW_3D area in every
+    window since the modal may have been invoked from one but the user
+    may be looking at another."""
+    wm = context.window_manager
+    if wm is None:
+        return
+    for window in wm.windows:
+        if window.screen is None:
+            continue
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_automesh_authoring,)

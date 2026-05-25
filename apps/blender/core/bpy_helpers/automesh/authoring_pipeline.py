@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 import bpy
+from mathutils import Vector
 
 from ...automesh import (
     BoneSegment2D,
@@ -40,18 +41,26 @@ def compute_outer(
     image: bpy.types.Image,
     params: StageParams,
 ) -> list[Point2D]:
-    """Run alpha walker on the active image; return outer contour in world XZ."""
+    """Run alpha walker on the active image; return outer contour in WORLD XZ.
+
+    pixel_contour_to_world returns MESH-LOCAL XZ centered on the sprite
+    origin (bmesh writer pattern). The modal's POST_VIEW overlay draws
+    in world space, so we apply obj.matrix_world to land each point at
+    the sprite's actual viewport position. Without this, the overlay
+    renders at the world origin while the mesh sits elsewhere.
+    """
     alpha_grid = read_alpha_grid(image, params.resolution)
     pixel_contour = extract_outer_contour(alpha_grid, params.alpha_threshold, params.margin_pixels)
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
     source_width, source_height = image.size[0], image.size[1]
-    return pixel_contour_to_world(
+    local = pixel_contour_to_world(
         to_float_contour(pixel_contour),
         params.resolution,
         world_scale,
         source_width,
         source_height,
     )
+    return _to_world_xz(obj, local)
 
 
 def compute_inner_loops_for_stage(
@@ -77,12 +86,15 @@ def compute_inner_loops_for_stage(
     world_scale = 1.0 / pixels_per_unit
     source_width, source_height = image.size[0], image.size[1]
     return [
-        pixel_contour_to_world(
-            to_float_contour(c),
-            params.resolution,
-            world_scale,
-            source_width,
-            source_height,
+        _to_world_xz(
+            obj,
+            pixel_contour_to_world(
+                to_float_contour(c),
+                params.resolution,
+                world_scale,
+                source_width,
+                source_height,
+            ),
         )
         for c in inner_pixel_contours
     ]
@@ -181,3 +193,20 @@ def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     if scene_props is None:
         return 100.0
     return float(scene_props.pixels_per_unit) or 100.0
+
+
+def _to_world_xz(obj: bpy.types.Object, local_points: list[Point2D]) -> list[Point2D]:
+    """Transform local XZ points through obj.matrix_world; drop Y component.
+
+    Used by stage compute helpers so the GPU overlay draws at the sprite's
+    actual viewport position rather than the world origin. Y is dropped
+    after transform since the Proscenio convention pins the sprite plane
+    to Y=0 anyway; preserving any tiny Y component would still flatten on
+    the POST_VIEW draw (which builds (x, 0, z) verts).
+    """
+    matrix = obj.matrix_world
+    out: list[Point2D] = []
+    for x, z in local_points:
+        world = matrix @ Vector((x, 0.0, z))
+        out.append((world.x, world.z))
+    return out

@@ -116,3 +116,42 @@ def test_apply_mesh_runs_with_prior_sidecar(automesh_fixture):
     )
     counters = apply_mesh(obj, image, StageOutput(), params, bpy.data.objects["automesh.hand_rig"])
     assert "total_verts" in counters
+
+
+def test_apply_mesh_user_steiners_increase_total_verts(automesh_fixture):
+    """User-placed Steiners forwarded through extra_steiners must show up
+    as additional verts in the final mesh (PR #59 + #60 + this PR close
+    the loop end-to-end).
+    """
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+    )
+    # Baseline: no extra steiners
+    baseline = apply_mesh(obj, image, StageOutput(), params, None)
+    baseline_verts = baseline["total_verts"]
+    # Now add 4 user steiners well inside the hand silhouette (origin area)
+    output = StageOutput(user_steiners=[(0.1, 0.1), (-0.1, 0.1), (0.1, -0.1), (-0.1, -0.1)])
+    extended = apply_mesh(obj, image, output, params, None)
+    # User steiners reached the mesh - vert count grows by ~4 (some may
+    # fall outside silhouette or near boundary; the constraint is "more
+    # than baseline", not "exactly baseline + 4")
+    assert extended["total_verts"] > baseline_verts

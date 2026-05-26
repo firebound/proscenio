@@ -182,7 +182,14 @@ def apply_mesh(
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
-    extra_steiners = list(output.user_steiners) if output.user_steiners else None
+    # output.user_steiners are stored in WORLD XZ (overlay draws in world
+    # space). build_automesh's interior_points list is in MESH-LOCAL XZ
+    # (matches outer_world's space - misleadingly named, see
+    # pixel_contour_to_world docstring). Apply matrix_world.inverted()
+    # to convert before forwarding, otherwise _merge_extra_steiners
+    # filters them out via point_in_polygon(world_pt, local_polygon)
+    # whenever obj.location != world origin.
+    extra_steiners = _world_steiners_to_local(obj, output.user_steiners)
     counters = build_automesh(
         obj,
         image,
@@ -211,6 +218,26 @@ def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     if scene_props is None:
         return 100.0
     return float(scene_props.pixels_per_unit) or 100.0
+
+
+def _world_steiners_to_local(
+    obj: bpy.types.Object, world_points: list[Point2D]
+) -> list[Point2D] | None:
+    """Inverse of _to_world_xz; converts user-Steiner world XZ to mesh-local XZ.
+
+    Returns None for empty input so apply_mesh's `extra_steiners=` arg
+    stays None (build_automesh treats None as "no extras"). When obj sits
+    at world origin without rotation/scale, world == local and this is
+    a no-op transform.
+    """
+    if not world_points:
+        return None
+    inv = obj.matrix_world.inverted()
+    out: list[Point2D] = []
+    for x, z in world_points:
+        local = inv @ Vector((x, 0.0, z))
+        out.append((local.x, local.z))
+    return out
 
 
 def _to_world_xz(obj: bpy.types.Object, local_points: list[Point2D]) -> list[Point2D]:

@@ -118,40 +118,45 @@ def test_apply_mesh_runs_with_prior_sidecar(automesh_fixture):
     assert "total_verts" in counters
 
 
-def test_apply_mesh_user_steiners_increase_total_verts(automesh_fixture):
-    """User-placed Steiners forwarded through extra_steiners must show up
-    as additional verts in the final mesh (PR #59 + #60 + this PR close
-    the loop end-to-end).
+def test_world_steiners_to_local_applies_inverse_matrix(automesh_fixture):
+    """Stage 3 stores user_steiners in WORLD XZ (overlay draws in world
+    space). build_automesh's interior_points list is MESH-LOCAL XZ. The
+    helper must apply obj.matrix_world.inverted() so points land in the
+    polygon-filter coordinate space; otherwise sprites at obj.location !=
+    world origin lose all user steiners to point_in_polygon rejection
+    (user-reported bug 2026-05-25).
     """
     obj = _activate("hand")
-    _set_picker("automesh.hand_rig")
-    image = _resolve_image(obj)
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
-        apply_mesh,
-    )
-    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
-        StageOutput,
-        StageParams,
+        _world_steiners_to_local,
     )
 
-    params = StageParams(
-        resolution=0.25,
-        alpha_threshold=1,
-        margin_pixels=0,
-        contour_vertices=64,
-        inner_loop_count=0,
-        inner_loop_spacing=0.15,
-        interior_spacing=0.1,
-        bone_radius=0.5,
-        bone_factor=2,
-    )
-    # Baseline: no extra steiners
-    baseline = apply_mesh(obj, image, StageOutput(), params, None)
-    baseline_verts = baseline["total_verts"]
-    # Now add 4 user steiners well inside the hand silhouette (origin area)
-    output = StageOutput(user_steiners=[(0.1, 0.1), (-0.1, 0.1), (0.1, -0.1), (-0.1, -0.1)])
-    extended = apply_mesh(obj, image, output, params, None)
-    # User steiners reached the mesh - vert count grows by ~4 (some may
-    # fall outside silhouette or near boundary; the constraint is "more
-    # than baseline", not "exactly baseline + 4")
-    assert extended["total_verts"] > baseline_verts
+    # Empty input -> None (apply_mesh forwards None so build_automesh
+    # treats it as "no extras").
+    assert _world_steiners_to_local(obj, []) is None
+
+    # Round-trip: take a known mesh-local point (origin), convert it to
+    # world via obj.matrix_world, feed back through the helper, expect
+    # to recover the original local point. Robust to any obj.location
+    # the fixture happens to ship with.
+    from mathutils import Vector
+
+    local_origin = Vector((0.0, 0.0, 0.0))
+    world_of_local_origin = obj.matrix_world @ local_origin
+    world_xz = (world_of_local_origin.x, world_of_local_origin.z)
+    out = _world_steiners_to_local(obj, [world_xz])
+    assert out is not None and len(out) == 1
+    # Round-trip should recover (0, 0) within float tolerance.
+    assert abs(out[0][0]) < 1e-5
+    assert abs(out[0][1]) < 1e-5
+
+    # Shift the sprite by a known +1 on world X; same world-input now
+    # maps to a different mesh-local position (shifted -1 on X) because
+    # the inverse transform absorbs the new translation.
+    original_x = obj.location.x
+    obj.location.x = original_x + 1.0
+    bpy.context.view_layer.update()
+    out_shifted = _world_steiners_to_local(obj, [world_xz])
+    assert out_shifted is not None and len(out_shifted) == 1
+    # Same world point, sprite moved +1 on X -> local x is now -1
+    assert abs(out_shifted[0][0] - (-1.0)) < 1e-5

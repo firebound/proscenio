@@ -54,6 +54,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
 
         obj = context.active_object
         _draw_automesh_box(layout, skinning_props)
+        _draw_authoring_box(layout, skinning_props, obj)
         _draw_bind_box(layout, skinning_props, picker)
         _draw_edit_weights_box(layout, obj, picker)
         _draw_snapshot_box(layout, skinning_props, obj)
@@ -86,6 +87,47 @@ def _draw_automesh_box(
         "proscenio.automesh_from_sprite",
         text="Automesh from Sprite",
         icon="MOD_REMESH",
+    )
+
+
+def _draw_authoring_box(
+    layout: bpy.types.UILayout,
+    skinning_props: bpy.types.PropertyGroup | None,
+    obj: bpy.types.Object | None,
+) -> None:
+    """Sub-box surfacing the interactive modal automesh authoring entry.
+
+    Button greys out when active obj is not MESH or has no image texture
+    (modal validates these at invoke; the panel mirror is a UX cue).
+    """
+    box = layout.box()
+    box.label(text="Automesh authoring", icon="MOD_REMESH")
+    box.label(text="Multi-stage modal preview")
+    if skinning_props is not None:
+        row = box.row(align=True)
+        row.prop(skinning_props, "authoring_inner_loop_count", text="Loops")
+        row.prop(skinning_props, "authoring_inner_loop_spacing", text="Spacing")
+    row = box.row()
+    row.enabled = _authoring_button_enabled(obj)
+    row.operator(
+        "proscenio.automesh_authoring",
+        text="Automesh (modal)",
+        icon="MOD_REMESH",
+    )
+    if obj is None or obj.type != "MESH":
+        box.label(text="select a mesh first", icon="INFO")
+
+
+def _authoring_button_enabled(obj: bpy.types.Object | None) -> bool:
+    if obj is None or obj.type != "MESH":
+        return False
+    if obj.data is None:
+        return False
+    return any(
+        node.type == "TEX_IMAGE" and node.image is not None
+        for material in obj.data.materials
+        if material is not None and material.use_nodes and material.node_tree is not None
+        for node in material.node_tree.nodes
     )
 
 

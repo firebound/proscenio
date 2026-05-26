@@ -108,6 +108,75 @@ Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y 
 
 **Severity:** medium - afeta qualquer rig 2D com bones horizontais (front-ortho convention). Bones verticais (típicos de rigs body-aligned) funcionam por acidente. Não causa crash, só silenciosamente perde translation tracks.
 
+### Validator NÃO detecta keyframes de transform em slot attachments
+
+**Repro:** slot_swap workbench. Select `club` (filha de `weapon` slot). Insert Keyframe em Location (cria `clubAction`). Run Validate via Export panel. Nenhum warning sobre os keyframes.
+
+**Esperado:** warning tipo `[club] slot attachment 'club' carries transform keyframes -- runtime slot swap will ignore them`.
+
+**Por que importa:** o slot system emite UM `bone_transform` track pro slot Empty inteiro -- attachments seguem ele. Se attachment próprio tem keyframes de location/rotation/scale, o writer ignora (não tem track type pra isso no slot_attachment), MAS o animator pensa que está animando algo. Resultado runtime: attachment "estático" em runtime apesar de keyframes no .blend.
+
+**Causa:** `apps/blender/core/validation/active_slot.py` (`_check_slot_child_transform_keys`) provavelmente existe mas (a) não é chamado, (b) tem bug na detecção, ou (c) só checa rotation_quaternion, não Euler/location.
+
+**Fix proposto:** walker em validate_export() que pra cada mesh filho direto de slot Empty (parent.proscenio.is_slot=True), checa animation_data.action.fcurves e flagga fcurves com data_path em `("location", "rotation_euler", "rotation_quaternion", "scale")`.
+
+**Severity:** medium -- regra documentada em SPEC 004 D10. Sem o warning, usuário descobre o problema só em runtime (sprite parece travado).
+
+### Validator flagga slot attachments como "no parent bone" (false positive)
+
+**Repro:** slot_swap workbench. Run Validate via Export panel. Resultados:
+
+- `[club] sprite has no parent bone and no vertex groups matching armature bones -- writer will fall back to empty bone field`
+- `[sword] sprite has no parent bone and no vertex groups matching armature bones -- writer will fall back to empty bone field`
+
+**Causa:** validator (provavelmente em `apps/blender/core/validation/active_sprite.py` ou similar) checa que mesh tem `parent_type=BONE` OU vertex_groups bateindo com armature bones. club e sword tem `parent_type=OBJECT` (filhos de `weapon` slot Empty), sem vertex groups -- batem na regra. Mas o slot system **explicitamente** desvia desse contrato: attachments seguem o slot Empty (que tem o bone parent), não precisam de parent_bone próprio.
+
+**Fix proposto:** validator skipa check de parent bone pra mesh cujo `parent.proscenio.is_slot == True` (ou CP `proscenio_is_slot`). Attachment de slot herda bone via slot Empty.
+
+**Severity:** medium -- não bloqueia export (são warnings, não errors), mas polui a Validation panel com noise toda vez que existir slot na cena.
+
+### Validator lê PG só, ignora edits direto em Custom Properties
+
+**Repro:** edita `proscenio_slot_default` direto na Custom Properties UI do Properties editor pra valor inválido (ex: `"fake"` quando attachments são club/sword). Active Slot panel não atualiza (PG.slot_default fica = "sword"). Run Validate -- nenhum erro reportado sobre o slot_default fantasma.
+
+**Causa:** validator usa `core.props_access.object_props(obj)` que retorna o PG. PG não recebe update quando CP é editado manualmente (Blender não tem callback de CP change). Resultado: writer vai EMITIR o valor real do CP `"fake"` no .proscenio, mas validator (que lê PG) não vê problema.
+
+**Two-pronged fix:**
+
+1. Validator deve preferir o que o writer vai emitir. Writer usa `read_field` (PG -> CP fallback) ou `read_bool_flag`. Validator deve usar a mesma função pra ler valores -- fonte de verdade unificada.
+2. Documentar (no help / panel hint) que "editar Custom Properties direto não atualiza UI" -- workflow esperado é via panels, CP é fallback.
+
+**Severity:** medium -- workflow CP-first é nicho mas existe; usuário fazendo isso vai exportar valor inválido sem aviso.
+
+### Create Slot Path B: novo Empty fica em posição errada quando seed já tem parent
+
+**Repro:** slot_swap_workbench. Object Mode, multi-select club + sword (ou só club, sword é hide_viewport=True). Active Slot panel > Create Slot. Novo Empty `slot` criado dentro de `weapon` Empty. Club visualmente pula pra outra posição na cena.
+
+**Causa:** `apps/blender/operators/slot/create.py:82`:
+
+```python
+empty.location = seed.matrix_world.to_translation()
+```
+
+`empty.location` é **local** ao parent (weapon Empty no caso, porque o operator faz `empty.parent = seed.parent` na linha 79). Atribuir world translation a um campo local sem inverter o parent matrix compounda: a posição final de `empty` em world space = `weapon.matrix_world @ world_translation`, sai do lugar.
+
+A reparente das meshes (linhas 87-92) preserva world matrix delas via `matrix_parent_inverse` + `matrix_world =`, mas isso é depois -- as meshes ainda terminam em world position correta na maioria dos casos. O que pula é o EMPTY, e visualmente as meshes sob ele acompanham o display offset do parent.
+
+**Fix proposto:** trocar linha 82 por:
+
+```python
+empty.matrix_world = seed.matrix_world.copy()
+```
+
+Ou setar `empty.location` em local space inverso explicitamente:
+
+```python
+empty.matrix_parent_inverse = empty.parent.matrix_world.inverted()
+empty.location = seed.matrix_world.to_translation()  # agora consistente
+```
+
+**Severity:** medium -- Path B funciona para meshes sem parent (cenário documentado em SPEC 004), mas quebra para meshes já parented (cenário comum: criando slot dentro de um rig que já tem armature).
+
 ### Slot fields: PG <-> CP mirror não dispara (`is_slot`, `slot_default`, `is_outliner_favorite`)
 
 **Repro:** Active Slot panel, click star vazia em attachment não-default. PG `slot_default` muda visualmente (star toggle), mas Custom Property `proscenio_slot_default` no Properties editor continua mostrando valor anterior.

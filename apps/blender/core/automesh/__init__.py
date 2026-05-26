@@ -39,6 +39,7 @@ from .density import (
     interior_points_for_annulus,
     point_in_polygon,
 )
+from .erosion_loops import compute_inner_loops
 from .geometry import (
     Contour2D,
     arc_length_resample,
@@ -63,6 +64,7 @@ __all__ = [
     "binarize",
     "bounding_box",
     "build_annulus_edge_pairs",
+    "compute_inner_loops",
     "dilate",
     "edge_index_start_distance",
     "erode",

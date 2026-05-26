@@ -84,18 +84,18 @@ Workbench file: `examples/generated/slot_swap/slot_swap.blend` (arm + slot Empty
 
 Em workbench limpo:
 
-- [x] **Path A**: pose mode + bone selecionado -> "Create Slot" -> Empty `<bone>.slot` parent_type=BONE. Validado em slot_swap_workbench.
-- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes. **Bug:** posição do slot fica errada quando seed mesh tem parent (mesh "pula" pra outro canto da cena ao virar attachment). Bug em BUGS_FOUND.md.
-- [x] DnD mesh -> slot Empty no outliner reparenteia (Blender 5.1 suporta DnD reparent no outliner - confirmado via docs oficiais). Também funciona via `Ctrl+P` ou shift modifier. Attachment aparece no panel após reparent.
+- [x] **Path A**: pose mode + bone selecionado -> Skeleton panel > "Create Slot" -> Empty `<bone>.slot` parent_type=BONE (testado em slot_swap_workbench, criou `arm.slot`)
+- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes, parent herdado do seed mesh. **Bug**: novo Empty fica em posição errada quando seed mesh já tem parent (BUGS_FOUND.md). Reparenting funciona, posicionamento não.
+- [x] DnD mesh -> slot Empty no outliner: reparenteia, attachment aparece no panel. (User report: plain drag não funcionou, precisou Ctrl+P ou Shift+drag em Blender 5.1.1 -- divergente da doc oficial.)
 
 ### 1.6 Slot validation
 
 Em slot_swap_workbench / scenario custom (doll_slots retired):
 
-- [ ] Slot sem children: erro vermelho "no MESH children" (não testado explicitamente nesta sessão)
-- [!] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child". **Bug:** validator lê PG only, edits direto na CP não são detectados. Bug em BUGS_FOUND.md.
-- [ ] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo (não testado)
-- [!] Bone-transform keys em slot child (`club` com `club.action` keyframando location): warning "carries bone-transform keyframes". **Bug:** validator não dispara warning - `club.action` com keys de location passou silencioso. Bug em BUGS_FOUND.md.
+- [x] Slot sem children: erro vermelho "no MESH children" (inline em Active Slot panel + linha clicável em Validation panel após click "Validate" no Export panel)
+- [!] slot_default fantasma (set CP `proscenio_slot_default = "fake"`): erro "default 'fake' is not a child". **2 bugs combinados:** (a) CP edit não dispara PG update (Blender API limitation), (b) validator lê PG só, ignora valor real do CP. Falsos negativos. BUGS_FOUND.md.
+- [~] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo. Deferred -- slot_swap só tem 1 bone, precisa fixture com 2+ bones pra testar.
+- [!] Bone-transform keys em slot child: validator NÃO detecta. Insert Keyframe em location do club (filho de slot Empty), nenhum warning. Bug em BUGS_FOUND.md.
 - [!] Slot attachments flaggadas como "no parent bone" (false positive). **Bug:** validator dispara em attachment que tá legitimamente parented ao slot Empty (que por sua vez é parented ao bone). Bug em BUGS_FOUND.md.
 - [~] Validate button -> resultados aparecem no Validation subpanel. **UI feedback:** botão Validate mora no Export panel, não no Validation panel - confunde usuário. Feedback em UI_FEEDBACK.md.
 - [~] Click issue na Validation panel -> seleciona objeto offending. Funciona via outliner, mas viewport não reflete se objeto está com `hide_viewport=True` (caso comum em slot non-default attachments). Feedback em UI_FEEDBACK.md.
@@ -477,6 +477,62 @@ T6 - Button disabled affordance:
 5. Bind hand - button enables.
 
 (Headless coverage: `apps/blender/tests/operators/test_edit_weights_modal.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_paint_preset_2d.py` + `test_weight_diff.py` + `test_bone_collection_visibility.py` - 11 tests.)
+
+---
+
+### 1.23 SPEC 013.2 Interactive modal automesh
+
+**Fixture:** `examples/generated/automesh/automesh.blend`
+
+T1 - Enter modal at OUTER stage:
+
+1. Open fixture in Blender (5.1+).
+2. Select `hand`.
+3. Skinning panel > Automesh authoring > **Automesh (modal)**.
+
+Expected: viewport shows cyan polyline tracing the hand silhouette (OUTER stage overlay). Status bar pill: `Automesh Authoring: next | back | cancel` with ENTER / BACKSPACE / ESC icons.
+
+T2 - Slider re-runs throttled:
+
+1. Continue from T1.
+2. Skinning panel > Automesh from sprite > scrub `Mesh resolution` slider.
+
+Expected: cyan polyline re-runs live (~100ms throttle). Stops responding only when slider stops.
+
+T3 - Advance to USER_STEINERS + click placement:
+
+1. Continue from T1. Press ENTER twice.
+2. Stage is USER_STEINERS (prior overlays dim).
+3. Left-click inside the silhouette at 3 different locations.
+
+Expected: each click adds a yellow dot at the clicked point. Object Properties > Custom Properties > `proscenio_user_steiners` updates after each click (refresh by clicking the dropdown).
+
+T4 - Shift+click deletes nearest:
+
+1. Continue from T3.
+2. Shift+left-click within ~0.05 world units of an existing yellow dot.
+
+Expected: nearest dot disappears.
+
+T5 - APPLY commits mesh:
+
+1. Continue from T4. Press ENTER twice more (STEINER_PREVIEW, then APPLY).
+2. STEINER_PREVIEW shows red dots for all interior Steiners + yellow user dots still visible.
+3. ENTER on STEINER_PREVIEW triggers APPLY.
+
+Expected: mesh commits via build_automesh. Info bar: `Authoring applied: N verts, M faces`. Modal exits (FINISHED). Viewport returns to Object mode + prior selection restored.
+
+NOTE: at APPLY today, user Steiner points + custom inner loops are PREVIEW-ONLY. build_automesh re-runs its own pipeline; user inputs do not yet alter the final mesh. Persistence is in place (Custom Property), but a future build_automesh extension is needed to consume them. Tracked as a follow-up under Wave 13.3.
+
+T6 - APPLY with prior bind preserves weights:
+
+1. Bind hand first (Skinning > Bind to picker > Bind to Picker Armature).
+2. Snapshot pill shows `0 paint / N seed / 0 reprojected`.
+3. Invoke Automesh (modal). Advance through stages. APPLY at stage 5.
+
+Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via Wave 13.2-sidecar hook). If you painted any verts as user_paint via Edit Weights between bind and modal, the user_paint count must survive APPLY (B1 fix carries user_paint provenance through reproject).
+
+(Headless coverage: `apps/blender/tests/operators/test_automesh_authoring.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_erosion_loops.py` + `test_authoring_stages.py` - 8 tests.)
 
 ---
 

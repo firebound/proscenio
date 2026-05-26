@@ -49,11 +49,18 @@ What landed:
 
 Pick features per dependency notes; not all need shipping in a single PR. Recommended start order: cleanup → bind → paint → sidecar → panel → interactive modal → docs.
 
-### Code-quality cleanup (prerequisite for everything else)
+### Code-quality cleanup (prerequisite for everything else) - DONE (organically through Wave 13.2)
 
-Branch: `refactor/spec-013-cleanup`.
+**Status (audit 2026-05-25):** all 5 checklist items below ended up shipped silently across Wave 13.2-bind / sidecar / paint / interactive-modal PRs. The prerequisite flag is removed; no separate cleanup PR needed. Validated:
 
-Sonar local + warnings emitted during PR #51 review iteration:
+- `apps/blender/core/automesh/` + `apps/blender/core/bpy_helpers/automesh/` domain packages exist (item 5)
+- `apps/blender/core/automesh/geometry.py` exposes shared geometry helpers (item 3 equivalent)
+- `dilate` + `erode` are 3-line wrappers around `_apply_morphology` (item 4)
+- `_fill_inner_via_delaunay` + `_build_annulus_strip` not found in grep (item 2)
+- `sonar-project.properties` has `python:S101` ignore for `apps/blender/operators/**/*.py` etc (item 1)
+- `validate_automesh.py` shrunk from 660 LOC -> 48 LOC (refactor went further than the checklist asked)
+
+Original checklist preserved below for audit trail. Sonar warnings emitted during PR #51 review iteration:
 
 **Hot spots (cognitive complexity, limit = 15)**:
 

@@ -164,7 +164,17 @@ def apply_mesh(
     params: StageParams,
     armature: bpy.types.Object | None,
 ) -> dict[str, int]:
-    """Final write: build_automesh + Wave 13.2-sidecar reproject."""
+    """Final write: build_automesh + Wave 13.2-sidecar reproject.
+
+    Forwards `output.user_steiners` to build_automesh's `extra_steiners`
+    kwarg (PR #60) so the points the artist clicked during Stage 3
+    (USER_STEINERS) land in the final mesh as additional CDT constraints.
+    Without this wire the modal's Stage 3 placements were preview-only.
+
+    output.inner_loops are NOT yet honored - build_automesh's
+    _triangulate_into_bmesh accepts a single inner contour; multi-inner
+    support is the next extension step (Wave 13.3 polish).
+    """
     # Local import: keep this module importable when the skinning
     # bpy-helpers subpackage is unavailable (e.g. unit-test stubs).
     from ..skinning import maybe_post_regen_reproject, maybe_pre_regen_snapshot
@@ -172,6 +182,7 @@ def apply_mesh(
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
+    extra_steiners = list(output.user_steiners) if output.user_steiners else None
     counters = build_automesh(
         obj,
         image,
@@ -186,6 +197,7 @@ def apply_mesh(
         bone_density_factor=params.bone_factor if bone_segments else 1,
         debug_stage="off",
         preserve_base_quad=False,
+        extra_steiners=extra_steiners,
     )
     if prior_sidecar is not None and armature is not None:
         repro = maybe_post_regen_reproject(obj, armature, prior_sidecar)

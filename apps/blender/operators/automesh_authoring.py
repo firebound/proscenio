@@ -42,6 +42,7 @@ from ..core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-foun
 from ..core.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
+    report_warn,
 )
 from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
@@ -269,6 +270,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                     f"CDT failed: {exc} - reduce loop count or increase spacing",
                 )
                 return {"PASS_THROUGH"}
+            if counters.get("stroke_verts_dropped", 0) > 0:
+                report_warn(
+                    self,
+                    f"Stroke: {counters['stroke_verts_dropped']} vert(s) dropped (outside silhouette)",
+                )
             report_info(
                 self,
                 f"Authoring applied: {counters.get('total_verts', 0)} verts, "

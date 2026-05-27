@@ -549,14 +549,23 @@ def _merge_extra_steiners(
     final mesh at Stage 5 (APPLY).
     """
     accepted: list[tuple[float, float]] = []
+    late_dropped = 0
     for point in extra_steiners:
         if not point_in_polygon(point, outer_world):
+            late_dropped += 1
             continue
         if inner_world and point_in_polygon(point, inner_world):
+            late_dropped += 1
             continue
         if any(point_in_polygon(point, hole) for hole in holes_world):
+            late_dropped += 1
             continue
         accepted.append(point)
+    if late_dropped:
+        print(
+            f"[automesh] WARNING: _merge_extra_steiners dropped {late_dropped} late-stage "
+            f"vert(s) - caller should pre-filter (see AS-AM1)"
+        )
     return list(auto_interior) + accepted
 
 

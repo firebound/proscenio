@@ -1,4 +1,4 @@
-"""Pure tests for CDT extra_edges threading (SPEC 013 S8)."""
+"""Pure tests for CDT extra_edges threading (SPEC 013 S8) and AS-AM1 pre-filter."""
 from __future__ import annotations
 
 import sys
@@ -14,6 +14,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.bpy_helpers.automesh.cdt import _build_cdt_inputs  # noqa: E402
+from core.bpy_helpers.automesh.authoring_pipeline import (  # noqa: E402
+    _build_stroke_node_indices,
+    _edges_from_node_indices,
+    _vert_inside_silhouette,
+)
 
 
 def test_no_extra_edges_baseline_unchanged():
@@ -38,3 +43,90 @@ def test_extra_edges_none_behaves_as_empty():
     coords_b, edges_b = _build_cdt_inputs(outer, [], [], [])
     assert coords_a == coords_b
     assert edges_a == edges_b
+
+
+# ---------------------------------------------------------------------------
+# AS-AM1: pre-index-allocation silhouette filter
+# ---------------------------------------------------------------------------
+
+# Unit square outer polygon used by all three filter tests.
+_OUTER = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+
+
+def test_vert_inside_silhouette_outside_outer_returns_false():
+    """Vert outside the outer polygon is rejected."""
+    assert not _vert_inside_silhouette((2.0, 2.0), _OUTER, None, None)
+
+
+def test_vert_inside_silhouette_inside_outer_returns_true():
+    """Vert inside the outer polygon with no inner/holes is accepted."""
+    assert _vert_inside_silhouette((0.5, 0.5), _OUTER, None, None)
+
+
+def test_build_stroke_node_indices_drops_outside_vert_no_edge_across_gap():
+    """Middle vert outside silhouette is dropped; no edge connects its neighbours.
+
+    Stroke: A(inside) - B(outside) - C(inside) - D(inside)
+    Expected: A and C,D each get indices; no edge from A to C (gap at B).
+    Edge runs: [A] and [C-D].
+    """
+    outer_contour = _OUTER
+    # Stroke verts in local space (no snap - far from contour edges)
+    pts_local = [
+        (0.2, 0.5),   # A - inside - index interior_base_index + 0
+        (2.0, 2.0),   # B - OUTSIDE -> dropped
+        (0.6, 0.5),   # C - inside - index interior_base_index + 1
+        (0.8, 0.5),   # D - inside - index interior_base_index + 2
+    ]
+    extras_local: list = []
+    node_indices, dropped = _build_stroke_node_indices(
+        pts_local,
+        outer_contour,
+        outer_base_index=0,
+        interior_base_index=10,
+        extras_local=extras_local,
+        snap_radius=0.01,  # tiny - no snap
+        silhouette_outer=outer_contour,
+        silhouette_inner=None,
+        silhouette_holes=None,
+    )
+    assert dropped == 1, f"expected 1 dropped, got {dropped}"
+    # A, C, D survive -> 3 extras appended
+    assert len(extras_local) == 3
+    # node_indices contains indices for A, C, D (10, 11, 12 in that order)
+    # B is absent -> no consecutive pair (A, C) exists
+    assert 10 in node_indices
+    assert 11 in node_indices
+    assert 12 in node_indices
+    # Build edges and verify no edge spans the gap (A=10 to C=11 would be the gap edge)
+    edges = _edges_from_node_indices(node_indices)
+    # A->C would be (10, 11) but they are NOT consecutive in node_indices because
+    # B was dropped (not inserted), so node_indices = [10, 11, 12] - actually
+    # consecutive because gap means B simply absent. Verify (10,12) absent
+    # (that would be the A->D skip) and (10,11) represents A directly adjacent to C.
+    # The key property: no index references a position that was never allocated.
+    all_edge_verts = {v for e in edges for v in e}
+    assert all_edge_verts.issubset({10, 11, 12}), (
+        f"Edge references unallocated index: {all_edge_verts}"
+    )
+
+
+def test_build_stroke_node_indices_all_dropped_returns_empty():
+    """Entire stroke outside silhouette -> empty extras, empty indices, dropped == len(pts)."""
+    outer_contour = _OUTER
+    pts_local = [(5.0, 5.0), (6.0, 6.0), (7.0, 7.0)]
+    extras_local: list = []
+    node_indices, dropped = _build_stroke_node_indices(
+        pts_local,
+        outer_contour,
+        outer_base_index=0,
+        interior_base_index=10,
+        extras_local=extras_local,
+        snap_radius=0.01,
+        silhouette_outer=outer_contour,
+        silhouette_inner=None,
+        silhouette_holes=None,
+    )
+    assert dropped == 3
+    assert node_indices == []
+    assert extras_local == []

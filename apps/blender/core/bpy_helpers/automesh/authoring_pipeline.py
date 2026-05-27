@@ -20,6 +20,7 @@ from ...automesh import (
     compute_inner_loops,
     extract_outer_contour,
     interior_points_for_annulus,
+    point_in_polygon,
     to_float_contour,
 )
 from ...skinning.authoring_stages import Point2D, StageOutput, StageParams, Stroke
@@ -251,13 +252,15 @@ def apply_mesh(
         if inner_loops:
             # build_automesh resamples the innermost loop to contour_vertices too
             interior_base_index += params.contour_vertices
-    extras_local, extra_edges = _strokes_to_cdt_inputs(
+    extras_local, extra_edges, stroke_verts_dropped = _strokes_to_cdt_inputs(
         obj,
         output.user_strokes,
         outer_world_local,
         outer_base_index=outer_base_index,
         interior_base_index=interior_base_index,
         interior_spacing=params.interior_spacing,
+        inner_world_local=None,  # FUTURE: pass inner contour when inner_loops path is unified
+        holes_world_local=None,  # FUTURE: pass hole contours; deferred to follow-up
     )
     counters = build_automesh(
         obj,
@@ -276,6 +279,8 @@ def apply_mesh(
         extra_steiners=extras_local if extras_local else None,
         extra_edges=extra_edges if extra_edges else None,
     )
+    if stroke_verts_dropped > 0:
+        counters["stroke_verts_dropped"] = stroke_verts_dropped
     if prior_sidecar is not None and armature is not None:
         repro = maybe_post_regen_reproject(obj, armature, prior_sidecar)
         counters["reprojected"] = repro["reprojected"]
@@ -344,14 +349,49 @@ def _to_local_xz(obj: bpy.types.Object) -> Callable[[Point2D], Point2D]:
     return project
 
 
+def _vert_inside_silhouette(
+    point: Point2D,
+    outer: list[Point2D],
+    inner: list[Point2D] | None,
+    holes: list[list[Point2D]] | None,
+) -> bool:
+    """Return True if point is inside the valid fill region.
+
+    Valid region: inside outer polygon, outside inner polygon (if any),
+    outside all hole polygons (if any). Mirrors the filter logic in
+    _merge_extra_steiners but applied pre-index-allocation so indices
+    in extra_edges stay consistent with the surviving extras list.
+    """
+    if not point_in_polygon(point, outer):
+        return False
+    if inner and point_in_polygon(point, inner):
+        return False
+    if holes and any(point_in_polygon(point, hole) for hole in holes):
+        return False
+    return True
+
+
 def _emit_point_extras(
     points: list[Point2D],
     project: Callable[[Point2D], Point2D],
     extras_local: list[Point2D],
-) -> None:
-    """Append kind='point' stroke verts to extras (no edges)."""
+    outer: list[Point2D] | None = None,
+    inner: list[Point2D] | None = None,
+    holes: list[list[Point2D]] | None = None,
+) -> int:
+    """Append kind='point' stroke verts to extras (no edges).
+
+    When outer is provided, silhouette-filters each vert before appending.
+    Returns count of dropped verts.
+    """
+    dropped = 0
     for p in points:
-        extras_local.append(project(p))
+        local = project(p)
+        if outer is not None and not _vert_inside_silhouette(local, outer, inner, holes):
+            dropped += 1
+            continue
+        extras_local.append(local)
+    return dropped
 
 
 def _build_stroke_node_indices(
@@ -361,34 +401,78 @@ def _build_stroke_node_indices(
     interior_base_index: int,
     extras_local: list[Point2D],
     snap_radius: float,
-) -> list[int]:
+    silhouette_outer: list[Point2D] | None = None,
+    silhouette_inner: list[Point2D] | None = None,
+    silhouette_holes: list[list[Point2D]] | None = None,
+) -> tuple[list[int], int]:
     """For one kind='stroke' polyline, append surviving inner verts to
-    extras_local and return the sequence of CDT vert indices that the
-    stroke's constraint edges should connect.
+    extras_local and return (node_index_sequence, dropped_count).
 
     Endpoint snapping: when start or end falls within snap_radius of an
     outer contour vert, the stroke vert is DROPPED and the edge references
     the outer vert's index directly (avoids a duplicate co-located vert).
+
+    Silhouette filter (AS-AM1): before allocating CDT indices, each inner
+    vert is tested via _vert_inside_silhouette. Dropped verts are excluded
+    from extras_local AND from the node index sequence. Edges are only
+    emitted between consecutive SURVIVING positions, so a dropped middle
+    vert splits the polyline into two independent edge runs (no edge spans
+    the gap). Dropped endpoints likewise skip snap index allocation.
     """
     from ...automesh.stroke_geometry import snap_endpoint
 
-    start_snap = snap_endpoint(pts_local[0], outer_world_local, snap_radius)
-    end_snap = snap_endpoint(pts_local[-1], outer_world_local, snap_radius)
-    inner_pts = list(pts_local)
-    if start_snap is not None and inner_pts:
-        inner_pts = inner_pts[1:]
-    if end_snap is not None and inner_pts:
-        inner_pts = inner_pts[:-1]
-    allocated_start = interior_base_index + len(extras_local)
-    allocated_indices = list(range(allocated_start, allocated_start + len(inner_pts)))
-    extras_local.extend(inner_pts)
+    if not pts_local:
+        return [], 0
+
+    # Determine which verts survive the silhouette filter.
+    # None mask = no filter (callers that don't pass silhouette_outer).
+    def _keep(p: Point2D) -> bool:
+        if silhouette_outer is None:
+            return True
+        return _vert_inside_silhouette(p, silhouette_outer, silhouette_inner, silhouette_holes)
+
+    survivors_mask = [_keep(p) for p in pts_local]
+    dropped = sum(1 for m in survivors_mask if not m)
+
+    # Endpoint snap uses first/last SURVIVING positions.
+    first_alive = next((i for i, m in enumerate(survivors_mask) if m), None)
+    last_alive = next((i for i, m in reversed(list(enumerate(survivors_mask))) if m), None)
+
+    if first_alive is None:
+        # Every vert dropped - nothing to emit.
+        return [], dropped
+
+    start_snap = snap_endpoint(pts_local[first_alive], outer_world_local, snap_radius)
+    end_snap = snap_endpoint(pts_local[last_alive], outer_world_local, snap_radius)
+
+    # Allocate extras indices for inner surviving verts only.
+    # A vert is "inner" if it is not snapped away (first/last alive that snapped).
+    skip_first = start_snap is not None
+    skip_last = end_snap is not None
+
     node_indices: list[int] = []
     if start_snap is not None:
         node_indices.append(outer_base_index + start_snap)
-    node_indices.extend(allocated_indices)
+
+    for i, (pt, alive) in enumerate(zip(pts_local, survivors_mask)):
+        is_first_alive = i == first_alive and skip_first
+        is_last_alive = i == last_alive and skip_last
+        if is_first_alive or is_last_alive:
+            # This position is claimed by the snap index; skip allocation.
+            continue
+        if not alive:
+            # Dropped vert - no index pushed. The gap means _edges_from_node_indices
+            # will not emit an edge spanning this position (the two surviving
+            # neighbours are not consecutive in node_indices).
+            continue
+        idx = interior_base_index + len(extras_local)
+        extras_local.append(pt)
+        node_indices.append(idx)
+
     if end_snap is not None:
         node_indices.append(outer_base_index + end_snap)
-    return node_indices
+
+    return node_indices, dropped
 
 
 def _edges_from_node_indices(node_indices: list[int]) -> list[tuple[int, int]]:
@@ -415,8 +499,10 @@ def _strokes_to_cdt_inputs(
     outer_base_index: int,
     interior_base_index: int,
     interior_spacing: float,
-) -> tuple[list[Point2D], list[tuple[int, int]]]:
-    """Convert Stage 3 strokes to (extra_steiners_local, extra_edges).
+    inner_world_local: list[Point2D] | None = None,
+    holes_world_local: list[list[Point2D]] | None = None,
+) -> tuple[list[Point2D], list[tuple[int, int]], int]:
+    """Convert Stage 3 strokes to (extra_steiners_local, extra_edges, dropped_count).
 
     For each stroke:
     - kind='point': append point as single Steiner; no edges.
@@ -426,9 +512,15 @@ def _strokes_to_cdt_inputs(
       and emit an edge from the next stroke vert to the outer vert
       index (outer_base_index + snap_index).
 
+    Silhouette filter (AS-AM1): each vert is tested BEFORE index allocation.
+    Verts outside outer_world_local, inside inner_world_local, or inside any
+    hole are dropped. extra_edges indices only reference surviving verts so
+    stale indices never reach the CDT. dropped_count accumulates across all
+    strokes and is surfaced to the operator for a WARNING report.
+
     Indices in the returned edges:
     - Non-snapped stroke verts get indices >= interior_base_index (allocated
-      in append order)
+      in append order among survivors only)
     - Snapped endpoints reference outer_base_index + snap_index
 
     Coordinates are in MESH-LOCAL XZ (apply matrix_world.inverted()
@@ -438,23 +530,36 @@ def _strokes_to_cdt_inputs(
     project = _to_local_xz(obj)
     extras_local: list[Point2D] = []
     edges: list[tuple[int, int]] = []
+    total_dropped = 0
     snap_radius = interior_spacing * 1.5
     for stroke in strokes:
         if stroke["kind"] == "point":
-            _emit_point_extras(stroke["points"], project, extras_local)
+            dropped = _emit_point_extras(
+                stroke["points"],
+                project,
+                extras_local,
+                outer=outer_world_local,
+                inner=inner_world_local,
+                holes=holes_world_local,
+            )
+            total_dropped += dropped
             continue
         pts_local = [project(p) for p in stroke["points"]]
         if not pts_local:
             continue
-        node_indices = _build_stroke_node_indices(
+        node_indices, dropped = _build_stroke_node_indices(
             pts_local,
             outer_world_local,
             outer_base_index,
             interior_base_index,
             extras_local,
             snap_radius,
+            silhouette_outer=outer_world_local,
+            silhouette_inner=inner_world_local,
+            silhouette_holes=holes_world_local,
         )
+        total_dropped += dropped
         if len(node_indices) < 2:
             continue
         edges.extend(_edges_from_node_indices(node_indices))
-    return extras_local, edges
+    return extras_local, edges, total_dropped

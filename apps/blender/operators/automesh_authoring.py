@@ -57,7 +57,7 @@ _STAGE_NAMES = {
     AuthoringStage.OUTER: "1/6 Outer contour",
     AuthoringStage.USER_OUTER: "2/6 User outer edits (TBD - capture in follow-up)",
     AuthoringStage.INNER_LOOPS: "3/6 Inner loops",
-    AuthoringStage.USER_STEINERS: "4/6 User Steiner points (LMB add / Shift+LMB delete)",
+    AuthoringStage.USER_STEINERS: "4/6 User Steiner points (LMB stroke / Shift+drag cut / Ctrl+drag delete)",
     AuthoringStage.STEINER_PREVIEW: "5/6 Steiner preview",
     AuthoringStage.APPLY: "6/6 Apply",
 }
@@ -163,7 +163,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 return self._retreat(context)
             if self._stage == AuthoringStage.USER_STEINERS:
                 if event.type == "LEFTMOUSE" and event.value == "PRESS":
-                    if event.shift:
+                    if event.ctrl:
                         self._delete_stroke_at_mouse(context, event)
                         _tag_redraw_view3d(context)
                         return {"RUNNING_MODAL"}

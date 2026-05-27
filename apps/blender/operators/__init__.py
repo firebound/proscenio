@@ -23,6 +23,7 @@ Submodules:
 - restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (SPEC 013.2 sidecar)
 - edit_weights      - PROSCENIO_OT_edit_weights_modal (SPEC 013.2 paint)
 - set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (SPEC 013 O1)
+- sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO (SPEC 013 O3)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -47,6 +48,7 @@ from . import (
     restore_weight_snapshot,
     selection,
     set_bone_mode,
+    sidecar_io,
     skeleton_target,
     slot,
     uv_authoring,
@@ -70,6 +72,7 @@ def register() -> None:
     restore_weight_snapshot.register()
     edit_weights.register()
     set_bone_mode.register()
+    sidecar_io.register()
     slot.register()
     atlas_pack.register()
     import_photoshop.register()
@@ -79,6 +82,7 @@ def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
     slot.unregister()
+    sidecar_io.unregister()
     set_bone_mode.unregister()
     edit_weights.unregister()
     restore_weight_snapshot.unregister()

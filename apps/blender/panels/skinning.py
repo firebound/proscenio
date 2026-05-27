@@ -58,6 +58,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         _draw_bind_box(layout, skinning_props, picker, obj)
         _draw_edit_weights_box(layout, obj, picker)
         _draw_snapshot_box(layout, skinning_props, obj)
+        _draw_sidecar_io_box(layout, obj)
         _draw_debug_box(layout, skinning_props)
 
 
@@ -302,6 +303,20 @@ def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
         if provenance in counts:
             counts[provenance] += 1
     return counts
+
+
+def _draw_sidecar_io_box(
+    layout: bpy.types.UILayout,
+    obj: bpy.types.Object | None,
+) -> None:
+    """Sub-box with Export + Import file-dialog buttons for sidecar JSON."""
+    box = layout.box()
+    box.label(text="Sidecar IO", icon="FILE_TEXT")
+    row = box.row(align=True)
+    row.operator("proscenio.export_sidecar", text="Export", icon="EXPORT")
+    row.operator("proscenio.import_sidecar", text="Import", icon="IMPORT")
+    if obj is not None and obj.type == "MESH" and obj.get("proscenio_weight_sidecar") is None:
+        box.label(text="no sidecar yet (run Bind first)", icon="INFO")
 
 
 def _draw_debug_box(

@@ -155,7 +155,7 @@ def _draw_bind_box(
     depress=True marks the active override. Missing entry means the
     bone uses the operator-level default (bind_init_mode).
     """
-    from ..core.skinning.bone_modes import read_bone_modes
+    from ..core.skinning.bone_modes import read_bone_modes  # type: ignore[import-not-found]
 
     box = layout.box()
     box.label(text="Bind to picker", icon="LINK_BLEND")
@@ -214,7 +214,10 @@ def _draw_edit_weights_box(
     4-button aligned row so the artist can switch curve shape without
     opening the brush curve editor.
     """
-    from ..core.skinning.brush_curve_presets import PRESET_LABELS, PRESETS
+    from ..core.skinning.brush_curve_presets import (  # type: ignore[import-not-found]
+        PRESET_LABELS,
+        PRESETS,
+    )
 
     box = layout.box()
     box.label(text="Edit Weights", icon="BRUSHES_ALL")

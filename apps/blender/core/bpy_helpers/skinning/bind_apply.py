@@ -162,7 +162,7 @@ def _apply_bone_mode_overrides(
 
     # Compute alternate matrix for the opposing mode family.
     alt_mode = _alt_bind_mode(default_bmode)
-    alt_kwargs: dict = {"falloff_power": falloff_power, "max_distance": effective_max}
+    alt_kwargs: dict[str, float] = {"falloff_power": falloff_power, "max_distance": effective_max}
     alt_weights = bind_weights_for_mode(alt_mode, vert_positions_xz, bone_segments, **alt_kwargs)
     assert alt_weights is not None
 

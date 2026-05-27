@@ -13,7 +13,10 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, StringProperty
 
-from ..core.skinning.bone_modes import read_bone_modes, write_bone_modes
+from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
+    read_bone_modes,
+    write_bone_modes,
+)
 
 
 class PROSCENIO_OT_set_bone_mode(bpy.types.Operator):
@@ -49,7 +52,7 @@ class PROSCENIO_OT_set_bone_mode(bpy.types.Operator):
         if obj is None or obj.type != "MESH":
             return {"CANCELLED"}
         modes = dict(read_bone_modes(obj))
-        modes[self.bone_name] = self.mode  # type: ignore[assignment]
+        modes[self.bone_name] = self.mode
         write_bone_modes(obj, modes)
         return {"FINISHED"}
 

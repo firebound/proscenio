@@ -19,7 +19,7 @@ class PROSCENIO_OT_export_sidecar(bpy.types.Operator, ExportHelper):
     bl_options: ClassVar[set[str]] = {"REGISTER"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})  # type: ignore[valid-type]
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -53,7 +53,7 @@ class PROSCENIO_OT_import_sidecar(bpy.types.Operator, ImportHelper):
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})  # type: ignore[valid-type]
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -70,7 +70,9 @@ class PROSCENIO_OT_import_sidecar(bpy.types.Operator, ImportHelper):
             self.report({"WARNING"}, f"Failed to read sidecar: {exc}")
             return {"CANCELLED"}
         # Validate structure via the authoritative schema parser.
-        from ..core.skinning.sidecar_schema import from_json as _from_json
+        from ..core.skinning.sidecar_schema import (
+            from_json as _from_json,  # type: ignore[import-not-found]
+        )
 
         try:
             _from_json(payload)

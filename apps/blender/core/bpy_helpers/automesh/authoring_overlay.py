@@ -146,7 +146,7 @@ def unregister_overlay(handles: OverlayHandles) -> None:
             continue
         with contextlib.suppress(ValueError, RuntimeError):
             bpy.types.SpaceView3D.draw_handler_remove(handle, "WINDOW")
-        handles[key] = None  # type: ignore[literal-required]
+        handles[key] = None
 
 
 def refresh_overlay(

@@ -169,7 +169,8 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
                 f"Mode={self.bind_init_mode}"
             ),
         )
-        return counters
+        # apply_bind returns dict[str, Any] (counters); narrow to declared type
+        return {str(k): int(v) for k, v in counters.items()}
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         scene_props = getattr(context.scene, "proscenio", None)

@@ -329,7 +329,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
 
-    def _stage3_overlay_kwargs(self) -> dict:
+    def _stage3_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for register/refresh_overlay Stage 3 live containers.
 
         Always passes the same mutable list references so registered draw
@@ -341,7 +341,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "stroke_raw_points_ref": self._stroke_raw_points,
         }
 
-    def _stage4plus_overlay_kwargs(self) -> dict:
+    def _stage4plus_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for register/refresh_overlay Stage 4+ live containers.
 
         Only passes user_strokes (committed strokes visible in STEINER_PREVIEW

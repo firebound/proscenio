@@ -3,6 +3,9 @@
 POST_VIEW SpaceView3D handlers per stage. Reuses UNIFORM_COLOR shader
 from modal_overlay. Polylines as LINE_STRIP batches; Steiner / user
 dots as POINTS batches.
+
+POST_PIXEL handler (_draw_tooltip) renders intent text near the mouse
+cursor in Stage 2 (USER_OUTER) and Stage 4 (USER_STEINERS).
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ from __future__ import annotations
 import contextlib
 from typing import TypedDict
 
+import blf
 import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
@@ -30,6 +34,14 @@ _DOT_SIZE_USER = 8.0
 _DOT_SIZE_STEINER = 4.0
 _DOT_SIZE_STROKE_VERT = 6.0
 
+# Tooltip (POST_PIXEL) draw constants
+_TOOLTIP_FONT_ID = 0  # default blf font
+_TOOLTIP_FONT_SIZE = 11
+_TOOLTIP_OFFSET_X = 15  # px right of mouse
+_TOOLTIP_OFFSET_Y = -15  # px below mouse (viewport Y is bottom-up)
+_TOOLTIP_COLOR = (1.0, 1.0, 1.0, 1.0)
+_TOOLTIP_SHADOW_COLOR = (0.0, 0.0, 0.0, 0.8)
+
 
 class OverlayHandles(TypedDict):
     """Draw handler refs returned by register_overlay; None when stage
@@ -41,18 +53,53 @@ class OverlayHandles(TypedDict):
     user_dots: object | None
     user_strokes: object | None
     raw_stroke: object | None
+    tooltip: object | None  # POST_PIXEL intent text; Stage 2 + Stage 4 only
 
 
-def _register_stage3_handlers(
+def _draw_tooltip(
+    mouse_pos_ref: list[tuple[int, int]],
+    text_ref: list[str],
+) -> None:
+    """POST_PIXEL draw handler: render intent text near mouse cursor.
+
+    Both args are single-element lists so the operator can mutate them
+    without re-registering this handler (same pattern as _stroke_raw_points /
+    _stroke_active_ref). Nothing is drawn when mouse is outside the region
+    (mouse_region_x < 0) or when text is empty.
+    """
+    if not text_ref or not text_ref[0]:
+        return
+    if not mouse_pos_ref:
+        return
+    mx, my = mouse_pos_ref[0]
+    if mx < 0 or my < 0:
+        return
+    text = text_ref[0]
+    blf.size(_TOOLTIP_FONT_ID, _TOOLTIP_FONT_SIZE)
+    # Shadow pass (offset 1 px down-right for legibility on any bg)
+    blf.color(_TOOLTIP_FONT_ID, *_TOOLTIP_SHADOW_COLOR)
+    blf.position(_TOOLTIP_FONT_ID, mx + _TOOLTIP_OFFSET_X + 1, my + _TOOLTIP_OFFSET_Y - 1, 0)
+    blf.draw(_TOOLTIP_FONT_ID, text)
+    # White text on top
+    blf.color(_TOOLTIP_FONT_ID, *_TOOLTIP_COLOR)
+    blf.position(_TOOLTIP_FONT_ID, mx + _TOOLTIP_OFFSET_X, my + _TOOLTIP_OFFSET_Y, 0)
+    blf.draw(_TOOLTIP_FONT_ID, text)
+
+
+def _register_interactive_handlers(
     handles: OverlayHandles,
     user_strokes: list[Stroke] | None,
     stroke_active_ref: list[bool] | None,
     stroke_raw_points_ref: list[tuple[float, float]] | None,
+    tooltip_mouse_ref: list[tuple[int, int]] | None,
+    tooltip_text_ref: list[str] | None,
 ) -> None:
-    """Register the two Stage 3 draw handlers (committed strokes + raw preview).
+    """Register draw handlers for interactive stages (USER_OUTER, USER_STEINERS).
 
-    Both handlers receive mutable container references so they always see
-    the latest operator state without needing re-registration on MOUSEMOVE.
+    Covers committed strokes, in-progress raw stroke preview, and the
+    POST_PIXEL intent tooltip. All handlers receive mutable container
+    references so they always see the latest operator state without
+    needing re-registration on MOUSEMOVE.
     """
     if user_strokes is not None:
         handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
@@ -68,6 +115,13 @@ def _register_stage3_handlers(
             "WINDOW",
             "POST_VIEW",
         )
+    if tooltip_mouse_ref is not None and tooltip_text_ref is not None:
+        handles["tooltip"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_tooltip,
+            (tooltip_mouse_ref, tooltip_text_ref),
+            "WINDOW",
+            "POST_PIXEL",
+        )
 
 
 def register_overlay(
@@ -76,6 +130,8 @@ def register_overlay(
     user_strokes: list[Stroke] | None = None,
     stroke_active_ref: list[bool] | None = None,
     stroke_raw_points_ref: list[tuple[float, float]] | None = None,
+    tooltip_mouse_ref: list[tuple[int, int]] | None = None,
+    tooltip_text_ref: list[str] | None = None,
 ) -> OverlayHandles:
     """Add POST_VIEW draw handlers per stage's overlay set.
 
@@ -83,6 +139,8 @@ def register_overlay(
     - user_strokes: the operator's _user_strokes list (by reference)
     - stroke_active_ref: single-element list wrapping _stroke_active bool (Stage 3 only)
     - stroke_raw_points_ref: the operator's _stroke_raw_points list (by reference, Stage 3 only)
+    - tooltip_mouse_ref: single-element list with (mouse_region_x, mouse_region_y) in pixels
+    - tooltip_text_ref: single-element list with current intent text string
 
     The draw callbacks hold references to these containers so they always
     see the current live state without needing re-registration on each
@@ -95,6 +153,7 @@ def register_overlay(
         "user_dots": None,
         "user_strokes": None,
         "raw_stroke": None,
+        "tooltip": None,
     }
     if stage >= AuthoringStage.OUTER and output.outer:
         color = _OUTER_COLOR if stage == AuthoringStage.OUTER else _OUTER_DIM
@@ -120,7 +179,14 @@ def register_overlay(
             "POST_VIEW",
         )
     if stage in (AuthoringStage.USER_OUTER, AuthoringStage.USER_STEINERS):
-        _register_stage3_handlers(handles, user_strokes, stroke_active_ref, stroke_raw_points_ref)
+        _register_interactive_handlers(
+            handles,
+            user_strokes,
+            stroke_active_ref,
+            stroke_raw_points_ref,
+            tooltip_mouse_ref,
+            tooltip_text_ref,
+        )
     if stage >= AuthoringStage.STEINER_PREVIEW and output.all_steiners:
         handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_points,
@@ -140,7 +206,7 @@ def register_overlay(
 
 def unregister_overlay(handles: OverlayHandles) -> None:
     """No-op-safe cleanup; tolerates partial registration."""
-    for key in ("outer", "inner", "steiners", "user_dots", "user_strokes", "raw_stroke"):
+    for key in ("outer", "inner", "steiners", "user_dots", "user_strokes", "raw_stroke", "tooltip"):
         handle = handles.get(key)
         if handle is None:
             continue
@@ -156,6 +222,8 @@ def refresh_overlay(
     user_strokes: list[Stroke] | None = None,
     stroke_active_ref: list[bool] | None = None,
     stroke_raw_points_ref: list[tuple[float, float]] | None = None,
+    tooltip_mouse_ref: list[tuple[int, int]] | None = None,
+    tooltip_text_ref: list[str] | None = None,
 ) -> OverlayHandles:
     """Replace handlers when stage data changes (slider drag or stage advance)."""
     unregister_overlay(handles)
@@ -165,6 +233,8 @@ def refresh_overlay(
         user_strokes=user_strokes,
         stroke_active_ref=stroke_active_ref,
         stroke_raw_points_ref=stroke_raw_points_ref,
+        tooltip_mouse_ref=tooltip_mouse_ref,
+        tooltip_text_ref=tooltip_text_ref,
     )
 
 

@@ -130,6 +130,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "user_dots": None,
             "user_strokes": None,
             "raw_stroke": None,
+            "tooltip": None,
         }
         self._timer = None
         self._stroke_active: bool = False
@@ -145,6 +146,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # not change intent mid-drag.
         self._stroke_is_cut: bool = False
         self._user_strokes: list[Stroke] = []
+
+        # Tooltip live state - single-element lists mutated in-place so the
+        # registered POST_PIXEL draw handler always reads current values
+        # without needing re-registration on every MOUSEMOVE.
+        self._tooltip_mouse_ref: list[tuple[int, int]] = [(-1, -1)]
+        self._tooltip_text_ref: list[str] = [""]
 
         # Stage 2 (USER_OUTER) stroke capture state (parallel to Stage 4).
         self._outer_stroke_active: bool = False
@@ -207,8 +214,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Dispatch Stage 2 (USER_OUTER) event. Returns None when not consumed."""
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
             return self._outer_stroke_press(context, event)
-        if event.type == "MOUSEMOVE" and self._outer_stroke_active:
-            return self._outer_stroke_move(context, event)
+        if event.type == "MOUSEMOVE":
+            self._tooltip_mouse_ref[0] = (event.mouse_region_x, event.mouse_region_y)
+            self._tooltip_text_ref[0] = self._compute_stage2_tooltip_text(context, event)
+            _tag_redraw_view3d(context)
+            if self._outer_stroke_active:
+                return self._outer_stroke_move(context, event)
+            return {"RUNNING_MODAL"}
         if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._outer_stroke_active:
             return self._outer_stroke_release(context, event)
         if event.type == "Z" and event.ctrl and event.value == "PRESS":
@@ -343,8 +355,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         was not consumed (modal falls through to TIMER + PASS_THROUGH)."""
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
             return self._stroke_press(context, event)
-        if event.type == "MOUSEMOVE" and self._stroke_active:
-            return self._stroke_move(context, event)
+        if event.type == "MOUSEMOVE":
+            self._tooltip_mouse_ref[0] = (event.mouse_region_x, event.mouse_region_y)
+            self._tooltip_text_ref[0] = self._compute_stage4_tooltip_text(event)
+            _tag_redraw_view3d(context)
+            if self._stroke_active:
+                return self._stroke_move(context, event)
+            return {"RUNNING_MODAL"}
         if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._stroke_active:
             return self._stroke_release(context, event)
         if event.type == "Z" and event.ctrl and event.value == "PRESS":
@@ -539,11 +556,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         Passes outer stroke list + raw-stroke refs so the draw callbacks
         render both committed strokes and the in-progress one during Stage 2.
         Stage 4+ also shows Stage 4 strokes but not Stage 2's raw preview.
+        Tooltip refs are included so the POST_PIXEL handler tracks intent.
         """
         return {
             "user_strokes": self._user_outer_strokes,
             "stroke_active_ref": self._outer_stroke_active_ref,
             "stroke_raw_points_ref": self._outer_stroke_raw_points,
+            "tooltip_mouse_ref": self._tooltip_mouse_ref,
+            "tooltip_text_ref": self._tooltip_text_ref,
         }
 
     def _stage3_overlay_kwargs(self) -> dict[str, object]:
@@ -551,11 +571,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
         Always passes the same mutable list references so registered draw
         callbacks remain valid across param-change re-registrations.
+        Tooltip refs are included so the POST_PIXEL handler tracks intent.
         """
         return {
             "user_strokes": self._user_strokes,
             "stroke_active_ref": self._stroke_active_ref,
             "stroke_raw_points_ref": self._stroke_raw_points,
+            "tooltip_mouse_ref": self._tooltip_mouse_ref,
+            "tooltip_text_ref": self._tooltip_text_ref,
         }
 
     def _stage4plus_overlay_kwargs(self) -> dict[str, object]:
@@ -568,6 +591,27 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return {
             "user_strokes": self._user_outer_strokes + self._user_strokes,
         }
+
+    def _compute_stage4_tooltip_text(self, event: bpy.types.Event) -> str:
+        """Return intent text for Stage 4 (USER_STEINERS) based on modifier state."""
+        if event.ctrl:
+            return "Delete stroke (hover + click)"
+        if event.shift:
+            return "Cut stroke"
+        return "Fold-line stroke"
+
+    def _compute_stage2_tooltip_text(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> str:
+        """Return intent text for Stage 2 (USER_OUTER) based on modifier + mouse location."""
+        if event.ctrl:
+            return "Delete outer stroke (hover + click)"
+        world_pt = _region_to_world_xz(context, event)
+        if world_pt is None:
+            return ""
+        if self._point_inside_outer(world_pt):
+            return "Cut silhouette"
+        return "Extend outer"
 
     def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:
         """Hit-test: remove stroke if any vert is within _STROKE_PICK_RADIUS_PX of mouse."""

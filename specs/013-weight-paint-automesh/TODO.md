@@ -135,7 +135,7 @@ Cost: ~1.5-2 days. Low risk thanks to validator + 313 pytest + headless fixture-
 Bind a mesh to a bone chain via a custom planar-distance algorithm that never hits the bone-heat solver; surface structured diagnosis when something goes wrong.
 
 Spec: [`bind-design.md`](bind-design.md).
-Plan: [`docs/superpowers/plans/2026-05-17-spec-013.2-bind.md`](../../docs/superpowers/plans/2026-05-17-spec-013.2-bind.md).
+Plan: [`design/2026-05-17-spec-013.2-bind.md`](design/2026-05-17-spec-013.2-bind.md).
 
 What landed:
 
@@ -197,7 +197,7 @@ Sprite-changed-in-Photoshop workflow (from PR #51 smoke discussion) is exactly t
 Wave 13.2-panel: Bind sub-box landed in the existing `PROSCENIO_PT_skinning` panel; bind operator pivots to BONE_HEAT default (D4 amendment).
 
 Spec: [`panel-design.md`](panel-design.md).
-Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-panel.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-panel.md).
+Plan: [`design/2026-05-20-spec-013.2-panel.md`](design/2026-05-20-spec-013.2-panel.md).
 
 What landed:
 
@@ -220,7 +220,7 @@ Out of scope (deferred):
 Wave 13.2-sidecar: WeightSidecar.entries populates on bind + reprojects across automesh regen via UV-anchor barycentric interpolation. Materializes D6 (the differentiator vs Spine / COA Tools 2).
 
 Spec: [`sidecar-design.md`](sidecar-design.md).
-Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md).
+Plan: [`design/2026-05-20-spec-013.2-sidecar.md`](design/2026-05-20-spec-013.2-sidecar.md).
 
 What landed:
 
@@ -249,7 +249,7 @@ Out of scope (deferred):
 Wave 13.2-paint: one-button entry into 2D-safe weight paint with GPU provenance overlay, per-stroke `user_paint` flip via diff, hard ESC exit, Edit Weights sub-box in panel.
 
 Spec: [`paint-design.md`](paint-design.md).
-Plan: [`docs/superpowers/plans/2026-05-21-spec-013.2-paint.md`](../../docs/superpowers/plans/2026-05-21-spec-013.2-paint.md).
+Plan: [`design/2026-05-21-spec-013.2-paint.md`](design/2026-05-21-spec-013.2-paint.md).
 
 What landed:
 
@@ -279,7 +279,7 @@ Out of scope (deferred):
 Wave 13.2-interactive-modal: 5-stage modal preview of the automesh pipeline. Each stage (outer contour / inner loops / user Steiner points / Steiner preview / apply) shows a GPU overlay; sliders re-run live; user Steiners click-place + persist via Custom Property. Final APPLY pipes through build_automesh + Wave 13.2-sidecar reproject so existing weights survive.
 
 Spec: [`interactive-modal-design.md`](interactive-modal-design.md).
-Plan: [`docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md`](../../docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md).
+Plan: [`design/2026-05-22-spec-013.2-interactive-modal.md`](design/2026-05-22-spec-013.2-interactive-modal.md).
 
 What landed:
 
@@ -351,18 +351,53 @@ Prerequisites:
 - Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects. (Pending - manual T-case to add to 1.20 or 1.21.)
 - Headless Blender script via `--background --python` to confirm registration / unregister cycle clean. (Pending - separate effort; the existing `run_operator_tests.py` runner covers ops registration as a side effect of fixture load.)
 
-## Wave 13.3 - productivity polish
+## Stroke redesign + productivity polish (in-flight bundle)
 
-Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its own PR when the trigger lands.
+Spec: [`design/2026-05-26-spec-013-stroke-redesign-design.md`](design/2026-05-26-spec-013-stroke-redesign-design.md).
+Plan: [`design/2026-05-26-spec-013-stroke-redesign-plan.md`](design/2026-05-26-spec-013-stroke-redesign-plan.md).
+Branch: `feat/spec-013-stroke-redesign`.
 
-- **Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on vertex group metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind re-derives respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains proximity bleed is too soft on a specific limb.
+### Part A scope - SHIPPED on branch (PR pending review)
+
+Stage 3 stroke redesign + extra_edges CDT extension + mixed-flow auto-snapshot. 14 commits (`407229c..f04065e`), ~900 LOC. Tasks 1-14 of plan.
+
+- **[SHIPPED] Stage 3 paradigm: clicks become strokes** (S1-S9). LMB drag captures raw mouse path, Chaikin 2-iter smooth, resample at `interior_spacing`, snap endpoints to outer contour verts within `interior_spacing * 1.5`, persist as `proscenio_user_strokes` JSON. Backward compat: drag < 5px = single Steiner (click behavior preserved). Ctrl+Z pops last stroke. Shift+LMB hit-tests and deletes containing stroke. Strokes reach `build_automesh` as `extra_steiners` (verts) + `extra_edges` (CDT constraint segments). GPU overlay draws committed strokes (blue verts + edges) + kind=point strokes (yellow dots) + in-progress raw path (light gray). Stage 4 preview also renders stroke edges so artist verifies before APPLY.
+- **[SHIPPED] Auto-snapshot from current vertex_groups state (mixed-flow fix - critical)** (M1/M2). When `obj["proscenio_weight_sidecar"]` absent before automesh regen AND `vertex_groups` non-empty AND armature set, build sidecar on-the-fly from current vgroup data via `snapshot_sidecar` (provenance=auto_seed). Closes critical gap where Ctrl+P Armature Auto Weights bind + automesh regen silently wiped weights (user-reported 2026-05-25).
+
+### Part B scope - PENDING (productivity polish, ~10 tasks)
+
+Tasks 16-25 of plan. ~800 LOC. Per-bone Soft/Hard toggle (O1), multi-mesh batch bind (O2), sidecar import/export (O3), brush curve presets (O4), B3 fix or document (O5), UX1 rename (O6), weight transfer between sprites (O7).
+
+### Legacy backlog (productivity polish, not in this bundle)
+
+The original "Wave 13.3" planning grouped these 7 items (quick wins + bugs + critical mixed-flow gap, ~830 LOC total):
+
+- **[ACTIVE] Auto-snapshot from current vertex_groups state (mixed-flow fix - critical).** Today `maybe_pre_regen_snapshot` aborts when `obj["proscenio_weight_sidecar"]` is absent, so users who bound via Blender native (`Ctrl+P -> Armature Auto Weights`) silently lose ALL weights on next `Automesh from Sprite` regen. Fix: when sidecar absent but vertex_groups present, build the sidecar on-the-fly from current vertex_groups + UVs before regen, then reproject. Closes the "mixed flows = silent data loss" gap user identified 2026-05-25.
+- **[ACTIVE] Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on vertex group metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind re-derives respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains proximity bleed is too soft on a specific limb.
 - **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone to grow / shrink radius. Region drives initial weight map procedurally. Trigger: proximity default does not give enough control for shapes like long hair or tails.
 - **User-drawn density markers (PR #51 smoke feedback).** Artist paints on sprite (grease pencil or GPU overlay) to mark regions of interest (muscle bulges, cloth folds, joint creases). Marks translate into extra Steiner point clusters at automesh time. Distinct from Wave 13.2's interactive modal at coarse level: this is painted REGIONS persisted on the mesh, modal is per-point clicks during authoring. Implementation sketch: `proscenio_density_marks: list[(x, z, weight, kind)]` Custom Property; per-mark color in the overlay differentiates kinds (muscle / fold / crease).
-- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); same algorithm against picker armature. Useful for character imports with N sprites + 1 rig.
+- **[ACTIVE] Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); same algorithm against picker armature. Useful for character imports with N sprites + 1 rig.
 - **Weight transfer between sprites.** `proscenio.copy_weights_to_selected`. Source mesh (active) + N target meshes (selected); for each target vertex, look up nearest source vertex by world position + copy weight dict. Solves COA2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73).
 - **Live pose-mode preview in weight paint.** Scrub the bone to a posed angle, see how the mesh deforms, scrub back without leaving Edit Weights modal. Pose-scrub overlay + hotkey to toggle rest pose.
-- **Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
-- **Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
+- **[ACTIVE] Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
+- **[ACTIVE] Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
+
+### Active PR scope continued
+
+The bundle above also includes:
+
+- **B3 fix (resolution 0.5 silhouette walker).** Confirmed Wave 13.1 regression. Investigate alpha walker at coarse pixel stride; fix or document workaround. Out of scope for big algorithm changes; if root cause needs major work, downgrade to "document workaround in panel tooltip" (~30 LOC) instead of fixing.
+- **UX1 (Restore Weight Snapshot rename).** Rename button to something less opaque. Candidates: "Revert Manual Paint" or "Reset to Last Saved Weights". Add tooltip showing when snapshot was last saved.
+
+### Deferred to dedicated waves (each needs own brainstorm + plan)
+
+These items are scoped but NOT in the active PR (too big / too design-heavy):
+
+- Bone strength region painting (Moho lift) - ~600 LOC, widget paradigm
+- User-drawn density markers - ~400 LOC, paint mode + integrate with automesh
+- Weight transfer between sprites - ~250 LOC, cross-mesh KNN operator
+- Live pose-mode preview in weight paint - ~400 LOC, modal scaffold + pose-scrub overlay
+- Stage 3 redesign: stroke -> CDT constraint edges (replaces click-place-vert per user feedback 2026-05-25) - ~600 LOC, modal refactor + GPU brush feedback
 - **Bezier brush stroke for alpha-boundary trace.** Wave 13.2's free-draw alternative to the alpha-trace one-shot. Adds D1.B to the paradigm enum when real workflows demand it.
 
 ### Suspect bugs - needs investigation (manual smoke 2026-05-21)

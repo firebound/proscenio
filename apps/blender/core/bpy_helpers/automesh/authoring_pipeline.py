@@ -303,3 +303,78 @@ def _to_world_xz(obj: bpy.types.Object, local_points: list[Point2D]) -> list[Poi
         world = matrix @ Vector((x, 0.0, z))
         out.append((world.x, world.z))
     return out
+
+
+def _strokes_to_cdt_inputs(
+    obj: bpy.types.Object,
+    strokes: list[Stroke],
+    outer_world_local: list[Point2D],
+    outer_base_index: int,
+    interior_base_index: int,
+    interior_spacing: float,
+) -> tuple[list[Point2D], list[tuple[int, int]]]:
+    """Convert Stage 3 strokes to (extra_steiners_local, extra_edges).
+
+    For each stroke:
+    - kind='point': append point as single Steiner; no edges.
+    - kind='stroke': append all resampled verts as Steiners. Build edges
+      between consecutive Steiners. If endpoint snaps to an outer vert
+      (within interior_spacing * 1.5), DROP that endpoint from extras
+      and emit an edge from the next stroke vert to the outer vert
+      index (outer_base_index + snap_index).
+
+    Indices in the returned edges:
+    - Non-snapped stroke verts get indices >= interior_base_index (allocated
+      in append order)
+    - Snapped endpoints reference outer_base_index + snap_index
+
+    Coordinates are in MESH-LOCAL XZ (apply matrix_world.inverted()
+    to each stroke point first; existing _world_steiners_to_local
+    pattern).
+    """
+    from .stroke_geometry import snap_endpoint  # local to keep top clean
+    inv = obj.matrix_world.inverted()
+    extras_local: list[Point2D] = []
+    edges: list[tuple[int, int]] = []
+
+    def to_local(p: Point2D) -> Point2D:
+        v = inv @ Vector((p[0], 0.0, p[1]))
+        return (v.x, v.z)
+
+    snap_radius = interior_spacing * 1.5
+
+    for stroke in strokes:
+        if stroke["kind"] == "point":
+            for p in stroke["points"]:
+                extras_local.append(to_local(p))
+            continue
+        # stroke kind
+        pts_local = [to_local(p) for p in stroke["points"]]
+        if not pts_local:
+            continue
+        # snap endpoints to outer
+        start_snap = snap_endpoint(pts_local[0], outer_world_local, snap_radius)
+        end_snap = snap_endpoint(pts_local[-1], outer_world_local, snap_radius)
+        # decide which inner indices are stroke-allocated
+        inner_pts = list(pts_local)
+        if start_snap is not None and inner_pts:
+            inner_pts = inner_pts[1:]
+        if end_snap is not None and inner_pts:
+            inner_pts = inner_pts[:-1]
+        # allocate indices for the inner stroke verts
+        allocated_start = interior_base_index + len(extras_local)
+        allocated_indices = list(range(allocated_start, allocated_start + len(inner_pts)))
+        extras_local.extend(inner_pts)
+        # build edge sequence
+        node_indices: list[int] = []
+        if start_snap is not None:
+            node_indices.append(outer_base_index + start_snap)
+        node_indices.extend(allocated_indices)
+        if end_snap is not None:
+            node_indices.append(outer_base_index + end_snap)
+        # skip strokes that collapsed entirely (both endpoints snapped to same outer)
+        if len(node_indices) < 2:
+            continue
+        for i in range(len(node_indices) - 1):
+            edges.append((node_indices[i], node_indices[i + 1]))
+    return extras_local, edges

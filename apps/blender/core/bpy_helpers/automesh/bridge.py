@@ -566,6 +566,7 @@ def _triangulate_into_bmesh(
     inner_world: Contour2D,
     interior_points: list[tuple[float, float]],
     holes_world: list[Contour2D],
+    extra_edges: list[tuple[int, int]] | None = None,
 ) -> tuple[int, object]:
     """Run CDT into a bmesh + apply the hole-face post-prune.
 
@@ -578,7 +579,7 @@ def _triangulate_into_bmesh(
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
-    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
+    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world, extra_edges=extra_edges)
     if holes_world:
         # CDT's automatic hole detection is unreliable against the
         # bridge's Y-flip orientation flow; the centroid post-prune
@@ -624,6 +625,7 @@ def build_automesh(
     debug_stage: DebugStage = "off",
     preserve_base_quad: bool = False,
     extra_steiners: list[tuple[float, float]] | None = None,
+    extra_edges: list[tuple[int, int]] | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -722,7 +724,7 @@ def build_automesh(
         )
 
     base_group_index, bm = _triangulate_into_bmesh(
-        obj, outer_world, inner_world, interior_points, holes_world
+        obj, outer_world, inner_world, interior_points, holes_world, extra_edges=extra_edges
     )
     if debug_stage == "fill_no_interior":
         mesh = obj.data

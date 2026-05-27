@@ -7,6 +7,7 @@ Uses linear scan O(S * T); acceptable for sprite meshes (< 1k verts each).
 For large meshes a future PR can swap to KDTree (apps/blender bpy layer;
 this module stays pure).
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence

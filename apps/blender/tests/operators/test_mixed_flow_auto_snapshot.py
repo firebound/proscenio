@@ -4,6 +4,7 @@ Covers the gap where users bind via Ctrl+P Armature Auto Weights (no
 proscenio_weight_sidecar written) and then trigger an automesh regen.
 Without the fallback, the regen wiped all weights silently.
 """
+
 from __future__ import annotations
 
 import bpy
@@ -47,6 +48,4 @@ def test_native_ctrlp_bind_then_automesh_regen_preserves_weights(automesh_fixtur
                     total_assigned += 1
             except RuntimeError:
                 continue
-    assert total_assigned > 0, (
-        "weights lost during regen - mixed-flow auto-snapshot (M1) failed"
-    )
+    assert total_assigned > 0, "weights lost during regen - mixed-flow auto-snapshot (M1) failed"

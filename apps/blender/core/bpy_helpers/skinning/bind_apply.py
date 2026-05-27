@@ -155,8 +155,7 @@ def _apply_bone_mode_overrides(
     """
     default_bmode = _default_bone_mode(mode)
     override_exists = any(
-        bone_mode_for(obj, b, default=default_bmode) != default_bmode
-        for _, _, b in bone_segments
+        bone_mode_for(obj, b, default=default_bmode) != default_bmode for _, _, b in bone_segments
     )
     if not override_exists:
         return weights
@@ -172,9 +171,7 @@ def _apply_bone_mode_overrides(
     return _merge_per_bone_weights(obj, default_bmode, alt_weights, weights)
 
 
-def _write_weights_to_groups(
-    obj: bpy.types.Object, weights: dict[str, list[float]]
-) -> int:
+def _write_weights_to_groups(obj: bpy.types.Object, weights: dict[str, list[float]]) -> int:
     """Wipe non-base groups, recreate per bone, write weights. Returns groups_wiped."""
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]
@@ -189,9 +186,7 @@ def _write_weights_to_groups(
     return groups_wiped
 
 
-def _count_orphans_from_weights(
-    num_verts: int, weights: dict[str, list[float]]
-) -> int:
+def _count_orphans_from_weights(num_verts: int, weights: dict[str, list[float]]) -> int:
     """Count verts whose total weight across all bones is below eps."""
     orphans = 0
     for vert_idx in range(num_verts):

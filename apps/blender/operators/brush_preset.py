@@ -23,11 +23,7 @@ class PROSCENIO_OT_set_brush_preset(bpy.types.Operator):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         ts = context.tool_settings
-        return (
-            ts is not None
-            and ts.weight_paint is not None
-            and ts.weight_paint.brush is not None
-        )
+        return ts is not None and ts.weight_paint is not None and ts.weight_paint.brush is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         brush = context.tool_settings.weight_paint.brush

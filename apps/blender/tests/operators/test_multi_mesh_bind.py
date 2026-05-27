@@ -1,4 +1,5 @@
 """Headless: bind operator binds all selected MESH objects (O2)."""
+
 from __future__ import annotations
 
 import bpy
@@ -63,6 +64,7 @@ def test_bind_no_mesh_selected_cancels(automesh_fixture):
     bpy.context.scene.proscenio.active_armature = bpy.data.objects["automesh.hand_rig"]
 
     import pytest
+
     with pytest.raises((RuntimeError, Exception)):
         # operator should cancel; bpy.ops raises when result is CANCELLED and
         # called from a context where no object is accessible

@@ -168,6 +168,7 @@ def test_user_strokes_round_trip(automesh_fixture):
         read_user_strokes,
         write_user_strokes,
     )
+
     strokes = [
         {"kind": "point", "points": [(0.0, 0.0)]},
         {"kind": "stroke", "points": [(0.1, 0.2), (0.3, 0.4), (0.5, 0.6)]},
@@ -187,6 +188,7 @@ def test_user_strokes_legacy_fallback(automesh_fixture):
         read_user_strokes,
         write_user_steiners,
     )
+
     if "proscenio_user_strokes" in obj:
         del obj["proscenio_user_strokes"]
     write_user_steiners(obj, [(1.0, 2.0), (3.0, 4.0)])
@@ -201,6 +203,7 @@ def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_strokes,
     )
+
     obj["proscenio_user_strokes"] = "not valid json {{{"
     assert read_user_strokes(obj) == []
 
@@ -217,18 +220,28 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
         StageOutput,
         StageParams,
     )
+
     # Build a stroke that crosses the hand's central area.
     # Stroke points are world XZ: hand sits at world X=-3.0, so mesh-local
     # X=0 maps to world X=-3.0. Z is unchanged (no Z offset in fixture).
-    output = StageOutput(user_strokes=[
-        {"kind": "stroke", "points": [
-            (-3.0, 0.5), (-3.0, 0.3), (-3.0, 0.1), (-3.0, -0.1), (-3.0, -0.3)
-        ]}
-    ])
+    output = StageOutput(
+        user_strokes=[
+            {
+                "kind": "stroke",
+                "points": [(-3.0, 0.5), (-3.0, 0.3), (-3.0, 0.1), (-3.0, -0.1), (-3.0, -0.3)],
+            }
+        ]
+    )
     params = StageParams(
-        resolution=0.25, alpha_threshold=1, margin_pixels=0,
-        contour_vertices=64, inner_loop_count=0, inner_loop_spacing=0.15,
-        interior_spacing=0.1, bone_radius=0.5, bone_factor=2,
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
     )
     armature = bpy.data.objects["automesh.hand_rig"]
     counters_before = apply_mesh(obj, image, StageOutput(), params, armature)

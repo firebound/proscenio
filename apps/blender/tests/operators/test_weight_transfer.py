@@ -1,4 +1,5 @@
 """Headless: copy_weights_to_selected operator (O7)."""
+
 from __future__ import annotations
 
 import bpy

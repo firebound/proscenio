@@ -22,8 +22,7 @@ class PROSCENIO_OT_set_bone_mode(bpy.types.Operator):
     bl_idname = "proscenio.set_bone_mode"
     bl_label = "Set Bone Mode"
     bl_description = (
-        "Override the bind mode for a single bone "
-        "(SOFT=proximity falloff, HARD=single-nearest)"
+        "Override the bind mode for a single bone (SOFT=proximity falloff, HARD=single-nearest)"
     )
     bl_options: ClassVar[set[str]] = {"INTERNAL", "REGISTER", "UNDO"}
 

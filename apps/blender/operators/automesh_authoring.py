@@ -197,6 +197,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                             chaikin_smooth,
                             resample_polyline,
                         )
+
                         smoothed = chaikin_smooth(
                             self._stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS
                         )
@@ -281,9 +282,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             if self._stage == AuthoringStage.USER_STEINERS
             else self._stage4plus_overlay_kwargs()
         )
-        self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **overlay_kwargs
-        )
+        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -297,9 +296,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             if self._stage == AuthoringStage.USER_STEINERS
             else self._stage4plus_overlay_kwargs()
         )
-        self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **overlay_kwargs
-        )
+        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -329,9 +326,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             if self._stage == AuthoringStage.USER_STEINERS
             else self._stage4plus_overlay_kwargs()
         )
-        self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **overlay_kwargs
-        )
+        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
 
     def _stage3_overlay_kwargs(self) -> dict:

@@ -208,7 +208,13 @@ def _draw_edit_weights_box(
     Button enabled only when (a) picker armature set, (b) mesh has
     a populated sidecar (binds preceded edit). Active vertex group
     label hints which bone the modal will start painting.
+
+    Brush curve presets (O4) appear below the entry button as a
+    4-button aligned row so the artist can switch curve shape without
+    opening the brush curve editor.
     """
+    from ..core.skinning.brush_curve_presets import PRESET_LABELS, PRESETS
+
     box = layout.box()
     box.label(text="Edit Weights", icon="BRUSHES_ALL")
     active_label = _active_group_label(obj)
@@ -224,6 +230,12 @@ def _draw_edit_weights_box(
         return
     if obj.get("proscenio_weight_sidecar") is None:
         box.label(text="bind first to enable", icon="INFO")
+
+    box.label(text="Brush curve preset:")
+    row = box.row(align=True)
+    for preset_name in PRESETS:
+        op = row.operator("proscenio.set_brush_preset", text=PRESET_LABELS[preset_name])
+        op.preset_name = preset_name
 
 
 def _active_group_label(obj: bpy.types.Object | None) -> str:

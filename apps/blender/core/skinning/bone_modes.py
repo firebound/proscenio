@@ -11,9 +11,10 @@ to dispatch SOFT (proximity falloff) vs HARD (single-nearest) per bone.
 from __future__ import annotations
 
 import json
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-import bpy
+if TYPE_CHECKING:
+    import bpy
 
 BoneMode = Literal["SOFT", "HARD"]
 _KEY = "proscenio_bone_modes"

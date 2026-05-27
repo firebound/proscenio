@@ -29,13 +29,12 @@ class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
     """Reapply the last saved weight sidecar to the active mesh."""
 
     bl_idname = "proscenio.restore_weight_snapshot"
-    bl_label = "Proscenio: Restore Weight Snapshot"
+    bl_label = "Reset to Last Saved Weights"
     bl_description = (
-        "Reapply the last saved weight sidecar to the active mesh. Reverts "
-        "manual paint changes made after the most recent bind / automesh "
-        "regen. Does NOT trigger automesh regen - if topology has changed "
-        "since the snapshot, the operator cancels with a hint to re-run "
-        "automesh with preserve_on_regen ON"
+        "Reverts paint edits since the last Bind or Automesh regen, restoring "
+        "the weight snapshot saved at that time. Does NOT trigger automesh "
+        "regen - if topology has changed since the snapshot, the operator "
+        "cancels with a hint to re-run automesh with preserve_on_regen ON"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 

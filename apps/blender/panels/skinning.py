@@ -291,7 +291,7 @@ def _draw_snapshot_box(
     row.enabled = counts is not None
     row.operator(
         "proscenio.restore_weight_snapshot",
-        text="Restore Weight Snapshot",
+        text="Reset to Last Saved Weights",
         icon="LOOP_BACK",
     )
 

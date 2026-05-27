@@ -364,6 +364,26 @@ Stage 3 stroke redesign + extra_edges CDT extension + mixed-flow auto-snapshot. 
 - **[SHIPPED] Stage 3 paradigm: clicks become strokes** (S1-S9). LMB drag captures raw mouse path, Chaikin 2-iter smooth, resample at `interior_spacing`, snap endpoints to outer contour verts within `interior_spacing * 1.5`, persist as `proscenio_user_strokes` JSON. Backward compat: drag < 5px = single Steiner (click behavior preserved). Ctrl+Z pops last stroke. Shift+LMB hit-tests and deletes containing stroke. Strokes reach `build_automesh` as `extra_steiners` (verts) + `extra_edges` (CDT constraint segments). GPU overlay draws committed strokes (blue verts + edges) + kind=point strokes (yellow dots) + in-progress raw path (light gray). Stage 4 preview also renders stroke edges so artist verifies before APPLY.
 - **[SHIPPED] Auto-snapshot from current vertex_groups state (mixed-flow fix - critical)** (M1/M2). When `obj["proscenio_weight_sidecar"]` absent before automesh regen AND `vertex_groups` non-empty AND armature set, build sidecar on-the-fly from current vgroup data via `snapshot_sidecar` (provenance=auto_seed). Closes critical gap where Ctrl+P Armature Auto Weights bind + automesh regen silently wiped weights (user-reported 2026-05-25).
 
+### Part C scope - IN FLIGHT (scope amendment 2026-05-27 post-smoke)
+
+Manual smoke on PR #63 (2026-05-27) revealed:
+
+1. **Fan-degenerate triangulation** when Stage 3 strokes commit (visible edge fans radiating from interior verts). Two confirmed root causes: (a) auto-fill grid clusters near stroke verts (Steiner spacing computed without knowing stroke positions); (b) silent vert drop in `_merge_extra_steiners` leaves `extra_edges` indices stale → long-distance edges referencing wrong final-array positions.
+2. **Feature gap**: cuts (kind="cut" stroke that separates the mesh into 2 sides) requested for joint articulation + silhouette refinement use cases.
+
+Decision: bundle the fixes + feature into PR #63 rather than ship a baseline that produces low-quality output by default. Spec amendment AS-AM1 through AS-AM10 documented in [`design/2026-05-26-spec-013-stroke-redesign-design.md`](design/2026-05-26-spec-013-stroke-redesign-design.md) "Scope amendment 2026-05-27" section.
+
+Adds 10 tasks (~970 LOC + ~18 tests):
+
+- (NEW) filter strokes pre-index-allocation + WARNING report on drops (closes index drift bug)
+- (NEW) `interior_points_for_annulus.exclude_zones` kwarg (closes auto-fill cluster bug)
+- (NEW) `AuthoringStage.USER_OUTER` between OUTER and INNER_LOOPS - 5-stage modal becomes 6
+- (NEW) Stroke `kind="cut"` (3rd value) + 2-loop offset + face-prune (reuses hole detection)
+- (NEW) Stage 2 location-driven gestures (LMB outside = extend, LMB inside = cut, Ctrl = delete)
+- (NEW) Stage 4 modifier scheme (LMB = fold-line, Shift = cut, Ctrl = delete - was Shift for delete)
+- (NEW) `StageParams.cut_width` slider (default `interior_spacing * 0.3`)
+- (NEW) Tooltip near mouse via `blf.draw` showing current intent per stage + modifier state
+
 ### Part B scope - SHIPPED on branch (PR pending review)
 
 Productivity polish + B3 silhouette fix. 9 commits (`e80c91b..aba0a73`), ~800 LOC. Tasks 16-24 of plan.

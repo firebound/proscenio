@@ -312,6 +312,62 @@ These items remain deferred to future dedicated efforts (each needs its own brai
 - User-drawn density markers - needs paint-mode integration brainstorm (~400 LOC)
 - Live pose-mode preview - needs hotkey/sub-mode UX brainstorm (~400 LOC)
 
+## Scope amendment 2026-05-27 (manual smoke findings)
+
+PR #63 (Part A + Part B) completed all planned tasks + CI green, but manual smoke on the hand fixture (2026-05-27) revealed visual artifacts + a feature gap that block ship-readiness. Decision: expand scope in same PR rather than ship a baseline that produces low-quality output by default.
+
+### What smoke revealed
+
+Smoke run: hand fixture, Stage 3 modal, 2 strokes drawn across the palm, APPLY. Console reported `delaunay output_type=1 input=258v/70e output=259v/452f` (clean count) but the rendered mesh showed clearly visible **edge fans** - clusters of edges radiating from individual interior verts, spanning long distances across the silhouette. Two distinct fans in the middle of the palm + lower thumb region.
+
+### Root causes (2 confirmed)
+
+1. **Auto-fill cluster near stroke verts** (visual fan #1, dense triangulation): `interior_points_for_annulus` computes the uniform Steiner grid BEFORE knowing where the artist's strokes will land. When strokes are committed, their resampled verts are appended via `_merge_extra_steiners`, sharing space with auto-fill verts at sub-`interior_spacing` distance. CDT triangulates both → degenerate slivers + fan patterns around stroke-vicinity clusters.
+
+2. **Silent index drift on vert drop** (visual fan #2, long-spanning edges): `_merge_extra_steiners` in `bridge.py:551-559` filters extras silently when they fall outside outer silhouette / inside inner ring / inside a hole. The `extra_edges` index list passed in parallel is NOT updated to reflect the drops. Result: edges that should connect surviving stroke verts end up referencing wrong positions in the final coord array → long-distance edges crossing the mesh interior. Especially triggered when stroke vert sits marginally on outer boundary (raw walker outer vs smoothed-resampled outer have slightly different shapes → "I drew inside" verts can land outside post-smooth).
+
+### Feature gap (user-requested 2026-05-27)
+
+Stage 3 today produces fold lines (constraint edges, both sides have geometry). User needs **cuts** (separates mesh into 2 sides) for use cases like:
+
+- Articulating finger joints without inner-elbow stretch
+- Removing a chunk of silhouette the auto-walker mis-traced
+- Splitting a humanoid sprite at the waist for independent torso/legs deformation
+
+Cuts emerge naturally from the same constraint-edge machinery via 2 offset loops + face-prune between them (reuses existing hole detection post-process).
+
+### New stage in the modal (USER_OUTER)
+
+Today's 5-stage modal becomes 6 stages by inserting `USER_OUTER` between `OUTER` (1/6) and `INNER_LOOPS` (3/6):
+
+1/6 `OUTER` (auto-walker output, view-only as today)
+**2/6 `USER_OUTER` (NEW) - artist edits silhouette via stroke**
+3/6 `INNER_LOOPS`
+4/6 `USER_STEINERS` (interior, today's Stage 3, redesigned to stroke per S1-S9)
+5/6 `STEINER_PREVIEW`
+6/6 `APPLY`
+
+Stage 2 enables silhouette-focused editing before any interior work. Strokes are stored separately on the mesh as `proscenio_outer_strokes` (parallel to `proscenio_user_strokes` for Stage 4).
+
+### Locked decisions (amendment AS-AM1 through AS-AM10)
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| AS-AM1 | Stroke pipeline silently dropping verts via `_merge_extra_steiners` is a bug class - filter must happen in `_strokes_to_cdt_inputs` BEFORE index allocation, with INFO report of dropped count. | Index drift causes long-spanning fan edges (visual fan #2). Earlier filter keeps indices stable + gives artist feedback. |
+| AS-AM2 | `interior_points_for_annulus` gains `exclude_zones: list[(x, z, radius)] \| None` kwarg. Stroke verts populate exclude zones with radius = `interior_spacing * 0.5` to prevent auto-fill cluster. | Closes visual fan #1. Zone-based exclusion is generic (could later carry inner ring exclusion the same way). |
+| AS-AM3 | New stage `AuthoringStage.USER_OUTER` between OUTER and INNER_LOOPS. Modal goes 5 → 6 stages, statusbar labels renumber. | Artist mental model: "fix silhouette first, then add interior detail". Wave 13.2 had no separation; this is the natural next refinement. |
+| AS-AM4 | Modifier scheme per stage: Stage 2 (USER_OUTER) is **location-driven** (mouse position decides intent); Stage 4 (USER_STEINERS) is **modifier-driven** (no location ambiguity inside silhouette). Ctrl+drag = delete in BOTH stages (consistent). | Stage 2 has a natural inside/outside split (extend vs cut) that Stage 4 doesn't have. Forcing the same scheme on both is artificial. |
+| AS-AM5 | Stage 2 gestures: LMB drag outside silhouette = extend (splice stroke verts into outer contour). LMB drag inside silhouette = cut (remove silhouette chunk). LMB drag crossing border = clipped to inside + cut (with WARNING "stroke clipped to silhouette"). Ctrl+drag = delete. | Permissive UX: artist can rabiscar without aiming precisely. Clip + WARNING signals what happened. |
+| AS-AM6 | Stage 4 gestures: LMB drag = fold-line stroke (today's behavior); Shift+LMB drag = cut (NEW); Ctrl+LMB drag = delete (was Shift+LMB drag). Single click (< 5px) still = 1 Steiner. | Ctrl+drag delete is consistent with Stage 2. Shift+drag cut keeps the modifier-modifier-intent pattern. |
+| AS-AM7 | `Stroke.kind = "cut"` joins the existing `"point"` and `"stroke"` values. Cut implementation: resample stroke + smooth per S2/S3, compute 2 offset loops (perpendicular to stroke direction at each sample, distance = `cut_width / 2`), add both loops as CDT constraint edges, post-CDT face-prune removes faces whose centroid lies between the loops (reuses `delete_faces_inside_holes` pattern from `cdt.py`). | Reuses existing CDT + face-prune machinery. Offset normal is the 2D perpendicular of the tangent at each sample point (cross-product with Y-up). |
+| AS-AM8 | `StageParams.cut_width` slider (default `interior_spacing * 0.3`, min 0.01, max `interior_spacing * 2.0`). | Width too small = degenerate cut (CDT epsilon collapses); too large = removes too much mesh. Default scales with global resolution. |
+| AS-AM9 | Tooltip near mouse cursor via `blf.draw` at `(mouse_x + 15, mouse_y - 15)`. Updates per MOUSEMOVE. Text reflects current intent (e.g. "Extend outer", "Cut silhouette", "Fold-line stroke", "Cut", "Delete: stroke"). Color = white + 1px black shadow for legibility. Size 11px. | Modal modes are non-obvious; tooltip eliminates "which gesture does what" memorization. Mirrors Blender's tool-active hints. |
+| AS-AM10 | Stage 2 extend mechanic: stroke verts outside silhouette are appended to outer contour pre-CDT via splice. Splice point = closest existing outer vert; stroke verts inserted in sequence between splice points. Smooth-and-resample then runs on the spliced outer as a whole (so extended portion gets the same target_contour_vertices treatment). | Splice into raw outer keeps the smoothing pipeline coherent. Splicing into smoothed outer would lose the extension on the next regen. |
+
+### Scope estimate
+
+~970 LOC + ~18 tests across 10 tasks. PR #63 grows from 25 → ~40 commits. Tightly bundled per user preference; reviewer-friendly via topical commit ordering (amendment doc first, then bug fixes, then feature additions, then UI/tooltip, then smoke).
+
 ## References
 
 - Wave 13.2 modal: `apps/blender/operators/automesh_authoring.py`

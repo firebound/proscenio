@@ -24,8 +24,8 @@ from ..core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[imp
     compute_all_steiners,
     compute_inner_loops_for_stage,
     compute_outer,
-    read_user_steiners,
-    write_user_steiners,
+    read_user_strokes,
+    write_user_strokes,
 )
 from ..core.bpy_helpers.automesh.authoring_session import (  # type: ignore[import-not-found]
     AuthoringSession,
@@ -48,10 +48,10 @@ from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     Point2D,
     StageOutput,
     StageParams,
+    Stroke,
 )
 
 _TIMER_INTERVAL = 0.1
-_STEINER_DELETE_THRESHOLD_WORLD = 0.05
 _STAGE_NAMES = {
     AuthoringStage.OUTER: "1/5 Outer contour",
     AuthoringStage.INNER_LOOPS: "2/5 Inner loops",
@@ -74,6 +74,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         "commits. ENTER advances; BACKSPACE goes back; ESC cancels"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    # Stage 3 stroke capture state (Wave: stroke redesign)
+    _DRAG_THRESHOLD_PX: ClassVar[int] = 5
+    _STROKE_SMOOTH_ITERS: ClassVar[int] = 2
+    _STROKE_PICK_RADIUS_PX: ClassVar[int] = 12
 
     _stage: AuthoringStage
     _output: StageOutput
@@ -111,6 +116,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._output = StageOutput()
         self._handles = {"outer": None, "inner": None, "steiners": None, "user_dots": None}
         self._timer = None
+        self._stroke_active: bool = False
+        self._stroke_start_screen: tuple[int, int] | None = None
+        self._stroke_raw_points: list[tuple[float, float]] = []
+        self._user_strokes: list[Stroke] = []
 
         try:
             self._output.outer = compute_outer(obj, image, params)
@@ -137,14 +146,62 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 return self._advance(context)
             if event.type == "BACK_SPACE" and event.value == "PRESS":
                 return self._retreat(context)
-            if (
-                self._stage == AuthoringStage.USER_STEINERS
-                and event.type == "LEFTMOUSE"
-                and event.value == "PRESS"
-            ):
-                if event.shift:
-                    return self._delete_nearest_steiner(context, event)
-                return self._add_steiner(context, event)
+            if self._stage == AuthoringStage.USER_STEINERS:
+                if event.type == "LEFTMOUSE" and event.value == "PRESS":
+                    if event.shift:
+                        self._delete_stroke_at_mouse(context, event)
+                        _tag_redraw_view3d(context)
+                        return {"RUNNING_MODAL"}
+                    self._stroke_active = True
+                    self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
+                    world_pt = _region_to_world_xz(context, event)
+                    self._stroke_raw_points = [world_pt] if world_pt else []
+                    return {"RUNNING_MODAL"}
+                if event.type == "MOUSEMOVE" and self._stroke_active:
+                    world_pt = _region_to_world_xz(context, event)
+                    if world_pt:
+                        self._stroke_raw_points.append(world_pt)
+                        _tag_redraw_view3d(context)
+                    return {"RUNNING_MODAL"}
+                if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._stroke_active:
+                    self._stroke_active = False
+                    start = self._stroke_start_screen
+                    self._stroke_start_screen = None
+                    if start is None or not self._stroke_raw_points:
+                        self._stroke_raw_points = []
+                        return {"RUNNING_MODAL"}
+                    dx = event.mouse_region_x - start[0]
+                    dy = event.mouse_region_y - start[1]
+                    drag_px = (dx * dx + dy * dy) ** 0.5
+                    if drag_px < self._DRAG_THRESHOLD_PX:
+                        first_pt = self._stroke_raw_points[0]
+                        self._user_strokes.append({"kind": "point", "points": [first_pt]})
+                    else:
+                        from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+                            chaikin_smooth,
+                            resample_polyline,
+                        )
+                        smoothed = chaikin_smooth(
+                            self._stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS
+                        )
+                        spacing = self._resolve_interior_spacing(context)
+                        resampled = resample_polyline(smoothed, spacing=spacing)
+                        if len(resampled) >= 2:
+                            self._user_strokes.append({"kind": "stroke", "points": resampled})
+                    self._stroke_raw_points = []
+                    obj = context.active_object
+                    if obj is not None:
+                        write_user_strokes(obj, self._user_strokes)
+                    _tag_redraw_view3d(context)
+                    return {"RUNNING_MODAL"}
+                if event.type == "Z" and event.ctrl and event.value == "PRESS":
+                    if self._user_strokes:
+                        self._user_strokes.pop()
+                        obj = context.active_object
+                        if obj is not None:
+                            write_user_strokes(obj, self._user_strokes)
+                        _tag_redraw_view3d(context)
+                    return {"RUNNING_MODAL"}
             if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
                 current = _snapshot_params(context)
                 if current != self._last_params:
@@ -169,7 +226,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 obj, image, self._output.outer, params
             )
         elif next_stage == AuthoringStage.USER_STEINERS:
-            self._output.user_steiners = read_user_steiners(obj)
+            self._user_strokes = read_user_strokes(obj)
         elif next_stage == AuthoringStage.STEINER_PREVIEW:
             picker = _resolve_picker(context)
             bone_segments = collect_bone_segments(picker) if picker is not None else []
@@ -182,6 +239,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             )
         elif next_stage == AuthoringStage.APPLY:
             picker = _resolve_picker(context)
+            self._output.user_strokes = self._user_strokes
             try:
                 counters = apply_mesh(obj, image, self._output, params, picker)
             except ValueError as exc:
@@ -235,44 +293,32 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._handles = refresh_overlay(self._handles, self._stage, self._output)
         _tag_redraw_view3d(context)
 
-    def _add_steiner(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
-        obj = context.active_object
-        if obj is None:
-            return {"PASS_THROUGH"}
-        world_xz = _region_to_world_xz(context, event)
-        if world_xz is None:
-            return {"PASS_THROUGH"}
-        self._output.user_steiners.append(world_xz)
-        write_user_steiners(obj, self._output.user_steiners)
-        self._handles = refresh_overlay(self._handles, self._stage, self._output)
-        _tag_redraw_view3d(context)
-        return {"RUNNING_MODAL"}
+    def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:
+        """Hit-test: find stroke whose ANY vert is within _STROKE_PICK_RADIUS_PX of mouse, remove it."""
+        mouse_world = _region_to_world_xz(context, event)
+        if mouse_world is None:
+            return
+        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        if near_world is None:
+            return
+        pick_dist_world = (
+            (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
+        ) ** 0.5
+        pick_d2 = pick_dist_world * pick_dist_world
+        for idx, stroke in enumerate(self._user_strokes):
+            for pt in stroke["points"]:
+                d2 = (pt[0] - mouse_world[0]) ** 2 + (pt[1] - mouse_world[1]) ** 2
+                if d2 <= pick_d2:
+                    self._user_strokes.pop(idx)
+                    obj = context.active_object
+                    if obj is not None:
+                        write_user_strokes(obj, self._user_strokes)
+                    return
 
-    def _delete_nearest_steiner(
-        self, context: bpy.types.Context, event: bpy.types.Event
-    ) -> set[str]:
-        obj = context.active_object
-        if obj is None or not self._output.user_steiners:
-            return {"PASS_THROUGH"}
-        world_xz = _region_to_world_xz(context, event)
-        if world_xz is None:
-            return {"PASS_THROUGH"}
-        nearest_idx = -1
-        nearest_dist_sq = _STEINER_DELETE_THRESHOLD_WORLD * _STEINER_DELETE_THRESHOLD_WORLD
-        for idx, point in enumerate(self._output.user_steiners):
-            dx = point[0] - world_xz[0]
-            dy = point[1] - world_xz[1]
-            dist_sq = dx * dx + dy * dy
-            if dist_sq <= nearest_dist_sq:
-                nearest_dist_sq = dist_sq
-                nearest_idx = idx
-        if nearest_idx < 0:
-            return {"PASS_THROUGH"}
-        del self._output.user_steiners[nearest_idx]
-        write_user_steiners(obj, self._output.user_steiners)
-        self._handles = refresh_overlay(self._handles, self._stage, self._output)
-        _tag_redraw_view3d(context)
-        return {"RUNNING_MODAL"}
+    def _resolve_interior_spacing(self, context: bpy.types.Context) -> float:
+        """Return the interior_spacing param from scene props (same source as _snapshot_params)."""
+        skinning = context.scene.proscenio.skinning
+        return float(skinning.automesh_interior_spacing)
 
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
         try:
@@ -364,6 +410,32 @@ def _region_to_world_xz(context: bpy.types.Context, event: bpy.types.Event) -> P
     if abs(direction.y) < 1e-9:
         return None
     t = -origin.y / direction.y
+    hit = origin + direction * t
+    return (hit.x, hit.z)
+
+
+def _region_to_world_xz_offset(
+    context: bpy.types.Context, event: bpy.types.Event, dx: int = 0, dy: int = 0
+) -> Point2D | None:
+    """Project an offset pixel position to Y=0 XZ plane.
+
+    Used to convert a screen-space pixel radius into a world-space distance
+    for pick hit-testing without assuming a fixed world-space threshold.
+    """
+    from bpy_extras import view3d_utils  # local: bpy_extras not always available at module load
+
+    region = context.region
+    rv3d = context.region_data
+    if region is None or rv3d is None:
+        return None
+    coord = (event.mouse_region_x + dx, event.mouse_region_y + dy)
+    origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
+    direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
+    if abs(direction.y) < 1e-9:
+        return None
+    t = -origin.y / direction.y
+    if t < 0:
+        return None
     hit = origin + direction * t
     return (hit.x, hit.z)
 

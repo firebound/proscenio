@@ -1,7 +1,7 @@
-"""Authoring stage dataclasses (SPEC 013.2 interactive-modal, T12).
+"""Authoring stage dataclasses (SPEC 013.2 interactive-modal, T12; AS-AM3 T3).
 
 Pure dataclasses describing the modal state machine:
-- AuthoringStage IntEnum: 5 stages in workflow order
+- AuthoringStage IntEnum: 6 stages in workflow order (USER_OUTER added AS-AM3)
 - StageParams: PG-field snapshot (frozen for equality-based dirty detect)
 - StageOutput: per-stage compute output (consumed by subsequent stages)
 
@@ -18,13 +18,16 @@ Point2D = tuple[float, float]
 
 
 class AuthoringStage(IntEnum):
-    """5-stage modal pipeline (workflow order)."""
+    """6-stage modal pipeline (workflow order). Stage 2 USER_OUTER
+    edits the silhouette before any interior work; Stage 4 USER_STEINERS
+    edits the interior. See spec AS-AM3."""
 
     OUTER = 0
-    INNER_LOOPS = 1
-    USER_STEINERS = 2
-    STEINER_PREVIEW = 3
-    APPLY = 4
+    USER_OUTER = 1
+    INNER_LOOPS = 2
+    USER_STEINERS = 3
+    STEINER_PREVIEW = 4
+    APPLY = 5
 
 
 class Stroke(TypedDict):
@@ -67,6 +70,7 @@ class StageOutput:
     """
 
     outer: list[Point2D] = field(default_factory=list)
+    user_outer_strokes: list[Stroke] = field(default_factory=list)  # Stage 2 (AS-AM3)
     inner_loops: list[list[Point2D]] = field(default_factory=list)
     user_steiners: list[Point2D] = field(default_factory=list)
     user_strokes: list[Stroke] = field(default_factory=list)

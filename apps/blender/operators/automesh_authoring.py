@@ -54,11 +54,12 @@ from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
 
 _TIMER_INTERVAL = 0.1
 _STAGE_NAMES = {
-    AuthoringStage.OUTER: "1/5 Outer contour",
-    AuthoringStage.INNER_LOOPS: "2/5 Inner loops",
-    AuthoringStage.USER_STEINERS: "3/5 User Steiner points (LMB add / Shift+LMB delete)",
-    AuthoringStage.STEINER_PREVIEW: "4/5 Steiner preview",
-    AuthoringStage.APPLY: "5/5 Apply",
+    AuthoringStage.OUTER: "1/6 Outer contour",
+    AuthoringStage.USER_OUTER: "2/6 User outer edits (TBD - capture in follow-up)",
+    AuthoringStage.INNER_LOOPS: "3/6 Inner loops",
+    AuthoringStage.USER_STEINERS: "4/6 User Steiner points (LMB add / Shift+LMB delete)",
+    AuthoringStage.STEINER_PREVIEW: "5/6 Steiner preview",
+    AuthoringStage.APPLY: "6/6 Apply",
 }
 
 
@@ -69,10 +70,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     bl_label = "Proscenio: Automesh Authoring"
     bl_description = (
         "Multi-stage modal preview of the automesh pipeline. Each stage "
-        "(outer contour / inner loops / user Steiner points / Steiner "
-        "preview / apply) surfaces a GPU overlay + slider-driven re-run "
-        "so the artist iterates on the mesh shape before any geometry "
-        "commits. ENTER advances; BACKSPACE goes back; ESC cancels"
+        "(outer contour / user outer edits / inner loops / user Steiner "
+        "points / Steiner preview / apply) surfaces a GPU overlay + "
+        "slider-driven re-run so the artist iterates on the mesh shape "
+        "before any geometry commits. ENTER advances; BACKSPACE goes back; "
+        "ESC cancels"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -239,7 +241,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._finish(context, cancel=True)
         params = _snapshot_params(context)
         next_stage = AuthoringStage(self._stage + 1)
-        if next_stage == AuthoringStage.INNER_LOOPS:
+        if next_stage == AuthoringStage.USER_OUTER:
+            # Placeholder: stroke capture + extend-outer logic come in T6/T7.
+            # Stage is navigable (ENTER/BACKSPACE work) but no capture yet.
+            pass
+        elif next_stage == AuthoringStage.INNER_LOOPS:
             self._output.inner_loops = compute_inner_loops_for_stage(
                 obj, image, self._output.outer, params
             )

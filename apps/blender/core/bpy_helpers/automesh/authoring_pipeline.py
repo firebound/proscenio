@@ -33,6 +33,7 @@ from .bridge import (
 
 _USER_STEINERS_KEY = "proscenio_user_steiners"
 _USER_STROKES_KEY = "proscenio_user_strokes"
+_USER_OUTER_STROKES_KEY = "proscenio_user_outer_strokes"
 
 # Local imports to keep this module's top-level free of optional
 # bpy-skinning helper coupling for callers that only need the
@@ -151,6 +152,30 @@ def read_user_strokes(obj: bpy.types.Object) -> list[Stroke]:
 
 def write_user_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
     obj[_USER_STROKES_KEY] = json.dumps(
+        [{"kind": s["kind"], "points": [[p[0], p[1]] for p in s["points"]]} for s in strokes]
+    )
+
+
+def read_user_outer_strokes(obj: bpy.types.Object) -> list[Stroke]:
+    """Read obj['proscenio_user_outer_strokes']; empty list when absent or corrupt.
+
+    Reserved for Stage 2 (USER_OUTER). Capture logic comes in T6/T7; this
+    helper is scaffolded here so the persistence key is registered and
+    round-trip tests can verify it before capture is wired.
+    """
+    payload = obj.get(_USER_OUTER_STROKES_KEY)
+    if payload is None:
+        return []
+    try:
+        data = json.loads(payload) if isinstance(payload, str) else list(payload)
+    except (ValueError, TypeError):
+        return []
+    return _parse_strokes(data)
+
+
+def write_user_outer_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
+    """Persist Stage 2 (USER_OUTER) strokes as JSON string."""
+    obj[_USER_OUTER_STROKES_KEY] = json.dumps(
         [{"kind": s["kind"], "points": [[p[0], p[1]] for p in s["points"]]} for s in strokes]
     )
 

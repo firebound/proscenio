@@ -208,6 +208,34 @@ def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
     assert read_user_strokes(obj) == []
 
 
+def test_user_outer_strokes_round_trip(automesh_fixture):
+    """Stage 2 persistence key read/write round-trip (AS-AM3 T3 scaffold)."""
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_outer_strokes,
+        write_user_outer_strokes,
+    )
+
+    strokes = [{"kind": "stroke", "points": [(1.0, 2.0), (3.0, 4.0)]}]
+    write_user_outer_strokes(obj, strokes)
+    restored = read_user_outer_strokes(obj)
+    assert len(restored) == 1
+    assert restored[0]["kind"] == "stroke"
+    assert restored[0]["points"] == [(1.0, 2.0), (3.0, 4.0)]
+
+
+def test_user_outer_strokes_empty_when_absent(automesh_fixture):
+    """Stage 2 persistence key returns empty list when key is absent (AS-AM3 T3)."""
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_outer_strokes,
+    )
+
+    if "proscenio_user_outer_strokes" in obj:
+        del obj["proscenio_user_outer_strokes"]
+    assert read_user_outer_strokes(obj) == []
+
+
 def test_apply_mesh_stroke_creates_edges(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")

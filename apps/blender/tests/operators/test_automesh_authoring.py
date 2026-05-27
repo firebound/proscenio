@@ -160,3 +160,46 @@ def test_world_steiners_to_local_applies_inverse_matrix(automesh_fixture):
     assert out_shifted is not None and len(out_shifted) == 1
     # Same world point, sprite moved +1 on X -> local x is now -1
     assert abs(out_shifted[0][0] - (-1.0)) < 1e-5
+
+
+def test_user_strokes_round_trip(automesh_fixture):
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_strokes,
+        write_user_strokes,
+    )
+    strokes = [
+        {"kind": "point", "points": [(0.0, 0.0)]},
+        {"kind": "stroke", "points": [(0.1, 0.2), (0.3, 0.4), (0.5, 0.6)]},
+    ]
+    write_user_strokes(obj, strokes)
+    restored = read_user_strokes(obj)
+    assert len(restored) == 2
+    assert restored[0]["kind"] == "point"
+    assert restored[1]["kind"] == "stroke"
+    assert len(restored[1]["points"]) == 3
+
+
+def test_user_strokes_legacy_fallback(automesh_fixture):
+    """Legacy proscenio_user_steiners (flat list) reads as kind=point strokes."""
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_strokes,
+        write_user_steiners,
+    )
+    if "proscenio_user_strokes" in obj:
+        del obj["proscenio_user_strokes"]
+    write_user_steiners(obj, [(1.0, 2.0), (3.0, 4.0)])
+    strokes = read_user_strokes(obj)
+    assert len(strokes) == 2
+    assert all(s["kind"] == "point" for s in strokes)
+    assert strokes[0]["points"] == [(1.0, 2.0)]
+
+
+def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_strokes,
+    )
+    obj["proscenio_user_strokes"] = "not valid json {{{"
+    assert read_user_strokes(obj) == []

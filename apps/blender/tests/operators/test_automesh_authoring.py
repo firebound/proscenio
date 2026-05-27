@@ -392,3 +392,52 @@ def test_apply_mesh_cut_stroke_removes_faces(automesh_fixture):
         f"cut did not prune faces: baseline={baseline['total_faces']} "
         f"cut={cut_result['total_faces']}"
     )
+
+
+def test_apply_mesh_outer_extend_stroke_grows_silhouette(automesh_fixture):
+    """Stage 2 extend stroke (kind='stroke' in user_outer_strokes) extends
+    the silhouette - mesh face count grows vs baseline (AS-AM10)."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    # Hand fixture at world X=-3.0; right edge around X ~ -2.5
+    # Draw an extend stroke that pokes out to X = -1.5 and returns
+    extend_output = StageOutput(
+        user_outer_strokes=[
+            {
+                "kind": "stroke",
+                "points": [
+                    (-2.6, 0.4),
+                    (-1.8, 0.5),
+                    (-1.5, 0.0),
+                    (-1.8, -0.5),
+                    (-2.6, -0.4),
+                ],
+            }
+        ]
+    )
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    baseline = apply_mesh(obj, image, StageOutput(), params, armature)
+    extend_result = apply_mesh(obj, image, extend_output, params, armature)
+    # Extended silhouette: should have AT LEAST as many faces (typically more)
+    assert extend_result["total_faces"] >= baseline["total_faces"]

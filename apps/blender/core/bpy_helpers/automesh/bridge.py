@@ -659,6 +659,7 @@ def build_automesh(
     bone_density_factor: int = 1,
     debug_stage: DebugStage = "off",
     preserve_base_quad: bool = False,
+    outer_override: list[tuple[float, float]] | None = None,
     extra_steiners: list[tuple[float, float]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
     cut_lenses_local: list[list[tuple[float, float]]] | None = None,
@@ -717,6 +718,15 @@ def build_automesh(
     outer_world, inner_world, holes_world = _smooth_and_resample(
         outer_world_raw, inner_world_raw, holes_world_raw, target_contour_vertices
     )
+    # AS-AM10: when apply_mesh has already spliced + resampled the outer contour
+    # (extend strokes), use that override directly instead of the walker output.
+    # Inner contour + holes still derive from the alpha walker unchanged.
+    if outer_override is not None:
+        outer_world = list(outer_override)
+        print(
+            f"[automesh] outer_override applied: {len(outer_world)} verts "
+            f"(replaces walker-resampled outer)"
+        )
     if debug_stage == "smoothed":
         # Smoothed = post-Laplacian, pre-resample. Snapshot the
         # intermediate state by re-running Laplacian without resample.

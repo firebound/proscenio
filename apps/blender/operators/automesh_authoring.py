@@ -58,8 +58,7 @@ _TIMER_INTERVAL = 0.1
 _STAGE_NAMES = {
     AuthoringStage.OUTER: "1/6 Outer contour",
     AuthoringStage.USER_OUTER: (
-        "2/6 User outer edits "
-        "(LMB drag in=cut / out=extend [T7] / Ctrl+drag=delete)"
+        "2/6 User outer edits (LMB drag in=cut / out=extend [T7] / Ctrl+drag=delete)"
     ),
     AuthoringStage.INNER_LOOPS: "3/6 Inner loops",
     AuthoringStage.USER_STEINERS: (
@@ -216,9 +215,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._outer_stroke_undo(context)
         return None
 
-    def _outer_stroke_press(
-        self, context: bpy.types.Context, event: bpy.types.Event
-    ) -> set[str]:
+    def _outer_stroke_press(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         if event.ctrl:
             self._delete_outer_stroke_at_mouse(context, event)
             _tag_redraw_view3d(context)
@@ -237,18 +234,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._outer_stroke_raw_points.append(world_pt)
         return {"RUNNING_MODAL"}
 
-    def _outer_stroke_move(
-        self, context: bpy.types.Context, event: bpy.types.Event
-    ) -> set[str]:
+    def _outer_stroke_move(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         world_pt = _region_to_world_xz(context, event)
         if world_pt:
             self._outer_stroke_raw_points.append(world_pt)
             _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
-    def _outer_stroke_release(
-        self, context: bpy.types.Context, event: bpy.types.Event
-    ) -> set[str]:
+    def _outer_stroke_release(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self._outer_stroke_active = False
         self._outer_stroke_active_ref[0] = False
         start = self._outer_stroke_start_screen
@@ -277,9 +270,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             resample_polyline,
         )
 
-        smoothed = chaikin_smooth(
-            self._outer_stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS
-        )
+        smoothed = chaikin_smooth(self._outer_stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS)
         spacing = self._resolve_interior_spacing(context)
         resampled = resample_polyline(smoothed, spacing=spacing)
         if len(resampled) < 2:
@@ -320,8 +311,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             pick_d2 = spacing * spacing
         else:
             pick_dist = (
-                (near_world[0] - mouse_world[0]) ** 2
-                + (near_world[1] - mouse_world[1]) ** 2
+                (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
             ) ** 0.5
             pick_d2 = pick_dist * pick_dist
         for idx, stroke in enumerate(self._user_outer_strokes):

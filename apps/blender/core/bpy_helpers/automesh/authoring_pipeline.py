@@ -259,6 +259,7 @@ def apply_mesh(
     A future refactor could thread outer_world into build_automesh to avoid
     the double run entirely.
     """
+    from ...automesh.outer_splice import splice_extend_strokes
     from ..skinning import maybe_post_regen_reproject, maybe_pre_regen_snapshot
 
     bone_segments = collect_bone_segments(armature) if armature is not None else None
@@ -268,8 +269,53 @@ def apply_mesh(
     # CRITICAL: match build_automesh's internal arc_length_resample so the
     # index counts agree (raw walker output vs resampled outer differ).
     outer_world_raw = compute_outer(obj, image, params)
-    outer_world_local_raw = [_world_to_local_xz(obj, p) for p in outer_world_raw]
-    outer_world_local = list(arc_length_resample(outer_world_local_raw, params.contour_vertices))
+
+    # Split Stage 2 strokes by intent:
+    # - kind="stroke" on user_outer_strokes = EXTEND (splice into outer).
+    # - kind="cut" on user_outer_strokes = CUT (flows through existing cut pipeline).
+    outer_extends: list[list[Point2D]] = []
+    outer_cuts: list[Stroke] = []
+    for s in output.user_outer_strokes:
+        if s["kind"] == "stroke":
+            outer_extends.append(list(s["points"]))
+        else:
+            outer_cuts.append(s)
+
+    # Splice extend strokes into the raw walker outer (world XZ) pre-resample
+    # so smoothing + resample applies uniformly to the extended polyline.
+    outer_override_local: list[Point2D] | None = None
+    if outer_extends:
+        spliced_world = splice_extend_strokes(outer_world_raw, outer_extends)
+        if spliced_world is not outer_world_raw:
+            # Re-resample the spliced outer to params.contour_vertices (mesh-local)
+            # matching what build_automesh does internally for the walker output.
+            spliced_local_raw = [_world_to_local_xz(obj, p) for p in spliced_world]
+            outer_override_local = list(
+                arc_length_resample(spliced_local_raw, params.contour_vertices)
+            )
+            print(
+                f"[apply_mesh] extend splice: {len(outer_extends)} stroke(s) applied; "
+                f"raw outer {len(outer_world_raw)} -> spliced {len(spliced_world)} verts "
+                f"-> resampled {len(outer_override_local)} mesh-local verts"
+            )
+        else:
+            # All extend strokes were fully inside or outside - WARN each fully-outside one.
+            for i, _stroke in enumerate(outer_extends):
+                print(
+                    f"[apply_mesh] WARNING: outer extend stroke {i} entirely outside "
+                    f"silhouette or fully inside - cannot splice, stroke ignored"
+                )
+
+    # Use the spliced+resampled outer as outer_world_local when available;
+    # otherwise fall back to the standard resample of the raw walker outer.
+    if outer_override_local is not None:
+        outer_world_local = outer_override_local
+    else:
+        outer_world_local_raw = [_world_to_local_xz(obj, p) for p in outer_world_raw]
+        outer_world_local = list(
+            arc_length_resample(outer_world_local_raw, params.contour_vertices)
+        )
+
     outer_base_index = 0
     interior_base_index = len(outer_world_local)
     if params.inner_loop_count > 0:
@@ -277,13 +323,11 @@ def apply_mesh(
         if inner_loops:
             # build_automesh resamples the innermost loop to contour_vertices too
             interior_base_index += params.contour_vertices
-    # Stage 2 (USER_OUTER) and Stage 4 (USER_STEINERS) strokes are concatenated
-    # so outer-stroke kind='cut' entries flow through the existing cut pipeline.
-    # T7 will diverge them when extend logic needs separate handling.
-    all_strokes = list(output.user_outer_strokes) + list(output.user_strokes)
+    # Cut strokes from Stage 2 + all Stage 4 strokes flow through the standard cut pipeline.
+    cut_and_interior_strokes: list[Stroke] = outer_cuts + list(output.user_strokes)
     extras_local, extra_edges, stroke_verts_dropped, cut_lenses = _strokes_to_cdt_inputs(
         obj,
-        all_strokes,
+        cut_and_interior_strokes,
         outer_world_local,
         outer_base_index=outer_base_index,
         interior_base_index=interior_base_index,
@@ -305,6 +349,7 @@ def apply_mesh(
         bone_density_factor=params.bone_factor if bone_segments else 1,
         debug_stage="off",
         preserve_base_quad=False,
+        outer_override=outer_override_local,
         extra_steiners=extras_local if extras_local else None,
         extra_edges=extra_edges if extra_edges else None,
         cut_lenses_local=cut_lenses if cut_lenses else None,

@@ -57,6 +57,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         _draw_authoring_box(layout, skinning_props, obj)
         _draw_bind_box(layout, skinning_props, picker, obj)
         _draw_edit_weights_box(layout, obj, picker)
+        _draw_weight_transfer_box(layout)
         _draw_snapshot_box(layout, skinning_props, obj)
         _draw_sidecar_io_box(layout, obj)
         _draw_debug_box(layout, skinning_props)
@@ -257,6 +258,17 @@ def _edit_weights_button_enabled(
     if len(obj.vertex_groups) == 0:
         return False
     return obj.get("proscenio_weight_sidecar") is not None
+
+
+def _draw_weight_transfer_box(layout: bpy.types.UILayout) -> None:
+    """Sub-box surfacing the Copy Weights to Selected operator (SPEC 013 O7).
+
+    Active mesh = source; other selected meshes = targets. Button
+    enabled by operator poll (active MESH + at least one other selected MESH).
+    """
+    box = layout.box()
+    box.label(text="Weight transfer:", icon="DUPLICATE")
+    box.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")
 
 
 def _draw_snapshot_box(

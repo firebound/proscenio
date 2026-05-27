@@ -25,6 +25,7 @@ Submodules:
 - set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (SPEC 013 O1)
 - sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO (SPEC 013 O3)
 - brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint (SPEC 013 O4)
+- copy_weights_to_selected - PROSCENIO_OT_copy_weights_to_selected KNN weight copy (SPEC 013 O7)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -40,6 +41,7 @@ from . import (
     automesh_authoring,
     bind_mesh,
     brush_preset,
+    copy_weights_to_selected,
     driver,
     edit_weights,
     export_flow,
@@ -76,6 +78,7 @@ def register() -> None:
     set_bone_mode.register()
     sidecar_io.register()
     brush_preset.register()
+    copy_weights_to_selected.register()
     slot.register()
     atlas_pack.register()
     import_photoshop.register()
@@ -85,6 +88,7 @@ def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
     slot.unregister()
+    copy_weights_to_selected.unregister()
     brush_preset.unregister()
     sidecar_io.unregister()
     set_bone_mode.unregister()

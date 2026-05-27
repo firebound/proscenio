@@ -50,3 +50,50 @@ def test_chaikin_single_point_returns_single_point():
 
 def test_chaikin_two_points_with_zero_iters_returns_input():
     assert chaikin_smooth([(0.0, 0.0), (1.0, 0.0)], iters=0) == [(0.0, 0.0), (1.0, 0.0)]
+
+
+from core.automesh.stroke_geometry import resample_polyline  # noqa: E402
+
+
+def test_resample_straight_line_at_spacing():
+    # 10-unit line, spacing 1.0 -> 11 points (endpoints inclusive)
+    out = resample_polyline([(0.0, 0.0), (10.0, 0.0)], spacing=1.0)
+    assert len(out) == 11
+    for i, (x, y) in enumerate(out):
+        assert math.isclose(x, float(i))
+        assert math.isclose(y, 0.0)
+
+
+def test_resample_preserves_endpoints():
+    out = resample_polyline([(0.0, 0.0), (3.0, 4.0)], spacing=1.0)
+    assert out[0] == (0.0, 0.0)
+    assert math.isclose(out[-1][0], 3.0)
+    assert math.isclose(out[-1][1], 4.0)
+
+
+def test_resample_single_point_returns_single_point():
+    assert resample_polyline([(2.0, 3.0)], spacing=1.0) == [(2.0, 3.0)]
+
+
+def test_resample_empty_returns_empty():
+    assert resample_polyline([], spacing=1.0) == []
+
+
+def test_resample_zero_or_negative_spacing_raises():
+    import pytest
+    with pytest.raises(ValueError, match="spacing"):
+        resample_polyline([(0.0, 0.0), (1.0, 0.0)], spacing=0.0)
+    with pytest.raises(ValueError, match="spacing"):
+        resample_polyline([(0.0, 0.0), (1.0, 0.0)], spacing=-0.1)
+
+
+def test_resample_path_shorter_than_spacing_returns_endpoints_only():
+    out = resample_polyline([(0.0, 0.0), (0.3, 0.0)], spacing=1.0)
+    assert out == [(0.0, 0.0), (0.3, 0.0)]
+
+
+def test_resample_zigzag_yields_uniform_arc_length_spacing():
+    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (2.0, 1.0)]  # L-bend, total len 3
+    out = resample_polyline(pts, spacing=1.0)
+    # 4 points expected (0, 1, 2, 3 arc-length)
+    assert len(out) == 4

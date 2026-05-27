@@ -96,3 +96,14 @@ def test_degenerate_tangent_fallback_uses_previous_perpendicular():
     left, right = perpendicular_offsets(poly, half_width=0.5)
     assert len(left) == 3
     assert len(right) == 3
+
+
+def test_perpendicular_offsets_scales_with_half_width():
+    """Larger half_width produces a larger perpendicular offset (T9 AS-AM8)."""
+    poly = [(0.0, 0.0), (1.0, 0.0)]
+    left_small, _ = perpendicular_offsets(poly, half_width=0.1)
+    left_large, _ = perpendicular_offsets(poly, half_width=1.0)
+    # Horizontal stroke -> perp is vertical; left offset is positive y
+    assert abs(left_large[0][1]) > abs(left_small[0][1])
+    assert math.isclose(abs(left_large[0][1]), 1.0, abs_tol=1e-6)
+    assert math.isclose(abs(left_small[0][1]), 0.1, abs_tol=1e-6)

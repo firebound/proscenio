@@ -61,6 +61,7 @@ class StageParams:
     interior_spacing: float
     bone_radius: float
     bone_factor: int
+    cut_width: float = 0.03  # Stage 3 cut stroke width in world units (T9 AS-AM8)
 
 
 @dataclass

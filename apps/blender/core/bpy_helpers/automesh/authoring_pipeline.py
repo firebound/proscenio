@@ -334,6 +334,7 @@ def apply_mesh(
         interior_spacing=params.interior_spacing,
         inner_world_local=None,  # FUTURE: pass inner contour when inner_loops path is unified
         holes_world_local=None,  # FUTURE: pass hole contours; deferred to follow-up
+        cut_width=params.cut_width,
     )
     counters = build_automesh(
         obj,
@@ -574,6 +575,7 @@ def _strokes_to_cdt_inputs(
     interior_spacing: float,
     inner_world_local: list[Point2D] | None = None,
     holes_world_local: list[list[Point2D]] | None = None,
+    cut_width: float = 0.03,
 ) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]]]:
     """Convert Stage 3 strokes to (extra_steiners_local, extra_edges, dropped_count, cut_lenses).
 
@@ -617,10 +619,10 @@ def _strokes_to_cdt_inputs(
     total_dropped = 0
     cut_lenses: list[list[Point2D]] = []
     snap_radius = interior_spacing * 1.5
-    # cut_half: half of the cut width; T5 hardcodes to 15% of interior_spacing
-    # (i.e. cut_width = interior_spacing * 0.3, half = * 0.15). T9 promotes
-    # to a UI slider.
-    cut_half = interior_spacing * 0.15
+    # cut_half: half of the user-controlled cut_width (T9 AS-AM8).
+    # T5 hardcoded interior_spacing * 0.3 (= 0.03 at default spacing 0.1);
+    # T9 promotes to a StageParams field threaded from the panel slider.
+    cut_half = cut_width / 2.0
 
     for stroke in strokes:
         if stroke["kind"] == "point":

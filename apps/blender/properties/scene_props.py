@@ -296,6 +296,17 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=1.0,
     )
+    authoring_cut_width: FloatProperty(  # type: ignore[valid-type]
+        name="Cut width",
+        description=(
+            "Width of Stage 3 cut strokes in world units. "
+            "Default = 30 percent of interior_spacing (0.03 at default spacing 0.1). "
+            "Too small = degenerate CDT lens; too large = removes more mesh than intended."
+        ),
+        default=0.03,
+        min=0.01,
+        soft_max=0.2,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

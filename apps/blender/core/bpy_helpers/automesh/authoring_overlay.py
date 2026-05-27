@@ -119,7 +119,7 @@ def register_overlay(
             "WINDOW",
             "POST_VIEW",
         )
-    if stage == AuthoringStage.USER_STEINERS:
+    if stage in (AuthoringStage.USER_OUTER, AuthoringStage.USER_STEINERS):
         _register_stage3_handlers(handles, user_strokes, stroke_active_ref, stroke_raw_points_ref)
     if stage >= AuthoringStage.STEINER_PREVIEW and output.all_steiners:
         handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(

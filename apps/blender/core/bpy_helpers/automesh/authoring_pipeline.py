@@ -277,9 +277,13 @@ def apply_mesh(
         if inner_loops:
             # build_automesh resamples the innermost loop to contour_vertices too
             interior_base_index += params.contour_vertices
+    # Stage 2 (USER_OUTER) and Stage 4 (USER_STEINERS) strokes are concatenated
+    # so outer-stroke kind='cut' entries flow through the existing cut pipeline.
+    # T7 will diverge them when extend logic needs separate handling.
+    all_strokes = list(output.user_outer_strokes) + list(output.user_strokes)
     extras_local, extra_edges, stroke_verts_dropped, cut_lenses = _strokes_to_cdt_inputs(
         obj,
-        output.user_strokes,
+        all_strokes,
         outer_world_local,
         outer_base_index=outer_base_index,
         interior_base_index=interior_base_index,

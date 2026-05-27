@@ -24,7 +24,9 @@ from ..core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[imp
     compute_all_steiners,
     compute_inner_loops_for_stage,
     compute_outer,
+    read_user_outer_strokes,
     read_user_strokes,
+    write_user_outer_strokes,
     write_user_strokes,
 )
 from ..core.bpy_helpers.automesh.authoring_session import (  # type: ignore[import-not-found]
@@ -55,7 +57,10 @@ from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
 _TIMER_INTERVAL = 0.1
 _STAGE_NAMES = {
     AuthoringStage.OUTER: "1/6 Outer contour",
-    AuthoringStage.USER_OUTER: "2/6 User outer edits (TBD - capture in follow-up)",
+    AuthoringStage.USER_OUTER: (
+        "2/6 User outer edits "
+        "(LMB drag in=cut / out=extend [T7] / Ctrl+drag=delete)"
+    ),
     AuthoringStage.INNER_LOOPS: "3/6 Inner loops",
     AuthoringStage.USER_STEINERS: (
         "4/6 User Steiner points (LMB stroke / Shift+drag cut / Ctrl+drag delete)"
@@ -142,6 +147,18 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._stroke_is_cut: bool = False
         self._user_strokes: list[Stroke] = []
 
+        # Stage 2 (USER_OUTER) stroke capture state (parallel to Stage 4).
+        self._outer_stroke_active: bool = False
+        # Single-element list so the draw callback holds a stable reference.
+        self._outer_stroke_active_ref: list[bool] = [False]
+        self._outer_stroke_start_screen: tuple[int, int] | None = None
+        # Must be mutated in-place (clear/append) so draw callbacks stay valid.
+        self._outer_stroke_raw_points: list[tuple[float, float]] = []
+        # Intent captured at PRESS time: "extend" (start outside outer),
+        # "cut" (start inside outer). Resolved once at LMB PRESS.
+        self._outer_stroke_intent: str = "extend"
+        self._user_outer_strokes: list[Stroke] = []
+
         try:
             self._output.outer = compute_outer(obj, image, params)
             self._handles = register_overlay(self._stage, self._output)
@@ -167,6 +184,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 return self._advance(context)
             if event.type == "BACK_SPACE" and event.value == "PRESS":
                 return self._retreat(context)
+            if self._stage == AuthoringStage.USER_OUTER:
+                handled = self._handle_user_outer_event(context, event)
+                if handled is not None:
+                    return handled
             if self._stage == AuthoringStage.USER_STEINERS:
                 handled = self._handle_user_steiners_event(context, event)
                 if handled is not None:
@@ -180,6 +201,150 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             traceback.print_exc()
             return self._finish(context, cancel=True)
         return {"PASS_THROUGH"}
+
+    def _handle_user_outer_event(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str] | None:
+        """Dispatch Stage 2 (USER_OUTER) event. Returns None when not consumed."""
+        if event.type == "LEFTMOUSE" and event.value == "PRESS":
+            return self._outer_stroke_press(context, event)
+        if event.type == "MOUSEMOVE" and self._outer_stroke_active:
+            return self._outer_stroke_move(context, event)
+        if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._outer_stroke_active:
+            return self._outer_stroke_release(context, event)
+        if event.type == "Z" and event.ctrl and event.value == "PRESS":
+            return self._outer_stroke_undo(context)
+        return None
+
+    def _outer_stroke_press(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str]:
+        if event.ctrl:
+            self._delete_outer_stroke_at_mouse(context, event)
+            _tag_redraw_view3d(context)
+            return {"RUNNING_MODAL"}
+        self._outer_stroke_active = True
+        self._outer_stroke_active_ref[0] = True
+        self._outer_stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
+        world_pt = _region_to_world_xz(context, event)
+        self._outer_stroke_raw_points.clear()
+        # Intent decided by first mouse position: inside outer = cut, outside = extend.
+        if world_pt and self._point_inside_outer(world_pt):
+            self._outer_stroke_intent = "cut"
+        else:
+            self._outer_stroke_intent = "extend"
+        if world_pt:
+            self._outer_stroke_raw_points.append(world_pt)
+        return {"RUNNING_MODAL"}
+
+    def _outer_stroke_move(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str]:
+        world_pt = _region_to_world_xz(context, event)
+        if world_pt:
+            self._outer_stroke_raw_points.append(world_pt)
+            _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _outer_stroke_release(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str]:
+        self._outer_stroke_active = False
+        self._outer_stroke_active_ref[0] = False
+        start = self._outer_stroke_start_screen
+        self._outer_stroke_start_screen = None
+        if start is None or not self._outer_stroke_raw_points:
+            self._outer_stroke_raw_points.clear()
+            return {"RUNNING_MODAL"}
+        dx = event.mouse_region_x - start[0]
+        dy = event.mouse_region_y - start[1]
+        drag_px = (dx * dx + dy * dy) ** 0.5
+        if drag_px < self._DRAG_THRESHOLD_PX:
+            # Click without drag in Stage 2 = no-op (no single-Steiner on outer).
+            self._outer_stroke_raw_points.clear()
+            return {"RUNNING_MODAL"}
+        self._commit_outer_drag_stroke(context)
+        self._outer_stroke_raw_points.clear()
+        obj = context.active_object
+        if obj is not None:
+            write_user_outer_strokes(obj, self._user_outer_strokes)
+        _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _commit_outer_drag_stroke(self, context: bpy.types.Context) -> None:
+        from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+            chaikin_smooth,
+            resample_polyline,
+        )
+
+        smoothed = chaikin_smooth(
+            self._outer_stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS
+        )
+        spacing = self._resolve_interior_spacing(context)
+        resampled = resample_polyline(smoothed, spacing=spacing)
+        if len(resampled) < 2:
+            return
+        if self._outer_stroke_intent == "cut":
+            kind = "cut"
+        else:
+            # "extend" intent: detect whether any sample lies outside outer.
+            # If so, stroke crosses the border - warn artist. T7 implements
+            # the actual splice; T6 just persists with kind="stroke".
+            if any(not self._point_inside_outer(p) for p in resampled):
+                report_warn(
+                    self,
+                    "stroke clipped to silhouette (extend portion deferred to T7 splice)",
+                )
+            kind = "stroke"
+        self._user_outer_strokes.append({"kind": kind, "points": resampled})
+
+    def _outer_stroke_undo(self, context: bpy.types.Context) -> set[str]:
+        if self._user_outer_strokes:
+            self._user_outer_strokes.pop()
+            obj = context.active_object
+            if obj is not None:
+                write_user_outer_strokes(obj, self._user_outer_strokes)
+            _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _delete_outer_stroke_at_mouse(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> None:
+        """Hit-test: remove outer stroke if any vert is within pick radius of mouse."""
+        mouse_world = _region_to_world_xz(context, event)
+        if mouse_world is None:
+            return
+        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        if near_world is None:
+            spacing = self._resolve_interior_spacing(context)
+            pick_d2 = spacing * spacing
+        else:
+            pick_dist = (
+                (near_world[0] - mouse_world[0]) ** 2
+                + (near_world[1] - mouse_world[1]) ** 2
+            ) ** 0.5
+            pick_d2 = pick_dist * pick_dist
+        for idx, stroke in enumerate(self._user_outer_strokes):
+            for pt in stroke["points"]:
+                d2 = (pt[0] - mouse_world[0]) ** 2 + (pt[1] - mouse_world[1]) ** 2
+                if d2 <= pick_d2:
+                    self._user_outer_strokes.pop(idx)
+                    obj = context.active_object
+                    if obj is not None:
+                        write_user_outer_strokes(obj, self._user_outer_strokes)
+                    return
+
+    def _point_inside_outer(self, point_world_xz: tuple[float, float]) -> bool:
+        """Check if a WORLD XZ point lies inside the current outer contour.
+
+        output.outer is WORLD XZ per compute_outer convention, so no coordinate
+        conversion is needed before calling point_in_polygon.
+        """
+        from ..core.automesh import point_in_polygon  # type: ignore[import-not-found]
+
+        if not self._output.outer:
+            return False
+        return point_in_polygon(point_world_xz, self._output.outer)
 
     def _handle_user_steiners_event(
         self, context: bpy.types.Context, event: bpy.types.Event
@@ -278,9 +443,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         params = _snapshot_params(context)
         next_stage = AuthoringStage(self._stage + 1)
         if next_stage == AuthoringStage.USER_OUTER:
-            # Placeholder: stroke capture + extend-outer logic come in T6/T7.
-            # Stage is navigable (ENTER/BACKSPACE work) but no capture yet.
-            pass
+            self._user_outer_strokes = read_user_outer_strokes(obj)
+            self._outer_stroke_active_ref[0] = False
+            self._outer_stroke_raw_points.clear()
         elif next_stage == AuthoringStage.INNER_LOOPS:
             self._output.inner_loops = compute_inner_loops_for_stage(
                 obj, image, self._output.outer, params
@@ -303,6 +468,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             )
         elif next_stage == AuthoringStage.APPLY:
             picker = _resolve_picker(context)
+            self._output.user_outer_strokes = self._user_outer_strokes
             self._output.user_strokes = self._user_strokes
             try:
                 counters = apply_mesh(obj, image, self._output, params, picker)
@@ -326,12 +492,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._finish(context, cancel=False)
         self._stage = next_stage
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
-        overlay_kwargs = (
-            self._stage3_overlay_kwargs()
-            if self._stage == AuthoringStage.USER_STEINERS
-            else self._stage4plus_overlay_kwargs()
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
-        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -340,12 +503,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return {"PASS_THROUGH"}
         self._stage = AuthoringStage(self._stage - 1)
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
-        overlay_kwargs = (
-            self._stage3_overlay_kwargs()
-            if self._stage == AuthoringStage.USER_STEINERS
-            else self._stage4plus_overlay_kwargs()
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
-        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -370,13 +530,31 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 bone_segments,
                 params,
             )
-        overlay_kwargs = (
-            self._stage3_overlay_kwargs()
-            if self._stage == AuthoringStage.USER_STEINERS
-            else self._stage4plus_overlay_kwargs()
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
-        self._handles = refresh_overlay(self._handles, self._stage, self._output, **overlay_kwargs)
         _tag_redraw_view3d(context)
+
+    def _overlay_kwargs(self) -> dict[str, object]:
+        """Return keyword args for register/refresh_overlay for the current stage."""
+        if self._stage == AuthoringStage.USER_OUTER:
+            return self._stage2_overlay_kwargs()
+        if self._stage == AuthoringStage.USER_STEINERS:
+            return self._stage3_overlay_kwargs()
+        return self._stage4plus_overlay_kwargs()
+
+    def _stage2_overlay_kwargs(self) -> dict[str, object]:
+        """Return keyword args for Stage 2 (USER_OUTER) live containers.
+
+        Passes outer stroke list + raw-stroke refs so the draw callbacks
+        render both committed strokes and the in-progress one during Stage 2.
+        Stage 4+ also shows Stage 4 strokes but not Stage 2's raw preview.
+        """
+        return {
+            "user_strokes": self._user_outer_strokes,
+            "stroke_active_ref": self._outer_stroke_active_ref,
+            "stroke_raw_points_ref": self._outer_stroke_raw_points,
+        }
 
     def _stage3_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for register/refresh_overlay Stage 3 live containers.
@@ -393,11 +571,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _stage4plus_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for register/refresh_overlay Stage 4+ live containers.
 
-        Only passes user_strokes (committed strokes visible in STEINER_PREVIEW
-        and beyond); does not include raw stroke or active flag (Stage 3 only).
+        Concatenates outer + inner strokes so both sets are visible from
+        Stage 4 (USER_STEINERS) onward. Does not include raw stroke or
+        active flag (Stage 2 and Stage 3 only).
         """
         return {
-            "user_strokes": self._user_strokes,
+            "user_strokes": self._user_outer_strokes + self._user_strokes,
         }
 
     def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:

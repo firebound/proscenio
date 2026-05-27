@@ -280,6 +280,71 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
     assert verts_after >= verts_before + 3
 
 
+def test_user_outer_strokes_persist_via_custom_property(automesh_fixture):
+    """Stage 2 strokes round-trip through the custom property (AS-AM4 T6)."""
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_user_outer_strokes,
+        write_user_outer_strokes,
+    )
+
+    strokes = [
+        {"kind": "cut", "points": [(-3.0, 0.5), (-3.0, 0.3), (-3.0, 0.1)]},
+    ]
+    write_user_outer_strokes(obj, strokes)
+    restored = read_user_outer_strokes(obj)
+    assert len(restored) == 1
+    assert restored[0]["kind"] == "cut"
+
+
+def test_apply_mesh_outer_cut_stroke_removes_faces(automesh_fixture):
+    """Stage 2 cut stroke (kind='cut' on user_outer_strokes) reduces faces (AS-AM4 T6)."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    baseline = apply_mesh(obj, image, StageOutput(), params, armature)
+    cut_output = StageOutput(
+        user_outer_strokes=[
+            {
+                "kind": "cut",
+                "points": [
+                    (-3.0, 0.5),
+                    (-3.0, 0.3),
+                    (-3.0, 0.1),
+                    (-3.0, -0.1),
+                    (-3.0, -0.3),
+                ],
+            }
+        ]
+    )
+    cut_result = apply_mesh(obj, image, cut_output, params, armature)
+    assert cut_result["total_faces"] < baseline["total_faces"], (
+        f"outer cut did not prune faces: baseline={baseline['total_faces']} "
+        f"cut={cut_result['total_faces']}"
+    )
+
+
 def test_apply_mesh_cut_stroke_removes_faces(automesh_fixture):
     """kind='cut' stroke: post-CDT face-prune removes faces in lens (AS-AM7)."""
     obj = _activate("hand")

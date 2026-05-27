@@ -276,8 +276,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._finish(context, cancel=False)
         self._stage = next_stage
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
+        overlay_kwargs = (
+            self._stage3_overlay_kwargs()
+            if self._stage == AuthoringStage.USER_STEINERS
+            else self._stage4plus_overlay_kwargs()
+        )
         self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+            self._handles, self._stage, self._output, **overlay_kwargs
         )
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
@@ -287,8 +292,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return {"PASS_THROUGH"}
         self._stage = AuthoringStage(self._stage - 1)
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
+        overlay_kwargs = (
+            self._stage3_overlay_kwargs()
+            if self._stage == AuthoringStage.USER_STEINERS
+            else self._stage4plus_overlay_kwargs()
+        )
         self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+            self._handles, self._stage, self._output, **overlay_kwargs
         )
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
@@ -314,8 +324,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 bone_segments,
                 params,
             )
+        overlay_kwargs = (
+            self._stage3_overlay_kwargs()
+            if self._stage == AuthoringStage.USER_STEINERS
+            else self._stage4plus_overlay_kwargs()
+        )
         self._handles = refresh_overlay(
-            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+            self._handles, self._stage, self._output, **overlay_kwargs
         )
         _tag_redraw_view3d(context)
 
@@ -329,6 +344,16 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "user_strokes": self._user_strokes,
             "stroke_active_ref": self._stroke_active_ref,
             "stroke_raw_points_ref": self._stroke_raw_points,
+        }
+
+    def _stage4plus_overlay_kwargs(self) -> dict:
+        """Return keyword args for register/refresh_overlay Stage 4+ live containers.
+
+        Only passes user_strokes (committed strokes visible in STEINER_PREVIEW
+        and beyond); does not include raw stroke or active flag (Stage 3 only).
+        """
+        return {
+            "user_strokes": self._user_strokes,
         }
 
     def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:

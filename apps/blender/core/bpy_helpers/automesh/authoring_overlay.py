@@ -79,10 +79,10 @@ def register_overlay(
 ) -> OverlayHandles:
     """Add POST_VIEW draw handlers per stage's overlay set.
 
-    For Stage 3 (USER_STEINERS), pass the live mutable containers:
+    For Stage 3 (USER_STEINERS) and Stage 4 (STEINER_PREVIEW), pass the live mutable containers:
     - user_strokes: the operator's _user_strokes list (by reference)
-    - stroke_active_ref: single-element list wrapping _stroke_active bool
-    - stroke_raw_points_ref: the operator's _stroke_raw_points list (by reference)
+    - stroke_active_ref: single-element list wrapping _stroke_active bool (Stage 3 only)
+    - stroke_raw_points_ref: the operator's _stroke_raw_points list (by reference, Stage 3 only)
 
     The draw callbacks hold references to these containers so they always
     see the current live state without needing re-registration on each
@@ -127,6 +127,13 @@ def register_overlay(
         handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_points,
             (list(output.all_steiners), _STEINER_COLOR, _DOT_SIZE_STEINER),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if stage >= AuthoringStage.STEINER_PREVIEW and user_strokes is not None:
+        handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_user_strokes,
+            (user_strokes,),
             "WINDOW",
             "POST_VIEW",
         )

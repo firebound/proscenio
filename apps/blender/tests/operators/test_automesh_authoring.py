@@ -203,3 +203,33 @@ def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
     )
     obj["proscenio_user_strokes"] = "not valid json {{{"
     assert read_user_strokes(obj) == []
+
+
+def test_apply_mesh_stroke_creates_edges(automesh_fixture):
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import StageOutput, StageParams  # type: ignore[import-not-found]
+    # Build a stroke that crosses the hand's central area.
+    # Stroke points are world XZ: hand sits at world X=-3.0, so mesh-local
+    # X=0 maps to world X=-3.0. Z is unchanged (no Z offset in fixture).
+    output = StageOutput(user_strokes=[
+        {"kind": "stroke", "points": [
+            (-3.0, 0.5), (-3.0, 0.3), (-3.0, 0.1), (-3.0, -0.1), (-3.0, -0.3)
+        ]}
+    ])
+    params = StageParams(
+        resolution=0.25, alpha_threshold=1, margin_pixels=0,
+        contour_vertices=64, inner_loop_count=0, inner_loop_spacing=0.15,
+        interior_spacing=0.1, bone_radius=0.5, bone_factor=2,
+    )
+    counters_before = apply_mesh(obj, image, StageOutput(), params, bpy.data.objects["automesh.hand_rig"])
+    verts_before = counters_before["total_verts"]
+    counters_after = apply_mesh(obj, image, output, params, bpy.data.objects["automesh.hand_rig"])
+    verts_after = counters_after["total_verts"]
+    # Stroke added at least 3 inner verts (5 stroke pts; 2 may snap)
+    assert verts_after >= verts_before + 3

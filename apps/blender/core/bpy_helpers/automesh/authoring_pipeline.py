@@ -214,30 +214,42 @@ def apply_mesh(
 ) -> dict[str, int]:
     """Final write: build_automesh + Wave 13.2-sidecar reproject.
 
-    Forwards `output.user_steiners` to build_automesh's `extra_steiners`
-    kwarg (PR #60) so the points the artist clicked during Stage 3
-    (USER_STEINERS) land in the final mesh as additional CDT constraints.
-    Without this wire the modal's Stage 3 placements were preview-only.
+    Stage 3 strokes (output.user_strokes) become:
+    - extra_steiners: resampled vert positions (mesh-local XZ)
+    - extra_edges: constraint segments between consecutive stroke verts
+      + endpoint snaps to outer contour verts
 
-    output.inner_loops are NOT yet honored - build_automesh's
-    _triangulate_into_bmesh accepts a single inner contour; multi-inner
-    support is the next extension step (Wave 13.3 polish).
+    Without this wire, Stage 3 strokes are preview-only.
+
+    NOTE: pre-computes outer_world via compute_outer to know snap candidates
+    + interior_base_index for stroke vert indices. build_automesh re-runs the
+    same outer extraction internally; this duplication is acceptable
+    (compute_outer is ~50ms, APPLY is once per modal session). A future
+    refactor could thread outer_world into build_automesh to avoid the
+    double run.
     """
-    # Local import: keep this module importable when the skinning
-    # bpy-helpers subpackage is unavailable (e.g. unit-test stubs).
     from ..skinning import maybe_post_regen_reproject, maybe_pre_regen_snapshot
 
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
-    # output.user_steiners are stored in WORLD XZ (overlay draws in world
-    # space). build_automesh's interior_points list is in MESH-LOCAL XZ
-    # (matches outer_world's space - misleadingly named, see
-    # pixel_contour_to_world docstring). Apply matrix_world.inverted()
-    # to convert before forwarding, otherwise _merge_extra_steiners
-    # filters them out via point_in_polygon(world_pt, local_polygon)
-    # whenever obj.location != world origin.
-    extra_steiners = _world_steiners_to_local(obj, output.user_steiners)
+    # Pre-compute outer for snap candidates + index layout
+    outer_world = compute_outer(obj, image, params)
+    outer_world_local = [_world_to_local_xz(obj, p) for p in outer_world]
+    outer_base_index = 0
+    interior_base_index = len(outer_world_local)
+    if params.inner_loop_count > 0:
+        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world, params)
+        if inner_loops:
+            interior_base_index += len(inner_loops[-1])
+    extras_local, extra_edges = _strokes_to_cdt_inputs(
+        obj,
+        output.user_strokes,
+        outer_world_local,
+        outer_base_index=outer_base_index,
+        interior_base_index=interior_base_index,
+        interior_spacing=params.interior_spacing,
+    )
     counters = build_automesh(
         obj,
         image,
@@ -252,7 +264,8 @@ def apply_mesh(
         bone_density_factor=params.bone_factor if bone_segments else 1,
         debug_stage="off",
         preserve_base_quad=False,
-        extra_steiners=extra_steiners,
+        extra_steiners=extras_local if extras_local else None,
+        extra_edges=extra_edges if extra_edges else None,
     )
     if prior_sidecar is not None and armature is not None:
         repro = maybe_post_regen_reproject(obj, armature, prior_sidecar)
@@ -266,6 +279,12 @@ def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     if scene_props is None:
         return 100.0
     return float(scene_props.pixels_per_unit) or 100.0
+
+
+def _world_to_local_xz(obj: bpy.types.Object, world_pt: Point2D) -> Point2D:
+    inv = obj.matrix_world.inverted()
+    local = inv @ Vector((world_pt[0], 0.0, world_pt[1]))
+    return (local.x, local.z)
 
 
 def _world_steiners_to_local(
@@ -332,7 +351,7 @@ def _strokes_to_cdt_inputs(
     to each stroke point first; existing _world_steiners_to_local
     pattern).
     """
-    from .stroke_geometry import snap_endpoint  # local to keep top clean
+    from ...automesh.stroke_geometry import snap_endpoint  # local to keep top clean
     inv = obj.matrix_world.inverted()
     extras_local: list[Point2D] = []
     edges: list[tuple[int, int]] = []

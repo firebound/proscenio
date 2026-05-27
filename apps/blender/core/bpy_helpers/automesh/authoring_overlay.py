@@ -14,7 +14,7 @@ import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
-from ...skinning.authoring_stages import AuthoringStage, StageOutput
+from ...skinning.authoring_stages import AuthoringStage, Stroke, StageOutput
 
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 _OUTER_COLOR = (0.0, 0.8, 1.0, 0.9)
@@ -23,9 +23,12 @@ _INNER_BASE = (0.2, 1.0, 0.4, 0.85)
 _INNER_DIM = (0.1, 0.5, 0.2, 0.5)
 _STEINER_COLOR = (1.0, 0.3, 0.3, 0.7)
 _USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
+_STROKE_VERT_COLOR = (0.3, 0.7, 1.0, 1.0)
+_RAW_STROKE_COLOR = (0.6, 0.6, 0.6, 0.7)
 _LINE_WIDTH = 2.0
 _DOT_SIZE_USER = 8.0
 _DOT_SIZE_STEINER = 4.0
+_DOT_SIZE_STROKE_VERT = 6.0
 
 
 class OverlayHandles(TypedDict):
@@ -36,15 +39,62 @@ class OverlayHandles(TypedDict):
     inner: object | None
     steiners: object | None
     user_dots: object | None
+    user_strokes: object | None
+    raw_stroke: object | None
 
 
-def register_overlay(stage: AuthoringStage, output: StageOutput) -> OverlayHandles:
-    """Add POST_VIEW draw handlers per stage's overlay set."""
+def _register_stage3_handlers(
+    handles: OverlayHandles,
+    user_strokes: list[Stroke] | None,
+    stroke_active_ref: list[bool] | None,
+    stroke_raw_points_ref: list[tuple[float, float]] | None,
+) -> None:
+    """Register the two Stage 3 draw handlers (committed strokes + raw preview).
+
+    Both handlers receive mutable container references so they always see
+    the latest operator state without needing re-registration on MOUSEMOVE.
+    """
+    if user_strokes is not None:
+        handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_user_strokes,
+            (user_strokes,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if stroke_active_ref is not None and stroke_raw_points_ref is not None:
+        handles["raw_stroke"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_raw_stroke,
+            (stroke_active_ref, stroke_raw_points_ref),
+            "WINDOW",
+            "POST_VIEW",
+        )
+
+
+def register_overlay(
+    stage: AuthoringStage,
+    output: StageOutput,
+    user_strokes: list[Stroke] | None = None,
+    stroke_active_ref: list[bool] | None = None,
+    stroke_raw_points_ref: list[tuple[float, float]] | None = None,
+) -> OverlayHandles:
+    """Add POST_VIEW draw handlers per stage's overlay set.
+
+    For Stage 3 (USER_STEINERS), pass the live mutable containers:
+    - user_strokes: the operator's _user_strokes list (by reference)
+    - stroke_active_ref: single-element list wrapping _stroke_active bool
+    - stroke_raw_points_ref: the operator's _stroke_raw_points list (by reference)
+
+    The draw callbacks hold references to these containers so they always
+    see the current live state without needing re-registration on each
+    MOUSEMOVE event.
+    """
     handles: OverlayHandles = {
         "outer": None,
         "inner": None,
         "steiners": None,
         "user_dots": None,
+        "user_strokes": None,
+        "raw_stroke": None,
     }
     if stage >= AuthoringStage.OUTER and output.outer:
         color = _OUTER_COLOR if stage == AuthoringStage.OUTER else _OUTER_DIM
@@ -69,6 +119,10 @@ def register_overlay(stage: AuthoringStage, output: StageOutput) -> OverlayHandl
             "WINDOW",
             "POST_VIEW",
         )
+    if stage == AuthoringStage.USER_STEINERS:
+        _register_stage3_handlers(
+            handles, user_strokes, stroke_active_ref, stroke_raw_points_ref
+        )
     if stage >= AuthoringStage.STEINER_PREVIEW and output.all_steiners:
         handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_points,
@@ -81,21 +135,32 @@ def register_overlay(stage: AuthoringStage, output: StageOutput) -> OverlayHandl
 
 def unregister_overlay(handles: OverlayHandles) -> None:
     """No-op-safe cleanup; tolerates partial registration."""
-    for key in ("outer", "inner", "steiners", "user_dots"):
+    for key in ("outer", "inner", "steiners", "user_dots", "user_strokes", "raw_stroke"):
         handle = handles.get(key)
         if handle is None:
             continue
         with contextlib.suppress(ValueError, RuntimeError):
             bpy.types.SpaceView3D.draw_handler_remove(handle, "WINDOW")
-        handles[key] = None
+        handles[key] = None  # type: ignore[literal-required]
 
 
 def refresh_overlay(
-    handles: OverlayHandles, stage: AuthoringStage, output: StageOutput
+    handles: OverlayHandles,
+    stage: AuthoringStage,
+    output: StageOutput,
+    user_strokes: list[Stroke] | None = None,
+    stroke_active_ref: list[bool] | None = None,
+    stroke_raw_points_ref: list[tuple[float, float]] | None = None,
 ) -> OverlayHandles:
     """Replace handlers when stage data changes (slider drag or stage advance)."""
     unregister_overlay(handles)
-    return register_overlay(stage, output)
+    return register_overlay(
+        stage,
+        output,
+        user_strokes=user_strokes,
+        stroke_active_ref=stroke_active_ref,
+        stroke_raw_points_ref=stroke_raw_points_ref,
+    )
 
 
 def _draw_polyline(
@@ -159,4 +224,90 @@ def _draw_points(
         batch.draw(shader)
     finally:
         gpu.state.point_size_set(1.0)
+        gpu.state.blend_set("NONE")
+
+
+def _draw_stroke_lines(
+    shader: gpu.types.GPUShader,
+    coords: list[tuple[float, float, float]],
+) -> None:
+    """Draw a sequence of line segments for a committed stroke edge set."""
+    line_coords: list[tuple[float, float, float]] = []
+    for i in range(len(coords) - 1):
+        line_coords.append(coords[i])
+        line_coords.append(coords[i + 1])
+    batch = batch_for_shader(shader, "LINES", {"pos": line_coords})
+    shader.uniform_float("color", _STROKE_VERT_COLOR)
+    gpu.state.line_width_set(2.0)
+    batch.draw(shader)
+
+
+def _draw_user_strokes(strokes: list[Stroke]) -> None:
+    """Draw committed user strokes.
+
+    kind=stroke: blue verts (6 px) + blue line segments.
+    kind=point: yellow dot (8 px, backward-compat with legacy Steiner flow).
+
+    The strokes list is held by reference so this callback always reflects
+    the latest committed state without re-registration.
+    """
+    if not strokes:
+        return
+    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
+    gpu.state.blend_set("ALPHA")
+    try:
+        shader.bind()
+        for stroke in strokes:
+            pts = stroke["points"]
+            if not pts:
+                continue
+            coords = [(p[0], 0.0, p[1]) for p in pts]
+            if stroke["kind"] == "point":
+                batch = batch_for_shader(shader, "POINTS", {"pos": coords})
+                shader.uniform_float("color", _USER_DOT_COLOR)
+                gpu.state.point_size_set(_DOT_SIZE_USER)
+                batch.draw(shader)
+            else:
+                # Verts first
+                batch_v = batch_for_shader(shader, "POINTS", {"pos": coords})
+                shader.uniform_float("color", _STROKE_VERT_COLOR)
+                gpu.state.point_size_set(_DOT_SIZE_STROKE_VERT)
+                batch_v.draw(shader)
+                # Edge segments (skip if single point)
+                if len(coords) >= 2:
+                    _draw_stroke_lines(shader, coords)
+    finally:
+        gpu.state.point_size_set(1.0)
+        gpu.state.line_width_set(1.0)
+        gpu.state.blend_set("NONE")
+
+
+def _draw_raw_stroke(
+    stroke_active_ref: list[bool],
+    raw_points: list[tuple[float, float]],
+) -> None:
+    """Draw the in-progress raw stroke as a light gray thin line.
+
+    stroke_active_ref[0] gates the draw so nothing is emitted between
+    strokes. Both args are mutable containers held by reference so this
+    callback always sees the live operator state.
+    """
+    if not stroke_active_ref[0] or len(raw_points) < 2:
+        return
+    line_coords: list[tuple[float, float, float]] = []
+    for i in range(len(raw_points) - 1):
+        a = raw_points[i]
+        b = raw_points[i + 1]
+        line_coords.append((a[0], 0.0, a[1]))
+        line_coords.append((b[0], 0.0, b[1]))
+    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
+    batch = batch_for_shader(shader, "LINES", {"pos": line_coords})
+    gpu.state.blend_set("ALPHA")
+    gpu.state.line_width_set(1.0)
+    try:
+        shader.bind()
+        shader.uniform_float("color", _RAW_STROKE_COLOR)
+        batch.draw(shader)
+    finally:
+        gpu.state.line_width_set(1.0)
         gpu.state.blend_set("NONE")

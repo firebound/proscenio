@@ -114,10 +114,22 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._last_params = params
         self._stage = AuthoringStage.OUTER
         self._output = StageOutput()
-        self._handles = {"outer": None, "inner": None, "steiners": None, "user_dots": None}
+        self._handles = {
+            "outer": None,
+            "inner": None,
+            "steiners": None,
+            "user_dots": None,
+            "user_strokes": None,
+            "raw_stroke": None,
+        }
         self._timer = None
         self._stroke_active: bool = False
+        # Single-element list so the draw callback holds a stable reference
+        # to the container; we mutate [0] instead of reassigning the bool.
+        self._stroke_active_ref: list[bool] = [False]
         self._stroke_start_screen: tuple[int, int] | None = None
+        # Must be mutated in-place (clear/append) so the registered draw
+        # callback always reads the current contents via the same reference.
         self._stroke_raw_points: list[tuple[float, float]] = []
         self._user_strokes: list[Stroke] = []
 
@@ -153,9 +165,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                         _tag_redraw_view3d(context)
                         return {"RUNNING_MODAL"}
                     self._stroke_active = True
+                    self._stroke_active_ref[0] = True
                     self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
                     world_pt = _region_to_world_xz(context, event)
-                    self._stroke_raw_points = [world_pt] if world_pt else []
+                    self._stroke_raw_points.clear()
+                    if world_pt:
+                        self._stroke_raw_points.append(world_pt)
                     return {"RUNNING_MODAL"}
                 if event.type == "MOUSEMOVE" and self._stroke_active:
                     world_pt = _region_to_world_xz(context, event)
@@ -165,10 +180,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                     return {"RUNNING_MODAL"}
                 if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._stroke_active:
                     self._stroke_active = False
+                    self._stroke_active_ref[0] = False
                     start = self._stroke_start_screen
                     self._stroke_start_screen = None
                     if start is None or not self._stroke_raw_points:
-                        self._stroke_raw_points = []
+                        self._stroke_raw_points.clear()
                         return {"RUNNING_MODAL"}
                     dx = event.mouse_region_x - start[0]
                     dy = event.mouse_region_y - start[1]
@@ -188,7 +204,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                         resampled = resample_polyline(smoothed, spacing=spacing)
                         if len(resampled) >= 2:
                             self._user_strokes.append({"kind": "stroke", "points": resampled})
-                    self._stroke_raw_points = []
+                    self._stroke_raw_points.clear()
                     obj = context.active_object
                     if obj is not None:
                         write_user_strokes(obj, self._user_strokes)
@@ -227,6 +243,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             )
         elif next_stage == AuthoringStage.USER_STEINERS:
             self._user_strokes = read_user_strokes(obj)
+            # Sync the live list reference used by the draw handler;
+            # must update in-place so the registered handler's reference stays valid.
+            self._stroke_active_ref[0] = False
+            self._stroke_raw_points.clear()
         elif next_stage == AuthoringStage.STEINER_PREVIEW:
             picker = _resolve_picker(context)
             bone_segments = collect_bone_segments(picker) if picker is not None else []
@@ -256,7 +276,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._finish(context, cancel=False)
         self._stage = next_stage
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
-        self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+        )
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -265,7 +287,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return {"PASS_THROUGH"}
         self._stage = AuthoringStage(self._stage - 1)
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
-        self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+        )
         _tag_redraw_view3d(context)
         return {"PASS_THROUGH"}
 
@@ -290,8 +314,22 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 bone_segments,
                 params,
             )
-        self._handles = refresh_overlay(self._handles, self._stage, self._output)
+        self._handles = refresh_overlay(
+            self._handles, self._stage, self._output, **self._stage3_overlay_kwargs()
+        )
         _tag_redraw_view3d(context)
+
+    def _stage3_overlay_kwargs(self) -> dict:
+        """Return keyword args for register/refresh_overlay Stage 3 live containers.
+
+        Always passes the same mutable list references so registered draw
+        callbacks remain valid across param-change re-registrations.
+        """
+        return {
+            "user_strokes": self._user_strokes,
+            "stroke_active_ref": self._stroke_active_ref,
+            "stroke_raw_points_ref": self._stroke_raw_points,
+        }
 
     def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:
         """Hit-test: find stroke whose ANY vert is within _STROKE_PICK_RADIUS_PX of mouse, remove it."""

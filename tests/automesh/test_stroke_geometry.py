@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import math
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
+
+from core.automesh.stroke_geometry import chaikin_smooth  # noqa: E402
+
+
+def test_chaikin_zero_iters_returns_input_unchanged():
+    pts = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)]
+    assert chaikin_smooth(pts, iters=0) == pts
+
+
+def test_chaikin_one_iter_subdivides_each_segment_into_two():
+    pts = [(0.0, 0.0), (1.0, 0.0)]
+    out = chaikin_smooth(pts, iters=1)
+    # First + last endpoints preserved; one segment -> 2 new mid points
+    # at 1/4 and 3/4 -> total 4 points (start, q1, q3, end)
+    assert len(out) == 4
+    assert out[0] == (0.0, 0.0)
+    assert out[-1] == (1.0, 0.0)
+    assert math.isclose(out[1][0], 0.25)
+    assert math.isclose(out[2][0], 0.75)
+
+
+def test_chaikin_two_iters_smooths_zigzag_toward_centroid():
+    # symmetric zigzag; after smoothing peaks pull toward midline (y=0)
+    pts = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.0), (3.0, 1.0), (4.0, 0.0)]
+    out = chaikin_smooth(pts, iters=2)
+    max_y = max(p[1] for p in out)
+    assert max_y < 1.0  # original peaks were 1.0; smoothed must be lower
+    assert max_y > 0.3  # but not flattened entirely
+
+
+def test_chaikin_preserves_endpoints_at_all_iter_counts():
+    pts = [(5.0, 5.0), (6.0, 6.0), (7.0, 5.0)]
+    for iters in (1, 2, 3, 5):
+        out = chaikin_smooth(pts, iters=iters)
+        assert out[0] == (5.0, 5.0)
+        assert out[-1] == (7.0, 5.0)
+
+
+def test_chaikin_single_point_returns_single_point():
+    assert chaikin_smooth([(1.0, 2.0)], iters=2) == [(1.0, 2.0)]
+
+
+def test_chaikin_two_points_with_zero_iters_returns_input():
+    assert chaikin_smooth([(0.0, 0.0), (1.0, 0.0)], iters=0) == [(0.0, 0.0), (1.0, 0.0)]

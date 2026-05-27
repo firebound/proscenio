@@ -265,6 +265,22 @@ def filter_points_too_close_to_boundary(
     return kept
 
 
+def _in_exclude_zone(
+    point: Point2D,
+    zones: list[tuple[float, float, float]],
+) -> bool:
+    """Return True if ``point`` falls within any exclusion circle.
+
+    Each zone is ``(cx, cz, radius)``. Uses squared-distance comparison
+    to avoid a sqrt per candidate.
+    """
+    px, pz = point
+    for cx, cz, r in zones:
+        if (cx - px) ** 2 + (cz - pz) ** 2 <= r * r:
+            return True
+    return False
+
+
 def interior_points_for_annulus(
     outer: list[Point2D],
     inner: list[Point2D],
@@ -272,6 +288,8 @@ def interior_points_for_annulus(
     bone_segments: list[BoneSegment2D] | None = None,
     bone_density_radius: float = 0.0,
     bone_density_factor: int = 1,
+    *,
+    exclude_zones: list[tuple[float, float, float]] | None = None,
 ) -> list[Point2D]:
     """Top-level pipeline: generate annulus interior Steiner points.
 
@@ -284,6 +302,13 @@ def interior_points_for_annulus(
     the annulus - the safe default per D15 ("OFF when no picker
     armature").
 
+    ``exclude_zones`` is an optional list of ``(cx, cz, radius)`` tuples.
+    Any candidate that falls within ``radius`` of ``(cx, cz)`` is dropped
+    before the bone-aware pass. Pass zone centres from artist-placed stroke
+    verts (with ``radius = spacing * 0.5``) to prevent auto-fill grid
+    points from clustering at sub-spacing distance from stroke verts,
+    which causes degenerate slivers and fan-like CDT output (AS-AM2).
+
     Returns an empty list when the annulus has zero area (degenerate
     silhouette) - the caller should fall back to contour-only
     triangulation and report INFO.
@@ -295,10 +320,15 @@ def interior_points_for_annulus(
     bbox = bounding_box(outer)
     candidates = uniform_interior_grid(bbox, spacing)
     base = filter_inside_annulus(candidates, outer, inner)
+    if exclude_zones:
+        base = [p for p in base if not _in_exclude_zone(p, exclude_zones)]
     if not bone_segments or bone_density_factor <= 1:
         return base
     if bone_density_radius <= 0.0:
         return base
     enriched = bone_aware_subdivision(base, bone_segments, bone_density_radius, bone_density_factor)
     # Re-clip enriched points: the jitter may push some outside the annulus.
-    return filter_inside_annulus(enriched, outer, inner)
+    clipped = filter_inside_annulus(enriched, outer, inner)
+    if exclude_zones:
+        clipped = [p for p in clipped if not _in_exclude_zone(p, exclude_zones)]
+    return clipped

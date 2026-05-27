@@ -472,6 +472,7 @@ def _compute_steiner_points(
     bone_segments: list[BoneSegment2D] | None,
     bone_density_radius: float,
     bone_density_factor: int,
+    exclude_zones: list[tuple[float, float, float]] | None = None,
 ) -> list[tuple[float, float]]:
     """Generate + filter Steiner interior points.
 
@@ -500,6 +501,7 @@ def _compute_steiner_points(
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,
         bone_density_factor=bone_density_factor,
+        exclude_zones=exclude_zones,
     )
     if holes_world:
         before_hole_filter = len(interior_points)
@@ -710,6 +712,9 @@ def build_automesh(
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
+    exclude_zones: list[tuple[float, float, float]] | None = None
+    if extra_steiners:
+        exclude_zones = [(p[0], p[1], interior_spacing * 0.5) for p in extra_steiners]
     interior_points = _compute_steiner_points(
         outer_world,
         inner_world,
@@ -718,6 +723,7 @@ def build_automesh(
         bone_segments,
         bone_density_radius,
         bone_density_factor,
+        exclude_zones=exclude_zones,
     )
     if extra_steiners:
         interior_points = _merge_extra_steiners(

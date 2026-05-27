@@ -97,3 +97,32 @@ def test_resample_zigzag_yields_uniform_arc_length_spacing():
     out = resample_polyline(pts, spacing=1.0)
     # 4 points expected (0, 1, 2, 3 arc-length)
     assert len(out) == 4
+
+
+from core.automesh.stroke_geometry import snap_endpoint  # noqa: E402
+
+
+def test_snap_returns_none_when_no_candidate_in_range():
+    assert snap_endpoint((0.0, 0.0), [(5.0, 5.0), (10.0, 10.0)], max_dist=1.0) is None
+
+
+def test_snap_returns_nearest_index_when_in_range():
+    candidates = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]
+    # query closer to candidate index 1
+    assert snap_endpoint((1.1, 0.0), candidates, max_dist=0.5) == 1
+
+
+def test_snap_returns_first_on_tie():
+    candidates = [(1.0, 0.0), (-1.0, 0.0)]  # both 1 unit away from origin
+    # tie-break: lowest index
+    assert snap_endpoint((0.0, 0.0), candidates, max_dist=2.0) == 0
+
+
+def test_snap_empty_candidates_returns_none():
+    assert snap_endpoint((0.0, 0.0), [], max_dist=1.0) is None
+
+
+def test_snap_negative_max_dist_raises():
+    import pytest
+    with pytest.raises(ValueError, match="max_dist"):
+        snap_endpoint((0.0, 0.0), [(1.0, 0.0)], max_dist=-1.0)

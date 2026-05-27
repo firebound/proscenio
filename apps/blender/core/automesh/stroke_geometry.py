@@ -82,3 +82,35 @@ def resample_polyline(points: Sequence[Point2D], spacing: float) -> list[Point2D
     if out[-1] != pts[-1]:
         out.append(pts[-1])
     return out
+
+
+def snap_endpoint(
+    point: Point2D,
+    candidates: Sequence[Point2D],
+    max_dist: float,
+) -> int | None:
+    """Return index of nearest candidate within max_dist, else None.
+
+    Linear scan O(N). For Stage 3 endpoint snap the candidate list
+    is the outer contour (typically <256 verts) - KD-tree overhead
+    not justified at this scale.
+
+    Tie-break: lowest index wins.
+    Raises ValueError on max_dist < 0.
+    """
+    if max_dist < 0:
+        raise ValueError(f"max_dist must be >= 0, got {max_dist}")
+    if not candidates:
+        return None
+    qx, qy = point
+    cap_d2 = max_dist * max_dist
+    best_idx = -1
+    best_d2 = float("inf")
+    for i, (cx, cy) in enumerate(candidates):
+        d2 = (cx - qx) * (cx - qx) + (cy - qy) * (cy - qy)
+        if d2 > cap_d2:
+            continue
+        if d2 < best_d2:
+            best_d2 = d2
+            best_idx = i
+    return best_idx if best_idx >= 0 else None

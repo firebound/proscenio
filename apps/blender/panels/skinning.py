@@ -55,7 +55,7 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         obj = context.active_object
         _draw_automesh_box(layout, skinning_props)
         _draw_authoring_box(layout, skinning_props, obj)
-        _draw_bind_box(layout, skinning_props, picker)
+        _draw_bind_box(layout, skinning_props, picker, obj)
         _draw_edit_weights_box(layout, obj, picker)
         _draw_snapshot_box(layout, skinning_props, obj)
         _draw_debug_box(layout, skinning_props)
@@ -135,6 +135,7 @@ def _draw_bind_box(
     layout: bpy.types.UILayout,
     skinning_props: bpy.types.PropertyGroup | None,
     picker: bpy.types.Object | None,
+    obj: bpy.types.Object | None = None,
 ) -> None:
     """Sub-box for the Bind to Picker Armature operator.
 
@@ -146,7 +147,14 @@ def _draw_bind_box(
     falloff_power + max_distance are not surfaced here; they reach
     the user via F3 redo after the operator runs, keeping the panel
     UI focused on the common case.
+
+    Per-bone Soft/Hard override rows appear below the run button when
+    a picker armature is present. Each bone gets a two-button toggle;
+    depress=True marks the active override. Missing entry means the
+    bone uses the operator-level default (bind_init_mode).
     """
+    from ..core.skinning.bone_modes import read_bone_modes
+
     box = layout.box()
     box.label(text="Bind to picker", icon="LINK_BLEND")
     if skinning_props is not None:
@@ -158,6 +166,35 @@ def _draw_bind_box(
         text="Bind to Picker Armature",
         icon="MOD_ARMATURE",
     )
+
+    if picker is None or obj is None or obj.type != "MESH":
+        return
+
+    modes = read_bone_modes(obj)
+    bones = picker.data.bones if picker.data is not None else []
+    if not bones:
+        return
+
+    override_box = box.box()
+    override_box.label(text="Per-bone Soft/Hard overrides:")
+    for bone in bones:
+        current = modes.get(bone.name, "")
+        bone_row = override_box.row(align=True)
+        bone_row.label(text=bone.name)
+        op_soft = bone_row.operator(
+            "proscenio.set_bone_mode",
+            text="Soft",
+            depress=(current == "SOFT"),
+        )
+        op_soft.bone_name = bone.name
+        op_soft.mode = "SOFT"
+        op_hard = bone_row.operator(
+            "proscenio.set_bone_mode",
+            text="Hard",
+            depress=(current == "HARD"),
+        )
+        op_hard.bone_name = bone.name
+        op_hard.mode = "HARD"
 
 
 def _draw_edit_weights_box(

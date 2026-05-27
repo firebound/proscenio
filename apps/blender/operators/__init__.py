@@ -22,6 +22,7 @@ Submodules:
 - bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (SPEC 013.2 Wave 13.2)
 - restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (SPEC 013.2 sidecar)
 - edit_weights      - PROSCENIO_OT_edit_weights_modal (SPEC 013.2 paint)
+- set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (SPEC 013 O1)
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
@@ -45,6 +46,7 @@ from . import (
     quick_armature,
     restore_weight_snapshot,
     selection,
+    set_bone_mode,
     skeleton_target,
     slot,
     uv_authoring,
@@ -67,6 +69,7 @@ def register() -> None:
     bind_mesh.register()
     restore_weight_snapshot.register()
     edit_weights.register()
+    set_bone_mode.register()
     slot.register()
     atlas_pack.register()
     import_photoshop.register()
@@ -76,6 +79,7 @@ def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
     slot.unregister()
+    set_bone_mode.unregister()
     edit_weights.unregister()
     restore_weight_snapshot.unregister()
     bind_mesh.unregister()

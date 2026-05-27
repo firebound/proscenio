@@ -45,7 +45,7 @@ User requested aggregating "everything into one PR / feature / single work sessi
 
 ### Stage 3 redesign components
 
-```
+```text
 authoring_pipeline.py
     StageOutput.user_steiners (list[Point2D]) -> StageOutput.user_strokes (list[Stroke])
     Stroke = TypedDict { kind: "stroke" | "point", points: list[Point2D] }
@@ -89,7 +89,7 @@ GPU overlay (weight_overlay.py / authoring_overlay.py)
 
 ### apply_mesh pipeline change
 
-```
+```text
 def apply_mesh(obj, image, output, params, armature):
     # ... existing setup ...
     extra_steiners_local, extra_edges_local = _strokes_to_cdt_inputs(
@@ -201,7 +201,7 @@ def maybe_pre_regen_snapshot(obj, armature):
 
 ## Data flow
 
-```
+```text
 User clicks/drags in Stage 3 modal
     -> raw stroke captured (LMB DOWN -> MOUSEMOVE -> LMB UP)
     -> if click: single Steiner appended to user_strokes as {kind:"point"}

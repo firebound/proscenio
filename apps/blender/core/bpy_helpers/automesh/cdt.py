@@ -76,12 +76,17 @@ def _build_cdt_inputs(
     inner_world: list[tuple[float, float]],
     interior_points: list[tuple[float, float]],
     holes: list[list[tuple[float, float]]],
+    extra_edges: list[tuple[int, int]] | None = None,
 ) -> tuple[list[tuple[float, float]], list[tuple[int, int]]]:
     """Assemble the ``(coords, constraint_edges)`` CDT inputs.
 
     Layout in the flat coord array:
     ``outer + inner + interior + each_hole_in_order``.
     Constraint edges close each contour loop in place.
+
+    ``extra_edges`` is appended verbatim - indices must be valid against
+    the final coord array (caller maps indices when stroke verts live in
+    `interior_points` and snap endpoints reference `outer_world`).
     """
     outer_count = len(outer_world)
     inner_count = len(inner_world)
@@ -98,6 +103,8 @@ def _build_cdt_inputs(
         all_coords.extend(hole)
         edges_constraint.extend(_cyclic_loop_edges(hole_offset, len(hole)))
         hole_offset += len(hole)
+    if extra_edges:
+        edges_constraint.extend(extra_edges)
     return all_coords, edges_constraint
 
 
@@ -135,6 +142,7 @@ def build_mesh_via_delaunay(
     inner_world: list[tuple[float, float]],
     interior_points: list[tuple[float, float]],
     holes_world: list[list[tuple[float, float]]] | None = None,
+    extra_edges: list[tuple[int, int]] | None = None,
 ) -> int:
     """Single-pass Constrained Delaunay Triangulation for the entire mesh.
 
@@ -173,7 +181,7 @@ def build_mesh_via_delaunay(
         return 0
     holes = list(holes_world) if holes_world else []
     all_coords, edges_constraint = _build_cdt_inputs(
-        outer_world, inner_world, interior_points, holes
+        outer_world, inner_world, interior_points, holes, extra_edges=extra_edges
     )
     output_type = 2 if (len(inner_world) >= 3 or holes) else 1
     result = mathutils.geometry.delaunay_2d_cdt(

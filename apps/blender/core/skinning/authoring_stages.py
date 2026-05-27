@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
+from typing import Literal, TypedDict
 
 Point2D = tuple[float, float]
 
@@ -24,6 +25,17 @@ class AuthoringStage(IntEnum):
     USER_STEINERS = 2
     STEINER_PREVIEW = 3
     APPLY = 4
+
+
+class Stroke(TypedDict):
+    """Stage 3 stroke or single-Steiner placement (SPEC 013 S7).
+
+    kind="point": single Steiner from a click without drag (S6 backward compat).
+    kind="stroke": resampled polyline that becomes constraint edges + verts.
+    """
+
+    kind: Literal["point", "stroke"]
+    points: list[tuple[float, float]]  # WORLD XZ, post-smooth + post-resample
 
 
 @dataclass(frozen=True)
@@ -57,4 +69,5 @@ class StageOutput:
     outer: list[Point2D] = field(default_factory=list)
     inner_loops: list[list[Point2D]] = field(default_factory=list)
     user_steiners: list[Point2D] = field(default_factory=list)
+    user_strokes: list[Stroke] = field(default_factory=list)
     all_steiners: list[Point2D] = field(default_factory=list)

@@ -478,7 +478,7 @@ def _build_stroke_node_indices(
     silhouette_outer: list[Point2D] | None = None,
     silhouette_inner: list[Point2D] | None = None,
     silhouette_holes: list[list[Point2D]] | None = None,
-) -> tuple[list[int], int]:
+) -> tuple[list[int | None], int]:
     """For one kind='stroke' polyline, append surviving inner verts to
     extras_local and return (node_index_sequence, dropped_count).
 
@@ -488,18 +488,17 @@ def _build_stroke_node_indices(
 
     Silhouette filter (AS-AM1): before allocating CDT indices, each inner
     vert is tested via _vert_inside_silhouette. Dropped verts are excluded
-    from extras_local AND from the node index sequence. Edges are only
-    emitted between consecutive SURVIVING positions, so a dropped middle
-    vert splits the polyline into two independent edge runs (no edge spans
-    the gap). Dropped endpoints likewise skip snap index allocation.
+    from extras_local. In the returned `node_indices` sequence, dropped
+    positions are represented as `None` SENTINELS so the consecutive-pair
+    edge builder can detect the gap and skip the spanning edge. Without
+    the sentinel the surviving neighbours would be consecutive in the
+    list and an edge would still cross the dropped position.
     """
     from ...automesh.stroke_geometry import snap_endpoint
 
     if not pts_local:
         return [], 0
 
-    # Determine which verts survive the silhouette filter.
-    # None mask = no filter (callers that don't pass silhouette_outer).
     def _keep(p: Point2D) -> bool:
         if silhouette_outer is None:
             return True
@@ -508,23 +507,18 @@ def _build_stroke_node_indices(
     survivors_mask = [_keep(p) for p in pts_local]
     dropped = sum(1 for m in survivors_mask if not m)
 
-    # Endpoint snap uses first/last SURVIVING positions.
     first_alive = next((i for i, m in enumerate(survivors_mask) if m), None)
     last_alive = next((i for i, m in reversed(list(enumerate(survivors_mask))) if m), None)
 
     if first_alive is None or last_alive is None:
-        # Every vert dropped - nothing to emit.
         return [], dropped
 
     start_snap = snap_endpoint(pts_local[first_alive], outer_world_local, snap_radius)
     end_snap = snap_endpoint(pts_local[last_alive], outer_world_local, snap_radius)
-
-    # Allocate extras indices for inner surviving verts only.
-    # A vert is "inner" if it is not snapped away (first/last alive that snapped).
     skip_first = start_snap is not None
     skip_last = end_snap is not None
 
-    node_indices: list[int] = []
+    node_indices: list[int | None] = []
     if start_snap is not None:
         node_indices.append(outer_base_index + start_snap)
 
@@ -532,12 +526,11 @@ def _build_stroke_node_indices(
         is_first_alive = i == first_alive and skip_first
         is_last_alive = i == last_alive and skip_last
         if is_first_alive or is_last_alive:
-            # This position is claimed by the snap index; skip allocation.
             continue
         if not alive:
-            # Dropped vert - no index pushed. The gap means _edges_from_node_indices
-            # will not emit an edge spanning this position (the two surviving
-            # neighbours are not consecutive in node_indices).
+            # Sentinel: gap in the polyline. _edges_from_node_indices skips
+            # any pair where either side is None, so no edge spans the gap.
+            node_indices.append(None)
             continue
         idx = interior_base_index + len(extras_local)
         extras_local.append(pt)
@@ -549,8 +542,8 @@ def _build_stroke_node_indices(
     return node_indices, dropped
 
 
-def _edges_from_node_indices(node_indices: list[int]) -> list[tuple[int, int]]:
-    """Consecutive-pair edges, skipping self-edges (a == b).
+def _edges_from_node_indices(node_indices: list[int | None]) -> list[tuple[int, int]]:
+    """Consecutive-pair edges, skipping self-edges (a == b) and gaps (None sentinels).
 
     Self-edges happen when both endpoints snap to the same outer vert AND
     no inner stroke verts survive between them - CDT rejects self-edges
@@ -560,6 +553,9 @@ def _edges_from_node_indices(node_indices: list[int]) -> list[tuple[int, int]]:
     for i in range(len(node_indices) - 1):
         a = node_indices[i]
         b = node_indices[i + 1]
+        if a is None or b is None:
+            # Gap sentinel - dropped vert separates a from b; no spanning edge.
+            continue
         if a == b:
             continue
         out.append((a, b))

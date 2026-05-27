@@ -156,17 +156,12 @@ def splice_extend_stroke(
         for i in range(entry_outer_idx, len(outer)):
             spliced.append(outer[i])
     else:
-        # Wrap-around case: exit < entry.
-        # Take outer[0..entry] + outside_run + outer[exit..entry-1] is WRONG
-        # (would skip the exit..entry arc). Instead: outer[0..entry] +
-        # outside_run + outer[exit..N-1]. The arc outer[0..exit-1] is the
-        # replaced portion; we deliberately drop it so the outside_run
-        # replaces the forward arc from entry to (past seam) exit.
-        for i in range(entry_outer_idx + 1):
+        # Wrap-around case: exit < entry. The forward arc from entry through
+        # the seam to exit is the portion being REPLACED by outside_run.
+        # Keep only the complementary arc [exit..entry] + outside_run.
+        for i in range(exit_outer_idx, entry_outer_idx + 1):
             spliced.append(outer[i])
         spliced.extend(outside_run)
-        for i in range(exit_outer_idx, len(outer)):
-            spliced.append(outer[i])
 
     return spliced if len(spliced) >= 3 else None
 

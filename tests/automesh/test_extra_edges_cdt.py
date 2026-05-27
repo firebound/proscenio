@@ -93,22 +93,15 @@ def test_build_stroke_node_indices_drops_outside_vert_no_edge_across_gap():
     assert dropped == 1, f"expected 1 dropped, got {dropped}"
     # A, C, D survive -> 3 extras appended
     assert len(extras_local) == 3
-    # node_indices contains indices for A, C, D (10, 11, 12 in that order)
-    # B is absent -> no consecutive pair (A, C) exists
-    assert 10 in node_indices
-    assert 11 in node_indices
-    assert 12 in node_indices
-    # Build edges and verify no edge spans the gap (A=10 to C=11 would be the gap edge)
+    # node_indices = [10, None, 11, 12] - None sentinel preserves the gap.
+    # Indices for survivors A=10, C=11, D=12.
+    assert node_indices == [10, None, 11, 12]
     edges = _edges_from_node_indices(node_indices)
-    # A->C would be (10, 11) but they are NOT consecutive in node_indices because
-    # B was dropped (not inserted), so node_indices = [10, 11, 12] - actually
-    # consecutive because gap means B simply absent. Verify (10,12) absent
-    # (that would be the A->D skip) and (10,11) represents A directly adjacent to C.
-    # The key property: no index references a position that was never allocated.
-    all_edge_verts = {v for e in edges for v in e}
-    assert all_edge_verts.issubset({10, 11, 12}), (
-        f"Edge references unallocated index: {all_edge_verts}"
-    )
+    # Only the C-D pair is valid (consecutive AND both not-None).
+    # A-C must NOT be emitted (None sentinel between them).
+    assert edges == [(11, 12)]
+    assert (10, 11) not in edges, "edge spanned the dropped vert gap"
+    assert (10, 12) not in edges, "edge skipped over dropped vert"
 
 
 def test_build_stroke_node_indices_all_dropped_returns_empty():

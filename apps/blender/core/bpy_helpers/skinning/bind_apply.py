@@ -11,6 +11,7 @@ weights succeed, builds a populated ``WeightSidecar`` via
 from __future__ import annotations
 
 import contextlib
+from typing import Any
 
 import bpy
 
@@ -162,7 +163,9 @@ def _apply_bone_mode_overrides(
 
     # Compute alternate matrix for the opposing mode family.
     alt_mode = _alt_bind_mode(default_bmode)
-    alt_kwargs: dict[str, float] = {"falloff_power": falloff_power, "max_distance": effective_max}
+    # Heterogeneous value types (float + float | None) - bind_weights_for_mode
+    # accepts both via separate kwargs; use Any to avoid dict-invariance errors.
+    alt_kwargs: dict[str, Any] = {"falloff_power": falloff_power, "max_distance": effective_max}
     alt_weights = bind_weights_for_mode(alt_mode, vert_positions_xz, bone_segments, **alt_kwargs)
     assert alt_weights is not None
 

@@ -330,3 +330,57 @@ class TestExtractContours:
         outer, _inner = extract_contour_pair(alpha, 127, 0)
         outer2, _inner2, _holes = extract_contours(alpha, 127, 0)
         assert outer == outer2
+
+    def test_b3_narrow_corridor_not_a_hole(self) -> None:
+        """Regression: narrow inter-finger corridor must not appear as an enclosed hole.
+
+        B3 root cause (SPEC 013): at resolution=0.5 the 3-4 source-pixel gaps between
+        fingers downscale to 1-2 grid cells. The old code dilated the foreground by 1
+        cell before calling extract_holes; that dilation closed 1-cell-wide corridors,
+        turning border-connected external background into apparently-enclosed regions
+        -> false CDT holes -> disconnected mesh fragments (44 verts / 27 faces on the
+        hand fixture instead of the expected clean silhouette).
+
+        This test exercises the failure mode with a synthetic 20x20 hand-like mask:
+        a solid palm (bottom half) plus two fingers with a 1-cell gap between them.
+        The gap connects to the top border, so it is NOT an enclosed hole. The fix
+        (extract_holes on raw_mask instead of the foreground-dilated mask) must
+        return zero holes regardless of how narrow the corridor is.
+        """
+        # Build a synthetic hand-like alpha grid:
+        # top half = two fingers separated by a 1-cell gap (connects to border)
+        # bottom half = solid palm
+        size = 20
+        alpha: AlphaGrid = [[0] * size for _ in range(size)]
+        finger_w = 9
+        # Left finger
+        for y in range(0, size // 2):
+            for x in range(0, finger_w):
+                alpha[y][x] = 255
+        # Right finger (1-cell gap between at x=9)
+        for y in range(0, size // 2):
+            for x in range(finger_w + 1, size):
+                alpha[y][x] = 255
+        # Solid palm
+        for y in range(size // 2, size):
+            for x in range(size):
+                alpha[y][x] = 255
+
+        _outer, _inner, holes = extract_contours(alpha, threshold=0, margin_px=0)
+        assert holes == [], (
+            f"narrow inter-finger corridor (1-cell) was incorrectly detected "
+            f"as {len(holes)} enclosed hole(s) - B3 regression"
+        )
+
+    def test_b3_real_hole_still_detected(self) -> None:
+        """Counter-test: a genuine enclosed background island is still found after B3 fix.
+
+        The B3 fix must not suppress detection of actual holes (e.g. ring / donut
+        sprites). A 2x2 transparent hole fully surrounded by foreground cells has no
+        path to the grid border, so extract_holes on the raw mask must return it.
+        """
+        alpha = _donut_alpha(12, hole_inset=4)
+        _outer, _inner, holes = extract_contours(alpha, threshold=0, margin_px=0)
+        assert len(holes) == 1, (
+            f"genuine enclosed hole not detected after B3 fix - got {len(holes)}"
+        )

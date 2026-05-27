@@ -213,7 +213,10 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         apply_mesh,
     )
-    from proscenio.core.skinning.authoring_stages import StageOutput, StageParams  # type: ignore[import-not-found]
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
     # Build a stroke that crosses the hand's central area.
     # Stroke points are world XZ: hand sits at world X=-3.0, so mesh-local
     # X=0 maps to world X=-3.0. Z is unchanged (no Z offset in fixture).
@@ -227,9 +230,10 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
         contour_vertices=64, inner_loop_count=0, inner_loop_spacing=0.15,
         interior_spacing=0.1, bone_radius=0.5, bone_factor=2,
     )
-    counters_before = apply_mesh(obj, image, StageOutput(), params, bpy.data.objects["automesh.hand_rig"])
+    armature = bpy.data.objects["automesh.hand_rig"]
+    counters_before = apply_mesh(obj, image, StageOutput(), params, armature)
     verts_before = counters_before["total_verts"]
-    counters_after = apply_mesh(obj, image, output, params, bpy.data.objects["automesh.hand_rig"])
+    counters_after = apply_mesh(obj, image, output, params, armature)
     verts_after = counters_after["total_verts"]
     # Stroke added at least 3 inner verts (5 stroke pts; 2 may snap)
     assert verts_after >= verts_before + 3

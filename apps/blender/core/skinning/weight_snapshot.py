@@ -25,7 +25,7 @@ def build_sidecar_from_vgroup_data(
     obj.data.vertices.
     """
     entries: list[SidecarEntry] = []
-    for uv, weights in zip(uvs, weights_per_vert):
+    for uv, weights in zip(uvs, weights_per_vert, strict=False):
         entries.append(SidecarEntry(uv_anchor=uv, weights=dict(weights), provenance="auto_seed"))
     return WeightSidecar(
         version=SIDECAR_VERSION,

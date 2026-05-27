@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import bpy
 from bpy.props import FloatProperty
 
@@ -15,7 +17,7 @@ class PROSCENIO_OT_copy_weights_to_selected(bpy.types.Operator):
         "Copy vertex weights from the active mesh to all other selected meshes "
         "by nearest-vertex world position"
     )
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     max_distance: FloatProperty(
         name="Max Distance",

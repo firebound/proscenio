@@ -357,7 +357,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         }
 
     def _delete_stroke_at_mouse(self, context: bpy.types.Context, event: bpy.types.Event) -> None:
-        """Hit-test: find stroke whose ANY vert is within _STROKE_PICK_RADIUS_PX of mouse, remove it."""
+        """Hit-test: remove stroke if any vert is within _STROKE_PICK_RADIUS_PX of mouse."""
         mouse_world = _region_to_world_xz(context, event)
         if mouse_world is None:
             return

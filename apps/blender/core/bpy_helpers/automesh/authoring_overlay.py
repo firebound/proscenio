@@ -14,7 +14,7 @@ import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
-from ...skinning.authoring_stages import AuthoringStage, Stroke, StageOutput
+from ...skinning.authoring_stages import AuthoringStage, StageOutput, Stroke
 
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 _OUTER_COLOR = (0.0, 0.8, 1.0, 0.9)

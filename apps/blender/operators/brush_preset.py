@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import bpy
 
 from ..core.skinning.brush_curve_presets import PRESET_LABELS, PRESETS
@@ -11,7 +13,7 @@ class PROSCENIO_OT_set_brush_preset(bpy.types.Operator):
     bl_idname = "proscenio.set_brush_preset"
     bl_label = "Apply Brush Curve Preset"
     bl_description = "Configure the active weight-paint brush curve to a named preset"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     preset_name: bpy.props.EnumProperty(
         name="Preset",

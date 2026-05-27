@@ -158,7 +158,8 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         if counters["groups_wiped"] > 0:
             report_info(
                 self,
-                f"[{mesh_obj.name}] removed {counters['groups_wiped']} non-base vertex group(s) before bind",
+                f"[{mesh_obj.name}] removed {counters['groups_wiped']} "
+                "non-base vertex group(s) before bind",
             )
         report_info(
             self,
@@ -200,7 +201,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             try:
                 self._bind_single(mesh_obj, armature)
                 successes += 1
-            except Exception as exc:  # noqa: BLE001 - defensive per-mesh catch
+            except Exception as exc:
                 failures.append((mesh_obj.name, str(exc)))
 
         for name, err in failures:

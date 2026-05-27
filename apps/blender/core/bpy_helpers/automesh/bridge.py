@@ -579,7 +579,14 @@ def _triangulate_into_bmesh(
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
-    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world, extra_edges=extra_edges)
+    build_mesh_via_delaunay(
+        bm,
+        outer_world,
+        inner_world,
+        interior_points,
+        holes_world,
+        extra_edges=extra_edges,
+    )
     if holes_world:
         # CDT's automatic hole detection is unreliable against the
         # bridge's Y-flip orientation flow; the centroid post-prune

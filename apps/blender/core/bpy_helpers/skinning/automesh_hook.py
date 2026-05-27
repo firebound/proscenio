@@ -34,8 +34,12 @@ def maybe_pre_regen_snapshot(
     Returns None when the auto-flow should NOT engage:
     - no picker armature set
     - PG flag preserve_on_regen = False
-    - obj has no existing sidecar OR existing sidecar has empty entries
-      (= pre-wave-bound sprite that never went through populated bind)
+    - obj has no existing sidecar AND no vertex_groups (nothing to snapshot)
+
+    Mixed-flow fallback (M1): when no sidecar exists but vertex_groups are
+    populated (e.g. user bound via Ctrl+P Armature Auto Weights without our
+    bind operator), build the sidecar on-the-fly from current vgroup data so
+    weights survive the next automesh regen.
     """
     if armature is None or armature.type != "ARMATURE":
         return None
@@ -43,8 +47,17 @@ def maybe_pre_regen_snapshot(
     if skinning is None or not bool(getattr(skinning, "preserve_on_regen", True)):
         return None
     payload = obj.get(_SIDECAR_KEY)
-    if payload is None:
-        return None
+    if payload is not None:
+        return _snapshot_from_existing_sidecar(obj, armature, payload)
+    return _snapshot_from_vgroups_fallback(obj, armature)
+
+
+def _snapshot_from_existing_sidecar(
+    obj: bpy.types.Object,
+    armature: bpy.types.Object,
+    payload: str,
+) -> WeightSidecar | None:
+    """Happy path: existing sidecar present - snapshot from live vgroup state."""
     try:
         existing = from_json(payload)
     except ValueError:
@@ -52,6 +65,29 @@ def maybe_pre_regen_snapshot(
     if not existing.entries:
         return None
     return snapshot_sidecar(obj, armature, provenance="auto_seed")
+
+
+def _snapshot_from_vgroups_fallback(
+    obj: bpy.types.Object,
+    armature: bpy.types.Object,
+) -> WeightSidecar | None:
+    """Mixed-flow fallback (M1): no sidecar but vertex_groups may carry weights.
+
+    Covers Ctrl+P Armature Auto Weights bind (no sidecar written). Build
+    sidecar on-the-fly so post-regen reproject can restore weights.
+    """
+    if not obj.vertex_groups or not _has_any_weight(obj):
+        return None
+    return snapshot_sidecar(obj, armature, provenance="auto_seed")
+
+
+def _has_any_weight(obj: bpy.types.Object) -> bool:
+    """Return True when at least one vert carries a non-trivial group weight."""
+    for vert in obj.data.vertices:
+        for group_elem in vert.groups:
+            if group_elem.weight > 1e-6:
+                return True
+    return False
 
 
 def maybe_post_regen_reproject(

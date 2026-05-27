@@ -8,12 +8,14 @@ running modal operator. Final apply_mesh pipes through build_automesh
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 import bpy
 from mathutils import Vector
 
 from ...automesh import (
     BoneSegment2D,
+    arc_length_resample,
     binarize,
     compute_inner_loops,
     extract_outer_contour,
@@ -221,27 +223,34 @@ def apply_mesh(
 
     Without this wire, Stage 3 strokes are preview-only.
 
-    NOTE: pre-computes outer_world via compute_outer to know snap candidates
-    + interior_base_index for stroke vert indices. build_automesh re-runs the
-    same outer extraction internally; this duplication is acceptable
-    (compute_outer is ~50ms, APPLY is once per modal session). A future
-    refactor could thread outer_world into build_automesh to avoid the
-    double run.
+    NOTE: pre-computes outer_world via compute_outer + matches build_automesh's
+    internal `arc_length_resample(outer, target_contour_vertices)` so the
+    snap-candidate count + interior_base_index match what build_automesh
+    will produce. Without the resample match the indices would reference
+    the raw walker output (~200 verts) while build_automesh ships a
+    resampled outer (~64 verts), corrupting extra_edges. compute_outer is
+    ~50ms; the extra resample is a few ms; APPLY is once per modal session.
+    A future refactor could thread outer_world into build_automesh to avoid
+    the double run entirely.
     """
     from ..skinning import maybe_post_regen_reproject, maybe_pre_regen_snapshot
 
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
-    # Pre-compute outer for snap candidates + index layout
-    outer_world = compute_outer(obj, image, params)
-    outer_world_local = [_world_to_local_xz(obj, p) for p in outer_world]
+    # Pre-compute outer for snap candidates + index layout.
+    # CRITICAL: match build_automesh's internal arc_length_resample so the
+    # index counts agree (raw walker output vs resampled outer differ).
+    outer_world_raw = compute_outer(obj, image, params)
+    outer_world_local_raw = [_world_to_local_xz(obj, p) for p in outer_world_raw]
+    outer_world_local = list(arc_length_resample(outer_world_local_raw, params.contour_vertices))
     outer_base_index = 0
     interior_base_index = len(outer_world_local)
     if params.inner_loop_count > 0:
-        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world, params)
+        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world_raw, params)
         if inner_loops:
-            interior_base_index += len(inner_loops[-1])
+            # build_automesh resamples the innermost loop to contour_vertices too
+            interior_base_index += params.contour_vertices
     extras_local, extra_edges = _strokes_to_cdt_inputs(
         obj,
         output.user_strokes,
@@ -324,6 +333,81 @@ def _to_world_xz(obj: bpy.types.Object, local_points: list[Point2D]) -> list[Poi
     return out
 
 
+def _to_local_xz(obj: bpy.types.Object) -> Callable[[Point2D], Point2D]:
+    """Build a world-XZ -> mesh-local-XZ projector closed over obj.matrix_world.inverted()."""
+    inv = obj.matrix_world.inverted()
+
+    def project(p: Point2D) -> Point2D:
+        v = inv @ Vector((p[0], 0.0, p[1]))
+        return (v.x, v.z)
+
+    return project
+
+
+def _emit_point_extras(
+    points: list[Point2D],
+    project: Callable[[Point2D], Point2D],
+    extras_local: list[Point2D],
+) -> None:
+    """Append kind='point' stroke verts to extras (no edges)."""
+    for p in points:
+        extras_local.append(project(p))
+
+
+def _build_stroke_node_indices(
+    pts_local: list[Point2D],
+    outer_world_local: list[Point2D],
+    outer_base_index: int,
+    interior_base_index: int,
+    extras_local: list[Point2D],
+    snap_radius: float,
+) -> list[int]:
+    """For one kind='stroke' polyline, append surviving inner verts to
+    extras_local and return the sequence of CDT vert indices that the
+    stroke's constraint edges should connect.
+
+    Endpoint snapping: when start or end falls within snap_radius of an
+    outer contour vert, the stroke vert is DROPPED and the edge references
+    the outer vert's index directly (avoids a duplicate co-located vert).
+    """
+    from ...automesh.stroke_geometry import snap_endpoint
+
+    start_snap = snap_endpoint(pts_local[0], outer_world_local, snap_radius)
+    end_snap = snap_endpoint(pts_local[-1], outer_world_local, snap_radius)
+    inner_pts = list(pts_local)
+    if start_snap is not None and inner_pts:
+        inner_pts = inner_pts[1:]
+    if end_snap is not None and inner_pts:
+        inner_pts = inner_pts[:-1]
+    allocated_start = interior_base_index + len(extras_local)
+    allocated_indices = list(range(allocated_start, allocated_start + len(inner_pts)))
+    extras_local.extend(inner_pts)
+    node_indices: list[int] = []
+    if start_snap is not None:
+        node_indices.append(outer_base_index + start_snap)
+    node_indices.extend(allocated_indices)
+    if end_snap is not None:
+        node_indices.append(outer_base_index + end_snap)
+    return node_indices
+
+
+def _edges_from_node_indices(node_indices: list[int]) -> list[tuple[int, int]]:
+    """Consecutive-pair edges, skipping self-edges (a == b).
+
+    Self-edges happen when both endpoints snap to the same outer vert AND
+    no inner stroke verts survive between them - CDT rejects self-edges
+    and may destabilize, so emit nothing.
+    """
+    out: list[tuple[int, int]] = []
+    for i in range(len(node_indices) - 1):
+        a = node_indices[i]
+        b = node_indices[i + 1]
+        if a == b:
+            continue
+        out.append((a, b))
+    return out
+
+
 def _strokes_to_cdt_inputs(
     obj: bpy.types.Object,
     strokes: list[Stroke],
@@ -351,49 +435,26 @@ def _strokes_to_cdt_inputs(
     to each stroke point first; existing _world_steiners_to_local
     pattern).
     """
-    from ...automesh.stroke_geometry import snap_endpoint  # local to keep top clean
-    inv = obj.matrix_world.inverted()
+    project = _to_local_xz(obj)
     extras_local: list[Point2D] = []
     edges: list[tuple[int, int]] = []
-
-    def to_local(p: Point2D) -> Point2D:
-        v = inv @ Vector((p[0], 0.0, p[1]))
-        return (v.x, v.z)
-
     snap_radius = interior_spacing * 1.5
-
     for stroke in strokes:
         if stroke["kind"] == "point":
-            for p in stroke["points"]:
-                extras_local.append(to_local(p))
+            _emit_point_extras(stroke["points"], project, extras_local)
             continue
-        # stroke kind
-        pts_local = [to_local(p) for p in stroke["points"]]
+        pts_local = [project(p) for p in stroke["points"]]
         if not pts_local:
             continue
-        # snap endpoints to outer
-        start_snap = snap_endpoint(pts_local[0], outer_world_local, snap_radius)
-        end_snap = snap_endpoint(pts_local[-1], outer_world_local, snap_radius)
-        # decide which inner indices are stroke-allocated
-        inner_pts = list(pts_local)
-        if start_snap is not None and inner_pts:
-            inner_pts = inner_pts[1:]
-        if end_snap is not None and inner_pts:
-            inner_pts = inner_pts[:-1]
-        # allocate indices for the inner stroke verts
-        allocated_start = interior_base_index + len(extras_local)
-        allocated_indices = list(range(allocated_start, allocated_start + len(inner_pts)))
-        extras_local.extend(inner_pts)
-        # build edge sequence
-        node_indices: list[int] = []
-        if start_snap is not None:
-            node_indices.append(outer_base_index + start_snap)
-        node_indices.extend(allocated_indices)
-        if end_snap is not None:
-            node_indices.append(outer_base_index + end_snap)
-        # skip strokes that collapsed entirely (both endpoints snapped to same outer)
+        node_indices = _build_stroke_node_indices(
+            pts_local,
+            outer_world_local,
+            outer_base_index,
+            interior_base_index,
+            extras_local,
+            snap_radius,
+        )
         if len(node_indices) < 2:
             continue
-        for i in range(len(node_indices) - 1):
-            edges.append((node_indices[i], node_indices[i + 1]))
+        edges.extend(_edges_from_node_indices(node_indices))
     return extras_local, edges

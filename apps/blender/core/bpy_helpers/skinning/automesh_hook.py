@@ -57,13 +57,19 @@ def _snapshot_from_existing_sidecar(
     armature: bpy.types.Object,
     payload: str,
 ) -> WeightSidecar | None:
-    """Happy path: existing sidecar present - snapshot from live vgroup state."""
+    """Happy path: existing sidecar present - snapshot from live vgroup state.
+
+    Falls through to the vgroup fallback when (a) the JSON is corrupt or (b)
+    the sidecar has zero entries. Without the fall-through, a corrupted or
+    empty sidecar would silently wipe the user's vgroup-based weights on
+    regen (the exact mixed-flow data-loss class M1 was meant to prevent).
+    """
     try:
         existing = from_json(payload)
     except ValueError:
-        return None
+        return _snapshot_from_vgroups_fallback(obj, armature)
     if not existing.entries:
-        return None
+        return _snapshot_from_vgroups_fallback(obj, armature)
     return snapshot_sidecar(obj, armature, provenance="auto_seed")
 
 

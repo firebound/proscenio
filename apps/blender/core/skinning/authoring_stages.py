@@ -31,13 +31,15 @@ class AuthoringStage(IntEnum):
 
 
 class Stroke(TypedDict):
-    """Stage 3 stroke or single-Steiner placement (SPEC 013 S7).
+    """Stage 3 stroke or single-Steiner placement (SPEC 013 S7 + AS-AM7).
 
     kind="point": single Steiner from a click without drag (S6 backward compat).
     kind="stroke": resampled polyline that becomes constraint edges + verts.
+    kind="cut": resampled polyline; emits 2 perpendicular offset loops as
+        constraint edges + post-CDT face-prune removes faces inside the lens.
     """
 
-    kind: Literal["point", "stroke"]
+    kind: Literal["point", "stroke", "cut"]
     points: list[tuple[float, float]]  # WORLD XZ, post-smooth + post-resample
 
 

@@ -57,7 +57,9 @@ _STAGE_NAMES = {
     AuthoringStage.OUTER: "1/6 Outer contour",
     AuthoringStage.USER_OUTER: "2/6 User outer edits (TBD - capture in follow-up)",
     AuthoringStage.INNER_LOOPS: "3/6 Inner loops",
-    AuthoringStage.USER_STEINERS: "4/6 User Steiner points (LMB stroke / Shift+drag cut / Ctrl+drag delete)",
+    AuthoringStage.USER_STEINERS: (
+        "4/6 User Steiner points (LMB stroke / Shift+drag cut / Ctrl+drag delete)"
+    ),
     AuthoringStage.STEINER_PREVIEW: "5/6 Steiner preview",
     AuthoringStage.APPLY: "6/6 Apply",
 }
@@ -134,6 +136,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # Must be mutated in-place (clear/append) so the registered draw
         # callback always reads the current contents via the same reference.
         self._stroke_raw_points: list[tuple[float, float]] = []
+        # Whether the in-flight stroke was started with Shift held (kind="cut").
+        # Captured at LMB PRESS so subsequent Shift release before LMB UP does
+        # not change intent mid-drag.
+        self._stroke_is_cut: bool = False
         self._user_strokes: list[Stroke] = []
 
         try:
@@ -162,66 +168,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             if event.type == "BACK_SPACE" and event.value == "PRESS":
                 return self._retreat(context)
             if self._stage == AuthoringStage.USER_STEINERS:
-                if event.type == "LEFTMOUSE" and event.value == "PRESS":
-                    if event.ctrl:
-                        self._delete_stroke_at_mouse(context, event)
-                        _tag_redraw_view3d(context)
-                        return {"RUNNING_MODAL"}
-                    self._stroke_active = True
-                    self._stroke_active_ref[0] = True
-                    self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
-                    world_pt = _region_to_world_xz(context, event)
-                    self._stroke_raw_points.clear()
-                    if world_pt:
-                        self._stroke_raw_points.append(world_pt)
-                    return {"RUNNING_MODAL"}
-                if event.type == "MOUSEMOVE" and self._stroke_active:
-                    world_pt = _region_to_world_xz(context, event)
-                    if world_pt:
-                        self._stroke_raw_points.append(world_pt)
-                        _tag_redraw_view3d(context)
-                    return {"RUNNING_MODAL"}
-                if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._stroke_active:
-                    self._stroke_active = False
-                    self._stroke_active_ref[0] = False
-                    start = self._stroke_start_screen
-                    self._stroke_start_screen = None
-                    if start is None or not self._stroke_raw_points:
-                        self._stroke_raw_points.clear()
-                        return {"RUNNING_MODAL"}
-                    dx = event.mouse_region_x - start[0]
-                    dy = event.mouse_region_y - start[1]
-                    drag_px = (dx * dx + dy * dy) ** 0.5
-                    if drag_px < self._DRAG_THRESHOLD_PX:
-                        first_pt = self._stroke_raw_points[0]
-                        self._user_strokes.append({"kind": "point", "points": [first_pt]})
-                    else:
-                        from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
-                            chaikin_smooth,
-                            resample_polyline,
-                        )
-
-                        smoothed = chaikin_smooth(
-                            self._stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS
-                        )
-                        spacing = self._resolve_interior_spacing(context)
-                        resampled = resample_polyline(smoothed, spacing=spacing)
-                        if len(resampled) >= 2:
-                            self._user_strokes.append({"kind": "stroke", "points": resampled})
-                    self._stroke_raw_points.clear()
-                    obj = context.active_object
-                    if obj is not None:
-                        write_user_strokes(obj, self._user_strokes)
-                    _tag_redraw_view3d(context)
-                    return {"RUNNING_MODAL"}
-                if event.type == "Z" and event.ctrl and event.value == "PRESS":
-                    if self._user_strokes:
-                        self._user_strokes.pop()
-                        obj = context.active_object
-                        if obj is not None:
-                            write_user_strokes(obj, self._user_strokes)
-                        _tag_redraw_view3d(context)
-                    return {"RUNNING_MODAL"}
+                handled = self._handle_user_steiners_event(context, event)
+                if handled is not None:
+                    return handled
             if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
                 current = _snapshot_params(context)
                 if current != self._last_params:
@@ -231,6 +180,93 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             traceback.print_exc()
             return self._finish(context, cancel=True)
         return {"PASS_THROUGH"}
+
+    def _handle_user_steiners_event(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str] | None:
+        """Dispatch Stage 4 (USER_STEINERS) event. Returns None when event
+        was not consumed (modal falls through to TIMER + PASS_THROUGH)."""
+        if event.type == "LEFTMOUSE" and event.value == "PRESS":
+            return self._stroke_press(context, event)
+        if event.type == "MOUSEMOVE" and self._stroke_active:
+            return self._stroke_move(context, event)
+        if event.type == "LEFTMOUSE" and event.value == "RELEASE" and self._stroke_active:
+            return self._stroke_release(context, event)
+        if event.type == "Z" and event.ctrl and event.value == "PRESS":
+            return self._stroke_undo(context)
+        return None
+
+    def _stroke_press(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        if event.ctrl:
+            self._delete_stroke_at_mouse(context, event)
+            _tag_redraw_view3d(context)
+            return {"RUNNING_MODAL"}
+        self._stroke_active = True
+        self._stroke_active_ref[0] = True
+        self._stroke_is_cut = bool(event.shift)
+        self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
+        world_pt = _region_to_world_xz(context, event)
+        self._stroke_raw_points.clear()
+        if world_pt:
+            self._stroke_raw_points.append(world_pt)
+        return {"RUNNING_MODAL"}
+
+    def _stroke_move(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        world_pt = _region_to_world_xz(context, event)
+        if world_pt:
+            self._stroke_raw_points.append(world_pt)
+            _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _stroke_release(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        self._stroke_active = False
+        self._stroke_active_ref[0] = False
+        start = self._stroke_start_screen
+        self._stroke_start_screen = None
+        if start is None or not self._stroke_raw_points:
+            self._stroke_raw_points.clear()
+            self._stroke_is_cut = False
+            return {"RUNNING_MODAL"}
+        dx = event.mouse_region_x - start[0]
+        dy = event.mouse_region_y - start[1]
+        drag_px = (dx * dx + dy * dy) ** 0.5
+        if drag_px < self._DRAG_THRESHOLD_PX:
+            self._commit_click_steiner()
+        else:
+            self._commit_drag_stroke(context)
+        self._stroke_raw_points.clear()
+        self._stroke_is_cut = False
+        obj = context.active_object
+        if obj is not None:
+            write_user_strokes(obj, self._user_strokes)
+        _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _commit_click_steiner(self) -> None:
+        first_pt = self._stroke_raw_points[0]
+        self._user_strokes.append({"kind": "point", "points": [first_pt]})
+
+    def _commit_drag_stroke(self, context: bpy.types.Context) -> None:
+        from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+            chaikin_smooth,
+            resample_polyline,
+        )
+
+        smoothed = chaikin_smooth(self._stroke_raw_points, iters=self._STROKE_SMOOTH_ITERS)
+        spacing = self._resolve_interior_spacing(context)
+        resampled = resample_polyline(smoothed, spacing=spacing)
+        if len(resampled) >= 2:
+            kind = "cut" if self._stroke_is_cut else "stroke"
+            self._user_strokes.append({"kind": kind, "points": resampled})
+
+    def _stroke_undo(self, context: bpy.types.Context) -> set[str]:
+        if self._user_strokes:
+            self._user_strokes.pop()
+            obj = context.active_object
+            if obj is not None:
+                write_user_strokes(obj, self._user_strokes)
+            _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
 
     def _advance(self, context: bpy.types.Context) -> set[str]:
         if self._stage == AuthoringStage.APPLY:
@@ -277,9 +313,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 )
                 return {"PASS_THROUGH"}
             if counters.get("stroke_verts_dropped", 0) > 0:
+                dropped = counters["stroke_verts_dropped"]
                 report_warn(
                     self,
-                    f"Stroke: {counters['stroke_verts_dropped']} vert(s) dropped (outside silhouette)",
+                    f"Stroke: {dropped} vert(s) dropped (outside silhouette)",
                 )
             report_info(
                 self,

@@ -275,10 +275,7 @@ def _in_exclude_zone(
     to avoid a sqrt per candidate.
     """
     px, pz = point
-    for cx, cz, r in zones:
-        if (cx - px) ** 2 + (cz - pz) ** 2 <= r * r:
-            return True
-    return False
+    return any((cx - px) ** 2 + (cz - pz) ** 2 <= r * r for cx, cz, r in zones)
 
 
 def interior_points_for_annulus(

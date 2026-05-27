@@ -578,12 +578,20 @@ def _triangulate_into_bmesh(
     interior_points: list[tuple[float, float]],
     holes_world: list[Contour2D],
     extra_edges: list[tuple[int, int]] | None = None,
+    cut_lenses: list[list[tuple[float, float]]] | None = None,
 ) -> tuple[int, object]:
     """Run CDT into a bmesh + apply the hole-face post-prune.
 
     Returns ``(base_group_index, bm)`` so the orchestrator can
     decide whether to commit the bmesh (final path) or write +
     free without finalize (debug fill_no_interior).
+
+    Two independent post-CDT prune passes run in sequence:
+    1. Alpha-hole prune: faces whose centroid falls inside any alpha
+       hole contour (holes_world). Unchanged from pre-AS-AM7 behaviour.
+    2. Cut-lens prune: faces whose centroid falls inside any cut lens
+       polygon (cut_lenses from kind='cut' strokes). Orthogonal to pass
+       1 - different polygon sets, same delete_faces_inside_holes helper.
     """
     base_group_index, _is_fresh = initialize_base_sprite_group(obj)
     delete_non_base_geometry(obj, base_group_index)
@@ -603,6 +611,15 @@ def _triangulate_into_bmesh(
         # bridge's Y-flip orientation flow; the centroid post-prune
         # is the deterministic fallback (see cdt.py).
         delete_faces_inside_holes(bm, holes_world)
+    if cut_lenses:
+        # Separate pass: remove faces inside cut-stroke lens polygons.
+        # Intentionally kept apart from the alpha-hole pass so the two
+        # polygon sets never interfere with each other.
+        n_pruned = delete_faces_inside_holes(bm, cut_lenses)
+        print(
+            f"[automesh] cut_lens_prune removed {n_pruned} face(s) "
+            f"across {len(cut_lenses)} lens(es)"
+        )
     return base_group_index, bm
 
 
@@ -644,6 +661,7 @@ def build_automesh(
     preserve_base_quad: bool = False,
     extra_steiners: list[tuple[float, float]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
+    cut_lenses_local: list[list[tuple[float, float]]] | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -746,7 +764,13 @@ def build_automesh(
         )
 
     base_group_index, bm = _triangulate_into_bmesh(
-        obj, outer_world, inner_world, interior_points, holes_world, extra_edges=extra_edges
+        obj,
+        outer_world,
+        inner_world,
+        interior_points,
+        holes_world,
+        extra_edges=extra_edges,
+        cut_lenses=cut_lenses_local,
     )
     if debug_stage == "fill_no_interior":
         mesh = obj.data

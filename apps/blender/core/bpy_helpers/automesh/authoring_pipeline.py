@@ -512,7 +512,7 @@ def _build_stroke_node_indices(
     first_alive = next((i for i, m in enumerate(survivors_mask) if m), None)
     last_alive = next((i for i, m in reversed(list(enumerate(survivors_mask))) if m), None)
 
-    if first_alive is None:
+    if first_alive is None or last_alive is None:
         # Every vert dropped - nothing to emit.
         return [], dropped
 

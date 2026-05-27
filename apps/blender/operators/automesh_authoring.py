@@ -346,7 +346,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
         if not self._output.outer:
             return False
-        return point_in_polygon(point_world_xz, self._output.outer)
+        return bool(point_in_polygon(point_world_xz, self._output.outer))
 
     def _handle_user_steiners_event(
         self, context: bpy.types.Context, event: bpy.types.Event
@@ -419,7 +419,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._user_strokes.append({"kind": "point", "points": [first_pt]})
 
     def _commit_drag_stroke(self, context: bpy.types.Context) -> None:
-        from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+        from ..core.automesh.stroke_geometry import (
             chaikin_smooth,
             resample_polyline,
         )

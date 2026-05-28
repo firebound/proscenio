@@ -545,3 +545,57 @@ def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
         b = obj.data.vertices[edge.vertices[1]].co
         span = math.hypot(a.x - b.x, a.z - b.z)
         assert span < 0.5, f"long edge {edge.vertices[0]}-{edge.vertices[1]} spans {span:.3f}"
+
+
+def test_apply_mesh_cut_to_alpha_severs_to_boundary(automesh_fixture):
+    """Cut stroke ending in alpha still carves a corridor that breaches the
+    silhouette boundary (AS-AM7-REV2). The artist draws from interior toward
+    an alpha gap without tracing to the exact edge; the corridor severs there.
+
+    Stroke: starts inside the palm, ends OUTSIDE the silhouette (alpha). The
+    cut must NOT be dropped (a fully-inside-only filter would discard the
+    alpha tail and stop the corridor short). Assert a corridor was carved
+    (faces drop vs baseline)."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    # Hand at world X=-3.0; silhouette spans roughly Z in [-0.8, 0.8].
+    # Stroke runs from palm interior (Z=-0.2) UP past the top of the
+    # silhouette into alpha (Z=1.2, well above the fingers).
+    cut_to_alpha = StageOutput(
+        user_strokes=[
+            {
+                "kind": "cut",
+                "points": [(-3.0, -0.2), (-3.0, 0.2), (-3.0, 0.6), (-3.0, 1.2)],
+            }
+        ]
+    )
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+        cut_margin=0.08,
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    baseline = apply_mesh(obj, image, StageOutput(), params, armature)
+    cut = apply_mesh(obj, image, cut_to_alpha, params, armature)
+    # The alpha-crossing cut still carves a corridor (not dropped).
+    assert cut["total_faces"] < baseline["total_faces"], (
+        f"cut-to-alpha did not carve a corridor: baseline={baseline['total_faces']} "
+        f"cut={cut['total_faces']}"
+    )

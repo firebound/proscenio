@@ -601,27 +601,39 @@ def _cut_stroke_to_hole_loop(
     holes_world_local: list[list[Point2D]] | None,
     cut_half: float,
 ) -> tuple[list[Point2D] | None, int]:
-    """Build the corridor hole loop for a kind='cut' stroke (T-REV5).
+    """Build the corridor hole loop for a kind='cut' stroke (T-REV5 + AS-AM7-REV2).
 
-    Returns (lens_loop, dropped_count). lens_loop is None when fewer than 2
-    samples survive the silhouette filter. The loop is a closed polygon
-    (left offset + right offset reversed) suitable for use as a CDT hole -
-    the triangulation excludes its interior + never crosses it, producing
-    a clean corridor gap (the user's algorithm: cut = hole).
+    Returns (lens_loop, dropped_count). lens_loop is None when the stroke is
+    too short or lies entirely outside the silhouette. The loop is a closed
+    polygon (left offset + right offset reversed) used as a CDT hole - the
+    triangulation excludes its interior + never crosses it (clean corridor).
+
+    AS-AM7-REV2 (cut-to-alpha): unlike fold-lines, cut verts are NOT filtered
+    to inside-silhouette. The full stroke (including samples that land in alpha
+    OUTSIDE the silhouette) is offset into the corridor. When the corridor
+    crosses the outer boundary, the CDT-hole severs the silhouette there - so
+    an artist can draw from the interior toward an alpha gap (e.g. between
+    fingers) and the cut completes the severance to the boundary WITHOUT having
+    to trace all the way to the exact edge. A cut needs >= 1 sample inside the
+    silhouette (a fully-alpha stroke severs nothing); otherwise it is dropped.
     """
     from ...automesh.cut_geometry import lens_polygon, perpendicular_offsets
 
     pts_local = [project(p) for p in stroke["points"]]
-    surviving = [
-        p
+    if len(pts_local) < 2:
+        return None, len(pts_local)
+    inside_count = sum(
+        1
         for p in pts_local
         if _vert_inside_silhouette(p, outer_world_local, inner_world_local, holes_world_local)
-    ]
-    dropped = len(pts_local) - len(surviving)
-    if len(surviving) < 2:
-        return None, dropped
-    left_loop, right_loop = perpendicular_offsets(surviving, half_width=cut_half)
-    return lens_polygon(left_loop, right_loop), dropped
+    )
+    if inside_count == 0:
+        # Entirely in alpha - nothing to sever.
+        return None, len(pts_local)
+    # Keep ALL samples (including alpha ones) so the corridor can breach the
+    # boundary; dropped counts only the alpha tail for the artist WARNING.
+    left_loop, right_loop = perpendicular_offsets(pts_local, half_width=cut_half)
+    return lens_polygon(left_loop, right_loop), len(pts_local) - inside_count
 
 
 def _strokes_to_cdt_inputs(

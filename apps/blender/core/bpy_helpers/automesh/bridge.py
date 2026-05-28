@@ -70,6 +70,37 @@ before triangulation. Three passes is the COA Tools 2 default and
 empirically the sweet spot between staircase suppression and
 silhouette drift."""
 
+_EXTRA_INDEX_SENTINEL = 1_000_000
+"""Index-namespace base for stroke (fold-line) extra verts in extra_edges.
+
+apply_mesh cannot know the auto-fill interior count when it allocates
+extra_edges indices, so it indexes extra verts from this sentinel
+(SENTINEL + k). Snap-to-outer endpoints use the real outer index (small,
+< outer count). build_automesh then remaps SENTINEL + k to the true coord
+position once the auto-fill count is known (outer + inner + auto + k).
+The sentinel is far above any real vert count (meshes are < 1000 verts),
+so the two namespaces never collide. Fixes the 2-fold fan bug where
+extra_edges referenced auto-fill verts instead of the stroke verts."""
+
+
+def _remap_extra_edge_indices(
+    extra_edges: list[tuple[int, int]],
+    extra_base: int,
+) -> list[tuple[int, int]]:
+    """Shift sentinel-namespaced extra vert indices to their true coord base.
+
+    Indices >= _EXTRA_INDEX_SENTINEL are stroke extra verts: remap to
+    extra_base + (idx - SENTINEL). Indices below the sentinel are outer/inner
+    contour refs (snap endpoints) and pass through unchanged.
+    """
+
+    def remap(idx: int) -> int:
+        if idx >= _EXTRA_INDEX_SENTINEL:
+            return extra_base + (idx - _EXTRA_INDEX_SENTINEL)
+        return idx
+
+    return [(remap(a), remap(b)) for a, b in extra_edges]
+
 
 DebugStage = Literal[
     "off",
@@ -743,10 +774,18 @@ def build_automesh(
         bone_density_factor,
         exclude_zones=exclude_zones,
     )
+    # Capture the auto-fill count BEFORE merging extras so extra_edges
+    # indices can be remapped to their true position in the final coord
+    # array (outer + inner + auto_interior + extras). The caller indexes
+    # extra verts from _EXTRA_INDEX_SENTINEL; we shift them to the real base.
+    auto_interior_count = len(interior_points)
     if extra_steiners:
         interior_points = _merge_extra_steiners(
             interior_points, extra_steiners, outer_world, inner_world, holes_world
         )
+    if extra_edges:
+        extra_base = len(outer_world) + len(inner_world) + auto_interior_count
+        extra_edges = _remap_extra_edge_indices(extra_edges, extra_base)
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)
         return _debug_stage_report(

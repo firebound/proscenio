@@ -473,3 +473,75 @@ def test_apply_mesh_outer_extend_stroke_grows_silhouette(automesh_fixture):
     extend_result = apply_mesh(obj, image, extend_output, params, armature)
     # Extended silhouette: should have AT LEAST as many faces (typically more)
     assert extend_result["total_faces"] >= baseline["total_faces"]
+
+
+def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
+    """Two fold-lines must not create a fan-degenerate hub (2-fold bug).
+
+    Regression for the index-aliasing bug where extra_edges referenced
+    auto-fill verts instead of the stroke verts because the index base
+    omitted the auto-fill count. The symptom was one vert acquiring an
+    abnormal edge degree (a fan hub) + long edges spanning the mesh.
+    The sentinel-namespace remap (build_automesh._remap_extra_edge_indices)
+    fixes it. This test locks the contract: no vert hub, no long edges.
+    """
+    import math
+    from collections import defaultdict
+
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    # Two separate fold-line strokes in the palm (hand at world X=-3.0).
+    two_folds = StageOutput(
+        user_strokes=[
+            {
+                "kind": "stroke",
+                "points": [(-3.2, -0.1), (-3.2, -0.3), (-3.2, -0.5)],
+            },
+            {
+                "kind": "stroke",
+                "points": [(-2.9, -0.1), (-2.9, -0.3), (-2.9, -0.5)],
+            },
+        ]
+    )
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    apply_mesh(obj, image, two_folds, params, armature)
+
+    # No fan hub: a clean CDT triangulation keeps vert degree modest.
+    # The fan bug produced a vert with degree ~17; a healthy interior
+    # vert is typically <= 10. Use 14 as a generous ceiling.
+    degree: dict[int, int] = defaultdict(int)
+    for edge in obj.data.edges:
+        degree[edge.vertices[0]] += 1
+        degree[edge.vertices[1]] += 1
+    max_degree = max(degree.values()) if degree else 0
+    assert max_degree <= 14, f"fan hub detected: a vert has degree {max_degree}"
+
+    # No long edges: the hand spans ~1.5 world units; a fold constraint
+    # edge is at most interior_spacing-ish. The fan bug created edges
+    # spanning > 0.8. Assert no edge exceeds 0.5 world units.
+    for edge in obj.data.edges:
+        a = obj.data.vertices[edge.vertices[0]].co
+        b = obj.data.vertices[edge.vertices[1]].co
+        span = math.hypot(a.x - b.x, a.z - b.z)
+        assert span < 0.5, f"long edge {edge.vertices[0]}-{edge.vertices[1]} spans {span:.3f}"

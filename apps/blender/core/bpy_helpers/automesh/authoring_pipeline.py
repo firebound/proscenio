@@ -25,6 +25,7 @@ from ...automesh import (
 )
 from ...skinning.authoring_stages import Point2D, StageOutput, StageParams, Stroke
 from .bridge import (
+    _EXTRA_INDEX_SENTINEL,
     build_automesh,
     collect_bone_segments,
     pixel_contour_to_world,
@@ -312,28 +313,6 @@ def _split_outer_strokes(
     return extends, cuts
 
 
-def _resolve_interior_base_index(
-    obj: bpy.types.Object,
-    image: bpy.types.Image,
-    outer_world_raw: list[Point2D],
-    outer_world_local: list[Point2D],
-    params: StageParams,
-) -> int:
-    """Compute interior_base_index matching build_automesh's index layout.
-
-    Starts at len(outer_world_local). When inner loops are requested,
-    build_automesh also resamples the innermost loop to contour_vertices,
-    so interior_base_index advances by contour_vertices for each active
-    inner contour (currently at most 1 is used by CDT).
-    """
-    base = len(outer_world_local)
-    if params.inner_loop_count > 0:
-        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world_raw, params)
-        if inner_loops:
-            base += params.contour_vertices
-    return base
-
-
 def apply_mesh(
     obj: bpy.types.Object,
     image: bpy.types.Image,
@@ -375,16 +354,17 @@ def apply_mesh(
             arc_length_resample(outer_world_local_raw, params.contour_vertices)
         )
 
-    interior_base_index = _resolve_interior_base_index(
-        obj, image, outer_world_raw, outer_world_local, params
-    )
+    # Extra (stroke) verts are indexed from a sentinel namespace; build_automesh
+    # remaps them to their true coord position once the auto-fill count is known.
+    # This removes the need to guess the interior base here (the old guess
+    # omitted the auto-fill count, which corrupted extra_edges for 2+ folds).
     extras_local, extra_edges, stroke_verts_dropped, cut_hole_loops = _build_stroke_cdt_inputs(
         obj,
         outer_cuts,
         list(output.user_strokes),
         outer_world_local,
         outer_base_index=0,
-        interior_base_index=interior_base_index,
+        interior_base_index=_EXTRA_INDEX_SENTINEL,
         params=params,
     )
     counters = build_automesh(

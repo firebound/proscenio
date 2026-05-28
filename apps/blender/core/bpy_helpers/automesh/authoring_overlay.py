@@ -27,7 +27,6 @@ _INNER_BASE = (0.2, 1.0, 0.4, 0.85)
 _INNER_DIM = (0.1, 0.5, 0.2, 0.5)
 _STEINER_COLOR = (1.0, 0.3, 0.3, 0.7)
 _USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
-_STROKE_VERT_COLOR = (0.3, 0.7, 1.0, 1.0)  # kept for backward compat; alias for fold
 _STROKE_VERT_COLOR_FOLD = (0.3, 0.7, 1.0, 1.0)  # blue - fold-line stroke (Stage 4 default)
 _STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - Stage 4 rip-cut
 _STROKE_VERT_COLOR_CUT_REMOVE = (1.0, 0.6, 0.2, 1.0)  # orange - Stage 2 chunk-remove cut

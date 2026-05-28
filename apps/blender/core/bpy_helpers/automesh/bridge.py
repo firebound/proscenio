@@ -574,7 +574,7 @@ def _merge_extra_steiners(
 def _apply_rip_to_bmesh(
     bm: bmesh.types.BMesh,
     rip_edge_pairs: list[tuple[int, int]],
-    input_to_bm: dict,
+    input_to_bm: dict[int, bmesh.types.BMVert],
 ) -> None:
     """Resolve rip-edge pairs to bmesh edges and call split_edges.
 

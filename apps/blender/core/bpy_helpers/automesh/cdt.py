@@ -112,7 +112,7 @@ def _commit_cdt_faces(
     bm: bmesh.types.BMesh,
     out_verts: list[tuple[float, float]],
     out_faces: list[list[int]],
-) -> tuple[int, list]:
+) -> tuple[int, list[bmesh.types.BMVert]]:
     """Materialize CDT-output verts + faces into the bmesh.
 
     Returns ``(face_count, bm_verts)`` where ``bm_verts[i]`` is the
@@ -148,7 +148,7 @@ def build_mesh_via_delaunay(
     interior_points: list[tuple[float, float]],
     holes_world: list[list[tuple[float, float]]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
-) -> tuple[int, dict]:
+) -> tuple[int, dict[int, bmesh.types.BMVert]]:
     """Single-pass Constrained Delaunay Triangulation for the entire mesh.
 
     Replaces the prior 3-pass pipeline (manual annulus strip +
@@ -214,7 +214,7 @@ def build_mesh_via_delaunay(
     # Build input-coord-index -> BMVert mapping via _orig_v.
     # orig_v[out_i] is a list of input indices that CDT merged into out-vert i.
     # For each input index, the canonical BMVert is bm_verts[out_i].
-    input_to_bm: dict[int, object] = {}
+    input_to_bm: dict[int, bmesh.types.BMVert] = {}
     for out_i, orig_indices in enumerate(orig_v):
         bv = bm_verts[out_i]
         for orig_idx in orig_indices:

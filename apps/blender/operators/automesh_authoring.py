@@ -129,7 +129,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "steiners": None,
             "user_dots": None,
             "user_strokes": None,
+            "user_outer_strokes": None,
             "raw_stroke": None,
+            "live_preview": None,
             "tooltip": None,
         }
         self._timer = None
@@ -146,12 +148,26 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # Pen-tool state (click-by-click straight segments). The pen polyline
         # accumulates across consecutive modifier-clicks and finalizes on
         # modifier RELEASE. _pen_kind is "stroke" (Shift) or "cut" (Ctrl).
+        # _pen_points is mutated in-place (clear/append) so the live-preview
+        # draw handler keeps a stable reference.
         self._pen_active: bool = False
         self._pen_kind: str = "stroke"
         self._pen_points: list[tuple[float, float]] = []
         # Modifier held at LMB PRESS, captured so a release-before-LMB-up
         # does not change the committed kind. Values: "", "shift", "ctrl", "alt".
         self._press_modifier: str = ""
+
+        # Live in-progress preview (Stage 4). Single mutable dict held by the
+        # _draw_live_preview handler; fields mutated in-place so the colored
+        # pen / free-draw feedback renders without re-registration. See
+        # authoring_overlay._draw_live_preview for the key contract.
+        self._live_preview: dict[str, object] = {
+            "active": False,
+            "kind": "stroke",
+            "points": [],
+            "cursor": None,
+            "mode": "pen",
+        }
 
         # Tooltip live state - single-element lists mutated in-place so the
         # registered POST_PIXEL draw handler always reads current values
@@ -362,6 +378,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if event.type == "MOUSEMOVE":
             self._tooltip_mouse_ref[0] = (event.mouse_region_x, event.mouse_region_y)
             self._tooltip_text_ref[0] = self._compute_stage4_tooltip_text(event)
+            if self._pen_active:
+                self._live_preview["cursor"] = _region_to_world_xz(context, event)
             _tag_redraw_view3d(context)
             if self._stroke_active:
                 return self._stroke_move(context, event)
@@ -404,6 +422,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._stroke_raw_points.clear()
         if world_pt:
             self._stroke_raw_points.append(world_pt)
+        # Light up the colored free-draw preview while dragging. If this press
+        # turns out to be a click, _lmb_release routes it to the pen instead.
+        if self._press_modifier in {"shift", "ctrl"}:
+            self._live_preview["active"] = True
+            self._live_preview["mode"] = "free"
+            self._live_preview["kind"] = "cut" if self._press_modifier == "ctrl" else "stroke"
+            self._live_preview["points"] = self._stroke_raw_points
+            self._live_preview["cursor"] = None
         return {"RUNNING_MODAL"}
 
     def _lmb_release(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
@@ -432,6 +458,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return self._pen_add_point(context, raw[0], kind)
         # Drag = free-draw (commit immediately, independent of pen state).
         self._commit_drag_stroke(context, raw, kind)
+        self._live_preview["active"] = False
         self._persist_and_redraw(context)
         return {"RUNNING_MODAL"}
 
@@ -446,8 +473,15 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 self._finalize_pen(context)
             self._pen_active = True
             self._pen_kind = kind
-            self._pen_points = []
+            self._pen_points.clear()
         self._pen_points.append(point)
+        # Switch the live preview to pen mode so placed verts + the cursor
+        # rubber-band render until the polyline is finalized.
+        self._live_preview["active"] = True
+        self._live_preview["mode"] = "pen"
+        self._live_preview["kind"] = kind
+        self._live_preview["points"] = list(self._pen_points)
+        self._live_preview["cursor"] = None
         _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
@@ -455,7 +489,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Commit the current pen polyline and reset pen state."""
         pts = list(self._pen_points)
         self._pen_active = False
-        self._pen_points = []
+        self._pen_points.clear()
+        self._live_preview["active"] = False
         if not pts:
             return {"RUNNING_MODAL"}
         if len(pts) == 1:
@@ -530,6 +565,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             # must update in-place so the registered handler's reference stays valid.
             self._stroke_active_ref[0] = False
             self._stroke_raw_points.clear()
+            self._pen_active = False
+            self._pen_points.clear()
+            self._live_preview["active"] = False
+            self._live_preview["cursor"] = None
         elif next_stage == AuthoringStage.STEINER_PREVIEW:
             picker = _resolve_picker(context)
             bone_segments = collect_bone_segments(picker) if picker is not None else []
@@ -576,6 +615,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if self._stage == AuthoringStage.OUTER:
             return {"PASS_THROUGH"}
         self._stage = AuthoringStage(self._stage - 1)
+        if self._stage == AuthoringStage.USER_STEINERS:
+            # Drop any abandoned in-progress pen so a stale live preview is
+            # not drawn when the artist steps back into the stage.
+            self._pen_active = False
+            self._pen_points.clear()
+            self._live_preview["active"] = False
+            self._live_preview["cursor"] = None
         type(self)._current_stage_label = _STAGE_NAMES[self._stage]
         self._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
@@ -633,16 +679,16 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         }
 
     def _stage3_overlay_kwargs(self) -> dict[str, object]:
-        """Return keyword args for register/refresh_overlay Stage 3 live containers.
+        """Return keyword args for register/refresh_overlay Stage 4 live containers.
 
-        Always passes the same mutable list references so registered draw
-        callbacks remain valid across param-change re-registrations.
+        Passes the live-preview dict instead of the gray raw-stroke refs:
+        _draw_live_preview renders the colored in-progress pen / free-draw
+        feedback (verts + edges + cursor rubber-band) for both gestures.
         Tooltip refs are included so the POST_PIXEL handler tracks intent.
         """
         return {
             "user_strokes": self._user_strokes,
-            "stroke_active_ref": self._stroke_active_ref,
-            "stroke_raw_points_ref": self._stroke_raw_points,
+            "live_preview_ref": self._live_preview,
             "tooltip_mouse_ref": self._tooltip_mouse_ref,
             "tooltip_text_ref": self._tooltip_text_ref,
         }

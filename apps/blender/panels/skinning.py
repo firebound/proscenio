@@ -110,7 +110,7 @@ def _draw_authoring_box(
         row.prop(skinning_props, "authoring_inner_loop_count", text="Loops")
         row.prop(skinning_props, "authoring_inner_loop_spacing", text="Spacing")
         row = box.row()
-        row.prop(skinning_props, "authoring_cut_width", text="Cut width")
+        row.prop(skinning_props, "authoring_cut_margin", text="Cut margin")
     row = box.row()
     row.enabled = _authoring_button_enabled(obj)
     row.operator(

@@ -677,7 +677,7 @@ def _snapshot_params(context: bpy.types.Context) -> StageParams:
         interior_spacing=float(skinning.automesh_interior_spacing),
         bone_radius=float(skinning.automesh_bone_radius),
         bone_factor=int(skinning.automesh_bone_factor),
-        cut_width=float(skinning.authoring_cut_width),
+        cut_margin=float(skinning.authoring_cut_margin),
     )
 
 

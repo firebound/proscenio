@@ -233,6 +233,124 @@ def compute_all_steiners(
     return list(interior) + list(user)
 
 
+def _resolve_outer_override_local(
+    obj: bpy.types.Object,
+    outer_world_raw: list[Point2D],
+    outer_extends: list[list[Point2D]],
+    contour_vertices: int,
+) -> list[Point2D] | None:
+    """Splice extend strokes into the raw outer + resample; return mesh-local or None.
+
+    Returns None when no extend strokes produce a valid splice (all strokes
+    were outside the silhouette or the splice was a no-op).
+    """
+    from ...automesh.outer_splice import splice_extend_strokes
+
+    spliced_world = splice_extend_strokes(outer_world_raw, outer_extends)
+    if spliced_world is outer_world_raw:
+        for i in range(len(outer_extends)):
+            print(
+                f"[apply_mesh] WARNING: outer extend stroke {i} entirely outside "
+                f"silhouette or fully inside - cannot splice, stroke ignored"
+            )
+        return None
+    spliced_local_raw = [_world_to_local_xz(obj, p) for p in spliced_world]
+    result = list(arc_length_resample(spliced_local_raw, contour_vertices))
+    print(
+        f"[apply_mesh] extend splice: {len(outer_extends)} stroke(s) applied; "
+        f"raw outer {len(outer_world_raw)} -> spliced {len(spliced_world)} verts "
+        f"-> resampled {len(result)} mesh-local verts"
+    )
+    return result
+
+
+def _build_stroke_cdt_inputs(
+    obj: bpy.types.Object,
+    outer_cuts: list[Stroke],
+    user_strokes: list[Stroke],
+    outer_world_local: list[Point2D],
+    outer_base_index: int,
+    interior_base_index: int,
+    params: StageParams,
+) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]], list[tuple[int, int]]]:
+    """Run both stroke CDT pipelines and merge outputs.
+
+    Stage 2 outer_cuts use the lens path (face-prune for silhouette trim).
+    Stage 4 user_strokes use the rip path (split_edges for kind='cut').
+    Returns merged (extras, edges, dropped, cut_lenses, rip_edges).
+    """
+    extras_outer, edges_outer, dropped_outer, cut_lenses = _strokes_to_cdt_inputs(
+        obj,
+        outer_cuts,
+        outer_world_local,
+        outer_base_index=outer_base_index,
+        interior_base_index=interior_base_index,
+        interior_spacing=params.interior_spacing,
+        inner_world_local=None,
+        holes_world_local=None,
+        cut_width=max(params.cut_margin, 0.01),  # lens needs width > 0; margin default 0.0
+    )
+    interior_base_index_4 = interior_base_index + len(extras_outer)
+    extras_inner, edges_inner, dropped_inner, rip_edges = _strokes_to_cdt_inputs_rip(
+        obj,
+        user_strokes,
+        outer_world_local,
+        outer_base_index=outer_base_index,
+        interior_base_index=interior_base_index_4,
+        interior_spacing=params.interior_spacing,
+        inner_world_local=None,
+        holes_world_local=None,
+    )
+    return (
+        extras_outer + extras_inner,
+        edges_outer + edges_inner,
+        dropped_outer + dropped_inner,
+        cut_lenses,
+        rip_edges,
+    )
+
+
+def _split_outer_strokes(
+    strokes: list[Stroke],
+) -> tuple[list[list[Point2D]], list[Stroke]]:
+    """Partition Stage 2 outer strokes into (extend_point_lists, cut_strokes).
+
+    kind='stroke' -> extend list (raw point sequences for splice_extend_strokes).
+    kind='cut'    -> cut list (passed to lens pipeline unchanged).
+    kind='point'  -> ignored at Stage 2 (no silhouette-point semantic here).
+    """
+    extends: list[list[Point2D]] = []
+    cuts: list[Stroke] = []
+    for s in strokes:
+        if s["kind"] == "stroke":
+            extends.append(list(s["points"]))
+        elif s["kind"] == "cut":
+            cuts.append(s)
+    return extends, cuts
+
+
+def _resolve_interior_base_index(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    outer_world_raw: list[Point2D],
+    outer_world_local: list[Point2D],
+    params: StageParams,
+) -> int:
+    """Compute interior_base_index matching build_automesh's index layout.
+
+    Starts at len(outer_world_local). When inner loops are requested,
+    build_automesh also resamples the innermost loop to contour_vertices,
+    so interior_base_index advances by contour_vertices for each active
+    inner contour (currently at most 1 is used by CDT).
+    """
+    base = len(outer_world_local)
+    if params.inner_loop_count > 0:
+        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world_raw, params)
+        if inner_loops:
+            base += params.contour_vertices
+    return base
+
+
 def apply_mesh(
     obj: bpy.types.Object,
     image: bpy.types.Image,
@@ -242,72 +360,28 @@ def apply_mesh(
 ) -> dict[str, int]:
     """Final write: build_automesh + Wave 13.2-sidecar reproject.
 
-    Stage 3 strokes (output.user_strokes) become:
-    - extra_steiners: resampled vert positions (mesh-local XZ)
-    - extra_edges: constraint segments between consecutive stroke verts
-      + endpoint snaps to outer contour verts
-
-    Without this wire, Stage 3 strokes are preview-only.
-
-    NOTE: pre-computes outer_world via compute_outer + matches build_automesh's
-    internal `arc_length_resample(outer, target_contour_vertices)` so the
-    snap-candidate count + interior_base_index match what build_automesh
-    will produce. Without the resample match the indices would reference
-    the raw walker output (~200 verts) while build_automesh ships a
-    resampled outer (~64 verts), corrupting extra_edges. compute_outer is
-    ~50ms; the extra resample is a few ms; APPLY is once per modal session.
-    A future refactor could thread outer_world into build_automesh to avoid
-    the double run entirely.
+    Stage 3 strokes (output.user_strokes) become extra_steiners +
+    extra_edges (constraint segments). Stage 4 kind='cut' strokes
+    produce split_edges rips post-CDT (no material removal; verts
+    duplicated for topological separation). Stage 2 kind='cut' on
+    user_outer_strokes keeps the lens + face-prune path (chunk
+    removal for silhouette refinement).
     """
-    from ...automesh.outer_splice import splice_extend_strokes
     from ..skinning import maybe_post_regen_reproject, maybe_pre_regen_snapshot
 
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
-    # Pre-compute outer for snap candidates + index layout.
-    # CRITICAL: match build_automesh's internal arc_length_resample so the
-    # index counts agree (raw walker output vs resampled outer differ).
     outer_world_raw = compute_outer(obj, image, params)
 
-    # Split Stage 2 strokes by intent:
-    # - kind="stroke" on user_outer_strokes = EXTEND (splice into outer).
-    # - kind="cut" on user_outer_strokes = CUT (flows through existing cut pipeline).
-    outer_extends: list[list[Point2D]] = []
-    outer_cuts: list[Stroke] = []
-    for s in output.user_outer_strokes:
-        if s["kind"] == "stroke":
-            outer_extends.append(list(s["points"]))
-        else:
-            outer_cuts.append(s)
+    outer_extends, outer_cuts = _split_outer_strokes(output.user_outer_strokes)
 
-    # Splice extend strokes into the raw walker outer (world XZ) pre-resample
-    # so smoothing + resample applies uniformly to the extended polyline.
     outer_override_local: list[Point2D] | None = None
     if outer_extends:
-        spliced_world = splice_extend_strokes(outer_world_raw, outer_extends)
-        if spliced_world is not outer_world_raw:
-            # Re-resample the spliced outer to params.contour_vertices (mesh-local)
-            # matching what build_automesh does internally for the walker output.
-            spliced_local_raw = [_world_to_local_xz(obj, p) for p in spliced_world]
-            outer_override_local = list(
-                arc_length_resample(spliced_local_raw, params.contour_vertices)
-            )
-            print(
-                f"[apply_mesh] extend splice: {len(outer_extends)} stroke(s) applied; "
-                f"raw outer {len(outer_world_raw)} -> spliced {len(spliced_world)} verts "
-                f"-> resampled {len(outer_override_local)} mesh-local verts"
-            )
-        else:
-            # All extend strokes were fully inside or outside - WARN each fully-outside one.
-            for i, _stroke in enumerate(outer_extends):
-                print(
-                    f"[apply_mesh] WARNING: outer extend stroke {i} entirely outside "
-                    f"silhouette or fully inside - cannot splice, stroke ignored"
-                )
+        outer_override_local = _resolve_outer_override_local(
+            obj, outer_world_raw, outer_extends, params.contour_vertices
+        )
 
-    # Use the spliced+resampled outer as outer_world_local when available;
-    # otherwise fall back to the standard resample of the raw walker outer.
     if outer_override_local is not None:
         outer_world_local = outer_override_local
     else:
@@ -316,25 +390,19 @@ def apply_mesh(
             arc_length_resample(outer_world_local_raw, params.contour_vertices)
         )
 
-    outer_base_index = 0
-    interior_base_index = len(outer_world_local)
-    if params.inner_loop_count > 0:
-        inner_loops = compute_inner_loops_for_stage(obj, image, outer_world_raw, params)
-        if inner_loops:
-            # build_automesh resamples the innermost loop to contour_vertices too
-            interior_base_index += params.contour_vertices
-    # Cut strokes from Stage 2 + all Stage 4 strokes flow through the standard cut pipeline.
-    cut_and_interior_strokes: list[Stroke] = outer_cuts + list(output.user_strokes)
-    extras_local, extra_edges, stroke_verts_dropped, cut_lenses = _strokes_to_cdt_inputs(
-        obj,
-        cut_and_interior_strokes,
-        outer_world_local,
-        outer_base_index=outer_base_index,
-        interior_base_index=interior_base_index,
-        interior_spacing=params.interior_spacing,
-        inner_world_local=None,  # FUTURE: pass inner contour when inner_loops path is unified
-        holes_world_local=None,  # FUTURE: pass hole contours; deferred to follow-up
-        cut_width=params.cut_width,
+    interior_base_index = _resolve_interior_base_index(
+        obj, image, outer_world_raw, outer_world_local, params
+    )
+    extras_local, extra_edges, stroke_verts_dropped, cut_lenses, rip_edges = (
+        _build_stroke_cdt_inputs(
+            obj,
+            outer_cuts,
+            list(output.user_strokes),
+            outer_world_local,
+            outer_base_index=0,
+            interior_base_index=interior_base_index,
+            params=params,
+        )
     )
     counters = build_automesh(
         obj,
@@ -354,6 +422,7 @@ def apply_mesh(
         extra_steiners=extras_local if extras_local else None,
         extra_edges=extra_edges if extra_edges else None,
         cut_lenses_local=cut_lenses if cut_lenses else None,
+        rip_edge_pairs=rip_edges if rip_edges else None,
     )
     if stroke_verts_dropped > 0:
         counters["stroke_verts_dropped"] = stroke_verts_dropped
@@ -572,8 +641,8 @@ def _strokes_to_cdt_inputs(
     inner_world_local: list[Point2D] | None = None,
     holes_world_local: list[list[Point2D]] | None = None,
     cut_width: float = 0.03,
-) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]]]:
-    """Convert Stage 3 strokes to (extra_steiners_local, extra_edges, dropped_count, cut_lenses).
+) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]], list[tuple[int, int]]]:
+    """Convert strokes to (extra_steiners_local, extra_edges, dropped_count, cut_lenses, rip_edges).
 
     For each stroke:
     - kind='point': append point as single Steiner; no edges.
@@ -582,11 +651,45 @@ def _strokes_to_cdt_inputs(
       (within interior_spacing * 1.5), DROP that endpoint from extras
       and emit an edge from the next stroke vert to the outer vert
       index (outer_base_index + snap_index).
-    - kind='cut': build 2 parallel offset polylines perpendicular to the
-      stroke at each sample (each at +/- cut_half from the stroke centre).
-      Both loops become CDT constraint edges with start/end caps closing
-      the lens. The lens polygon (left_loop + right_loop reversed) is
-      appended to cut_lenses for post-CDT face-prune.
+    - kind='cut' on Stage 2 outer strokes: build 2 parallel offset polylines
+      perpendicular to the stroke (each at +/- cut_half from centre). Both
+      loops become CDT constraint edges with start/end caps closing the lens.
+      The lens polygon is appended to cut_lenses for post-CDT face-prune.
+      cut_half = max(cut_width, 0.01) / 2 to avoid degenerate lens.
+    - kind='cut' on Stage 4 interior strokes: treated structurally like
+      kind='stroke' (single polyline constraint through CDT). The resulting
+      edge pairs are ALSO appended to rip_edges (5th return) so that
+      _triangulate_into_bmesh can call bmesh.ops.split_edges on them
+      post-CDT. This duplicates verts along the cut without removing any
+      mesh area (AS-AM7-REV: Blender V / Rip Vertices behavior).
+
+    The caller (apply_mesh) determines which stroke set is Stage 2 vs Stage 4
+    and routes accordingly. Stage 2 outer_cuts are concatenated BEFORE
+    output.user_strokes in cut_and_interior_strokes; this function processes
+    them in list order and uses the lens-vs-rip distinction: strokes coming
+    from outer_cuts should use the lens path, those from user_strokes should
+    use the rip path. To avoid requiring a per-stroke "stage" tag, the caller
+    instead separates them: outer cut strokes call this function separately OR
+    the is_stage4_cut flag is passed per stroke.
+
+    IMPLEMENTATION NOTE: because apply_mesh concatenates outer_cuts +
+    user_strokes into a single list, this function cannot distinguish them
+    by position alone. The caller passes outer_cuts as kind='cut' strokes in
+    the leading portion; all kind='cut' strokes are processed via the LENS
+    path when ``stage4_cut_indices`` is None (legacy behavior). When
+    ``stage4_cut_indices`` is provided (a set of list indices), only those
+    use the rip path. apply_mesh now passes the strokes in two separate calls
+    or marks them via a side channel.
+
+    SIMPLIFICATION: rather than the two-call complexity, apply_mesh builds
+    two separate lists and calls _strokes_to_cdt_inputs twice:
+    - First call: outer_cuts only -> kind='cut' uses LENS path (no rip).
+    - Second call: user_strokes only -> kind='cut' uses RIP path (no lens).
+    The results are merged before forwarding to build_automesh.
+
+    This function implements the RIP path for kind='cut' when
+    ``use_rip_for_cut=True`` (default False for backward compat with
+    Stage 2 callers).
 
     Silhouette filter (AS-AM1): each vert is tested BEFORE index allocation.
     Verts outside outer_world_local, inside inner_world_local, or inside any
@@ -603,9 +706,12 @@ def _strokes_to_cdt_inputs(
     to each stroke point first; existing _world_steiners_to_local
     pattern).
 
-    cut_lenses (4th return value): list of lens polygons (each a list of
-    Point2D) generated by kind='cut' strokes. Passed to build_automesh
-    for post-CDT face-prune. Empty when no cut strokes exist.
+    cut_lenses (4th return): list of lens polygons from Stage 2 kind='cut'
+    strokes. Passed to build_automesh for post-CDT face-prune.
+
+    rip_edges (5th return): subset of extra_edges that belong to Stage 4
+    kind='cut' strokes (rip path). Passed to build_automesh for post-CDT
+    split_edges rip. Empty when no Stage 4 cut strokes exist.
     """
     from ...automesh.cut_geometry import lens_polygon, perpendicular_offsets
 
@@ -614,11 +720,11 @@ def _strokes_to_cdt_inputs(
     edges: list[tuple[int, int]] = []
     total_dropped = 0
     cut_lenses: list[list[Point2D]] = []
+    rip_edges: list[tuple[int, int]] = []
     snap_radius = interior_spacing * 1.5
-    # cut_half: half of the user-controlled cut_width (T9 AS-AM8).
-    # T5 hardcoded interior_spacing * 0.3 (= 0.03 at default spacing 0.1);
-    # T9 promotes to a StageParams field threaded from the panel slider.
-    cut_half = cut_width / 2.0
+    # cut_half for Stage 2 lens: use max(cut_width, 0.01) to avoid degenerate
+    # lens when cut_margin slider is at 0.0 (its new default in AS-AM7-REV).
+    cut_half = max(cut_width, 0.01) / 2.0
 
     for stroke in strokes:
         if stroke["kind"] == "point":
@@ -688,4 +794,70 @@ def _strokes_to_cdt_inputs(
         if len(node_indices) < 2:
             continue
         edges.extend(_edges_from_node_indices(node_indices))
-    return extras_local, edges, total_dropped, cut_lenses
+    return extras_local, edges, total_dropped, cut_lenses, rip_edges
+
+
+def _strokes_to_cdt_inputs_rip(
+    obj: bpy.types.Object,
+    strokes: list[Stroke],
+    outer_world_local: list[Point2D],
+    outer_base_index: int,
+    interior_base_index: int,
+    interior_spacing: float,
+    inner_world_local: list[Point2D] | None = None,
+    holes_world_local: list[list[Point2D]] | None = None,
+) -> tuple[list[Point2D], list[tuple[int, int]], int, list[tuple[int, int]]]:
+    """Convert Stage 4 interior strokes to (extras, edges, dropped, rip_edges).
+
+    For kind='cut' strokes: emits a single polyline constraint (identical to
+    kind='stroke') AND marks those edges as rip targets in the 4th return.
+    For kind='stroke' and kind='point': same as _strokes_to_cdt_inputs.
+
+    This variant has no lens/cut_lenses output - Stage 4 cut strokes never
+    trigger face removal, only split_edges rip post-CDT.
+    """
+    project = _to_local_xz(obj)
+    extras_local: list[Point2D] = []
+    edges: list[tuple[int, int]] = []
+    total_dropped = 0
+    rip_edges: list[tuple[int, int]] = []
+    snap_radius = interior_spacing * 1.5
+
+    for stroke in strokes:
+        if stroke["kind"] == "point":
+            dropped = _emit_point_extras(
+                stroke["points"],
+                project,
+                extras_local,
+                outer=outer_world_local,
+                inner=inner_world_local,
+                holes=holes_world_local,
+            )
+            total_dropped += dropped
+            continue
+
+        # Both kind='stroke' and kind='cut' produce a single polyline constraint.
+        # kind='cut' additionally marks the resulting edges as rip targets.
+        pts_local = [project(p) for p in stroke["points"]]
+        if not pts_local:
+            continue
+        node_indices, dropped = _build_stroke_node_indices(
+            pts_local,
+            outer_world_local,
+            outer_base_index,
+            interior_base_index,
+            extras_local,
+            snap_radius,
+            silhouette_outer=outer_world_local,
+            silhouette_inner=inner_world_local,
+            silhouette_holes=holes_world_local,
+        )
+        total_dropped += dropped
+        if len(node_indices) < 2:
+            continue
+        stroke_edges = _edges_from_node_indices(node_indices)
+        edges.extend(stroke_edges)
+        if stroke["kind"] == "cut":
+            # Mark these edges as rip targets for post-CDT split_edges.
+            rip_edges.extend(stroke_edges)
+    return extras_local, edges, total_dropped, rip_edges

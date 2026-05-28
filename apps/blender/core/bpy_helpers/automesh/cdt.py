@@ -112,12 +112,17 @@ def _commit_cdt_faces(
     bm: bmesh.types.BMesh,
     out_verts: list[tuple[float, float]],
     out_faces: list[list[int]],
-) -> int:
+) -> tuple[int, list]:
     """Materialize CDT-output verts + faces into the bmesh.
 
-    Returns count of successfully added faces. ``bm.faces.new`` raises
-    ``ValueError`` on degenerate / duplicate-edge faces; we swallow
-    and log up to 5 per call so the operator never aborts mid-build.
+    Returns ``(face_count, bm_verts)`` where ``bm_verts[i]`` is the
+    ``bmesh.types.BMVert`` created for ``out_verts[i]``. The caller uses
+    ``bm_verts`` together with ``_orig_v`` from the CDT result to build the
+    input-index -> BMVert mapping needed for rip-edge resolution.
+
+    ``bm.faces.new`` raises ``ValueError`` on degenerate / duplicate-edge
+    faces; we swallow and log up to 5 per call so the operator never aborts
+    mid-build.
     """
     bm_verts = [bm.verts.new((v[0], 0.0, v[1])) for v in out_verts]
     bm.verts.ensure_lookup_table()
@@ -133,7 +138,7 @@ def _commit_cdt_faces(
                 print(f"[automesh] face skipped ({exc}): indices={face}")
     if failed:
         print(f"[automesh] {failed} faces failed creation ({added} succeeded)")
-    return added
+    return added, bm_verts
 
 
 def build_mesh_via_delaunay(
@@ -143,7 +148,7 @@ def build_mesh_via_delaunay(
     interior_points: list[tuple[float, float]],
     holes_world: list[list[tuple[float, float]]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
-) -> int:
+) -> tuple[int, dict]:
     """Single-pass Constrained Delaunay Triangulation for the entire mesh.
 
     Replaces the prior 3-pass pipeline (manual annulus strip +
@@ -163,7 +168,14 @@ def build_mesh_via_delaunay(
       faces, no edge duplicates) so bm.faces.new always succeeds
       without "this edge exists" exceptions.
 
-    Returns the count of faces added.
+    Returns ``(face_count, input_to_bm)`` where ``input_to_bm`` is a
+    ``dict[int, bmesh.types.BMVert]`` mapping each input coord index (the
+    index into the flat ``all_coords`` array that CDT consumed) to the
+    ``BMVert`` that materializes it. Built from ``_orig_v`` in the CDT
+    result: ``_orig_v[out_i]`` lists the input indices that out-vert ``i``
+    came from; for each such input index we record ``bm_verts[out_i]``.
+    Callers use this to resolve rip-edge pairs (input index pairs) to the
+    actual bmesh edges connecting them post-CDT.
 
     Delaunay output_type enum (BLI_delaunay_2d.h):
         0 CDT_FULL                                 - convex hull triangulation
@@ -178,7 +190,7 @@ def build_mesh_via_delaunay(
     Delaunay fill of the constrained region.
     """
     if len(outer_world) < 3:
-        return 0
+        return 0, {}
     holes = list(holes_world) if holes_world else []
     all_coords, edges_constraint = _build_cdt_inputs(
         outer_world, inner_world, interior_points, holes, extra_edges=extra_edges
@@ -192,10 +204,19 @@ def build_mesh_via_delaunay(
         1e-6,
         True,
     )
-    out_verts, _out_edges, out_faces, _orig_v, _orig_e, _orig_f = result
+    out_verts, _out_edges, out_faces, orig_v, _orig_e, _orig_f = result
     print(
         f"[automesh] delaunay output_type={output_type} "
         f"input={len(all_coords)}v/{len(edges_constraint)}e "
         f"output={len(out_verts)}v/{len(out_faces)}f"
     )
-    return _commit_cdt_faces(bm, out_verts, out_faces)
+    added, bm_verts = _commit_cdt_faces(bm, out_verts, out_faces)
+    # Build input-coord-index -> BMVert mapping via _orig_v.
+    # orig_v[out_i] is a list of input indices that CDT merged into out-vert i.
+    # For each input index, the canonical BMVert is bm_verts[out_i].
+    input_to_bm: dict[int, object] = {}
+    for out_i, orig_indices in enumerate(orig_v):
+        bv = bm_verts[out_i]
+        for orig_idx in orig_indices:
+            input_to_bm[orig_idx] = bv
+    return added, input_to_bm

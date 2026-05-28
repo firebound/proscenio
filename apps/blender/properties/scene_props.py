@@ -296,15 +296,18 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=1.0,
     )
-    authoring_cut_width: FloatProperty(  # type: ignore[valid-type]
-        name="Cut width",
+    authoring_cut_margin: FloatProperty(  # type: ignore[valid-type]
+        name="Cut margin",
         description=(
-            "Width of Stage 3 cut strokes in world units. "
-            "Default = 30 percent of interior_spacing (0.03 at default spacing 0.1). "
-            "Too small = degenerate CDT lens; too large = removes more mesh than intended."
+            "Separation margin for Stage 4 cut strokes (rip behavior) in world units. "
+            "After split_edges rips the stroke, each duplicated vert is translated "
+            "perpendicular to the stroke direction by +/- margin/2 to open a visible gap. "
+            "Default 0.0 = zero-gap rip (topology splits but verts are co-located). "
+            "v1: slider is wired in UI but no-op in pipeline (translation deferred to v2). "
+            "Stage 2 outer-cut lens uses max(cut_margin, 0.01) to avoid degenerate lens."
         ),
-        default=0.03,
-        min=0.01,
+        default=0.0,
+        min=0.0,
         soft_max=0.2,
     )
     debug_stage: EnumProperty(  # type: ignore[valid-type]

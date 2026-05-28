@@ -35,8 +35,10 @@ class Stroke(TypedDict):
 
     kind="point": single Steiner from a click without drag (S6 backward compat).
     kind="stroke": resampled polyline that becomes constraint edges + verts.
-    kind="cut": resampled polyline; emits 2 perpendicular offset loops as
-        constraint edges + post-CDT face-prune removes faces inside the lens.
+    kind="cut" on user_outer_strokes (Stage 2): perpendicular offset lens +
+        post-CDT face-prune removes faces inside the lens (silhouette trim).
+    kind="cut" on user_strokes (Stage 4): polyline constraint + post-CDT
+        bmesh.ops.split_edges rip - duplicates verts without removing material.
     """
 
     kind: Literal["point", "stroke", "cut"]
@@ -61,7 +63,9 @@ class StageParams:
     interior_spacing: float
     bone_radius: float
     bone_factor: int
-    cut_width: float = 0.03  # Stage 3 cut stroke width in world units (T9 AS-AM8)
+    cut_margin: float = (
+        0.0  # Stage 4 cut rip margin in world units (AS-AM7-REV v1: unwired, always 0)
+    )
 
 
 @dataclass

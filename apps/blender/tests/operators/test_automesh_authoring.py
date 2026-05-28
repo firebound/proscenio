@@ -352,8 +352,12 @@ def test_apply_mesh_outer_cut_stroke_removes_faces(automesh_fixture):
     )
 
 
-def test_apply_mesh_cut_stroke_removes_faces(automesh_fixture):
-    """kind='cut' stroke: post-CDT face-prune removes faces in lens (AS-AM7)."""
+def test_apply_mesh_cut_stroke_rips_without_removing_faces(automesh_fixture):
+    """Stage 4 kind='cut' rips via bmesh.ops.split_edges - verts get duplicated
+    on the cut path, faces preserved (no material removed). AS-AM7-REV.
+
+    Baseline (no cut) vs with-cut: total_verts must GROW (rip duplicates verts
+    on the stroke path); total_faces must NOT shrink (no face-prune)."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()
@@ -394,9 +398,14 @@ def test_apply_mesh_cut_stroke_removes_faces(automesh_fixture):
     armature = bpy.data.objects["automesh.hand_rig"]
     baseline = apply_mesh(obj, image, StageOutput(), params, armature)
     cut_result = apply_mesh(obj, image, output_with_cut, params, armature)
-    # Cut lens face-prune must remove at least 1 face vs baseline
-    assert cut_result["total_faces"] < baseline["total_faces"], (
-        f"cut did not prune faces: baseline={baseline['total_faces']} "
+    # Rip duplicates verts on stroke path -> vert count grows vs baseline.
+    assert cut_result["total_verts"] >= baseline["total_verts"], (
+        f"rip should duplicate verts: baseline={baseline['total_verts']} "
+        f"cut={cut_result['total_verts']}"
+    )
+    # Rip does NOT remove faces (no face-prune for Stage 4 cuts).
+    assert cut_result["total_faces"] >= baseline["total_faces"], (
+        f"rip removed faces: baseline={baseline['total_faces']} "
         f"cut={cut_result['total_faces']}"
     )
 

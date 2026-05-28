@@ -528,8 +528,10 @@ def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
     apply_mesh(obj, image, two_folds, params, armature)
 
     # No fan hub: a clean CDT triangulation keeps vert degree modest.
-    # The fan bug produced a vert with degree ~17; a healthy interior
-    # vert is typically <= 10. Use 14 as a generous ceiling.
+    # The fan bug produced a vert with degree ~17; a healthy interior vert
+    # is typically <= 10. Degree is the RELIABLE fan signal - it is a pure
+    # topology metric, stable across Blender builds/platforms (unlike float
+    # edge lengths, which vary with CDT epsilon handling per platform).
     degree: dict[int, int] = defaultdict(int)
     for edge in obj.data.edges:
         degree[edge.vertices[0]] += 1
@@ -537,14 +539,16 @@ def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
     max_degree = max(degree.values()) if degree else 0
     assert max_degree <= 14, f"fan hub detected: a vert has degree {max_degree}"
 
-    # No long edges: the hand spans ~1.5 world units; a fold constraint
-    # edge is at most interior_spacing-ish. The fan bug created edges
-    # spanning > 0.8. Assert no edge exceeds 0.5 world units.
+    # Secondary guard: no mesh-spanning fan spoke. The fan bug's worst spoke
+    # was 0.83 world units; legit wide-palm edges reach ~0.57 (platform-
+    # dependent). Threshold 0.75 catches egregious fan spokes without
+    # false-positiving on legitimate wide edges. The degree check above is
+    # the primary detector; this is belt-and-suspenders for worse fans.
     for edge in obj.data.edges:
         a = obj.data.vertices[edge.vertices[0]].co
         b = obj.data.vertices[edge.vertices[1]].co
         span = math.hypot(a.x - b.x, a.z - b.z)
-        assert span < 0.5, f"long edge {edge.vertices[0]}-{edge.vertices[1]} spans {span:.3f}"
+        assert span < 0.75, f"long edge {edge.vertices[0]}-{edge.vertices[1]} spans {span:.3f}"
 
 
 def test_apply_mesh_cut_to_alpha_severs_to_boundary(automesh_fixture):

@@ -1,3 +1,6 @@
+# Superpowers brainstorming companion (session dirs + mockups)
+.superpowers/
+
 # Python
 __pycache__/
 *.py[cod]

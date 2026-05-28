@@ -70,6 +70,37 @@ before triangulation. Three passes is the COA Tools 2 default and
 empirically the sweet spot between staircase suppression and
 silhouette drift."""
 
+_EXTRA_INDEX_SENTINEL = 1_000_000
+"""Index-namespace base for stroke (fold-line) extra verts in extra_edges.
+
+apply_mesh cannot know the auto-fill interior count when it allocates
+extra_edges indices, so it indexes extra verts from this sentinel
+(SENTINEL + k). Snap-to-outer endpoints use the real outer index (small,
+< outer count). build_automesh then remaps SENTINEL + k to the true coord
+position once the auto-fill count is known (outer + inner + auto + k).
+The sentinel is far above any real vert count (meshes are < 1000 verts),
+so the two namespaces never collide. Fixes the 2-fold fan bug where
+extra_edges referenced auto-fill verts instead of the stroke verts."""
+
+
+def _remap_extra_edge_indices(
+    extra_edges: list[tuple[int, int]],
+    extra_base: int,
+) -> list[tuple[int, int]]:
+    """Shift sentinel-namespaced extra vert indices to their true coord base.
+
+    Indices >= _EXTRA_INDEX_SENTINEL are stroke extra verts: remap to
+    extra_base + (idx - SENTINEL). Indices below the sentinel are outer/inner
+    contour refs (snap endpoints) and pass through unchanged.
+    """
+
+    def remap(idx: int) -> int:
+        if idx >= _EXTRA_INDEX_SENTINEL:
+            return extra_base + (idx - _EXTRA_INDEX_SENTINEL)
+        return idx
+
+    return [(remap(a), remap(b)) for a, b in extra_edges]
+
 
 DebugStage = Literal[
     "off",
@@ -472,6 +503,7 @@ def _compute_steiner_points(
     bone_segments: list[BoneSegment2D] | None,
     bone_density_radius: float,
     bone_density_factor: int,
+    exclude_zones: list[tuple[float, float, float]] | None = None,
 ) -> list[tuple[float, float]]:
     """Generate + filter Steiner interior points.
 
@@ -500,6 +532,7 @@ def _compute_steiner_points(
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,
         bone_density_factor=bone_density_factor,
+        exclude_zones=exclude_zones,
     )
     if holes_world:
         before_hole_filter = len(interior_points)
@@ -549,14 +582,23 @@ def _merge_extra_steiners(
     final mesh at Stage 5 (APPLY).
     """
     accepted: list[tuple[float, float]] = []
+    late_dropped = 0
     for point in extra_steiners:
         if not point_in_polygon(point, outer_world):
+            late_dropped += 1
             continue
         if inner_world and point_in_polygon(point, inner_world):
+            late_dropped += 1
             continue
         if any(point_in_polygon(point, hole) for hole in holes_world):
+            late_dropped += 1
             continue
         accepted.append(point)
+    if late_dropped:
+        print(
+            f"[automesh] WARNING: _merge_extra_steiners dropped {late_dropped} late-stage "
+            f"vert(s) - caller should pre-filter (see AS-AM1)"
+        )
     return list(auto_interior) + accepted
 
 
@@ -566,23 +608,38 @@ def _triangulate_into_bmesh(
     inner_world: Contour2D,
     interior_points: list[tuple[float, float]],
     holes_world: list[Contour2D],
+    extra_edges: list[tuple[int, int]] | None = None,
 ) -> tuple[int, object]:
-    """Run CDT into a bmesh + apply the hole-face post-prune.
+    """Run CDT into a bmesh + apply hole-face post-prune.
 
     Returns ``(base_group_index, bm)`` so the orchestrator can
     decide whether to commit the bmesh (final path) or write +
     free without finalize (debug fill_no_interior).
+
+    ``holes_world`` now includes both alpha holes and cut corridor holes
+    (merged by build_automesh before this call). A single post-CDT prune
+    pass handles both cleanly - faces whose centroid lies inside any hole
+    polygon are deleted, edges + verts left loose by deletion are also
+    cleaned up (see delete_faces_inside_holes).
     """
     base_group_index, _is_fresh = initialize_base_sprite_group(obj)
     delete_non_base_geometry(obj, base_group_index)
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
-    build_mesh_via_delaunay(bm, outer_world, inner_world, interior_points, holes_world)
+    build_mesh_via_delaunay(
+        bm,
+        outer_world,
+        inner_world,
+        interior_points,
+        holes_world,
+        extra_edges=extra_edges,
+    )
     if holes_world:
         # CDT's automatic hole detection is unreliable against the
         # bridge's Y-flip orientation flow; the centroid post-prune
-        # is the deterministic fallback (see cdt.py).
+        # is the deterministic fallback (see cdt.py). Cut corridors
+        # appended to holes_world are cleaned up here in the same pass.
         delete_faces_inside_holes(bm, holes_world)
     return base_group_index, bm
 
@@ -623,7 +680,10 @@ def build_automesh(
     bone_density_factor: int = 1,
     debug_stage: DebugStage = "off",
     preserve_base_quad: bool = False,
+    outer_override: list[tuple[float, float]] | None = None,
     extra_steiners: list[tuple[float, float]] | None = None,
+    extra_edges: list[tuple[int, int]] | None = None,
+    cut_hole_loops: list[list[tuple[float, float]]] | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -679,6 +739,15 @@ def build_automesh(
     outer_world, inner_world, holes_world = _smooth_and_resample(
         outer_world_raw, inner_world_raw, holes_world_raw, target_contour_vertices
     )
+    # AS-AM10: when apply_mesh has already spliced + resampled the outer contour
+    # (extend strokes), use that override directly instead of the walker output.
+    # Inner contour + holes still derive from the alpha walker unchanged.
+    if outer_override is not None:
+        outer_world = list(outer_override)
+        print(
+            f"[automesh] outer_override applied: {len(outer_world)} verts "
+            f"(replaces walker-resampled outer)"
+        )
     if debug_stage == "smoothed":
         # Smoothed = post-Laplacian, pre-resample. Snapshot the
         # intermediate state by re-running Laplacian without resample.
@@ -692,6 +761,9 @@ def build_automesh(
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
+    exclude_zones: list[tuple[float, float, float]] | None = None
+    if extra_steiners:
+        exclude_zones = [(p[0], p[1], interior_spacing * 0.5) for p in extra_steiners]
     interior_points = _compute_steiner_points(
         outer_world,
         inner_world,
@@ -700,11 +772,20 @@ def build_automesh(
         bone_segments,
         bone_density_radius,
         bone_density_factor,
+        exclude_zones=exclude_zones,
     )
+    # Capture the auto-fill count BEFORE merging extras so extra_edges
+    # indices can be remapped to their true position in the final coord
+    # array (outer + inner + auto_interior + extras). The caller indexes
+    # extra verts from _EXTRA_INDEX_SENTINEL; we shift them to the real base.
+    auto_interior_count = len(interior_points)
     if extra_steiners:
         interior_points = _merge_extra_steiners(
             interior_points, extra_steiners, outer_world, inner_world, holes_world
         )
+    if extra_edges:
+        extra_base = len(outer_world) + len(inner_world) + auto_interior_count
+        extra_edges = _remap_extra_edge_indices(extra_edges, extra_base)
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)
         return _debug_stage_report(
@@ -721,8 +802,19 @@ def build_automesh(
             "bridges", len(outer_world), len(inner_world), bridge_offset=bridge_offset
         )
 
+    if cut_hole_loops:
+        # Cut corridors are CDT holes - same clean treatment as alpha holes.
+        # They are already mesh-local resampled (from cut_geometry), so append
+        # directly to the walker holes before triangulation.
+        holes_world = list(holes_world) + list(cut_hole_loops)
+        print(f"[automesh] merged {len(cut_hole_loops)} cut corridor(s) into holes_world")
     base_group_index, bm = _triangulate_into_bmesh(
-        obj, outer_world, inner_world, interior_points, holes_world
+        obj,
+        outer_world,
+        inner_world,
+        interior_points,
+        holes_world,
+        extra_edges=extra_edges,
     )
     if debug_stage == "fill_no_interior":
         mesh = obj.data

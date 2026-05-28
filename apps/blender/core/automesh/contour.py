@@ -49,15 +49,26 @@ _NEIGHBOUR_OFFSETS_4: tuple[tuple[int, int], ...] = (
 
 
 HOLE_SAFETY_DILATE_CELLS: int = 1
-"""Foreground dilation applied to the mask before hole detection
-(SPEC 013 D2 amendment). Symmetric to the outer 1-cell safety
-dilate: dilating the foreground SHRINKS each hole by 1 cell so the
-mesh-side hole cutout sits INSIDE the actual alpha hole boundary,
-guaranteeing the mesh never cuts an alpha pixel around the hole's
-inner silhouette edge. Trades a tiny mesh-over-transparent bleed
-band (~2% of hole area at downscale=0.25) for the alpha-safety
-invariant the user demands. Erode-instead-of-dilate was prototyped
-and rejected: even 1-cell erosion eats alpha around the hole edge."""
+"""Foreground dilation applied to the mask before hole detection.
+
+DEPRECATED - no longer used by :func:`extract_contours` (see B3 fix
+below). Retained as a public constant to avoid breaking callers that
+imported it directly.
+
+History: the 1-cell foreground dilation was intended to shrink each
+real hole by 1 cell so the mesh-side cutout sits INSIDE the alpha
+hole boundary (user invariant: never cut alpha). In practice it
+closed narrow inter-finger corridors at coarse downscale factors
+(e.g. resolution=0.5 with 3-4px source gaps -> 1-2 cell gaps in the
+grid -> closed by dilation -> false enclosed background -> spurious
+CDT hole punches -> disconnected face fragments, B3 regression).
+
+Fix: :func:`extract_contours` now calls :func:`extract_holes` on the
+undilated raw mask. The alpha-safety invariant for real holes still
+holds because the outer safety dilation (``outer_dilate >= 1``) keeps
+the outer mesh boundary outside the alpha, and narrow holes narrower
+than 2 cells are correctly classified as connected-to-border external
+background by the flood-fill, not as enclosed holes."""
 
 
 _MAX_CONTOUR_STEPS: int = 200_000
@@ -409,11 +420,14 @@ def extract_contours(
     here, which both refuse to support holes).
 
     ``margin_px`` controls the OUTER annulus thickness exactly as
-    in :func:`extract_contour_pair`. Holes are detected on the
-    same dilated outer mask so a hole that the user wanted treated
-    as a hole survives the 1-cell safety dilation; hairline alpha
-    gaps narrower than the safety dilation are intentionally
-    swallowed so they do not produce noise mesh holes.
+    in :func:`extract_contour_pair`. Holes are detected on the RAW
+    (undilated) mask via :func:`extract_holes`, not the dilated
+    outer mask: foreground dilation would close 1-2 cell inter-finger
+    corridors at low resolution and convert border-connected
+    background into false enclosed holes (B3). Flood-filling from the
+    border of the undilated mask keeps still-open corridors draining
+    to the border; only genuinely enclosed background islands (e.g.
+    ring sprites) are returned as holes.
     """
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")
@@ -436,16 +450,21 @@ def extract_contours(
             "check the image alpha channel and the threshold setting"
         )
     outer = trace_contour(outer_mask, seed)
-    # Detect holes on a foreground DILATED by 1 cell. Dilating
-    # foreground shrinks each hole by 1 cell, which places the
-    # mesh-side hole boundary INSIDE the alpha hole - guaranteeing
-    # the mesh never cuts alpha at the hole's inner silhouette
-    # (user invariant: never cut alpha). The flip side is a small
-    # bleed band of mesh covering ~1 cell of transparent pixels at
-    # the hole edge; this is the symmetric analogue of the outer
-    # safety margin.
-    hole_mask = dilate(raw_mask, HOLE_SAFETY_DILATE_CELLS)
-    holes = extract_holes(hole_mask)
+    # Detect holes on the RAW (undilated) mask. Using a foreground-
+    # dilated mask was the original approach (HOLE_SAFETY_DILATE_CELLS)
+    # but it caused B3: at resolution=0.5 inter-finger gaps in the
+    # source image are only 1-2 cells wide in the downscaled grid;
+    # 1-cell foreground dilation closes those corridors entirely,
+    # converting border-connected external background into apparently-
+    # enclosed background, yielding false holes that CDT punches out as
+    # face-free regions -> disconnected mesh fragments.
+    # Using raw_mask means the flood-fill in extract_holes starts from
+    # the border of the UNDILATED mask, so corridors that are still
+    # open (even 1 cell wide) correctly drain to the border and are
+    # not mistaken for holes. Real enclosed holes (e.g. ring sprites)
+    # are unaffected: a true enclosed background island in the raw mask
+    # is still enclosed after any dilation.
+    holes = extract_holes(raw_mask)
     if margin_px == 0:
         return (outer, [], holes)
     inner = extract_inner_contour(alpha, threshold, margin_px)

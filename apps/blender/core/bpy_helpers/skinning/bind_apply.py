@@ -11,9 +11,11 @@ weights succeed, builds a populated ``WeightSidecar`` via
 from __future__ import annotations
 
 import contextlib
+from typing import Any
 
 import bpy
 
+from ...skinning.bone_modes import BoneMode, bone_mode_for
 from ...skinning.planar_proximity import BoneSegmentNamed2D
 from ...skinning.sidecar_schema import to_json
 from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
@@ -25,6 +27,52 @@ _ENVELOPE_RADIUS_KEY = "proscenio_envelope_radius"
 _ENVELOPE_DEFAULT_RADIUS = 1.0
 _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5
+
+# Mapping from the operator-level BindMode to the BoneMode that a per-bone
+# override of "SOFT" or "HARD" corresponds to. PROXIMITY/ENVELOPE/BONE_HEAT
+# are proximity-falloff family (SOFT); SINGLE_NEAREST/EMPTY are hard-cut
+# family (HARD). Used to derive the default BoneMode fallback so that per-bone
+# overrides are always expressed relative to what the operator already does.
+_BIND_MODE_TO_BONE_MODE: dict[BindMode, BoneMode] = {
+    "PROXIMITY": "SOFT",
+    "ENVELOPE": "SOFT",
+    "BONE_HEAT": "SOFT",
+    "SINGLE_NEAREST": "HARD",
+    "EMPTY": "HARD",
+}
+
+
+def _default_bone_mode(mode: BindMode) -> BoneMode:
+    """Resolve the operator-level BindMode to its BoneMode family.
+
+    PROXIMITY / ENVELOPE / BONE_HEAT -> SOFT (proximity falloff).
+    SINGLE_NEAREST / EMPTY -> HARD (single-nearest / no weight).
+    """
+    return _BIND_MODE_TO_BONE_MODE.get(mode, "SOFT")
+
+
+def _merge_per_bone_weights(
+    obj: bpy.types.Object,
+    default_mode: BoneMode,
+    soft_weights: dict[str, list[float]],
+    hard_weights: dict[str, list[float]],
+) -> dict[str, list[float]]:
+    """Select per-bone weight column from soft or hard matrix based on per-bone mode.
+
+    For bones whose mode matches ``default_mode`` the column from the
+    corresponding matrix is used directly. For bones whose override differs
+    from the default, the column from the other matrix is substituted.
+    Bones absent from ``hard_weights`` (e.g. BONE_HEAT path) keep the soft
+    column unconditionally.
+    """
+    result: dict[str, list[float]] = {}
+    for bone_name, soft_col in soft_weights.items():
+        effective_mode = bone_mode_for(obj, bone_name, default=default_mode)
+        if effective_mode == "HARD" and bone_name in hard_weights:
+            result[bone_name] = hard_weights[bone_name]
+        else:
+            result[bone_name] = soft_col
+    return result
 
 
 def _bone_segments_xz(
@@ -81,6 +129,76 @@ def _collect_envelope_radii(armature: bpy.types.Object) -> dict[str, float]:
     return radii
 
 
+def _alt_bind_mode(default_bmode: BoneMode) -> BindMode:
+    """Return the BindMode to use for the alternate weight matrix.
+
+    When the operator default is SOFT (proximity family), the alternate
+    for HARD overrides is SINGLE_NEAREST. Vice-versa for HARD defaults.
+    """
+    return "SINGLE_NEAREST" if default_bmode == "SOFT" else "PROXIMITY"
+
+
+def _apply_bone_mode_overrides(
+    obj: bpy.types.Object,
+    mode: BindMode,
+    weights: dict[str, list[float]],
+    vert_positions_xz: list[tuple[float, float]],
+    bone_segments: list[BoneSegmentNamed2D],
+    falloff_power: float,
+    effective_max: float,
+) -> dict[str, list[float]]:
+    """Apply per-bone SOFT/HARD overrides (D16) by substituting bone columns.
+
+    Returns ``weights`` unchanged when no overrides are stored on ``obj``.
+    When at least one bone differs from the operator default, computes the
+    alternate weight matrix (PROXIMITY or SINGLE_NEAREST) and calls
+    ``_merge_per_bone_weights`` to splice in the override columns.
+    """
+    default_bmode = _default_bone_mode(mode)
+    override_exists = any(
+        bone_mode_for(obj, b, default=default_bmode) != default_bmode for _, _, b in bone_segments
+    )
+    if not override_exists:
+        return weights
+
+    # Compute alternate matrix for the opposing mode family.
+    alt_mode = _alt_bind_mode(default_bmode)
+    # Heterogeneous value types (float + float | None) - bind_weights_for_mode
+    # accepts both via separate kwargs; use Any to avoid dict-invariance errors.
+    alt_kwargs: dict[str, Any] = {"falloff_power": falloff_power, "max_distance": effective_max}
+    alt_weights = bind_weights_for_mode(alt_mode, vert_positions_xz, bone_segments, **alt_kwargs)
+    assert alt_weights is not None
+
+    if default_bmode == "SOFT":
+        return _merge_per_bone_weights(obj, default_bmode, weights, alt_weights)
+    return _merge_per_bone_weights(obj, default_bmode, alt_weights, weights)
+
+
+def _write_weights_to_groups(obj: bpy.types.Object, weights: dict[str, list[float]]) -> int:
+    """Wipe non-base groups, recreate per bone, write weights. Returns groups_wiped."""
+    if _SIDECAR_KEY in obj:
+        del obj[_SIDECAR_KEY]
+    groups_wiped = wipe_non_base_groups(obj)
+    for bone_name in weights:
+        obj.vertex_groups.new(name=bone_name)
+    for bone_name, per_vert_weights in weights.items():
+        group = obj.vertex_groups[bone_name]
+        for vert_idx, weight in enumerate(per_vert_weights):
+            if weight > 0.0:
+                group.add([vert_idx], weight, "REPLACE")
+    return groups_wiped
+
+
+def _count_orphans_from_weights(num_verts: int, weights: dict[str, list[float]]) -> int:
+    """Count verts whose total weight across all bones is below eps."""
+    orphans = 0
+    for vert_idx in range(num_verts):
+        total = sum(weights[name][vert_idx] for name in weights)
+        if total < _ORPHAN_EPS:
+            orphans += 1
+    return orphans
+
+
 def apply_bind(
     obj: bpy.types.Object,
     armature: bpy.types.Object,
@@ -97,7 +215,8 @@ def apply_bind(
     ``groups_wiped``. BONE_HEAT dispatches to ``_apply_bone_heat``
     which delegates to Blender's parent_set ARMATURE_AUTO; other
     modes use the planar proximity / envelope / single-nearest /
-    empty algorithms.
+    empty algorithms. Per-bone SOFT/HARD overrides (D16) are applied
+    after the primary matrix is computed.
     """
     if mode == "BONE_HEAT":
         return _apply_bone_heat(obj, armature)
@@ -123,22 +242,12 @@ def apply_bind(
     # weights is guaranteed non-None here because BONE_HEAT is handled above
     assert weights is not None
 
-    if _SIDECAR_KEY in obj:
-        del obj[_SIDECAR_KEY]
-    groups_wiped = wipe_non_base_groups(obj)
-    for bone_name in weights:
-        obj.vertex_groups.new(name=bone_name)
-    for bone_name, per_vert_weights in weights.items():
-        group = obj.vertex_groups[bone_name]
-        for vert_idx, weight in enumerate(per_vert_weights):
-            if weight > 0.0:
-                group.add([vert_idx], weight, "REPLACE")
+    weights = _apply_bone_mode_overrides(
+        obj, mode, weights, vert_positions_xz, bone_segments, falloff_power, effective_max
+    )
 
-    orphan_verts = 0
-    for vert_idx in range(len(mesh.vertices)):
-        total = sum(weights[name][vert_idx] for name in weights)
-        if total < _ORPHAN_EPS:
-            orphan_verts += 1
+    groups_wiped = _write_weights_to_groups(obj, weights)
+    orphan_verts = _count_orphans_from_weights(len(mesh.vertices), weights)
 
     sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)

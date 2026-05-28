@@ -296,6 +296,19 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=1.0,
     )
+    authoring_cut_margin: FloatProperty(  # type: ignore[valid-type]
+        name="Cut margin",
+        description=(
+            "Width of the corridor gap carved by cut strokes, in world units. "
+            "The stroke is offset +/- cut_margin/2 perpendicular to its tangent; "
+            "the corridor between the two offset lines becomes a CDT hole, so the "
+            "triangulation excludes it cleanly. Larger = wider gap between the cut "
+            "sides. Clamped to a 0.01 minimum so the corridor never collapses."
+        ),
+        default=0.04,
+        min=0.01,
+        soft_max=0.2,
+    )
     debug_stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(

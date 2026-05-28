@@ -13,22 +13,22 @@ Sub-letter numbering (13.1.a / 13.1.b / 13.1.c …) was tried in iteration and g
 
 ## Decision lock-in
 
-- [ ] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
-- [ ] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1, hole support):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
-- [ ] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
-- [ ] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. **Amended (Wave 13.2-panel):** BONE_HEAT now allowed as default for 2D pickers; D11 pre-flight still runs before every bind path. See STUDY.md D4 amendment for trigger.
-- [ ] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY. **Amended (Wave 13.2-panel):** enum gains BONE_HEAT as 5th value AND becomes the default; planar proximity demoted to fallback per D4 amendment.
-- [ ] D6 - weight preservation through mesh regen = sidecar JSON keyed by UV anchors + auto-reproject on regen + visible provenance overlay.
-- [ ] D7 - weight paint modal wrapper = one-button enter / exit, auto-restore on exit + crash; lift COA2 `COATOOLS2_OT_EditWeights` pattern (fixed: Bone Collections instead of `bone.hide` global, `try/finally` restore, ESC hard-exit).
-- [ ] D8 - 2D paint preset = auto-apply on modal enter (`Front Faces Only=False`, `Falloff=Projected`, brush radius in screen px, `Auto Normalize=True`); header pill "2D paint preset: ON".
-- [ ] D9 - GPU weight overlay viz = colorband discs per vertex (lift COA2 6-stop colorband, alpha 0 for zero-weight verts).
-- [ ] D10 - ESC in any draw modal = hard exit + release pending stroke; no conditional behaviour.
-- [ ] D11 - pre-flight diagnosis on auto-weight failure = structured guidance per failure cause; pre-flight detects unapplied scale / flipped normals / overlapping verts / isolated islands / bones outside mesh bbox; emits actionable message (never raw stack trace).
-- [ ] D12 - tablet RELEASE detection = `event.pressure==0` + `WINDOW_DEACTIVATE` + timer-based fallback (synthesize RELEASE if no movement for N ms).
-- [ ] D13 - subpanel placement = new `Skinning` subpanel parallel to `Skeleton` in the Proscenio sidebar.
-- [ ] D14 - symmetry mirror axis source = picker armature mirror flag (single source of truth, parallel to SPEC 012 D16 contract).
-- [ ] D15 - density-under-bones automesh = ON by default when picker has armature, OFF otherwise; reuse picker bone positions.
-- [ ] D16 - soft vs hard bone toggle = defer to Wave 13.3 (Wave 13.2 covers via `bind_init_mode` PROXIMITY vs SINGLE_NEAREST).
+- [x] D1 - automesh paradigm = alpha-trace one-shot (pure-Python, no OpenCV).
+- [x] D2 - mesh topology shape = annulus (outer + inner contour + Constrained Delaunay). **Amended (Wave 13.1, hole support):** alpha holes now cut out of the mesh via explicit per-hole constraint loops + centroid-based post-process face prune.
+- [x] D3 - mesh data preservation anchor = `proscenio_base_sprite` vertex group; re-runs remove only verts NOT in this group.
+- [x] D4 - bone heat solver usage = explicit user opt-in only, NEVER default. **Amended (Wave 13.2-panel):** BONE_HEAT now allowed as default for 2D pickers; D11 pre-flight still runs before every bind path. See STUDY.md D4 amendment for trigger.
+- [x] D5 - initial bind algorithm default = planar proximity falloff (custom, NOT bone heat); enum offers PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY. **Amended (Wave 13.2-panel):** enum gains BONE_HEAT as 5th value AND becomes the default; planar proximity demoted to fallback per D4 amendment.
+- [x] D6 - weight preservation through mesh regen = sidecar JSON keyed by UV anchors + auto-reproject on regen + visible provenance overlay.
+- [x] D7 - weight paint modal wrapper = one-button enter / exit, auto-restore on exit + crash; lift COA2 `COATOOLS2_OT_EditWeights` pattern (fixed: Bone Collections instead of `bone.hide` global, `try/finally` restore, ESC hard-exit).
+- [x] D8 - 2D paint preset = auto-apply on modal enter (`Front Faces Only=False`, `Falloff=Projected`, brush radius in screen px, `Auto Normalize=True`); header pill "2D paint preset: ON".
+- [x] D9 - GPU weight overlay viz = colorband discs per vertex (lift COA2 6-stop colorband, alpha 0 for zero-weight verts).
+- [x] D10 - ESC in any draw modal = hard exit + release pending stroke; no conditional behaviour.
+- [x] D11 - pre-flight diagnosis on auto-weight failure = structured guidance per failure cause; pre-flight detects unapplied scale / flipped normals / overlapping verts / isolated islands / bones outside mesh bbox; emits actionable message (never raw stack trace).
+- [x] D12 - tablet RELEASE detection = `event.pressure==0` + `WINDOW_DEACTIVATE` + timer-based fallback (synthesize RELEASE if no movement for N ms).
+- [x] D13 - subpanel placement = new `Skinning` subpanel parallel to `Skeleton` in the Proscenio sidebar.
+- [x] D14 - symmetry mirror axis source = picker armature mirror flag (single source of truth, parallel to SPEC 012 D16 contract).
+- [x] D15 - density-under-bones automesh = ON by default when picker has armature, OFF otherwise; reuse picker bone positions.
+- [x] D16 - soft vs hard bone toggle = defer to Wave 13.3 (Wave 13.2 covers via `bind_init_mode` PROXIMITY vs SINGLE_NEAREST).
 
 ## Wave 13.1 - SHIPPED (PR #51)
 
@@ -135,7 +135,7 @@ Cost: ~1.5-2 days. Low risk thanks to validator + 313 pytest + headless fixture-
 Bind a mesh to a bone chain via a custom planar-distance algorithm that never hits the bone-heat solver; surface structured diagnosis when something goes wrong.
 
 Spec: [`bind-design.md`](bind-design.md).
-Plan: [`docs/superpowers/plans/2026-05-17-spec-013.2-bind.md`](../../docs/superpowers/plans/2026-05-17-spec-013.2-bind.md).
+Plan: [`design/2026-05-17-spec-013.2-bind.md`](design/2026-05-17-spec-013.2-bind.md).
 
 What landed:
 
@@ -197,7 +197,7 @@ Sprite-changed-in-Photoshop workflow (from PR #51 smoke discussion) is exactly t
 Wave 13.2-panel: Bind sub-box landed in the existing `PROSCENIO_PT_skinning` panel; bind operator pivots to BONE_HEAT default (D4 amendment).
 
 Spec: [`panel-design.md`](panel-design.md).
-Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-panel.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-panel.md).
+Plan: [`design/2026-05-20-spec-013.2-panel.md`](design/2026-05-20-spec-013.2-panel.md).
 
 What landed:
 
@@ -220,7 +220,7 @@ Out of scope (deferred):
 Wave 13.2-sidecar: WeightSidecar.entries populates on bind + reprojects across automesh regen via UV-anchor barycentric interpolation. Materializes D6 (the differentiator vs Spine / COA Tools 2).
 
 Spec: [`sidecar-design.md`](sidecar-design.md).
-Plan: [`docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md`](../../docs/superpowers/plans/2026-05-20-spec-013.2-sidecar.md).
+Plan: [`design/2026-05-20-spec-013.2-sidecar.md`](design/2026-05-20-spec-013.2-sidecar.md).
 
 What landed:
 
@@ -249,7 +249,7 @@ Out of scope (deferred):
 Wave 13.2-paint: one-button entry into 2D-safe weight paint with GPU provenance overlay, per-stroke `user_paint` flip via diff, hard ESC exit, Edit Weights sub-box in panel.
 
 Spec: [`paint-design.md`](paint-design.md).
-Plan: [`docs/superpowers/plans/2026-05-21-spec-013.2-paint.md`](../../docs/superpowers/plans/2026-05-21-spec-013.2-paint.md).
+Plan: [`design/2026-05-21-spec-013.2-paint.md`](design/2026-05-21-spec-013.2-paint.md).
 
 What landed:
 
@@ -279,7 +279,7 @@ Out of scope (deferred):
 Wave 13.2-interactive-modal: 5-stage modal preview of the automesh pipeline. Each stage (outer contour / inner loops / user Steiner points / Steiner preview / apply) shows a GPU overlay; sliders re-run live; user Steiners click-place + persist via Custom Property. Final APPLY pipes through build_automesh + Wave 13.2-sidecar reproject so existing weights survive.
 
 Spec: [`interactive-modal-design.md`](interactive-modal-design.md).
-Plan: [`docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md`](../../docs/superpowers/plans/2026-05-22-spec-013.2-interactive-modal.md).
+Plan: [`design/2026-05-22-spec-013.2-interactive-modal.md`](design/2026-05-22-spec-013.2-interactive-modal.md).
 
 What landed:
 
@@ -351,18 +351,81 @@ Prerequisites:
 - Cross-armature smoke - bind mesh to one armature, change picker to another, re-bind; verify sidecar persists and reprojects. (Pending - manual T-case to add to 1.20 or 1.21.)
 - Headless Blender script via `--background --python` to confirm registration / unregister cycle clean. (Pending - separate effort; the existing `run_operator_tests.py` runner covers ops registration as a side effect of fixture load.)
 
-## Wave 13.3 - productivity polish
+## Stroke redesign + productivity polish (in-flight bundle)
 
-Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its own PR when the trigger lands.
+Spec: [`design/2026-05-26-spec-013-stroke-redesign-design.md`](design/2026-05-26-spec-013-stroke-redesign-design.md).
+Plan: [`design/2026-05-26-spec-013-stroke-redesign-plan.md`](design/2026-05-26-spec-013-stroke-redesign-plan.md).
+Branch: `feat/spec-013-stroke-redesign`.
 
-- **Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on vertex group metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind re-derives respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains proximity bleed is too soft on a specific limb.
+### Part A scope - SHIPPED on branch (PR pending review)
+
+Stage 3 stroke redesign + extra_edges CDT extension + mixed-flow auto-snapshot. 14 commits (`407229c..f04065e`), ~900 LOC. Tasks 1-14 of plan.
+
+- **[SHIPPED] Stage 3 paradigm: clicks become strokes** (S1-S9). LMB drag captures raw mouse path, Chaikin 2-iter smooth, resample at `interior_spacing`, snap endpoints to outer contour verts within `interior_spacing * 1.5`, persist as `proscenio_user_strokes` JSON. Backward compat: drag < 5px = single Steiner (click behavior preserved). Ctrl+Z pops last stroke. Shift+LMB hit-tests and deletes containing stroke. Strokes reach `build_automesh` as `extra_steiners` (verts) + `extra_edges` (CDT constraint segments). GPU overlay draws committed strokes (blue verts + edges) + kind=point strokes (yellow dots) + in-progress raw path (light gray). Stage 4 preview also renders stroke edges so artist verifies before APPLY.
+- **[SHIPPED] Auto-snapshot from current vertex_groups state (mixed-flow fix - critical)** (M1/M2). When `obj["proscenio_weight_sidecar"]` absent before automesh regen AND `vertex_groups` non-empty AND armature set, build sidecar on-the-fly from current vgroup data via `snapshot_sidecar` (provenance=auto_seed). Closes critical gap where Ctrl+P Armature Auto Weights bind + automesh regen silently wiped weights (user-reported 2026-05-25).
+
+### Part C scope - IN FLIGHT (scope amendment 2026-05-27 post-smoke)
+
+Manual smoke on PR #63 (2026-05-27) revealed:
+
+1. **Fan-degenerate triangulation** when Stage 3 strokes commit (visible edge fans radiating from interior verts). Two confirmed root causes: (a) auto-fill grid clusters near stroke verts (Steiner spacing computed without knowing stroke positions); (b) silent vert drop in `_merge_extra_steiners` leaves `extra_edges` indices stale → long-distance edges referencing wrong final-array positions.
+2. **Feature gap**: cuts (kind="cut" stroke that separates the mesh into 2 sides) requested for joint articulation + silhouette refinement use cases.
+
+Decision: bundle the fixes + feature into PR #63 rather than ship a baseline that produces low-quality output by default. Spec amendment AS-AM1 through AS-AM10 documented in [`design/2026-05-26-spec-013-stroke-redesign-design.md`](design/2026-05-26-spec-013-stroke-redesign-design.md) "Scope amendment 2026-05-27" section.
+
+Adds 10 tasks (~970 LOC + ~18 tests):
+
+- (NEW) filter strokes pre-index-allocation + WARNING report on drops (closes index drift bug)
+- (NEW) `interior_points_for_annulus.exclude_zones` kwarg (closes auto-fill cluster bug)
+- (NEW) `AuthoringStage.USER_OUTER` between OUTER and INNER_LOOPS - 5-stage modal becomes 6
+- (NEW) Stroke `kind="cut"` (3rd value) + 2-loop offset + face-prune (reuses hole detection)
+- (NEW) Stage 2 location-driven gestures (LMB outside = extend, LMB inside = cut, Ctrl = delete)
+- (NEW) Stage 4 modifier scheme (LMB = fold-line, Shift = cut, Ctrl = delete - was Shift for delete)
+- (NEW) `StageParams.cut_width` slider (default `interior_spacing * 0.3`)
+- (NEW) Tooltip near mouse via `blf.draw` showing current intent per stage + modifier state
+
+### Part B scope - SHIPPED on branch (PR pending review)
+
+Productivity polish + B3 silhouette fix. 9 commits (`e80c91b..aba0a73`), ~800 LOC. Tasks 16-24 of plan.
+
+- **[SHIPPED] Per-bone SOFT/HARD mode dispatch** (O1/D16). New module `core/skinning/bone_modes.py` (read/write/per-bone-lookup); `bind_apply` extracts `_apply_bone_mode_overrides` + `_merge_per_bone_weights` to splice override columns in. Per-bone toggle UI in bind sub-box (two-button row, depress shows active mode). `proscenio.set_bone_mode` operator persists `obj['proscenio_bone_modes']` dict.
+- **[SHIPPED] Multi-mesh batch bind** (O2). Bind operator now iterates selected MESH objects (fallback to active when no selection). Per-mesh body extracted to `_bind_single` helper; per-failure WARNING + final INFO with success count.
+- **[SHIPPED] Sidecar import / export** (O3). `proscenio.export_sidecar` + `proscenio.import_sidecar` operators using file dialog. Import validates structure via existing `sidecar_schema.from_json`. Panel sub-box exposes Export + Import buttons.
+- **[SHIPPED] Brush curve presets** (O4). 4 named presets (Hard Edge / Soft Falloff / Crease / Smooth Blend) in `core/skinning/brush_curve_presets.py`; `proscenio.set_brush_preset` operator configures `brush.curve.curves[0].points`. Quick-select 4-button row in Edit Weights sub-box.
+- **[SHIPPED] B3 silhouette regression at resolution 0.5** (O5). Root cause: `HOLE_SAFETY_DILATE_CELLS=1` foreground dilation in `extract_contours` was closing 1-cell-wide inter-finger corridors at downscaled resolution, generating false 229-point "holes" that CDT punched out. 1-line fix: pass `raw_mask` instead of dilated to `extract_holes`. 2 new regression tests (`test_b3_narrow_corridor_not_a_hole`, `test_b3_real_hole_still_detected`).
+- **[SHIPPED] UX1 Restore Weight Snapshot rename** (O6). `bl_label` -> "Reset to Last Saved Weights"; `bl_description` updated to explain what gets reverted. Panel button text updated to match. Relative timestamp skipped (sidecar schema has no timestamp field; out of scope for this PR).
+- **[SHIPPED] Weight transfer between sprites** (O7). Pure `core/skinning/weight_transfer.py` (KNN by world position; 5 pure tests). `proscenio.copy_weights_to_selected` operator: active = source, selected (minus active) = targets; per-target vert nearest source within `max_distance` copies weight dict; target `vertex_groups` created as needed. Panel sub-box. Solves COA2 #18 + #73.
+
+### Legacy backlog (productivity polish, superseded by Part A + Part B above)
+
+The original "Wave 13.3" planning grouped these 7 items (quick wins + bugs + critical mixed-flow gap, ~830 LOC total). All `[ACTIVE]` markers below are SHIPPED in Part A or Part B; preserved for audit trail:
+
+- **[ACTIVE] Auto-snapshot from current vertex_groups state (mixed-flow fix - critical).** Today `maybe_pre_regen_snapshot` aborts when `obj["proscenio_weight_sidecar"]` is absent, so users who bound via Blender native (`Ctrl+P -> Armature Auto Weights`) silently lose ALL weights on next `Automesh from Sprite` regen. Fix: when sidecar absent but vertex_groups present, build the sidecar on-the-fly from current vertex_groups + UVs before regen, then reproject. Closes the "mixed flows = silent data loss" gap user identified 2026-05-25.
+- **[ACTIVE] Soft vs Hard bone toggle (D16, Animate lift).** Per-bone enum on vertex group metadata (`group.proscenio_bone_mode = "SOFT" | "HARD"`); rebind re-derives respecting the mode. Soft = proximity falloff; Hard = single-nearest. Trigger: user complains proximity bleed is too soft on a specific limb.
 - **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone to grow / shrink radius. Region drives initial weight map procedurally. Trigger: proximity default does not give enough control for shapes like long hair or tails.
 - **User-drawn density markers (PR #51 smoke feedback).** Artist paints on sprite (grease pencil or GPU overlay) to mark regions of interest (muscle bulges, cloth folds, joint creases). Marks translate into extra Steiner point clusters at automesh time. Distinct from Wave 13.2's interactive modal at coarse level: this is painted REGIONS persisted on the mesh, modal is per-point clicks during authoring. Implementation sketch: `proscenio_density_marks: list[(x, z, weight, kind)]` Custom Property; per-mark color in the overlay differentiates kinds (muscle / fold / crease).
-- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); same algorithm against picker armature. Useful for character imports with N sprites + 1 rig.
+- **[ACTIVE] Multi-mesh batch bind.** Bind operator takes selected meshes (not just active); same algorithm against picker armature. Useful for character imports with N sprites + 1 rig.
 - **Weight transfer between sprites.** `proscenio.copy_weights_to_selected`. Source mesh (active) + N target meshes (selected); for each target vertex, look up nearest source vertex by world position + copy weight dict. Solves COA2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73).
 - **Live pose-mode preview in weight paint.** Scrub the bone to a posed angle, see how the mesh deforms, scrub back without leaving Edit Weights modal. Pose-scrub overlay + hotkey to toggle rest pose.
-- **Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
-- **Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
+- **[ACTIVE] Sidecar import / export to file.** Operator to dump weight sidecar JSON to / load from a file. Enables version-controlled weight backups outside the .blend.
+- **[ACTIVE] Brush settings curve presets.** Quick-select named curve presets in the Edit Weights modal status pill ("Hard edge", "Soft falloff", "Crease", "Smooth blend"). Saves brush curve editor trips.
+
+### Active PR scope continued
+
+The bundle above also includes:
+
+- **B3 fix (resolution 0.5 silhouette walker).** Confirmed Wave 13.1 regression. Investigate alpha walker at coarse pixel stride; fix or document workaround. Out of scope for big algorithm changes; if root cause needs major work, downgrade to "document workaround in panel tooltip" (~30 LOC) instead of fixing.
+- **UX1 (Restore Weight Snapshot rename).** Rename button to something less opaque. Candidates: "Revert Manual Paint" or "Reset to Last Saved Weights". Add tooltip showing when snapshot was last saved.
+
+### Deferred to dedicated waves (each needs own brainstorm + plan)
+
+These items are scoped but NOT in the active PR (too big / too design-heavy):
+
+- Bone strength region painting (Moho lift) - ~600 LOC, widget paradigm
+- User-drawn density markers - ~400 LOC, paint mode + integrate with automesh
+- Weight transfer between sprites - ~250 LOC, cross-mesh KNN operator
+- Live pose-mode preview in weight paint - ~400 LOC, modal scaffold + pose-scrub overlay
+- Stage 3 redesign: stroke -> CDT constraint edges (replaces click-place-vert per user feedback 2026-05-25) - ~600 LOC, modal refactor + GPU brush feedback
 - **Bezier brush stroke for alpha-boundary trace.** Wave 13.2's free-draw alternative to the alpha-trace one-shot. Adds D1.B to the paradigm enum when real workflows demand it.
 
 ### Suspect bugs - needs investigation (manual smoke 2026-05-21)
@@ -370,10 +433,14 @@ Productivity layer on top of Wave 13.2. Each item is self-contained; ship in its
 Items observed during paint-wave manual smoke that may be real bugs OR test-flow confusion. Each needs an isolated headless repro before fixing.
 
 - **B1: reproject does not preserve user_paint provenance.** ~~`weight_reproject.reproject_entries` always stamps `provenance="reprojected"` on new entries; if old entry was `user_paint`, the marker is lost on automesh regen.~~ **FIXED** on branch `fix/spec-013-reproject-preserves-user-paint`: `_carry_user_paint_provenance` propagates `user_paint` when any of the 3 barycentric donor anchors carried that marker (any-donor wins, conservative choice for preserving artist intent). +2 pure tests.
-- **B2: chained automesh regen produces visually chaotic weights.** **CONFIRMED on 2026-05-25.** Repro: bind hand fixture (BONE_HEAT default, 249 verts) -> Skinning > Automesh from Sprite again with `Mesh resolution = 0.2`. Console: `automesh built: 64 outer + 0 inner + 191 interior = 255 total, 444 faces` then `sidecar: 125 reprojected + 130 auto-seed of 255 verts` (51% fell through to auto_seed = empty weights). Visual: chaotic glyph-shaped weight pattern, NOT the clean palm gradient that was painted. Restore Weight Snapshot reapplies the same corrupt sidecar. Hypotheses ranked: (1) UV anchors inconsistent across automesh runs (most likely - alpha walker produces different vert order each run, `per_vert_uv_anchors` first-loop assignment shifts even for "same physical region"); (2) default `max_distance=0.1` in UV space too small to cover the anchor drift between runs (KNN can't find 3 donors). Investigation path: write headless test with 2 deterministic meshes from same image at same params, snapshot weights on mesh A, regen to mesh B, assert reproject preserves weights within tolerance for verts at same world XZ.
-- **B3: resolution 0.5 destroys silhouette (Wave 13.1 regression).** **CONFIRMED on 2026-05-25.** Automesh at `Mesh resolution = 0.5` produced 44 verts / 27 faces of disconnected fragments instead of low-poly hand silhouette. Lower (0.25 default) works; 0.5 falls apart. Hypothesis: Moore-neighbour walker loses adjacency at coarse pixel stride OR hole detector misfires on downscaled binary mask. Out of scope for SPEC 013.2 (lives in alpha_contour.py). Repro: `bpy.ops.proscenio.automesh_from_sprite(resolution=0.5)` on `examples/generated/automesh/automesh.blend` hand fixture. Workaround: stick with `0.25` or `0.2`.
-- **UX1: Restore Weight Snapshot button label/affordance is confusing.** **OBSERVED on 2026-05-25.** User feedback: "voltar pra onde? quando? o que vai ser alterado / retornado?" - the button name "Restore Weight Snapshot" gives no temporal anchor. Proposals: (a) rename to "Revert Manual Paint" or "Reset to Last Saved Weights"; (b) add a timestamp label showing when the snapshot was saved ("from bind 2 minutes ago"); (c) add a tooltip explaining "Reverts paint edits since the last Bind or Automesh regen". Logged to UI_FEEDBACK.md (TBD). Wave 13.3 polish.
+- **B2: chained automesh regen produces visually chaotic weights.** ~~**CONFIRMED on 2026-05-25.** Repro: bind hand fixture (BONE_HEAT default, 249 verts) -> Skinning > Automesh from Sprite again with `Mesh resolution = 0.2`. Console: `automesh built: 64 outer + 0 inner + 191 interior = 255 total, 444 faces` then `sidecar: 125 reprojected + 130 auto-seed of 255 verts` (51% fell through to auto_seed = empty weights).~~ **FIXED.** Root cause confirmed as hypothesis (2): default `max_distance=0.1` in UV space too tight to cover anchor drift between regen runs (51% of target verts fell through to auto_seed). Fix in `weight_reproject.reproject_entries`: bumped default `max_distance` from 0.1 to 0.5 + added nearest-neighbor fallback when 1-2 donors are in range (was returning None and auto-seeding). user_paint provenance propagates through the fallback so artist marks survive chained regens. 4 pure regression tests added (`test_fewer_than_three_old_entries_falls_back_to_nearest`, `test_zero_donors_in_range_still_returns_none`, `test_degenerate_collinear_triangle_falls_back_to_nearest`, `test_user_paint_carried_through_nearest_fallback`).
+- **B3: resolution 0.5 destroys silhouette (Wave 13.1 regression).** ~~**CONFIRMED on 2026-05-25.** Automesh at `Mesh resolution = 0.5` produced 44 verts / 27 faces of disconnected fragments instead of low-poly hand silhouette.~~ **FIXED** in `feat/spec-013-wire-user-steiners-to-mesh` (Task 21). Root cause: at resolution=0.5 inter-finger gaps in the source image (3-4 px) downscale to 1-2 grid cells; the old `HOLE_SAFETY_DILATE_CELLS=1` foreground dilation before `extract_holes` closed those 1-cell corridors, converting border-connected external background into apparently-enclosed regions -> false CDT hole punches -> disconnected fragments. Fix: `extract_contours` now calls `extract_holes` on the undilated raw mask; the flood-fill from the border correctly classifies narrow corridors as external. +2 pure regression tests (`test_b3_narrow_corridor_not_a_hole`, `test_b3_real_hole_still_detected`). Ring/donut fixtures unaffected - genuinely enclosed holes have no border path regardless of dilation.
+- **UX1: Restore Weight Snapshot button label/affordance is confusing.** ~~**OBSERVED on 2026-05-25.**~~ **FIXED** in stroke-redesign Part B (commit 0df5b55). Operator `bl_label` renamed to "Reset to Last Saved Weights"; `bl_description` updated to "Reverts paint edits since the last Bind or Automesh regen"; panel button text override updated to match. Relative timestamp deferred - `WeightSidecar` schema has no timestamp field; adding one is a schema bump out of scope for this PR.
 - **UX2: Automesh authoring modal stages had broken visual feedback.** **FIXED on branch `fix/spec-013-modal-ux`** (this PR). Three concrete bugs were hiding the modal's value from the user: viewport did not redraw after ENTER/BACKSPACE (overlays appeared to do nothing until manual zoom/pan), statusbar pill showed only "Automesh Authoring:" with no current-stage indicator, GPU overlay drew at world origin instead of at the sprite's viewport position (offset silhouette to the right of the actual mesh). All three reproduced reliably on the hand fixture; all three resolved by adding `tag_redraw_view3d` after every stage mutation + `_current_stage_label` class var read by the statusbar draw callback + transforming overlay points through `obj.matrix_world` in `authoring_pipeline.compute_outer` / `compute_inner_loops_for_stage`.
+
+## Tech debt - addon-wide
+
+- **mypy strict + bpy.props typing cleanup.** The addon scatters `# type: ignore[valid-type]` on every `bpy.props.FloatProperty(...)` / `EnumProperty(...)` / `StringProperty(...)` assignment-as-annotation (the Blender PG hack mypy strict cannot model) and `# type: ignore[import-not-found]` on every relative `..core.skinning.*` import (mypy resolves relative imports from `apps/blender/` cwd and the `.core.X` path fails from `operators/`, `panels/`). Both patterns are universal across `bind_mesh.py`, `set_bone_mode.py`, `brush_preset.py`, `copy_weights_to_selected.py`, `sidecar_io.py`, and reach into helper modules too. Cleanup path: (a) ship `.pyi` stub files declaring proper `bpy.props.*` return types so the assignment-as-annotation hack types correctly without ignore; (b) extend `pyproject.toml` `[tool.mypy]` with per-module `mypy_path` / `explicit_package_bases` so relative imports resolve consistently; (c) audit + remove the now-obsolete ignores in one sweep. Out of scope for current SPECs (touches every operator and panel module); track as standalone refactor when next strict-mypy churn happens.
 
 ## Wave 13.4 - aspirational
 

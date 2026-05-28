@@ -91,8 +91,13 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.active_object
-        return obj is not None and obj.type == "MESH"
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is None or getattr(scene_props, "active_armature", None) is None:
+            return False
+        # Allow when active is MESH or any selected object is MESH
+        return any(o.type == "MESH" for o in context.selected_objects) or (
+            context.active_object is not None and context.active_object.type == "MESH"
+        )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         scene_props = getattr(context.scene, "proscenio", None)
@@ -103,15 +108,71 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             self.max_distance = float(skinning.bind_max_distance)
         return self.execute(context)
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            report_error(self, "active object must be a mesh")
-            return {"CANCELLED"}
-        if len(obj.data.vertices) == 0:
-            report_error(self, "mesh has 0 verts")
-            return {"CANCELLED"}
+    def _bind_single(
+        self,
+        mesh_obj: bpy.types.Object,
+        armature: bpy.types.Object,
+    ) -> dict[str, int]:
+        """Run pre-flight diagnoses and apply_bind for one mesh object.
 
+        Returns the counters dict from apply_bind. Raises RuntimeError or
+        Exception on failure so the caller can track per-mesh results.
+        Emits per-finding reports directly to self.
+        """
+        if len(mesh_obj.data.vertices) == 0:
+            raise ValueError("mesh has 0 verts")
+
+        # D11 contract: ALL bind paths run pre-flight diagnoses.
+        findings = collect_diagnoses_for_object(mesh_obj, armature)
+        errors = [f for f in findings if f.severity == "error"]
+        warns = [f for f in findings if f.severity == "warn"]
+        for finding in errors:
+            report_error(self, f"[{mesh_obj.name}] {finding.message} - {finding.hint}")
+        if errors:
+            raise RuntimeError(f"{len(errors)} pre-flight error(s); see above")
+        for finding in warns:
+            report_warn(self, f"[{mesh_obj.name}] {finding.message} - {finding.hint}")
+
+        try:
+            counters = apply_bind(
+                mesh_obj,
+                armature,
+                self.bind_init_mode,
+                falloff_power=self.falloff_power,
+                max_distance=self.max_distance,
+            )
+        except RuntimeError as exc:
+            if self.bind_init_mode == "BONE_HEAT":
+                raise RuntimeError(
+                    f"bone-heat failed: {exc}. Try mode=PROXIMITY as fallback "
+                    "(Skinning panel > Bind mode dropdown)"
+                ) from exc
+            raise
+
+        if counters["orphan_verts"] > 0:
+            report_warn(
+                self,
+                f"[{mesh_obj.name}] {counters['orphan_verts']} verts have no bone in range - "
+                "increase max_distance or move armature closer",
+            )
+        if counters["groups_wiped"] > 0:
+            report_info(
+                self,
+                f"[{mesh_obj.name}] removed {counters['groups_wiped']} "
+                "non-base vertex group(s) before bind",
+            )
+        report_info(
+            self,
+            (
+                f"[{mesh_obj.name}] bind: {counters['verts_bound']} verts to "
+                f"{counters['bones_used']} bones ({counters['orphan_verts']} orphans). "
+                f"Mode={self.bind_init_mode}"
+            ),
+        )
+        # apply_bind returns dict[str, Any] (counters); narrow to declared type
+        return {str(k): int(v) for k, v in counters.items()}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
         scene_props = getattr(context.scene, "proscenio", None)
         armature = getattr(scene_props, "active_armature", None) if scene_props else None
         if armature is None or armature.type != "ARMATURE":
@@ -124,58 +185,31 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        # D11 contract: ALL bind paths run pre-flight diagnoses.
-        findings = collect_diagnoses_for_object(obj, armature)
-        errors = [f for f in findings if f.severity == "error"]
-        warns = [f for f in findings if f.severity == "warn"]
-        for finding in errors:
-            report_error(self, f"{finding.message} - {finding.hint}")
-        if errors:
-            return {"CANCELLED"}
-        for finding in warns:
-            report_info(self, f"{finding.message} - {finding.hint}")
-
-        try:
-            counters = apply_bind(
-                obj,
-                armature,
-                self.bind_init_mode,
-                falloff_power=self.falloff_power,
-                max_distance=self.max_distance,
-            )
-        except RuntimeError as exc:
-            if self.bind_init_mode == "BONE_HEAT":
-                report_error(
-                    self,
-                    f"bone-heat failed: {exc}. Try mode=PROXIMITY as fallback "
-                    "(Skinning panel > Bind mode dropdown)",
-                )
-            else:
-                report_error(self, f"bind failed: {exc}")
-            return {"CANCELLED"}
-        except Exception as exc:
-            report_error(self, f"bind failed: {exc}")
+        # Collect all selected MESH objects; fall back to active when nothing
+        # is formally selected (e.g. F3-invoked with no selection box).
+        targets = [o for o in context.selected_objects if o.type == "MESH"]
+        if not targets:
+            active = context.active_object
+            if active is not None and active.type == "MESH":
+                targets = [active]
+        if not targets:
+            report_error(self, "no mesh objects selected")
             return {"CANCELLED"}
 
-        if counters["orphan_verts"] > 0:
-            report_warn(
-                self,
-                f"{counters['orphan_verts']} verts have no bone in range - "
-                "increase max_distance or move armature closer",
-            )
-        if counters["groups_wiped"] > 0:
-            report_info(
-                self,
-                f"removed {counters['groups_wiped']} non-base vertex group(s) before bind",
-            )
-        report_info(
-            self,
-            (
-                f"bind: {counters['verts_bound']} verts to {counters['bones_used']} "
-                f"bones ({counters['orphan_verts']} orphans). Mode={self.bind_init_mode}"
-            ),
-        )
-        return {"FINISHED"}
+        successes = 0
+        failures: list[tuple[str, str]] = []
+        for mesh_obj in targets:
+            try:
+                self._bind_single(mesh_obj, armature)
+                successes += 1
+            except Exception as exc:
+                failures.append((mesh_obj.name, str(exc)))
+
+        for name, err in failures:
+            report_warn(self, f"bind failed for '{name}': {err}")
+
+        report_info(self, f"bound {successes} mesh(es)")
+        return {"FINISHED"} if successes else {"CANCELLED"}
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_bind_mesh_to_armature,)

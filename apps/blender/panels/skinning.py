@@ -55,9 +55,11 @@ class PROSCENIO_PT_skinning(bpy.types.Panel):
         obj = context.active_object
         _draw_automesh_box(layout, skinning_props)
         _draw_authoring_box(layout, skinning_props, obj)
-        _draw_bind_box(layout, skinning_props, picker)
+        _draw_bind_box(layout, skinning_props, picker, obj)
         _draw_edit_weights_box(layout, obj, picker)
+        _draw_weight_transfer_box(layout)
         _draw_snapshot_box(layout, skinning_props, obj)
+        _draw_sidecar_io_box(layout, obj)
         _draw_debug_box(layout, skinning_props)
 
 
@@ -107,6 +109,8 @@ def _draw_authoring_box(
         row = box.row(align=True)
         row.prop(skinning_props, "authoring_inner_loop_count", text="Loops")
         row.prop(skinning_props, "authoring_inner_loop_spacing", text="Spacing")
+        row = box.row()
+        row.prop(skinning_props, "authoring_cut_margin", text="Cut margin")
     row = box.row()
     row.enabled = _authoring_button_enabled(obj)
     row.operator(
@@ -135,6 +139,7 @@ def _draw_bind_box(
     layout: bpy.types.UILayout,
     skinning_props: bpy.types.PropertyGroup | None,
     picker: bpy.types.Object | None,
+    obj: bpy.types.Object | None = None,
 ) -> None:
     """Sub-box for the Bind to Picker Armature operator.
 
@@ -146,7 +151,14 @@ def _draw_bind_box(
     falloff_power + max_distance are not surfaced here; they reach
     the user via F3 redo after the operator runs, keeping the panel
     UI focused on the common case.
+
+    Per-bone Soft/Hard override rows appear below the run button when
+    a picker armature is present. Each bone gets a two-button toggle;
+    depress=True marks the active override. Missing entry means the
+    bone uses the operator-level default (bind_init_mode).
     """
+    from ..core.skinning.bone_modes import read_bone_modes  # type: ignore[import-not-found]
+
     box = layout.box()
     box.label(text="Bind to picker", icon="LINK_BLEND")
     if skinning_props is not None:
@@ -159,6 +171,35 @@ def _draw_bind_box(
         icon="MOD_ARMATURE",
     )
 
+    if picker is None or obj is None or obj.type != "MESH":
+        return
+
+    modes = read_bone_modes(obj)
+    bones = picker.data.bones if picker.data is not None else []
+    if not bones:
+        return
+
+    override_box = box.box()
+    override_box.label(text="Per-bone Soft/Hard overrides:")
+    for bone in bones:
+        current = modes.get(bone.name, "")
+        bone_row = override_box.row(align=True)
+        bone_row.label(text=bone.name)
+        op_soft = bone_row.operator(
+            "proscenio.set_bone_mode",
+            text="Soft",
+            depress=(current == "SOFT"),
+        )
+        op_soft.bone_name = bone.name
+        op_soft.mode = "SOFT"
+        op_hard = bone_row.operator(
+            "proscenio.set_bone_mode",
+            text="Hard",
+            depress=(current == "HARD"),
+        )
+        op_hard.bone_name = bone.name
+        op_hard.mode = "HARD"
+
 
 def _draw_edit_weights_box(
     layout: bpy.types.UILayout,
@@ -170,7 +211,16 @@ def _draw_edit_weights_box(
     Button enabled only when (a) picker armature set, (b) mesh has
     a populated sidecar (binds preceded edit). Active vertex group
     label hints which bone the modal will start painting.
+
+    Brush curve presets (O4) appear below the entry button as a
+    4-button aligned row so the artist can switch curve shape without
+    opening the brush curve editor.
     """
+    from ..core.skinning.brush_curve_presets import (  # type: ignore[import-not-found]
+        PRESET_LABELS,
+        PRESETS,
+    )
+
     box = layout.box()
     box.label(text="Edit Weights", icon="BRUSHES_ALL")
     active_label = _active_group_label(obj)
@@ -186,6 +236,12 @@ def _draw_edit_weights_box(
         return
     if obj.get("proscenio_weight_sidecar") is None:
         box.label(text="bind first to enable", icon="INFO")
+
+    box.label(text="Brush curve preset:")
+    row = box.row(align=True)
+    for preset_name in PRESETS:
+        op = row.operator("proscenio.set_brush_preset", text=PRESET_LABELS[preset_name])
+        op.preset_name = preset_name
 
 
 def _active_group_label(obj: bpy.types.Object | None) -> str:
@@ -207,6 +263,17 @@ def _edit_weights_button_enabled(
     if len(obj.vertex_groups) == 0:
         return False
     return obj.get("proscenio_weight_sidecar") is not None
+
+
+def _draw_weight_transfer_box(layout: bpy.types.UILayout) -> None:
+    """Sub-box surfacing the Copy Weights to Selected operator (SPEC 013 O7).
+
+    Active mesh = source; other selected meshes = targets. Button
+    enabled by operator poll (active MESH + at least one other selected MESH).
+    """
+    box = layout.box()
+    box.label(text="Weight transfer:", icon="DUPLICATE")
+    box.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")
 
 
 def _draw_snapshot_box(
@@ -241,7 +308,7 @@ def _draw_snapshot_box(
     row.enabled = counts is not None
     row.operator(
         "proscenio.restore_weight_snapshot",
-        text="Restore Weight Snapshot",
+        text="Reset to Last Saved Weights",
         icon="LOOP_BACK",
     )
 
@@ -265,6 +332,20 @@ def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
         if provenance in counts:
             counts[provenance] += 1
     return counts
+
+
+def _draw_sidecar_io_box(
+    layout: bpy.types.UILayout,
+    obj: bpy.types.Object | None,
+) -> None:
+    """Sub-box with Export + Import file-dialog buttons for sidecar JSON."""
+    box = layout.box()
+    box.label(text="Sidecar IO", icon="FILE_TEXT")
+    row = box.row(align=True)
+    row.operator("proscenio.export_sidecar", text="Export", icon="EXPORT")
+    row.operator("proscenio.import_sidecar", text="Import", icon="IMPORT")
+    if obj is not None and obj.type == "MESH" and obj.get("proscenio_weight_sidecar") is None:
+        box.label(text="no sidecar yet (run Bind first)", icon="INFO")
 
 
 def _draw_debug_box(

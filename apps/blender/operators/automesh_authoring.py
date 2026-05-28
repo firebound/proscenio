@@ -553,13 +553,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _stage2_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for Stage 2 (USER_OUTER) live containers.
 
-        Passes outer stroke list + raw-stroke refs so the draw callbacks
-        render both committed strokes and the in-progress one during Stage 2.
-        Stage 4+ also shows Stage 4 strokes but not Stage 2's raw preview.
-        Tooltip refs are included so the POST_PIXEL handler tracks intent.
+        Passes outer stroke list via user_outer_strokes so register_overlay
+        applies stage_context="outer" (orange cut color). Raw-stroke and
+        tooltip refs included for in-progress preview and intent text.
         """
         return {
-            "user_strokes": self._user_outer_strokes,
+            "user_outer_strokes": self._user_outer_strokes,
             "stroke_active_ref": self._outer_stroke_active_ref,
             "stroke_raw_points_ref": self._outer_stroke_raw_points,
             "tooltip_mouse_ref": self._tooltip_mouse_ref,
@@ -584,12 +583,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _stage4plus_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for register/refresh_overlay Stage 4+ live containers.
 
-        Concatenates outer + inner strokes so both sets are visible from
-        Stage 4 (USER_STEINERS) onward. Does not include raw stroke or
-        active flag (Stage 2 and Stage 3 only).
+        Passes outer and interior stroke lists separately so register_overlay
+        can register two distinct draw handlers - one per context - giving each
+        the correct cut color: outer = orange (chunk-remove), interior = red (rip).
+        Does not include raw stroke or active flag (Stage 2 and Stage 3 only).
         """
         return {
-            "user_strokes": self._user_outer_strokes + self._user_strokes,
+            "user_strokes": self._user_strokes,
+            "user_outer_strokes": self._user_outer_strokes,
         }
 
     def _compute_stage4_tooltip_text(self, event: bpy.types.Event) -> str:

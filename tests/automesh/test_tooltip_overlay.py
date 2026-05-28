@@ -1,9 +1,10 @@
-"""Pure-logic tests for the authoring modal tooltip text resolver (AS-AM9).
+"""Pure-logic tests for the authoring modal tooltip and overlay color resolvers.
 
-The tooltip draw handler itself requires a Blender viewport (GPU + blf) and
-cannot be tested headlessly. These tests cover the text-selection logic that
-maps (stage, modifier state, mouse location) to an intent string, expressed
-as a standalone pure function that mirrors the operator methods.
+The tooltip and GPU draw handlers require a Blender viewport and cannot be
+tested headlessly. These tests cover the pure text-selection and color-selection
+logic that maps (stage, modifier state, mouse location) / (kind, context) to
+intent strings and RGBA colors, expressed as standalone pure functions that
+mirror the operator and overlay module logic.
 
 Run from repo root:
     pytest tests/automesh/test_tooltip_overlay.py
@@ -85,3 +86,50 @@ def test_tooltip_stage2_ctrl_inside():
 
 def test_tooltip_unknown_stage_returns_empty():
     assert resolve_tooltip("unknown", ctrl=False, shift=False, inside=False) == ""
+
+
+# ---------------------------------------------------------------------------
+# Stroke overlay color resolver (AS-AM9-REV)
+# Mirror of authoring_overlay._resolve_stroke_color; tested as pure logic.
+# ---------------------------------------------------------------------------
+
+_USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
+_STROKE_VERT_COLOR_FOLD = (0.3, 0.7, 1.0, 1.0)
+_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)
+_STROKE_VERT_COLOR_CUT_REMOVE = (1.0, 0.6, 0.2, 1.0)
+
+
+def resolve_stroke_color(
+    kind: str,
+    stage_context: str,
+) -> tuple[float, float, float, float]:
+    """Pure mirror of authoring_overlay._resolve_stroke_color."""
+    if kind == "point":
+        return _USER_DOT_COLOR
+    if kind == "cut":
+        if stage_context == "outer":
+            return _STROKE_VERT_COLOR_CUT_REMOVE
+        return _STROKE_VERT_COLOR_CUT_RIP
+    return _STROKE_VERT_COLOR_FOLD
+
+
+def test_overlay_color_for_stage4_cut_is_red():
+    """Stage 4 rip-cut strokes must render RED so artists distinguish them from fold-lines."""
+    color = resolve_stroke_color("cut", "interior")
+    assert color == _STROKE_VERT_COLOR_CUT_RIP, f"Expected RED {_STROKE_VERT_COLOR_CUT_RIP}, got {color}"
+
+
+def test_overlay_color_for_stage2_cut_is_orange():
+    """Stage 2 chunk-remove strokes must render ORANGE so artists distinguish them from rip-cuts."""
+    color = resolve_stroke_color("cut", "outer")
+    assert color == _STROKE_VERT_COLOR_CUT_REMOVE, f"Expected ORANGE {_STROKE_VERT_COLOR_CUT_REMOVE}, got {color}"
+
+
+def test_overlay_color_for_fold_stroke_is_blue():
+    color = resolve_stroke_color("stroke", "interior")
+    assert color == _STROKE_VERT_COLOR_FOLD
+
+
+def test_overlay_color_for_point_is_yellow():
+    color = resolve_stroke_color("point", "interior")
+    assert color == _USER_DOT_COLOR

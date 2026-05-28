@@ -571,44 +571,6 @@ def _merge_extra_steiners(
     return list(auto_interior) + accepted
 
 
-def _apply_rip_to_bmesh(
-    bm: bmesh.types.BMesh,
-    rip_edge_pairs: list[tuple[int, int]],
-    input_to_bm: dict[int, bmesh.types.BMVert],
-) -> None:
-    """Resolve rip-edge pairs to bmesh edges and call split_edges.
-
-    For each ``(a_idx, b_idx)`` in ``rip_edge_pairs``, look up the BMVert
-    for each input index in ``input_to_bm``, then find the BMEdge connecting
-    them via ``bm.edges.get``. Collected edges are passed to
-    ``bmesh.ops.split_edges`` which duplicates the shared verts at each edge
-    so the two sides become topologically independent (Blender V / Rip
-    Vertices behavior). No mesh area is removed.
-
-    Cut-margin perpendicular translation is deferred to v2: in v1 the split
-    produces co-located duplicate verts (margin=0 always). The UI slider
-    (authoring_cut_margin) is wired in StageParams but unused in this path.
-    """
-    bm.edges.ensure_lookup_table()
-    rip_bmesh_edges: list[bmesh.types.BMEdge] = []
-    for a_idx, b_idx in rip_edge_pairs:
-        bv_a = input_to_bm.get(a_idx)
-        bv_b = input_to_bm.get(b_idx)
-        if bv_a is None or bv_b is None:
-            continue
-        edge = bm.edges.get((bv_a, bv_b))
-        if edge is not None:
-            rip_bmesh_edges.append(edge)
-    if not rip_bmesh_edges:
-        print("[automesh] rip: no matching edges found in bmesh for rip_edge_pairs")
-        return
-    bmesh.ops.split_edges(bm, edges=rip_bmesh_edges)
-    bm.verts.ensure_lookup_table()
-    bm.edges.ensure_lookup_table()
-    bm.faces.ensure_lookup_table()
-    print(f"[automesh] rip_split applied to {len(rip_bmesh_edges)} edge(s)")
-
-
 def _triangulate_into_bmesh(
     obj: Object,
     outer_world: Contour2D,
@@ -616,32 +578,25 @@ def _triangulate_into_bmesh(
     interior_points: list[tuple[float, float]],
     holes_world: list[Contour2D],
     extra_edges: list[tuple[int, int]] | None = None,
-    cut_lenses: list[list[tuple[float, float]]] | None = None,
-    rip_edge_pairs: list[tuple[int, int]] | None = None,
 ) -> tuple[int, object]:
-    """Run CDT into a bmesh + apply hole-face post-prune + optional rip.
+    """Run CDT into a bmesh + apply hole-face post-prune.
 
     Returns ``(base_group_index, bm)`` so the orchestrator can
     decide whether to commit the bmesh (final path) or write +
     free without finalize (debug fill_no_interior).
 
-    Three independent post-CDT passes run in sequence:
-    1. Alpha-hole prune: faces whose centroid falls inside any alpha
-       hole contour (holes_world). Unchanged from pre-AS-AM7 behaviour.
-    2. Cut-lens prune: faces whose centroid falls inside any cut lens
-       polygon (cut_lenses from Stage 2 outer kind='cut' strokes).
-       Orthogonal to pass 1 - different polygon sets, same helper.
-    3. Rip pass: Stage 4 kind='cut' strokes: split_edges on the bmesh
-       edges that materialized the stroke constraint. Verts are
-       duplicated so each side deforms independently; NO mesh area
-       is removed (AS-AM7-REV behavior).
+    ``holes_world`` now includes both alpha holes and cut corridor holes
+    (merged by build_automesh before this call). A single post-CDT prune
+    pass handles both cleanly - faces whose centroid lies inside any hole
+    polygon are deleted, edges + verts left loose by deletion are also
+    cleaned up (see delete_faces_inside_holes).
     """
     base_group_index, _is_fresh = initialize_base_sprite_group(obj)
     delete_non_base_geometry(obj, base_group_index)
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
-    _face_count, input_to_bm = build_mesh_via_delaunay(
+    build_mesh_via_delaunay(
         bm,
         outer_world,
         inner_world,
@@ -652,22 +607,9 @@ def _triangulate_into_bmesh(
     if holes_world:
         # CDT's automatic hole detection is unreliable against the
         # bridge's Y-flip orientation flow; the centroid post-prune
-        # is the deterministic fallback (see cdt.py).
+        # is the deterministic fallback (see cdt.py). Cut corridors
+        # appended to holes_world are cleaned up here in the same pass.
         delete_faces_inside_holes(bm, holes_world)
-    if cut_lenses:
-        # Separate pass: remove faces inside cut-stroke lens polygons.
-        # Intentionally kept apart from the alpha-hole pass so the two
-        # polygon sets never interfere with each other.
-        n_pruned = delete_faces_inside_holes(bm, cut_lenses)
-        print(
-            f"[automesh] cut_lens_prune removed {n_pruned} face(s) "
-            f"across {len(cut_lenses)} lens(es)"
-        )
-    if rip_edge_pairs:
-        # Stage 4 kind='cut' rip pass: split_edges on constraint-materialized
-        # edges. Uses input_to_bm from build_mesh_via_delaunay to resolve
-        # input indices to BMVerts without coordinate searching.
-        _apply_rip_to_bmesh(bm, rip_edge_pairs, input_to_bm)
     return base_group_index, bm
 
 
@@ -710,8 +652,7 @@ def build_automesh(
     outer_override: list[tuple[float, float]] | None = None,
     extra_steiners: list[tuple[float, float]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
-    cut_lenses_local: list[list[tuple[float, float]]] | None = None,
-    rip_edge_pairs: list[tuple[int, int]] | None = None,
+    cut_hole_loops: list[list[tuple[float, float]]] | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -822,6 +763,12 @@ def build_automesh(
             "bridges", len(outer_world), len(inner_world), bridge_offset=bridge_offset
         )
 
+    if cut_hole_loops:
+        # Cut corridors are CDT holes - same clean treatment as alpha holes.
+        # They are already mesh-local resampled (from cut_geometry), so append
+        # directly to the walker holes before triangulation.
+        holes_world = list(holes_world) + list(cut_hole_loops)
+        print(f"[automesh] merged {len(cut_hole_loops)} cut corridor(s) into holes_world")
     base_group_index, bm = _triangulate_into_bmesh(
         obj,
         outer_world,
@@ -829,8 +776,6 @@ def build_automesh(
         interior_points,
         holes_world,
         extra_edges=extra_edges,
-        cut_lenses=cut_lenses_local,
-        rip_edge_pairs=rip_edge_pairs,
     )
     if debug_stage == "fill_no_interior":
         mesh = obj.data

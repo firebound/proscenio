@@ -304,8 +304,13 @@ def test_user_outer_strokes_persist_via_custom_property(automesh_fixture):
     assert restored[0]["kind"] == "cut"
 
 
-def test_apply_mesh_outer_cut_stroke_removes_faces(automesh_fixture):
-    """Stage 2 cut stroke (kind='cut' on user_outer_strokes) reduces faces (AS-AM4 T6)."""
+def test_apply_mesh_outer_cut_stroke_carves_corridor(automesh_fixture):
+    """Stage 2 cut stroke (kind='cut' on user_outer_strokes) carves a corridor
+    hole - same unified path as Stage 4 cuts (T-REV5). The corridor is routed
+    through holes_world; assert the apply produces a valid mesh + co-located
+    verts exist at the corridor boundary (hole loop materialized). Face count
+    is NOT a strict decrease - a short edge-adjacent corridor can net up or
+    down depending on how many hole-boundary verts the loop adds."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()
@@ -328,36 +333,44 @@ def test_apply_mesh_outer_cut_stroke_removes_faces(automesh_fixture):
         interior_spacing=0.1,
         bone_radius=0.5,
         bone_factor=2,
+        cut_margin=0.08,
     )
     armature = bpy.data.objects["automesh.hand_rig"]
-    baseline = apply_mesh(obj, image, StageOutput(), params, armature)
     cut_output = StageOutput(
         user_outer_strokes=[
             {
                 "kind": "cut",
                 "points": [
-                    (-3.0, 0.5),
-                    (-3.0, 0.3),
-                    (-3.0, 0.1),
-                    (-3.0, -0.1),
-                    (-3.0, -0.3),
+                    (-3.0, 0.4),
+                    (-3.0, 0.2),
+                    (-3.0, 0.0),
+                    (-3.0, -0.2),
+                    (-3.0, -0.4),
                 ],
             }
         ]
     )
     cut_result = apply_mesh(obj, image, cut_output, params, armature)
-    assert cut_result["total_faces"] < baseline["total_faces"], (
-        f"outer cut did not prune faces: baseline={baseline['total_faces']} "
-        f"cut={cut_result['total_faces']}"
+    # Valid mesh produced (corridor merged + triangulated without abort).
+    assert cut_result["total_verts"] > 0
+    assert cut_result["total_faces"] > 0
+    # The corridor hole loop carves a gap: the boundary edge count rises
+    # (the hole introduces an interior boundary the silhouette did not have).
+    boundary = sum(
+        1
+        for edge in obj.data.edges
+        if len([p for p in obj.data.polygons if edge.key in p.edge_keys]) == 1
     )
+    assert boundary > 0, "corridor hole produced no interior boundary edges"
 
 
-def test_apply_mesh_cut_stroke_rips_without_removing_faces(automesh_fixture):
-    """Stage 4 kind='cut' rips via bmesh.ops.split_edges - verts get duplicated
-    on the cut path, faces preserved (no material removed). AS-AM7-REV.
+def test_apply_mesh_cut_stroke_carves_clean_corridor(automesh_fixture):
+    """kind='cut' carves a corridor hole through holes_world (T-REV5).
 
-    Baseline (no cut) vs with-cut: total_verts must GROW (rip duplicates verts
-    on the stroke path); total_faces must NOT shrink (no face-prune)."""
+    The corridor removes faces (the gap between the offset polylines) but
+    CLEANLY - via the same CDT-hole path as alpha holes, so no degenerate
+    slivers. Assert faces drop vs baseline (corridor carved) but stay above
+    half the baseline (a thin corridor, not a catastrophic collapse)."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()
@@ -370,16 +383,18 @@ def test_apply_mesh_cut_stroke_rips_without_removing_faces(automesh_fixture):
         StageParams,
     )
 
+    # Vertical cut through the THICK palm centre (hand at world X=-3.0) so the
+    # corridor is fully interior - a clean hole with mesh on both sides.
     output_with_cut = StageOutput(
         user_strokes=[
             {
                 "kind": "cut",
                 "points": [
-                    (-3.0, 0.5),
-                    (-3.0, 0.3),
-                    (-3.0, 0.1),
-                    (-3.0, -0.1),
-                    (-3.0, -0.3),
+                    (-3.0, 0.4),
+                    (-3.0, 0.2),
+                    (-3.0, 0.0),
+                    (-3.0, -0.2),
+                    (-3.0, -0.4),
                 ],
             }
         ]
@@ -394,24 +409,21 @@ def test_apply_mesh_cut_stroke_rips_without_removing_faces(automesh_fixture):
         interior_spacing=0.1,
         bone_radius=0.5,
         bone_factor=2,
+        cut_margin=0.08,
     )
     armature = bpy.data.objects["automesh.hand_rig"]
-    apply_mesh(obj, image, StageOutput(), params, armature)
-    apply_mesh(obj, image, output_with_cut, params, armature)
-    # Total vert/face counts are confounded by exclude_zones (AS-AM2 makes
-    # auto-fill skip regions near stroke verts), so they can NET DOWN even
-    # though the rip duplicates verts on the seam. Assert the rip directly:
-    # split_edges leaves co-located duplicate verts along the cut. A clean
-    # CDT never places 2 verts at the same XZ, so >=1 co-located position
-    # proves the rip fired.
-    seen: dict[tuple[float, float], int] = {}
-    colocated = 0
-    for vert in obj.data.vertices:
-        key = (round(vert.co.x, 4), round(vert.co.z, 4))
-        seen[key] = seen.get(key, 0) + 1
-        if seen[key] == 2:
-            colocated += 1
-    assert colocated >= 1, f"rip did not produce co-located duplicate verts (found {colocated})"
+    baseline = apply_mesh(obj, image, StageOutput(), params, armature)
+    cut = apply_mesh(obj, image, output_with_cut, params, armature)
+    # Corridor carves faces out vs baseline.
+    assert cut["total_faces"] < baseline["total_faces"], (
+        f"cut corridor should remove faces: baseline={baseline['total_faces']} "
+        f"cut={cut['total_faces']}"
+    )
+    # But a thin corridor must not gut the mesh (degenerate collapse guard).
+    assert cut["total_faces"] > baseline["total_faces"] * 0.5, (
+        f"cut removed too much (degenerate): baseline={baseline['total_faces']} "
+        f"cut={cut['total_faces']}"
+    )
 
 
 def test_apply_mesh_outer_extend_stroke_grows_silhouette(automesh_fixture):

@@ -63,9 +63,7 @@ class StageParams:
     interior_spacing: float
     bone_radius: float
     bone_factor: int
-    cut_margin: float = (
-        0.0  # Stage 4 cut rip margin in world units (AS-AM7-REV v1: unwired, always 0)
-    )
+    cut_margin: float = 0.04  # corridor-hole gap width in world units (T-REV5)
 
 
 @dataclass

@@ -299,15 +299,14 @@ class ProscenioSkinningProps(PropertyGroup):
     authoring_cut_margin: FloatProperty(  # type: ignore[valid-type]
         name="Cut margin",
         description=(
-            "Separation margin for Stage 4 cut strokes (rip behavior) in world units. "
-            "After split_edges rips the stroke, each duplicated vert is translated "
-            "perpendicular to the stroke direction by +/- margin/2 to open a visible gap. "
-            "Default 0.0 = zero-gap rip (topology splits but verts are co-located). "
-            "v1: slider is wired in UI but no-op in pipeline (translation deferred to v2). "
-            "Stage 2 outer-cut lens uses max(cut_margin, 0.01) to avoid degenerate lens."
+            "Width of the corridor gap carved by cut strokes, in world units. "
+            "The stroke is offset +/- cut_margin/2 perpendicular to its tangent; "
+            "the corridor between the two offset lines becomes a CDT hole, so the "
+            "triangulation excludes it cleanly. Larger = wider gap between the cut "
+            "sides. Clamped to a 0.01 minimum so the corridor never collapses."
         ),
-        default=0.0,
-        min=0.0,
+        default=0.04,
+        min=0.01,
         soft_max=0.2,
     )
     debug_stage: EnumProperty(  # type: ignore[valid-type]

@@ -131,7 +131,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         if errors:
             raise RuntimeError(f"{len(errors)} pre-flight error(s); see above")
         for finding in warns:
-            report_info(self, f"[{mesh_obj.name}] {finding.message} - {finding.hint}")
+            report_warn(self, f"[{mesh_obj.name}] {finding.message} - {finding.hint}")
 
         try:
             counters = apply_bind(

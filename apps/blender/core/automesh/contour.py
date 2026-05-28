@@ -420,11 +420,14 @@ def extract_contours(
     here, which both refuse to support holes).
 
     ``margin_px`` controls the OUTER annulus thickness exactly as
-    in :func:`extract_contour_pair`. Holes are detected on the
-    same dilated outer mask so a hole that the user wanted treated
-    as a hole survives the 1-cell safety dilation; hairline alpha
-    gaps narrower than the safety dilation are intentionally
-    swallowed so they do not produce noise mesh holes.
+    in :func:`extract_contour_pair`. Holes are detected on the RAW
+    (undilated) mask via :func:`extract_holes`, not the dilated
+    outer mask: foreground dilation would close 1-2 cell inter-finger
+    corridors at low resolution and convert border-connected
+    background into false enclosed holes (B3). Flood-filling from the
+    border of the undilated mask keeps still-open corridors draining
+    to the border; only genuinely enclosed background islands (e.g.
+    ring sprites) are returned as holes.
     """
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")

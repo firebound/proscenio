@@ -39,16 +39,18 @@ def test_bind_multi_mesh(automesh_fixture):
 
 
 def test_bind_single_selected_no_active(automesh_fixture):
-    """Only one MESH in selection (active is something else) still binds it."""
+    """Only one MESH in selection (active is the armature, not a mesh) still binds it."""
     src = bpy.data.objects["hand"]
+    rig = bpy.data.objects["automesh.hand_rig"]
 
     for other in bpy.context.selected_objects:
         other.select_set(False)
     src.select_set(True)
-    # Do not set active_object to src - leave it unset (None) or keep previous.
-    bpy.context.view_layer.objects.active = src
+    # Active is the armature (a non-mesh) so the bind must pick src from the
+    # selection rather than from the active object - the scenario this covers.
+    bpy.context.view_layer.objects.active = rig
 
-    bpy.context.scene.proscenio.active_armature = bpy.data.objects["automesh.hand_rig"]
+    bpy.context.scene.proscenio.active_armature = rig
 
     result = bpy.ops.proscenio.bind_mesh_to_armature()
     assert "FINISHED" in result
@@ -65,7 +67,7 @@ def test_bind_no_mesh_selected_cancels(automesh_fixture):
 
     import pytest
 
-    with pytest.raises((RuntimeError, Exception)):
-        # operator should cancel; bpy.ops raises when result is CANCELLED and
-        # called from a context where no object is accessible
+    with pytest.raises(RuntimeError):
+        # bpy.ops raises RuntimeError when the operator returns CANCELLED
+        # (no selected/active MESH); narrow so unrelated errors still fail.
         bpy.ops.proscenio.bind_mesh_to_armature()

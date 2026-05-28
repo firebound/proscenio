@@ -33,7 +33,11 @@ class PROSCENIO_OT_export_sidecar(bpy.types.Operator, ExportHelper):
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
         payload = obj["proscenio_weight_sidecar"]
-        text = payload if isinstance(payload, str) else json.dumps(payload)
+        try:
+            text = payload if isinstance(payload, str) else json.dumps(payload)
+        except (TypeError, ValueError) as exc:
+            self.report({"WARNING"}, f"Invalid sidecar payload for export: {exc}")
+            return {"CANCELLED"}
         try:
             with open(self.filepath, "w", encoding="utf-8") as f:
                 f.write(text)

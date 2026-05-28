@@ -23,6 +23,11 @@ def transfer_weights_by_nearest(
 ) -> list[dict[str, float]]:
     if max_distance < 0:
         raise ValueError(f"max_distance must be >= 0, got {max_distance}")
+    if len(source_positions) != len(source_weights):
+        raise ValueError(
+            "source_positions and source_weights must have the same length "
+            f"(got {len(source_positions)} vs {len(source_weights)})"
+        )
     if not source_positions:
         return [{} for _ in target_positions]
     d2_cap = max_distance * max_distance

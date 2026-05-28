@@ -405,8 +405,7 @@ def test_apply_mesh_cut_stroke_rips_without_removing_faces(automesh_fixture):
     )
     # Rip does NOT remove faces (no face-prune for Stage 4 cuts).
     assert cut_result["total_faces"] >= baseline["total_faces"], (
-        f"rip removed faces: baseline={baseline['total_faces']} "
-        f"cut={cut_result['total_faces']}"
+        f"rip removed faces: baseline={baseline['total_faces']} cut={cut_result['total_faces']}"
     )
 
 

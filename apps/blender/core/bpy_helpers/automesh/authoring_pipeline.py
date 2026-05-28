@@ -279,7 +279,9 @@ def _build_stroke_cdt_inputs(
     Stage 4 user_strokes use the rip path (split_edges for kind='cut').
     Returns merged (extras, edges, dropped, cut_lenses, rip_edges).
     """
-    extras_outer, edges_outer, dropped_outer, cut_lenses = _strokes_to_cdt_inputs(
+    # Stage 2 lens path returns a 5-tuple (..., rip_edges) for signature
+    # symmetry, but outer cuts never rip - the 5th element is always empty here.
+    extras_outer, edges_outer, dropped_outer, cut_lenses, _unused_rip = _strokes_to_cdt_inputs(
         obj,
         outer_cuts,
         outer_world_local,

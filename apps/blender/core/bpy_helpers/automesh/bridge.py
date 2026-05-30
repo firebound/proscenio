@@ -684,6 +684,7 @@ def build_automesh(
     extra_steiners: list[tuple[float, float]] | None = None,
     extra_edges: list[tuple[int, int]] | None = None,
     cut_hole_loops: list[list[tuple[float, float]]] | None = None,
+    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE",
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -761,19 +762,26 @@ def build_automesh(
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
-    exclude_zones: list[tuple[float, float, float]] | None = None
-    if extra_steiners:
-        exclude_zones = [(p[0], p[1], interior_spacing * 0.5) for p in extra_steiners]
-    interior_points = _compute_steiner_points(
-        outer_world,
-        inner_world,
-        holes_world,
-        interior_spacing,
-        bone_segments,
-        bone_density_radius,
-        bone_density_factor,
-        exclude_zones=exclude_zones,
-    )
+    if interior_mode == "SIMPLE":
+        # AS-AM14: sparse Spine-like mesh. Drop the uniform grid + bone-density
+        # fill so only the silhouette, holes, and the user-placed verts
+        # (extra_steiners) seed the Constrained Delaunay. Skipping the grid
+        # compute entirely (it is the expensive step) is the whole point.
+        interior_points: list[tuple[float, float]] = []
+    else:
+        exclude_zones: list[tuple[float, float, float]] | None = None
+        if extra_steiners:
+            exclude_zones = [(p[0], p[1], interior_spacing * 0.5) for p in extra_steiners]
+        interior_points = _compute_steiner_points(
+            outer_world,
+            inner_world,
+            holes_world,
+            interior_spacing,
+            bone_segments,
+            bone_density_radius,
+            bone_density_factor,
+            exclude_zones=exclude_zones,
+        )
     # Capture the auto-fill count BEFORE merging extras so extra_edges
     # indices can be remapped to their true position in the final coord
     # array (outer + inner + auto_interior + extras). The caller indexes

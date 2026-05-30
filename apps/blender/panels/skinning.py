@@ -76,13 +76,17 @@ def _draw_automesh_box(
         col.prop(skinning_props, "automesh_alpha_threshold")
         col.prop(skinning_props, "automesh_margin_pixels")
         col.prop(skinning_props, "automesh_contour_vertices")
-        col.prop(skinning_props, "automesh_interior_spacing")
+        col.prop(skinning_props, "automesh_interior_mode")
         col.separator()
         col.prop(skinning_props, "preserve_base_quad")
         col.separator()
-        col.prop(skinning_props, "automesh_density_under_bones")
-        sub = col.column(align=True)
-        sub.active = bool(skinning_props.automesh_density_under_bones)
+        is_dense = skinning_props.automesh_interior_mode == "DENSE"
+        dense_col = col.column(align=True)
+        dense_col.active = is_dense
+        dense_col.prop(skinning_props, "automesh_interior_spacing")
+        dense_col.prop(skinning_props, "automesh_density_under_bones")
+        sub = dense_col.column(align=True)
+        sub.active = is_dense and bool(skinning_props.automesh_density_under_bones)
         sub.prop(skinning_props, "automesh_bone_radius")
         sub.prop(skinning_props, "automesh_bone_factor")
     box.operator(

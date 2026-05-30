@@ -29,6 +29,84 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image:
     raise RuntimeError("no image texture on fixture hand")
 
 
+def test_active_stages_simple_drops_inner_loops(automesh_fixture):
+    """AS-AM15: SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
+    from proscenio.core.skinning.authoring_stages import (
+        AuthoringStage,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh_authoring import (
+        _stages_for_mode,  # type: ignore[import-not-found]
+    )
+
+    dense = _stages_for_mode("DENSE")
+    simple = _stages_for_mode("SIMPLE")
+    assert AuthoringStage.INNER_LOOPS in dense
+    assert AuthoringStage.INNER_LOOPS not in simple
+    assert len(dense) == 6
+    assert len(simple) == 5
+    assert dense[-1] == AuthoringStage.APPLY
+    assert simple[-1] == AuthoringStage.APPLY
+
+
+def test_stage_label_numbering_tracks_active_len(automesh_fixture):
+    """AS-AM15: statusbar N/M derives from the active mode's stage count;
+    STEINER_PREVIEW relabels to 'Triangulation preview' in SIMPLE."""
+    from proscenio.core.skinning.authoring_stages import (
+        AuthoringStage,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh_authoring import (
+        _stage_label,  # type: ignore[import-not-found]
+    )
+
+    assert _stage_label(AuthoringStage.STEINER_PREVIEW, "SIMPLE").startswith("4/5")
+    assert "Triangulation preview" in _stage_label(AuthoringStage.STEINER_PREVIEW, "SIMPLE")
+    assert _stage_label(AuthoringStage.STEINER_PREVIEW, "DENSE").startswith("5/6")
+    assert "Vertex preview" in _stage_label(AuthoringStage.STEINER_PREVIEW, "DENSE")
+    assert _stage_label(AuthoringStage.OUTER, "SIMPLE").startswith("1/5")
+    assert _stage_label(AuthoringStage.APPLY, "DENSE").startswith("6/6")
+
+
+def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
+    """AS-AM17: Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
+    the orange chunk-remove color is retired."""
+    from proscenio.core.bpy_helpers.automesh import (
+        authoring_overlay,  # type: ignore[import-not-found]
+    )
+
+    assert (
+        authoring_overlay._resolve_stroke_color("cut")
+        == authoring_overlay._STROKE_VERT_COLOR_CUT_RIP
+    )
+    # fold-line stays blue (distinct from cut)
+    assert (
+        authoring_overlay._resolve_stroke_color("stroke")
+        != authoring_overlay._STROKE_VERT_COLOR_CUT_RIP
+    )
+    assert not hasattr(authoring_overlay, "_STROKE_VERT_COLOR_CUT_REMOVE")
+
+
+def test_automesh_from_sprite_operator_honors_interior_mode(automesh_fixture):
+    """AS-AM14: the standalone Automesh-from-Sprite operator (not just the
+    authoring modal) must honor interior_mode - SIMPLE yields fewer verts
+    than DENSE on the same sprite."""
+    obj = _activate("hand")
+    common = {
+        "resolution": 0.25,
+        "alpha_threshold": 1,
+        "margin_pixels": 0,
+        "contour_vertices": 64,
+        "interior_spacing": 0.1,
+        "density_under_bones": False,
+        "preserve_base_quad": False,
+        "debug_stage": "off",
+    }
+    bpy.ops.proscenio.automesh_from_sprite(interior_mode="DENSE", **common)
+    dense_verts = len(obj.data.vertices)
+    bpy.ops.proscenio.automesh_from_sprite(interior_mode="SIMPLE", **common)
+    simple_verts = len(obj.data.vertices)
+    assert simple_verts < dense_verts
+
+
 def test_poll_blocks_without_image_texture(automesh_fixture):
     obj = _activate("hand")
     for slot in obj.material_slots:
@@ -116,6 +194,105 @@ def test_apply_mesh_runs_with_prior_sidecar(automesh_fixture):
     )
     counters = apply_mesh(obj, image, StageOutput(), params, bpy.data.objects["automesh.hand_rig"])
     assert "total_verts" in counters
+
+
+def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
+    """AS-AM14: SIMPLE drops the uniform interior fill, so it must yield
+    fewer total verts than DENSE on the same fixture while still being a
+    valid triangulation (>=1 face)."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    base = {
+        "resolution": 0.25,
+        "alpha_threshold": 1,
+        "margin_pixels": 0,
+        "contour_vertices": 64,
+        "inner_loop_count": 0,
+        "inner_loop_spacing": 0.15,
+        "interior_spacing": 0.1,
+        "bone_radius": 0.5,
+        "bone_factor": 2,
+    }
+    dense = apply_mesh(obj, image, StageOutput(), StageParams(**base, interior_mode="DENSE"), None)
+    simple = apply_mesh(
+        obj, image, StageOutput(), StageParams(**base, interior_mode="SIMPLE"), None
+    )
+    assert simple["total_verts"] < dense["total_verts"]
+    assert simple["total_faces"] >= 1
+
+
+def test_triangulation_preview_returns_world_edges_without_mutating_obj(automesh_fixture):
+    """AS-AM15: SIMPLE preview returns world-XZ edges and must NOT mutate the
+    source object's mesh (it runs the real build on a throwaway copy)."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        compute_triangulation_preview,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+        interior_mode="SIMPLE",
+    )
+    verts_before = len(obj.data.vertices)
+    edges = compute_triangulation_preview(obj, image, StageOutput(), params)
+    assert len(edges) >= 3  # closed silhouette -> at least a triangle's worth
+    for a, b in edges:
+        assert len(a) == 2 and len(b) == 2
+        assert all(isinstance(c, float) for c in (*a, *b))
+    # source mesh untouched (preview built on a temp copy)
+    assert len(obj.data.vertices) == verts_before
+
+
+def test_triangulation_preview_empty_for_dense(automesh_fixture):
+    """DENSE keeps the dense Steiner-point preview, so the triangulation
+    preview helper is a no-op (returns [])."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        compute_triangulation_preview,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+        interior_mode="DENSE",
+    )
+    assert compute_triangulation_preview(obj, image, StageOutput(), params) == []
 
 
 def test_world_steiners_to_local_applies_inverse_matrix(automesh_fixture):

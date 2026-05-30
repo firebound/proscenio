@@ -126,3 +126,40 @@ def test_snap_negative_max_dist_raises():
     import pytest
     with pytest.raises(ValueError, match="max_dist"):
         snap_endpoint((0.0, 0.0), [(1.0, 0.0)], max_dist=-1.0)
+
+
+from core.automesh.stroke_geometry import subdivide_polyline  # noqa: E402
+
+
+def test_subdivide_zero_returns_input():
+    pts = [(0.0, 0.0), (1.0, 0.0)]
+    assert subdivide_polyline(pts, 0) == pts
+
+
+def test_subdivide_one_inserts_midpoint_per_edge():
+    out = subdivide_polyline([(0.0, 0.0), (1.0, 0.0)], 1)
+    assert out == [(0.0, 0.0), (0.5, 0.0), (1.0, 0.0)]
+
+
+def test_subdivide_two_inserts_two_evenly_spaced_per_edge():
+    out = subdivide_polyline([(0.0, 0.0), (3.0, 0.0)], 2)
+    assert [round(p[0], 3) for p in out] == [0.0, 1.0, 2.0, 3.0]
+
+
+def test_subdivide_multi_edge_preserves_original_verts():
+    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+    out = subdivide_polyline(pts, 1)
+    assert out[0] == (0.0, 0.0)
+    assert out[2] == (1.0, 0.0)
+    assert out[-1] == (1.0, 1.0)
+    assert len(out) == 5  # 2 edges, +1 mid each
+
+
+def test_subdivide_single_point_or_empty_unchanged():
+    assert subdivide_polyline([(2.0, 2.0)], 3) == [(2.0, 2.0)]
+    assert subdivide_polyline([], 3) == []
+
+
+def test_subdivide_negative_count_treated_as_zero():
+    pts = [(0.0, 0.0), (1.0, 0.0)]
+    assert subdivide_polyline(pts, -2) == pts

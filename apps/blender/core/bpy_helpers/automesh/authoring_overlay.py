@@ -13,38 +13,43 @@ from __future__ import annotations
 import contextlib
 from typing import TypedDict, cast
 
-import blf
 import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
+from ...automesh.stroke_geometry import subdivide_polyline
 from ...skinning.authoring_stages import AuthoringStage, StageOutput, Stroke
+from ..modal_overlay import draw_text_panel_2d
 
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 _OUTER_COLOR = (0.0, 0.8, 1.0, 0.9)
 _OUTER_DIM = (0.0, 0.4, 0.5, 0.5)
+# green - spliced silhouette APPLY will build (AS-AM16)
+_OUTER_PREVIEW_COLOR = (0.2, 1.0, 0.5, 0.95)
 _INNER_BASE = (0.2, 1.0, 0.4, 0.85)
 _INNER_DIM = (0.1, 0.5, 0.2, 0.5)
 _STEINER_COLOR = (1.0, 0.3, 0.3, 0.7)
+_TRIANGULATION_COLOR = (0.2, 0.9, 0.9, 0.85)  # cyan - SIMPLE triangulation preview wireframe
+_TRIANGULATION_LINE_WIDTH = 1.5
 _USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
 _STROKE_VERT_COLOR_FOLD = (0.3, 0.7, 1.0, 1.0)  # blue - fold-line stroke (Stage 4 default)
-_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - Stage 4 rip-cut
-_STROKE_VERT_COLOR_CUT_REMOVE = (1.0, 0.6, 0.2, 1.0)  # orange - Stage 2 chunk-remove cut
-_RAW_STROKE_COLOR = (0.6, 0.6, 0.6, 0.7)
+_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - cut (both Stage 2 + Stage 4, AS-AM17)
 _LINE_WIDTH = 2.0
 _DOT_SIZE_USER = 8.0
 _DOT_SIZE_STEINER = 4.0
 _DOT_SIZE_STROKE_VERT = 6.0
 _LIVE_VERT_SIZE = 7.0  # in-progress pen/free-draw verts (slightly larger than committed)
 _LIVE_RUBBER_ALPHA = 0.5  # dimmed rubber-band segment to cursor (pen mode)
+_DELETE_HOVER_COLOR = (1.0, 1.0, 1.0, 0.95)  # bright highlight on the stroke Alt+click removes
+_DELETE_HOVER_VERT_SIZE = 10.0
+_DELETE_HOVER_LINE_WIDTH = 3.0
 
-# Tooltip (POST_PIXEL) draw constants
-_TOOLTIP_FONT_ID = 0  # default blf font
-_TOOLTIP_FONT_SIZE = 11
-_TOOLTIP_OFFSET_X = 15  # px right of mouse
-_TOOLTIP_OFFSET_Y = -15  # px below mouse (viewport Y is bottom-up)
-_TOOLTIP_COLOR = (1.0, 1.0, 1.0, 1.0)
-_TOOLTIP_SHADOW_COLOR = (0.0, 0.0, 0.0, 0.8)
+# Tooltip (POST_PIXEL) draw constants. Rendered via draw_text_panel_2d
+# (colored + backgrounded) for parity with quick_armature's cursor hint.
+_TOOLTIP_TEXT_SIZE = 11
+_TOOLTIP_OFFSET = (15, 15)  # px right + up of the cursor
+_TOOLTIP_TEXT_COLOR = (1.0, 1.0, 1.0, 1.0)
+_TOOLTIP_BG_DEFAULT = (0.0, 0.0, 0.0, 0.6)
 
 
 class OverlayHandles(TypedDict):
@@ -52,82 +57,74 @@ class OverlayHandles(TypedDict):
     does not draw that primitive."""
 
     outer: object | None
+    outer_preview: object | None  # Stage 2 spliced silhouette preview (AS-AM16)
     inner: object | None
     steiners: object | None
+    triangulation: object | None  # SIMPLE-mode triangulation preview wireframe (AS-AM15)
     user_dots: object | None
     user_strokes: object | None  # Stage 4 interior strokes (fold/rip)
     user_outer_strokes: object | None  # Stage 2 outer strokes (chunk-remove)
-    raw_stroke: object | None
-    live_preview: object | None  # Stage 4 in-progress pen/free-draw (colored verts+edges)
+    live_preview: object | None  # in-progress pen/free-draw (colored verts+edges)
+    delete_hover: object | None  # highlight on the stroke under the cursor while Alt held
     tooltip: object | None  # POST_PIXEL intent text; Stage 2 + Stage 4 only
 
 
 def _draw_tooltip(
     mouse_pos_ref: list[tuple[int, int]],
     text_ref: list[str],
+    color_ref: list[tuple[float, float, float, float]],
 ) -> None:
-    """POST_PIXEL draw handler: render intent text near mouse cursor.
+    """POST_PIXEL draw handler: colored + backgrounded intent text near cursor.
 
-    Both args are single-element lists so the operator can mutate them
-    without re-registering this handler (same pattern as _stroke_raw_points /
-    _stroke_active_ref). Nothing is drawn when mouse is outside the region
-    (mouse_region_x < 0) or when text is empty.
+    All args are single-element lists the operator mutates in-place so this
+    handler always reads current state without re-registration. ``color_ref``
+    carries the background color (operator sets a red warning bg when the
+    cursor is in a position that would clip/drop the stroke). Nothing is drawn
+    when the mouse is outside the region or text is empty.
     """
-    if not text_ref or not text_ref[0]:
-        return
-    if not mouse_pos_ref:
+    if not text_ref or not text_ref[0] or not mouse_pos_ref:
         return
     mx, my = mouse_pos_ref[0]
     if mx < 0 or my < 0:
         return
-    text = text_ref[0]
-    blf.size(_TOOLTIP_FONT_ID, _TOOLTIP_FONT_SIZE)
-    # Shadow pass (offset 1 px down-right for legibility on any bg)
-    blf.color(_TOOLTIP_FONT_ID, *_TOOLTIP_SHADOW_COLOR)
-    blf.position(_TOOLTIP_FONT_ID, mx + _TOOLTIP_OFFSET_X + 1, my + _TOOLTIP_OFFSET_Y - 1, 0)
-    blf.draw(_TOOLTIP_FONT_ID, text)
-    # White text on top
-    blf.color(_TOOLTIP_FONT_ID, *_TOOLTIP_COLOR)
-    blf.position(_TOOLTIP_FONT_ID, mx + _TOOLTIP_OFFSET_X, my + _TOOLTIP_OFFSET_Y, 0)
-    blf.draw(_TOOLTIP_FONT_ID, text)
+    region = bpy.context.region
+    if region is None:
+        return
+    bg = color_ref[0] if color_ref else _TOOLTIP_BG_DEFAULT
+    draw_text_panel_2d(
+        (text_ref[0],),
+        region_width=region.width,
+        region_height=region.height,
+        text_size=_TOOLTIP_TEXT_SIZE,
+        padding=5,
+        bg_color=bg,
+        text_color=_TOOLTIP_TEXT_COLOR,
+        origin_override=(mx + _TOOLTIP_OFFSET[0], my + _TOOLTIP_OFFSET[1]),
+    )
 
 
 def _register_interactive_handlers(
     handles: OverlayHandles,
     user_strokes: list[Stroke] | None,
-    stroke_active_ref: list[bool] | None,
-    stroke_raw_points_ref: list[tuple[float, float]] | None,
     tooltip_mouse_ref: list[tuple[int, int]] | None,
     tooltip_text_ref: list[str] | None,
-    stage_context: str = "interior",
     live_preview_ref: dict[str, object] | None = None,
+    tooltip_color_ref: list[tuple[float, float, float, float]] | None = None,
+    delete_hover_ref: list[tuple[float, float]] | None = None,
 ) -> None:
     """Register draw handlers for interactive stages (USER_OUTER, USER_STEINERS).
 
-    Covers committed strokes, in-progress raw stroke preview, and the
-    POST_PIXEL intent tooltip. All handlers receive mutable container
-    references so they always see the latest operator state without
-    needing re-registration on MOUSEMOVE.
+    Covers committed strokes, the colored in-progress pen / free-draw preview,
+    the delete-hover highlight, and the POST_PIXEL intent tooltip. All handlers
+    receive mutable container references so they always see the latest operator
+    state without needing re-registration on MOUSEMOVE.
 
-    stage_context controls cut-stroke coloring: "outer" = orange (Stage 2
-    chunk-remove), "interior" = red (Stage 4 rip-cut).
-
-    live_preview_ref (Stage 4 only) wires the colored in-progress pen /
-    free-draw preview. When supplied, the thin gray _draw_raw_stroke is
-    superseded by the richer _draw_live_preview (verts + colored edges +
-    rubber-band to the cursor in pen mode).
+    Cut strokes render RED in both stages (AS-AM17 unified the color).
     """
     if user_strokes is not None:
         handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_user_strokes,
-            (user_strokes, stage_context),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    if stroke_active_ref is not None and stroke_raw_points_ref is not None:
-        handles["raw_stroke"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_raw_stroke,
-            (stroke_active_ref, stroke_raw_points_ref),
+            (user_strokes,),
             "WINDOW",
             "POST_VIEW",
         )
@@ -138,10 +135,17 @@ def _register_interactive_handlers(
             "WINDOW",
             "POST_VIEW",
         )
+    if delete_hover_ref is not None:
+        handles["delete_hover"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_delete_hover,
+            (delete_hover_ref,),
+            "WINDOW",
+            "POST_VIEW",
+        )
     if tooltip_mouse_ref is not None and tooltip_text_ref is not None:
         handles["tooltip"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_tooltip,
-            (tooltip_mouse_ref, tooltip_text_ref),
+            (tooltip_mouse_ref, tooltip_text_ref, tooltip_color_ref or [_TOOLTIP_BG_DEFAULT]),
             "WINDOW",
             "POST_PIXEL",
         )
@@ -152,26 +156,22 @@ def register_overlay(
     output: StageOutput,
     user_strokes: list[Stroke] | None = None,
     user_outer_strokes: list[Stroke] | None = None,
-    stroke_active_ref: list[bool] | None = None,
-    stroke_raw_points_ref: list[tuple[float, float]] | None = None,
     tooltip_mouse_ref: list[tuple[int, int]] | None = None,
     tooltip_text_ref: list[str] | None = None,
     live_preview_ref: dict[str, object] | None = None,
+    tooltip_color_ref: list[tuple[float, float, float, float]] | None = None,
+    delete_hover_ref: list[tuple[float, float]] | None = None,
 ) -> OverlayHandles:
     """Add POST_VIEW draw handlers per stage's overlay set.
 
-    For Stage 2 (USER_OUTER) pass user_outer_strokes + raw-stroke/tooltip refs.
-    For Stage 4 (USER_STEINERS) pass user_strokes (interior) + user_outer_strokes
-    (outer, kept visible) + tooltip refs. Keeping the two stroke lists separate
-    lets the draw function apply distinct colors per AS-AM9-REV:
-      - user_outer_strokes (stage_context="outer"):  cut = ORANGE (chunk-remove)
-      - user_strokes       (stage_context="interior"): cut = RED   (rip)
+    For Stage 2 (USER_OUTER) pass user_outer_strokes + tooltip + live-preview
+    refs. For Stage 4 (USER_STEINERS) pass user_strokes + user_outer_strokes
+    (kept visible) + tooltip refs. Cut strokes render RED in both stages
+    (AS-AM17 unified the color).
 
     Live mutable container parameters (all optional):
     - user_strokes: interior Steiner strokes (_user_strokes in operator)
     - user_outer_strokes: outer-contour strokes (_user_outer_strokes in operator)
-    - stroke_active_ref: single-element list wrapping _stroke_active bool
-    - stroke_raw_points_ref: the operator's _stroke_raw_points list
     - tooltip_mouse_ref: single-element list with (mouse_region_x, mouse_region_y) in pixels
     - tooltip_text_ref: single-element list with current intent text string
 
@@ -181,13 +181,15 @@ def register_overlay(
     """
     handles: OverlayHandles = {
         "outer": None,
+        "outer_preview": None,
         "inner": None,
         "steiners": None,
+        "triangulation": None,
         "user_dots": None,
         "user_strokes": None,
         "user_outer_strokes": None,
-        "raw_stroke": None,
         "live_preview": None,
+        "delete_hover": None,
         "tooltip": None,
     }
     if stage >= AuthoringStage.OUTER and output.outer:
@@ -214,34 +216,41 @@ def register_overlay(
             "POST_VIEW",
         )
     if stage == AuthoringStage.USER_OUTER:
-        # Stage 2: outer strokes only, context = "outer" (orange cut color).
+        # Stage 2: outer strokes only (cut = red, AS-AM17). The spliced-outer
+        # preview (AS-AM16) holds the live output.outer_preview list by
+        # reference so the operator can update it in-place after each edit.
+        handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_polyline,
+            (output.outer_preview, _OUTER_PREVIEW_COLOR, _LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
         _register_interactive_handlers(
             handles,
             user_outer_strokes,
-            stroke_active_ref,
-            stroke_raw_points_ref,
             tooltip_mouse_ref,
             tooltip_text_ref,
-            stage_context="outer",
+            live_preview_ref=live_preview_ref,
+            tooltip_color_ref=tooltip_color_ref,
+            delete_hover_ref=delete_hover_ref,
         )
     elif stage == AuthoringStage.USER_STEINERS:
-        # Stage 4: interior strokes (red cut), plus outer strokes kept visible
-        # (orange cut) via a separate handler stored in "user_outer_strokes".
-        # The colored live preview supersedes the gray raw-stroke handler here.
+        # Stage 4: interior strokes, plus outer strokes kept visible via a
+        # separate handler stored in "user_outer_strokes". Cut = red in both
+        # (AS-AM17). The colored live preview supersedes the gray raw-stroke.
         _register_interactive_handlers(
             handles,
             user_strokes,
-            stroke_active_ref,
-            stroke_raw_points_ref,
             tooltip_mouse_ref,
             tooltip_text_ref,
-            stage_context="interior",
             live_preview_ref=live_preview_ref,
+            tooltip_color_ref=tooltip_color_ref,
+            delete_hover_ref=delete_hover_ref,
         )
         if user_outer_strokes is not None:
             handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
                 _draw_user_strokes,
-                (user_outer_strokes, "outer"),
+                (user_outer_strokes,),
                 "WINDOW",
                 "POST_VIEW",
             )
@@ -252,19 +261,28 @@ def register_overlay(
             "WINDOW",
             "POST_VIEW",
         )
+    # AS-AM15: SIMPLE mode draws the real triangulation wireframe instead of
+    # the dense Steiner point cloud (the two are mutually exclusive by mode).
+    if stage >= AuthoringStage.STEINER_PREVIEW and output.triangulation_preview:
+        handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_edges,
+            (list(output.triangulation_preview), _TRIANGULATION_COLOR, _TRIANGULATION_LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
     if stage >= AuthoringStage.STEINER_PREVIEW:
-        # Both stroke lists remain visible; register each with its own context.
+        # Both stroke lists remain visible (cut = red for both, AS-AM17).
         if user_strokes is not None:
             handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
                 _draw_user_strokes,
-                (user_strokes, "interior"),
+                (user_strokes,),
                 "WINDOW",
                 "POST_VIEW",
             )
         if user_outer_strokes is not None:
             handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
                 _draw_user_strokes,
-                (user_outer_strokes, "outer"),
+                (user_outer_strokes,),
                 "WINDOW",
                 "POST_VIEW",
             )
@@ -275,13 +293,15 @@ def unregister_overlay(handles: OverlayHandles) -> None:
     """No-op-safe cleanup; tolerates partial registration."""
     for key in (
         "outer",
+        "outer_preview",
         "inner",
         "steiners",
+        "triangulation",
         "user_dots",
         "user_strokes",
         "user_outer_strokes",
-        "raw_stroke",
         "live_preview",
+        "delete_hover",
         "tooltip",
     ):
         handle = handles.get(key)
@@ -298,11 +318,11 @@ def refresh_overlay(
     output: StageOutput,
     user_strokes: list[Stroke] | None = None,
     user_outer_strokes: list[Stroke] | None = None,
-    stroke_active_ref: list[bool] | None = None,
-    stroke_raw_points_ref: list[tuple[float, float]] | None = None,
     tooltip_mouse_ref: list[tuple[int, int]] | None = None,
     tooltip_text_ref: list[str] | None = None,
     live_preview_ref: dict[str, object] | None = None,
+    tooltip_color_ref: list[tuple[float, float, float, float]] | None = None,
+    delete_hover_ref: list[tuple[float, float]] | None = None,
 ) -> OverlayHandles:
     """Replace handlers when stage data changes (slider drag or stage advance)."""
     unregister_overlay(handles)
@@ -311,11 +331,11 @@ def refresh_overlay(
         output,
         user_strokes=user_strokes,
         user_outer_strokes=user_outer_strokes,
-        stroke_active_ref=stroke_active_ref,
-        stroke_raw_points_ref=stroke_raw_points_ref,
         tooltip_mouse_ref=tooltip_mouse_ref,
         tooltip_text_ref=tooltip_text_ref,
         live_preview_ref=live_preview_ref,
+        tooltip_color_ref=tooltip_color_ref,
+        delete_hover_ref=delete_hover_ref,
     )
 
 
@@ -362,6 +382,32 @@ def _draw_polylines(
         gpu.state.blend_set("NONE")
 
 
+def _draw_edges(
+    edges: list[tuple[tuple[float, float], tuple[float, float]]],
+    color: tuple[float, float, float, float],
+    line_width: float,
+) -> None:
+    """Draw independent edge segments from world-XZ endpoint pairs (AS-AM15
+    SIMPLE triangulation preview)."""
+    if not edges:
+        return
+    verts: list[tuple[float, float, float]] = []
+    for a, b in edges:
+        verts.append((a[0], 0.0, a[1]))
+        verts.append((b[0], 0.0, b[1]))
+    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
+    batch = batch_for_shader(shader, "LINES", {"pos": verts})
+    gpu.state.blend_set("ALPHA")
+    gpu.state.line_width_set(line_width)
+    try:
+        shader.bind()
+        shader.uniform_float("color", color)
+        batch.draw(shader)
+    finally:
+        gpu.state.line_width_set(1.0)
+        gpu.state.blend_set("NONE")
+
+
 def _draw_points(
     points: list[tuple[float, float]],
     color: tuple[float, float, float, float],
@@ -399,40 +445,27 @@ def _draw_stroke_lines(
     batch.draw(shader)
 
 
-def _resolve_stroke_color(
-    kind: str,
-    stage_context: str,
-) -> tuple[float, float, float, float]:
-    """Return the overlay color for a stroke given its kind and stage context.
+def _resolve_stroke_color(kind: str) -> tuple[float, float, float, float]:
+    """Return the overlay color for a stroke given its kind.
 
-    kind="point"  -> YELLOW  (single Steiner dot, always)
-    kind="stroke" -> BLUE    (fold-line, always)
-    kind="cut"    -> RED     (Stage 4 rip, stage_context="interior")
-                 -> ORANGE  (Stage 2 chunk-remove, stage_context="outer")
+    kind="point"  -> YELLOW (single Steiner dot)
+    kind="stroke" -> BLUE   (fold-line)
+    kind="cut"    -> RED    (cut, both Stage 2 + Stage 4, AS-AM17)
     """
     if kind == "point":
         return _USER_DOT_COLOR
     if kind == "cut":
-        if stage_context == "outer":
-            return _STROKE_VERT_COLOR_CUT_REMOVE
         return _STROKE_VERT_COLOR_CUT_RIP
     # kind="stroke" (fold-line) and any unknown kind fall through to blue.
     return _STROKE_VERT_COLOR_FOLD
 
 
-def _draw_user_strokes(
-    strokes: list[Stroke],
-    stage_context: str = "interior",
-) -> None:
-    """Draw committed user strokes, coloring by kind + stage context.
+def _draw_user_strokes(strokes: list[Stroke]) -> None:
+    """Draw committed user strokes, coloring by kind.
 
-    kind=point:  YELLOW dot (8 px) - single Steiner, always.
-    kind=stroke: BLUE verts (6 px) + blue line segments - fold-line, always.
-    kind=cut:    RED  (stage_context="interior", Stage 4 rip-cut)
-                 ORANGE (stage_context="outer",  Stage 2 chunk-remove cut)
-
-    stage_context is resolved at handler registration so artists see distinct
-    colors for cut strokes depending on which stage produced them.
+    kind=point:  YELLOW dot (8 px) - single Steiner.
+    kind=stroke: BLUE verts (6 px) + blue line segments - fold-line.
+    kind=cut:    RED verts + red line segments - cut (both stages, AS-AM17).
 
     The strokes list is held by reference so this callback always reflects
     the latest committed state without re-registration.
@@ -449,7 +482,7 @@ def _draw_user_strokes(
                 continue
             coords = [(p[0], 0.0, p[1]) for p in pts]
             kind = stroke["kind"]
-            color = _resolve_stroke_color(kind, stage_context)
+            color = _resolve_stroke_color(kind)
             if kind == "point":
                 batch = batch_for_shader(shader, "POINTS", {"pos": coords})
                 shader.uniform_float("color", color)
@@ -470,44 +503,13 @@ def _draw_user_strokes(
         gpu.state.blend_set("NONE")
 
 
-def _draw_raw_stroke(
-    stroke_active_ref: list[bool],
-    raw_points: list[tuple[float, float]],
-) -> None:
-    """Draw the in-progress raw stroke as a light gray thin line.
-
-    stroke_active_ref[0] gates the draw so nothing is emitted between
-    strokes. Both args are mutable containers held by reference so this
-    callback always sees the live operator state.
-    """
-    if not stroke_active_ref[0] or len(raw_points) < 2:
-        return
-    line_coords: list[tuple[float, float, float]] = []
-    for i in range(len(raw_points) - 1):
-        a = raw_points[i]
-        b = raw_points[i + 1]
-        line_coords.append((a[0], 0.0, a[1]))
-        line_coords.append((b[0], 0.0, b[1]))
-    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
-    batch = batch_for_shader(shader, "LINES", {"pos": line_coords})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(1.0)
-    try:
-        shader.bind()
-        shader.uniform_float("color", _RAW_STROKE_COLOR)
-        batch.draw(shader)
-    finally:
-        gpu.state.line_width_set(1.0)
-        gpu.state.blend_set("NONE")
-
-
 def _draw_live_preview(state: dict[str, object]) -> None:
-    """Draw the in-progress Stage 4 pen / free-draw stroke in its intent color.
+    """Draw the in-progress pen / free-draw stroke in its intent color.
 
-    Supersedes the thin gray _draw_raw_stroke for interior authoring so the
-    artist sees committed-quality feedback (verts + colored edges) while a
-    stroke is being placed. In pen mode an extra dimmed rubber-band segment
-    connects the last placed vert to the live cursor.
+    Used by both Stage 2 (USER_OUTER) and Stage 4 (USER_STEINERS): the artist
+    sees committed-quality feedback (verts + colored edges) while a stroke is
+    being placed. In pen mode an extra dimmed rubber-band segment connects
+    the last placed vert to the live cursor.
 
     `state` is a single mutable dict held by reference; the operator mutates
     its fields in-place (never reassigns the dict) so this callback always
@@ -517,6 +519,8 @@ def _draw_live_preview(state: dict[str, object]) -> None:
       points: list   - placed verts (pen) or sampled path (free-draw), WORLD XZ
       cursor: tuple  - live mouse WORLD XZ for the pen rubber-band, or None
       mode:   str    - "pen" (rubber-band) or "free" (path only)
+      subdivisions: int - ghost subdivision verts to preview on the rubber-band
+      axis:   str    - active axis lock ("", "x", "z"); cursor is pre-snapped
     """
     if not state.get("active"):
         return
@@ -539,10 +543,50 @@ def _draw_live_preview(state: dict[str, object]) -> None:
         cursor = cast("tuple[float, float] | None", state.get("cursor"))
         if state.get("mode") == "pen" and cursor is not None:
             cursor_coord = (cursor[0], 0.0, cursor[1])
+            dim = (color[0], color[1], color[2], _LIVE_RUBBER_ALPHA)
             rubber = batch_for_shader(shader, "LINES", {"pos": [coords[-1], cursor_coord]})
-            shader.uniform_float("color", (color[0], color[1], color[2], _LIVE_RUBBER_ALPHA))
+            shader.uniform_float("color", dim)
             gpu.state.line_width_set(1.5)
             rubber.draw(shader)
+            # AS-AM16: ghost dots for the subdivisions that will be baked into
+            # the segment (cursor is already axis-locked by the operator, so the
+            # rubber-band doubles as the X/Z guide line).
+            subdiv = int(cast("int", state.get("subdivisions") or 0))
+            if subdiv > 0:
+                ghosts = subdivide_polyline([pts[-1], cursor], subdiv)[1:-1]
+                if ghosts:
+                    ghost_coords = [(g[0], 0.0, g[1]) for g in ghosts]
+                    gbatch = batch_for_shader(shader, "POINTS", {"pos": ghost_coords})
+                    shader.uniform_float("color", dim)
+                    gpu.state.point_size_set(_LIVE_VERT_SIZE * 0.6)
+                    gbatch.draw(shader)
+    finally:
+        gpu.state.point_size_set(1.0)
+        gpu.state.line_width_set(1.0)
+        gpu.state.blend_set("NONE")
+
+
+def _draw_delete_hover(points_ref: list[tuple[float, float]]) -> None:
+    """Highlight the stroke under the cursor that Alt+click would delete.
+
+    ``points_ref`` is mutated in-place by the operator (the hovered stroke's
+    points, empty when nothing is hovered) so this callback always reflects
+    the current hover target without re-registration.
+    """
+    if not points_ref:
+        return
+    coords = [(p[0], 0.0, p[1]) for p in points_ref]
+    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
+    gpu.state.blend_set("ALPHA")
+    try:
+        shader.bind()
+        shader.uniform_float("color", _DELETE_HOVER_COLOR)
+        batch_v = batch_for_shader(shader, "POINTS", {"pos": coords})
+        gpu.state.point_size_set(_DELETE_HOVER_VERT_SIZE)
+        batch_v.draw(shader)
+        if len(coords) >= 2:
+            gpu.state.line_width_set(_DELETE_HOVER_LINE_WIDTH)
+            _draw_stroke_lines(shader, coords, _DELETE_HOVER_COLOR)
     finally:
         gpu.state.point_size_set(1.0)
         gpu.state.line_width_set(1.0)

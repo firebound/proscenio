@@ -13,10 +13,30 @@ isolation by tests/automesh/test_stroke_geometry.py.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Sequence
 
 Point2D = tuple[float, float]
+
+
+def subdivide_polyline(points: Sequence[Point2D], n: int) -> list[Point2D]:
+    """Insert ``n`` evenly-spaced verts into every edge of an open polyline.
+
+    ``n<=0`` or polylines shorter than 2 points return the input
+    unchanged. Original verts are preserved; only interior points are
+    added per edge, so a straight pen line (AS-AM16) stops collapsing to
+    a single long CDT edge that wrecks the triangulation.
+    """
+    if n <= 0 or len(points) < 2:
+        return list(points)
+    out: list[Point2D] = [points[0]]
+    for (ax, ay), (bx, by) in itertools.pairwise(points):
+        for i in range(1, n + 1):
+            t = i / (n + 1)
+            out.append((ax + (bx - ax) * t, ay + (by - ay) * t))
+        out.append((bx, by))
+    return out
 
 
 def chaikin_smooth(points: Sequence[Point2D], iters: int) -> list[Point2D]:

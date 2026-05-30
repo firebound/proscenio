@@ -129,6 +129,19 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
         min=8,
         max=512,
     )
+    interior_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Interior mode",
+        description=(
+            "SIMPLE triangulates only the silhouette, holes, and user verts "
+            "(sparse, Spine-like). DENSE adds the uniform grid + bone-density "
+            "fill. Defaults read from the Skinning panel."
+        ),
+        items=[
+            ("SIMPLE", "Simple (sparse, Spine-like)", "No automatic interior fill"),
+            ("DENSE", "Dense (uniform fill)", "Uniform grid + bone-density subdivision"),
+        ],
+        default="SIMPLE",
+    )
     interior_spacing: FloatProperty(  # type: ignore[valid-type]
         name="Interior spacing",
         default=0.1,
@@ -196,6 +209,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 self.alpha_threshold = int(skinning.automesh_alpha_threshold)
                 self.margin_pixels = int(skinning.automesh_margin_pixels)
                 self.contour_vertices = int(skinning.automesh_contour_vertices)
+                self.interior_mode = str(skinning.automesh_interior_mode)
                 self.interior_spacing = float(skinning.automesh_interior_spacing)
                 self.density_under_bones = bool(skinning.automesh_density_under_bones)
                 self.bone_radius = float(skinning.automesh_bone_radius)
@@ -234,7 +248,10 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
             )
 
         bone_segments = None
-        if self.density_under_bones:
+        # SIMPLE skips the uniform grid + bone-density fill in build_automesh,
+        # so collecting bone_segments + the "uniform density" report_info is
+        # wasted work and misleading (CodeRabbit nitpick).
+        if self.density_under_bones and self.interior_mode == "DENSE":
             scene_props = getattr(context.scene, "proscenio", None)
             picker = getattr(scene_props, "active_armature", None) if scene_props else None
             if picker is not None and picker.type == "ARMATURE":
@@ -275,6 +292,7 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                 bone_density_factor=self.bone_factor if bone_segments else 1,
                 debug_stage=self.debug_stage,
                 preserve_base_quad=self.preserve_base_quad,
+                interior_mode=self.interior_mode,
             )
         except ValueError as exc:
             report_error(self, f"automesh failed: {exc}")

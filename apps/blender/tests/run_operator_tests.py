@@ -32,7 +32,10 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    return int(pytest.main([str(OPERATOR_TESTS_DIR), "-v", "-x"]))
+    # Forward any args passed after Blender's "--" separator to pytest
+    # (e.g. `blender ... -- -k automesh` filters the run).
+    extra = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    return int(pytest.main([str(OPERATOR_TESTS_DIR), "-v", "-x", *extra]))
 
 
 if __name__ == "__main__":

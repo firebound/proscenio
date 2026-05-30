@@ -54,9 +54,17 @@ def compute_outer(
     in world space, so we apply obj.matrix_world to land each point at
     the sprite's actual viewport position. Without this, the overlay
     renders at the world origin while the mesh sits elsewhere.
+
+    The dilation matches APPLY: build_automesh converts ``margin_pixels``
+    (source-image pixels) to grid cells via ``round(margin_pixels *
+    downscale_factor)`` and passes that to extract_contours, which then floors
+    at 1 cell of safety dilation. The preview applies the same scale so a
+    margin set at the default downscale (resolution=0.25, margin_pixels=5)
+    does not over-dilate by 4x (CR finding 2026-05-29).
     """
+    outer_dilate = max(1, round(params.margin_pixels * params.resolution))
     alpha_grid = read_alpha_grid(image, params.resolution)
-    pixel_contour = extract_outer_contour(alpha_grid, params.alpha_threshold, params.margin_pixels)
+    pixel_contour = extract_outer_contour(alpha_grid, params.alpha_threshold, outer_dilate)
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
     source_width, source_height = image.size[0], image.size[1]
     local = pixel_contour_to_world(
@@ -218,14 +226,20 @@ def compute_all_steiners(
     bone_segments comes from collect_bone_segments(picker_armature);
     elements are already ((head_x, head_z), (tail_x, tail_z)) per the
     existing helper (no extra unpacking needed).
+
+    The grid fills the FULL outer interior (no inner clip). The modal's
+    ``inner_loops`` are preview-only edge-loop guides (Stage 3), NOT the
+    annulus inner contour build_automesh clips by - that contour is driven
+    by margin_pixels (default 0 -> no clip, full fill). Clipping this preview
+    by the innermost erosion loop left the silhouette center empty, so the
+    artist could not tell that APPLY fills inside the loops too. Filling the
+    full interior matches build_automesh at the default margin_pixels=0.
+    ``inner_loops`` stays in the signature for the deferred build_automesh
+    extension that will honor them as CDT constraints (see TODO known gap).
     """
-    # Use the innermost loop as the annulus "inner" boundary so the
-    # uniform grid is clipped to the annulus shell; when no inner
-    # loops exist, fall back to filling the full outer interior.
-    inner_for_filter: list[Point2D] = inner_loops[-1] if inner_loops else []
     interior = interior_points_for_annulus(
         outer,
-        inner_for_filter,
+        [],
         params.interior_spacing,
         bone_segments=bone_segments,
         bone_density_radius=params.bone_radius if bone_segments else 0.0,
@@ -313,6 +327,30 @@ def _split_outer_strokes(
     return extends, cuts
 
 
+def compute_outer_preview(output: StageOutput, params: StageParams) -> list[Point2D]:
+    """World-XZ spliced outer contour after Stage 2 extend strokes (AS-AM16).
+
+    Returns the silhouette APPLY will actually build (extends spliced in,
+    resampled to contour_vertices) so the artist previews their edits before
+    committing. Returns ``[]`` when there are no extend strokes or the splice
+    is a no-op. Cut strokes carve corridor holes (not the contour), so they
+    do not change this preview.
+    """
+    from ...automesh.outer_splice import splice_extend_strokes
+
+    extends, _cuts = _split_outer_strokes(output.user_outer_strokes)
+    if not extends or len(output.outer) < 3:
+        return []
+    base = list(output.outer)
+    spliced = splice_extend_strokes(base, extends)
+    # splice_extend_strokes always returns a fresh list (never the input),
+    # so `is` would never trip - use value equality to catch the no-op case
+    # (every stroke skipped: fully inside / fully outside the silhouette).
+    if len(spliced) < 3 or spliced == base:
+        return []
+    return list(arc_length_resample(spliced, params.contour_vertices))
+
+
 def apply_mesh(
     obj: bpy.types.Object,
     image: bpy.types.Image,
@@ -335,6 +373,25 @@ def apply_mesh(
 
     bone_segments = collect_bone_segments(armature) if armature is not None else None
     prior_sidecar = maybe_pre_regen_snapshot(obj, armature) if armature is not None else None
+    counters = _build_authoring_mesh(obj, image, output, params, bone_segments)
+    if prior_sidecar is not None and armature is not None:
+        repro = maybe_post_regen_reproject(obj, armature, prior_sidecar)
+        counters["reprojected"] = repro["reprojected"]
+        counters["auto_seed"] = repro["auto_seed"]
+    return counters
+
+
+def _build_authoring_mesh(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    output: StageOutput,
+    params: StageParams,
+    bone_segments: list[BoneSegment2D] | None,
+) -> dict[str, int]:
+    """Assemble the CDT inputs + run build_automesh. Shared by apply_mesh
+    (which wraps it with the weight-sidecar reproject) and the SIMPLE
+    triangulation preview (which runs it on a throwaway obj copy). Does NOT
+    touch the weight sidecar, so it is safe to call without an armature."""
     world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
     outer_world_raw = compute_outer(obj, image, params)
 
@@ -385,14 +442,55 @@ def apply_mesh(
         extra_steiners=extras_local if extras_local else None,
         extra_edges=extra_edges if extra_edges else None,
         cut_hole_loops=cut_hole_loops if cut_hole_loops else None,
+        interior_mode=params.interior_mode,
     )
     if stroke_verts_dropped > 0:
         counters["stroke_verts_dropped"] = stroke_verts_dropped
-    if prior_sidecar is not None and armature is not None:
-        repro = maybe_post_regen_reproject(obj, armature, prior_sidecar)
-        counters["reprojected"] = repro["reprojected"]
-        counters["auto_seed"] = repro["auto_seed"]
     return counters
+
+
+def compute_triangulation_preview(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    output: StageOutput,
+    params: StageParams,
+) -> list[tuple[Point2D, Point2D]]:
+    """SIMPLE-mode triangulation preview (AS-AM15).
+
+    Runs the real `build_automesh` on a throwaway copy of ``obj`` so the
+    artist sees the exact triangulation APPLY will produce - silhouette +
+    holes + fold/cut/steiner verts, no dense fill - without mutating the
+    source mesh. Returns the resulting mesh edges as WORLD XZ endpoint
+    pairs. Returns ``[]`` for DENSE (which keeps the dense Steiner-point
+    preview drawn from ``all_steiners`` instead).
+
+    Per OQ1, callers compute this on stage-enter + param-dirty and cache
+    the result rather than every TIMER tick (one CDT per refresh).
+    """
+    if params.interior_mode != "SIMPLE":
+        return []
+    # Allocate temp object + mesh INSIDE the try so any failure (OOM on a huge
+    # mesh, library-linked source mesh, etc.) cannot leak orphan datablocks.
+    temp_obj: bpy.types.Object | None = None
+    temp_mesh: bpy.types.Mesh | None = None
+    try:
+        temp_obj = obj.copy()
+        temp_obj.data = obj.data.copy()
+        temp_mesh = temp_obj.data
+        _build_authoring_mesh(temp_obj, image, output, params, bone_segments=None)
+        matrix = temp_obj.matrix_world
+        verts = temp_mesh.vertices
+        edges_world: list[tuple[Point2D, Point2D]] = []
+        for edge in temp_mesh.edges:
+            a = matrix @ verts[edge.vertices[0]].co
+            b = matrix @ verts[edge.vertices[1]].co
+            edges_world.append(((a.x, a.z), (b.x, b.z)))
+        return edges_world
+    finally:
+        if temp_obj is not None:
+            bpy.data.objects.remove(temp_obj, do_unlink=True)
+        if temp_mesh is not None:
+            bpy.data.meshes.remove(temp_mesh, do_unlink=True)
 
 
 def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:

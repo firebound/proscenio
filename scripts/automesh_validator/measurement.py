@@ -148,6 +148,11 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
                 margin_pixels=args.margin_pixels,
                 alpha_threshold=args.alpha_threshold,
                 debug_stage="off",
+                # AS-AM14 made the operator prop default SIMPLE (sparse), but the
+                # vert/face ranges below were calibrated for the historical DENSE
+                # fill. Pin DENSE here so the validation stays deterministic
+                # regardless of the PG default flip.
+                interior_mode="DENSE",
             )
         except Exception as exc:
             report["failures"].append(f"{sprite_name}: operator raised: {exc}")

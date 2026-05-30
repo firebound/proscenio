@@ -371,6 +371,19 @@ Stage 2 enables silhouette-focused editing before any interior work. Strokes are
 
 ~970 LOC + ~18 tests across 10 tasks. PR #63 grows from 25 → ~40 commits. Tightly bundled per user preference; reviewer-friendly via topical commit ordering (amendment doc first, then bug fixes, then feature additions, then UI/tooltip, then smoke).
 
+## Scope amendment 2026-05-28 (second smoke + gesture redesign)
+
+Manual smoke on PR #63 after the AS-AM1..AS-AM10 work revealed the cut gesture was confusing (Shift+drag cut competed with the muscle memory of delete) and the cut produced messy output on thin triangle soup. Three more iterations + a second polish smoke followed. PR #63 shipped and merged with everything below up to and including the live preview; the remaining polish items moved to branch `feat/automesh-authoring-ux-polish`.
+
+### Locked decisions (amendment AS-AM7-REV2, AS-AM11 through AS-AM13)
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| AS-AM7-REV2 | (2026-05-28, SHIPPED `b9283e2`) Cut on Stage 4 = **corridor hole** routed through `holes_world`, NOT `split_edges` rip. The resampled stroke is offset by `cut_margin` on both sides into a closed lens loop, fed to CDT as a hole-constraint loop, and pruned by the existing `delete_faces_inside_holes` centroid pass. `cut_margin` default `0.04` world units. Additionally, **cut-to-alpha**: a cut stroke keeps ALL samples (no inside-only filter) and severs to the silhouette boundary when an endpoint lands in alpha. | The rip via `split_edges` (AS-AM7-REV) produced jagged separation on the triangle soup and only worked on thick interiors. The corridor-hole reuses the proven alpha-hole machinery (validated by the swirl fixture) and gives a clean topological gap. User-confirmed working. |
+| AS-AM11 | (2026-05-28, SHIPPED `80cb50d`) Stage 4 gesture map redesign: **plain click = point**, **Shift = fold-line** (click = pen-tool straight segments accumulating across clicks, drag = free-draw), **Ctrl = cut** (same pen/free-draw split), **Alt = delete**. Pen polyline finalizes on modifier RELEASE; pen verts are NOT resampled (artist placed exact positions). | The earlier Shift=cut / Ctrl=delete scheme (AS-AM6) clashed with the delete reflex. Promoting delete to Alt and giving both fold + cut a pen-tool (precise) and free-draw (fast) sub-mode covers both authoring styles without location ambiguity. |
+| AS-AM12 | (2026-05-28, SHIPPED `fb9d886`) Live in-progress preview for Stage 4: `_draw_live_preview` renders the pen/free-draw geometry in its intent color (blue fold / red cut) with verts + edges while drawing, plus a dimmed rubber-band segment from the last pen vert to the cursor. Supersedes the thin gray `_draw_raw_stroke` for interior authoring. | Pen clicks accumulated invisibly until finalize, and free-draw showed only a thin gray line; the artist could not see the geometry being placed. |
+| AS-AM13 | (2026-05-28, DEFERRED to `feat/automesh-authoring-ux-polish`) Remaining polish from the second smoke, intentionally cut from PR #63 to keep it shippable: (a) statusbar hint parity with `quick_armature` (`_emit_chord_layout` native EVENT_*/MOUSE_* icons); (b) cursor tooltip parity (`draw_text_panel_2d` colored + backgrounded, plus an explicit warning when drawing outside the predicted contour); (c) delete hover-highlight; (d) show the inflated (final) contour in the Stage 2 preview so strokes snap to the real boundary instead of the raw walker contour that inflates ~1 cell on APPLY; (e) Stage 5 (`STEINER_PREVIEW`) clarity - the preview shows verts outside the inner loops but not inside, which confused the artist about what APPLY will create. | These are cosmetic/incremental UX refinements, not correctness blockers. PR #63 already delivers functional + visible authoring; the polish ships on its own branch for a focused, reviewer-friendly diff. |
+
 ## References
 
 - Wave 13.2 modal: `apps/blender/operators/automesh_authoring.py`

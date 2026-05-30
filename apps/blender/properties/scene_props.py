@@ -135,6 +135,30 @@ class ProscenioSkinningProps(PropertyGroup):
         min=8,
         max=512,
     )
+    automesh_interior_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Interior mode",
+        description=(
+            "How the mesh interior is filled. SIMPLE triangulates only the "
+            "silhouette, holes, and your fold/cut/steiner verts (Spine-like "
+            "sparse mesh; best for most flat 2D-skinning sprites). DENSE adds "
+            "the uniform interior grid + bone-density fill (capes, hair, fine "
+            "border control)."
+        ),
+        items=[
+            (
+                "SIMPLE",
+                "Simple (sparse, Spine-like)",
+                "Constrained Delaunay over silhouette + holes + your verts only; "
+                "no automatic interior fill",
+            ),
+            (
+                "DENSE",
+                "Dense (uniform fill)",
+                "Uniform interior grid + bone-density subdivision (current default)",
+            ),
+        ],
+        default="SIMPLE",
+    )
     automesh_interior_spacing: FloatProperty(  # type: ignore[valid-type]
         name="Interior spacing",
         description=(

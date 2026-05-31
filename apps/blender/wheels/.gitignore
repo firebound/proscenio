@@ -1,0 +1,7 @@
+# Track only the wheels listed in blender_manifest.toml plus the README.
+# Anything else (temp downloads, vendored copies during regen, IDE turds)
+# stays untracked.
+*
+!*.whl
+!README.md
+!.gitignore

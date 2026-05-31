@@ -42,6 +42,19 @@ python_version = "3.11"
 strict = true
 warn_unused_ignores = true
 warn_unreachable = true
+warn_return_any = true
+extra_checks = true
+strict_equality = true
+# `disallow_any_explicit`, `disallow_any_decorated`, and
+# `disallow_any_unimported` are deliberately off because bpy / mathutils
+# / bmesh are stubbed as `Any` at the import boundary (see the overrides
+# block below). Turning them on would flag every Operator subclass,
+# every typed bpy.* parameter, and every `dict[str, Any]` that holds
+# a bpy property bag - a finite but large fix surface that requires
+# real Blender stubs to resolve. Stubs for bpy exist (fake-bpy-module)
+# but pinning them across Blender versions is fragile, so the boundary
+# stays Any-typed. Revisit once `bpy-stubgen` lands a stable per-release
+# snapshot.
 explicit_package_bases = true
 namespace_packages = true
 mypy_path = "."

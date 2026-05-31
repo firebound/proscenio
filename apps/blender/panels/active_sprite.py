@@ -1,4 +1,4 @@
-"""Active Sprite subpanel (the authoring panel + the mirror-fix work + the Drive-from-Bone shortcut).
+"""Active Sprite subpanel.
 
 Thin dispatcher: picks the body subsection by sprite_type + active
 mode, then defers to the per-mode draw module. Per-mode helpers live

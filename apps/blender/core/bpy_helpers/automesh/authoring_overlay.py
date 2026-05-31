@@ -237,7 +237,7 @@ def register_overlay(
     elif stage == AuthoringStage.EDIT_INTERIOR_POINTS:
         # Stage 4: interior strokes, plus outer strokes kept visible via a
         # separate handler stored in "user_outer_strokes". Cut = red in both
-        #. The colored live preview supersedes the gray raw-stroke.
+        # . The colored live preview supersedes the gray raw-stroke.
         _register_interactive_handlers(
             handles,
             user_strokes,

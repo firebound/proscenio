@@ -1,4 +1,4 @@
-"""Pure KNN weight transfer between meshes (the weight-paint productivity follow-up (weight transfer)).
+"""Pure KNN weight transfer between meshes.
 
 For each target vertex, find nearest source vertex within max_distance
 and copy its weight dict. Targets beyond max_distance get empty dict.

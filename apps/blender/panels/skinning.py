@@ -270,7 +270,7 @@ def _edit_weights_button_enabled(
 
 
 def _draw_weight_transfer_box(layout: bpy.types.UILayout) -> None:
-    """Sub-box surfacing the Copy Weights to Selected operator (the weight-paint productivity follow-up (weight transfer)).
+    """Sub-box surfacing the Copy Weights to Selected operator.
 
     Active mesh = source; other selected meshes = targets. Button
     enabled by operator poll (active MESH + at least one other selected MESH).

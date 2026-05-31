@@ -64,7 +64,7 @@ class StageParams:
     bone_radius: float
     bone_factor: int
     cut_margin: float = 0.04  # corridor-hole gap width in world units (T-REV5)
-    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE"  # 
+    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE"  #
 
 
 @dataclass

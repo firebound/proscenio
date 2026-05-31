@@ -22,10 +22,10 @@ Submodules:
 - bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (the weight-paint productivity follow-up)
 - restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (the sidecar work)
 - edit_weights      - PROSCENIO_OT_edit_weights_modal (the paint work)
-- set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (the weight-paint productivity follow-up (per-bone mode toggle))
-- sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO (the weight-paint productivity follow-up (sidecar IO))
-- brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint (the weight-paint productivity follow-up (brush presets))
-- copy_weights_to_selected - PROSCENIO_OT_copy_weights_to_selected KNN weight copy (the weight-paint productivity follow-up (weight transfer))
+- set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle
+- sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO
+- brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint
+- copy_weights_to_selected - PROSCENIO_OT_copy_weights_to_selected KNN weight copy
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)

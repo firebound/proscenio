@@ -26,6 +26,28 @@ Reference issues in the commit body (`Refs: #42`), not in the branch name. Keep 
 - Implementation work lives on a topic branch (typically `feat/spec-<NNN>-<slug>` or `fix/<slug>`) and merges back via PR.
 - Commit gradually as work progresses. The merge can squash if the PR scope warrants it, but the branch history is the audit trail while work is in flight. A long PR benefits from many small commits; a tight bugfix is fine as one.
 
+## Repository layout
+
+The repo is a uv-managed Python workspace alongside the Photoshop and Godot apps.
+
+```text
+apps/        distributable, self-contained apps (blender/, photoshop/, godot/)
+packages/    shared building blocks consumed by apps (models, codegen, fixtures, validator)
+scripts/     one-off dev tools and maintenance scripts only
+specs/       planning artifacts (numbered specs, backlog, decisions)
+tests/       repo-level cross-app integration tests
+docs/        Docusaurus content
+.ai/         agent-facing conventions and skills
+```
+
+Rules:
+
+- New shared code goes under `packages/`, not `scripts/` or `apps/<app>/`. If two apps consume the same module or data, it belongs in a package.
+- New Python packages register as uv workspace members in the root `pyproject.toml` (`tool.uv.workspace.members`). The package's own `pyproject.toml` declares `name = "proscenio-<slug>"`; the import path uses the underscored form (`proscenio_<slug>`).
+- `scripts/` accepts only true one-offs (a single maintenance script, a dev convenience). Anything with subpackage layout, tests, or a CLI surface belongs in `packages/`.
+- Per-app folders under `apps/<app>/.../schema_bindings/` hold codegen output (TypeScript interfaces, GDScript `Resource` classes). They are never edited by hand; every file carries an `AUTO-GENERATED` header and CI verifies staleness. See [the typed models codegen spec](../specs/014-typed-models-codegen/STUDY.md) and [the monorepo packages spec](../specs/015-monorepo-packages/STUDY.md).
+- Editing the workspace root `pyproject.toml` is allowed; do not add a real `[project]` package to it (the root is a virtual workspace marker, not a publishable distribution).
+
 ## Files and folders
 
 | Convention | Used for |

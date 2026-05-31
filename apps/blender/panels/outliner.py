@@ -40,7 +40,7 @@ def _outliner_category_rank(obj: bpy.types.Object) -> int:
 
 
 class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
-    """Sprite-centric outliner - slots, attachments, sprite meshes, armatures (the outliner subpanel)."""
+    """Sprite-centric outliner - slots, attachments, sprite meshes, armatures."""
 
     bl_idname = "PROSCENIO_UL_sprite_outliner"
 
@@ -135,7 +135,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
 
 
 class PROSCENIO_PT_outliner(bpy.types.Panel):
-    """Sprite-centric outliner - replaces Blender's outliner for big rigs (the outliner subpanel)."""
+    """Sprite-centric outliner - replaces Blender's outliner for big rigs."""
 
     bl_label = "Outliner"
     bl_idname = "PROSCENIO_PT_outliner"

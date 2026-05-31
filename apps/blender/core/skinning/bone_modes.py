@@ -1,4 +1,4 @@
-"""Per-bone SOFT/HARD mode override (the weight-paint productivity follow-up (per-bone mode toggle)/D16).
+"""Per-bone SOFT/HARD mode override (D16).
 
 Stored on the mesh object as a JSON dict Custom Property:
     obj['proscenio_bone_modes'] = '{"bone_a": "SOFT", "bone_b": "HARD"}'

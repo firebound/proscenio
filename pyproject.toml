@@ -1,0 +1,14 @@
+[project]
+name = "proscenio-workspace"
+version = "0"
+description = "Firebound Proscenio monorepo workspace root. Not a publishable package; declares the uv workspace and aggregates member packages under apps/ and packages/."
+requires-python = ">=3.11"
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "apps/blender",
+]
+exclude = []

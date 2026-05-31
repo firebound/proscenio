@@ -1014,10 +1014,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _apply_interior_mode_change(self, context: bpy.types.Context, mode: str) -> None:
         """Rebuild the active stage list when the interior mode flips mid-modal
-       . If the current stage was dropped (INNER_LOOPS on flip to
-        SIMPLE), snap back to EDIT_OUTLINE and clear any in-progress pen state
-        + reload that stage's strokes so a stale Stage 4 live preview cannot
-        leak into Stage 2."""
+        . If the current stage was dropped (INNER_LOOPS on flip to
+         SIMPLE), snap back to EDIT_OUTLINE and clear any in-progress pen state
+         + reload that stage's strokes so a stale Stage 4 live preview cannot
+         leak into Stage 2."""
         self._interior_mode = mode
         self._active_stages = _stages_for_mode(mode)
         snapped = self._stage not in self._active_stages

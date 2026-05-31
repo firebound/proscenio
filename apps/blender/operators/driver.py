@@ -95,7 +95,7 @@ def _driver_matches_source(
 
 
 class PROSCENIO_OT_create_driver(bpy.types.Operator):
-    """Drive a sprite's `proscenio.<prop>` from a chosen pose bone (the Drive-from-Bone shortcut)."""
+    """Drive a sprite's `proscenio.<prop>` from a chosen pose bone."""
 
     bl_idname = "proscenio.create_driver"
     bl_label = "Proscenio: Drive Sprite from Bone"

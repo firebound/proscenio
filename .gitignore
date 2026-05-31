@@ -34,9 +34,9 @@ apps/godot/dummy/
 apps/godot/tests/fixtures/*.import
 
 # Headless test artifacts under scripts/ — re-runnable, not source
-scripts/*.out
-scripts/*.log
-scripts/*.out.proscenio
+scripts/**/*.out
+scripts/**/*.log
+scripts/**/*.out.proscenio
 packages/validator/validate_automesh_debug/
 packages/validator/validate_automesh_report.json
 

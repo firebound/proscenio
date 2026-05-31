@@ -2,10 +2,14 @@
 
 Run via:
 
-    blender --background examples/dummy/dummy.blend --python scripts/inspect_blend.py
+    blender --background <fixture>.blend --python scripts/debug/inspect_blend.py
 
-Output is written to scripts/inspect_blend.out next to this script - Blender
-headless on Windows is unreliable about flushing stdout to pipes.
+Output is written to scripts/debug/inspect_blend.out next to this script -
+Blender headless on Windows is unreliable about flushing stdout to pipes.
+
+Any committed fixture under examples/generated/ works as input; the script
+walks the open .blend and prints armatures, meshes, materials, actions, and
+custom properties relevant to the Proscenio writer.
 """
 
 from __future__ import annotations

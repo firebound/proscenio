@@ -33,10 +33,10 @@ simple_psd.photoshop_manifest.json (hand-authored)
     +
 pillow_layers/*.png (drawn by Pillow)
     │
-    ├──► blender --background --python scripts/fixtures/simple_psd/build_blend.py
+    ├──► blender --background --python packages/fixtures/simple_psd/build_blend.py
     │       └──► simple_psd.blend (importer stamps polygon + sprite_frame planes)
     │
-    └──► simple_psd.expected.proscenio    scripts/fixtures/_shared/export_proscenio.py
+    └──► simple_psd.expected.proscenio    packages/fixtures/_shared/export_proscenio.py
             └──► CI compares against re-export of simple_psd.blend each run
 ```
 
@@ -68,14 +68,14 @@ golden `.proscenio` export.
 
 ```sh
 # 1. Generate PNGs into pillow_layers/ (requires only Python + Pillow).
-python scripts/fixtures/simple_psd/draw_layers.py
+python packages/fixtures/simple_psd/draw_layers.py
 
 # 2. Assemble the .blend by running the addon importer on the manifest.
-blender --background --python scripts/fixtures/simple_psd/build_blend.py
+blender --background --python packages/fixtures/simple_psd/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root.
 blender --background examples/generated/simple_psd/simple_psd.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 `run_tests.py` auto-discovers `simple_psd/` once the golden is in

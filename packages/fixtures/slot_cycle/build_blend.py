@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/slot_cycle/build_blend.py
+    blender --background --python packages/fixtures/slot_cycle/build_blend.py
 
 Builds the smallest possible slot fixture:
 

@@ -90,8 +90,8 @@ Future actions land as future specs require them (talk for the UV animation work
 
 **Locked: rendered from the committed `.blend` via headless Blender.** The `.blend` is the authored source of truth for the fixture's visual; per-region PNG layers fall out of it deterministically:
 
-- `scripts/fixtures/<fixture>/render_layers.py` - bpy-only, opens the `.blend`, walks every mesh object, and renders each one through an orthographic front camera with Workbench flat shading + transparent background. Run with `blender --background examples/<fixture>/<fixture>.blend --python scripts/fixtures/<fixture>/render_layers.py`. Output lands at `examples/<fixture>/render_layers/`.
-- `scripts/fixtures/build_<fixture>.py` - kept for fixtures whose `.blend` is generated procedurally rather than authored by hand (`blink_eyes/`, `shared_atlas/`). Loads PNGs from disk and assembles `.blend`.
+- `packages/fixtures/<fixture>/render_layers.py` - bpy-only, opens the `.blend`, walks every mesh object, and renders each one through an orthographic front camera with Workbench flat shading + transparent background. Run with `blender --background examples/<fixture>/<fixture>.blend --python packages/fixtures/<fixture>/render_layers.py`. Output lands at `examples/<fixture>/render_layers/`.
+- `packages/fixtures/build_<fixture>.py` - kept for fixtures whose `.blend` is generated procedurally rather than authored by hand (`blink_eyes/`, `shared_atlas/`). Loads PNGs from disk and assembles `.blend`.
 
 Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one layer per body part flattened to PNG) and removes the divergence risk between an authored 3D source and a separately drawn 2D layer roster. PNG resolution = mesh bounding-box × `PIXELS_PER_UNIT` (default 100) so pixels stay square across the fixture.
 
@@ -105,7 +105,7 @@ Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one la
 
 ### D5 - Builder script location
 
-**Locked: `scripts/fixtures/`** (under repo `scripts/`).
+**Locked: `packages/fixtures/`** (under repo `scripts/`).
 
 ### D6 - Builder runtime
 
@@ -207,7 +207,7 @@ examples/
         ├── SharedAtlas.tscn
         └── SharedAtlas.gd
 
-scripts/fixtures/
+packages/fixtures/
 ├── _shared/
 │   ├── _draw.py                            Pillow rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py                 bpy - open <fixture>.blend → write <fixture>.expected.proscenio

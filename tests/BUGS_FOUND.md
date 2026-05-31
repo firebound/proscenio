@@ -272,11 +272,11 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Repro:** abrir `examples/generated/mouth_drive/mouth_drive.blend` e tentar usar Drive from Bone pra controlar mouth via bone rotation Z em pose mode.
 
-**Causa:** o fixture `scripts/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` -> `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
+**Causa:** o fixture `packages/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` -> `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
 
 **Fix proposto:** orientar o bone horizontalmente (`head=(0,0,0)` -> `tail=(0.5,0,0)`) ou ao longo de world Y (`tail=(0,0.5,0)`). Aí bone-Y = world Y, rotação Z em pose mode = rotação local Z do bone, e LOCAL_SPACE pega a rotação corretamente. Alinha com convenção 2D cutout (bones no plano XY mundo).
 
-**Arquivo:** `scripts/fixtures/mouth_drive/build_blend.py:81-83`.
+**Arquivo:** `packages/fixtures/mouth_drive/build_blend.py:81-83`.
 
 **Severity:** medium - afeta UX da fixture, não da feature em geral. Fix combinado com os 2 bugs acima resolve a triade.
 
@@ -298,7 +298,7 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 ### ~~blink_eyes fixture: image path absoluto bake'a no .blend~~ FIXED
 
-Fixed inline. `scripts/fixtures/blink_eyes/build_blend.py` agora chama
+Fixed inline. `packages/fixtures/blink_eyes/build_blend.py` agora chama
 `bpy.path.relpath` após `save_as_mainfile` + salva de novo, persistindo
 `//pillow_layers/eye_spritesheet.png` em vez do path absoluto. Aproveitada
 a passagem para reorientar o bone ao longo de world Y (perpendicular ao
@@ -358,7 +358,7 @@ Headless inspect:
 
 ### Writer reads `rotation_euler[2]` (Z) but bones keyframe `rotation_euler[1]` (Y)
 
-**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis - camera-axis rotation in Front Ortho, per `scripts/fixtures/README.md` convention). Run the writer -> inspect emitted bone_transform track.
+**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis - camera-axis rotation in Front Ortho, per `packages/fixtures/README.md` convention). Run the writer -> inspect emitted bone_transform track.
 
 **Sintoma:** swing track in the .proscenio has 3 keyframes with only `{"time": ...}` - no `position`/`rotation`/`scale` data. Godot imports an empty track and the arm doesn't animate.
 
@@ -371,7 +371,7 @@ if "rotation_euler" in entry:
         rotation = round(-rz, 6)
 ```
 
-Hardcoded to read Z (index 2). The project convention (codified in `scripts/fixtures/README.md` "Bone orientation" + slot_swap's build_blend.py:276) keyframes Y (index 1) because Y is the camera-axis rotation in Front Ortho. Writer never sees the Y keys → `rotation` stays None → `has["rotation"] = False` → emitted keys carry only `{time}`.
+Hardcoded to read Z (index 2). The project convention (codified in `packages/fixtures/README.md` "Bone orientation" + slot_swap's build_blend.py:276) keyframes Y (index 1) because Y is the camera-axis rotation in Front Ortho. Writer never sees the Y keys → `rotation` stays None → `has["rotation"] = False` → emitted keys carry only `{time}`.
 
 **Fix proposto:** read Y, not Z (for the XZ-plane 2D rig convention). Possibly also support Z fallback for legacy fixtures with the older convention. Sign adjustment may also need attention (Godot's 2D rotation positive = clockwise in screen; Blender Y rotation positive = depends on camera-facing).
 
@@ -632,7 +632,7 @@ Layers vizinhos com PNG do mesmo render_layers source casam exato; só `waist` d
 - Investigar: abrir `render_layers/waist.png` em PS, conferir bbox visível direto na ferramenta de medida vs Pillow `getbbox()`.
 - Decisão depende do achado: ajustar threshold de transparência num dos lados, ou aceitar como ruído sub-pixel e arredondar consistente (round-half-up em ambos).
 
-**Arquivo:** `apps/photoshop/proscenio_export.jsx:269-295` (`exportLayerToFile` lê `layer.bounds`); cross-ref com `scripts/fixtures/_shared/` ou onde o Blender computa size.
+**Arquivo:** `apps/photoshop/proscenio_export.jsx:269-295` (`exportLayerToFile` lê `layer.bounds`); cross-ref com `packages/fixtures/_shared/` ou onde o Blender computa size.
 
 **Severity:** low - 1px de diferença num único asset, não bloqueia funcionalmente. Log + investigar quando 10.7 estiver perto.
 

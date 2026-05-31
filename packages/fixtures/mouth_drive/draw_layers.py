@@ -2,7 +2,7 @@
 
 Run with::
 
-    py scripts/fixtures/mouth_drive/draw_layers.py
+    py packages/fixtures/mouth_drive/draw_layers.py
 
 Pure Python - no Blender required. Produces:
 

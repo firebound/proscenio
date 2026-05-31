@@ -1,5 +1,5 @@
 # Importer-composed spritesheets. Regenerable by re-running
-# scripts/fixtures/simple_psd/build_blend.py (which calls the addon
+# packages/fixtures/simple_psd/build_blend.py (which calls the addon
 # importer, which composes _spritesheets/<sprite_frame>.png on the fly).
 _spritesheets/
 

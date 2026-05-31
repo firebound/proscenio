@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/atlas_pack/build_blend.py
+    blender --background --python packages/fixtures/atlas_pack/build_blend.py
 
 Loads 9 PNGs produced by ``draw_layers.py`` from disk and builds:
 

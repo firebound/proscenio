@@ -34,14 +34,14 @@ Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headle
 
 ```sh
 # 1. Generate the atlas PNG (requires only Python + Pillow).
-python scripts/fixtures/shared_atlas/draw_atlas.py
+python packages/fixtures/shared_atlas/draw_atlas.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/shared_atlas/build_blend.py
+blender --background --python packages/fixtures/shared_atlas/build_blend.py
 
 # 3. Generate the golden .proscenio under godot/.
 blender --background examples/generated/shared_atlas/shared_atlas.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 Output is committed to the repo. Re-run whenever the fixture spec changes.

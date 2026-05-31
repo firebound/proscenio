@@ -299,7 +299,7 @@ Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-
 
 Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone vertical hand chain (`wrist` -> `palm` -> `fingertip`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
 
-**Importante:** nunca `Ctrl+S` após smoke - fixture é tracked + smoke reescreve mesh in-place. Se salvar acidentalmente, regenera via `python scripts/fixtures/automesh/draw_layers.py` + `blender --background --python scripts/fixtures/automesh/build_blend.py`.
+**Importante:** nunca `Ctrl+S` após smoke - fixture é tracked + smoke reescreve mesh in-place. Se salvar acidentalmente, regenera via `python packages/fixtures/automesh/draw_layers.py` + `blender --background --python packages/fixtures/automesh/build_blend.py`.
 
 Sequência:
 
@@ -550,7 +550,7 @@ Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via 
 - [x] `slot_swap.proscenio` -> Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
 - [x] sprite_frame meshes -> Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
 - [~] polygon meshes -> Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (specs/007 Coverage gaps) chegar.
-- [!] Animations -> AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per scripts/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
+- [!] Animations -> AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per packages/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
 - [~] slot_attachment tracks -> visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 - 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em BUGS_FOUND.md.
 - [x] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D. Validado em shared_atlas: 3 Polygon2D (red_circle/green_triangle/blue_square) compartilham mesma CompressedTexture2D (`atlas.png`) com UV por quadrante.
 

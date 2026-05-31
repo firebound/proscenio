@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/simple_psd/build_blend.py
+    blender --background --python packages/fixtures/simple_psd/build_blend.py
 
 This is the smallest end-to-end exercise of the photoshop importer importer:
 
@@ -12,7 +12,7 @@ This is the smallest end-to-end exercise of the photoshop importer importer:
 3. Saves ``examples/generated/simple_psd/simple_psd.blend``.
 
 The fixture's golden ``.proscenio`` is then produced by running
-``scripts/fixtures/_shared/export_proscenio.py`` against the resulting
+``packages/fixtures/_shared/export_proscenio.py`` against the resulting
 blend, the same flow used by the doll / blink_eyes / shared_atlas
 fixtures. ``run_tests.py`` auto-discovers the new fixture once the
 golden is committed.

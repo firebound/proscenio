@@ -44,8 +44,8 @@ the `blink_eyes` / `mouth_drive` story, not this one.
 ## Rebuilding the fixture
 
 ```bash
-py scripts/fixtures/slot_swap/draw_layers.py
-blender --background --python scripts/fixtures/slot_swap/build_blend.py
+py packages/fixtures/slot_swap/draw_layers.py
+blender --background --python packages/fixtures/slot_swap/build_blend.py
 ```
 
 After rebuilding, regenerate the golden via the writer so

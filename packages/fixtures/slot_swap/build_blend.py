@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/slot_swap/build_blend.py
+    blender --background --python packages/fixtures/slot_swap/build_blend.py
 
 Loads PNGs produced by ``draw_layers.py`` and builds a minimal slot
 system fixture: a pseudo-arm swinging while its weapon attachment
@@ -269,7 +269,7 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
 
     # Y rotation = camera-axis rotation in Blender Front Ortho =
     # visible 2D rotation (per the project convention codified in
-    # scripts/fixtures/README.md).
+    # packages/fixtures/README.md).
     swing_keys = (
         (1, -math.pi / 6),
         (12, math.pi / 6),

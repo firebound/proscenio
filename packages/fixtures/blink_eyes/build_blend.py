@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/build_blink_eyes.py
+    blender --background --python packages/fixtures/build_blink_eyes.py
 
 Loads PNGs produced by ``draw_blink_eyes.py`` from disk and builds:
 

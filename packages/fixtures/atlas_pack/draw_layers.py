@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/atlas_pack/draw_layers.py
+    python packages/fixtures/atlas_pack/draw_layers.py
 
 Pure Python - no Blender required. Produces 9 distinct 32x32 PNGs
 under ``examples/generated/atlas_pack/pillow_layers/`` (``sprite_1.png`` ..

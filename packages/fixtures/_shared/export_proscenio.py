@@ -7,7 +7,7 @@ to ``<fixture_dir>/<fixture>.expected.proscenio``.
 Run with::
 
     blender --background <fixture>.blend \\
-        --python scripts/fixtures/export_proscenio.py
+        --python packages/fixtures/export_proscenio.py
 
 The script discovers the open .blend via ``bpy.data.filepath``, derives
 the output path from the .blend stem, and invokes

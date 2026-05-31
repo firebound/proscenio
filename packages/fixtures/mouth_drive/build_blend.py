@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/mouth_drive/build_blend.py
+    blender --background --python packages/fixtures/mouth_drive/build_blend.py
 
 Loads PNGs produced by ``draw_layers.py`` and builds:
 

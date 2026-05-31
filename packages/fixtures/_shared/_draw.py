@@ -4,7 +4,7 @@ Pure Python - runs **without Blender** (just Python + Pillow). The
 fixture builders are split into two stages:
 
 1. ``draw_<fixture>.py`` (this layer) - generates PNGs via Pillow.
-   Run with ``python scripts/fixtures/draw_<fixture>.py``.
+   Run with ``python packages/fixtures/draw_<fixture>.py``.
 2. ``build_<fixture>.py`` - assembles the ``.blend`` via bpy, loading
    the PNGs from disk. Run with ``blender --background --python ...``.
 

@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/automesh/build_blend.py
+    blender --background --python packages/fixtures/automesh/build_blend.py
 
 Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
 

@@ -33,14 +33,14 @@ Two stages: PNG generation runs without Blender, `.blend` assembly runs in headl
 
 ```sh
 # 1. Generate 9 PNGs under pillow_layers/.
-python scripts/fixtures/atlas_pack/draw_layers.py
+python packages/fixtures/atlas_pack/draw_layers.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/atlas_pack/build_blend.py
+blender --background --python packages/fixtures/atlas_pack/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root (used by run_tests.py).
 blender --background examples/generated/atlas_pack/atlas_pack.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 ## What this fixture catches when broken

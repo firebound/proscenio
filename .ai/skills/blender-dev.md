@@ -68,12 +68,12 @@ Pytest tests use `SimpleNamespace` mocks so the validation module is exercised i
 
 ### Adding a fixture
 
-1. Hand-author the `.blend` (mesh objects + armature + materials + weights + actions) or, for procedural fixtures, keep a builder script under `scripts/fixtures/<name>/`.
+1. Hand-author the `.blend` (mesh objects + armature + materials + weights + actions) or, for procedural fixtures, keep a builder script under `packages/fixtures/<name>/`.
 2. Render or draw the source layers; populate the `.blend` from them.
 3. Generate the golden by running the writer headlessly against the freshly built `.blend`.
 4. Verify locally: `blender --background --python apps/blender/tests/run_tests.py`. The runner auto-discovers new fixtures.
 
-For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-feature `.blend`), copy the conventions from the newest builder under `scripts/fixtures/` rather than older ones - bone tail along world -Y, relative `//` filepaths, `tex.interpolation = "Closest"`, driver wiring matching the panel operator's defaults.
+For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-feature `.blend`), copy the conventions from the newest builder under `packages/fixtures/` rather than older ones - bone tail along world -Y, relative `//` filepaths, `tex.interpolation = "Closest"`, driver wiring matching the panel operator's defaults.
 
 ## Coding rules
 

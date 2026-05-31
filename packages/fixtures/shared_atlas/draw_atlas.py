@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/draw_shared_atlas.py
+    python packages/fixtures/draw_shared_atlas.py
 
 Pure Python - no Blender required. Produces a 256×256 atlas with three
 colored shapes drawn into three quadrants. The fourth quadrant stays

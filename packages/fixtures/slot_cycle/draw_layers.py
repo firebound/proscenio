@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/slot_cycle/draw_layers.py
+    python packages/fixtures/slot_cycle/draw_layers.py
 
 Pure Python - no Blender required. Produces three 32x32 PNGs under
 ``examples/generated/slot_cycle/pillow_layers/``: a red square, a green square,

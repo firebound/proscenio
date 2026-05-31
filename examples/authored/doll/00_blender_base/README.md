@@ -12,7 +12,7 @@ Photoshop import step (`../01_photoshop_base/`) consumes.
 | `doll_base.photoshop_manifest.json` | `../scripts/export_psd_manifest.py` | the photoshop importer v1 / the photoshop tag system v2 manifest the PS importer reads |
 | `render_layers/<name>.png` | `../scripts/render_layers.py` | one PNG per mesh (front-ortho, Workbench flat). Drives the PSD placement step. |
 | `render_layers/pieces_sheet.png` | `../scripts/preview_pieces.py` | contact-sheet preview (reviewer aid; not consumed by the pipeline) |
-| `doll_base.expected.proscenio` | `scripts/fixtures/_shared/export_proscenio.py` | CI golden for the **direct Blender -> Godot writer** (not part of the artist workflow; protects the addon writer from regression) |
+| `doll_base.expected.proscenio` | `packages/fixtures/_shared/export_proscenio.py` | CI golden for the **direct Blender -> Godot writer** (not part of the artist workflow; protects the addon writer from regression) |
 
 ## Regenerate
 
@@ -32,7 +32,7 @@ python examples/authored/doll/scripts/preview_pieces.py
 
 # CI golden for the direct Blender -> Godot path
 blender --background examples/authored/doll/00_blender_base/doll_base.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 ## Outputs going downstream

@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/simple_psd/draw_layers.py
+    python packages/fixtures/simple_psd/draw_layers.py
 
 Pure Python - no Blender required. Produces:
 

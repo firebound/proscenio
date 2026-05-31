@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/automesh/draw_layers.py
+    python packages/fixtures/automesh/draw_layers.py
 
 Pure Python - no Blender required. Produces 5 PNGs under
 ``examples/generated/automesh/pillow_layers/`` that

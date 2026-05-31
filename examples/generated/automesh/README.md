@@ -44,10 +44,10 @@ Two stages: PNG generation runs without Blender, `.blend` assembly runs in headl
 
 ```sh
 # 1. Generate 4 PNGs under pillow_layers/.
-python scripts/fixtures/automesh/draw_layers.py
+python packages/fixtures/automesh/draw_layers.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/automesh/build_blend.py
+blender --background --python packages/fixtures/automesh/build_blend.py
 ```
 
 Re-run both steps when smoke surfaces a need for an updated baseline (new shape, different bone layout, etc).

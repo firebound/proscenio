@@ -1,11 +1,11 @@
-# scripts/fixtures/
+# packages/fixtures/
 
 Build scripts for the testing-fixtures spec + the photoshop importer fixtures under `examples/`. Organised **by fixture**, not by tool, so finding "the script that builds the doll PSD manifest" is one folder hop.
 
 ## Layout
 
 ```text
-scripts/fixtures/
+packages/fixtures/
 ├── _shared/
 │   ├── _draw.py                    Pillow shape rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py         Bpy: open <fixture>.blend, write godot/<fixture>.expected.proscenio
@@ -69,10 +69,10 @@ scripts/fixtures/
 ## Run modes
 
 - `_shared/_draw.py` is a library, not an entry point.
-- `_shared/export_proscenio.py` runs inside Blender: `blender --background <fixture>.blend --python scripts/fixtures/_shared/export_proscenio.py`.
+- `_shared/export_proscenio.py` runs inside Blender: `blender --background <fixture>.blend --python packages/fixtures/_shared/export_proscenio.py`.
 - `examples/authored/doll/scripts/*.py` mostly run inside Blender (`render_layers.py`, `export_psd_manifest.py`); `preview_pieces.py` is pure Python + Pillow (`python examples/authored/doll/scripts/preview_pieces.py`).
 - `blink_eyes/draw_layers.py` and `shared_atlas/draw_atlas.py` are pure Python + Pillow.
-- `*/build_blend.py` runs inside Blender (`blender --background --python scripts/fixtures/<fixture>/build_blend.py`).
+- `*/build_blend.py` runs inside Blender (`blender --background --python packages/fixtures/<fixture>/build_blend.py`).
 
 ## Why subfolders by fixture
 
@@ -84,7 +84,7 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
 
 ### Pillow side - `draw_layers.py`
 
-- Pure Python, no Blender. Run with `py scripts/fixtures/<name>/draw_layers.py`.
+- Pure Python, no Blender. Run with `py packages/fixtures/<name>/draw_layers.py`.
 - Use `_shared/_draw.py` primitives (`Canvas`, `rect`, `circle`, `capsule`, `triangle`, `trapezoid`).
 - Emit per-frame PNGs (one per cell) AND the concatenated spritesheet. The per-frame PNGs are documentation; the spritesheet is what the .blend references.
 - Cells default to 32x32 px. Spritesheet is `frame_w * hframes` by `frame_h * vframes`. Layout horizontal first (`vframes=1` covers most cases).
@@ -92,7 +92,7 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
 
 ### Blender side - `build_blend.py`
 
-- Run with `blender --background --python scripts/fixtures/<name>/build_blend.py` (no input .blend; the script wipes and rebuilds from scratch).
+- Run with `blender --background --python packages/fixtures/<name>/build_blend.py` (no input .blend; the script wipes and rebuilds from scratch).
 - `_wipe_blend()` clears `objects`, `meshes`, `armatures`, `materials`, `images`, `actions` first so re-runs are deterministic.
 - **Bone orientation**: tail along **-Y** from head (so the bone points TOWARD the Front Orthographic camera, which sits at +Y looking down -Y). Bones appear as small octahedral dots from the front - the Spine / 2D-cutout convention. Authoring rotations: pose-mode `R Y` rotates around the camera axis (visible 2D rotation); pose-mode `R Z` is for spin-in-plan-view; pose-mode `R X` tilts out of plane.
 - **Image filepath relativeization**: after `bpy.ops.wm.save_as_mainfile(...)`, walk `bpy.data.images` and assign `img.filepath = bpy.path.relpath(...)`, then `bpy.ops.wm.save_mainfile()` again to persist. Without this, the absolute path bakes into the .blend and the fixture breaks on any other machine. Pattern:

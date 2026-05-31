@@ -60,14 +60,14 @@ Two-stage: PNG generation runs without Blender, `.blend` assembly runs in headle
 
 ```sh
 # 1. Generate PNGs into pillow_layers/ (requires only Python + Pillow).
-python scripts/fixtures/blink_eyes/draw_layers.py
+python packages/fixtures/blink_eyes/draw_layers.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/blink_eyes/build_blend.py
+blender --background --python packages/fixtures/blink_eyes/build_blend.py
 
 # 3. Generate the golden .proscenio under godot/.
 blender --background examples/generated/blink_eyes/blink_eyes.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 ## What this fixture catches when broken

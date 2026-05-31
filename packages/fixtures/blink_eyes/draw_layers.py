@@ -2,7 +2,7 @@
 
 Run with::
 
-    python scripts/fixtures/draw_blink_eyes.py
+    python packages/fixtures/draw_blink_eyes.py
 
 Pure Python - no Blender required. Produces:
 

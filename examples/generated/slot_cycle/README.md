@@ -48,14 +48,14 @@ Two stages: Pillow PNG generation, headless Blender assembly.
 
 ```sh
 # 1. Generate the 3 colored 32x32 PNGs into pillow_layers/.
-python scripts/fixtures/slot_cycle/draw_layers.py
+python packages/fixtures/slot_cycle/draw_layers.py
 
 # 2. Assemble the .blend.
-blender --background --python scripts/fixtures/slot_cycle/build_blend.py
+blender --background --python packages/fixtures/slot_cycle/build_blend.py
 
 # 3. Generate the golden .proscenio at the fixture root.
 blender --background examples/generated/slot_cycle/slot_cycle.blend \
-    --python scripts/fixtures/_shared/export_proscenio.py
+    --python packages/fixtures/_shared/export_proscenio.py
 ```
 
 `run_tests.py` auto-discovers `slot_cycle/` once the golden is in place.

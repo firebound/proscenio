@@ -2,7 +2,7 @@
 
 Run with::
 
-    blender --background --python scripts/fixtures/build_shared_atlas.py
+    blender --background --python packages/fixtures/build_shared_atlas.py
 
 Loads ``examples/generated/shared_atlas/atlas.png`` produced by
 ``draw_shared_atlas.py`` and builds 3 polygon meshes whose UV bounds

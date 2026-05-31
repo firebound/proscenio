@@ -170,7 +170,7 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
 def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:
     """Bone-local quaternion -> Godot 2D screen rotation in radians.
 
-    Project convention (codified in scripts/fixtures/README.md): bones
+    Project convention (codified in packages/fixtures/README.md): bones
     are authored with tail along -Y from head, so bone-Y aligns with
     -world Y (camera axis) and bone-Z aligns with +world Z. Rotating a
     bone with `R Y theta` in pose mode produces a bone-local quaternion

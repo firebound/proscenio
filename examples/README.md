@@ -12,7 +12,7 @@ The `authored/` subdirectory exists specifically to telegraph this asymmetry. Ne
 
 ## Tier 1 - Procedural fixtures (`examples/generated/`)
 
-Fixtures rebuilt from a script under [`scripts/fixtures/<name>/`](../scripts/fixtures/) (Pillow + headless Blender). Safe to delete and regenerate. Each isolates one feature end-to-end so a regression has a small, named blast radius.
+Fixtures rebuilt from a script under [`packages/fixtures/<name>/`](../packages/fixtures/) (Pillow + headless Blender). Safe to delete and regenerate. Each isolates one feature end-to-end so a regression has a small, named blast radius.
 
 New fixtures land under one of two **pipeline-direction subdirectories**; the pre-existing flat layout is preserved for fixtures that predate the categorization (see "Legacy flat layout" below).
 
@@ -40,7 +40,7 @@ Empty for new entries today; existing Blender -> Godot fixtures still live at th
 | [`generated/slot_cycle/`](generated/slot_cycle/) | slot system, 3 attachments cycling |
 | [`generated/slot_swap/`](generated/slot_swap/) | slot system + bone rotation (swing + weapon swap in one action) |
 
-The conventions for adding a new procedural fixture live in [`scripts/fixtures/README.md`](../scripts/fixtures/README.md). Migration of these flat fixtures into the subdirectories is tracked in [`specs/backlog.md`](../specs/backlog.md).
+The conventions for adding a new procedural fixture live in [`packages/fixtures/README.md`](../packages/fixtures/README.md). Migration of these flat fixtures into the subdirectories is tracked in [`specs/backlog.md`](../specs/backlog.md).
 
 ## Discovery
 

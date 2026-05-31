@@ -13,7 +13,7 @@ dev = [
     "pytest>=8",
     "pre-commit>=4.0",
     # Pillow is used only by the testing-fixtures spec fixture builders under
-    # ``scripts/fixtures/`` to generate PNG layers without Blender.
+    # ``packages/fixtures/`` to generate PNG layers without Blender.
     # Not bundled with the addon — strictly dev / fixture tooling.
     "pillow>=10.0",
 ]

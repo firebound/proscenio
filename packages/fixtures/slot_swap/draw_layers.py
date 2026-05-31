@@ -2,7 +2,7 @@
 
 Run with::
 
-    py scripts/fixtures/slot_swap/draw_layers.py
+    py packages/fixtures/slot_swap/draw_layers.py
 
 Pure Python - no Blender required. Produces:
 

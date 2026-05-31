@@ -60,8 +60,8 @@ examples/generated/mouth_drive/
 ## Rebuilding the fixture
 
 ```bash
-py scripts/fixtures/mouth_drive/draw_layers.py
-blender --background --python scripts/fixtures/mouth_drive/build_blend.py
+py packages/fixtures/mouth_drive/draw_layers.py
+blender --background --python packages/fixtures/mouth_drive/build_blend.py
 ```
 
 The first step regenerates the PNGs (Pillow only, no Blender). The

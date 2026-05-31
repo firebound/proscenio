@@ -9,8 +9,10 @@ Subcommands:
 - ``godot`` - emit GDScript ``Resource`` classes from the pydantic
   models directly; output lands under
   ``apps/godot/addons/proscenio/schema_bindings/``.
-- ``docs`` - placeholder for SPEC 014 P5; prints a "not implemented
-  yet" notice and exits 0.
+- ``docs`` - emit Markdown reference for every dumped schema via
+  ``@adobe/jsonschema2md``; output lands under
+  ``docs/content/api/schemas/`` for Docusaurus (or any other Markdown
+  reader) to pick up.
 - ``all`` - run every emitter in order.
 
 Exit code 0 on success, non-zero on emitter failure. The expected
@@ -25,6 +27,7 @@ import argparse
 import sys
 from typing import Callable
 
+from proscenio_codegen.docs_emit import emit_docs
 from proscenio_codegen.godot_emit import emit_godot_resources
 from proscenio_codegen.schema_dump import emit_all_schemas
 from proscenio_codegen.ts_emit import emit_ts_bindings
@@ -48,10 +51,9 @@ def _run_godot() -> int:
     return 0
 
 
-def _run_pending(name: str) -> int:
-    print(
-        f"[codegen] {name} emitter not implemented yet (planned for a later SPEC 014 phase)"
-    )
+def _run_docs() -> int:
+    for target in emit_docs():
+        print(f"[codegen] wrote {target}")
     return 0
 
 
@@ -65,14 +67,14 @@ def _run_all() -> int:
     rc = _run_godot()
     if rc != 0:
         return rc
-    return _run_pending("docs")
+    return _run_docs()
 
 
 _EMITTERS: dict[str, Callable[[], int]] = {
     "schemas": _run_schemas,
     "ts": _run_ts,
     "godot": _run_godot,
-    "docs": lambda: _run_pending("docs"),
+    "docs": _run_docs,
     "all": _run_all,
 }
 

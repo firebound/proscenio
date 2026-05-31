@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-# Shared sanitization helper for Godot Node names (SPEC 001 ergonomics).
+# Shared sanitization helper for Godot Node names (the reimport-merge work ergonomics).
 #
 # Godot 4's ``Node.name`` setter normalises a handful of reserved
 # characters (``.``, ``/``, ``:``, ``@``) into ``_`` automatically - a

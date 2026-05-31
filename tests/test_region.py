@@ -1,4 +1,4 @@
-"""Unit tests for the SPEC 005.1.c.1 texture-region resolver.
+"""Unit tests for the authoring panel.1.c.1 texture-region resolver.
 
 Mocks ``bpy.types.Object`` with :class:`SimpleNamespace`-flavored stand-ins so
 the helper is exercised without a Blender session. Covers both modes (auto

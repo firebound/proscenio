@@ -2,14 +2,14 @@
 
 UXP plugin that exports PSD layers to a Proscenio manifest + per-layer PNGs, and re-imports a manifest back into a PSD. Schema target: [`schemas/psd_manifest.schema.json`](../schemas/psd_manifest.schema.json) v1.
 
-Deeper context: [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../docs/PHOTOSHOP-WORKFLOW.md). Design lives in [SPEC 010](../specs/010-photoshop-uxp-migration/STUDY.md).
+Deeper context: [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../docs/PHOTOSHOP-WORKFLOW.md). Locked stack and migration decisions live in the Photoshop UXP migration entry of [`specs/decisions.md`](../specs/decisions.md#photoshop-uxp-migration-shipped).
 
 ## Stack
 
 - **TypeScript** strict; ajv runtime validation against the v1 schema.
 - **React** for the panel; Spectrum web components (`<sp-checkbox>`, `<sp-action-button>`, `<sp-heading>`, `<sp-body>`) for native theming.
-- **webpack + Babel** as bundler (locked, SPEC 010 D15).
-- **pnpm** as package manager (locked, SPEC 010 D14).
+- **webpack + Babel** as bundler (locked).
+- **pnpm** as package manager (locked).
 - **vitest** for unit tests on the pure planner + validator.
 
 ## Install dependencies

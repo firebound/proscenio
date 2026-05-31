@@ -1,4 +1,4 @@
-"""Viewport math helpers (SPEC 009 wave 9.2).
+"""Viewport math helpers (the code-modularity work).
 
 bpy-bound - imports ``bpy_extras.view3d_utils`` and ``mathutils``.
 Lives in ``core/bpy_helpers/`` (wave 9.6).

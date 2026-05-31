@@ -1,8 +1,8 @@
-"""Unit tests for the SPEC 005.1.d.5 help-topic dispatch table.
+"""Unit tests for the in-panel help-topic dispatch table.
 
 Pure pytest, no Blender. Confirms every topic surfaced by the panel UI
 exists in the table + carries non-empty content + cross-references
-real SPEC directories on disk.
+real directories on disk.
 """
 
 from __future__ import annotations
@@ -67,10 +67,10 @@ def test_panel_topic_ids_present() -> None:
 
 
 def test_see_also_references_exist_on_disk() -> None:
-    """Cross-references must point at real spec directories or files.
+    """Cross-references must point at real directories or files.
 
-    Catches drift - if a spec dir is renamed or removed, the help topic
-    surfaces a broken pointer.
+    Catches drift - if a referenced path is renamed or removed, the help
+    topic surfaces a broken pointer.
     """
     for topic_id, topic in HELP_TOPICS.items():
         for ref in topic.see_also:

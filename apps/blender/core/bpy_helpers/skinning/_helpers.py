@@ -1,4 +1,4 @@
-"""Shared helpers for skinning bpy modules (SPEC 013.2)."""
+"""Shared helpers for skinning bpy modules (the weight-paint productivity follow-up)."""
 
 from __future__ import annotations
 

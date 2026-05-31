@@ -1,4 +1,4 @@
-// Pure manifest builder (SPEC 011 v2).
+// Pure manifest builder (the photoshop tag system (manifest v2)).
 //
 // Drives the layer walk through the bracket-tag parser:
 //

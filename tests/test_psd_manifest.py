@@ -1,4 +1,4 @@
-"""Unit tests for the PSD manifest v1 parser (SPEC 006 Wave 6.0).
+"""Unit tests for the PSD manifest v1 parser (the photoshop importer).
 
 Pure Python; no Blender. Covers the in-process shape validation that
 ships in Blender's bundled Python (the dedicated CI ``validate-schema``
@@ -119,7 +119,7 @@ def test_reject_unsupported_format_version() -> None:
 
 
 def _valid_v1_doc() -> dict:
-    """SPEC 006 v1 manifest (pre-SPEC 011): no anchor / origin / blend_mode / subfolder, no mesh kind."""
+    """the photoshop importer v1 manifest (pre-the photoshop tag system): no anchor / origin / blend_mode / subfolder, no mesh kind."""
     return {
         "format_version": 1,
         "doc": "doll.psd",

@@ -1,4 +1,4 @@
-"""Driver shortcut operator (SPEC 005.1.d.1)."""
+"""Driver shortcut operator (the Drive-from-Bone shortcut)."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def _driver_matches_source(
 
 
 class PROSCENIO_OT_create_driver(bpy.types.Operator):
-    """Drive a sprite's `proscenio.<prop>` from a chosen pose bone (5.1.d.1)."""
+    """Drive a sprite's `proscenio.<prop>` from a chosen pose bone (the Drive-from-Bone shortcut)."""
 
     bl_idname = "proscenio.create_driver"
     bl_label = "Proscenio: Drive Sprite from Bone"

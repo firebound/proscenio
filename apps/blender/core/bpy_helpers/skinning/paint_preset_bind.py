@@ -1,4 +1,4 @@
-"""Read/write tool_settings.weight_paint preset (SPEC 013.2 paint, T2).
+"""Read/write tool_settings.weight_paint preset (the paint work, T2).
 
 Maps PaintPresetSnapshot fields onto the live bpy brush + unified
 paint settings. Symmetric snapshot/apply so the modal can restore

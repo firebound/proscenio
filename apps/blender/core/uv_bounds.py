@@ -1,4 +1,4 @@
-"""UV bounds → source-image pixel bbox (SPEC 005.1.c.2.1).
+"""UV bounds → source-image pixel bbox (the atlas-packer feature).
 
 Used by the atlas packer to figure out which sub-region of a source image
 each sprite actually needs. When 1 sprite = 1 source PNG (Photoshop-first

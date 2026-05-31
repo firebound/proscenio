@@ -1,4 +1,4 @@
-"""Unit tests for UV-bounds → source-pixel-bbox math (SPEC 005.1.c.2.1).
+"""Unit tests for UV-bounds → source-pixel-bbox math (the atlas-packer feature).
 
 Pure Python helpers powering the sliced atlas packer. Tests cover empty
 input, full-cover UVs, partial slice, expand padding, clamp to image

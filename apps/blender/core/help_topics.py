@@ -1,4 +1,4 @@
-"""In-panel help-topic dispatch table for Proscenio (SPEC 005.1.d.5).
+"""In-panel help-topic dispatch table for Proscenio.
 
 Powers the ``?`` button surfaced next to every Proscenio subpanel.
 Each topic carries a title + ordered sections of plain-text content
@@ -10,7 +10,7 @@ Adding a new help topic:
 
 1. Add a ``HelpTopic`` row to ``HELP_TOPICS`` keyed by a stable id.
 2. Reference the id from the panel via ``_help_button(layout, topic)``.
-3. Optionally cross-link with a SPEC under ``see_also``.
+3. Optionally cross-link to a planning doc or example under ``see_also``.
 
 Content guidelines:
 
@@ -40,8 +40,8 @@ class HelpTopic:
     """One help entry surfaced via the ``?`` button.
 
     Sections render in order. ``see_also`` is rendered as a tail list
-    of relative links to ``specs/<NNN-slug>/`` for users who want to
-    dive into the design rationale.
+    of relative paths to a planning doc or example for users who want
+    to dive deeper.
     """
 
     title: str
@@ -52,11 +52,6 @@ class HelpTopic:
 
 _SECTION_WHAT = "What it does"
 _SECTION_HOW = "How to use it"
-
-_SPEC_INITIAL_PLAN = "specs/000-initial-plan"
-_SPEC_REIMPORT_MERGE = "specs/001-reimport-merge"
-_SPEC_AUTHORING_PANEL = "specs/005-blender-authoring-panel"
-_SPEC_SLOT_SYSTEM = "specs/004-slot-system"
 
 
 def _section(heading: str, *lines: str) -> HelpSection:
@@ -81,15 +76,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "planned (EXPERIMENTAL)",
-                "Designed in the SPECs but not yet implemented. The UI surface",
-                "exists today as a placeholder so the future feature has a",
-                "discoverable home.",
+                "Designed but not yet implemented. The UI surface exists today",
+                "as a placeholder so the future feature has a discoverable home.",
             ),
             _section(
                 "out-of-scope (CANCEL)",
-                "Intentionally not exported (see SPEC 000). Authored in Blender",
-                "for the user's own workflow only - IK constraints, shape keys,",
-                "anything Godot does not consume.",
+                "Intentionally not exported. Authored in Blender for the user's",
+                "own workflow only - IK constraints, shape keys, anything Godot",
+                "does not consume.",
             ),
             _section(
                 "Per-feature status",
@@ -106,12 +100,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "The pipeline",
                 "1. Photoshop authors layered art (or skip + author meshes in Blender).",
-                "2. JSX exporter writes a manifest (SPEC 006) - Blender importer stamps planes.",
+                "2. UXP plugin writes a manifest - Blender importer stamps planes.",
                 "3. Blender authors armature, weights, actions, regions.",
                 "4. Proscenio writer emits .proscenio (JSON Schema v1).",
                 "5. Godot EditorImportPlugin reads .proscenio -> .scn",
                 "   (Skeleton2D + Polygon2D + AnimationPlayer).",
-                "6. User wraps .scn in a Wrapper.tscn (SPEC 001) for scripts/extra nodes.",
+                "6. User wraps .scn in a Wrapper.tscn for scripts/extra nodes.",
             ),
             _section(
                 "Why a JSON contract",
@@ -123,14 +117,11 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Status badges",
                 "godot-ready  - exports to .proscenio + ships in the Godot importer.",
                 "blender-only - editor authoring shortcut, never reaches the .proscenio.",
-                "planned      - SPEC on paper, UI placeholder, not yet implemented.",
-                "out-of-scope - intentionally not exported (see SPEC 000).",
+                "planned      - designed on paper, UI placeholder, not yet implemented.",
+                "out-of-scope - intentionally not exported.",
             ),
         ),
-        see_also=(
-            _SPEC_INITIAL_PLAN,
-            _SPEC_REIMPORT_MERGE,
-        ),
+        see_also=(),
     ),
     "active_sprite": HelpTopic(
         title="Active Sprite",
@@ -145,7 +136,8 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Sprite type",
                 "Polygon      -> Polygon2D (cutout, deformable mesh, weight paint).",
                 "Sprite Frame -> Sprite2D (spritesheet, hframes x vframes grid + frame index).",
-                "Pick by use case - see SPEC 002 for the full decision matrix.",
+                "Pick by use case - Polygon for deformable cutout, Sprite Frame",
+                "for grid-cycled animations.",
             ),
             _section(
                 "Texture region",
@@ -154,17 +146,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Snap to UV bounds populates the manual fields from the current UV.",
             ),
             _section(
-                "Drive from bone (5.1.d.1)",
+                "Drive from bone",
                 "Wires a Blender driver between the picked pose bone and a sprite",
                 "proscenio.* property. Useful for iris-scrolling or threshold flags.",
                 "For HARD texture swaps (forearm front/back), use the slot system",
-                "(SPEC 004, planned) instead.",
+                "instead.",
             ),
         ),
-        see_also=(
-            "specs/002-spritesheet-sprite2d",
-            _SPEC_AUTHORING_PANEL,
-        ),
+        see_also=(),
     ),
     "skeleton": HelpTopic(
         title="Skeleton",
@@ -186,10 +175,10 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Adds (or removes) a 'Proscenio IK' constraint on the active pose bone",
                 "so you can pose-test with IK while authoring. The constraint never",
                 "reaches the .proscenio - IK in Godot is added post-import via",
-                "Skeleton2DIK (per SPEC 000).",
+                "Skeleton2DIK.",
             ),
         ),
-        see_also=(_SPEC_INITIAL_PLAN, "specs/003-skinning-weights"),
+        see_also=("specs/013-weight-paint-automesh",),
     ),
     "animation": HelpTopic(
         title="Animation",
@@ -208,7 +197,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "own second AnimationPlayer for game-side animations without colliding.",
             ),
         ),
-        see_also=(_SPEC_INITIAL_PLAN, _SPEC_REIMPORT_MERGE),
+        see_also=(),
     ),
     "atlas": HelpTopic(
         title="Atlas",
@@ -233,7 +222,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "edit a source image and re-pack from scratch.",
             ),
         ),
-        see_also=(_SPEC_AUTHORING_PANEL,),
+        see_also=(),
     ),
     "validation": HelpTopic(
         title="Validation",
@@ -252,7 +241,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "offending object. Errors block Export; warnings are informational.",
             ),
         ),
-        see_also=(_SPEC_AUTHORING_PANEL,),
+        see_also=(),
     ),
     "export": HelpTopic(
         title="Export",
@@ -276,10 +265,10 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "native nodes, no GDExtension, no plugin runtime dependency.",
             ),
         ),
-        see_also=(_SPEC_INITIAL_PLAN,),
+        see_also=(),
     ),
     "drive_from_bone": HelpTopic(
-        title="Drive from Bone (5.1.d.1)",
+        title="Drive from Bone",
         summary="Wire a Blender driver between a pose bone and a sprite Proscenio property.",
         sections=(
             _section(
@@ -306,17 +295,13 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Hard swap vs gradual",
                 "This shortcut is for GRADUAL parameter mapping (iris scroll, region",
                 "nudge). For HARD texture swaps (forearm front/back), the slot system",
-                "(SPEC 004, planned) is the right primitive - the threshold expression",
-                "'1 if var > 1.5 else 0' works as a workaround until SPEC 004 ships.",
+                "is the right primitive.",
             ),
         ),
-        see_also=(
-            _SPEC_AUTHORING_PANEL,
-            _SPEC_SLOT_SYSTEM,
-        ),
+        see_also=(),
     ),
     "quick_armature": HelpTopic(
-        title="Quick Armature (5.1.d.3)",
+        title="Quick Armature",
         summary="Click-drag in the viewport to draw bones without entering Edit Mode.",
         sections=(
             _section(
@@ -345,10 +330,10 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "into your main rig as usual.",
             ),
         ),
-        see_also=(_SPEC_AUTHORING_PANEL,),
+        see_also=("specs/012-quick-armature-ux",),
     ),
     "outliner": HelpTopic(
-        title="Outliner (5.1.d.4)",
+        title="Outliner",
         summary="Sprite-centric flat list of slots, sprite meshes, and armatures.",
         sections=(
             _section(
@@ -384,18 +369,18 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "untouched.",
             ),
         ),
-        see_also=(_SPEC_AUTHORING_PANEL,),
+        see_also=(),
     ),
     "slot_system": HelpTopic(
-        title="Slot system (SPEC 004)",
+        title="Slot system",
         summary="Empty Object + child meshes = one slot. Animation flips visibility per key.",
         sections=(
             _section(
                 _SECTION_WHAT,
                 "A slot presents one of N attachment meshes at a time. Use it for",
                 "hard texture swaps - forearm front/back, sword/staff/empty, brow",
-                "up/down, expression swap. Different from the driver shortcut",
-                "(SPEC 005.1.d.1) which is for gradual parameter mapping.",
+                "up/down, expression swap. Different from the driver shortcut,",
+                "which is for gradual parameter mapping.",
             ),
             _section(
                 _SECTION_HOW,
@@ -407,8 +392,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "3. Pick which attachment is visible at scene load (default) by",
                 "   clicking the SOLO icon next to its row.",
                 "4. Animate slot_attachment by keyframing the slot's attachment",
-                "   value in the Action editor (Wave 4.2 - Godot side - ships",
-                "   the runtime; Wave 4.1 just emits the data into .proscenio).",
+                "   value in the Action editor.",
             ),
             _section(
                 "Mixing polygon + sprite_frame attachments",
@@ -421,16 +405,16 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 "What lands in Godot",
-                "(Wave 4.2) Each slot becomes a Node2D parent under the bone,",
-                "with N sibling Polygon2D / Sprite2D children. Default attachment",
-                "starts visible=true, others false. The slot_attachment animation",
-                "track flips visibility per key with constant interpolation.",
+                "Each slot becomes a Node2D parent under the bone, with N sibling",
+                "Polygon2D / Sprite2D children. Default attachment starts",
+                "visible=true, others false. The slot_attachment animation track",
+                "flips visibility per key with constant interpolation.",
             ),
         ),
-        see_also=(_SPEC_SLOT_SYSTEM,),
+        see_also=(),
     ),
     "sprite_frame_preview": HelpTopic(
-        title="Sprite_frame preview material (D13)",
+        title="Sprite_frame preview material",
         summary="Slice the spritesheet live in Material Preview mode via shader nodes + drivers.",
         sections=(
             _section(
@@ -461,10 +445,10 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "  + drivers are refreshed without duplicating nodes.",
             ),
         ),
-        see_also=(_SPEC_SLOT_SYSTEM, "specs/002-spritesheet-sprite2d"),
+        see_also=(),
     ),
     "pose_library": HelpTopic(
-        title="Save Pose to Library (5.1.d.2)",
+        title="Save Pose to Library",
         summary="Bundle the current armature pose into a Blender Asset Browser entry.",
         sections=(
             _section(
@@ -498,21 +482,21 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "  Edit > Preferences > File Paths > Asset Libraries.",
             ),
         ),
-        see_also=(_SPEC_AUTHORING_PANEL,),
+        see_also=(),
     ),
     "import_photoshop": HelpTopic(
         title="Import Photoshop Manifest",
-        summary="Stamp planes + stub armature from a SPEC 006 v1 PSD manifest.",
+        summary="Stamp planes + stub armature from a v1 PSD manifest.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Reads a manifest emitted by apps/photoshop/proscenio_export.jsx,",
+                "Reads a manifest emitted by the Proscenio Photoshop UXP plugin,",
                 "stamps one polygon mesh per layer + composes spritesheet textures",
                 "for sprite_frame groups, parents everything to a stub root armature.",
             ),
             _section(
                 _SECTION_HOW,
-                "1. Run proscenio_export.jsx in Photoshop on a layered PSD.",
+                "1. Run the Proscenio Exporter panel in Photoshop on a layered PSD.",
                 "2. Click Import Photoshop Manifest, pick the resulting .json.",
                 "3. Choose placement: landed (feet on Z=0) or centered (manifest center).",
                 "4. Refine the stub armature + paint weights in Blender.",
@@ -524,7 +508,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "parenting, and weights survive the round trip.",
             ),
         ),
-        see_also=("specs/006-photoshop-importer", "examples/generated/simple_psd"),
+        see_also=("examples/generated/simple_psd",),
     ),
 }
 

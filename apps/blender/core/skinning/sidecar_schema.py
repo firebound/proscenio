@@ -1,4 +1,4 @@
-"""WeightSidecar schema (SPEC 013.2 sidecar wave).
+"""WeightSidecar schema (the sidecar work wave).
 
 Populated entries live here as ``SidecarEntry`` dataclasses keyed
 by UV anchor + tagged with provenance. ``build_minimal_stub`` still

@@ -1,4 +1,4 @@
-"""Slot system operators (SPEC 004).
+"""Slot system operators (the slot system).
 
 Subpackage with:
 

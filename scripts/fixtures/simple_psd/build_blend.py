@@ -1,10 +1,10 @@
-"""Assemble simple_psd.blend by running the addon importer (SPEC 006 Wave 6.5).
+"""Assemble simple_psd.blend by running the addon importer (the photoshop importer).
 
 Run with::
 
     blender --background --python scripts/fixtures/simple_psd/build_blend.py
 
-This is the smallest end-to-end exercise of the SPEC 006 importer:
+This is the smallest end-to-end exercise of the photoshop importer importer:
 
 1. Loads ``examples/generated/simple_psd/simple_psd.photoshop_manifest.json``
    (committed alongside the fixture).

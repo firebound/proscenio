@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 012.2 Quick Armature pure-math helpers.
+"""Unit tests for the quick-armature follow-up Quick Armature pure-math helpers.
 
 bpy-free. Covers chord resolution (D10), grid snap (D12), axis lock
 (D11), and naming (D2 + D15) primitives consumed by
@@ -57,7 +57,7 @@ class TestResolvePressMode:
         )
 
     def test_legacy_with_shift_returns_disconnected(self) -> None:
-        # SPEC 012.1 shipped Shift = parent + use_connect=False; the
+        # the quick-armature first cut shipped Shift = parent + use_connect=False; the
         # refinement keeps that vocabulary when the user opts back in.
         assert resolve_press_mode(shift_held=True, default_chain=False) == (True, False)
 

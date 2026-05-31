@@ -1,6 +1,6 @@
-# SPEC 012 - Quick Armature UX overhaul
+# Quick Armature UX overhaul
 
-Status: **SHIPPED via PR #50**. D1-D16 closed (see Design decisions section below). Implementation landed across Wave 12.1 (preview + lifecycle hygiene + Front-Ortho snap), Wave 12.2 (modifiers + naming + in-modal undo + panel sub-box), and a series of iterative refinements (chord vocabulary aligned to Blender, Alt+drag for disconnected, icon-rich hint surfaces, active-armature picker contract). See the "Refinement log" section in [TODO.md](TODO.md) for a commit-by-commit delta vs the originally locked design.
+Status: **SHIPPED via PR #50**. D1-D16 closed (see Design decisions section below). Implementation landed across the first cut (preview + lifecycle hygiene + Front-Ortho snap), the second wave (modifiers + naming + in-modal undo + panel sub-box), and a series of iterative refinements (chord vocabulary aligned to Blender, Alt+drag for disconnected, icon-rich hint surfaces, active-armature picker contract). See the "Refinement log" section in [TODO.md](TODO.md) for a commit-by-commit delta vs the originally locked design.
 
 ## Problem
 
@@ -13,15 +13,15 @@ Concrete observed failures:
 3. **Modal exit is a discoverability dead end.** `Esc` and `RIGHTMOUSE` work ([quick_armature.py:58-59](../../apps/blender/operators/quick_armature.py#L58-L59)) but the only place that documents this is the same status text. There is no in-viewport "Exit" affordance.
 4. **Empty `Proscenio.QuickRig` armature leaks on cancel.** `_finish` ([quick_armature.py:145-150](../../apps/blender/operators/quick_armature.py#L145-L150)) clears the drag head and the status text but never removes the QuickRig armature when zero bones were created. Every accidental Esc adds a new orphan armature to the scene.
 5. **Single connect/disconnect modifier (`Shift`).** Today `Shift` parents-but-not-connects the new bone to the previous bone. There is no "connect" modifier (Spine `Ctrl`, Spriter `Alt+Shift`), no "pick a different parent than last", no in-modal unparent. Branching skeletons (humanoid arms off a spine) require exiting the operator, manually re-parenting in Edit Mode, and re-entering. Painful loop.
-6. **Bone naming is `qbone.NNN` with no rename affordance.** Naming convention from the wider community is `prefix_part_side` (`def_arm_l`, `ctrl_head`). Auto-named `qbone.000` carries zero semantic information; the user must rename in the Outliner after each bone or batch-rename later. SPEC 005 already validated that artists hate post-hoc renaming.
-7. **Front-Ortho convention is enforced silently.** Plane projection hardcodes `plane_axis="Y"` ([quick_armature.py:74](../../apps/blender/operators/quick_armature.py#L74)) so bones land on the Y=0 picture plane regardless of view. Correct downstream (the writer assumes XZ), but in Top/Right/Persp the bone lands at Y=0 under a ray cast from the cursor and does not match where the user expected to click. Backlog ["Quick Armature: Front-Ortho UX guard"](../backlog.md#quick-armature-front-ortho-ux-guard) already enumerates the deferred fix - this SPEC absorbs it.
+6. **Bone naming is `qbone.NNN` with no rename affordance.** Naming convention from the wider community is `prefix_part_side` (`def_arm_l`, `ctrl_head`). Auto-named `qbone.000` carries zero semantic information; the user must rename in the Outliner after each bone or batch-rename later. the authoring panel already validated that artists hate post-hoc renaming.
+7. **Front-Ortho convention is enforced silently.** Plane projection hardcodes `plane_axis="Y"` ([quick_armature.py:74](../../apps/blender/operators/quick_armature.py#L74)) so bones land on the Y=0 picture plane regardless of view. Correct downstream (the writer assumes XZ), but in Top/Right/Persp the bone lands at Y=0 under a ray cast from the cursor and does not match where the user expected to click. Backlog ["Quick Armature: Front-Ortho UX guard"](../backlog.md#quick-armature-front-ortho-ux-guard) already enumerates the deferred fix - this spec absorbs it.
 8. **No undo affordance inside the modal.** Each bone is committed via `bpy.ops.object.mode_set` round-trip ([quick_armature.py:125-138](../../apps/blender/operators/quick_armature.py#L125-L138)). User must exit, Ctrl-Z, re-enter to delete the last bone. Spine, Spriter, Adobe Animate all support per-bone undo while the tool is active.
 
 The combination of these is more than the sum of the parts: the user cannot tell where the bone will land, cannot tell if the modal is still active, cannot back out of a single bad bone, and ends up with five `qbone.NNN` bones to rename and one orphan QuickRig armature to delete.
 
 ## Reference: 2D rigging tooling survey
 
-Proscenio is the open-source-Godot equivalent of Spine, DragonBones, Spriter, Adobe Animate, and Live2D. The way these tools draw bones is the primary reference surface for SPEC 012 - they all converged on a similar interaction model and the shape of the consensus is informative.
+Proscenio is the open-source-Godot equivalent of Spine, DragonBones, Spriter, Adobe Animate, and Live2D. The way these tools draw bones is the primary reference surface for Quick Armature UX - they all converged on a similar interaction model and the shape of the consensus is informative.
 
 ### Spine (industry standard)
 
@@ -75,7 +75,7 @@ The native model does win on precision: typing `E X 0.5` extrudes a half-unit bo
 
 ### COA Tools 2 (direct prior art, GPL Blender addon)
 
-The spiritual model for Proscenio's panel layout (referenced by SPEC 005). README mentions "automatic mesh generation" and a sprite outliner but the public docs do not expose a dedicated bone-drawing operator beyond Blender's native extrude. Source: [Aodaruma/coa_tools2](https://github.com/Aodaruma/coa_tools2).
+The spiritual model for Proscenio's panel layout (referenced by the authoring panel). README mentions "automatic mesh generation" and a sprite outliner but the public docs do not expose a dedicated bone-drawing operator beyond Blender's native extrude. Source: [Aodaruma/coa_tools2](https://github.com/Aodaruma/coa_tools2).
 
 What COA Tools 2 *does* ship is fast vertex-contour drawing for mesh generation - a click-stroke modal that builds a tessellated polygon. Same interaction shape as Proscenio's quick armature, applied to mesh authoring instead of bone authoring. Worth lifting the modal feedback patterns (preview stroke, cursor hint, undo-during-modal).
 
@@ -91,11 +91,11 @@ The Auto-Rig Pro UX research (scoring 9 vs Rigify's 5 on user-experience surveys
 
 Bone Eyedropper modal is a strong reference for in-viewport interaction polish: pre-fetches and caches bone data when the modal starts, compiles draw shaders once on invoke, drops every per-frame scene update that does not move the cursor. Source: [Bone Eyedropper](https://extensions.blender.org/add-ones/bone-eyedropper/).
 
-Bone Gizmos hooks custom operators per bone (auto IK/FK switch, snap). Source: [Bone Gizmos - Blender Studio](https://studio.blender.org/tools/addons/bone_gizmos). Confirms that Blender 3.0+ keeps gizmos drawing during modal operators (relevant if SPEC 012 wants persistent in-viewport handles for the active QuickRig).
+Bone Gizmos hooks custom operators per bone (auto IK/FK switch, snap). Source: [Bone Gizmos - Blender Studio](https://studio.blender.org/tools/addons/bone_gizmos). Confirms that Blender 3.0+ keeps gizmos drawing during modal operators (relevant if this spec wants persistent in-viewport handles for the active QuickRig).
 
 ## Patterns observed across tools
 
-Categorized so SPEC 012 can pick which patterns to lift. Each row maps to a Proscenio relevance verdict.
+Categorized so this spec can pick which patterns to lift. Each row maps to a Proscenio relevance verdict.
 
 | Pattern | Spine | DragonBones | Spriter | Animate | Blender native | **Proscenio relevance** |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -119,7 +119,7 @@ Categorized so SPEC 012 can pick which patterns to lift. Each row maps to a Pros
 | Numeric naming after creation | (rename inline) | (rename) | (rename) | (rename) | (F2 rename) | **first cut** (rename hint or inline) |
 | Bone hierarchy editor (re-parent without breaking anim) | yes | yes (drag-drop tree) | yes | (limited) | (manual) | **future** |
 
-The first-cut column is the SPEC 012 minimum viable shape. The "5.1" column is the natural follow-up wave. The "future" column needs its own SPEC.
+The first-cut column is the this spec minimum viable shape. The "5.1" column is the natural follow-up wave. The "future" column needs its own spec.
 
 ## Quality-of-life patterns the community praises
 
@@ -136,7 +136,7 @@ Consensus across forum threads, tutorials, and tool documentation. Each is a kno
 
 ## Complementary research: Blender native extrude + snap shortcuts
 
-Added after Wave 12.1 manual testing revealed two gaps the first cut did not address: (a) the no-modifier default does not match Blender users' muscle memory for bone authoring, and (b) there is no way to constrain the drag direction or snap to a grid mid-modal. The Proscenio positioning explicitly is *"quick alternative + centralised UI, not reinvention"* - so the right move is to lift Blender's own conventions where they already exist.
+Added after the first cut manual testing revealed two gaps the first cut did not address: (a) the no-modifier default does not match Blender users' muscle memory for bone authoring, and (b) there is no way to constrain the drag direction or snap to a grid mid-modal. The Proscenio positioning explicitly is *"quick alternative + centralised UI, not reinvention"* - so the right move is to lift Blender's own conventions where they already exist.
 
 ### Blender native bone authoring shortcuts (Edit Mode armature)
 
@@ -201,7 +201,7 @@ It deliberately does **not** ship:
 - Numeric length input (`Tab` to type) - Edit Mode E key wins here.
 - Per-axis precise constraint chains (`E X X 0.5`) - too keystroke-heavy for the "quick" promise.
 - Subdivision, mirror copy, parent re-routing - Edit Mode is the right surface.
-- Mirror auto-suffix `_L`/`_R` - deferred to a successor SPEC, not core.
+- Mirror auto-suffix `_L`/`_R` - deferred to a successor spec, not core.
 
 The line: Quick Armature owns the "first-stroke" experience; Edit Mode owns refinement.
 
@@ -228,18 +228,18 @@ Mapping observed-pattern coverage to current implementation:
 | Mirror auto-suffix `_L`/`_R` | **no** | gap |
 | Numeric length input | **no** | gap |
 | Pick-parent-in-viewport | **no** | gap |
-| Auto-attach underlying mesh / sprite | **no** | gap (couples to SPEC 004 / atlas) |
+| Auto-attach underlying mesh / sprite | **no** | gap (couples to the slot system / atlas) |
 
-Proscenio today ships the bare drag-to-create primitive and a single chain modifier. Every single quality-of-life pattern from the wider community is missing. The gap is the size of an entire SPEC, which is what justifies SPEC 012.
+Proscenio today ships the bare drag-to-create primitive and a single chain modifier. Every single quality-of-life pattern from the wider community is missing. The gap is the size of an entire spec, which is what justifies this spec.
 
 ## Constraints
 
 - **Blender-only.** Operator runs in `bpy.types.Operator`; no GDExtension, no native binding. All work happens in Python at editor time.
 - **Strong typing.** Per [`.ai/conventions.md`](../../.ai/conventions.md) static-typing section: every parameter typed, every return typed, `Any` only at the `bpy` boundary. Mypy strict.
-- **No new format features.** SPEC 012 is purely authoring UX. The `.proscenio` shape does not change. No schema bump.
-- **XZ picture-plane convention is law.** Bones live on Y=0; the writer + Godot importer assume it. SPEC 012 must keep the projection hard-locked, only adding *visual guidance* about it (Front-Ortho auto-snap, in-viewport hint).
+- **No new format features.** this spec is purely authoring UX. The `.proscenio` shape does not change. No schema bump.
+- **XZ picture-plane convention is law.** Bones live on Y=0; the writer + Godot importer assume it. this spec must keep the projection hard-locked, only adding *visual guidance* about it (Front-Ortho auto-snap, in-viewport hint).
 - **Reload safety.** Operator must register/unregister cleanly with the addon's reload-scripts loop.
-- **No dependency on SPEC 008 (UV animation) or SPEC 004 (slots).** Auto-attach-underlying-sprite is tempting but couples to slot system; defer to a follow-up SPEC.
+- **No dependency on UV animation or the slot system.** Auto-attach-underlying-sprite is tempting but couples to slot system; defer to a follow-up spec.
 - **Coexistence with native Blender bone authoring.** A user who exits Quick Armature and continues with native `E` extrude must not have the operator's state corrupt their session. Modal cleanup must be airtight.
 
 ## Design surface
@@ -252,9 +252,9 @@ The operator is split into three concerns that today live tangled in one class:
 
 ### Layout and integration points
 
-The operator stays anchored where it is today: invocable from the Skeleton subpanel button (added in SPEC 005.1.d.3) and from F3 search. SPEC 012 does not move the entry point.
+The operator stays anchored where it is today: invocable from the Skeleton subpanel button (added in the authoring panel.1.d.3) and from F3 search. this spec does not move the entry point.
 
-What SPEC 012 adds:
+What this spec adds:
 
 - A `gpu.draw_handler_add` callback on `bpy.types.SpaceView3D` for the preview line + anchor circle, registered in `invoke` and removed in `_finish`.
 - A `bpy.types.SpaceView3D.draw_handler_add(POST_PIXEL)` for the in-viewport modifier-list cheatsheet.
@@ -311,7 +311,7 @@ Two parallel draw handlers, both registered in `invoke` and removed in `_finish`
 | `Ctrl+Z` (in modal) | Remove last created bone | New |
 | `Ctrl+Shift+Z` (in modal) | Re-create last removed bone | New |
 
-`Alt` is somewhat redundant with the no-modifier default today (since today no-modifier already means unparented). Reserving `Alt` now lets us flip the default in a successor SPEC ("auto-chain like Adobe Animate") without breaking the chord vocabulary.
+`Alt` is somewhat redundant with the no-modifier default today (since today no-modifier already means unparented). Reserving `Alt` now lets us flip the default in a successor spec ("auto-chain like Adobe Animate") without breaking the chord vocabulary.
 
 ### Lifecycle hygiene
 
@@ -322,24 +322,24 @@ Two parallel draw handlers, both registered in `invoke` and removed in `_finish`
 
 ## Design decisions (locked)
 
-| ID | Question | Locked answer | Wave |
+| ID | Question | Locked answer | Tier |
 | --- | --- | --- | --- |
-| D1 | Preview rendering | **A** GPU `draw_handler_add` overlay | 1 |
-| D2 | Naming prefix configuration | **E** AddonPref default + F3 redo override | 2 |
-| D3 | Front-Ortho snap restore on exit | **A** restore original view | 1 |
-| D4 | Empty QuickRig sweep scope | **B** sweep only if operator created it this session | 1 |
-| D5 | Confirm/Cancel viewport affordance | **A** header bar text only | 1 |
-| D6 | Cheatsheet visibility | **A** always visible while modal active | 1 |
-| D7 | Per-bone undo scope | **B** session-local stack + single global push on `_finish` | 2 |
-| D8 | Connect-parent modifier chord | **C** `Ctrl+Shift` connect, `Ctrl` reserved | 2 |
-| D9 | Shipping shape | **B** Wave 1 (showstoppers) + Wave 2 (productivity polish) | - |
-| D10 | No-modifier default behavior | **B** invert: LMB = chain connected, Shift = new root | 2 |
-| D11 | Axis lock during drag | **C** X/Z keys + colored axis line overlay | 2 |
-| D12 | Grid snap during drag | **B** Ctrl held = snap to 1.0 world-unit grid | 2 |
-| D13 | Angle snap during drag | **C** defer to future SPEC | future |
-| D14 | `Ctrl` chord re-route | **A** Ctrl = grid snap, re-reserve `Alt` for bone-tip-snap | 2 |
-| D15 | Panel exposure for Quick Armature defaults | **C** Scene PG + Skeleton subpanel inline | 2 |
-| D16 | Active armature picker as single source of truth (post-Wave-12.2 refinement) | **B** picker is the contract; heuristics only at load time | refinement |
+| D1 | Preview rendering | **A** GPU `draw_handler_add` overlay | first cut |
+| D2 | Naming prefix configuration | **E** AddonPref default + F3 redo override | second wave |
+| D3 | Front-Ortho snap restore on exit | **A** restore original view | first cut |
+| D4 | Empty QuickRig sweep scope | **B** sweep only if operator created it this session | first cut |
+| D5 | Confirm/Cancel viewport affordance | **A** header bar text only | first cut |
+| D6 | Cheatsheet visibility | **A** always visible while modal active | first cut |
+| D7 | Per-bone undo scope | **B** session-local stack + single global push on `_finish` | second wave |
+| D8 | Connect-parent modifier chord | **C** `Ctrl+Shift` connect, `Ctrl` reserved | second wave |
+| D9 | Shipping shape | **B** first cut (showstoppers) + follow-up (productivity polish) | - |
+| D10 | No-modifier default behavior | **B** invert: LMB = chain connected, Shift = new root | second wave |
+| D11 | Axis lock during drag | **C** X/Z keys + colored axis line overlay | second wave |
+| D12 | Grid snap during drag | **B** Ctrl held = snap to 1.0 world-unit grid | second wave |
+| D13 | Angle snap during drag | **C** defer to a future spec | future |
+| D14 | `Ctrl` chord re-route | **A** Ctrl = grid snap, re-reserve `Alt` for bone-tip-snap | second wave |
+| D15 | Panel exposure for Quick Armature defaults | **C** Scene PG + Skeleton subpanel inline | second wave |
+| D16 | Active armature picker as single source of truth (post-second-wave refinement) | **B** picker is the contract; heuristics only at load time | refinement |
 
 Each section below preserves the option set + rationale for posterity.
 
@@ -396,7 +396,7 @@ Esc + RMB are the conventional Blender exit gestures but not obvious to new user
 
 **Locked: D5.A.** Floating buttons in viewport need hit-testing in modal which is non-trivial and visually noisy. Header text is cheap and discoverable. The confirmation dialog (D5.D) is a half-step worth considering if the operator gains an explicit "discard" path - but with Ctrl+Z available inside the modal, a user who regrets their bones can undo them one-by-one without exiting. Defer the confirm dialog.
 
-**Refinement (post-Wave-12.2, commit `69aff3d`):** the chord-cheatsheet hint moved from POST_PIXEL text overlays to two icon-rich native Blender surfaces: `STATUSBAR_HT_header.prepend(_draw_statusbar_quick_armature)` for the bottom bar (left edge - where Blender's own knife / loop-cut tools place their hints) and `VIEW3D_HT_header.append(_draw_view3d_header_quick_armature)` for the 3D viewport's own header (so the user does not have to look away from the canvas). Both reuse a shared `_emit_chord_layout(layout, cls)` helper and render `MOUSE_LMB_DRAG`, `EVENT_SHIFT`, `EVENT_ALT`, `EVENT_CTRL`, `EVENT_X` / `Z`, `EVENT_RETURN`, `EVENT_ESC` via `layout.label(text="", icon=...)`. The POST_PIXEL cheatsheet was retired (text-only could never match the native icons next to it); the cursor-outside-canvas POST_PIXEL tooltip stayed because it is cursor-tracking, not a chord cheatsheet. Documented as a project-wide modal-hint convention in `.ai/skills/blender-dev.md`.
+**Refinement (post-second-wave, commit `69aff3d`):** the chord-cheatsheet hint moved from POST_PIXEL text overlays to two icon-rich native Blender surfaces: `STATUSBAR_HT_header.prepend(_draw_statusbar_quick_armature)` for the bottom bar (left edge - where Blender's own knife / loop-cut tools place their hints) and `VIEW3D_HT_header.append(_draw_view3d_header_quick_armature)` for the 3D viewport's own header (so the user does not have to look away from the canvas). Both reuse a shared `_emit_chord_layout(layout, cls)` helper and render `MOUSE_LMB_DRAG`, `EVENT_SHIFT`, `EVENT_ALT`, `EVENT_CTRL`, `EVENT_X` / `Z`, `EVENT_RETURN`, `EVENT_ESC` via `layout.label(text="", icon=...)`. The POST_PIXEL cheatsheet was retired (text-only could never match the native icons next to it); the cursor-outside-canvas POST_PIXEL tooltip stayed because it is cursor-tracking, not a chord cheatsheet. Documented as a project-wide modal-hint convention in `.ai/skills/blender-dev.md`.
 
 ### D6 - Modifier-list cheatsheet: always visible or toggleable?
 
@@ -430,19 +430,19 @@ The new "chain connected" modifier needs a chord that does not collide with Blen
 
 **Refinement (D10 + D14 supersede D8, commit `16c7995`):** the D10 inversion folded "chain + connect" into the no-modifier default, which removed the need for an explicit `Ctrl+Shift` chord. The connect modifier slot was reallocated to `Alt+drag` = parented + disconnected (parented bone with the head left at the user's press point - covers the branching-skeleton case that originally motivated D8). `Ctrl` got reallocated to grid snap by D12 / D14. Net chord vocabulary at landed shape: `LMB` = connected, `Shift+LMB` = unparented, `Alt+LMB` = disconnected, `Ctrl held during drag` = grid snap, `X` / `Z` = axis lock, `Ctrl+Z` / `Ctrl+Shift+Z` = in-modal undo / redo.
 
-### D9 - Shipping in waves vs single SPEC
+### D9 - Shipping in waves vs single spec
 
-SPEC 012 is large. Single drop or multiple commits?
+this spec is large. Single drop or multiple commits?
 
 - **D9.A - Single PR with all of D1-D8.** Coherent feature.
-- **D9.B - Wave 1 (preview line + cheatsheet + Front-Ortho snap + cleanup), Wave 2 (modifiers + naming prefix + undo).**
-- **D9.C - Three waves.** Visual feedback first, then lifecycle hygiene, then modifier expansion.
+- **D9.B - First cut (preview line + cheatsheet + Front-Ortho snap + cleanup), follow-up (modifiers + naming prefix + undo).**
+- **D9.C - Three cuts.** Visual feedback first, then lifecycle hygiene, then modifier expansion.
 
-**Locked: D9.B.** Wave 1 covers the items that make the operator usable at all (the items session 1.14 cited as showstoppers). Wave 2 covers the items that make the operator pleasant for serial use. Wave 1 alone is shippable - a user can author bones today, just inefficiently; Wave 1 closes the "inviabiliza" gap. Wave 2 is the productivity polish.
+**Locked: D9.B.** The first cut covers the items that make the operator usable at all (the items session 1.14 cited as showstoppers). The follow-up covers the items that make the operator pleasant for serial use. The first cut alone is shippable - a user can author bones today, just inefficiently; the first cut closes the "inviabiliza" gap. The follow-up is the productivity polish.
 
-### D10 - No-modifier default: free root or chain connected? (Wave 12.1 follow-up)
+### D10 - No-modifier default: free root or chain connected? (the first cut follow-up)
 
-Today (Wave 12.1 default): LMB drag = unparented bone. `Shift+drag` = chained (parent, not connected). User report after first authoring session: "default deveria ser extrusao (parented, connected) porque e o uso mais comum no Blender".
+Today (the first cut default): LMB drag = unparented bone. `Shift+drag` = chained (parent, not connected). User report after first authoring session: "default deveria ser extrusao (parented, connected) porque e o uso mais comum no Blender".
 
 Survey (see complementary research above): Blender's `E` extrude chains connected. Spine's Create tool chains automatically. Adobe Animate chains automatically. Only Spriter requires an explicit `Alt` for every bone, and even Spriter chains the next bone off the previously created one.
 
@@ -450,11 +450,11 @@ Survey (see complementary research above): Blender's `E` extrude chains connecte
 - **D10.B - Invert (no-modifier = chain connected, Shift = new root).** Matches Blender / Spine / Animate conventions. First bone of any chain is naturally unparented (no previous bone exists); subsequent drags chain. To start a *new* chain mid-session, hold Shift.
 - **D10.C - Configurable via AddonPreferences default + per-invoke F3 override.** Choose your audience.
 
-**Locked: D10.B.** Audience reading. Blender users hit `E` reflexively to extrude bones. Spine users expect chain by default. The "I started a new chain by accident" mistake is recoverable via in-modal `Ctrl+Z` (Wave 12.2). The "I have to hold Shift for every bone of a chain" friction is constant. Inverting trades a rare mistake recovery for constant ergonomic wins.
+**Locked: D10.B.** Audience reading. Blender users hit `E` reflexively to extrude bones. Spine users expect chain by default. The "I started a new chain by accident" mistake is recoverable via in-modal `Ctrl+Z` (the second wave). The "I have to hold Shift for every bone of a chain" friction is constant. Inverting trades a rare mistake recovery for constant ergonomic wins.
 
-D10.C is over-engineered; the audience consensus is strong enough to lock a default. If a user really wants free-root default, they can wrap the operator in a custom keymap with `lock_to_front_ortho=True` and a hypothetical `default_chain=False` option - but the consensus does not require shipping the option in Wave 12.2.
+D10.C is over-engineered; the audience consensus is strong enough to lock a default. If a user really wants free-root default, they can wrap the operator in a custom keymap with `lock_to_front_ortho=True` and a hypothetical `default_chain=False` option - but the consensus does not require shipping the option in the second wave.
 
-**Refinement (commit `16c7995`):** the chord labels were renamed during user-feedback rounds to match Blender's bone-parenting terminology exactly. "Chain connected" became `connected` (parented + ``use_connect=True``); "new root" became `unparented` (no parent at all - "root" was misleading because it implied a fresh skeleton tree). `disconnected` (parented + ``use_connect=False``) was added as the Alt-modifier mode to cover branching chains. The decision (chain-by-default with Shift for the exception) is unchanged; only the surface vocabulary was made faithful. The `default_chain` PG toggle from D15 still lets a user fall back to the SPEC 012.1 vocabulary if needed; cheatsheet copy and operator behaviour both honour it.
+**Refinement (commit `16c7995`):** the chord labels were renamed during user-feedback rounds to match Blender's bone-parenting terminology exactly. "Chain connected" became `connected` (parented + ``use_connect=True``); "new root" became `unparented` (no parent at all - "root" was misleading because it implied a fresh skeleton tree). `disconnected` (parented + ``use_connect=False``) was added as the Alt-modifier mode to cover branching chains. The decision (chain-by-default with Shift for the exception) is unchanged; only the surface vocabulary was made faithful. The `default_chain` PG toggle from D15 still lets a user fall back to the this spec.1 vocabulary if needed; cheatsheet copy and operator behaviour both honour it.
 
 ### D11 - Axis lock during drag (X / Z keys)
 
@@ -464,7 +464,7 @@ Blender users press `X` or `Z` mid-transform to lock the active drag to that axi
 - **D11.B - X / Z keys during drag = lock to axis.** Press once = global axis (clamp the unlocked coord of `tail` to the same value as `head`). Press twice = local axis (would require armature orientation, deferred). `Y` key = no-op (always Y=0).
 - **D11.C - X / Z lock + visual indicator.** Same as B plus a colored axis line drawn through the head during the lock (Blender convention - X is red, Z is blue).
 
-**Locked: D11.C.** Free win. The visual indicator turns a hidden state into a visible affordance, which matches Wave 12.1's "no hidden state" principle. Implementation: extend the POST_VIEW draw handler to render an axis line when `self._axis_lock in {"X", "Z"}`.
+**Locked: D11.C.** Free win. The visual indicator turns a hidden state into a visible affordance, which matches the first cut's "no hidden state" principle. Implementation: extend the POST_VIEW draw handler to render an axis line when `self._axis_lock in {"X", "Z"}`.
 
 ### D12 - Grid snap during drag (Ctrl held)
 
@@ -482,9 +482,9 @@ Spine snaps bone rotation to 15-degree increments when Shift is held. Useful for
 
 - **D13.A - No angle snap.** Status quo.
 - **D13.B - Shift during drag (after PRESS) = snap angle to 15-deg increments.** Conflict: `Shift+LMB PRESS` in D10.B = new chain root. Live `Shift` held after PRESS would have to mean something different. Doable via state machine (track Shift state delta) but adds modal complexity.
-- **D13.C - Defer to a future SPEC.** Not enough usage demand observed today.
+- **D13.C - Defer to a future spec.** Not enough usage demand observed today.
 
-**Locked: D13.C.** Wave 12.2 is already wide. The chord vocabulary needs to stay clear for the first ship; reusing `Shift` for two meanings within the same drag is a cognitive load multiplier. Revisit if a humanoid rig fixture surfaces the need.
+**Locked: D13.C.** the second wave is already wide. The chord vocabulary needs to stay clear for the first ship; reusing `Shift` for two meanings within the same drag is a cognitive load multiplier. Revisit if a humanoid rig fixture surfaces the need.
 
 ### D14 - `Ctrl` chord reservation re-route (depends on D12)
 
@@ -492,7 +492,7 @@ D8 reserved `Ctrl` alone for a future "snap to nearby bone tip" gesture. D12.B c
 
 - **D14.A - `Ctrl` = grid snap. Re-reserve `Alt` for the future bone-tip-snap.** Aligns with Blender's `Ctrl`=snap convention everywhere else.
 - **D14.B - Keep `Ctrl` reserved for bone-tip-snap. Use `Shift+Ctrl` for grid snap.** Preserves D8.C reservation, costs an extra finger.
-- **D14.C - Drop bone-tip-snap reservation entirely; assume a future SPEC will find its own chord.** Don't pre-allocate.
+- **D14.C - Drop bone-tip-snap reservation entirely; assume a future spec will find its own chord.** Don't pre-allocate.
 
 **Locked: D14.A.** Blender convention is `Ctrl`=snap-to-grid universally; users will press it reflexively. Reserving it for a hypothetical future feature wastes the most-discoverable chord. `Alt` is free in this operator today. If/when the bone-tip-snap lands, it can claim `Alt`.
 
@@ -500,14 +500,14 @@ D8 reserved `Ctrl` alone for a future "snap to nearby bone tip" gesture. D12.B c
 
 ### D15 - Panel exposure for Quick Armature defaults
 
-Wave 12.2 adds several configurable values: `name_prefix` (D2), `lock_to_front_ortho` default, `default_chain` (D10), `snap_increment` (D12). Where do they surface?
+the second wave adds several configurable values: `name_prefix` (D2), `lock_to_front_ortho` default, `default_chain` (D10), `snap_increment` (D12). Where do they surface?
 
 - **D15.A - F3 redo panel only.** Each value is an operator property; user tweaks via F3 search > tweak in the redo box at bottom-left of the viewport. Discoverable only after invoke.
 - **D15.B - AddonPreferences only.** One value per Blender install, edited from Edit > Preferences > Add-ons > Proscenio. Discoverable from preferences panel.
 - **D15.C - Scene PropertyGroup + Proscenio sidebar Skeleton subpanel.** Per-document defaults that ride with the `.blend`. User edits inline next to the "Quick Armature" button. F3 redo override still works for one-off changes.
 - **D15.D - AddonPreferences + Scene PG override + F3 redo.** Three layers. Power-user friendly, more code.
 
-**Locked: D15.C.** Authoring is document-centric (matches SPEC 005 D5 - sticky export path lives on Scene PG). Defaults ride with the `.blend`; a complex character `.blend` can ship its preferred `name_prefix`/`snap_increment` without configuring per-user prefs. Adding AddonPreferences (D15.D) is over-engineered for the first ship - no real workflow needs both layers right now. F3 redo still allows per-invocation override.
+**Locked: D15.C.** Authoring is document-centric (matches the authoring panel D5 - sticky export path lives on Scene PG). Defaults ride with the `.blend`; a complex character `.blend` can ship its preferred `name_prefix`/`snap_increment` without configuring per-user prefs. Adding AddonPreferences (D15.D) is over-engineered for the first ship - no real workflow needs both layers right now. F3 redo still allows per-invocation override.
 
 Concrete layout in the Skeleton subpanel:
 
@@ -540,9 +540,9 @@ Operator reads from `context.scene.proscenio.quick_armature.<field>` in `invoke`
 
 **Refinement (commit `cefd30d` then `a4f0eec`):** the F3-redo override layer was scoped down at landing time. Only `lock_to_front_ortho` stayed as an operator-level option; `name_prefix` / `default_chain` / `snap_increment` are PG-only (edited in the panel sub-box). The user can still override per-invocation by editing the PG before invoking - the panel sub-box is always visible. The unused operator-option layer dropped to save plumbing without losing the document-centric guarantee.
 
-### D16 - Active armature picker as the single source of truth (post-Wave-12.2 refinement)
+### D16 - Active armature picker as the single source of truth (post-second-wave refinement)
 
-This decision was made mid-iteration, after the first round of Wave 12.2 manual smoke surfaced that the operator's "auto-detect active object as target" heuristic surprised the user in scenes with more than one armature. Added here for completeness so the landed shape has its own decision record.
+This decision was made mid-iteration, after the first round of the second wave manual smoke surfaced that the operator's "auto-detect active object as target" heuristic surprised the user in scenes with more than one armature. Added here for completeness so the landed shape has its own decision record.
 
 **Problem:** Quick Armature originally always created `Proscenio.QuickRig`. A successor refinement let the operator target the active armature object when one was selected, falling back to QuickRig otherwise. That fix introduced its own surprise: clearing the panel picker via the "x" button reset the explicit target, but the heuristic kept resurrecting "the only armature in scene" as the target. The warning copy ("skeleton ops will create a new Proscenio.QuickRig") was lying because the heuristic was still running.
 
@@ -563,7 +563,7 @@ This decision was made mid-iteration, after the first round of Wave 12.2 manual 
 
 ## Architectural patterns + tradeoffs
 
-Captured here so SPEC 012's implementation can lift them without re-deriving.
+Captured here so this spec's implementation can lift them without re-deriving.
 
 ### Modal draw handler lifecycle
 
@@ -634,22 +634,22 @@ Both channels exist; both have value:
 
 The `status_text_set` hint should be the *short* form (`"Quick Armature: drag = bone | Shift = chain | Esc = exit"`); the in-viewport cheatsheet is the *full* form with all modifiers. Two channels, two levels of detail.
 
-## Out of scope (deferred to 012.1 or backlog)
+## Out of scope (deferred to a follow-up or backlog)
 
-- **Auto-attach underlying mesh / sprite to the new bone** (DragonBones-style). Couples to slot system (SPEC 004). Defer to a 012-or-004 follow-up.
-- **Pick-parent-in-viewport modifier** (Shift-click an existing bone tip during modal to re-parent the next bone). Useful for branching skeletons but the chord vocabulary (Ctrl/Shift/Alt) is already loaded. Defer to 012.1.
+- **Auto-attach underlying mesh / sprite to the new bone** (DragonBones-style). Couples to the slot system. Defer to a quick-armature or slot-system follow-up.
+- **Pick-parent-in-viewport modifier** (Shift-click an existing bone tip during modal to re-parent the next bone). Useful for branching skeletons but the chord vocabulary (Ctrl/Shift/Alt) is already loaded. Defer to a follow-up.
 - **Numeric length input** (`Tab` to type "0.5", commit with Enter). Native Blender extrude convention; bigger lift to add a text input field to a modal operator. Defer.
-- **Mirror auto-suffix `_L`/`_R`** when X-Mirror is on. Useful for symmetric humanoid rigs but currently no Proscenio fixture exercises it. Defer to 012.1.
+- **Mirror auto-suffix `_L`/`_R`** when X-Mirror is on. Useful for symmetric humanoid rigs but currently no Proscenio fixture exercises it. Defer to a follow-up.
 - **Floating Confirm/Cancel buttons** in viewport (D5.B). Hit-testing in modal is non-trivial. Defer until D5.A's header bar text proves insufficient in user testing.
 - **Per-modifier color-coded preview line** (orange for unparented, green for chain, blue for connect). Cosmetic polish, defer.
 - **Undo dialog on Esc with `>=N` bones created** (D5.D). Defer until per-bone undo (D7) ships and we see whether it removes the need.
 - **Bone naming patterns with auto-numbering inside a chain** (`spine_01`, `spine_02`). Different from the prefix pref (D2). Defer.
-- **Snapshot-and-restore of selected/active object on `_finish`**. Today the operator restores the previous active object ([quick_armature.py:139-140](../../apps/blender/operators/quick_armature.py#L139-L140)) but not the full selection set. Refinement for 012.1.
+- **Snapshot-and-restore of selected/active object on `_finish`**. Today the operator restores the previous active object ([quick_armature.py:139-140](../../apps/blender/operators/quick_armature.py#L139-L140)) but not the full selection set. Refinement for a follow-up.
 
 ## Successor considerations
 
-- **SPEC 004 (slots)** can hook into Quick Armature: a `Ctrl+Shift+drag` over an existing sprite could create a bone *and* attach the sprite to it (DragonBones model). Defer until SPEC 004 lands and the slot fixture surfaces a concrete use case.
-- **SPEC 008 (UV animation)** is unrelated.
-- **A future "Quick Mesh" operator** (COA-Tools-style click-stroke vertex contour drawing) would lift the same modal feedback patterns built here. SPEC 012's GPU-overlay scaffolding is reusable.
-- **Addon-wide modal feedback library**. If SPEC 012's draw-handler patterns get repeated in future operators (Quick Mesh, paint-from-rig, etc.), extract into `core/bpy_helpers/modal_overlay.py` with a `ModalOverlay` class managing handle lifecycle. Premature today; revisit after second consumer appears.
-- **Localization**. Every cheatsheet / status string is English. If the addon ever localizes (Blender ships full i18n), the in-viewport cheatsheet is one of the largest string surfaces. Use Blender's `bpy.app.translations.pgettext` from day one of SPEC 012 implementation; cost is one decorator per string.
+- **the slot system (slots)** can hook into Quick Armature: a `Ctrl+Shift+drag` over an existing sprite could create a bone *and* attach the sprite to it (DragonBones model). Defer until the slot system lands and the slot fixture surfaces a concrete use case.
+- **UV animation work** is unrelated.
+- **A future "Quick Mesh" operator** (COA-Tools-style click-stroke vertex contour drawing) would lift the same modal feedback patterns built here. this spec's GPU-overlay scaffolding is reusable.
+- **Addon-wide modal feedback library**. If this spec's draw-handler patterns get repeated in future operators (Quick Mesh, paint-from-rig, etc.), extract into `core/bpy_helpers/modal_overlay.py` with a `ModalOverlay` class managing handle lifecycle. Premature today; revisit after second consumer appears.
+- **Localization**. Every cheatsheet / status string is English. If the addon ever localizes (Blender ships full i18n), the in-viewport cheatsheet is one of the largest string surfaces. Use Blender's `bpy.app.translations.pgettext` from day one of this spec implementation; cost is one decorator per string.

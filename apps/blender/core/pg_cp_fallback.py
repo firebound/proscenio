@@ -1,8 +1,8 @@
-"""PropertyGroup-first / Custom-Property-fallback reader (SPEC 009 wave 9.1).
+"""PropertyGroup-first / Custom-Property-fallback reader (the code-modularity work).
 
 The writer's headless path (Blender ``--background``, addon not
 registered) cannot rely on ``Object.proscenio`` because the
-PointerProperty wiring has not happened. The post-SPEC 005 contract
+PointerProperty wiring has not happened. The post-the authoring panel contract
 is: read the PropertyGroup field first (canonical source), fall back
 to the legacy Custom Property literal. Three independent
 implementations of this protocol existed in ``writer.py``

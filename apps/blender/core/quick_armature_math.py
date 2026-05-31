@@ -1,4 +1,4 @@
-"""Pure-Python helpers for the Quick Armature operator (SPEC 012.2).
+"""Pure-Python helpers for the Quick Armature operator (the quick-armature follow-up).
 
 bpy-free. Lives under ``core/`` so unit tests can exercise the
 chord-resolution / axis-lock / grid-snap math without booting
@@ -41,7 +41,7 @@ def resolve_press_mode_label(
         return "disconnected"
     if default_chain:
         return "unparented" if shift_held else "connected"
-    # Legacy SPEC 012.1 vocabulary: no modifier = unparented root,
+    # Legacy the quick-armature first cut vocabulary: no modifier = unparented root,
     # Shift = parented but disconnected (head free, parent set).
     return "disconnected" if shift_held else "unparented"
 
@@ -58,7 +58,7 @@ def resolve_press_mode(
     extrude reflex: no modifier chains the new bone connected to the
     previous tail; Shift starts a fresh unparented root. Hold Alt for
     a parented + disconnected bone (head free, parent set). When
-    ``default_chain=False`` the SPEC 012.1 vocabulary applies and
+    ``default_chain=False`` the quick-armature first cut vocabulary applies and
     Shift means chain-disconnected.
     """
     label = resolve_press_mode_label(

@@ -1,4 +1,4 @@
-# slot_cycle fixture (SPEC 004)
+# slot_cycle fixture (the slot system)
 
 Smallest end-to-end exercise of the **slot system**: one armature, one slot Empty, three colored attachment polygons, one cycling action. Used to test the writer's `slots[]` + `slot_attachment` track emission and the Godot importer's `Node2D` parent + visibility-toggled child runtime shape.
 

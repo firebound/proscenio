@@ -160,7 +160,7 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 - [x] Click `?` em cada subpanel -> abre help popup topic-specific (topic id == feature_id).
 - [x] Pipeline overview popup (root `?`) renderiza topic `pipeline_overview` com sections + see-also.
 - [x] Drive-from-bone help topic conteúdo confere (sections What it does / How to use it presentes).
-- [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, specs/000-initial-plan, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
+- [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, specs/013-weight-paint-automesh, examples/generated/simple_psd, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
 - [x] `slot_system` topic abre via Active Slot `?` button. Confirmado em slot_swap_workbench (slot Empty chamado `weapon`).
 - [!] `sprite_frame_preview` topic abre via Active Sprite `?` button (sprite_frame mode). **Bug:** topic existe em `help_topics.py:432` + `feature_status.py:115` mas nenhuma sub-box do panel renderiza `?` button pra ele. `_draw_sprite_frame.py:26` mostra só label puro `box.label(text="Sprite frame", icon="IMAGE_DATA")` - orphan help topic. Bug em BUGS_FOUND.md.
 
@@ -176,11 +176,11 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 **Sessão 1.14 (10-mai-2026):** vários problemas de UX impedem teste cabal. Bug do plano Z=0 + falta de preview + falta de feedback visual modal + sem control de connect/disconnect parent durante o drag. Refator grande necessário antes do operator virar útil. Caveats e sugestões loggados em UI_FEEDBACK.md "Quick Armature operator" + "Skeleton panel". Usuário escolheu **skipar tests restantes** e mover pra próxima seção. Voltar quando refator estiver feita.
 
-#### 1.14 re-test pos-SPEC-012.1 (Wave 12.1 ship)
+#### Quick Armature re-test after the first cut (first-cut ship)
 
-Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que **nao** mudam no Wave 12.2 inversion D10 + axis lock D11 + grid snap D12 + panel D15). Full suite fica deferida pra pos-Wave-12.2 ship.
+Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que **nao** mudam no the second wave inversion D10 + axis lock D11 + grid snap D12 + panel D15). Full suite fica deferida pra pos-second-wave ship.
 
-**Smoke set (Wave 12.1 estavel - sem retrabalho previsto):**
+**Smoke set (the first cut estavel - sem retrabalho previsto):**
 
 - [x] **T1 Auto-snap Front Ortho on invoke.** PASS. Snap dispara, INFO bar + status bar + cheatsheet bottom-center todos corretos. System Console `_log_view` mostra pre-snap PERSP + post-snap ORTHO com matriz Front identity.
 - [x] **T2 View restore on exit (sem user-move).** PASS. View retornou exato (loc/rot/dist matching pre-snap snapshot). INFO bar `view restored to pre-snap` + `confirmed/cancelled`. Bug inicial (matrix tolerance demais estrita) fixado migrando comparison pra decomposed values (location + rotation Quaternion + distance + perspective) em `_view_pose_equal` com tolerance 1e-3.
@@ -193,14 +193,14 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 
 **Drive-by bugs descobertos + corrigidos durante sessão:**
 
-- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente em `specs/012-quick-armature-ux/TODO.md` Wave 12.2.
+- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente em `specs/012-quick-armature-ux/TODO.md` the second wave.
 - `view_matrix` 4x4 acumula float drift entre mode toggles -> falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
 - `context.region` em modal handler congela em invoke; quando invocado via N-panel button aponta UI sidebar. Fix: snapshot WINDOW region via `_find_window_region(context.area)` + filter via `event.mouse_x/y` contra rect.
 - WINDOW region rect cobre área inteira do viewport (panels overlay são sobrepostos). Filtering apenas pelo WINDOW rect deixava clicks em panel passar. Fix: itera todas regions da área; rejeita se cursor cair em qualquer overlay (UI/TOOLS/HEADER/ASSET_SHELF).
 - Double-invoke (user clica botao Quick Armature 2x sem sair do primeiro modal) empilhava handlers. Fix: invoke detecta handles existentes + sweep antes de re-init.
 - `_log_view` pre-snap + post-snap + exit (before/after restore decision) printados pro System Console permitiram debug rapido das comparison e restore paths.
 
-**Smoke deferidos (mudam comportamento no Wave 12.2 - testar apos ship 12.2):**
+**Smoke deferidos (mudam comportamento no the second wave - testar apos second-wave ship):**
 
 - T3 Opt-out F3 (`lock_to_front_ortho`) - vai ganhar UI no painel (D15).
 - T5 Cheatsheet texto - layout muda de 2 -> 3 linhas + novos chords (D11, D12, D14).
@@ -215,13 +215,13 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 - Naming prefix (D2) com Scene PG override + F3 redo override.
 - Panel "Quick Armature defaults" sub-box (D15) - lock_to_front_ortho checkbox, prefix, default_chain, snap_increment.
 
-**Trigger pra re-test full suite:** Wave 12.2 PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
+**Trigger pra re-test full suite:** the second wave PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
 
-#### 1.14 re-test pos-SPEC-012.2 (Wave 12.2 ship + iterative refinement)
+#### Quick Armature re-test after the second wave (the second wave ship + iterative refinement)
 
-Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.1 + 12.2 + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
+Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cut + second wave + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
 
-**Wave 12.2 features (todos confirmados em smoke iterativo):**
+**the second wave features (todos confirmados em smoke iterativo):**
 
 - [x] **T-ChordInvert (D10).** PASS. LMB sem modifier chains connected; Shift+LMB = unparented; Alt+LMB = parented disconnected. Cheatsheet + status bar atualizam quando `default_chain` toggla.
 - [x] **T-AxisLock (D11).** PASS. X / Z toggle axis lock; press 2x clears. Linha colorida vermelha (X) ou azul (Z) renderiza através do head antes do PRESS.
@@ -246,7 +246,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
 - `9eb5a52` respect Blender auto-rename (`arm_obj.name` em vez de literal pra evitar shadow por orphan)
 - `ff12680` defensive try/except no `on_depsgraph_update` + crash gizmo log em BUGS_FOUND
 
-**Drive-by bugs descobertos + corrigidos durante Wave 12.2 sessão:**
+**Drive-by bugs descobertos + corrigidos durante the second wave sessão:**
 
 - `_target_armature_name` literal vs Blender auto-rename `.001` quando data block orphan existia. Fix: storage `arm_obj.name`.
 - Picker draw-time mutation crashed com `AttributeError: Writing to ID classes in this context is not allowed`. Fix: drop draw-time write; handler `auto_populate_active_armature` no `load_post` + `deferred_hydrate` cobre initial fill; mutação explícita via operator pra deletion ou button.
@@ -254,7 +254,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
 
 **Crash isolado (1x) durante smoke:** Blender 5.1.1 NULL write em `gizmo_button2d_draw` após `view3d.snap_cursor_to_center`. Stack trace 100% Blender internals + AMD GPU driver loaded. User identificou como driver issue pós-restart. Defensive `try/except` adicionado no `on_depsgraph_update` mesmo assim. Logged in `tests/BUGS_FOUND.md` como suspeito upstream/driver, severity low, trigger pra escalar: 2x+ repro.
 
-**Status final Wave 12.2:** todas features locked do STUDY D1-D15 implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
+**Status final the second wave:** todas features locked do STUDY D1-D15 implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
 
 ### 1.15 Pose library
 
@@ -293,7 +293,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou Wave 12.
   - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` - filename do primeiro Image Texture node descoberto.
   - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
-### 1.19 SPEC 013 Wave 13.1 - Automesh from sprite
+### 1.19 Automesh from sprite (first-cut)
 
 Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
 
@@ -307,7 +307,7 @@ Sequência:
 - [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
 - [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
 - [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
-- [ ] T5 - Select `blob` -> click Automesh -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per SPEC 013 D2 amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
+- [ ] T5 - Select `blob` -> click Automesh -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per the weight-paint-automesh spec D2 amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
 - [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
 - [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
 - [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh -> interior uniform (verts espalhados uniforme no annulus).
@@ -318,7 +318,7 @@ Sequência:
 - [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
 - [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
 - [ ] T15 - Reload Scripts após automesh ON -> operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
-- [ ] T16 - Headless smoke: `python -m pytest tests/test_alpha_contour.py tests/test_automesh_geometry.py tests/test_automesh_density.py -q` termina com sucesso (todos os testes desse comando passam).
+- [ ] Scenario 16 - Headless smoke: `python -m pytest tests/automesh/ -q` termina com sucesso (todos os testes do diretório passam).
 
 **Debug stages** (Skinning > Debug pipeline sub-box):
 
@@ -333,9 +333,9 @@ Sequência:
 
 Bugs encontrados durante smoke vão para `tests/BUGS_FOUND.md`.
 
-### 1.20 SPEC 013.2 Bind Mesh to Armature - panel + BONE_HEAT default
+### 1.20 Bind Mesh to Armature - panel + BONE_HEAT default
 
-T1 - Panel button + BONE_HEAT default:
+Scenario 1 - Panel button + BONE_HEAT default:
 
 Setup: open `examples/generated/automesh/automesh.blend`, pick `automesh.hand_rig` in the Skeleton subpanel, select the `hand` sprite.
 
@@ -346,7 +346,7 @@ Setup: open `examples/generated/automesh/automesh.blend`, pick `automesh.hand_ri
 5. Switch dropdown to "Proximity (1/d^p)" + click again. Confirms fallback path still ships.
 6. Object Properties > Custom Properties > `proscenio_weight_sidecar` JSON re-stamped (topology hash matches new geometry).
 
-T2 - Disabled when picker missing:
+Scenario 2 - Disabled when picker missing:
 
 1. Skeleton subpanel > clear picker armature (X button next to the picker selector).
 2. Skinning > **Bind to Picker Armature** button is greyed out.
@@ -356,11 +356,11 @@ T2 - Disabled when picker missing:
 
 ---
 
-### 1.21 SPEC 013.2 Sidecar - snapshot + reproject + restore
+### 1.21 Weight sidecar - snapshot + reproject + restore
 
 **Fixture:** `examples/generated/automesh/automesh.blend`
 
-T1 - Bind populates sidecar entries:
+Scenario 1 - Bind populates sidecar entries:
 
 1. Open the fixture in Blender (5.1+).
 2. Select `hand`, set picker armature to `automesh.hand_rig` (Skeleton panel).
@@ -369,7 +369,7 @@ T1 - Bind populates sidecar entries:
 
 Expected: JSON has non-empty `entries` list (one per vert), each entry has `uv_anchor` (length-2 array), `weights` (object), and `provenance: "auto_seed"`. Skinning panel > Snapshot pill shows `0 paint / N seed / 0 reprojected` where N = mesh vert count.
 
-T2 - Automesh regen preserves weights:
+Scenario 2 - Automesh regen preserves weights:
 
 1. Continue from T1 (sidecar populated, hand bound).
 2. Switch to Weight Paint mode; note the wrist group's gradient pattern.
@@ -380,7 +380,7 @@ T2 - Automesh regen preserves weights:
 
 Expected: info bar reads `sidecar: X reprojected + Y auto-seed of Z verts` (X + Y = Z = new vert count). Weight Paint mode shows the wrist gradient in roughly the same physical region as before regen.
 
-T3 - Restore Weight Snapshot:
+Scenario 3 - Restore Weight Snapshot:
 
 1. Continue from T2 (regen done; sidecar reprojected).
 2. Switch to Weight Paint > Subtract brush > paint over part of the wrist group to set those verts to 0.
@@ -389,7 +389,7 @@ T3 - Restore Weight Snapshot:
 
 Expected: info bar `restored N verts`. Switch back to Weight Paint - painted area returns to the post-regen gradient.
 
-T4 - Counts pill updates live:
+Scenario 4 - Counts pill updates live:
 
 State A (fresh bind):
 
@@ -403,13 +403,13 @@ State B (after regen):
 
 Expected: pill `0 paint / Y seed / X reprojected` where X = reprojected count + Y = auto-seed count from the status bar message.
 
-T5 - Restore disabled when no sidecar:
+Scenario 5 - Restore disabled when no sidecar:
 
 1. Open the fixture fresh; select `hand` but do NOT bind.
 
 Expected: Snapshot sub-box shows `no sidecar (run Bind first)` + Restore button greyed out.
 
-T6 - Topology change blocks restore:
+Scenario 6 - Topology change blocks restore:
 
 1. Bind hand. Note current Snapshot pill.
 2. Skinning panel > Snapshot > turn OFF "Preserve weights on regen".
@@ -422,11 +422,11 @@ Expected: status bar ERROR `topology changed since last snapshot - run Automesh 
 
 ---
 
-### 1.22 SPEC 013.2 Paint - Edit Weights modal + provenance overlay
+### 1.22 Edit Weights modal + provenance overlay
 
 **Fixture:** `examples/generated/automesh/automesh.blend`
 
-T1 - Enter Edit Weights modal:
+Scenario 1 - Enter Edit Weights modal:
 
 1. Open fixture in Blender (5.1+).
 2. Select `hand`, set picker armature to `automesh.hand_rig` (Skeleton panel).
@@ -436,7 +436,7 @@ T1 - Enter Edit Weights modal:
 
 Expected: viewport switches to Weight Paint mode. Provenance overlay visible - all verts show gray discs (fresh bind = all `auto_seed`). Status bar pill: `Edit Weights: ESC exit | mirror = picker.proscenio_mirror_x`.
 
-T2 - Paint stroke flips provenance:
+Scenario 2 - Paint stroke flips provenance:
 
 1. Continue from T1.
 2. Pick Add brush, set strength 0.5.
@@ -444,21 +444,21 @@ T2 - Paint stroke flips provenance:
 
 Expected: on mouse release, verts in painted area flip from gray to white discs. Snapshot pill in panel updates: `N paint / M seed / 0 reprojected` where N > 0.
 
-T3 - ESC hard-exits and restores state:
+Scenario 3 - ESC hard-exits and restores state:
 
 1. Continue from T2.
 2. Press ESC.
 
 Expected: mode returns to Object. Brush settings restored to pre-modal values. Bone visibility unchanged. `show_provenance_overlay` flag returns to prior value (default OFF; overlay disappears).
 
-T4 - Reload Scripts mid-modal:
+Scenario 4 - Reload Scripts mid-modal:
 
 1. Bind hand, invoke Edit Weights modal, do NOT exit.
 2. Run Edit > Preferences > Reload Scripts.
 
 Expected: modal closes cleanly. No orphan GPU draw handler (no flickering shapes after reload). No Python errors in console.
 
-T5 - Single undo push:
+Scenario 5 - Single undo push:
 
 1. Bind hand. Invoke Edit Weights modal.
 2. Paint stroke A on wrist.
@@ -468,7 +468,7 @@ T5 - Single undo push:
 
 Expected: both strokes A + B revert to pre-modal weights. Sidecar provenance counts restored to pre-modal state.
 
-T6 - Button disabled affordance:
+Scenario 6 - Button disabled affordance:
 
 1. Open fixture. Select hand. Do NOT bind.
 2. Skinning panel > Edit Weights button greyed out.
@@ -480,11 +480,11 @@ T6 - Button disabled affordance:
 
 ---
 
-### 1.23 SPEC 013.2 Interactive modal automesh
+### 1.23 Interactive modal automesh
 
 **Fixture:** `examples/generated/automesh/automesh.blend`
 
-T1 - Enter modal at OUTER stage:
+Scenario 1 - Enter modal at OUTER stage:
 
 1. Open fixture in Blender (5.1+).
 2. Select `hand`.
@@ -492,45 +492,45 @@ T1 - Enter modal at OUTER stage:
 
 Expected: viewport shows cyan polyline tracing the hand silhouette (OUTER stage overlay). Status bar pill: `Automesh Authoring: next | back | cancel` with ENTER / BACKSPACE / ESC icons.
 
-T2 - Slider re-runs throttled:
+Scenario 2 - Slider re-runs throttled:
 
 1. Continue from T1.
 2. Skinning panel > Automesh from sprite > scrub `Mesh resolution` slider.
 
 Expected: cyan polyline re-runs live (~100ms throttle). Stops responding only when slider stops.
 
-T3 - Advance to USER_STEINERS + click placement:
+Scenario 3 - Advance to EDIT_INTERIOR_POINTS + click placement:
 
 1. Continue from T1. Press ENTER twice.
-2. Stage is USER_STEINERS (prior overlays dim).
+2. Stage is EDIT_INTERIOR_POINTS (prior overlays dim).
 3. Left-click inside the silhouette at 3 different locations.
 
 Expected: each click adds a yellow dot at the clicked point. Object Properties > Custom Properties > `proscenio_user_steiners` updates after each click (refresh by clicking the dropdown).
 
-T4 - Shift+click deletes nearest:
+Scenario 4 - Shift+click deletes nearest:
 
 1. Continue from T3.
 2. Shift+left-click within ~0.05 world units of an existing yellow dot.
 
 Expected: nearest dot disappears.
 
-T5 - APPLY commits mesh:
+Scenario 5 - APPLY commits mesh:
 
-1. Continue from T4. Press ENTER twice more (STEINER_PREVIEW, then APPLY).
-2. STEINER_PREVIEW shows red dots for all interior Steiners + yellow user dots still visible.
-3. ENTER on STEINER_PREVIEW triggers APPLY.
+1. Continue from T4. Press ENTER twice more (PREVIEW_INTERIOR, then APPLY).
+2. PREVIEW_INTERIOR shows red dots for all interior Steiners + yellow user dots still visible.
+3. ENTER on PREVIEW_INTERIOR triggers APPLY.
 
 Expected: mesh commits via build_automesh. Info bar: `Authoring applied: N verts, M faces`. Modal exits (FINISHED). Viewport returns to Object mode + prior selection restored.
 
-NOTE: at APPLY today, user Steiner points + custom inner loops are PREVIEW-ONLY. build_automesh re-runs its own pipeline; user inputs do not yet alter the final mesh. Persistence is in place (Custom Property), but a future build_automesh extension is needed to consume them. Tracked as a follow-up under Wave 13.3.
+NOTE: at APPLY today, user Steiner points + custom inner loops are PREVIEW-ONLY. build_automesh re-runs its own pipeline; user inputs do not yet alter the final mesh. Persistence is in place (Custom Property), but a future build_automesh extension is needed to consume them. Tracked as a follow-up under aspirational work.
 
-T6 - APPLY with prior bind preserves weights:
+Scenario 6 - APPLY with prior bind preserves weights:
 
 1. Bind hand first (Skinning > Bind to picker > Bind to Picker Armature).
 2. Snapshot pill shows `0 paint / N seed / 0 reprojected`.
 3. Invoke Automesh (modal). Advance through stages. APPLY at stage 5.
 
-Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via Wave 13.2-sidecar hook). If you painted any verts as user_paint via Edit Weights between bind and modal, the user_paint count must survive APPLY (B1 fix carries user_paint provenance through reproject).
+Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via the sidecar work hook). If you painted any verts as user_paint via Edit Weights between bind and modal, the user_paint count must survive APPLY (a fix that carries user_paint provenance through reproject).
 
 (Headless coverage: `apps/blender/tests/operators/test_automesh_authoring.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_erosion_loops.py` + `test_authoring_stages.py` - 8 tests.)
 
@@ -542,7 +542,7 @@ Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via 
 
 - [x] Plugin enables limpo no Project Settings > Plugins (auto-enabled via project.godot, sem warnings).
 - [x] EditorImportPlugin reconhece `.proscenio` files. Painel Import mostra "Proscenio Character" importer, right-click oferece Reimport, gera `.scn` no `.godot/imported/`.
-- [x] Re-import preserva customizações no wrapper scene. Confirmado em SlotSwap.tscn: adicionado `MyCustom` Sprite2D child do root, save, Reimport `slot_swap.proscenio`, reabre tscn -> MyCustom intacto. Wrapper pattern SPEC 001 Option A funciona.
+- [x] Re-import preserva customizações no wrapper scene. Confirmado em SlotSwap.tscn: adicionado `MyCustom` Sprite2D child do root, save, Reimport `slot_swap.proscenio`, reabre tscn -> MyCustom intacto. Wrapper pattern the reimport-merge wrapper-scene pattern funciona.
 
 ### 2.2 Importer
 

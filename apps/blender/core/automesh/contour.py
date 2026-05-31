@@ -1,11 +1,11 @@
-"""Pure-Python alpha-channel contour walker (SPEC 013 Wave 13.1).
+"""Pure-Python alpha-channel contour walker (the weight-paint-automesh first cut).
 
 bpy-free. Lives under ``core/`` so unit tests can exercise the
 contour tracing + morphology math without booting Blender. The
-bpy bridge in ``core/bpy_helpers/automesh_bmesh.py`` reads the
+bpy bridge in ``core/bpy_helpers/automesh/bridge.py`` reads the
 image pixels and feeds the binary mask into the helpers here.
 
-No third-party dependencies. Per SPEC 013 Constraints, the addon
+No third-party dependencies. Per the weight-paint-automesh spec Constraints, the addon
 must not depend on OpenCV / numpy at runtime (COA Tools 2 issues
 #94 / #107 prove that PyPI-fetch dependencies are the addon's
 single biggest adoption blocker - corp / ISP firewalls, version

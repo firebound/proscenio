@@ -1,4 +1,4 @@
-"""bpy-bound selection helpers (SPEC 009 wave 9.1).
+"""bpy-bound selection helpers (the code-modularity work).
 
 Replaces the 5+ inline copies of the deselect-all-then-select-one
 idiom across operators (select_issue_object, select_outliner_object,

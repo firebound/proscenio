@@ -1,4 +1,4 @@
-"""Pure-geometry helpers for modal-overlay drawing (SPEC 012.1).
+"""Pure-geometry helpers for modal-overlay drawing (the quick-armature first cut).
 
 bpy-free. Lives under ``core/`` (not ``core/bpy_helpers/``) so unit
 tests can exercise the vertex math without booting Blender. The

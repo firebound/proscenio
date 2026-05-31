@@ -1,4 +1,4 @@
-"""Pure tests for bone mode read/write (SPEC 013 O1/D16).
+"""Pure tests for bone mode read/write (the weight-paint productivity follow-up (per-bone mode toggle)/D16).
 
 Uses a tiny dict-backed `_FakeObj` instead of `bpy.data.objects.new(...)`
 because fake-bpy-module (installed in the editor for IDE support) does

@@ -1,4 +1,4 @@
-"""sprite_frame preview slicer setup / remove (SPEC 004 D13)."""
+"""sprite_frame preview slicer setup / remove (the slot system D13)."""
 
 from __future__ import annotations
 

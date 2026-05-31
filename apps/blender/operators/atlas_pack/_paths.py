@@ -1,4 +1,4 @@
-"""Shared atlas-pack filesystem + snapshot helpers (SPEC 009 wave 9.2)."""
+"""Shared atlas-pack filesystem + snapshot helpers (the code-modularity work)."""
 
 from __future__ import annotations
 

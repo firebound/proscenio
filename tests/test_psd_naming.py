@@ -1,4 +1,4 @@
-"""Unit tests for the PSD layer naming convention helpers (SPEC 006 Wave 6.2).
+"""Unit tests for the PSD layer naming convention helpers (the photoshop importer).
 
 Pure Python; no Blender. Locked rules in
 ``apps/blender/core/psd_naming.py``.

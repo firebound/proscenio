@@ -1,4 +1,4 @@
-"""Quad mesh + material stamper for the Photoshop importer (SPEC 006).
+"""Quad mesh + material stamper for the Photoshop importer (the photoshop importer).
 
 Coordinate conversion (D6): PSD top-left → Blender XZ centre at the
 manifest's ``pixels_per_unit``::
@@ -31,7 +31,7 @@ from ...core.bpy_helpers.psd_spritesheet import (  # type: ignore[import-not-fou
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
 
-# EEVEE material.blend_method mapping for SPEC 011 blend modes.
+# EEVEE material.blend_method mapping for the photoshop tag system blend modes.
 # Blender 4.2+ collapsed the alpha modes to {OPAQUE, CLIP, HASHED,
 # BLEND} (the old "ADDITIVE" / "MULTIPLY" alpha modes were retired in
 # favour of shader-node-based blending). Every non-opaque mode here
@@ -153,11 +153,11 @@ def _layer_placement(
     The Spine-style ``anchor`` (when set) becomes the world origin
     (0, 0, 0): every layer's PSD pixel position is re-zeroed against
     it. Without an anchor the importer falls back to canvas-centered
-    placement (legacy behaviour for fixtures authored before SPEC 011).
+    placement (legacy behaviour for fixtures authored before the photoshop tag system).
 
-    Known drift (Wave 11.7 investigation, tests/BUGS_FOUND.md): on the
-    Blender -> JSX export -> Blender round-trip, the JSX exporter
-    captures the alpha-aware bbox of each Workbench-rendered PNG which
+    Known drift (photoshop-tag-system investigation, tests/BUGS_FOUND.md):
+    on the Blender -> legacy JSX export -> Blender round-trip, the JSX
+    exporter captures the alpha-aware bbox of each Workbench-rendered PNG which
     bleeds 1 px on every edge from anti-aliasing. The manifest's
     ``size`` ends up +2 px on both axes while ``position`` stays put,
     which shifts the computed bbox centre by +1 px (~0.17 % on a
@@ -165,7 +165,7 @@ def _layer_placement(
     fixing the drift means either trimming the AA bleed at render time
     or anchoring the exporter to the layer's authored bounds rather
     than the rendered pixels' bbox. Left intentional until the round-
-    trip oracle re-runs against the SPEC 011 v2 doll fixture.
+    trip oracle re-runs against the photoshop tag system (manifest v2) doll fixture.
     """
     px_x, px_y = position_px
     px_w, px_h = size_px
@@ -207,7 +207,7 @@ def _ensure_mesh(
     Mesh data + UVs are rewritten on every import so size changes
     propagate. ``geometry_offset`` shifts the quad in local space so
     that an object placed at a non-bbox-centre location (e.g. the
-    SPEC 011 ``origin`` pivot) still displays the texture at the
+    the photoshop tag system ``origin`` pivot) still displays the texture at the
     bbox-centre world position. Material gets refreshed by the caller.
     """
     obj = _find_existing(name)
@@ -270,7 +270,7 @@ def _attach_material(
 ) -> None:
     """Build (or refresh) a flat-shaded material with a TexImage node.
 
-    ``blend_mode`` (when set) maps the SPEC 011 blend mode onto the
+    ``blend_mode`` (when set) maps the photoshop tag system blend mode onto the
     EEVEE material's ``blend_method`` so the artist sees a sensible
     viewport approximation. The exact mode is preserved as a custom
     property by ``_tag_blend_mode`` for downstream writers.

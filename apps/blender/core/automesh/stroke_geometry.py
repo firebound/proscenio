@@ -1,6 +1,6 @@
-"""Pure polyline helpers for Stage 3 stroke pipeline (SPEC 013).
+"""Pure polyline helpers for Stage 3 stroke pipeline (the weight-paint-automesh spec).
 
-Stage 3 captures raw mouse paths during USER_STEINERS; this module
+Stage 3 captures raw mouse paths during EDIT_INTERIOR_POINTS; this module
 processes them before they reach the CDT:
 
 - chaikin_smooth: noise reduction (industry standard for input polylines)
@@ -25,7 +25,7 @@ def subdivide_polyline(points: Sequence[Point2D], n: int) -> list[Point2D]:
 
     ``n<=0`` or polylines shorter than 2 points return the input
     unchanged. Original verts are preserved; only interior points are
-    added per edge, so a straight pen line (AS-AM16) stops collapsing to
+    added per edge, so a straight pen line stops collapsing to
     a single long CDT edge that wrecks the triangulation.
     """
     if n <= 0 or len(points) < 2:

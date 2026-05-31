@@ -1,4 +1,4 @@
-"""Unit tests for the SPEC 005.1.d.5 feature-status taxonomy.
+"""Unit tests for the in-panel help system feature-status taxonomy.
 
 Pure pytest, no Blender. Confirms the dispatch table is well-formed +
 covers every panel surface the UI module references.

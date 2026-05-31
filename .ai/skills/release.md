@@ -32,9 +32,18 @@ Target distribution: the **Godot Asset Library** plus GitHub Releases.
 
 Zip the `apps/godot/addons/proscenio/` folder and submit via <https://godotengine.org/asset-library>.
 
-## Photoshop exporter
+## Photoshop UXP plugin
 
-Just the `.jsx` file. Attach to the GitHub Release. No marketplace.
+Target distribution: GitHub Releases (no Adobe Exchange marketplace). The plugin is a webpack bundle, not the legacy single-file JSX script.
+
+```sh
+cd apps/photoshop
+pnpm install
+pnpm run build       # webpack -> apps/photoshop/dist/
+(cd dist && zip -r ../../../dist/proscenio-photoshop-${version}.ccx .)
+```
+
+Output: `proscenio-photoshop-X.Y.Z.ccx` (rename to `.zip` if `.ccx` packaging is out of scope at release time). Attach to the GitHub Release. Users load the bundle via Adobe UXP Developer Tool (UDT) or by dropping the `.ccx` into Photoshop.
 
 ## CI release flow
 

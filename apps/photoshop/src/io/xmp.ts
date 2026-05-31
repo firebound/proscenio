@@ -1,4 +1,4 @@
-// SPEC 011 D2 + Wave 11.6: XMP mirror for the bracket-tag canonical.
+// the photoshop tag system D2 + the photoshop-tag work.6: XMP mirror for the bracket-tag canonical.
 // Bracket tags in the layer name remain the source of truth; this
 // module additionally stamps the same `TagBag` into document-level
 // XMP under `proscenio:v1:layers/<layer-path>`. Read paths still
@@ -66,7 +66,7 @@ export function isXmpAvailable(): boolean {
 export class XmpUnavailableError extends Error {
     constructor() {
         super(
-            "uxp.xmp is not available in this Photoshop build. SPEC 011 tag mirroring "
+            "uxp.xmp is not available in this Photoshop build. the photoshop tag system tag mirroring "
                 + "requires PS 25 / CC 2024 or later; update Photoshop to enable the XMP layer.",
         );
         this.name = "XmpUnavailableError";

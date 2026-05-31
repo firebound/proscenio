@@ -213,7 +213,7 @@ def build_sprite_weights(
     fallback_bone: str,
     available_bones: set[str],
 ) -> list[WeightDict]:
-    """Collect skinning weights from ``obj``'s vertex groups (SPEC 003)."""
+    """Collect skinning weights from ``obj``'s vertex groups (the skinning-weights wire format)."""
     if not obj.vertex_groups or not vertex_indices:
         return []
 

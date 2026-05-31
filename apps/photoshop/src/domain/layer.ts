@@ -1,5 +1,5 @@
 // Photoshop-agnostic layer view consumed by the exporter recursion.
-// The real adapter (Wave 10.3) maps Photoshop's `LayerSet` / `ArtLayer`
+// The real adapter (the photoshop UXP migration) maps Photoshop's `LayerSet` / `ArtLayer`
 // onto this shape; unit tests pass plain object trees.
 //
 // `bounds` is the source-document pixel rectangle of the layer's

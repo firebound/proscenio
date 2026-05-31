@@ -1,4 +1,4 @@
-"""IK chain toggle authoring shortcut (SPEC 005.1.b)."""
+"""IK chain toggle authoring shortcut (the authoring panel.1.b)."""
 
 from __future__ import annotations
 

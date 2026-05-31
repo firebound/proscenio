@@ -1,8 +1,8 @@
-# doll fixture (SPEC 007 + 011)
+# doll fixture (testing-fixtures + photoshop-tag-system specs)
 
-The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored end-to-end across the four pipeline stages, exercising every SPEC 011 v1 tag in the process. Originally planned to also cover `sprite_frame` via animated eyes, but the current `.blend` has all meshes as `sprite_type=polygon` (including `eye.L`/`eye.R`) - sprite_frame coverage lives in `examples/generated/blink_eyes/` and `examples/generated/mouth_drive/` instead.
+The **comprehensive showcase fixture** for the Proscenio pipeline. A full humanoid character authored end-to-end across the four pipeline stages, exercising every photoshop-tag-system v1 tag in the process. Originally planned to also cover `sprite_frame` via animated eyes, but the current `.blend` has all meshes as `sprite_type=polygon` (including `eye.L`/`eye.R`) - sprite_frame coverage lives in `examples/generated/blink_eyes/` and `examples/generated/mouth_drive/` instead.
 
-This fixture acts as the **parity oracle for Wave 11.8** (SPEC 011): step 02's tagged PSD exercises every tag in the taxonomy; the rest of the pipeline verifies the tags survive the round-trip.
+This fixture acts as the **parity oracle for the photoshop tag system**: step 02's tagged PSD exercises every tag in the taxonomy; the rest of the pipeline verifies the tags survive the round-trip.
 
 ## Directory layout
 
@@ -10,9 +10,9 @@ This fixture acts as the **parity oracle for Wave 11.8** (SPEC 011): step 02's t
 examples/authored/doll/
 |-- 00_blender_base/        [SOURCE  ] hand-authored .blend + derived render layers + base manifest
 |-- 01_photoshop_base/      [DERIVED ] clean PSD produced from 00's manifest (no artist edits)
-|-- 02_photoshop_setup/     [AUTHORED] artist workbench: tagged PSD + re-exported manifest (SPEC 011 parity oracle)
+|-- 02_photoshop_setup/     [AUTHORED] artist workbench: tagged PSD + re-exported manifest (the photoshop tag system parity oracle)
 |-- 03_blender_setup/       [AUTHORED] rigged .blend imported from 02 + manual armature/weights/actions
-|-- 04_godot_import/        [AUTHORED] SPEC 001 wrapper scene/script that consumes 03's export
+|-- 04_godot_import/        [AUTHORED] the reimport-merge work wrapper scene/script that consumes 03's export
 `-- scripts/                python/bpy scripts that produce the derived outputs in step 00
 ```
 
@@ -31,7 +31,7 @@ Each subfolder owns its own `README.md` documenting **what it consumes**, **what
 [01_photoshop_base/]      doll_ps_base.psd
         |   (Proscenio Exporter panel: Import manifest as PSD)
         |
-        |   copy + manual artist edits + SPEC 011 bracket tags
+        |   copy + manual artist edits + the photoshop tag system bracket tags
         v
 [02_photoshop_setup/]     doll_tagged.psd
         |   (Proscenio Exporter panel: Export manifest + PNGs)
@@ -44,7 +44,7 @@ Each subfolder owns its own `README.md` documenting **what it consumes**, **what
         |
         |   (Proscenio Blender exporter -> Godot project)
         v
-[04_godot_import/]        Doll.tscn + Doll.gd  (SPEC 001 wrapper)
+[04_godot_import/]        Doll.tscn + Doll.gd  (the reimport-merge work wrapper)
 ```
 
 The pipeline is **sequential**. Each numbered folder consumes the previous one and produces the inputs for the next. The two artist-authored steps are 02 (tagging in Photoshop) and 03 (rigging in Blender); the others are mechanical and reproducible from scripts/plugin actions.
@@ -55,9 +55,9 @@ The pipeline is **sequential**. Each numbered folder consumes the previous one a
 | ---- | ------ | ------------ | -------------- |
 | 00 | `00_blender_base/` | `doll_base.blend` + per-mesh render PNGs + base manifest | yes (`.blend` only) |
 | 01 | `01_photoshop_base/` | `doll_ps_base.psd` placed from the manifest | no (panel import) |
-| 02 | `02_photoshop_setup/` | `doll_tagged.psd` with SPEC 011 tags + re-exported manifest | yes |
+| 02 | `02_photoshop_setup/` | `doll_tagged.psd` with the photoshop tag system tags + re-exported manifest | yes |
 | 03 | `03_blender_setup/` | `doll_rigged.blend` with armature + weights + actions | yes |
-| 04 | `04_godot_import/` | `Doll.tscn` + `Doll.gd` SPEC 001 wrappers | yes |
+| 04 | `04_godot_import/` | `Doll.tscn` + `Doll.gd` the reimport-merge work wrappers | yes |
 
 See each step's own README for inputs/outputs/verification.
 
@@ -72,7 +72,7 @@ Each top-level mesh in `00_blender_base/doll_base.blend` becomes one PNG layer w
 | Mesh kind | Examples | Why it exists |
 | --- | --- | --- |
 | polygon, multi-bone weights | spine-region meshes (`chest` / `belly` / `waist`), pelvic mesh weighted 0.5/0.5 across `pelvis.L`/`pelvis.R` | Demonstrates **multi-bone weights** + falloff distribution. |
-| polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (SPEC 004 + 5.1.d). |
+| polygon, multi-bone spillover | `forearm.L` / `forearm.R` | 1.0 forearm + 0.3 spillover to the upper arm. Future home for driver-driven texture swap (the slot system + the authoring-panel shortcuts). |
 | (planned) sprite_frame | (not present in current doll.blend; eye.L/R are polygon. sprite_frame coverage in `blink_eyes/` + `mouth_drive/`.) | - |
 | polygon, single primary bone | everything else | Standard parented sprites. |
 
@@ -93,17 +93,17 @@ Authored in step 03 on top of the rigged plane set.
 | `blink` | 12 | (planned: eye.L + eye.R `proscenio.frame` 0->1->2->3->2->1->0) | sprite_frame track type test - currently lives in `blink_eyes/`; doll eyes remain polygon |
 | `walk` | 30, loop | thigh.L/R + shin.L/R rotation, spine sway | full-body coordination |
 
-Future actions land as future SPECs require.
+Future actions land as future specs require them.
 
-## SPEC 011 tag coverage (parity oracle)
+## photoshop tag system tag coverage (parity oracle)
 
-Every SPEC 011 v1 tag is exercised somewhere in `02_photoshop_setup/doll_tagged.psd`. See `02_photoshop_setup/README.md::Tags exercised` for the canonical table. If you add or rename a tag in SPEC 011, the parity test re-exports this PSD and diffs against the recorded baseline.
+Every photoshop tag system v1 tag is exercised somewhere in `02_photoshop_setup/doll_tagged.psd`. See `02_photoshop_setup/README.md::Tags exercised` for the canonical table. If you add or rename a tag in the photoshop tag system, the parity test re-exports this PSD and diffs against the recorded baseline.
 
 ## What this fixture catches when broken
 
 - Anything end-to-end touching polygon meshes + weights + actions (the rigged path).
 - Multi-bone weight export regression (pelvic mesh, spine-region meshes, `forearm.L/R`).
-- SPEC 011 tag taxonomy regression (parity oracle in step 02).
+- photoshop tag system taxonomy regression (parity oracle in step 02).
 - Photoshop manifest round-trip drift (step 01 input vs step 02 re-export).
 - Multi-action authoring regression.
 - Schema bumps that affect more than one feature at once.
@@ -112,8 +112,8 @@ Every SPEC 011 v1 tag is exercised somewhere in `02_photoshop_setup/doll_tagged.
 
 | When | Adds |
 | --- | --- |
-| SPEC 004 (slots) - coverage moved out | Slot system tests live in `examples/generated/slot_swap/` + `examples/generated/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
-| SPEC 008 (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
-| Driver-based texture swap (5.1.d + SPEC 004) | Forearm rotation drives forearm front/back texture swap. |
+| the slot system (slots) - coverage moved out | Slot system tests live in `examples/generated/slot_swap/` + `examples/generated/slot_cycle/` now. doll keeps a pure skinning-and-actions surface. |
+| the UV animation work (UV animation) ships | Iris-scroll track on `eye.L` / `eye.R`. |
+| Driver-based texture swap (the authoring-panel shortcuts + the slot system) | Forearm rotation drives forearm front/back texture swap. |
 
 Each addition extends the fixture without invalidating older actions - golden `.proscenio` diff catches surprise regressions.

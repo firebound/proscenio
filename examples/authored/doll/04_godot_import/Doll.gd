@@ -5,7 +5,7 @@ extends Node2D
 ## Documentation-by-example wrapper for the imported [code]doll.scn[/code].
 ##
 ## The Proscenio importer regenerates [code]doll.scn[/code] from
-## [code]doll.proscenio[/code] on every reimport (SPEC 001 Option A).
+## [code]doll.proscenio[/code] on every reimport (the reimport-merge work Option A).
 ## Scripts and extra nodes attached directly to the generated scene are
 ## clobbered. Wrap the imported scene in a separate [code].tscn[/code] -
 ## like this one - and customize there. The wrapper is yours; reimport

@@ -1,8 +1,8 @@
-"""Proscenio property groups (SPEC 005, repackaged in SPEC 009 wave 9.10).
+"""Proscenio property groups (the authoring panel, repackaged in the code-modularity work).
 
 These property groups expose typed widgets for the addon panel. Their
 values round-trip with the legacy Custom Properties on the same data
-block so users who authored a `.blend` before SPEC 005 see existing
+block so users who authored a `.blend` before the authoring panel see existing
 values without manual re-entry, and power users can keep editing raw
 Custom Properties if they prefer.
 

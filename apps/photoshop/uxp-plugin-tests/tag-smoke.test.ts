@@ -1,4 +1,4 @@
-// SPEC 011 v1 tag-taxonomy parity oracle. One synthetic layer tree
+// the photoshop tag system tag-taxonomy parity oracle. One synthetic layer tree
 // exercises every bracket tag the planner is supposed to honour; the
 // emitted manifest is asserted tag-by-tag AND snapshot-diffed against
 // the committed golden at

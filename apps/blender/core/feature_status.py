@@ -1,4 +1,4 @@
-"""Feature-readiness taxonomy for Proscenio panels (SPEC 005.1.d.5).
+"""Feature-readiness taxonomy for Proscenio panels (the in-panel help system).
 
 Source of truth for the small status badges the sidebar shows next to
 every subpanel + every operator row. Pure Python - no bpy imports --
@@ -73,7 +73,7 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
         icon="CANCEL",
         short_label="out-of-scope",
         tooltip=(
-            "Intentionally not exported (see SPEC 000). Authored in Blender "
+            "Intentionally not exported (see the initial-plan work). Authored in Blender "
             "for the user's own workflow only."
         ),
     ),
@@ -107,13 +107,13 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "apply_packed_atlas": FeatureStatus.GODOT_READY,
     "unpack_atlas": FeatureStatus.BLENDER_ONLY,
     "import_photoshop": FeatureStatus.BLENDER_ONLY,
-    # SPEC 004 Wave 4.1 - slot system (Blender side: writer + panel + preview shader).
+    # the slot system - slot system (Blender side: writer + panel + preview shader).
     # Stays GODOT_READY because the writer emits slots[] in the .proscenio
-    # output even before the Godot importer (Wave 4.2) ships - the entry
+    # output even before the Godot importer (the slot system) ships - the entry
     # is then a documented no-op on the Godot side until that wave lands.
     "slot_system": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
-    # SPEC 005.1.d.2 - pose library shim. Tiny wrapper around Blender's
+    # the pose-library shortcut - pose library shim. Tiny wrapper around Blender's
     # native poselib.create_pose_asset; pose assets live in the Asset
     # Browser, never reach the .proscenio. Pure authoring shortcut.
     "pose_library": FeatureStatus.BLENDER_ONLY,

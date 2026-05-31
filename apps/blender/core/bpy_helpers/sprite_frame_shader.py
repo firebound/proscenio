@@ -1,13 +1,13 @@
-"""Sprite_frame preview shader-node group builder (SPEC 004 D13).
+"""Sprite_frame preview shader-node group builder (the slot system D13).
 
 Bpy graph builder: assembles the ``Proscenio.SpriteFrameSlicer`` node
 group + wires drivers from ``obj.proscenio.frame / hframes / vframes``
-onto the matching shader inputs. Invoked from the SPEC 004 panel
+onto the matching shader inputs. Invoked from the slot system panel
 operator.
 
 The pure-Python cell math (``cell_size``, ``cell_offset_x``,
 ``cell_offset_y``) lives in ``core.sprite_frame_math`` - bpy-free and
-exercised by pytest directly. Wave 9.10 moved it out so this module
+exercised by pytest directly. moved it out so this module
 stays focused on the bpy node tree.
 """
 

@@ -1,4 +1,4 @@
-// ajv contract test for the v2 PSD manifest (SPEC 011). Mirrors the
+// ajv contract test for the v2 PSD manifest (the photoshop tag system). Mirrors the
 // schema at the repo root so any breaking change to the contract
 // fails here before it can break a downstream consumer.
 

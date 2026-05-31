@@ -1,4 +1,4 @@
-"""Vendored 2D bin-packer for atlas generation (SPEC 005.1.c.2).
+"""Vendored 2D bin-packer for atlas generation (the atlas packer).
 
 MaxRects with the Best Short Side Fit (BSSF) heuristic. Pure Python, no
 external deps - chosen over `pytexturepacker` because pip-installing into

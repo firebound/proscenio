@@ -24,6 +24,8 @@ diffable
 discriminator
 distinguisher
 docname
+docstring
+docstrings
 dotnet
 editability
 elif

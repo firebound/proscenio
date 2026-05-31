@@ -1,4 +1,4 @@
-"""Unit tests for the SPEC 004 D13 sprite_frame preview cell math.
+"""Unit tests for the slot system D13 sprite_frame preview cell math.
 
 Pure pytest, no Blender. Covers the bpy-free helpers in
 ``core.sprite_frame_math`` that compute the per-cell UV slicing math;

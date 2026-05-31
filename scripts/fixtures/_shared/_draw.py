@@ -1,4 +1,4 @@
-"""Pillow-based shape rasterizer used by the SPEC 007 fixture PNG draws.
+"""Pillow-based shape rasterizer used by the testing-fixtures spec fixture PNG draws.
 
 Pure Python - runs **without Blender** (just Python + Pillow). The
 fixture builders are split into two stages:

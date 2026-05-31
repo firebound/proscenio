@@ -1,4 +1,4 @@
-"""Planar proximity weight computation (SPEC 013.2 bind).
+"""Planar proximity weight computation (the bind work).
 
 Pure-Python algorithm: for each vert, weight per bone =
 1 / dist(vert, bone_segment) ** falloff_power, filtered by

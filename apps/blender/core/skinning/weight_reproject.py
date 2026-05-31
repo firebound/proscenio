@@ -1,4 +1,4 @@
-"""Pure reproject algorithm (SPEC 013.2 sidecar, T3).
+"""Pure reproject algorithm (the sidecar work, T3).
 
 Hand-rolled O(n) KNN + 2D barycentric interpolation over UV anchors.
 Zero bpy / mathutils import so the module is testable in vanilla
@@ -36,7 +36,7 @@ def reproject_entries(
 
     The fallback exists because dropping straight from "3-donor barycentric"
     to "auto_seed empty weights" produces visible weight corruption after
-    automesh regen (B2 from Wave 13.2-paint smoke). Inheriting the nearest
+    automesh regen (B2 from the paint work smoke). Inheriting the nearest
     donor's weights is strictly better than empty: Blender's Auto-Normalize
     smooths the resulting per-vert pattern, and the artist's painted
     regions stay anchored where the source mesh had them.

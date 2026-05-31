@@ -1,8 +1,8 @@
-"""Spritesheet composer for sprite_frame layers (SPEC 006 D10).
+"""Spritesheet composer for sprite_frame layers (the photoshop importer D10).
 
 Uses ``bpy.types.Image`` + ``numpy`` - both ship with Blender. Pillow
 is intentionally avoided here because it is a dev-only fixture
-dependency (SPEC 007 D2 lock) and is not bundled with the addon.
+dependency (the testing-fixtures spec D2 lock) and is not bundled with the addon.
 
 The importer feeds this with N frame PNG paths; the composer pads
 each frame to the bounding box of the largest frame (transparent

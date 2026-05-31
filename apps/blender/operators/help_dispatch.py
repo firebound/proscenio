@@ -1,4 +1,4 @@
-"""Help-dispatch operators: status badge, help popup, smoke test (5.1.d.5)."""
+"""Help-dispatch operators: status badge, help popup, smoke test (the in-panel help system)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class PROSCENIO_OT_status_info(bpy.types.Operator):
 
 
 class PROSCENIO_OT_help(bpy.types.Operator):
-    """Pop up an in-panel help dialog for a given topic id (5.1.d.5)."""
+    """Pop up an in-panel help dialog for a given topic id (the in-panel help system)."""
 
     bl_idname = "proscenio.help"
     bl_label = "Proscenio: Help"

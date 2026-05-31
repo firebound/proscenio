@@ -128,7 +128,7 @@ The writer iterates `bpy.data.actions`. Each action becomes one entry in the man
 | Shape keys on sprite meshes | not supported (writer ignores; format has no shape key concept) |
 | NLA strips composing motion | not supported (bake to a single Action first) |
 
-Scenarios outside this table (linked / library override armatures, multi-material meshes, color management quirks, constraints other than IK) are not exercised by CI fixtures. The safe path is to flatten the scenario before authoring rigs on top of it. If a real workflow surfaces friction, log it so it can be promoted to a SPEC.
+Scenarios outside this table (linked / library override armatures, multi-material meshes, color management quirks, constraints other than IK) are not exercised by CI fixtures. The safe path is to flatten the scenario before authoring rigs on top of it. If a real workflow surfaces friction, log it so it can be promoted to a spec.
 
 ## Validation lifecycle
 

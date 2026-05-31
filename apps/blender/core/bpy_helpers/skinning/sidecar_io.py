@@ -1,4 +1,4 @@
-"""Snapshot + reapply weight sidecar (SPEC 013.2 sidecar wave).
+"""Snapshot + reapply weight sidecar (the sidecar work wave).
 
 snapshot_sidecar reads obj's current vertex_groups + active UV layer
 and builds a populated WeightSidecar. apply_sidecar writes the

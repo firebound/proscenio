@@ -92,7 +92,7 @@ One line per entry. Read the source or docs when designing a feature that overla
 - **Spine** (paid, industry standard). <https://esotericsoftware.com/> + <https://en.esotericsoftware.com/spine-in-depth>. Reference for skeletal 2D animation features (skins, FFD, IK, paths, runtime preview).
 - **DragonBones** (open Spine alt, multi-runtime). <https://github.com/DragonBones>. Free Spine-clone with JSON format and a community editor.
 - **COA Tools 2** (Aodaruma fork, GPL, alive). <https://github.com/Aodaruma/coa_tools2>. Direct prior art for the Blender side. PSD / Krita / GIMP exporters useful as porting targets; Godot importer broken - see issue [#28](https://github.com/Aodaruma/coa_tools2/issues/28).
-- **COA Tools original** (ndee85, abandoned since 2019). <https://github.com/ndee85/coa_tools>. Source of the reimport-merge pattern that informed SPEC 001's wrapper-scene approach. Godot 2.x only.
+- **COA Tools original** (ndee85, abandoned since 2019). <https://github.com/ndee85/coa_tools>. Source of the reimport-merge pattern that informed the wrapper-scene approach. Godot 2.x only.
 - **Godot 2D Bridge** (Tor-Kai, stuck on Godot 4.0). <https://github.com/Tor-Kai/Godot-2d-Bridge-1.0.0>. Boundary-first vertex ordering and bone-weight mapping references; no animation pipeline.
 
 ### Engine-side plugins

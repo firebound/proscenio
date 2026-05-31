@@ -1,4 +1,4 @@
-"""Atlas pack operators package (SPEC 005.1.c.2).
+"""Atlas pack operators package (the atlas packer).
 
 Subpackage with:
 

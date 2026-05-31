@@ -1,4 +1,4 @@
-"""Generate the slot_cycle PNG attachments (SPEC 004 Wave 4.3, Pillow only).
+"""Generate the slot_cycle PNG attachments (the slot system, Pillow only).
 
 Run with::
 
@@ -12,7 +12,7 @@ quads as slot attachments under a single Empty, and adds an action
 that cycles the active attachment per keyframe.
 
 Smallest possible slot fixture - mirrors the simple_psd / blink_eyes
-shape (SPEC 007 layout, Pillow + bpy two-stage).
+shape (the testing-fixtures spec layout, Pillow + bpy two-stage).
 """
 
 from __future__ import annotations

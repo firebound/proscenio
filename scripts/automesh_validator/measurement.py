@@ -125,7 +125,7 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
         # First 30 leak records inline; full list in report JSON only
         # when leak_count > 0 to keep noise down.
         "leak_records_sample": leak_records[:30],
-        # SPEC 013 D2 amendment: mesh-over-transparent-pixel count.
+        # the weight-paint-automesh spec D2 amendment: mesh-over-transparent-pixel count.
         # Non-zero indicates hole-aware CDT failed to exclude an
         # alpha gap. Zero is the invariant for hole-supporting
         # sprites (ring etc.).
@@ -148,7 +148,7 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
                 margin_pixels=args.margin_pixels,
                 alpha_threshold=args.alpha_threshold,
                 debug_stage="off",
-                # AS-AM14 made the operator prop default SIMPLE (sparse), but the
+                #  made the operator prop default SIMPLE (sparse), but the
                 # vert/face ranges below were calibrated for the historical DENSE
                 # fill. Pin DENSE here so the validation stays deterministic
                 # regardless of the PG default flip.

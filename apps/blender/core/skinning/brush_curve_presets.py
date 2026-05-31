@@ -1,4 +1,4 @@
-"""Brush curve presets for Edit Weights modal (SPEC 013 O4).
+"""Brush curve presets for Edit Weights modal (the weight-paint productivity follow-up (brush presets)).
 
 Four named presets that configure the active weight-paint brush curve
 (brush.curve.curves[0].points). Saves artist trips to the curve editor.

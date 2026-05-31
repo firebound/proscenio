@@ -1,6 +1,6 @@
-# tag_smoke fixture (SPEC 011 v1)
+# tag_smoke fixture (the photoshop tag system v1)
 
-Synthetic layer tree that exercises every bracket tag in the SPEC 011 v1 taxonomy in one shot. No PSD file on disk - the input is a TypeScript object literal in [`apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`](../../../../apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts); the planner runs against it and the emitted manifest is snapshot-diffed against [`tag_smoke.expected.json`](tag_smoke.expected.json).
+Synthetic layer tree that exercises every bracket tag in the photoshop tag system v1 taxonomy in one shot. No PSD file on disk - the input is a TypeScript object literal in [`apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`](../../../../apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts); the planner runs against it and the emitted manifest is snapshot-diffed against [`tag_smoke.expected.json`](tag_smoke.expected.json).
 
 ## Why no PSD?
 

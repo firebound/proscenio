@@ -1,7 +1,7 @@
-"""PSD manifest v1 parser (SPEC 006 Wave 6.0).
+"""PSD manifest v1 parser (the photoshop importer).
 
-Reads the JSON document emitted by the Photoshop JSX exporter and
-returns typed records. Pure Python - no bpy, no Pillow, no jsonschema
+Reads the JSON document emitted by the Photoshop UXP plugin (and
+the retired JSX exporter before it) and returns typed records. Pure Python - no bpy, no Pillow, no jsonschema
 required at runtime (validation falls back to a minimal in-process
 shape check when ``jsonschema`` is absent - Blender's bundled Python
 typically does not ship it; the dedicated CI ``validate-schema`` job
@@ -116,9 +116,9 @@ def load(path: Path | str) -> Manifest:
 def parse(raw: Any, source_path: Path | None = None) -> Manifest:
     """Parse a pre-loaded JSON document into a :class:`Manifest`.
 
-    Accepts both ``format_version: 2`` (SPEC 011 v2 - anchor, origin,
+    Accepts both ``format_version: 2`` (the photoshop tag system (manifest v2) - anchor, origin,
     blend_mode, subfolder, mesh kind) and the legacy ``format_version: 1``
-    (SPEC 006 v1). v1 documents materialise as v2-shaped records with
+    (the photoshop importer v1). v1 documents materialise as v2-shaped records with
     the new optional fields left as ``None`` / kind constrained to
     ``polygon`` | ``sprite_frame``.
     """

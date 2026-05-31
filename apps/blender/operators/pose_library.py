@@ -1,4 +1,4 @@
-"""Pose library + bake-current-pose operators (SPEC 005.1.a/d.2)."""
+"""Pose library + bake-current-pose operators (the authoring panel.1.a/d.2)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _default_pose_asset_name(armature: bpy.types.Object, context: bpy.types.Cont
 
 
 class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
-    """Save the current pose to the Asset Browser (SPEC 005.1.d.2)."""
+    """Save the current pose to the Asset Browser (the pose-library shortcut)."""
 
     bl_idname = "proscenio.save_pose_asset"
     bl_label = "Proscenio: Save Pose to Library"

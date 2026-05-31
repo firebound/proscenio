@@ -1,13 +1,13 @@
-"""Skinning subpanel (SPEC 013 Wave 13.1).
+"""Skinning subpanel (the weight-paint-automesh first cut).
 
 Parallel to ``PROSCENIO_PT_skeleton`` per D13. Surfaces the
 Automesh + Bind + Edit Weights operators alongside the
 ``scene.proscenio.skinning`` defaults so the user can tune the
 density / threshold / margin in context.
 
-Wave 13.1 first cut ships only the Automesh sub-box. Bind +
-Edit Weights buttons appear here in later Wave 13.1 commits;
-they live behind ``# TODO(SPEC 013 follow-up)`` comments so
+the first cut first cut ships only the Automesh sub-box. Bind +
+Edit Weights buttons appear here in later the first cut commits;
+they live behind ``# TODO(the weight-paint-automesh spec follow-up)`` comments so
 the layout shape is stable.
 """
 
@@ -270,7 +270,7 @@ def _edit_weights_button_enabled(
 
 
 def _draw_weight_transfer_box(layout: bpy.types.UILayout) -> None:
-    """Sub-box surfacing the Copy Weights to Selected operator (SPEC 013 O7).
+    """Sub-box surfacing the Copy Weights to Selected operator (the weight-paint productivity follow-up (weight transfer)).
 
     Active mesh = source; other selected meshes = targets. Button
     enabled by operator poll (active MESH + at least one other selected MESH).
@@ -289,7 +289,7 @@ def _draw_snapshot_box(
 
     Counts are recomputed live from the JSON payload stored on the
     active mesh (single source of truth per T6 of sidecar-design).
-    Toggle for show_provenance_overlay reserves UI for Wave 13.2-paint
+    Toggle for show_provenance_overlay reserves UI for the paint work
     even though the GPU draw handler is not in scope this wave.
     """
     box = layout.box()

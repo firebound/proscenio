@@ -4,7 +4,7 @@ extends Node2D
 
 ## Documentation-by-example wrapper for the imported [code]simple_psd.scn[/code].
 ##
-## Smallest end-to-end Photoshop-importer fixture (SPEC 006 Wave 6.5): one
+## Smallest end-to-end Photoshop-importer fixture (the photoshop importer): one
 ## [code]polygon[/code] layer + one [code]sprite_frame[/code] group of 4
 ## frames built from a v1 manifest. Use this fixture when debugging the
 ## Photoshop manifest -> Blender importer -> writer -> Godot importer

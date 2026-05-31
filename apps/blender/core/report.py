@@ -1,4 +1,4 @@
-"""Operator report helpers with shared ``Proscenio:`` prefix (SPEC 009 wave 9.1).
+"""Operator report helpers with shared ``Proscenio:`` prefix (the code-modularity work).
 
 Every operator in the addon reports user-facing messages through
 ``self.report({"INFO"|"WARNING"|"ERROR"}, "Proscenio: ...")``. The

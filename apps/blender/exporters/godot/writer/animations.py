@@ -1,4 +1,4 @@
-"""Bone-transform animation emission (SPEC 003 + 005)."""
+"""Bone-transform animation emission (the skinning-weights wire format + 005)."""
 
 from __future__ import annotations
 

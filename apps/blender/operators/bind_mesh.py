@@ -1,8 +1,8 @@
-"""Bind mesh to picker armature (SPEC 013.2).
+"""Bind mesh to picker armature (the weight-paint productivity follow-up).
 
 Defaults to Blender's bone-heat solver (D4). Surfaces 5 pre-flight
 diagnoses (D11) before touching geometry. Writes a WeightSidecar stub
-the Wave 13.2-sidecar wave consumes for reproject.
+the sidecar work wave consumes for reproject.
 
 F3 redo exposes bind_init_mode enum (BONE_HEAT default, PROXIMITY/ENVELOPE/
 SINGLE_NEAREST/EMPTY fallbacks) + falloff_power + max_distance.

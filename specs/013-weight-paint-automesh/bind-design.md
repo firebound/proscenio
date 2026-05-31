@@ -1,10 +1,10 @@
-# Wave 13.2 - Planar Proximity Bind: Design
+# the productivity follow-up - Planar Proximity Bind: Design
 
 Status: design locked via `/brainstorming` session 2026-05-17. Ready for implementation plan.
 
-Scope: bind a mesh to a picker armature via a custom planar-distance algorithm that never hits Blender's bone-heat solver, surface structured diagnoses when something goes wrong, write a sidecar stub that Wave 13.2-sidecar consumes for reproject.
+Scope: bind a mesh to a picker armature via a custom planar-distance algorithm that never hits Blender's bone-heat solver, surface structured diagnoses when something goes wrong, write a sidecar stub that the sidecar work consumes for reproject.
 
-Locked SPEC decisions: D4 (no bone heat default), D5 (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY enum), D11 (pre-flight structured diagnoses).
+Locked spec decisions: D4 (no bone heat default), D5 (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY enum), D11 (pre-flight structured diagnoses).
 
 ## Decisions (brainstorming output)
 
@@ -12,7 +12,7 @@ Locked SPEC decisions: D4 (no bone heat default), D5 (PROXIMITY / ENVELOPE / SIN
 | --- | --- | --- | --- |
 | Q1 | `falloff_power` default | **2.0** (inverse square) | Animate / Spine / DragonBones convention. Sharp enough for cutout 2D, smooth enough to avoid binary feel. |
 | Q2 | `max_distance` default | **adaptive: 1.5 * armature world bbox max extent** | Scales with rig. User overridable via F3 redo (-1 = adaptive sentinel). |
-| Q3 | Sidecar capture timing | **bind writes minimal stub now** (version + vertex_group_names + topology_hash + entries=[]) | Schema locked early. Wave 13.2-sidecar populates entries; bind never touched again. |
+| Q3 | Sidecar capture timing | **bind writes minimal stub now** (version + vertex_group_names + topology_hash + entries=[]) | Schema locked early. the sidecar work populates entries; bind never touched again. |
 | Q4 | Pre-flight diagnose scope | **all 5** (scale, normals, overlap, islands, bone_bbox) | Diagnose surface = #1 community pain (D11 STUDY). Each helper ~20 LOC, ~150 LOC total. |
 | Q5 | Orphan vert behaviour | **WARN + count + suggested fix** | Vert with 0 bones in range = static under deformation = visible tear. User must know. |
 | Q6 | Existing vertex groups | **preserve `proscenio_base_sprite`, wipe rest, recreate** | D3 UV anchor sobrevive. Bone groups from prior bind get refreshed. |
@@ -20,7 +20,7 @@ Locked SPEC decisions: D4 (no bone heat default), D5 (PROXIMITY / ENVELOPE / SIN
 
 ## Architecture
 
-Domain package layout matching the cleanup convention adopted in Wave 13.2 (PR #52):
+Domain package layout matching the cleanup convention adopted in the productivity follow-up (PR #52):
 
 ```text
 apps/blender/core/skinning/
@@ -130,7 +130,7 @@ class WeightSidecar:
     version: int
     vertex_group_names: list[str]
     mesh_topology_hash: str
-    entries: list[dict]   # Wave 13.2-sidecar populates; bind leaves []
+    entries: list[dict]   # the sidecar work populates; bind leaves []
 
 def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str:
     """sha1(f'{vert_count}|{sorted_face_tuples}') hex."""
@@ -182,7 +182,7 @@ Side effects:
 3. Populates per-vertex weights via `vertex_groups[name].add([vert_idx], weight, "REPLACE")`.
 4. Writes `obj["proscenio_weight_sidecar"]` = JSON of `WeightSidecar` stub.
 
-ENVELOPE mode radii sourcing: when `mode="ENVELOPE"`, `apply_bind` reads each deform bone's `bone["proscenio_envelope_radius"]` Custom Property; missing keys default to `1.0` world units. The dict is built once + passed into `bind_weights_for_mode` as `envelope_radii`. Edit Weights modal (Wave 13.2-paint) becomes the UI surface for tuning these radii; bind feature alone exposes them via the manual Custom Property editor only.
+ENVELOPE mode radii sourcing: when `mode="ENVELOPE"`, `apply_bind` reads each deform bone's `bone["proscenio_envelope_radius"]` Custom Property; missing keys default to `1.0` world units. The dict is built once + passed into `bind_weights_for_mode` as `envelope_radii`. Edit Weights modal (the paint work) becomes the UI surface for tuning these radii; bind feature alone exposes them via the manual Custom Property editor only.
 
 Vert + bone coord conversion: both projected to XZ world space.
 
@@ -372,14 +372,14 @@ Sidecar atomicity: written AFTER vertex groups succeed. If `apply_bind` raises m
 
 - Coverage report pipeline (pytest-cov + sonar-scanner push) → chore wave separada pós-bind.
 - Hypothesis property-based testing for pure math → backlog.
-- ENVELOPE radii editor UI → Wave 13.2-paint (Edit Weights modal owns it).
-- Scene PropertyGroup persistence for bind_init_mode / falloff_power / max_distance → Wave 13.2-panel (operator F3 properties stand alone for this wave).
-- Sidecar `entries` population + reproject logic → Wave 13.2-sidecar (foundation only here).
-- `proscenio.copy_weights_to_selected` (multi-mesh batch) → Wave 13.3.
+- ENVELOPE radii editor UI → the paint work (Edit Weights modal owns it).
+- Scene PropertyGroup persistence for bind_init_mode / falloff_power / max_distance → the panel work (operator F3 properties stand alone for this wave).
+- Sidecar `entries` population + reproject logic → the sidecar work (foundation only here).
+- `proscenio.copy_weights_to_selected` (multi-mesh batch) → successor work.
 - BONE_HEAT BindMode enum value → not added; bone-heat stays behind the F3-only opt-in BoolProperty per D4.
 
 ## Open follow-ups (post-merge)
 
 - Convention update: `.ai/conventions.md` gains a "headless operator pytest pattern" subsection documenting the runner script + fixture loader + addon register sequence. New pattern - future operators (paint, sidecar, modal) reuse it.
-- SPEC 013 TODO Wave 13.2 bind entry refined with this design's checklist + links.
+- this spec TODO the productivity follow-up bind entry refined with this design's checklist + links.
 - CI workflow YAML: add `Headless operator tests` step to `test-blender` job, after the existing fixture diff step.

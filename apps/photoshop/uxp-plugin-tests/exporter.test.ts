@@ -1,4 +1,4 @@
-// Unit tests for the SPEC 011 v2 planner. Pure logic, no PS runtime.
+// Unit tests for the photoshop tag system (manifest v2) planner. Pure logic, no PS runtime.
 // The planner reads the bracket-tag parser and emits the v2 manifest
 // shape; tests cover the legacy auto-detection paths that survive
 // (visible polygons, digit-named sprite_frame groups) plus the new
@@ -98,7 +98,7 @@ describe("buildManifest - baseline (no tags)", () => {
         expect(sf[0].frames[0].path).toBe("images/blink/0.png");
     });
 
-    it("does NOT auto-aggregate flat <base>_<index> siblings (SPEC 011 D4)", () => {
+    it("does NOT auto-aggregate flat <base>_<index> siblings (the photoshop tag system D4)", () => {
         const layers: Layer[] = [
             art("walk_0"),
             art("walk_1"),
@@ -108,7 +108,7 @@ describe("buildManifest - baseline (no tags)", () => {
         expect(m.layers.map((e) => e.name)).toEqual(["walk_0", "walk_1"]);
     });
 
-    it("does NOT skip layers with `_` prefix (SPEC 011 D3 drops the legacy convention)", () => {
+    it("does NOT skip layers with `_` prefix (the photoshop tag system D3 drops the legacy convention)", () => {
         const layers: Layer[] = [art("_helper"), art("keep")];
         const m = buildManifest(doc, layers, opts);
         expect(m.layers.map((e) => e.name)).toEqual(["_helper", "keep"]);
@@ -410,7 +410,7 @@ describe("origin marker inside [merge] group", () => {
     });
 });
 
-describe("plan warnings (SPEC 011.4)", () => {
+describe("plan warnings (the photoshop tag system.4)", () => {
     it("flags duplicate sanitised paths", () => {
         // `arm.L` and `arm_L` both sanitise to `arm_L`.
         const layers: Layer[] = [art("arm.L"), art("arm_L")];

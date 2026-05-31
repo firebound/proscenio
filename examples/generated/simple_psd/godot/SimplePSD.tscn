@@ -1,10 +1,10 @@
 ; Documentation-by-example wrapper scene for the Proscenio simple_psd fixture.
 ;
-; Smallest end-to-end exercise of the SPEC 006 Photoshop importer:
+; Smallest end-to-end exercise of the photoshop importer:
 ; one polygon layer + one sprite_frame group of 4 frames imported from
 ; a v1 manifest. The wrapper instances the imported scene and lets the
 ; user attach scripts / collisions / extra nodes here without losing
-; them on reimport (SPEC 001 Option A).
+; them on reimport (the reimport-merge work Option A).
 ;
 ; Drop `examples/generated/simple_psd/` at `res://examples/simple_psd/` in your Godot project,
 ; or adjust paths to match your layout.

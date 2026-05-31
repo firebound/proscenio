@@ -78,11 +78,11 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 - **Falta atalhos pra connect/disconnect parent.** Hoje só tem `Shift` pra parent ao último bone (sem connect). Faltam: Ctrl+Shift pra parent connected (extends naturally); modifier pra escolher um parent específico (não só o último); operador "unparent" sem sair do modal.
 - **Saída do modal não óbvia.** Esc / right-click funcionam mas user que não viu o status bar fica preso. Sugestões: (a) botão "Confirm" / "Cancel" floating na viewport. (b) header bar com mensagem destacada. (c) ESC sempre mostra confirm dialog "Discard / Keep" pra evitar perda acidental.
 - **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (BUGS_FOUND.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
-- **(SPEC 012.1 polish) Preview line cortada visualmente quando cursor passa por baixo de panel/header/toolbar.** Apos fix do region overlay filter (operator nao processa eventos sob N-panel/header/toolbar), preview line continua sendo desenhada matematicamente cheia ate cursor real - mas Blender pinta panels POR CIMA do GPU draw handler, mascarando trechos da linha. Visualmente parece "corte". Tradeoff aceito: clicks em panel area nao criam bones (correto). Polish proposto:
+- **(quick-armature first-cut polish) Preview line cortada visualmente quando cursor passa por baixo de panel/header/toolbar.** Apos fix do region overlay filter (operator nao processa eventos sob N-panel/header/toolbar), preview line continua sendo desenhada matematicamente cheia ate cursor real - mas Blender pinta panels POR CIMA do GPU draw handler, mascarando trechos da linha. Visualmente parece "corte". Tradeoff aceito: clicks em panel area nao criam bones (correto). Polish proposto:
   - **A. Clamp visual no boundary do canvas-livre.** No MOUSEMOVE, se cursor entra zona de overlay, projeta `_cursor_world` pra borda mais proxima do retangulo canvas-menos-overlays. Linha para visualmente na borda do panel em vez de sumir sob ele.
   - **B. Indicacao por cor.** Linha muda pra cinza/vermelho `(0.6, 0.6, 0.6, 0.7)` quando cursor sobre overlay zone. Sinaliza "click aqui = no-op" sem precisar matematica de clamp.
   - **C. Ambos.** Clamp + cor diferente.
-  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra Wave 12.2 polish ou 12.3.
+  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra the second wave polish ou a quick-armature follow-up.
 
 ## Outliner panel
 
@@ -169,7 +169,7 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 - Versão (Pipeline v0.1.0) poderia ficar aqui no Help panel
 - Adicionar botão "GitHub" / link pro repo
 - **See-also references nos popups de help NÃO são clickáveis.** `help_dispatch.py:88-89` rendera cada ref como `layout.label(text="  " + ref)` puro - sem operator, sem hyperlink. Header da seção mostra ícone URL induzindo expectativa de click. Usuário só consegue ler os paths e abrir manual fora do Blender. Sugestões (em ordem de impacto):
-  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, `specs/004-slot-system/` (abre file manager) etc. Mínimo viável.
+  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, `specs/013-weight-paint-automesh/` (abre file manager) etc. Mínimo viável.
   - **B. wm.url_open** se ref começa com `http`. Mistura A+B detectando prefixo.
   - **C. Copy to clipboard button** próximo de cada ref - alternativa baixa-fricção.
   - **D. Ícone visual:** se decidir não fazer A/B, ao menos trocar ícone URL no header da seção pra algo menos clicky (DOT, INFO), pra não enganar.

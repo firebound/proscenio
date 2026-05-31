@@ -1,4 +1,4 @@
-// Wave 11.5 single-layer re-export. Lives in the Exporter panel
+// the photoshop-tag work.5 single-layer re-export. Lives in the Exporter panel
 // alongside the full export; the Tags panel only INSPECTS the
 // selected entry (RevealOutputSection), action moves here.
 //

@@ -1,8 +1,8 @@
-# SPEC 007 - Testing fixtures
+# Testing fixtures
 
 ## Problem
 
-The original `dummy/` fixture covers only one workflow (a single shared atlas with N sub-rects per sprite). After validating the atlas packer (5.1.c.2 + 5.1.c.2.1 + 5.1.c.2.2) on dummy, the gaps in coverage are obvious:
+The original `dummy/` fixture covers only one workflow (a single shared atlas with N sub-rects per sprite). After validating the atlas packer (the atlas packer + the atlas-packer feature + the atlas-packer feature) on dummy, the gaps in coverage are obvious:
 
 - **No `1 sprite = 1 PNG` test.** The packer was implemented to handle this case - the common Photoshop-first path - but no fixture exercises it.
 - **No real `sprite_frame` animation test.** `effect/` (Godot-side fixture, hand-written `.proscenio`) tests the importer, but nothing tests the writer emitting a `sprite_frame` track from a real Blender action.
@@ -33,15 +33,15 @@ The pattern is "small + focused + auditable + buildable from source". Fixtures a
 | **A - End-to-end** | `.blend` source + builder script + golden `.proscenio` + Godot wrapper | Default. Tests writer + importer together. |
 | **B - Importer-only** | Hand-written `.proscenio` (no `.blend`) | Only for edge cases the writer cannot produce - invalid `format_version`, unknown track types, minimum-fields-default tests |
 
-In v1 of SPEC 007, only Type A fixtures ship. Type B starts when an actual edge case shows up in production debugging.
+In v1 of this spec, only Type A fixtures ship. Type B starts when an actual edge case shows up in production debugging.
 
 ## Three Type A fixtures
 
 | Fixture | Role | Rough size |
 | --- | --- | --- |
-| **`doll/`** | **Comprehensive showcase.** Full humanoid rig + per-body-part meshes covering polygon + sprite_frame + multi-bone weights + multi-action authoring. The fixture grows as new features ship - SPEC 004 adds a slot, SPEC 008 adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~22 sprite meshes, ~4 actions, evolving |
+| **`doll/`** | **Comprehensive showcase.** Full humanoid rig + per-body-part meshes covering polygon + sprite_frame + multi-bone weights + multi-action authoring. The fixture grows as new features ship - the slot system adds a slot, the UV animation work adds UV-animated iris, etc. The integration test for cross-feature interactions and the visual demo for users learning the pipeline. | ~22 sprite meshes, ~4 actions, evolving |
 | **`blink_eyes/`** | **Sprite_frame end-to-end isolation test.** A single sprite_frame mesh + 1 spritesheet PNG + 1 action animating frame index. Tests writer→`.proscenio`→importer for the sprite_frame path. | 1 sprite, 1 action, ~150 LOC builder |
-| **`shared_atlas/`** | **Sliced atlas packer isolation test.** Three quads referencing one shared atlas PNG with partial UV bounds. Tests the slicing logic introduced in SPEC 005.1.c.2.1. | 3 sprites, no animation, ~120 LOC builder |
+| **`shared_atlas/`** | **Sliced atlas packer isolation test.** Three quads referencing one shared atlas PNG with partial UV bounds. Tests the slicing logic introduced in the authoring panel.1.c.2.1. | 3 sprites, no animation, ~120 LOC builder |
 
 The three together cover every feature path end-to-end. `dummy/`, `effect/`, `skinned_dummy/` get retired in a follow-up PR after the new fixtures land and run green in CI.
 
@@ -60,8 +60,8 @@ Each top-level mesh in `doll.blend` is one sprite layer. Mesh names use the Blen
 | polygon, single primary bone | `head`, `chest`, `belly`, `waist`, `arm.L/R`, `forearm.L/R`, `hand.L/R`, `leg.L/R`, `thigh.L/R`, `foot.L/R`, `brow.L/R`, `ear.L/R` | Standard parented sprites. |
 | polygon, multi-bone weights | `chest` / `belly` / `waist` (weighted across the spine chain), pelvic meshes weighted across `pelvis.L`/`pelvis.R` | Demonstrates weight-paint distribution + falloff. |
 | (planned) sprite_frame | `eye.L`, `eye.R` (atualmente polygon no doll.blend) | Originalmente planejado: 4 frames open/mid/closing/closed + `blink` action. Cobertura sprite_frame movida pra `blink_eyes/` + `mouth_drive/` - doll mantém eyes polygon até authoring deliberado. |
-| polygon, slot-ready | `brow.L`, `brow.R` | Future home for the slot system (SPEC 004) swapping brow-up / brow-down. |
-| polygon, driver-driven texture swap | `forearm.L`, `forearm.R` | Driver on `forearm` rotation flips front/back forearm sprite. Lands when SPEC 004 + driver shortcut (5.1.d) ship. |
+| polygon, slot-ready | `brow.L`, `brow.R` | Future home for the slot system (the slot system) swapping brow-up / brow-down. |
+| polygon, driver-driven texture swap | `forearm.L`, `forearm.R` | Driver on `forearm` rotation flips front/back forearm sprite. Lands when the slot system + driver shortcut (the authoring-panel shortcuts) ship. |
 
 ### Visual style
 
@@ -78,7 +78,7 @@ Built into the `.blend` initially:
 | (planned) `blink` | 12 | `eye.L.proscenio.frame` + `eye.R.proscenio.frame` | sprite_frame track test atualmente em `blink_eyes/` - doll precisaria converter eyes pra sprite_frame antes de adicionar essa action |
 | `walk` | 30, loop | thigh / shin / foot rotation, spine sway | full-body coordination test |
 
-Future actions land as future SPECs require them (talk for SPEC 008 lips, etc).
+Future actions land as future specs require them (talk for the UV animation work lips, etc).
 
 ## Decisions to lock
 
@@ -101,7 +101,7 @@ Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one la
 
 ### D4 - Sprite_frame frame layer naming convention
 
-**Locked: `<name>_<index>`** (e.g. `eye_0` … `eye_3`). Matches Spine convention; SPEC 006 PS importer will consume this same convention to group layers into sprite_frame meshes.
+**Locked: `<name>_<index>`** (e.g. `eye_0` … `eye_3`). Matches Spine convention; the photoshop importer PS importer will consume this same convention to group layers into sprite_frame meshes.
 
 ### D5 - Builder script location
 
@@ -133,22 +133,22 @@ Rendering from the `.blend` mirrors the future Photoshop-driven workflow (one la
 
 ## Out of scope
 
-- A test fixture for the slot system (SPEC 004) - placeholder only; lands when SPEC 004 ships.
-- A fixture for SPEC 006 PS importer (lands with SPEC 006).
-- Real character art (`firebound_character/`) - that is the integration test for SPEC 006.
-- UV animation fixture (`flow_water/`) - premature without SPEC 008.
+- A test fixture for the slot system (the slot system) - placeholder only; lands when the slot system ships.
+- A fixture for the photoshop importer PS importer (lands with the photoshop importer).
+- Real character art (`firebound_character/`) - that is the integration test for the photoshop importer.
+- UV animation fixture (`flow_water/`) - premature without the UV animation work.
 
 ## Successor considerations
 
-- SPEC 004 (slots): `doll/` gains a slot for `hand.L.attachment` (sword vs bow swap).
-- SPEC 006 (PS importer): `doll/` gets a PSD source + JSX manifest input alongside the build script as cross-validation.
-- SPEC 008 (UV animation): `doll/` gains an iris-scroll track on `eye.L`/`eye.R`.
+- the slot system (slots): `doll/` gains a slot for `hand.L.attachment` (sword vs bow swap).
+- the photoshop importer (PS importer): `doll/` gets a PSD source + JSX manifest input alongside the build script as cross-validation.
+- the UV animation work (UV animation): `doll/` gains an iris-scroll track on `eye.L`/`eye.R`.
 
 The doll fixture grows feature-by-feature. The two minimal fixtures (`blink_eyes`, `shared_atlas`) stay frozen - their job is to isolate one feature each.
 
 ## Migration plan
 
-After this SPEC ships, a follow-up PR retires the legacy fixtures:
+After this spec ships, a follow-up PR retires the legacy fixtures:
 
 | Today | Tomorrow | Coverage migrated to |
 | --- | --- | --- |
@@ -174,18 +174,18 @@ examples/
 │       ├── 00_blender_base/                    [SOURCE - hand-authored .blend + derived inputs]
 │       │   ├── doll_base.blend                 hand-authored Blender source of truth
 │       │   ├── doll_base.expected.proscenio    CI golden for the direct Blender -> Godot path
-│       │   ├── doll_base.photoshop_manifest.json   SPEC 006/011 manifest the PS importer reads
+│       │   ├── doll_base.photoshop_manifest.json   the photoshop importer/011 manifest the PS importer reads
 │       │   └── render_layers/                  Workbench PNGs (one per mesh) + pieces_sheet.png
 │       ├── 01_photoshop_base/                  [DERIVED - clean PSD imported from 00's manifest]
 │       │   └── doll_ps_base.psd                Proscenio Exporter panel output (no artist edits)
 │       ├── 02_photoshop_setup/                 [AUTHORED - artist workbench + re-exported manifest]
-│       │   ├── doll_tagged.psd                 copy of doll_ps_base + manual edits + SPEC 011 tags
+│       │   ├── doll_tagged.psd                 copy of doll_ps_base + manual edits + the photoshop tag system tags
 │       │   └── export/                         Proscenio Exporter panel output (gitignored)
 │       │       ├── doll_tagged.photoshop_exported.json
 │       │       └── images/
 │       ├── 03_blender_setup/                   [AUTHORED - rigged .blend, gitignored]
 │       │   └── doll_rigged.blend               imported from step 02 + manual rig/weights/actions
-│       └── 04_godot_import/                    [AUTHORED - SPEC 001 wrapper for the Godot side]
+│       └── 04_godot_import/                    [AUTHORED - the reimport-merge work wrapper for the Godot side]
 │           ├── Doll.tscn
 │           └── Doll.gd
 ├── blink_eyes/

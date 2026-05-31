@@ -2,7 +2,7 @@
 // PSD layer or group name, returning the stripped display name plus a
 // structured tag bag.
 //
-// Conventions (SPEC 011 D1, D5):
+// Conventions (the photoshop tag system D1, D5):
 //
 // - Tags may appear anywhere in the name. `head [ignore]`, `[ignore]
 //   head`, and `arm [folder:body] [scale:0.5]` are all valid.

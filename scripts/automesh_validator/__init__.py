@@ -1,4 +1,4 @@
-"""Headless automesh validator (SPEC 013 Wave 13.1).
+"""Headless automesh validator (the weight-paint-automesh first cut).
 
 Domain package backing ``scripts/validate_automesh.py``. The entry
 point is a thin shim that imports :func:`cli.main` and calls it -

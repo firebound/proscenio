@@ -1,4 +1,4 @@
-"""Validation finding PropertyGroup (SPEC 009 wave 9.10).
+"""Validation finding PropertyGroup (the code-modularity work).
 
 A single entry in ``ProscenioSceneProps.validation_results``. Surfaced
 in the Validation panel + the Diagnostics panel.

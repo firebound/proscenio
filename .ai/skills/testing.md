@@ -12,7 +12,7 @@ blender --background --python apps/blender/tests/run_tests.py
 ```
 
 - Real `bpy`, no mocks.
-- Fixtures: `apps/blender/tests/fixtures/*.blend`.
+- Fixtures: `examples/authored/**/*.blend` (hand-authored) and `examples/generated/**/*.blend` (procedural). Discovered recursively by the runner.
 - CI runs against pinned Blender LTS versions on Linux.
 
 ## Godot plugin
@@ -47,7 +47,7 @@ gdlint apps/godot/addons/proscenio/
 
 Manual until CI runners ship both Blender and Godot:
 
-1. Open `examples/dummy/dummy.blend` in Blender.
+1. Open one of the `examples/generated/` fixtures in Blender (`blink_eyes/blink_eyes.blend` for the `sprite_frame` path, `shared_atlas/shared_atlas.blend` for the atlas path, `slot_swap/slot_swap.blend` for the slot path, or `examples/authored/doll/00_blender_base/doll_base.blend` for the comprehensive showcase).
 2. Run the Proscenio export operator.
 3. Drop the resulting `.proscenio` (and texture files) into `apps/godot/`.
 4. Open the generated scene in Godot, hit Play, verify the animation runs.

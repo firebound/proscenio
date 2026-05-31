@@ -18,7 +18,7 @@ canonical source under ``examples/``. No duplication on disk: edits in
    into the same dest directory so the Godot importer + Sprite2D / Polygon2D
    builders can find them via filename lookup.
 3. Link ``examples/<name>/godot/<Name>.tscn`` + ``<Name>.gd`` (the wrapper
-   scene pattern - SPEC 001 Option A) into ``apps/godot/<name>/godot/``.
+   scene pattern - the reimport-merge work Option A) into ``apps/godot/<name>/godot/``.
 
 Link strategy:
 - Try ``os.symlink`` first (works on POSIX always; Windows needs Developer

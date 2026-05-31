@@ -1,11 +1,11 @@
-"""Active Sprite subpanel (SPEC 005 + 5.1.c.1 + 5.1.d.1).
+"""Active Sprite subpanel (the authoring panel + the mirror-fix work + the Drive-from-Bone shortcut).
 
 Thin dispatcher: picks the body subsection by sprite_type + active
 mode, then defers to the per-mode draw module. Per-mode helpers live
 in ``_draw_sprite_frame.py``, ``_draw_polygon.py``, and the shared
 ``_draw_region.py`` / ``_draw_driver_shortcut.py``.
 
-Wave 9.10 of SPEC 009 split the 13 ``_draw_*`` helpers out of this
+the code-modularity work of the code-modularity work split the 13 ``_draw_*`` helpers out of this
 file so each draw concern owns its module.
 """
 

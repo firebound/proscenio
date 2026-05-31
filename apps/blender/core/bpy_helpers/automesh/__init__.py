@@ -1,4 +1,4 @@
-"""bpy-bound bridge for SPEC 013 automesh.
+"""bpy-bound bridge for the weight-paint-automesh spec automesh.
 
 Domain package wrapping the pure-Python pipeline in
 ``apps/blender/core/automesh/`` with the bits that need real

@@ -66,7 +66,7 @@ export async function placePngAt(
         // target document is the active one when `Layer.translate` fires.
         // PS / UXP route translate through the active doc's selection
         // context; with srcDoc still active the call no-ops silently
-        // (observed on PS 25 / 2026 during the SPEC 011 round-trip).
+        // (observed on PS 25 / 2026 during the photoshop tag system round-trip).
         await srcDoc.closeWithoutSaving();
     }
     // Active doc is now targetDoc; safe to translate. `translate` accepts

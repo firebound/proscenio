@@ -1,4 +1,4 @@
-"""Pure tests for inner-loop erosion (SPEC 013.2 interactive-modal, T1)."""
+"""Pure tests for inner-loop erosion (the interactive-modal work, T1)."""
 
 from __future__ import annotations
 

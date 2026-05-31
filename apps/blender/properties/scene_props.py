@@ -1,4 +1,4 @@
-"""Scene-level Proscenio PropertyGroup (SPEC 009 wave 9.10).
+"""Scene-level Proscenio PropertyGroup (the code-modularity work).
 
 Holds per-scene settings that ride along with the .blend: sticky
 export path, default pixels-per-unit, validation result rows, atlas
@@ -28,7 +28,7 @@ def _is_armature(_self: PropertyGroup, obj: _Object) -> bool:
 
 
 class ProscenioQuickArmatureProps(PropertyGroup):
-    """SPEC 012 Wave 12.2 defaults for the Quick Armature modal."""
+    """the quick-armature spec the second wave defaults for the Quick Armature modal."""
 
     lock_to_front_ortho: BoolProperty(  # type: ignore[valid-type]
         name="Lock to Front Orthographic",
@@ -53,7 +53,7 @@ class ProscenioQuickArmatureProps(PropertyGroup):
             "When ON (recommended), no-modifier drag chains the new bone to "
             "the last one (head snaps to parent's tail, matches Blender's E "
             "extrude reflex). Hold Shift to start a new root instead. When "
-            "OFF, the legacy SPEC 012.1 vocabulary applies: no-modifier = "
+            "OFF, the legacy the quick-armature first cut vocabulary applies: no-modifier = "
             "unparented root, Shift = chain (no connect)."
         ),
         default=True,
@@ -72,12 +72,12 @@ class ProscenioQuickArmatureProps(PropertyGroup):
 
 
 class ProscenioSkinningProps(PropertyGroup):
-    """SPEC 013 Wave 13.1 defaults for the Skinning subpanel.
+    """the weight-paint-automesh first cut defaults for the Skinning subpanel.
 
     Holds the knobs that the Automesh + Bind + Edit Weights
     operators read at invoke time. Stored on the scene so the
     settings persist across .blend reloads and surface in the
-    panel for in-context tuning (matching the SPEC 012 D15
+    panel for in-context tuning (matching the quick-armature spec D15
     pattern for Quick Armature defaults).
     """
 
@@ -292,7 +292,7 @@ class ProscenioSkinningProps(PropertyGroup):
             "When ON, the Weight Paint viewport colors each vert by its "
             "weight source: cyan = reprojected (came from a regen), white "
             "= user paint, gray = auto seed (untouched bind output). The "
-            "GPU draw handler ships in Wave 13.2-paint; this wave provides "
+            "GPU draw handler ships in the paint work; this wave provides "
             "the data + toggle so the panel layout is stable."
         ),
         default=False,
@@ -449,7 +449,7 @@ class ProscenioSceneProps(PropertyGroup):
     outliner_filter: StringProperty(  # type: ignore[valid-type]
         name="Outliner filter",
         description=(
-            "Substring filter applied to the Proscenio outliner (5.1.d.4). "
+            "Substring filter applied to the Proscenio outliner (the outliner subpanel). "
             "Empty string shows every Proscenio-relevant object."
         ),
         default="",

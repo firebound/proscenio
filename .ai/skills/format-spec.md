@@ -26,7 +26,7 @@ Each entry in `sprites` is one of two shapes, distinguished by a `type` field:
 
 | `type` | Renders as | Required fields | Use when |
 | --- | --- | --- | --- |
-| `polygon` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style mesh, deformable, eligible for skinning weights (SPEC 003) |
+| `polygon` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style mesh, deformable, eligible for skinning weights |
 | `sprite_frame` | `Sprite2D` | `type`, `name`, `bone`, `hframes`, `vframes` | frame-by-frame animation (pixel art, particles, effects) |
 
 `type` is **optional** on `polygon` sprites - absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
@@ -41,7 +41,7 @@ A single `.proscenio` may freely mix both kinds - a cutout body with a spriteshe
 > 2. **PSD manifest layer kind** (`kind: "sprite_frame"`) → a Photoshop `LayerSet` tagged `[spritesheet]`; the Blender importer consumes it and the Blender writer can re-emit it as a `.proscenio` sprite of `type: "sprite_frame"`.
 > 3. **Animation track type** (`type: "sprite_frame"` inside an animation track) → animates the `:frame` property of an existing `Sprite2D` over time (see "Track types" below).
 >
-> The shape is different in each context. The `.proscenio` schema is still `format_version=1`; the SPEC 011 taxonomy that introduced `kind: "mesh"`, `anchor`, per-entry `origin`, `blend_mode`, and `subfolder` lives on the **PSD manifest** side and bumped that schema to v2 - not this one.
+> The shape is different in each context. The `.proscenio` schema is still `format_version=1`; the photoshop tag system taxonomy that introduced `kind: "mesh"`, `anchor`, per-entry `origin`, `blend_mode`, and `subfolder` lives on the **PSD manifest** side and bumped that schema to v2 - not this one.
 
 ## UV coordinates
 
@@ -59,9 +59,9 @@ The Godot importer trusts the exporter - it does not re-flip. If you write a non
 
 ## Atlas packing (v1)
 
-The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** (SPEC 005.1.c.2) that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible - the writer reads whatever `texture_region` the user supplies.
+The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible - the writer reads whatever `texture_region` the user supplies.
 
-Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md).
+Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred spec tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md).
 
 ## Skinning weights
 
@@ -74,21 +74,21 @@ The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinnin
 ]
 ```
 
-`values` is indexed by the sprite's vertex order - `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used, see [SPEC 003](../../specs/003-skinning-weights/STUDY.md)).
+`values` is indexed by the sprite's vertex order - `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used; see the skinning-weights entry in [`specs/decisions.md`](../../specs/decisions.md#skinning-weights-export)).
 
-Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites (SPEC 002) ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
+Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
 
-### Authoring story (SPEC 013)
+### Authoring story
 
-SPEC 003 defines the **wire format**; SPEC 013 defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
+The format above defines the **wire shape**; the [weight-paint-automesh spec](../../specs/013-weight-paint-automesh/STUDY.md) defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
 
-1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV). [SPEC 013 Wave 13.1](../../specs/013-weight-paint-automesh/STUDY.md).
-2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`. [SPEC 013.2 bind + panel waves](../../specs/013-weight-paint-automesh/panel-design.md).
-3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection. [SPEC 013.2 paint wave](../../specs/013-weight-paint-automesh/paint-design.md).
-4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen. [SPEC 013.2 sidecar wave](../../specs/013-weight-paint-automesh/sidecar-design.md).
+1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV). See [the weight-paint-automesh spec](../../specs/013-weight-paint-automesh/STUDY.md).
+2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`. See [the panel design](../../specs/013-weight-paint-automesh/panel-design.md).
+3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection. See [the paint design](../../specs/013-weight-paint-automesh/paint-design.md).
+4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen. See [the sidecar design](../../specs/013-weight-paint-automesh/sidecar-design.md).
 5. **Restore Weight Snapshot** - one-click revert to the last saved sidecar; topology mismatch aborts with a hint to re-run automesh with preserve ON.
 
-The writer (SPEC 003 / `proscenio_writer`) reads the final vertex groups and emits the `weights` array - it does not care which authoring path produced them.
+The writer (`proscenio_writer`) reads the final vertex groups and emits the `weights` array - it does not care which authoring path produced them.
 
 ## Versioning policy
 
@@ -126,4 +126,4 @@ Per-key `interp` field: `linear` or `constant`. Default `linear` if omitted.
 - Position / scale tracks: `INTERPOLATION_CUBIC`.
 - `sprite_frame` and `slot_attachment` tracks: `INTERPOLATION_NEAREST` (hard cuts).
 
-This means per-key `interp` is currently ignored for transform tracks - the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred SPEC tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred - it requires schema fields the v1 shape does not model.
+This means per-key `interp` is currently ignored for transform tracks - the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred spec tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred - it requires schema fields the v1 shape does not model.

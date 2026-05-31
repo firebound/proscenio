@@ -9,7 +9,7 @@ Photoshop import step (`../01_photoshop_base/`) consumes.
 | --- | --- | --- |
 | `doll_base.blend` | hand-authored | the canonical doll geometry / materials |
 | `doll_base.blend1` | Blender autosave | gitignored |
-| `doll_base.photoshop_manifest.json` | `../scripts/export_psd_manifest.py` | SPEC 006 v1 / SPEC 011 v2 manifest the PS importer reads |
+| `doll_base.photoshop_manifest.json` | `../scripts/export_psd_manifest.py` | the photoshop importer v1 / the photoshop tag system v2 manifest the PS importer reads |
 | `render_layers/<name>.png` | `../scripts/render_layers.py` | one PNG per mesh (front-ortho, Workbench flat). Drives the PSD placement step. |
 | `render_layers/pieces_sheet.png` | `../scripts/preview_pieces.py` | contact-sheet preview (reviewer aid; not consumed by the pipeline) |
 | `doll_base.expected.proscenio` | `scripts/fixtures/_shared/export_proscenio.py` | CI golden for the **direct Blender -> Godot writer** (not part of the artist workflow; protects the addon writer from regression) |
@@ -23,7 +23,7 @@ From the repo root:
 blender --background examples/authored/doll/00_blender_base/doll_base.blend \
     --python examples/authored/doll/scripts/render_layers.py
 
-# emit the SPEC 011 v2 PSD manifest
+# emit the photoshop tag system v2 PSD manifest
 blender --background examples/authored/doll/00_blender_base/doll_base.blend \
     --python examples/authored/doll/scripts/export_psd_manifest.py
 

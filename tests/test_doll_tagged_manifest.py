@@ -1,4 +1,4 @@
-"""SPEC 011 v1 parity oracle (Python side).
+"""the photoshop tag system parity oracle (Python side).
 
 Loads the committed `doll_tagged.photoshop_exported.json` from the doll
 fixture and asserts the schema + tag coverage. Pairs with the vitest

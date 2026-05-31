@@ -1,4 +1,4 @@
-"""Pure tests for authoring stage dataclasses (SPEC 013.2 interactive-modal, T12; AS-AM3 T3)."""
+"""Pure tests for authoring stage dataclasses (the interactive-modal work, T12;  T3)."""
 
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ from core.skinning.authoring_stages import (  # noqa: E402
 
 def test_authoring_stage_enum_order():
     assert AuthoringStage.OUTER == 0
-    assert AuthoringStage.USER_OUTER == 1
+    assert AuthoringStage.EDIT_OUTLINE == 1
     assert AuthoringStage.INNER_LOOPS == 2
-    assert AuthoringStage.USER_STEINERS == 3
-    assert AuthoringStage.STEINER_PREVIEW == 4
+    assert AuthoringStage.EDIT_INTERIOR_POINTS == 3
+    assert AuthoringStage.PREVIEW_INTERIOR == 4
     assert AuthoringStage.APPLY == 5
 
 
@@ -64,11 +64,11 @@ def test_stage_output_defaults_empty_lists():
 
 
 def test_authoring_stage_has_six_values_in_workflow_order():
-    assert AuthoringStage.OUTER < AuthoringStage.USER_OUTER
-    assert AuthoringStage.USER_OUTER < AuthoringStage.INNER_LOOPS
-    assert AuthoringStage.INNER_LOOPS < AuthoringStage.USER_STEINERS
-    assert AuthoringStage.USER_STEINERS < AuthoringStage.STEINER_PREVIEW
-    assert AuthoringStage.STEINER_PREVIEW < AuthoringStage.APPLY
+    assert AuthoringStage.OUTER < AuthoringStage.EDIT_OUTLINE
+    assert AuthoringStage.EDIT_OUTLINE < AuthoringStage.INNER_LOOPS
+    assert AuthoringStage.INNER_LOOPS < AuthoringStage.EDIT_INTERIOR_POINTS
+    assert AuthoringStage.EDIT_INTERIOR_POINTS < AuthoringStage.PREVIEW_INTERIOR
+    assert AuthoringStage.PREVIEW_INTERIOR < AuthoringStage.APPLY
     assert len(list(AuthoringStage)) == 6
 
 

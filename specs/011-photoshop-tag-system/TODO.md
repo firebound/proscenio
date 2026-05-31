@@ -1,8 +1,8 @@
-# SPEC 011 - TODO
+# Photoshop tag system - TODO
 
 Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the locked decisions and tag taxonomy.
 
-**Sequencing**: this SPEC starts after SPEC 010 Wave 10.7 (JSX retirement). Until 10.7 ships, the UXP exporter is in parity-mirror mode against the JSX baseline; tags break that oracle.
+**Sequencing**: this spec starts after the photoshop UXP migration retires the JSX exporter. Until that retirement ships, the UXP exporter is in parity-mirror mode against the JSX baseline; tags break that oracle.
 
 ## Decisions to lock
 
@@ -17,9 +17,9 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] D9 - tag authoring: bracket tags in name OR click in panel; both kept in sync; bracket wins on conflict.
 - [x] D10 - mini-app stays single React panel, no new deps.
 - [x] D11 - tag spelling locked at `[spritesheet]` (artist-recognised term; parser does a one-line lookup to translate to `kind: "sprite_frame"` at emit time).
-- [x] D12 - color labels dropped as a tagging channel. Bracket tag + XMP mirror are the single source of truth; color labels may resurface as a passive badge in a later SPEC but never set semantics here.
+- [x] D12 - color labels dropped as a tagging channel. Bracket tag + XMP mirror are the single source of truth; color labels may resurface as a passive badge in a later spec but never set semantics here.
 - [x] D13 - validator severity locked at warn-never-block.
-- [x] D14 - XMP support floor resolved by SPEC 010 Wave 10.7 PS minimum bump to PS 25 / CC 2024+; `uxp.xmp` ships there, no fallback needed.
+- [x] D14 - XMP support floor resolved by the photoshop UXP migration JSX retirement PS minimum bump to PS 25 / CC 2024+; `uxp.xmp` ships there, no fallback needed.
 
 ## Pre-implementation
 
@@ -32,17 +32,17 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
   - **mouth_drive** (`examples/generated/mouth_drive/`): Pillow-built, no PSD source. Single `mouth` sprite_frame (4 frames) + driver. Same tag shape as blink_eyes (`[spritesheet]` group + `[origin]` marker). The driver is a Blender-side authoring artefact, not a PSD-side concern.
   - **Outcome**: only the doll fixture needs full tag exercise. The procedural fixtures are deliberately kept tag-free to validate the v1-style minimal manifest path on the v2 parser. Each fixture's manifest is the migration baseline; no rewrites needed.
 
-## Wave 11.1 - bracket tag parser + schema v2
+## the first cut - bracket tag parser + schema v2
 
 - [x] Bracket-tag parser at `apps/photoshop/src/domain/tag-parser.ts`. Lexes `[tag]` / `[tag:value]` tokens from layer / group names; returns stripped display name + tag bag. Unknown brackets pass through.
 - [x] Planner consumes the tag bag: `[ignore]`, `[spritesheet]`, `[polygon]` / `[sprite]` / `[mesh]`, `[folder:name]`, `[path:name]`, `[scale:n]`, `[blend:mode]`, `[origin:x,y]`, `[origin]` marker layer. `[merge]` and `[name:pre*suf]` parsed but not yet wired (deferred to follow-up waves; the parser tolerates them).
 - [x] Dropped the legacy `_<name>` skip path AND the `<base>_<index>` flat-aggregation pass.
 - [x] Schema bumped to v2 at `schemas/psd_manifest.schema.json`. New fields: top-level `anchor`; per-entry `origin`, `blend_mode`, `subfolder`; `kind` accepts `"mesh"`.
-- [x] TypeScript types in `src/domain/manifest.ts` and the ajv validator updated. Blender-side `apps/blender/core/psd_manifest.py` parser bumped to accept v2 (`anchor`, `origin`, `blend_mode`, `subfolder`, `kind: "mesh"`); the importer's downstream semantics still need wiring (Wave 11.7).
+- [x] TypeScript types in `src/domain/manifest.ts` and the ajv validator updated. Blender-side `apps/blender/core/psd_manifest.py` parser bumped to accept v2 (`anchor`, `origin`, `blend_mode`, `subfolder`, `kind: "mesh"`); the importer's downstream semantics still need wiring (the photoshop tag system work.7).
 - [x] Existing fixtures bumped to `format_version: 2` (additive change; the v1 shape is a strict subset of v2).
 - [x] Unit tests: 18 cases on the tag parser, 12 cases on the planner against synthetic Layer trees, 4 ajv contract cases. All v2.
 
-## Wave 11.2 - origin / pivot semantics
+## the second wave - origin / pivot semantics
 
 - [x] `[origin]` marker layer inside a sprite_frame OR `[merge]` group: planner skips its PNG output and records the marker's bbox-center as the entry's `origin`.
 - [x] `[origin:x,y]` on the layer / group itself: planner reads the explicit coords, no marker needed; wins over an inner marker.
@@ -50,7 +50,7 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] Blender importer companion: armature object placed at the manifest `anchor` (world-space conversion in `_anchor_world`); per-entry `origin` becomes the mesh's `Object.location` with a baked geometry offset so the visible texture stays where the bbox says.
 - [x] Fixture: dedicated mini-PSD with one `[origin]` marker per body part. **Closed deferred**: the doll oracle (`02_photoshop_setup/doll_tagged.psd`) + `tag_smoke` synthetic both exercise `[origin]` + `[origin:X,Y]` end-to-end (see `tests/test_doll_tagged_manifest.py::test_origins_from_explicit_and_marker` and `apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`). A standalone fixture would be redundant. Tracked in `specs/backlog.md::Dedicated origin / pivot fixture` for future revival.
 
-## Wave 11.3 - tags UI mini-app (Tags tab)
+## the productivity follow-up - tags UI mini-app (Tags tab)
 
 - [x] React tree component listing the active document's layer hierarchy. Lazy-render below 100 visible nodes; virtualise above. (Lazy render via React.memo + structural reuse; virtualisation deferred - panel size limits exposure.)
 - [x] Row per layer: name (bracket tags as badges), kind override dropdown, `[ignore]` checkbox, `[merge]` checkbox. (Thumbnail deferred - UXP thumbnail API requires async + caching for cost.)
@@ -58,25 +58,25 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
 - [x] Subscribe to `action.addNotificationListener` for `select`, `make`, `delete`, `set`; polling fallback covers UXP builds where the listener factory returns `void`.
 - [x] Writing a tag from the UI: edits the layer name AND mirrors the parsed bag into XMP under `proscenio:v1:tags/<layer-path>` (best-effort; never blocks rename). Read path is bracket-tag canonical for now; XMP-first read deferred.
 
-## Wave 11.4 - Validate tab
+## a follow-up - Validate tab
 
 - [x] Pre-export validator runs the planner; the `previewExport` helper collects warnings + skipped without writing.
 - [x] Warning categories: duplicate-path, conflicting-tags, sprite-frame-malformed, origin-outside-container, empty-bounds, scale-subpixel. (`[folder]` collision deferred - definition is ambiguous: same folder across siblings can be intentional.)
 - [x] Each warning row clickable -> selects the offending layer in PS via batchPlay.
 - [x] Validate tab runs continuously when the panel is visible (polling + visibility-aware skip).
 
-## Wave 11.5 - Reveal-output helper + filename template
+## the photoshop tag system work.5 - Reveal-output helper + filename template
 
 - [x] When a layer is selected in PS, the Tags panel `RevealOutputSection` shows the manifest entry that would be emitted (kind, name, path, position, size, origin, blend, subfolder) plus the on-disk PNG path under the current folder.
 - [x] "Re-export this entry's PNG" button on the reveal section. Filters `plan.writes` to the matching entry's writes and runs `runWrites` only - manifest untouched.
 - [x] Filename template setting persisted in `localStorage`. Tokens supported: `{name}`, `{kind}`, `{index}`. (`{group}` / `{layer}` deferred - the joinName cascade gives equivalent control via the chain prefix.)
 
-## Wave 11.6 - XMP polish + legacy migration
+## the photoshop tag system work.6 - XMP polish + legacy migration
 
 - [x] XMP write path: feature-detects `uxp.xmp`; every write is wrapped so failures (missing API, unparseable metadata) log at debug and never block the rename pipeline.
 - [x] Migration helper: "Convert `_` prefixes to `[ignore]`" preview + apply button in the Exporter panel. Pure planner + UXP applier, unit-tested.
 
-## Wave 11.7 - Blender importer companion
+## the photoshop tag system work.7 - Blender importer companion
 
 - [x] Importer reads `format_version: 2`; falls back to v1 path (parser accepts both, rejects v2-only fields when version is 1). Tests: `tests/test_psd_manifest.py::test_v1_*` + `::test_v2_*`.
 - [x] Read `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, `is_mesh`. Translate:
@@ -84,17 +84,17 @@ Photoshop tag system + plugin UI mini-app. See [STUDY.md](STUDY.md) for the lock
   - `origin` -> mesh `Object.location`; quad geometry offset baked so the texture still displays at the bbox-centre.
   - `blend_mode` -> material `blend_method` (`BLEND` for normal/multiply/screen, `ADDITIVE` for additive) + custom prop `proscenio_blend_mode` for downstream writers (Godot side does the exact mapping).
   - `subfolder` -> nested Blender `Collection` hierarchy under the scene root.
-  - `kind="mesh"` -> stamped as `proscenio_psd_kind = "mesh"` (vs `"polygon"`); flag for downstream SPEC 002 / 008 work; no deformation yet.
+  - `kind="mesh"` -> stamped as `proscenio_psd_kind = "mesh"` (vs `"polygon"`); flag for downstream the spritesheet sprite2d work / 008 work; no deformation yet.
 - [x] Fixture: doll PSD with `[origin]` markers + guide-defined anchor; goldens regenerated. Authored `02_photoshop_setup/doll_tagged.psd` end-to-end (anchor from PSD guides, origin markers inside the spritesheet group, explicit `[origin:X,Y]` on `belly` / `arm.R`). Re-exported manifest committed at `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` + `tests/test_doll_tagged_manifest.py` pins the structural invariants.
 
-## Wave 11.8 - Documentation + parity oracle
+## the photoshop tag system work.8 - Documentation + parity oracle
 
 - [x] Update [`docs/PHOTOSHOP-WORKFLOW.md`](../../docs/PHOTOSHOP-WORKFLOW.md): tag table replaces the underscore-prefix section (landed in `3931390`).
 - [x] Update [`.ai/skills/photoshop-uxp-dev.md`](../../.ai/skills/photoshop-uxp-dev.md) with the tag parser internals + XMP namespace (landed in `3931390`).
 - [x] Add a new fixture that exercises every tag in the v1 taxonomy. **Two-fixture answer**:
   - `examples/authored/doll/02_photoshop_setup/doll_tagged.psd` - real PSD with every tag, hand-authored, parity oracle.
   - `examples/generated/psd_to_blender/tag_smoke/` - synthetic planner-side regression baseline + golden JSON snapshot ([`tag_smoke.expected.json`](../../examples/generated/psd_to_blender/tag_smoke/tag_smoke.expected.json)). Vitest at [`apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts`](../../apps/photoshop/uxp-plugin-tests/tag-smoke.test.ts).
-- [x] Re-run the SPEC 010 doll-roundtrip oracle against schema v2. **Closed deferred**: the SPEC 010 Wave 10.3 byte-equal capture pinned the v1 JSX baseline; for v2, the structural pin lives in `tests/test_doll_tagged_manifest.py` (13 asserts on every tag's manifest projection). A fresh SHA-equal capture against `doll_tagged.psd` adds little signal over the structural test - tracked in `specs/backlog.md::SPEC 010 doll-roundtrip oracle re-run against schema v2` for the case where the exporter changes serialisation strategy.
+- [x] Re-run the photoshop UXP migration doll-roundtrip oracle against schema v2. **Closed deferred**: the photoshop UXP migration's byte-equal capture pinned the v1 JSX baseline; for v2, the structural pin lives in `tests/test_doll_tagged_manifest.py` (13 asserts on every tag's manifest projection). A fresh SHA-equal capture against `doll_tagged.psd` adds little signal over the structural test - tracked in [`specs/backlog.md`](../backlog.md#doll-roundtrip-oracle-re-run-against-schema-v2) for the case where the exporter changes serialisation strategy.
 
 ## Additional work surfaced during implementation
 
@@ -107,8 +107,8 @@ the way.
 - **Logger module** ([`apps/photoshop/src/util/log.ts`](../../apps/photoshop/src/util/log.ts)) with 6 levels (trace/debug/info/warn/error/off), localStorage persistence, cross-panel sync via 500ms cache, and `window.proscenio.setLogLevel` debug surface. Added because the UXP DevTools console is the only debugger available and we needed gated tracing.
 - **Polling fallback** for UXP builds where `action.addNotificationListener` returns `void` (no teardown handle, no events). Implemented for `useDocumentChanges`, `useActiveLayerPath` (300ms), `useTagTree` (1.5s). Bails when `document.hidden` is true so background panels do not burn cycles.
 - **Structural reuse** in `buildTagTreeReusing` to keep `TagTreeNode` references stable across polls when nothing changed. Drives `React.memo` short-circuit on `prev.node === next.node` (single pointer compare instead of structural walk). Fast path also skips `parseLayerName` regex when the row is being reused.
-- **Pixels-per-unit UI control** in the Export tab (with persisted value + live "Canvas height = N units" hint). Out of scope of the SPEC but the manifest field exists and downstream needs a way to set it without code edits.
-- **Legacy migration helper** ([`apps/photoshop/src/domain/legacy-migration.ts`](../../apps/photoshop/src/domain/legacy-migration.ts)) for Wave 11.6's `_<name>` -> `[ignore]` rewrite. Pure planner + UXP applier separated; the planner has unit tests.
+- **Pixels-per-unit UI control** in the Export tab (with persisted value + live "Canvas height = N units" hint). Out of scope of the spec but the manifest field exists and downstream needs a way to set it without code edits.
+- **Legacy migration helper** ([`apps/photoshop/src/domain/legacy-migration.ts`](../../apps/photoshop/src/domain/legacy-migration.ts)) for the photoshop tag system work.6's `_<name>` -> `[ignore]` rewrite. Pure planner + UXP applier separated; the planner has unit tests.
 - **Shared layer-find helper** ([`apps/photoshop/src/io/_layer-find.ts`](../../apps/photoshop/src/io/_layer-find.ts)) used by both `layer-rename` and `legacy-migration` (was duplicated).
 - **Shared `elementsEqual<T>`** in [`apps/photoshop/src/util/arrays.ts`](../../apps/photoshop/src/util/arrays.ts) (was duplicated four ways across hooks and section components).
 

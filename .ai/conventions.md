@@ -14,15 +14,15 @@ test/<slug>                   # Tests only
 ci/<slug>                     # Workflow changes
 ```
 
-Prefix vocabulary matches [Conventional Commits](https://www.conventionalcommits.org/). When the work implements a numbered SPEC, embed the number after the prefix as a stable search token: `feat/spec-<NNN>-<slug>`. The SPEC infix is a navigation aid, not a hard gate - omit it when the work is component-wide rather than SPEC-driven.
+Prefix vocabulary matches [Conventional Commits](https://www.conventionalcommits.org/). When the work implements a numbered spec under `specs/`, embed the number after the prefix as a stable search token: `feat/spec-<NNN>-<slug>`. The spec infix is a navigation aid, not a hard gate - omit it when the work is component-wide rather than spec-driven.
 
-Examples: `feat/spec-003-skinning-weights`, `feat/photoshop-ui`, `fix/blender-bugs`, `chore/install-dev`.
+Examples: `feat/spec-013-weight-paint-automesh`, `feat/photoshop-ui`, `fix/blender-bugs`, `chore/install-dev`.
 
 Reference issues in the commit body (`Refs: #42`), not in the branch name. Keep branch names readable.
 
 ## Workflow
 
-- `main` holds planning artifacts (SPEC studies and TODOs, backlogs) and small chores. Planning docs land directly on `main` because they cross PR boundaries and inform parallel work.
+- `main` holds planning artifacts (spec studies and TODOs, backlogs) and small chores. Planning docs land directly on `main` because they cross PR boundaries and inform parallel work.
 - Implementation work lives on a topic branch (typically `feat/spec-<NNN>-<slug>` or `fix/<slug>`) and merges back via PR.
 - Commit gradually as work progresses. The merge can squash if the PR scope warrants it, but the branch history is the audit trail while work is in flight. A long PR benefits from many small commits; a tight bugfix is fine as one.
 
@@ -43,6 +43,97 @@ Reference issues in the commit body (`Refs: #42`), not in the branch name. Keep 
 | `kebab-case` | Config and workflow file names |
 | `lower-case-no-spaces.proscenio` | Asset files |
 | `UPPER_SNAKE_CASE` | Module-level constants |
+
+## Documentation style
+
+All documentation, code comments, docstrings, commit messages, PR descriptions, and prose under `specs/` follow a small set of positive rules. The goal is text that reads like a human wrote it for another human.
+
+### English with technical terms
+
+Prose is English. Technical terms keep their canonical spelling (`Skeleton2D`, `bmesh`, `bone_collections`, `format_version`, `EditorImportPlugin`). Identifiers in code blocks and config snippets are quoted verbatim; do not translate or paraphrase them.
+
+### Reference features by name
+
+Sections, links, and prose name the feature being discussed:
+
+```markdown
+## Pen tool: draw contour from alpha boundary
+Trigger via LMB drag in the interior-edit stage. Release happens
+on tablet pressure zero or window deactivate.
+
+See [the weight-paint-automesh spec](../specs/013-weight-paint-automesh/STUDY.md).
+```
+
+The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Decision identifiers `D1`-`D16` stay (concise, locked, scoped to their owning spec). Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name.
+
+### Scenarios get descriptive titles
+
+Manual test scenarios, design walk-throughs, and worked examples lead with a one-line title that describes the user-visible outcome:
+
+```markdown
+### Scenario: pen tool draws contour from alpha boundary
+1. Open the fixture in Blender.
+2. Select `hand`.
+3. Skinning panel > Automesh from sprite > Automesh (modal).
+```
+
+Scenarios are numbered within a section when ordering matters. The title carries the meaning; the number is only an ordinal.
+
+### Bug reports lead with the symptom
+
+`tests/BUGS_FOUND.md` and inline bug notes start with a one-line description of what the user sees, then context:
+
+```markdown
+### Polygon at world origin instead of slot location
+Writer reads `matrix_world` while the source mesh has
+`hide_viewport=True`, so the world matrix is stale.
+```
+
+### Enum values describe the state
+
+GDScript / Python / TypeScript enums use names that read aloud:
+
+```python
+class AuthoringStage(StrEnum):
+    OUTLINE = "outline"
+    EDIT_INTERIOR_POINTS = "edit_interior_points"
+    PREVIEW_FILL = "preview_fill"
+    APPLY = "apply"
+```
+
+The token shape (`SCREAMING_SNAKE`, `PascalCase`) follows the language convention; the words inside describe the state.
+
+### Commit subjects are imperative English
+
+Each commit subject reads as one sentence telling the repo what to do:
+
+```text
+feat(blender): add toggle-pen gesture to interior edit stage
+fix(godot): flip Y on bone transform tracks
+docs(specs): document weight-sidecar reproject decisions
+```
+
+PR titles follow the same shape. Subjects do not contain ticket numbers, dates, or internal task IDs. The body carries motivation when it is not obvious from the diff.
+
+### Periodic audit
+
+The pre-commit hooks reject the most common drift markers (see [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) "drift markers" section). Run a broader sweep against the whole tree on demand - useful before a release or after a long agent-driven session. Commands assume `ripgrep`; substitute `grep -rEIn ... --include=...` if `rg` is not available.
+
+```sh
+# Drift markers across docs + code.
+rg -nIH '\bSPEC \d{3}\b|\bWave \d+\.\d+|\bAS-AM\d+' -g '!node_modules' -g '!dist' -g '!__pycache__'
+
+# Substitution artifacts (left by earlier rewrite passes).
+rg -nIH '\bthe the \b|this spec spec\b' -g '!node_modules' -g '!dist'
+
+# LLM filler phrases.
+rg -nIH '\b(obviously|Let'\''s|Note that|It'\''s important to|Keep in mind)\b' -g '*.md' -g '*.py' -g '*.gd' -g '*.ts' -g '*.tsx'
+
+# Em-dash (project uses hyphen-minus).
+rg -nIH '—' -g '!node_modules' -g '!dist'
+```
+
+A clean sweep returns no output. A noisy sweep means the drift list grew - either fix the hits or extend the allowlist in the pre-commit hook with a stated reason.
 
 ## JSON keys
 
@@ -143,7 +234,7 @@ Golden-fixture tests for both writer and importer. Negative-case fixtures (inten
 
 ### Headless operator pytest pattern
 
-Introduced by SPEC 013.2 Wave 13.2 bind. Use this layer when an operator's behavior depends on bpy state (vertex groups, custom properties, scene PG) that pure pytest cannot exercise.
+Introduced for the weight-paint bind operator. Use this layer when an operator's behavior depends on bpy state (vertex groups, custom properties, scene PG) that pure pytest cannot exercise.
 
 Layout:
 

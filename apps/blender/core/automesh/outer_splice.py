@@ -1,6 +1,6 @@
-"""Splice extend strokes into the outer contour (SPEC 013 AS-AM10).
+"""Splice extend strokes into the outer contour (the weight-paint-automesh spec ).
 
-Used by Stage 2 USER_OUTER to extend the auto-walker silhouette with
+Used by Stage 2 EDIT_OUTLINE to extend the auto-walker silhouette with
 artist-drawn paths. Pure module: no bpy / mathutils.
 
 Wrap-around case (exit_outer_idx < entry_outer_idx) notes

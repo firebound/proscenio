@@ -1,6 +1,6 @@
 // Proscenio main panel. Pure composition: each section owns its own
 // presentation, each hook owns its own state. The panel only wires
-// them together. Adding a new section (e.g. SPEC 011 tag inspector)
+// them together. Adding a new section (e.g. the photoshop tag system tag inspector)
 // means adding one hook + one section component, not editing this
 // file.
 

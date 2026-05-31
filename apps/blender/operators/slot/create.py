@@ -1,4 +1,4 @@
-"""Slot creation operator (SPEC 004 D8)."""
+"""Slot creation operator (the slot system D8)."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _slot_bone_target(
 
 
 class PROSCENIO_OT_create_slot(bpy.types.Operator):
-    """Create or wrap meshes into a Proscenio slot (SPEC 004 D8)."""
+    """Create or wrap meshes into a Proscenio slot (the slot system D8)."""
 
     bl_idname = "proscenio.create_slot"
     bl_label = "Proscenio: Create Slot"

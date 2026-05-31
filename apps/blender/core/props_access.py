@@ -1,4 +1,4 @@
-"""Typed accessors for Proscenio PropertyGroups (SPEC 009 wave 9.1).
+"""Typed accessors for Proscenio PropertyGroups (the code-modularity work).
 
 Replaces the ~12 inline ``getattr(scene, "proscenio", None)`` /
 ``getattr(obj, "proscenio", None)`` repetitions across operators and

@@ -1,4 +1,4 @@
-# atlas_pack fixture (SPEC 005.1.c)
+# atlas_pack fixture (the authoring panel.1.c)
 
 Workbench for the **atlas packer** - Pack / Apply / Unpack flow on the Atlas subpanel. Nine distinct sprite meshes, nine distinct PNGs, nine materials. The fixture exists so the panel has something to chew on with enough variety to make padding / POT / max-size behavior visible.
 
@@ -13,7 +13,7 @@ examples/generated/atlas_pack/
 ├── pillow_layers/
 │   ├── sprite_1.png .. sprite_9.png   32x32, distinct color + digit
 └── godot/
-    ├── AtlasPack.tscn           Godot wrapper (SPEC 001 pattern)
+    ├── AtlasPack.tscn           Godot wrapper (the reimport-merge work pattern)
     └── AtlasPack.gd             empty stub
 ```
 
@@ -54,7 +54,7 @@ blender --background examples/generated/atlas_pack/atlas_pack.blend \
 
 ## Testing the Atlas panel (manual)
 
-See [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.md) section 1.10 - this fixture is the workbench used there.
+See the Atlas section of [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.md) - this fixture is the workbench used there.
 
 Quick smoke (high level):
 

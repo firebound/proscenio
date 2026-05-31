@@ -1,4 +1,4 @@
-"""Pure tests for SPEC 013 interior_mode (AS-AM14)."""
+"""Pure tests for the weight-paint-automesh spec interior_mode."""
 
 from __future__ import annotations
 

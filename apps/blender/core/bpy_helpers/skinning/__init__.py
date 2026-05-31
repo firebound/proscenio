@@ -1,4 +1,4 @@
-"""bpy-bound skinning helpers (SPEC 013.2)."""
+"""bpy-bound skinning helpers (the weight-paint productivity follow-up)."""
 
 from .automesh_hook import maybe_post_regen_reproject, maybe_pre_regen_snapshot
 from .bind_apply import apply_bind

@@ -1,4 +1,4 @@
-"""Orthographic preview camera authoring shortcut (SPEC 005.1.b)."""
+"""Orthographic preview camera authoring shortcut (the authoring panel.1.b)."""
 
 from __future__ import annotations
 

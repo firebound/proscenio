@@ -1,4 +1,4 @@
-// SPEC 011 Wave 11.6: `_<name>` -> `[ignore]` rename planner.
+// the photoshop tag system the photoshop-tag work.6: `_<name>` -> `[ignore]` rename planner.
 
 import { describe, expect, it } from "vitest";
 

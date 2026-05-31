@@ -64,7 +64,7 @@ static func attach_sprites(
 			sprite.region_rect = Rect2(region[0], region[1], region[2], region[3])
 
 		var bone_name: String = NodeNameUtil.sanitize(sprite_data.get("bone", ""))
-		# Slot routing (SPEC 004 D6): sprite_frame attachments compose with
+		# Slot routing (the slot system D6): sprite_frame attachments compose with
 		# polygon attachments under the same slot Node2D. Default-attachment
 		# starts visible, others start hidden - the slot_attachment track
 		# (animation_builder.gd) flips visibility per key at runtime.

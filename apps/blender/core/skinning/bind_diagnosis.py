@@ -1,4 +1,4 @@
-"""Pre-flight diagnoses for the bind operator (SPEC 013.2, D11).
+"""Pre-flight diagnoses for the bind operator (the weight-paint productivity follow-up, D11).
 
 Five structured checks that catch the most common bind failure
 modes before the user wastes time on a bad bind. Errors abort

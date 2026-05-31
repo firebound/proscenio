@@ -1,4 +1,4 @@
-"""Cut stroke geometry (SPEC 013 AS-AM7).
+"""Cut stroke geometry (the weight-paint-automesh spec ).
 
 Generate 2 parallel offset polylines perpendicular to a stroke path.
 Each pair forms a "lens" polygon used for post-CDT face-prune.

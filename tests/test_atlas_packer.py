@@ -1,4 +1,4 @@
-"""Unit tests for the vendored MaxRects atlas packer (SPEC 005.1.c.2).
+"""Unit tests for the vendored MaxRects atlas packer (the atlas packer).
 
 The packer is bpy-free pure Python; tests run without Blender. Coverage:
 

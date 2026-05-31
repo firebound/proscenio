@@ -1,4 +1,4 @@
-"""Automesh pre/post regen hook (SPEC 013.2 sidecar, T11).
+"""Automesh pre/post regen hook (the sidecar work, T11).
 
 Pre-hook: snapshot current weights into a WeightSidecar.
 Post-hook: reproject prior entries onto new topology + apply.

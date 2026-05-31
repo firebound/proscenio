@@ -1,6 +1,6 @@
 """Operator that wraps :func:`importers.photoshop.import_manifest`.
 
-Surfaces a panel button + file picker for the SPEC 006 PSD manifest
+Surfaces a panel button + file picker for the photoshop importer PSD manifest
 importer. Reports the number of stamped meshes (and any skipped
 layers) via ``self.report`` so the user gets visible feedback in the
 Blender info bar.
@@ -25,7 +25,7 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
     bl_idname = "proscenio.import_photoshop"
     bl_label = "Proscenio: Import Photoshop Manifest"
     bl_description = (
-        "Read a Photoshop manifest (SPEC 006 v1) and stamp one quad mesh "
+        "Read a Photoshop manifest (the photoshop importer v1) and stamp one quad mesh "
         "per layer, plus a stub armature for posing"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}

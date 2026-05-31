@@ -1,4 +1,4 @@
-"""Restore weight snapshot operator (SPEC 013.2 sidecar, T10).
+"""Restore weight snapshot operator (the sidecar work, T10).
 
 Reapplies the stored sidecar to the active mesh. Single
 responsibility - reverts manual paint to the last saved bind /

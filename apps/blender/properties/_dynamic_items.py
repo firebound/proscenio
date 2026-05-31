@@ -1,4 +1,4 @@
-"""EnumProperty dynamic-items + PointerProperty poll callbacks (SPEC 009 wave 9.7).
+"""EnumProperty dynamic-items + PointerProperty poll callbacks (the code-modularity work).
 
 Isolates the small bpy-side gotchas that surround the
 ``ProscenioObjectProps`` driver picker:
@@ -11,7 +11,7 @@ Isolates the small bpy-side gotchas that surround the
   of the addon, dodging the EnumProperty GC bug where Blender frees
   the returned list mid-draw and corrupts the UI strings.
 - ``_on_any_update``: shared update callback that mirrors every PG
-  field to its Custom Property on every edit (post-005.1.c.1 fix).
+  field to its Custom Property on every edit (post-00the mirror-fix work fix).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def driver_bone_items(
 def on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
     """Mirror every field on any panel edit.
 
-    Bug fix (post-005.1.c.1): individual per-field callbacks left the
+    Bug fix (post-00the mirror-fix work): individual per-field callbacks left the
     CP set partial - defaults never fired their callback, so Reload
     Scripts restored only the field the user touched. Mirroring all 10
     fields on every update keeps the CP snapshot complete after the

@@ -1,4 +1,4 @@
-"""Pure tests for outer_splice (AS-AM10)."""
+"""Pure tests for outer_splice."""
 
 from __future__ import annotations
 

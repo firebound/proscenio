@@ -229,7 +229,7 @@ func _build_character(data: Dictionary) -> Node2D:
 	var skeleton: Skeleton2D = SkeletonBuilder.build(data.get("skeleton", {}))
 	character.add_child(skeleton)
 	# Slots build BEFORE sprites so the sprite builders can route attachment
-	# children under the slot Node2D parent (SPEC 004 Wave 4.2). Mirrors the
+	# children under the slot Node2D parent (the slot system). Mirrors the
 	# order in importer.gd._import.
 	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
 	# Both builders discriminator-filter their own kind - calling both is
@@ -246,7 +246,7 @@ func _build_character(data: Dictionary) -> Node2D:
 	return character
 
 
-# SPEC 001: re-running the importer on the same `.proscenio` must produce
+# the reimport-merge work: re-running the importer on the same `.proscenio` must produce
 # a structurally identical scene. We cannot diff packed-scene bytes
 # headlessly without an editor session, so the equivalence check compares
 # the construction output (node hierarchy + key transforms + animation

@@ -1,4 +1,4 @@
-# simple_psd fixture (SPEC 006)
+# simple_psd fixture (the photoshop importer)
 
 Smallest end-to-end exercise of the **Photoshop -> Blender importer**:
 one polygon layer + one sprite_frame group of 4 frames driven by a v1
@@ -11,7 +11,7 @@ PSD manifest. Use this fixture when debugging the manifest -> stamper
 examples/generated/simple_psd/
 ├── simple_psd.blend                       [SOURCE - built by build_blend.py from the manifest]
 ├── simple_psd.expected.proscenio          [GOLDEN - CI-diffed validation midpoint]
-├── simple_psd.photoshop_manifest.json     [INPUT - hand-authored SPEC 006 v1 manifest]
+├── simple_psd.photoshop_manifest.json     [INPUT - hand-authored the photoshop importer v1 manifest]
 ├── pillow_layers/                         [INPUT - per-layer PNGs the manifest references]
 │   ├── square.png                64x64 - polygon layer
 │   ├── arrow_0.png               32x32 - sprite_frame, frame 0 (up)
@@ -40,7 +40,7 @@ pillow_layers/*.png (drawn by Pillow)
             └──► CI compares against re-export of simple_psd.blend each run
 ```
 
-The fixture is a **roundtrip integration test** of the SPEC 006
+The fixture is a **roundtrip integration test** of the photoshop importer
 importer: any regression in the manifest parser, the polygon stamper,
 the sprite_frame composer, or the world-rect coordinate conversion
 shows up as a golden-diff in the next `run_tests.py` pass.

@@ -1,12 +1,13 @@
-"""PSD layer naming convention helpers (SPEC 006 Wave 6.2).
+"""PSD layer naming convention helpers (the photoshop importer).
 
-Pure Python - no bpy, no Pillow. The JSX exporter (Wave 6.1) uses the
-same rules in JavaScript when classifying layer groups; this module
-provides the Python mirror so the importer can sanity-check that a
-sprite_frame manifest entry's children actually look like indexed
-frames before composing the spritesheet.
+Pure Python - no bpy, no Pillow. The Photoshop UXP plugin (and the
+retired JSX exporter before it) uses the same rules in JavaScript /
+TypeScript when classifying layer groups; this module provides the
+Python mirror so the importer can sanity-check that a sprite_frame
+manifest entry's children look like indexed frames before composing
+the spritesheet.
 
-Locked conventions (SPEC 006 D9):
+Locked conventions (photoshop importer D9):
 
 - Indexed frame layer names match one of:
     - ``\\d+``           (e.g. ``0``, ``1``, ``12``)
@@ -17,7 +18,7 @@ Locked conventions (SPEC 006 D9):
   matches one of the patterns above with the **same** convention,
   the indices are 0-based, contiguous, and start at 0.
 
-- Fallback (SPEC 007 D4): top-level layers ``eye_0``, ``eye_1`` … get
+- Fallback (the testing-fixtures spec D4): top-level layers ``eye_0``, ``eye_1`` … get
   grouped by stripping the ``_<index>`` suffix.
 """
 
@@ -102,7 +103,7 @@ def is_uniform_indexed_group(child_names: list[str]) -> bool:
 
 
 def group_by_index_suffix(layer_names: list[str]) -> dict[str, list[tuple[int, str]]]:
-    """Aggregate flat ``<base>_<index>`` layers (SPEC 007 D4 fallback).
+    """Aggregate flat ``<base>_<index>`` layers (the testing-fixtures spec D4 fallback).
 
     Walks ``layer_names`` and groups every entry that matches the
     ``<base>_<index>`` convention by base. Layers that do not match

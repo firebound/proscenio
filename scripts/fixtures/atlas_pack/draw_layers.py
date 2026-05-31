@@ -1,4 +1,4 @@
-"""Generate atlas_pack PNG layers (SPEC 005.1.c packer test fixture).
+"""Generate atlas_pack PNG layers (the authoring panel.1.c packer test fixture).
 
 Run with::
 

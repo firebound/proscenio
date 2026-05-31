@@ -12,7 +12,7 @@ dev = [
     "check-jsonschema>=0.29",
     "pytest>=8",
     "pre-commit>=4.0",
-    # Pillow is used only by the SPEC 007 fixture builders under
+    # Pillow is used only by the testing-fixtures spec fixture builders under
     # ``scripts/fixtures/`` to generate PNG layers without Blender.
     # Not bundled with the addon — strictly dev / fixture tooling.
     "pillow>=10.0",
@@ -47,7 +47,7 @@ namespace_packages = true
 mypy_path = "."
 files = ["exporters", "operators", "panels", "properties", "core", "importers", "tests"]
 # `tests/fixtures/` holds frozen JSON, not Python.
-# `tests/operators/` is the SPEC 013.2 headless operator pytest layer:
+# `tests/operators/` is the weight-paint productivity follow-up headless operator pytest layer:
 # runs INSIDE Blender's bundled Python (which has pytest installed),
 # uses pytest fixtures (untyped by convention), and asserts via bpy
 # state. mypy strict on the host environment trips on the missing

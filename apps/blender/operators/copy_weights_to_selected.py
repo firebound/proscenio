@@ -1,4 +1,4 @@
-"""Copy vertex weights from active mesh to selected targets (SPEC 013 O7)."""
+"""Copy vertex weights from active mesh to selected targets (the weight-paint productivity follow-up (weight transfer))."""
 
 from __future__ import annotations
 

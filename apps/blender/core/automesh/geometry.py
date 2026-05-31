@@ -1,9 +1,9 @@
-"""Pure-Python geometry helpers for SPEC 013 automesh.
+"""Pure-Python geometry helpers for the weight-paint-automesh spec automesh.
 
 bpy-free. Refines raw contour points from
-``core/alpha_contour.py`` into the smooth, evenly-spaced contours
+``core/automesh/contour.py`` into the smooth, evenly-spaced contours
 the bpy bridge feeds into ``bmesh.ops.triangle_fill`` to build the
-annulus topology (SPEC 013 D2).
+annulus topology (weight-paint-automesh D2).
 
 Two transforms ship here:
 

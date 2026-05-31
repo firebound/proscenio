@@ -1,4 +1,4 @@
-"""Pure helpers for sidecar snapshot reconstruction (SPEC 013).
+"""Pure helpers for sidecar snapshot reconstruction (the weight-paint-automesh spec).
 
 Used by maybe_pre_regen_snapshot to rebuild a sidecar from current
 vertex_groups state when no prior sidecar exists (mixed-flow case:

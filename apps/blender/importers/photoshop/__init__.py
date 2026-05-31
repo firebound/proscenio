@@ -1,4 +1,4 @@
-"""Photoshop manifest importer (SPEC 006 Wave 6.3).
+"""Photoshop manifest importer (the photoshop importer).
 
 Orchestrator. Reads a PSD manifest v1 (parser lives in
 ``core.psd_manifest``), iterates layers, dispatches each entry to the

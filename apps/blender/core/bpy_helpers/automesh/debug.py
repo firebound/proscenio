@@ -1,4 +1,4 @@
-"""Debug-stage companion-object emission for SPEC 013 automesh.
+"""Debug-stage companion-object emission for the weight-paint-automesh spec automesh.
 
 bpy-bound. Lives in ``core/bpy_helpers/``. Builds visualization
 meshes the user can toggle stage-by-stage to inspect the pipeline

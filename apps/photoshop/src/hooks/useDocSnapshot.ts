@@ -2,9 +2,9 @@
 // React state. Refreshes on demand (the panel exposes a button)
 // because UXP does not auto-rerender on PS document changes.
 //
-// Wave 10.4 stopped here intentionally. Subscribing to PS notification
+// The photoshop UXP migration stopped here intentionally. Subscribing to PS notification
 // events (`action.addNotificationListener` for `select`, `open`,
-// `close`, ...) is parked for SPEC 011 when the tag inspector needs
+// `close`, ...) is parked for the photoshop tag system when the tag inspector needs
 // the live tree to drive its UI.
 
 import React from "react";

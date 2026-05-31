@@ -1,4 +1,4 @@
-"""Pure-Python slot emission helpers (SPEC 004 Wave 4.1).
+"""Pure-Python slot emission helpers (the slot system).
 
 Bpy-free. The writer's bpy walker (``_build_slots`` in
 ``exporters/godot/writer.py``) shapes its inputs into the structures

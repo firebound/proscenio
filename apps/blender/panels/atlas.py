@@ -38,7 +38,7 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
 
 
 def _draw_packer_box(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
-    """Atlas packer controls (5.1.c.2): config + pack + apply."""
+    """Atlas packer controls (the atlas packer): config + pack + apply."""
     scene_props = getattr(context.scene, "proscenio", None)
     if scene_props is None:
         return

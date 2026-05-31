@@ -1,10 +1,10 @@
 ; Documentation-by-example wrapper scene for the Proscenio slot_cycle fixture.
 ;
-; Smallest end-to-end exercise of the SPEC 004 slot system: one slot
+; Smallest end-to-end exercise of the slot system: one slot
 ; with three colored attachment polygons, an animation that cycles
 ; visibility through them. Wrapper instances the imported scene and
 ; lets the user attach scripts / collisions / extra nodes here without
-; losing them on reimport (SPEC 001 Option A).
+; losing them on reimport (the reimport-merge work Option A).
 ;
 ; Drop `examples/generated/slot_cycle/` at `res://examples/slot_cycle/` in your Godot project,
 ; or adjust paths to match your layout.

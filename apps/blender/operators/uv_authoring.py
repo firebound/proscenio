@@ -1,4 +1,4 @@
-"""UV authoring operators: Reproject UV, Snap region to UV bounds (SPEC 005.1.b/c)."""
+"""UV authoring operators: Reproject UV, Snap region to UV bounds (the authoring panel.1.b/c)."""
 
 from __future__ import annotations
 

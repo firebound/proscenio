@@ -2,14 +2,14 @@
 
 Artist workbench. Copy of `../01_photoshop_base/doll_ps_base.psd` with **manual edits + bracket tags** applied. Re-exporting from here produces the manifest + PNGs that step 03 (Blender rigging) consumes.
 
-This step exercises the full SPEC 011 v1 tag taxonomy and acts as the **parity oracle** for Wave 11.8.
+This step exercises the full photoshop-tag-system v1 tag taxonomy and acts as the **parity oracle** for the photoshop tag system.
 
 ## Contents
 
 | File | Origin | Notes |
 | --- | --- | --- |
 | `doll_tagged.psd` | manual artist edits on top of step 01 | layers renamed with bracket tags (see below) |
-| `export/doll_tagged.photoshop_exported.json` | Proscenio Exporter panel | SPEC 011 v2 manifest emitted from the tagged PSD |
+| `export/doll_tagged.photoshop_exported.json` | Proscenio Exporter panel | the photoshop tag system v2 manifest emitted from the tagged PSD |
 | `export/images/<...>.png` | Proscenio Exporter panel | one PNG per polygon entry + per sprite_frame frame |
 
 ## Tags exercised

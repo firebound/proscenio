@@ -88,7 +88,7 @@ For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-fe
 
 ## Modal operators with in-viewport overlay
 
-Pattern lifted from SPEC 012.1 (`operators/quick_armature.py`). Reusable for any operator that needs preview feedback while a modal session is active.
+Pattern lifted from the Quick Armature operator (`operators/quick_armature.py`). Reusable for any operator that needs preview feedback while a modal session is active.
 
 - **Two draw handlers per operator.** Register one `POST_VIEW` handler on `bpy.types.SpaceView3D` for world-space hints (preview line, anchor circle); register one `POST_PIXEL` handler for screen-space hints (modifier cheatsheet, status header). Store both handles as class attributes so they survive any modal exit path.
 - **Single unregister helper.** Call `_unregister_handlers(self)` from `_finish`, `cancel`, and every error-return path. Wrap each `draw_handler_remove` in `contextlib.suppress(ValueError, RuntimeError)` so reload-scripts paths that already dropped the handle do not raise.
@@ -123,7 +123,7 @@ The writer turns Blender vertex groups into the `weights` array on a `polygon`-t
 
 A sprite without any vertex groups stays rigid-attached (parent of `Bone2D`). `sprite_frame` sprites ignore weights entirely.
 
-### Edit Weights modal pattern (SPEC 013.2 paint convention)
+### Edit Weights modal pattern
 
 The `proscenio.edit_weights` operator wraps Blender's native Weight Paint mode with a 2D-safe preset + GPU provenance overlay + per-stroke provenance tagging. Pattern when an operator needs to enter a modal paint context with restorable side effects:
 
@@ -137,7 +137,7 @@ The `proscenio.edit_weights` operator wraps Blender's native Weight Paint mode w
 
 Reference implementation: `apps/blender/operators/edit_weights.py` (the modal) + `apps/blender/core/bpy_helpers/skinning/` (paint_preset_bind / bone_collection_visibility / weight_overlay / stroke_diff / modal_session).
 
-## Modal operator hint placement (SPEC 012.2 convention)
+## Modal operator hint placement
 
 Standard for **every** modal operator that needs to surface a chord cheatsheet:
 
@@ -149,7 +149,7 @@ Standard for **every** modal operator that needs to surface a chord cheatsheet:
 
 Reference implementation: `apps/blender/operators/quick_armature.py` (`_emit_chord_layout`, `_draw_statusbar_quick_armature`, `_draw_view3d_header_quick_armature`).
 
-## Pure-Python image processing (SPEC 013 Wave 13.1 convention)
+## Pure-Python image processing
 
 The addon refuses third-party Python deps at runtime (no OpenCV, no numpy, no Pillow). COA Tools 2's `cv2` requirement is its single biggest adoption blocker - corp / ISP firewalls block PyPI, version mismatches break ABI on manual cv2 copies, see [Aodaruma/coa_tools2#94](https://github.com/Aodaruma/coa_tools2/issues/94) + [#107](https://github.com/Aodaruma/coa_tools2/issues/107). Proscenio implements alpha-channel image processing in plain Python loops at the scales the addon targets (sprites downscaled to <=256x256 before tracing).
 
@@ -157,13 +157,13 @@ Pattern when an operator needs image processing:
 
 - **bpy bridge reads `bpy.types.Image.pixels`** (flat float RGBA array) into a `list[list[int]]` alpha grid via a downscale factor. The downscale lets pure-Python morphology scale to HD source PNGs without quadratic cost on the full image.
 - **Pure helpers in `core/`** (no `bpy` import) do the math: Moore Neighbour contour tracing + 4-connectivity binary morphology (dilate / erode) + Laplacian smoothing + arc-length resampling + point-in-polygon clipping + distance-to-segment. Each helper is unit-tested in isolation.
-- **Pure helpers produce float-tuple outputs** the bpy bridge converts to world XZ coordinates on the Y=0 picture plane (Proscenio convention, parallel to SPEC 012 axis lock).
+- **Pure helpers produce float-tuple outputs** the bpy bridge converts to world XZ coordinates on the Y=0 picture plane (Proscenio convention, parallel to the Quick Armature axis lock).
 - **bpy bridge writes back via `bmesh`** - `bmesh.new()`, add verts + edges, `bmesh.ops.triangle_fill(edges=..., use_beauty=True)` for the Delaunay triangulation, `bm.to_mesh(mesh)`, `bm.free()`.
-- **Cap defensive iteration limits** in any walker (`_MAX_CONTOUR_STEPS=200_000` in alpha_contour) so a pathological input cannot hang the Blender UI thread.
+- **Cap defensive iteration limits** in any walker (`_MAX_CONTOUR_STEPS=200_000` in `core/automesh/contour.py`) so a pathological input cannot hang the Blender UI thread.
 
-Reference implementation: `apps/blender/core/alpha_contour.py` (pure walker), `apps/blender/core/automesh_geometry.py` (smoothing + resample), `apps/blender/core/automesh_density.py` (interior points + bone-aware density), `apps/blender/core/bpy_helpers/automesh_bmesh.py` (bridge), `apps/blender/operators/automesh.py` (operator), `tests/test_alpha_contour.py` + `tests/test_automesh_geometry.py` + `tests/test_automesh_density.py` (87 cases covering the pure side).
+Reference implementation - pure side (no `bpy`): `apps/blender/core/automesh/contour.py` (pure walker), `apps/blender/core/automesh/geometry.py` (smoothing + resample), `apps/blender/core/automesh/density.py` (interior points + bone-aware density), `apps/blender/core/automesh/erosion_loops.py`, `apps/blender/core/automesh/cut_geometry.py`, `apps/blender/core/automesh/stroke_geometry.py`, `apps/blender/core/automesh/outer_splice.py`. bpy bridge: `apps/blender/core/bpy_helpers/automesh/bridge.py` (orchestrator), `cdt.py` (Delaunay), `base_sprite.py` (vertex group), `uv.py` (UV stamp), `debug.py` (visual stages). Operators: `apps/blender/operators/automesh.py` + `apps/blender/operators/automesh_authoring.py`. Pytest coverage: `tests/automesh/test_*.py` (~200 cases covering the pure side).
 
-The same no-third-party-deps rule extends to the weight sidecar reproject (SPEC 013.2 sidecar wave): `apps/blender/core/skinning/weight_reproject.py` does hand-rolled O(n) KNN + 2D barycentric over UV anchors. No `mathutils.kdtree` (would couple the module to bpy), no numpy. Typical sprite mesh has < 2000 verts; O(n) per query is fine. Pure module + 10 unit tests so the algorithm is testable in vanilla Python.
+The same no-third-party-deps rule extends to the weight sidecar reproject: `apps/blender/core/skinning/weight_reproject.py` does hand-rolled O(n) KNN + 2D barycentric over UV anchors. No `mathutils.kdtree` (would couple the module to bpy), no numpy. Typical sprite mesh has < 2000 verts; O(n) per query is fine. Pure module + 10 unit tests so the algorithm is testable in vanilla Python.
 
 ## Common pitfalls
 

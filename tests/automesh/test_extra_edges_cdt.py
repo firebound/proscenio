@@ -1,4 +1,4 @@
-"""Pure tests for CDT extra_edges threading (SPEC 013 S8) and AS-AM1 pre-filter."""
+"""Pure tests for CDT extra_edges threading (the weight-paint-automesh spec S8) and  pre-filter."""
 from __future__ import annotations
 
 import sys
@@ -46,7 +46,7 @@ def test_extra_edges_none_behaves_as_empty():
 
 
 # ---------------------------------------------------------------------------
-# AS-AM1: pre-index-allocation silhouette filter
+# : pre-index-allocation silhouette filter
 # ---------------------------------------------------------------------------
 
 # Unit square outer polygon used by all three filter tests.

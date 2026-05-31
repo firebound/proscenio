@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 012.1 modal-overlay geometry helpers.
+"""Unit tests for the quick-armature first cut modal-overlay geometry helpers.
 
 bpy-free. Exercises the vertex builders consumed by
 ``core/bpy_helpers/modal_overlay.py``.

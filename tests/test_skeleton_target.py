@@ -1,4 +1,4 @@
-"""Unit tests for SPEC 012.2 hybrid armature targeting.
+"""Unit tests for the quick-armature follow-up hybrid armature targeting.
 
 bpy-free. Mocks ``bpy.types.Context`` / ``Scene`` / ``Object`` via
 ``SimpleNamespace`` to exercise the resolution order without booting
@@ -40,7 +40,7 @@ def _ctx(
 
 
 class TestResolveOrder:
-    """SPEC 012.2 contract: picker is the only source of truth.
+    """the quick-armature follow-up contract: picker is the only source of truth.
 
     Heuristics (active object, single-armature scene) live in the
     auto-populate handler, not in this resolver. Once the user clears

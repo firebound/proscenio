@@ -4,7 +4,7 @@ extends Node2D
 
 ## Documentation-by-example wrapper for the imported [code]slot_cycle.scn[/code].
 ##
-## Minimal slot-system isolation test (SPEC 004 Wave 4.3): one slot, three
+## Minimal slot-system isolation test (the slot system): one slot, three
 ## attachment polygons, the [code]cycle[/code] action keyframing
 ## visibility per attachment. Runtime view: each frame of the action
 ## one [code]Polygon2D[/code] becomes [code]visible=true[/code], the

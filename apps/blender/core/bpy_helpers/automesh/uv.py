@@ -1,4 +1,4 @@
-"""Auto-UV stamping for the generated automesh (SPEC 013).
+"""Auto-UV stamping for the generated automesh (the weight-paint-automesh spec).
 
 After triangulation the brand-new verts have no UVs; the textured
 material would render garbage per face. This module stamps a linear

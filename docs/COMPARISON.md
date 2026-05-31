@@ -15,12 +15,12 @@ Standalone authoring tools and engine-native + plugin paths grouped from left to
 | **Output is engine-native scene** | yes (`.scn` with core nodes) | no (runtime required) | no (runtime required) | no (SDK required) | no (runtime required) | yes | yes (uses Skeleton2D modifications) | yes | yes (Unity GameObjects) | partial (AnyPortrait runtime component) |
 | **Plugin-uninstall safe** | yes | no | no | no | no | - | no (IK nodes ARE the plugin) | - | no (runtime scripts required) | no (AnyPortrait runtime required) |
 | **Authoring tool** | Blender + Photoshop | Spine editor | Blender + PSD/GIMP/Krita | Cubism + PSD | DragonBones Pro + PSD | Godot editor | Godot editor | Unity editor + PSD Importer | Unity editor + Puppet2D windows | Unity editor + AnyPortrait window (in-engine) |
-| **PSD ingestion** | yes (JSX + manifest schema) | yes | yes (multi-DCC) | yes | yes | no | no (rigging only) | yes (2D PSD Importer) | no (Unity sprites) | yes (layered PSD import) |
+| **PSD ingestion** | yes (UXP + manifest schema) | yes | yes (multi-DCC) | yes | yes | no | no (rigging only) | yes (2D PSD Importer) | no (Unity sprites) | yes (layered PSD import) |
 | **Skeleton + bones** | yes | yes | yes | - | yes | yes (Skeleton2D) | yes (extends Skeleton2D) | yes (Sprite Skinning) | yes | yes |
 | **Polygon mesh + per-vertex weights** | yes | yes (FFD) | yes | partial (deformer-based) | yes | yes (Polygon2D) | no (bone-side only) | yes | yes (control-point mesh deform) | yes (mesh deform) |
 | **Spritesheet cells (`hframes` / `vframes`)** | yes (Sprite2D) | yes | yes | - | yes | yes (AnimatedSprite2D) | no | yes | no | yes |
 | **Slot / sprite-swap system** | yes | yes | yes | - | yes | no | no | partial (Sprite Library / Resolver) | partial | yes |
-| **Skin coordination (group of slots)** | no (candidate post-008) | yes | no | - | yes | no | no | partial (Sprite Library categories) | no | partial |
+| **Skin coordination (group of slots)** | no (candidate follow-up) | yes | no | - | yes | no | no | partial (Sprite Library categories) | no | partial |
 | **Inverse Kinematics** | partial (wrap of Blender native) | yes (pose tool) | partial | - | yes | yes (Skeleton2D modifications) | yes (IK + LookAt, primary feature) | yes (IK Manager 2D) | yes (IK chains) | yes |
 | **Path constraints** | no | yes | no | - | no | partial (PathFollow2D) | no | partial | no | yes (motion paths) |
 | **Bone physics** | no (backlog) | yes | no | yes | partial | no | no | partial (community) | no | yes (jiggle / dynamics) |

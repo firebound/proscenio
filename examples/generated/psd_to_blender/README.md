@@ -1,6 +1,6 @@
 # psd_to_blender fixtures
 
-End-to-end inputs + goldens for the **PSD -> Blender** half of the Proscenio pipeline. Each fixture exercises one slice of the SPEC 006 + SPEC 011 path that turns a PSD (or its captured manifest) into a Blender scene.
+End-to-end inputs + goldens for the **PSD -> Blender** half of the Proscenio pipeline. Each fixture exercises one slice of the photoshop importer + the photoshop tag system path that turns a PSD (or its captured manifest) into a Blender scene.
 
 The bucket name follows the direction of the data: a PSD on disk is the source, a `.blend` is the consumer. Tests live with the plugin (`apps/photoshop/uxp-plugin-tests/*`) and run via vitest; manifest-schema-level tests live under `tests/test_*.py` and run via pytest.
 
@@ -8,7 +8,7 @@ The bucket name follows the direction of the data: a PSD on disk is the source, 
 
 | Fixture | What it covers |
 | --- | --- |
-| [`tag_smoke/`](tag_smoke/) | SPEC 011 v1 tag taxonomy parity oracle (synthetic input). Every bracket tag exercised in one layer tree; the captured `tag_smoke.expected.json` becomes the planner's regression baseline. |
+| [`tag_smoke/`](tag_smoke/) | the photoshop tag system v1 tag taxonomy parity oracle (synthetic input). Every bracket tag exercised in one layer tree; the captured `tag_smoke.expected.json` becomes the planner's regression baseline. |
 
 ## Relationship to other fixture buckets
 

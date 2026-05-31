@@ -60,3 +60,51 @@ repos:
       hooks:
           - id: cspell
             args: [--no-progress, --no-summary]
+
+    # Drift markers - reject the most common LLM-style artifacts that
+    # leak into docs and code over time. Tighten the list when a new
+    # pattern keeps appearing in review; see ".ai/conventions.md"
+    # "Periodic audit" for the broader on-demand sweep.
+    - repo: local
+      hooks:
+          - id: ban-em-dash
+            name: ban em-dash (use hyphen-minus)
+            language: pygrep
+            entry: '—'
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+
+          - id: ban-wave-numbering
+            name: ban Wave N.M numeric markers in prose
+            language: pygrep
+            entry: '\bWave \d+\.\d+'
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+
+          - id: ban-as-am-ids
+            name: ban AS-AMxx opaque task IDs
+            language: pygrep
+            entry: '\bAS-AM\d+'
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+
+          - id: ban-spec-nnn-inline
+            name: ban SPEC NNN inline references (prefer feature names)
+            language: pygrep
+            entry: '\bSPEC \d{3}\b'
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__|\.ai/conventions\.md|specs/decisions\.md)$
+
+          - id: ban-llm-filler
+            name: ban LLM filler phrases
+            language: pygrep
+            entry: "\\b(obviously|Let's|Note that|It's important to|Keep in mind)\\b"
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+
+          - id: ban-substitution-artifacts
+            name: ban doubled phrases left by substitution passes
+            language: pygrep
+            entry: '\bthe the \b|\bthis spec spec\b'
+            types_or: [markdown, python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/

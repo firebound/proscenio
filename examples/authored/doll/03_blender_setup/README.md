@@ -4,7 +4,7 @@ Artist re-enters Blender to rig the doll. The pipeline forks here into **two par
 
 | Artefact | Source manifest | Purpose |
 | --- | --- | --- |
-| `doll_ps_tagged.blend` | `../02_photoshop_setup/export/doll_tagged.photoshop_exported.json` | **Parity sandbox** for SPEC 011 v1 tags. Geometry is intentionally deformed (scale 2.5 on arm.R, custom origins, blend-stack duplicates of chest / eyes) so every tag exercises its semantics end-to-end. Not used for rigging - the figure looks broken on purpose. |
+| `doll_ps_tagged.blend` | `../02_photoshop_setup/export/doll_tagged.photoshop_exported.json` | **Parity sandbox** for the photoshop tag system v1 tags. Geometry is intentionally deformed (scale 2.5 on arm.R, custom origins, blend-stack duplicates of chest / eyes) so every tag exercises its semantics end-to-end. Not used for rigging - the figure looks broken on purpose. |
 | `doll_rigged.blend` | re-export of `../01_photoshop_base/doll_ps_base.psd` (clean, no artist tags) | **Rigging target**. Built from a fresh re-export of the untagged baseline PSD via the Proscenio Exporter, then hand-rigged on top. This is what step 04 (`../04_godot_import/`) consumes. |
 
 The split exists because tagging and rigging answer different questions. Step 02 answers "does every tag in the taxonomy round-trip Blender -> PS -> Blender?" - the deformations are the signal. Step 03's rigged path answers "can the artist work the pipeline end-to-end on a real character?" - the deformations would just be noise.
@@ -14,7 +14,7 @@ The split exists because tagging and rigging answer different questions. Step 02
 | File | Origin | Tracked? |
 | --- | --- | --- |
 | `doll_rigged.blend` | Blender import of the clean re-export from step 01 + **manual rigging** | **yes** - the armature + weights + actions are hand-authored work that no script can regenerate |
-| `doll_ps_tagged.blend` | Blender import of `02_photoshop_setup` (tagged) | no - SPEC 011 parity sandbox; regenerable from step 02's manifest |
+| `doll_ps_tagged.blend` | Blender import of `02_photoshop_setup` (tagged) | no - the photoshop tag system parity sandbox; regenerable from step 02's manifest |
 | `*.blend1` | Blender autosaves | no |
 
 > `doll_rigged.blend` is tracked on purpose: its content is artist labour (humanoid armature, vertex weights, NLA tracks), not the output of a deterministic transform. Treat it the same as `00_blender_base/doll_base.blend` - source of truth, edited by hand, committed when the artist finishes a beat. The parity sandbox stays disposable because its single source of truth is the manifest in step 02.
@@ -31,7 +31,7 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 1. Open `../01_photoshop_base/doll_ps_base.psd` in Photoshop.
 2. Open the **Proscenio Exporter** panel; output folder = `../01_photoshop_base/export/`.
-3. Click **Export manifest + PNGs**. This emits a SPEC 011 v2 manifest with no artist tags - identical body layout to the step 00 Blender manifest modulo the documented PS round-trip drift (waist 1 px shorter, AA edge bleed).
+3. Click **Export manifest + PNGs**. This emits a the photoshop tag system v2 manifest with no artist tags - identical body layout to the step 00 Blender manifest modulo the documented PS round-trip drift (waist 1 px shorter, AA edge bleed).
 4. In Blender (clean scene), enable the Proscenio addon.
 5. `File > Import > Proscenio Photoshop manifest...` -> pick `../01_photoshop_base/export/doll_ps_base.photoshop_exported.json`.
 6. Author the rig on top:
@@ -43,7 +43,7 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 ## Tags carried over from step 02
 
-The Blender importer preserves the SPEC 011 v2 semantics that step 02 baked into the manifest:
+The Blender importer preserves the photoshop tag system v2 semantics that step 02 baked into the manifest:
 
 - `[folder:NAME]` -> Blender collection hierarchy.
 - `[polygon]` -> textured plane mesh.
@@ -67,7 +67,7 @@ The Blender importer preserves the SPEC 011 v2 semantics that step 02 baked into
 ### `doll_rigged.blend` (rigging path vs step 01)
 
 - Imported plane count matches the clean re-export's manifest length.
-- Each plane's location reflects the manifest position; no SPEC 011 origins (the baseline carries none).
+- Each plane's location reflects the manifest position; no the photoshop tag system origins (the baseline carries none).
 - After rigging: every plane is parented to `doll.rig` with non-empty vertex groups.
 
 ## Outputs going downstream

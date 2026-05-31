@@ -1,6 +1,6 @@
 # Backlog
 
-Items that are not in any active SPEC. Each entry promotes into a numbered SPEC when work begins. Order within a section is rough priority.
+Items that are not in any active spec. Each entry promotes into a numbered spec under `specs/` when work begins. Order within a section is rough priority.
 
 ## Format and schema
 
@@ -8,7 +8,7 @@ Items that are not in any active SPEC. Each entry promotes into a numbered SPEC 
 
 **What:** the `.proscenio` v1 stores keyframes with track-level interpolation only (`linear`, `constant`); the Godot importer also offers cubic via `INTERPOLATION_CUBIC*` for smooth automatic splines. Blender authors curves with per-key Bezier handles that the format does not transmit.
 
-**Why future-SPEC:** transmitting Bezier handles requires schema fields (`tangent_in`, `tangent_out`) and a Godot-side custom Bezier track or pre-baking. Cubic auto-spline is good enough for MVP.
+**Why future-spec:** transmitting Bezier handles requires schema fields (`tangent_in`, `tangent_out`) and a Godot-side custom Bezier track or pre-baking. Cubic auto-spline is good enough for MVP.
 
 **Trigger to revisit:** an animator complains that the imported animation does not match Blender to within visual tolerance.
 
@@ -28,6 +28,18 @@ Schema's `interp` field is per-key but the importer applies a single track-level
 
 Schema validation rejects unknown `format_version`. Once v2 lands, the Blender exporter ships `migrations/v1_to_v2.py` and the Godot importer surfaces a clear migration error pointing to the migrator.
 
+### Continuous UV animation (texture region track)
+
+Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibility`) cover skeletal motion, grid-frame swap, attachment swap, and on/off. They do not cover continuous UV animation: animated water flow, conveyor belts, gradient sweeps, mask reveals, region resize.
+
+**Scope when promoted:** add a `texture_region` track that animates `Sprite2D.region_rect.x/y/w/h` on the Godot side. Targets `sprite_frame` sprites in v1; polygon UV animation deferred (would need shader-driven approach). Authoring side reuses the existing `region_x/y/w/h` floats on `Object.proscenio` - already keyframable in Blender via standard right-click flow.
+
+**Open design questions when promoted:** track type name (`texture_region` vs `uv_animation`), scope (sprite_frame only or polygon too), interp options, schema bump path (format v2 with migrator vs additive v1), Blender authoring UX (keyframe-the-floats vs new operator).
+
+**Trigger:** a user asks for animated water, conveyor-belt, or region-resize effects. If the request is "swap whole image" - slot system covers it. If "swap frame in grid" - sprite_frame already covers it.
+
+**Out of scope definitively:** polygon UV animation (Spine-only feature, niche), shader-driven UV scroll (no schema, runtime-only), per-vertex UV animation (free-form deformation territory, separate concern).
+
 ## Blender addon
 
 ### General rig orientation detection
@@ -43,7 +55,7 @@ Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users auth
 
 ### Skinning weights export
 
-**Resolved by [SPEC 003](003-skinning-weights/STUDY.md)** - writer normalizes per-vertex weight sums and emits the bone-major `weights` array; Godot importer (`polygon_builder.gd`) branches into `Polygon2D.skeleton` + `add_bone()` when weights are present. **Authoring side resolved by [SPEC 013](013-weight-paint-automesh/STUDY.md)** Wave 13.1 - pure-Python automesh, planar-proximity bind, weight paint modal wrapper with 2D-safe preset, weight sidecar that survives mesh regen.
+**Resolved** - writer normalizes per-vertex weight sums and emits the bone-major `weights` array; Godot importer (`polygon_builder.gd`) branches into `Polygon2D.skeleton` + `add_bone()` when weights are present. **Authoring side resolved by [weight-paint-automesh spec](013-weight-paint-automesh/STUDY.md)** first cut - pure-Python automesh, planar-proximity bind, weight paint modal wrapper with 2D-safe preset, weight sidecar that survives mesh regen.
 
 ### Atlas region authoring helper
 
@@ -51,7 +63,7 @@ User UV-maps each plane in Blender to a region of the atlas; the writer reads wh
 
 ### IK constraints export
 
-Out of scope for v1. Godot has built-in `Skeleton2DIK` so the user adds IK in-engine post-import. Future SPEC could detect IK constraints in the armature and round-trip them.
+Out of scope for v1. Godot has built-in `Skeleton2DIK` so the user adds IK in-engine post-import. A future spec could detect IK constraints in the armature and round-trip them.
 
 ### Auto-detect 2D rig vs 3D mesh
 
@@ -63,41 +75,41 @@ A Blender operator that adds a properly configured ortho camera for pixel-perfec
 
 ### Quick Armature: Front-Ortho UX guard
 
-**Resolved by [SPEC 012](012-quick-armature-ux/STUDY.md)** Wave 12.1 - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same wave.
+**Resolved by [the quick-armature spec](012-quick-armature-ux/STUDY.md)** first cut - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same tier.
 
-### Quick Armature Wave 12.3 candidates
+### Quick Armature follow-up candidates
 
-Items deferred from [SPEC 012](012-quick-armature-ux/STUDY.md) STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new SPEC, only a 012.3 wave (or a smaller iteration PR) when demand justifies the work.
+Items deferred from [the quick-armature spec](012-quick-armature-ux/STUDY.md) STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new spec, only a follow-up iteration (or a smaller PR) when demand justifies the work.
 
 - **Pick-parent-in-viewport.** `Shift+click` an existing bone tip during the modal to re-target the next bone's parent. Useful for branching skeletons (humanoid second-chain off the spine) without exiting the operator. Medium effort; chord vocabulary already has `Shift+click` available because the press-time `Shift+drag` reads only on PRESS+drag combo. Highest user value on the deferred list.
-- **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the SPEC 012 RESEARCH addendum.
+- **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the quick-armature spec's RESEARCH addendum.
 - **Mirror auto-suffix `_L`/`_R`** when X-Mirror is enabled in the armature data. Auto-creates the symmetric pair on each press so humanoid rigs save half the work. Small effort but only pays off with a humanoid fixture - currently no Proscenio fixture exercises symmetric rigs end-to-end.
 - **Numeric length input.** `Tab` to type `0.5` Enter (Blender E-extrude convention). Bigger lift because it needs a text-input field on a modal operator; precision authoring win when implemented.
 - **D11 local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
 
-The remaining SPEC 012 deferred items are now [`successor SPECs`](012-quick-armature-ux/STUDY.md#successor-considerations): auto-attach mesh / sprite to bone (needs SPEC 004 maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
+The remaining quick-armature deferred items are now [successor specs](012-quick-armature-ux/STUDY.md#successor-considerations): auto-attach mesh / sprite to bone (needs slot-system maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
 
-### SPEC 013 Wave 13.2 candidates (weight paint + automesh productivity)
+### Weight-paint productivity follow-up candidates
 
-Items locked as Wave 13.2 in [SPEC 013](013-weight-paint-automesh/STUDY.md) Design surface > Out of scope + [TODO Wave 13.2](013-weight-paint-automesh/TODO.md#wave-132---productivity-polish-deferred). Each is a self-contained productivity refinement on top of the Wave 13.1 first cut; they do not require a new SPEC, only a 013.2 wave when demand justifies the work.
+Items locked as the productivity follow-up tier of [the weight-paint-automesh spec](013-weight-paint-automesh/STUDY.md) Design surface > Out of scope + [TODO productivity follow-up](013-weight-paint-automesh/TODO.md#wave-132---productivity-polish-deferred). Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
 
 - **Soft vs Hard bone toggle (D16, Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
-- **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value Wave 13.2 candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
+- **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value follow-up candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
 - **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active) and applies the same algorithm against the picker armature. Trigger: imported-character workflow with N sprites + 1 rig stresses this.
 - **Weight transfer between sprites.** `proscenio.copy_weights_to_selected` operator. Active mesh = source; selected meshes = targets; nearest-world-position vertex lookup copies weight dict. Solves COA Tools 2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73). Foundational for Live2D-style line / colour / shadow layered sprites.
 - **Live pose-mode preview in weight paint.** Scrub bone to posed angle / see deformation / scrub back without leaving Edit Weights modal. Adds pose-scrub overlay + hotkey to toggle rest pose. Trigger: user wants verify weights vs deformed pose without modal exit.
 - **Sidecar import / export.** Operator dumps weight sidecar JSON to file + loads from file. Enables version-controlled weight backups outside the `.blend`. Trigger: user asks to back up weight work to git.
 - **Brush curve presets dropdown.** Quick-select brush curve presets named for common 2D tasks (Hard edge / Soft falloff / Crease / Smooth blend) via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
 
-### SPEC 013 Wave 13.3 candidates (aspirational)
+### Weight-paint aspirational candidates
 
-Heavier lifts than Wave 13.2; each is a candidate for a follow-up SPEC if the demand surfaces. Listed here so the future reader sees what was considered + why deferred.
+Heavier lifts than productivity follow-up; each is a candidate for a follow-up spec if the demand surfaces. Listed here so the future reader sees what was considered + why deferred.
 
 - **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator: given two child meshes sharing a parent bone, generate the seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Requires both child-mesh detection (which sprites belong to which side of the articulation) and a custom seam generator (boundary-following triangulation). Trigger: humanoid fixture lands + user complains about inner-elbow gap.
 - **Cubism Glue equivalent.** Seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations). Trigger: layered-sprite use case stresses this.
-- **Smart-Bone-style corrective drivers (Moho lift).** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle, the addon emits a driver. Belongs in SPEC 014 (animation system) not SPEC 013 (authoring), but listed here for visibility because the trigger is the same as Auto-Patch.
+- **Smart-Bone-style corrective drivers (Moho lift).** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle, the addon emits a driver. Belongs in a future animation-system spec not the weight-paint-automesh spec (authoring), but listed here for visibility because the trigger is the same as Auto-Patch.
 - **Mirror humanoid binding.** One mesh on one side, click to mirror to other. Couples to symmetric rigs. Trigger: first humanoid fixture lands end-to-end.
-- **Bezier brush stroke for alpha-boundary trace.** Adds a D1.B free-draw path on top of D1.A one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (D12 helpers already in place from Wave 13.1).
+- **Bezier brush stroke for alpha-boundary trace.** Adds a D1.B free-draw path on top of D1.A one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (D12 helpers already in place from first cut).
 
 ### Blender 4.3 legacy actions compatibility
 
@@ -105,7 +117,7 @@ Heavier lifts than Wave 13.2; each is a candidate for a follow-up SPEC if the de
 
 ### Split PropertyGroup vs Custom Property storage by intent (target: 1.0.0)
 
-**What:** the current SPEC 005 design mirrors every PropertyGroup field on `Object.proscenio` to a sibling raw Custom Property (`obj["proscenio_type"]`, `obj["proscenio_frame"]`, ...) via `update` callbacks, and `core/hydrate.py` rehydrates the PG from CPs on `load_post`. The 11 fields in `OBJECT_PROPS` are mirrored uniformly, which is over-broad: some fields are editor-time only and could live as PG-canonical with no CP at all, while others are animatable / driver targets where the CP is the durable storage and the PG is just a typed widget projection.
+**What:** the current authoring-panel design mirrors every PropertyGroup field on `Object.proscenio` to a sibling raw Custom Property (`obj["proscenio_type"]`, `obj["proscenio_frame"]`, ...) via `update` callbacks, and `core/hydrate.py` rehydrates the PG from CPs on `load_post`. The 11 fields in `OBJECT_PROPS` are mirrored uniformly, which is over-broad: some fields are editor-time only and could live as PG-canonical with no CP at all, while others are animatable / driver targets where the CP is the durable storage and the PG is just a typed widget projection.
 
 **Why:** PropertyGroup data is backed by IDProperty but its visibility depends on the addon's RNA descriptor being registered. Disable -> save -> reenable cycles can purge orphaned IDProperty data depending on Blender version, so PG is a brittle home for anything that must survive addon-absent file states or be a stable driver target. Raw CPs have none of those constraints, which is why Rigify and similar mature addons keep the *animator-facing* surface (IK/FK switches, layer toggles) on CPs and reserve PGs for *generator-internal* metadata. Mirroring everything pays the cost (doubled write paths, sync risk, undo desync, `deferred_hydrate` timer, dual-key reader fallback in `read_field`) for fields that do not need the resilience. Mirroring nothing loses real resilience for fields that do (`frame` is keyframable into Godot's `AnimationPlayer`; Drive-from-Bone wires drivers onto sprite properties).
 
@@ -132,15 +144,15 @@ Heavier lifts than Wave 13.2; each is a candidate for a follow-up SPEC if the de
 
 ### Reimport non-destructive merge
 
-**Resolved by [SPEC 001](001-reimport-merge/STUDY.md)** - adopt full overwrite plus the wrapper-scene pattern (Option A). Marker-based merge (Option B) deferred unless demand emerges.
+**Resolved** - full overwrite plus the wrapper-scene pattern. Marker-based merge deferred unless demand emerges. See the wrapper-scene pattern entry in [`decisions.md`](decisions.md#core-architecture).
 
 ### Spritesheet support and `Sprite2D` path
 
-**Resolved by [SPEC 002](002-spritesheet-sprite2d/STUDY.md)** - adopt explicit `type` discriminator field per sprite; default `"polygon"` keeps v1 fixtures backwards-compatible. `Sprite2D` ships as the `"sprite_frame"` variant with `hframes`/`vframes`/`frame` and the matching animation track.
+**Resolved** - explicit `type` discriminator field per sprite; default `"polygon"` keeps v1 fixtures backwards-compatible. `Sprite2D` ships as the `"sprite_frame"` variant with `hframes`/`vframes`/`frame` and the matching animation track. See the spritesheet entry in [`decisions.md`](decisions.md#spritesheet-sprite2d-discriminator).
 
 ### Slot system
 
-Slated for SPEC 004. Sprite-swap groups via `slots` field; importer wires `slot_attachment` tracks.
+Resolved. Sprite-swap groups via `slots` field; importer wires `slot_attachment` tracks. See the slot-system entry in [`decisions.md`](decisions.md#slot-system).
 
 ### Node name collision polish
 
@@ -172,9 +184,9 @@ Port `coa_tools2/Photoshop/coa_export.jsx` forward into `apps/photoshop/prosceni
 
 `coa_tools2` has a GIMP path. Lower priority - fewer 2D animation users on GIMP.
 
-### Deferred Photoshop tags (post SPEC 011)
+### Deferred Photoshop tags (after the photoshop tag system)
 
-Tags evaluated during the SPEC 011 research pass that did not make the v1 taxonomy. Each was deferred for a documented reason. Promote into SPEC 011.x or a successor SPEC when a real workflow surfaces the need.
+Tags evaluated during the photoshop tag system research pass that did not make the v1 taxonomy. Each was deferred for a documented reason. Promote into a future photoshop tag system iteration or a successor spec when a real workflow surfaces the need.
 
 #### `[slice:l,t,r,b]` - Cocos-style 9-slice
 
@@ -182,21 +194,21 @@ Encodes 4 corner insets so a single sprite scales as a 9-slice tile (UI panels, 
 
 #### Head-turner view groups (Adobe Character Animator)
 
-Groups named `Frontal` / `Left Profile` / `Left Quarter` / `Right Quarter` / `Right Profile` collapse into a single mesh with swappable view variants. Specific to face puppetry. **Why deferred**: deep coupling to a face-rig template; harder to generalise across project types than the tag system in SPEC 011.
+Groups named `Frontal` / `Left Profile` / `Left Quarter` / `Right Quarter` / `Right Profile` collapse into a single mesh with swappable view variants. Specific to face puppetry. **Why deferred**: deep coupling to a face-rig template; harder to generalise across project types than the tag system in the photoshop tag system.
 
 #### Pseudo-keyword auto-tagging (`Head`, `Mouth`, `Eye_Open`, ...)
 
-Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (SPEC 011 D1) is cleaner and ships first.
+Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (the photoshop tag system D1) is cleaner and ships first.
 
 #### `[isolated]` warp-independent flag (Character Animator's `+` prefix)
 
-Marks a layer as "animated separately from its parent group" so the rig generator emits a dedicated pose key for it. **Why deferred**: Proscenio's rig model has no concept of "warp pose keys"; bones already encode separability. Reserved tag name: `[isolated]` (the `+` prefix from Character Animator is rejected as non-idiomatic for this project). Trigger to revisit: if SPEC 005 / 008 grow a "per-layer pose channel" concept.
+Marks a layer as "animated separately from its parent group" so the rig generator emits a dedicated pose key for it. **Why deferred**: Proscenio's rig model has no concept of "warp pose keys"; bones already encode separability. Reserved tag name: `[isolated]` (the `+` prefix from Character Animator is rejected as non-idiomatic for this project). Trigger to revisit: if the authoring-panel or future UV-animation work grows a "per-layer pose channel" concept.
 
 #### Stable layer identity in `PngWrite.layerPath`
 
-`PngWrite.layerPath` (and the parallel `_frameSources` on planned sprite_frame entries) is a chain of layer names. Photoshop allows siblings with duplicate names; if a user authors two children named `arm` inside the same group, the materialiser would resolve whichever appears first in `layer.layers` and silently write the wrong PNG. **Why deferred**: the doll oracle and every shipped fixture have unique names per group; ajv catches name collisions at the sanitize level for manifest entries. **Trigger to revisit**: a user reports a wrong-PNG export, or SPEC 011's tag inspector starts addressing layers by stable handle. Implementation hint: replace `string[]` with `Array<{ name: string; index: number }>` so the adapter can tie-break by position when two siblings share a name.
+`PngWrite.layerPath` (and the parallel `_frameSources` on planned sprite_frame entries) is a chain of layer names. Photoshop allows siblings with duplicate names; if a user authors two children named `arm` inside the same group, the materialiser would resolve whichever appears first in `layer.layers` and silently write the wrong PNG. **Why deferred**: the doll oracle and every shipped fixture have unique names per group; ajv catches name collisions at the sanitize level for manifest entries. **Trigger to revisit**: a user reports a wrong-PNG export, or the photoshop tag system's tag inspector starts addressing layers by stable handle. Implementation hint: replace `string[]` with `Array<{ name: string; index: number }>` so the adapter can tie-break by position when two siblings share a name.
 
-### SPEC 011 v1 design decisions to revisit
+### the photoshop tag system v1 design decisions to revisit
 
 Behaviours that landed as "by design" in the v1 taxonomy. Each is intentional today but worth re-examining once real artist usage stresses the assumption.
 
@@ -206,29 +218,29 @@ A `[merge]` group inside another `[merge]` is flattened into the outer entry wit
 
 #### `[name:pre*suf]` parsed but planner does not rewrite
 
-The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does not rewrite descendant names against the template. Display names cascade via `joinName` (parent `__` child) unchanged. **Why deferred**: rewrite has subtle interactions with `joinName` (do we rewrite before or after joining? what wins when a child carries its own `[path:NAME]`?) and zero shipped consumer needs it today. **Trigger to revisit**: a fixture or external user wants prefix/suffix templating on a real group - then we design the rewrite order with the actual workflow in hand.
+The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does not rewrite descendant names against the template. Display names cascade via `joinName` (parent `__` child) unchanged. **Why deferred**: rewrite has subtle interactions with `joinName` (do we rewrite before or after joining? what wins when a child carries its own `[path:NAME]`?) and zero shipped consumer needs it today. **Trigger to revisit**: a fixture or external user wants prefix/suffix templating on a real group; then we design the rewrite order with the actual workflow in hand.
 
 #### `kind: "mesh"` semantically equal to `kind: "polygon"` downstream
 
-`[mesh]` emits `kind: "mesh"` on the manifest and the Blender importer stamps a `proscenio_psd_kind = "mesh"` custom property, but no downstream code branches on it yet (the Godot writer treats both as a single quad). **Why deferred**: the distinction exists so SPEC 002 (mesh deformation) and SPEC 008 (UV animation) can tell editable polygons apart from rigid sprites. **Trigger to revisit**: SPEC 002 ships; at that point the importer adds a Subdivision Surface modifier (or equivalent) only to `kind: "mesh"` entries.
+`[mesh]` emits `kind: "mesh"` on the manifest and the Blender importer stamps a `proscenio_psd_kind = "mesh"` custom property, but no downstream code branches on it yet (the Godot writer treats both as a single quad). **Why deferred**: the distinction exists so future mesh-deformation work and the continuous-UV-animation entry can tell editable polygons apart from rigid sprites. **Trigger to revisit**: a mesh-deformation feature ships; at that point the importer adds a Subdivision Surface modifier (or equivalent) only to `kind: "mesh"` entries.
 
 #### Waist height drifts -1 px on the PS round-trip
 
-`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a SPEC 010.5 cycle fixes the underlying off-by-one in the JSX-era PSD reader.
+`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a future Photoshop-roundtrip cycle fixes the underlying off-by-one in the JSX-era PSD reader.
 
 #### `pixels_per_unit` not round-tripped (defaults to 100 on re-export)
 
-The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: SPEC 010.5 plumbs PPU through XMP so the round-trip is lossless.
+The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: a future Photoshop-roundtrip cycle plumbs PPU through XMP so the round-trip is lossless.
 
-### SPEC 011 follow-ups deferred from Waves 11.x
+### photoshop tag system follow-ups deferred from the photoshop tag system waves
 
-#### Dedicated origin / pivot fixture (Wave 11.2)
+#### Dedicated origin / pivot fixture (a photoshop tag system follow-up)
 
-Wave 11.2 listed a "small PSD with one `[origin]` marker layer per body part, golden-diffed" as a follow-up. The doll oracle (`02_photoshop_setup/doll_tagged.psd`) covers the planner + writer paths for `[origin]` and `[origin:X,Y]` end-to-end, so the dedicated mini-PSD never materialised. **Why deferred**: tests/test_doll_tagged_manifest.py asserts origin presence on both the explicit-coordinate (`belly`, `arm.R`) and marker (`brow_states`) paths; tag_smoke locks the synthetic case. Coverage redundancy is high. **Trigger to revisit**: a regression where the origin handling diverges between PSD authoring styles - then ship the dedicated fixture so the failure mode has its own named test.
+a photoshop tag system follow-up listed a "small PSD with one `[origin]` marker layer per body part, golden-diffed" as a follow-up. The doll oracle (`02_photoshop_setup/doll_tagged.psd`) covers the planner + writer paths for `[origin]` and `[origin:X,Y]` end-to-end, so the dedicated mini-PSD never materialised. **Why deferred**: tests/test_doll_tagged_manifest.py asserts origin presence on both the explicit-coordinate (`belly`, `arm.R`) and marker (`brow_states`) paths; tag_smoke locks the synthetic case. Coverage redundancy is high. **Trigger to revisit**: a regression where the origin handling diverges between PSD authoring styles - then ship the dedicated fixture so the failure mode has its own named test.
 
-#### SPEC 010 doll-roundtrip oracle re-run against schema v2
+#### Doll-roundtrip oracle re-run against schema v2
 
-Wave 10.3 captured a byte-equal JSX baseline against `doll.psd` for the SPEC 010 retirement gate. After SPEC 011 v2 landed, the manifest gained `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, and `kind: "mesh"`. The captured oracle still applies to legacy v1 imports, but a fresh v2 byte-equal capture against `doll_tagged.psd` is open. **Why deferred**: pytest's `test_doll_tagged_manifest.py` already pins the v2 manifest's structural invariants; a byte-equal SHA capture adds little signal beyond locking the exact JSON whitespace and key order. **Trigger to revisit**: the UXP exporter changes its serialisation strategy (key order, indentation, encoding) - then byte-equal capture catches the change before users notice.
+The Photoshop UXP migration captured a byte-equal JSX baseline against `doll.psd` for the retirement gate. After the photoshop-tag-system v2 landed, the manifest gained `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, and `kind: "mesh"`. The captured oracle still applies to legacy v1 imports, but a fresh v2 byte-equal capture against `doll_tagged.psd` is open. **Why deferred**: pytest's `test_doll_tagged_manifest.py` already pins the v2 manifest's structural invariants; a byte-equal SHA capture adds little signal beyond locking the exact JSON whitespace and key order. **Trigger to revisit**: the UXP exporter changes its serialisation strategy (key order, indentation, encoding) - then byte-equal capture catches the change before users notice.
 
 #### Spectrum web component shadow-DOM init cost
 
@@ -236,7 +248,7 @@ Wave 10.3 captured a byte-equal JSX baseline against `doll.psd` for the SPEC 010
 
 #### Migrating flat fixtures into `psd_to_blender/` and `blender_to_godot/`
 
-The new categorization buckets at `examples/generated/{psd_to_blender,blender_to_godot}/` accept new fixtures directly. The pre-existing flat fixtures (`atlas_pack/`, `blink_eyes/`, `mouth_drive/`, `shared_atlas/`, `simple_psd/`, `slot_cycle/`, `slot_swap/`) stay where they are because moving them ripples through every SPEC TODO, the `scripts/fixtures/` index, and several wrapper-scene paths. **Why deferred**: refactor cost > current confusion cost. **Trigger to revisit**: the next time one of those fixtures needs editing for an unrelated reason; piggyback the move onto the same commit.
+The new categorization buckets at `examples/generated/{psd_to_blender,blender_to_godot}/` accept new fixtures directly. The pre-existing flat fixtures (`atlas_pack/`, `blink_eyes/`, `mouth_drive/`, `shared_atlas/`, `simple_psd/`, `slot_cycle/`, `slot_swap/`) stay where they are because moving them ripples through every spec TODO, the `scripts/fixtures/` index, and several wrapper-scene paths. **Why deferred**: refactor cost > current confusion cost. **Trigger to revisit**: the next time one of those fixtures needs editing for an unrelated reason; piggyback the move onto the same commit.
 
 ## Tests and CI
 
@@ -246,7 +258,7 @@ A single-version `test-blender` job ships in [`.github/workflows/ci.yml`](../.gi
 
 ### Godot importer test - full editor reimport
 
-[`apps/godot/tests/test_importer.gd`](../apps/godot/tests/test_importer.gd) exercises the builders directly. A higher-fidelity test would launch the editor headlessly, drop a `.proscenio` into the project, and assert the generated `.scn` opens with the plugin disabled (the no-GDExtension hard rule, automated). Currently verified manually per [SPEC 000 TODO](000-initial-plan/TODO.md).
+[`apps/godot/tests/test_importer.gd`](../apps/godot/tests/test_importer.gd) exercises the builders directly. A higher-fidelity test would launch the editor headlessly, drop a `.proscenio` into the project, and assert the generated `.scn` opens with the plugin disabled (the no-GDExtension hard rule, automated). Currently verified manually as part of the smoke checklist.
 
 ### CI matrix expansion
 
@@ -280,7 +292,7 @@ The dev junction setup for the Blender addon is a manual `New-Item -ItemType Jun
 
 ## Architecture revisits
 
-These items intentionally violate or expand on a current hard rule. They are **not slated** - listed only so that if the trigger condition appears in a future SPEC discussion, we have prior art on the alternatives we already considered.
+These items intentionally violate or expand on a current hard rule. They are **not slated** - listed only so that if the trigger condition appears in a future spec discussion, we have prior art on the alternatives we already considered.
 
 ### GDExtension / C# escape hatch
 
@@ -296,10 +308,10 @@ These items intentionally violate or expand on a current hard rule. They are **n
 - **Binary `.proscenio` format** - JSON parse time becomes import-loop pain on large projects; binary format reader benefits from native code.
 - **Editor authoring tools that need round-trip serialization back to `.proscenio`** - writing the format from inside Godot at interactive speed.
 
-**What that future SPEC would look like:**
+**What that future spec would look like:**
 
 - Likely targets a *separate optional component* (`apps/godot-csharp/`) that ships alongside the GDScript plugin, gated behind a feature flag, so non-mono users still have the GDScript path.
 - Mono-only audience cut would be **documented openly** as the price of the feature; this is acceptable for Firebound users (already on mono) but acknowledged as a regression for general OSS reach.
-- Anything moved to native must remain **import-time only** unless the SPEC explicitly relaxes the runtime side. Generated `.scn` keeps using built-in nodes.
+- Anything moved to native must remain **import-time only** unless the spec explicitly relaxes the runtime side. Generated `.scn` keeps using built-in nodes.
 
 **See also:** [`.ai/skills/architecture.md`](../.ai/skills/architecture.md), [`.ai/conventions.md`](../.ai/conventions.md), the language-decision discussion in this backlog's revision history.

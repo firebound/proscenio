@@ -1,4 +1,4 @@
-"""Pure tests for weight reproject (SPEC 013.2 sidecar, T3)."""
+"""Pure tests for weight reproject (the sidecar work, T3)."""
 
 from __future__ import annotations
 

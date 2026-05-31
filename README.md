@@ -98,7 +98,7 @@ Heavy lift lives here. Features grouped by workflow theme.
 - Spritesheet metadata: `hframes` / `vframes` / `frame` / `centered`, animatable.
 - Per-sprite `proscenio.is_slot` flag and `proscenio_slot_index` (keyframable).
 
-#### Slot system (SPEC 004)
+#### Slot system
 
 - **Create Slot** operator: anchors an Empty under the active bone and parents the selected meshes as attachments.
 - **Active Slot** subpanel: pick the default attachment at scene load (SOLO icon), reorder attachments, animate `proscenio_slot_index` to flip per keyframe.
@@ -106,7 +106,7 @@ Heavy lift lives here. Features grouped by workflow theme.
 
 #### Organization
 
-- **Custom Outliner** subpanel (5.1.d.4): sprite-centric flat list with substring filter and favorites toggle. Replaces Blender's native outliner only for the Proscenio hierarchy; the native outliner remains untouched.
+- **Custom Outliner** subpanel: sprite-centric flat list with substring filter and favorites toggle. Replaces Blender's native outliner only for the Proscenio hierarchy; the native outliner remains untouched.
 
 #### Validation
 
@@ -166,9 +166,9 @@ In one sentence: Proscenio trades Spine's multi-runtime, polished preview, and r
 - [`AGENTS.md`](AGENTS.md) - entry point for contributors and LLM agents.
 - [`.ai/skills/`](.ai/skills/README.md) - task-specific skill bundles.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - setup, PR rules, end-to-end usage walkthrough.
-- [`specs/decisions.md`](specs/decisions.md) - locked architectural and per-SPEC decisions.
+- [`specs/decisions.md`](specs/decisions.md) - locked architectural and per-feature decisions.
 - [`docs/COMPARISON.md`](docs/COMPARISON.md) - feature matrix and positioning vs alternatives.
-- [`docs/DEFERRED.md`](docs/DEFERRED.md) - SPEC-level deferred features and rationale.
+- [`docs/DEFERRED.md`](docs/DEFERRED.md) - spec-level deferred features and rationale.
 - [`docs/GODOT-WORKFLOW.md`](docs/GODOT-WORKFLOW.md) - customizing imported characters Godot-side without losing work on reimport.
 - [`specs/`](specs/) - per-feature design documents.
 - [`specs/backlog.md`](specs/backlog.md) - finer-grained backlog (operators, CI, repo polish).

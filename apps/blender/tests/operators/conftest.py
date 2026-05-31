@@ -1,4 +1,4 @@
-"""Shared fixtures for headless operator pytest (SPEC 013.2 bind, Q7).
+"""Shared fixtures for headless operator pytest (the bind work, Q7).
 
 Runs INSIDE Blender via ``run_operator_tests.py``. Each test gets
 a fresh-loaded automesh fixture .blend so state never leaks

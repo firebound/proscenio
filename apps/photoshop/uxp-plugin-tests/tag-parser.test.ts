@@ -1,4 +1,4 @@
-// Unit tests for the bracket-tag lexer (SPEC 011 Wave 11.1).
+// Unit tests for the bracket-tag lexer (the photoshop tag system the first photoshop-tag cut).
 
 import { describe, expect, it } from "vitest";
 

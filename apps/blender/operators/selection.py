@@ -38,7 +38,7 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
 
 
 class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
-    """Select + activate the object clicked in the Proscenio outliner (5.1.d.4)."""
+    """Select + activate the object clicked in the Proscenio outliner (the outliner subpanel)."""
 
     bl_idname = "proscenio.select_outliner_object"
     bl_label = "Proscenio: Select Outliner Object"
@@ -180,7 +180,7 @@ def _sync_active_index(
 
 
 class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):
-    """Flip the outliner favorite flag on a target object (5.1.d.4)."""
+    """Flip the outliner favorite flag on a target object (the outliner subpanel)."""
 
     bl_idname = "proscenio.toggle_outliner_favorite"
     bl_label = "Proscenio: Toggle Outliner Favorite"

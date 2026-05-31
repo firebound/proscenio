@@ -1,4 +1,4 @@
-"""2D-safe weight paint preset (SPEC 013.2 paint, T2).
+"""2D-safe weight paint preset (the paint work, T2).
 
 Edit Weights modal applies this preset on invoke + restores the prior
 state on exit. Frozen dataclass = single-call swap; symmetric apply +

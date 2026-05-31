@@ -1,21 +1,21 @@
-# SPEC 013 - Weight paint ergonomics + automesh
+# Weight paint ergonomics + automesh
 
-Status: **research complete, decisions locked, ready for TODO Wave 13.1**. Survey covers 9 tools (Spine, DragonBones, Spriter, Live2D Cubism, Moho, Toon Boom Harmony, Adobe Animate, Blender native, COA Tools 2) + community-pain synthesis across BlenderArtists / Reddit / Blender Stack Exchange / Spine forums / Adobe Community / Toon Boom learn / Cubism docs. 16 design decisions locked (D1-D16).
+Status: **shipped through the productivity follow-up**. Survey covers 9 tools (Spine, DragonBones, Spriter, Live2D Cubism, Moho, Toon Boom Harmony, Adobe Animate, Blender native, COA Tools 2) + community-pain synthesis across BlenderArtists / Reddit / Blender Stack Exchange / Spine forums / Adobe Community / Toon Boom learn / Cubism docs. Twenty-one design decisions locked (D1 through D21).
 
 ## Problem
 
-Proscenio's downstream pipeline for skinned meshes is already wired end-to-end. [SPEC 003 (Skinning weights)](../003-skinning-weights/STUDY.md) shipped the writer (`_build_sprite_weights` normalizes per-vertex sums and emits the bone-major `weights` array) + the Godot importer (`polygon_builder.gd` branches into `Polygon2D.skeleton` + `add_bone()` when `weights` are present). A vertex group named after a bone in Blender becomes a real weighted influence in Godot at import time, with zero extra ceremony.
+Proscenio's downstream pipeline for skinned meshes is already wired end-to-end. The skinning-weights wire format (see the entry in [`specs/decisions.md`](../decisions.md#skinning-weights-export)) shipped the writer (`_build_sprite_weights` normalizes per-vertex sums and emits the bone-major `weights` array) + the Godot importer (`polygon_builder.gd` branches into `Polygon2D.skeleton` + `add_bone()` when `weights` are present). A vertex group named after a bone in Blender becomes a real weighted influence in Godot at import time, with zero extra ceremony.
 
 What is missing is the **upstream half**: the authoring experience that produces those vertex groups in the first place. Today the only path is *vanilla Blender weight paint*, which was designed for 3D character rigging and is hostile in four documented ways for 2D cutout work:
 
-1. **No automesh.** A 2D sprite enters the addon as a single rectangular plane (4 vertices). To deform smoothly under a bone chain the user must subdivide the plane manually, knife-cut around the silhouette, or import from Photoshop and hope the polygon import (SPEC 011) produces enough vertices to bend. There is no Proscenio operator that turns "this PNG with alpha" into "a deformable mesh that follows the alpha boundary with N vertices of density I picked." COA Tools 2 ships exactly this operator ([automesh.py `COATOOLS2_OT_AutomeshFromTexture`](https://github.com/Aodaruma/coa_tools2/blob/master/coa_tools2/operators/automesh.py)) and the wider 2D community treats it as table stakes: Spine `Trace` ([Mesh attachments](http://esotericsoftware.com/spine-meshes)), Live2D Cubism Automatic Mesh Generation ([mesh-edit doc](https://docs.live2d.com/en/cubism-editor-manual/mesh-edit/)), Adobe Animate Asset Warp auto-triangulation ([Asset Warp](https://helpx.adobe.com/animate/how-to/asset-warp.html)).
+1. **No automesh.** A 2D sprite enters the addon as a single rectangular plane (4 vertices). To deform smoothly under a bone chain the user must subdivide the plane manually, knife-cut around the silhouette, or import from Photoshop and hope the polygon import (the photoshop tag system) produces enough vertices to bend. There is no Proscenio operator that turns "this PNG with alpha" into "a deformable mesh that follows the alpha boundary with N vertices of density I picked." COA Tools 2 ships exactly this operator ([automesh.py `COATOOLS2_OT_AutomeshFromTexture`](https://github.com/Aodaruma/coa_tools2/blob/master/coa_tools2/operators/automesh.py)) and the wider 2D community treats it as table stakes: Spine `Trace` ([Mesh attachments](http://esotericsoftware.com/spine-meshes)), Live2D Cubism Automatic Mesh Generation ([mesh-edit doc](https://docs.live2d.com/en/cubism-editor-manual/mesh-edit/)), Adobe Animate Asset Warp auto-triangulation ([Asset Warp](https://helpx.adobe.com/animate/how-to/asset-warp.html)).
 2. **Auto-weights fails on planar meshes.** Blender's "Parent with Automatic Weights" (`Ctrl+P` -> Automatic) uses bone-heat surface diffusion. On a planar 2D mesh (everything at Y=0) the heat solver routinely fails with `Bone Heat Weighting: failed to find solution for one or more bones` and silently leaves vertex groups empty - documented in [T45493](https://developer.blender.org/T45493) ("none of the vertices in an island being visible to any bones"), [T70834](https://developer.blender.org/T70834) (precision failure at distance from origin), [T37685](https://developer.blender.org/T37685) (normal-recalc dependency), [T51250](https://developer.blender.org/T51250), and [#127345](https://projects.blender.org/blender/blender/issues/127345). The error is the single most-asked Blender weight question on Stack Exchange. The Envelope path works but bleeds across body-part boundaries because every bone's envelope capsule reaches the neighboring limb. The user is left to paint every weight manually from zero.
 3. **Weight paint brush UX is 3D-centric.** Brush radius is in world units (does not scale with 2D ortho zoom level), `X-Axis Mirror` is per-brush rather than per-mode ([T46254](https://developer.blender.org/T46254), [#116115](https://projects.blender.org/blender/blender/issues/116115)), the Gradient tool ignores X-Symmetry entirely ([T99668](https://developer.blender.org/T99668)), the **Front Faces Only** default silently breaks every stroke on a thin plane ([devtalk: "Painting through the mesh is not intuitive or user friendly"](https://devtalk.blender.org/t/painting-through-the-mesh-is-not-intuitive-or-user-friendly/15231)), and the heatmap viz is invisible on low-poly meshes. Pen tablet pressure has a graveyard of bugs ([T82432](https://developer.blender.org/T82432), [T73377](https://developer.blender.org/T73377), [T93069](https://developer.blender.org/T93069)) and Blur+Smudge currently crash on undo in Blender 4.5 ([#149138](https://projects.blender.org/blender/blender/issues/149138)).
 4. **Iteration destroys weights.** Changing mesh density after binding wipes vertex group data. Blender's voxel remesher [explicitly states](https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/remesh.html) only face sets and mask survive; everything else is deleted by design. Issue [#150016](https://projects.blender.org/blender/blender/issues/150016) tracks an active regression where remesh demotes vertex groups to plain attributes. The official remedy is the Data Transfer modifier whose "Nearest Face Interpolated" mode is itself unreliable - an entire third-party-addon market ([Robust Weight Transfer](https://80.lv/articles/grab-this-one-click-blender-tool-for-effortless-weight-transfers) builds on SIGGRAPH ASIA 2023 paper "Robust Skin Weights Transfer via Weight Inpainting") exists exclusively to paper over this gap.
 
-The combined effect: SPEC 003 is technically usable, but actually authoring a skinned character today means hours of manual subdivision + manual weight painting per sprite, redone from scratch any time the mesh changes. The pipeline ships skinning capability; the addon does not yet ship skinning ergonomics. SPEC 013 closes that gap.
+The combined effect: the skinning-weights wire format is technically usable, but actually authoring a skinned character today means hours of manual subdivision + manual weight painting per sprite, redone from scratch any time the mesh changes. The pipeline ships skinning capability; the addon does not yet ship skinning ergonomics. this spec closes that gap.
 
-Concrete observed scenarios that this SPEC must enable in under 30 seconds each:
+Concrete observed scenarios that this spec must enable in under 30 seconds each:
 
 - "Turn this hand PNG into a 200-vertex mesh that bends at the wrist." (automesh)
 - "Bind this arm mesh to the 3-bone arm chain I just drew with Quick Armature." (auto-vertex-groups from bone chain + planar-safe seed)
@@ -27,16 +27,16 @@ None of these are exotic asks. All of them are blocked today.
 
 ## Constraints
 
-- **Blender-only authoring.** All operators run in `bpy.types.Operator`; no GDExtension, no native code. SPEC 013 cannot push native shaders or compute kernels into the runtime path; mesh + weight authoring happens at editor time and persists as vertex groups + mesh data on the `.blend`.
+- **Blender-only authoring.** All operators run in `bpy.types.Operator`; no GDExtension, no native code. this spec cannot push native shaders or compute kernels into the runtime path; mesh + weight authoring happens at editor time and persists as vertex groups + mesh data on the `.blend`.
 - **Strong typing.** Per [`.ai/conventions.md`](../../.ai/conventions.md) static-typing section: every parameter typed, every return typed, `Any` only at the `bpy` boundary. Mypy strict.
-- **No schema or format-version bump.** Downstream output (`weights` array on the sprite) is unchanged - SPEC 003 already defines it. SPEC 013 is purely authoring side; the `.proscenio` shape does not move.
-- **XZ picture-plane convention is law.** Like Quick Armature (SPEC 012), automesh outputs lie on Y=0. Mesh density and weight gradients must respect that the working surface is planar.
+- **No schema or format-version bump.** Downstream output (`weights` array on the sprite) is unchanged - the skinning-weights wire format already defines it. this spec is purely authoring side; the `.proscenio` shape does not move.
+- **XZ picture-plane convention is law.** Like Quick Armature (the quick-armature spec), automesh outputs lie on Y=0. Mesh density and weight gradients must respect that the working surface is planar.
 - **No third-party Python dependencies at runtime.** This constraint is load-bearing - COA Tools 2's hard dependency on `cv2` + `numpy` is its single biggest adoption blocker ([issues #94](https://github.com/Aodaruma/coa_tools2/issues/94) and [#107](https://github.com/Aodaruma/coa_tools2/issues/107) - corp / ISP firewalls block PyPI, manual cv2 copy breaks numpy ABI, addon errors out before the user can try the feature). Mesh generation has to use Blender's built-in `bmesh` + `mathutils` + pure-Python alpha-contour walking (Moore neighbour or marching squares on the alpha channel via the existing `bpy.types.Image.pixels` buffer). Allowed at *test* time for fixture preparation only.
-- **Coexist with vanilla Blender weight paint.** Users with prior Blender muscle memory must be able to drop into `Weight Paint` mode and use the brush as usual. SPEC 013 adds helpers around that mode; it does not replace it.
-- **Coexist with Photoshop importer (SPEC 011).** Imported `[mesh]`-tagged layers already arrive as `Polygon2D`-shaped meshes via the planner. Automesh must accept both "single plane in" and "imported polygon in" and add density without destroying the existing topology or the `proscenio_psd_kind = "mesh"` custom property.
-- **Quick Armature interop (SPEC 012).** A user who just drew a 3-bone arm with `proscenio.quick_armature` should be one click away from "create vertex groups for these bones on the selected mesh + initialize them empty so I can start painting." The "active armature picker" contract from SPEC 012 D16 is the source of truth.
-- **Reload safety.** Operators must register / unregister cleanly with the addon's reload-scripts loop. State that lives between invocations stays in PropertyGroups or Scene custom properties, not in module-level globals (lessons from SPEC 012 PEP-563 bug).
-- **ESC always exits any modal.** Hard contract. COA Tools 2's Draw 2D Polygon modal ([edit_mesh.py:1571](https://github.com/Aodaruma/coa_tools2/blob/master/coa_tools2/operators/edit_mesh.py)) makes ESC a deselect-only - confirmed root cause of the "stroke continues on pen tablet after Esc" bug from the user-supplied Discord screenshot. SPEC 013 modals must (a) treat ESC as both "release the pending stroke" AND "exit the modal", (b) handle `WINDOW_DEACTIVATE`, (c) detect tablet release via `event.pressure == 0` + a timer fallback.
+- **Coexist with vanilla Blender weight paint.** Users with prior Blender muscle memory must be able to drop into `Weight Paint` mode and use the brush as usual. this spec adds helpers around that mode; it does not replace it.
+- **Coexist with Photoshop importer (the photoshop tag system).** Imported `[mesh]`-tagged layers already arrive as `Polygon2D`-shaped meshes via the planner. Automesh must accept both "single plane in" and "imported polygon in" and add density without destroying the existing topology or the `proscenio_psd_kind = "mesh"` custom property.
+- **Quick Armature interop (the quick-armature spec).** A user who just drew a 3-bone arm with `proscenio.quick_armature` should be one click away from "create vertex groups for these bones on the selected mesh + initialize them empty so I can start painting." The "active armature picker" contract from the quick-armature spec D16 is the source of truth.
+- **Reload safety.** Operators must register / unregister cleanly with the addon's reload-scripts loop. State that lives between invocations stays in PropertyGroups or Scene custom properties, not in module-level globals (lessons from the quick-armature PEP-563 bug).
+- **ESC always exits any modal.** Hard contract. COA Tools 2's Draw 2D Polygon modal ([edit_mesh.py:1571](https://github.com/Aodaruma/coa_tools2/blob/master/coa_tools2/operators/edit_mesh.py)) makes ESC a deselect-only - confirmed root cause of the "stroke continues on pen tablet after Esc" bug from the user-supplied Discord screenshot. this spec modals must (a) treat ESC as both "release the pending stroke" AND "exit the modal", (b) handle `WINDOW_DEACTIVATE`, (c) detect tablet release via `event.pressure == 0` + a timer fallback.
 
 ## Reference: 2D rigging tooling survey (automesh + weight + bind)
 
@@ -80,7 +80,7 @@ Each section below covers: (a) mesh creation flow, (b) bind / weight flow, (c) s
 
 Spriter 2 (in alpha/beta as of 2026, currently Beta 2026.04.26) is the planned replacement and explicitly advertises "many forms of mesh deformation, curve based and bone based hierarchies" plus a new **attractor** deformation system "to allow deformation with arbitrary configurations of deformation handles" ([Spriter 2 alpha 0.9.5](https://x.com/Spriter2D/status/1777112939473895715)). BrashMonkey disabled "multi-bone mesh attachments and mesh deformers (except contour mesh)" in a December 2024 update while reworking the animation paradigm. Production-ready mesh+weight workflow is still moving target.
 
-**Implication for SPEC 013:** the lesson is "don't ship a mesh deformation feature that doesn't actually work end-to-end." Better to defer than half-ship. Spriter's nearly-decade-long "mesh is coming soon" reputation is a cautionary tale.
+**Implication for this spec:** the lesson is "don't ship a mesh deformation feature that doesn't actually work end-to-end." Better to defer than half-ship. Spriter's nearly-decade-long "mesh is coming soon" reputation is a cautionary tale.
 
 **Sources.** [Steam discussion](https://steamcommunity.com/app/332360/discussions/0/3288067088086478830/), [Free-Form Deformation? Steam](https://steamcommunity.com/app/332360/discussions/0/351660338690641338/), [BrashMonkey: How to Use Mesh and FFD](https://brashmonkey.com/forum/index.php?/topic/4116-how-to-use-mesh-and-ffd-in-spriter/), [Where is the Mesh Deformation update?](https://brashmonkey.com/forum/index.php?/topic/5389-where-is-the-mesh-deformation-update/), [Spriter 2 product page](https://brashmonkey.com/).
 
@@ -114,7 +114,7 @@ Spriter 2 (in alpha/beta as of 2026, currently Beta 2026.04.26) is the planned r
 
 Smart Bones layer on top of any of these. Designate a bone as smart, create a **Smart Bone Action** (e.g. "elbow bend 0 to 90"), animate any rig change inside that action - vector point offsets, sub-bone rotations, switch-layer swaps. When the parent bone later rotates, Moho interpolates the action proportionally. This is how clean joints, face turns and corrective bulges are authored without painting weights at all.
 
-**Inspiration for Proscenio.** (a) **Region/strength painting as the default authoring metaphor** before per-vertex weights: Proscenio could expose a per-bone elliptical/capsule "influence region" widget (drag a handle along the bone to grow/shrink radius) that *generates* the initial weight map procedurally, falling back to weight paint only for fix-ups. Collapses "I need to weight 60 vertices" into "drag two handles." (b) **Corrective-action drivers analogous to Smart Bones**: even a thin version (per-bone shape key driven by bone rotation, baked through `update_tag`) would meaningfully reduce joint-cleanup iteration cost. (b) is Wave 13.2 / 14 material.
+**Inspiration for Proscenio.** (a) **Region/strength painting as the default authoring metaphor** before per-vertex weights: Proscenio could expose a per-bone elliptical/capsule "influence region" widget (drag a handle along the bone to grow/shrink radius) that *generates* the initial weight map procedurally, falling back to weight paint only for fix-ups. Collapses "I need to weight 60 vertices" into "drag two handles." (b) **Corrective-action drivers analogous to Smart Bones**: even a thin version (per-bone shape key driven by bone rotation, baked through `update_tag`) would meaningfully reduce joint-cleanup iteration cost. (b) is the productivity follow-up / 14 material.
 
 **Sources.** [Bone Tools manual](https://www.lostmarble.com/moho/manual/bone_tools.html), [Moho features](https://moho.lostmarble.com/pages/features), [Walkthrough: Moho binding methods](https://lesterbanks.com/2016/11/walkthrough-moho-binding-methods/), [Flexi binding method](https://lesterbanks.com/2016/11/working-flexi-binding-method-moho/), [Layer / point binding](https://lesterbanks.com/2019/04/layer-binding-and-point-binding-in-moho-pro/), [Smart Bone Actions](https://www.animestudiotutor.com/bones/smart_bone_actions_in_moho_anime_studio/).
 
@@ -130,7 +130,7 @@ Smart Bones layer on top of any of these. Designate a bone as smart, create a **
 - **Weighted Deform**: connect deformation chains, pegs, and free deformation points to the same node; each source contributes a region of influence blended automatically. Docs frame this as "creating a blended deformation from the regions defined by multiple sources" - the user authors *regions*, not vertex weights.
 - **Auto-Patch nodes** solve the classic 2D "joint hole" problem at articulations (elbow, knee, shoulder): once chain is rigged, drop an Auto-Patch node on each joint and it automatically masks/patches the seam between two body parts as the joint bends, with no parameters to tune. **Conceptually a free auto-weighting of the joint cover.**
 
-**Inspiration for Proscenio.** (a) **"Auto-Patch at articulations" as a first-class operator**: a one-click joint-cover that, given two child meshes sharing a parent bone, generates the seam geometry / weight blend that hides the inner-elbow hole - users get clean joints without ever opening weight paint. (b) **Region-blending mindset for multi-chain weights**: let the addon expose multiple weight "sources" (per-bone region, per-stroke vertex group, free-form lattice handle) and combine them with explicit blend weights. (a) is Wave 13.2; (b) is Wave 14+.
+**Inspiration for Proscenio.** (a) **"Auto-Patch at articulations" as a first-class operator**: a one-click joint-cover that, given two child meshes sharing a parent bone, generates the seam geometry / weight blend that hides the inner-elbow hole - users get clean joints without ever opening weight paint. (b) **Region-blending mindset for multi-chain weights**: let the addon expose multiple weight "sources" (per-bone region, per-stroke vertex group, free-form lattice handle) and combine them with explicit blend weights. (a) belongs in the productivity follow-up; (b) belongs in a future animation-system spec.
 
 **Sources.** [About deformation](https://docs.toonboom.com/help/harmony-22/premium/getting-started/deformation.html), [Weighted Deformations](https://docs.toonboom.com/help/harmony-22/premium/deformation/about-weighted-deformations.html), [Auto-Patch articulation](https://docs.toonboom.com/help/harmony-22/premium/rigging/about-auto-patch-articulation.html), [Rigging tool properties](https://docs.toonboom.com/help/harmony-22/premium/reference/tool-properties/rigging-tool-properties.html), [Auto-Patch activity tutorial](https://learn.toonboom.com/modules/art-layers-and-auto-patches/topic/activity-1-rigging-with-auto-patch-nodes).
 
@@ -198,7 +198,7 @@ Widely described in community threads as "fragile" - exactly the audience pain P
 - Normalization confusion: weights look correct in paint mode but fail at deform time because Auto Normalize was off.
 - Blur+Smudge currently crash on undo ([#149138](https://projects.blender.org/blender/blender/issues/149138)).
 
-Summary across community threads: Blender weight paint is powerful but assumes the artist already knows 3D character workflow. Applied to a flat 2D-cutout pipeline, every default is wrong (occlude geometry on, no subsurf, X-Mirror conditional, bone heat brittle on planes). This is precisely the audience SPEC 013 targets.
+Summary across community threads: Blender weight paint is powerful but assumes the artist already knows 3D character workflow. Applied to a flat 2D-cutout pipeline, every default is wrong (occlude geometry on, no subsurf, X-Mirror conditional, bone heat brittle on planes). This is precisely the audience this spec targets.
 
 **Sources.** [Armature Deform Parent](https://docs.blender.org/manual/en/latest/animation/armatures/skinning/parenting.html), [Weight Paint introduction](https://docs.blender.org/manual/en/latest/sculpt_paint/weight_paint/index.html), [Weight Paint Brushes](https://docs.blender.org/manual/en/latest/sculpt_paint/weight_paint/brushes.html), [Weight Paint Tools (Gradient)](https://docs.blender.org/manual/en/latest/sculpt_paint/weight_paint/tools.html), [Weight Paint Options](https://docs.blender.org/manual/en/latest/sculpt_paint/weight_paint/tool_settings/options.html), [Data Transfer Modifier](https://docs.blender.org/manual/en/latest/modeling/modifiers/modify/data_transfer.html), [Volumetric Heat Diffusion blog](https://bronsonzgeb.com/index.php/2021/06/26/volumetric-heat-diffusion-for-automatic-mesh-skinning/), [Weight painting, why so painful?](https://blenderartists.org/t/weight-painting-why-so-painful/683410), [Bone Heat failed - BlenderArtists](https://blenderartists.org/t/bone-heat-weighting-failed-to-find-solution-for-one-or-more-bones/701412), [Big issue with rigging and weight paint](https://blenderartists.org/t/big-issue-with-rigging-and-weight-paint/1176591).
 
@@ -253,7 +253,7 @@ LMB press = start contour; LMB drag = lay a vert every `scene.coa_tools2.distanc
 
 **This is the screenshot-confirmed bug B (pen tablet stroke continues after Esc).** Root cause: `self.mouse_press = False` is only set when `event.value == "RELEASE" and event.type in {"MOUSEMOVE","LEFTMOUSE"}` (lines 1493-1496). Wacom/XP-Pen drivers under Windows Ink emit `WINDOW_DEACTIVATE` or no MOUSEMOVE-with-RELEASE when the pen lifts, so `mouse_press` stays True until the next `LEFTMOUSE+RELEASE`, and the modal keeps adding verts. **No tablet/pen pressure handling wired at all** (`grep -E 'TABLET|PEN|pressure|tilt'` returns zero hits in the operator). No dedicated issue exists in the COA tracker for this bug - unreported but confirmed-reproducible via code inspection.
 
-**Known bugs (top 5 relevant to SPEC 013).**
+**Known bugs (top 5 relevant to this spec).**
 
 | # | Status | Title | Summary |
 | --- | --- | --- | --- |
@@ -281,7 +281,7 @@ LMB press = start contour; LMB drag = lay a vert every `scene.coa_tools2.distanc
 
 ## Community pain themes
 
-Synthesis of recurring complaints across BlenderArtists, Reddit (r/blender, r/animation, r/gamedev, r/2DAnimation), Blender Stack Exchange, Spine forums, Adobe Community, Toon Boom learn, and Cubism docs. Six themes ordered by frequency; "Implication for SPEC 013" closes each.
+Synthesis of recurring complaints across BlenderArtists, Reddit (r/blender, r/animation, r/gamedev, r/2DAnimation), Blender Stack Exchange, Spine forums, Adobe Community, Toon Boom learn, and Cubism docs. Six themes ordered by frequency; "Implication for this spec" closes each.
 
 ### 1. 2D Rigging Weight Paint Pain in Blender
 
@@ -291,7 +291,7 @@ User signal: BlenderArtists [problem with weight painting 2D model](https://blen
 
 **Distilled:** Blender's weight paint defaults assume 3D solid; for planar 2D the default "front faces only" silently makes half of every stroke disappear, and the fix requires two unrelated settings nobody finds without a tutorial.
 
-**Implication for SPEC 013:** ship a 2D-aware weight paint mode preset that auto-disables Front Faces Only, enables 2D / projected falloff, locks symmetry to picker's mirror axis. Detect when active object is Proscenio-tagged 2D plane and force preset at mode-enter time. Surface preset state as header pill so user does not lose orientation when switching to non-Proscenio mesh.
+**Implication for this spec:** ship a 2D-aware weight paint mode preset that auto-disables Front Faces Only, enables 2D / projected falloff, locks symmetry to picker's mirror axis. Detect when active object is Proscenio-tagged 2D plane and force preset at mode-enter time. Surface preset state as header pill so user does not lose orientation when switching to non-Proscenio mesh.
 
 ### 2. Auto-Weights Failures ("Bone Heat Weighting: failed to find solution")
 
@@ -301,7 +301,7 @@ User signal: [BlenderNation aggregator](https://www.blendernation.com/2023/05/19
 
 **Distilled:** Bone Heat Weighting fails opaquely from 5+ different root causes; user has to run a recipe of unrelated cleanups before retrying, and the error message says nothing actionable.
 
-**Implication for SPEC 013:** Proscenio's auto-weights step must pre-flight: detect zero-area faces, overlapping verts, unapplied scale, far-from-origin position, flipped normals, isolated mesh islands before calling Blender's `parent_with_automatic_weights`. On failure, surface a structured diagnosis ("3 islands have no bone in line of sight - select bones B1, B2 to fix") not a stack trace. For 2D specifically, bone-heat's line-of-sight assumption is broken - SPEC 013 ships a custom planar-distance falloff weight algorithm instead of relying on Blender's heat solver.
+**Implication for this spec:** Proscenio's auto-weights step must pre-flight: detect zero-area faces, overlapping verts, unapplied scale, far-from-origin position, flipped normals, isolated mesh islands before calling Blender's `parent_with_automatic_weights`. On failure, surface a structured diagnosis ("3 islands have no bone in line of sight - select bones B1, B2 to fix") not a stack trace. For 2D specifically, bone-heat's line-of-sight assumption is broken - this spec ships a custom planar-distance falloff weight algorithm instead of relying on Blender's heat solver.
 
 ### 3. Automesh / Mesh-From-Image Complaints
 
@@ -311,7 +311,7 @@ User signal: [NightQuestGames DragonBones review](https://www.nightquestgames.co
 
 **Distilled:** Every shipping automesh is a uniform-density grid bounded by alpha; users want non-uniform density that thickens under joints and thins on flat fills, and they want it to update without losing weights when source PSD changes.
 
-**Implication for SPEC 013:** Proscenio automesh should accept the picker's bone positions as input and locally subdivide under bone influence radii (more triangles where deformation happens). Expose two density knobs separately: silhouette resolution (alpha-driven hull) and interior resolution (bone-driven subdivision). Default to "auto under bones" when picker has an armature; uniform density when not. Treat automesh output as regenerable - record alpha threshold + bone-density params on the object so re-runs are deterministic and diffable.
+**Implication for this spec:** Proscenio automesh should accept the picker's bone positions as input and locally subdivide under bone influence radii (more triangles where deformation happens). Expose two density knobs separately: silhouette resolution (alpha-driven hull) and interior resolution (bone-driven subdivision). Default to "auto under bones" when picker has an armature; uniform density when not. Treat automesh output as regenerable - record alpha threshold + bone-density params on the object so re-runs are deterministic and diffable.
 
 ### 4. Weight Paint Brush UX (General)
 
@@ -321,7 +321,7 @@ User signal: [#116115](https://projects.blender.org/blender/blender/issues/11611
 
 **Distilled:** Brush is unreliable along three independent axes - mirror, tablet input, undo - and users learn to save before every stroke.
 
-**Implication for SPEC 013:** Proscenio cannot fix Blender's tablet stack, but it can (a) auto-save a vertex-group snapshot before entering paint mode, (b) provide a one-click "restore last snapshot" not dependent on Blender's undo, (c) force-enable symmetry consistently across all paint tools when picker has a mirror axis configured. Surface mirror state in header (not buried in N-panel) so user can verify it's actually on. For 2D, lock brush size to ortho-pixel units rather than world units so brush size doesn't change meaning across zoom levels.
+**Implication for this spec:** Proscenio cannot fix Blender's tablet stack, but it can (a) auto-save a vertex-group snapshot before entering paint mode, (b) provide a one-click "restore last snapshot" not dependent on Blender's undo, (c) force-enable symmetry consistently across all paint tools when picker has a mirror axis configured. Surface mirror state in header (not buried in N-panel) so user can verify it's actually on. For 2D, lock brush size to ortho-pixel units rather than world units so brush size doesn't change meaning across zoom levels.
 
 ### 5. Iteration Loop Pain (Regen Mesh -> Lose Weights)
 
@@ -331,7 +331,7 @@ User signal: [Blender bug #150016](https://projects.blender.org/blender/blender/
 
 **Distilled:** Regenerating the mesh destroys all weight-paint labor; official transfer tools require esoteric option choices and still produce wrong results on basic cases; entire third-party paid-addon market exists to paper over this.
 
-**Implication for SPEC 013 (HIGHEST PRIORITY):**
+**Implication for this spec (HIGHEST PRIORITY):**
 
 - Proscenio must persist weights independently of the mesh - store them as a Proscenio sidecar (per-region weight stamps keyed by UV coordinates or alpha-landmark anchors, not vertex indices).
 - On automesh regen, automatically reproject weights from the sidecar onto the new topology before the user notices.
@@ -355,7 +355,7 @@ User signal: [Spine forum "Some features Spine is actually missing"](https://en.
 
 **Distilled:** Every existing tool optimizes for the first character rig and punishes iteration, team-scale, and engine integration.
 
-**Implication for SPEC 013:** Proscenio's source-of-truth being plain .blend + sidecar JSON inside the user's repo already addresses (3), (5), (6). SPEC 013 should explicitly own (1), (2), (7), (8) - the mesh+weights deliverables. (4) vertex-level animation is out of SPEC 013 scope but is a strong candidate for SPEC 014.
+**Implication for this spec:** Proscenio's source-of-truth being plain .blend + sidecar JSON inside the user's repo already addresses (3), (5), (6). this spec should explicitly own (1), (2), (7), (8) - the mesh+weights deliverables. (4) vertex-level animation is out of this spec scope but is a strong candidate for a future animation-system spec.
 
 ### TL;DR for Proscenio - Top 5 Pain Points to NOT Replicate
 
@@ -367,12 +367,12 @@ User signal: [Spine forum "Some features Spine is actually missing"](https://en.
 
 ## Patterns observed across tools
 
-Synthesis matrix. Pattern column = capability. Tool columns = ships it? (yes / no / partial / N/A for paradigm mismatch). Proscenio relevance column = first-cut, Wave 13.2, deferred / future.
+Synthesis matrix. Pattern column = capability. Tool columns = ships it? (yes / no / partial / N/A for paradigm mismatch). Proscenio relevance column = first-cut, the productivity follow-up, deferred / future.
 
 | Pattern | Spine | DragonBones | Spriter 1.x | Live2D | Moho | Animate | Toon Boom | Blender native | COA2 | **Proscenio relevance** |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Alpha-trace automesh (one-shot from PNG) | yes (`Trace`) | no | no | yes (Auto Mesh Generation) | n/a (vector) | partial (auto-tri on joint placement) | n/a (deformer chains) | no | yes (cv2-dependent) | **first cut** (pure-Python alpha walker) |
-| Iterative add-density automesh | yes (`Generate`) | no | no | yes (manual densify) | n/a | no | no | no | no | **Wave 13.2** |
+| Iterative add-density automesh | yes (`Generate`) | no | no | yes (manual densify) | n/a | no | no | no | no | **the productivity follow-up** |
 | Density-under-bones (variable resolution) | partial (manual via tool) | no | no | partial (manual) | n/a | no | n/a | no | no | **first cut** (key differentiator) |
 | Concave-hull silhouette boundary | yes | manual | n/a | yes | n/a | yes | yes | no | yes (cv2 contours) | **first cut** |
 | Annulus topology (inner+outer contour + fill) | partial | no | no | partial | n/a | no | n/a | no | **yes** | **first cut** (lift from COA2) |
@@ -383,10 +383,10 @@ Synthesis matrix. Pattern column = capability. Tool columns = ships it? (yes / n
 | 2D-aware brush radius (screen px, not world) | n/a (always 2D) | n/a | n/a | n/a | n/a | n/a | n/a | no | no | **first cut** (custom preset) |
 | Symmetry mirror across user axis | no (community ask) | no | n/a | yes (PSD axis) | yes (X mirror) | yes (auto) | yes (group copy) | partial (X only, buggy) | no | **first cut** (mirror via picker axis) |
 | Lock bones during paint (multi-bone exclude) | yes (Lock) | no | n/a | n/a | n/a | n/a | n/a | yes (vertex group lock) | no | **first cut** (lift Blender) |
-| Smooth / blur brush | yes | yes (Smooth) | n/a | n/a | n/a | yes (Soft bone toggle) | yes (region blend) | yes (buggy on planes) | yes (delegates) | **Wave 13.2** (planar-safe blur) |
-| Bone strength region as primary metaphor | no | no | n/a | partial (deformer reach) | **yes** (Strength tool) | partial (mesh density) | yes (Bias) | no | no | **Wave 13.2** (Moho lift) |
-| Soft vs Hard bone toggle | no | no | n/a | n/a | n/a | yes | no | no | no | **Wave 13.2** (Animate lift) |
-| Auto-patch joint cover at articulations | no | no | n/a | partial (Glue) | partial (Smart Bone) | no | **yes** (Auto-Patch node) | no | no | **Wave 13.3** (Harmony lift) |
+| Smooth / blur brush | yes | yes (Smooth) | n/a | n/a | n/a | yes (Soft bone toggle) | yes (region blend) | yes (buggy on planes) | yes (delegates) | **the productivity follow-up** (planar-safe blur) |
+| Bone strength region as primary metaphor | no | no | n/a | partial (deformer reach) | **yes** (Strength tool) | partial (mesh density) | yes (Bias) | no | no | **the productivity follow-up** (Moho lift) |
+| Soft vs Hard bone toggle | no | no | n/a | n/a | n/a | yes | no | no | no | **the productivity follow-up** (Animate lift) |
+| Auto-patch joint cover at articulations | no | no | n/a | partial (Glue) | partial (Smart Bone) | no | **yes** (Auto-Patch node) | no | no | **successor work** (Harmony lift) |
 | Snapshot mesh+weights on bind (rest-state) | partial | no | n/a | **yes** (Restore Deformer) | no | partial (keyframe undo) | yes (Deformation Group) | no | **yes** (`coa_base_sprite`) | **first cut** (THE differentiator) |
 | Weight preservation on mesh regen | partial | no | n/a | yes (deformer-mesh independent) | yes (region-based) | partial (slider warning) | yes (chain independent) | **no** (remesh wipes) | partial (base sprite anchor only) | **first cut** (sidecar reproject) |
 | Pre-flight diagnosis on auto-weight failure | n/a (no failure mode) | n/a | n/a | n/a | n/a | n/a | n/a | **no** (cryptic error) | no | **first cut** (structured guidance) |
@@ -394,10 +394,10 @@ Synthesis matrix. Pattern column = capability. Tool columns = ships it? (yes / n
 | One-button modal wrapper for paint mode | n/a | n/a | n/a | n/a | n/a | n/a | n/a | no | **yes** (Edit Weights) | **first cut** (lift COA2) |
 | ESC always exits modal | yes | yes | n/a | yes | yes | yes | yes | yes | **no** (deselect only) | **first cut** (hard contract) |
 | Tablet pressure handled in draw modal | unclear | n/a | n/a | yes | yes | yes (draw tools) | yes | yes (when drivers cooperate) | **no** (zero hits in code) | **first cut** (event.pressure + release detection) |
-| Weight transfer between sprites (rig clone) | n/a (single mesh) | n/a | n/a | yes (Glue across ArtMeshes) | yes (Copy/Paste Bone Actions) | n/a | yes (Weighted Deform sources) | yes (Data Transfer modifier) | no (issue #18 #73 open) | **Wave 13.2** |
+| Weight transfer between sprites (rig clone) | n/a (single mesh) | n/a | n/a | yes (Glue across ArtMeshes) | yes (Copy/Paste Bone Actions) | n/a | yes (Weighted Deform sources) | yes (Data Transfer modifier) | no (issue #18 #73 open) | **the productivity follow-up** |
 | Live pose-mode preview in weight paint | n/a (modes share) | n/a | n/a | n/a | yes | yes (timeline scrub) | yes | partial (with workarounds) | partial (POSE+WEIGHT_PAINT split via modal) | **first cut** (lift COA2 pattern) |
 
-**First-cut column = SPEC 013 Wave 13.1 minimum viable shape.** Wave 13.2 = follow-up productivity wave. Wave 13.3+ = aspirational (Auto-Patch, Smart Bones). Future / deferred = successor SPECs.
+**First-cut column = this spec the first cut minimum viable shape.** the productivity follow-up = follow-up productivity wave. successor work = aspirational (Auto-Patch, Smart Bones). Future / deferred = successor specs.
 
 ## Position of Proscenio today
 
@@ -405,36 +405,36 @@ Mapping current state to first-cut patterns above:
 
 | Area | Status today | File / handle |
 | --- | --- | --- |
-| Skinning emit (writer -> `weights` array) | **shipped** (SPEC 003) | [`exporters/godot/writer/sprites.py`](../../apps/blender/exporters/godot/writer/sprites.py) `_build_sprite_weights` |
-| Skinning import (`Polygon2D.skeleton` + `add_bone`) | **shipped** (SPEC 003) | [`apps/godot/addons/proscenio/builders/polygon_builder.gd`](../../apps/godot/addons/proscenio/builders/polygon_builder.gd) |
-| Quick Armature (bone authoring) | **shipped** (SPEC 012) | [`operators/quick_armature.py`](../../apps/blender/operators/quick_armature.py) |
-| Active armature picker (source of truth) | **shipped** (SPEC 012 D16) | [`properties/scene_props.py`](../../apps/blender/properties/scene_props.py) `active_armature` |
-| Modal overlay scaffold (GPU draw + status / header hints) | **shipped** (SPEC 012) | [`core/bpy_helpers/modal_overlay.py`](../../apps/blender/core/bpy_helpers/modal_overlay.py) |
-| Photoshop `[mesh]`-tagged layer ingest | **shipped** (SPEC 011) | [`importers/photoshop/planes.py`](../../apps/blender/importers/photoshop/planes.py) |
-| Alpha-trace automesh from sprite | **no** | gap (this SPEC) |
-| Annulus topology (outer+inner contour + fill) | **no** | gap (this SPEC) |
-| Planar-safe auto-weights (no heat solver) | **no** | gap (this SPEC) |
-| Auto-vertex-group from bone chain | **no** | gap (this SPEC) |
-| 2D-aware weight paint preset (Front Faces off, 2D Falloff, mirror via picker) | **no** | gap (this SPEC) |
-| GPU overlay weight viz (per-vertex colorband) | **no** | gap (this SPEC) |
-| One-button modal wrapper for paint mode | **no** | gap (this SPEC) |
-| Weight sidecar (preserve through regen) | **no** | gap (this SPEC, **key differentiator**) |
-| Pre-flight diagnosis on auto-weight failure | **no** | gap (this SPEC) |
-| Mesh-data preservation anchor (base sprite verts survive regen) | **no** | gap (this SPEC) |
-| Tablet release detection in draw modal | **no** | gap (this SPEC, lifecycle hygiene) |
-| Soft vs Hard bone toggle | **no** | Wave 13.2 |
-| Bone strength region painting | **no** | Wave 13.2 |
-| Auto-patch joint cover | **no** | Wave 13.3 |
-| Weight transfer between sprites | **no** | Wave 13.2 |
+| Skinning emit (writer -> `weights` array) | **shipped** (the skinning-weights wire format) | [`exporters/godot/writer/sprites.py`](../../apps/blender/exporters/godot/writer/sprites.py) `_build_sprite_weights` |
+| Skinning import (`Polygon2D.skeleton` + `add_bone`) | **shipped** (the skinning-weights wire format) | [`apps/godot/addons/proscenio/builders/polygon_builder.gd`](../../apps/godot/addons/proscenio/builders/polygon_builder.gd) |
+| Quick Armature (bone authoring) | **shipped** (the quick-armature spec) | [`operators/quick_armature.py`](../../apps/blender/operators/quick_armature.py) |
+| Active armature picker (source of truth) | **shipped** (the quick-armature spec D16) | [`properties/scene_props.py`](../../apps/blender/properties/scene_props.py) `active_armature` |
+| Modal overlay scaffold (GPU draw + status / header hints) | **shipped** (the quick-armature spec) | [`core/bpy_helpers/modal_overlay.py`](../../apps/blender/core/bpy_helpers/modal_overlay.py) |
+| Photoshop `[mesh]`-tagged layer ingest | **shipped** (the photoshop tag system) | [`importers/photoshop/planes.py`](../../apps/blender/importers/photoshop/planes.py) |
+| Alpha-trace automesh from sprite | **no** | gap (this spec) |
+| Annulus topology (outer+inner contour + fill) | **no** | gap (this spec) |
+| Planar-safe auto-weights (no heat solver) | **no** | gap (this spec) |
+| Auto-vertex-group from bone chain | **no** | gap (this spec) |
+| 2D-aware weight paint preset (Front Faces off, 2D Falloff, mirror via picker) | **no** | gap (this spec) |
+| GPU overlay weight viz (per-vertex colorband) | **no** | gap (this spec) |
+| One-button modal wrapper for paint mode | **no** | gap (this spec) |
+| Weight sidecar (preserve through regen) | **no** | gap (this spec, **key differentiator**) |
+| Pre-flight diagnosis on auto-weight failure | **no** | gap (this spec) |
+| Mesh-data preservation anchor (base sprite verts survive regen) | **no** | gap (this spec) |
+| Tablet release detection in draw modal | **no** | gap (this spec, lifecycle hygiene) |
+| Soft vs Hard bone toggle | **no** | the productivity follow-up |
+| Bone strength region painting | **no** | the productivity follow-up |
+| Auto-patch joint cover | **no** | successor work |
+| Weight transfer between sprites | **no** | the productivity follow-up |
 
-11 first-cut gaps in this SPEC. Wave 13.1 ships them; Waves 13.2 / 13.3 ship the productivity + aspirational layers.
+11 first-cut gaps in this spec. the first cut ships them; the productivity follow-up and the successor work ship the productivity + aspirational layers.
 
 ## Design surface
 
-The SPEC splits into five concerns:
+The spec splits into five concerns:
 
 1. **Mesh generation (automesh).** Pure-Python alpha-contour walker (Moore neighbour or marching squares on `bpy.types.Image.pixels` buffer - no OpenCV) builds outer + inner contour + annulus triangulation. Configurable resolution, alpha threshold, margin. Re-runnable with `coa_base_sprite`-style preservation anchor.
-2. **Bone binding + initial weights.** AMENDED Wave 13.2-panel: default is now Blender's native bone heat (`parent_with_automatic_weights`) - 2D pickers with bones tangent to the picture plane don't hit the failure mode D4 originally guarded against, and bone heat produces visibly better falloff. Proscenio's custom planar-distance falloff algorithm + envelope + single-nearest + empty modes remain available as opt-in fallbacks via the `bind_init_mode` enum (panel dropdown + F3 redo). Pre-flight diagnoses (D11) run before EVERY bind path including BONE_HEAT. See D4 / D5 amendments.
+2. **Bone binding + initial weights.** AMENDED the panel work: default is now Blender's native bone heat (`parent_with_automatic_weights`) - 2D pickers with bones tangent to the picture plane don't hit the failure mode D4 originally guarded against, and bone heat produces visibly better falloff. Proscenio's custom planar-distance falloff algorithm + envelope + single-nearest + empty modes remain available as opt-in fallbacks via the `bind_init_mode` enum (panel dropdown + F3 redo). Pre-flight diagnoses (D11) run before EVERY bind path including BONE_HEAT. See D4 / D5 amendments.
 3. **Weight paint modal wrapper.** One-button enter / exit. On invoke: snapshot vertex groups, force 2D-safe brush preset (Front Faces Only off, 2D Falloff on, brush radius in screen pixels), enable Auto Normalize, switch armature to POSE + mesh to WEIGHT_PAINT, auto-select vertex group matching first selected bone. Custom GPU overlay (colorband discs per vertex, lifted from COA2). On exit: restore everything. ESC = hard exit. Tablet RELEASE detection via `event.pressure==0` + `WINDOW_DEACTIVATE` + timer fallback.
 4. **Iteration loop (weight preservation).** Sidecar JSON stored on the mesh object as `obj["proscenio_weight_sidecar"]` (raw Custom Property, durable through addon disable). Captures (a) vertex group names, (b) per-vertex weights keyed by alpha-stable UV anchors (not vertex indices), (c) mesh-data-hash baseline. On automesh regen: detect topology change, reproject sidecar onto new vertices via nearest-UV-neighbour interpolation, emit "weight provenance" report (X paint vertices restored, Y new vertices seeded from proximity falloff). Vertex provenance overlay distinguishes the three sources visually.
 5. **Subpanel + operator surface.** New `Skinning` subpanel parallel to `Skeleton` in the Proscenio sidebar. Buttons: `Automesh from Sprite`, `Bind to Picker Armature`, `Edit Weights` (modal wrapper), `Mirror Weights`, `Restore Snapshot`. Header pill shows picker armature + current bind mode + 2D paint preset status.
@@ -443,7 +443,7 @@ The SPEC splits into five concerns:
 
 - **Operators**: `proscenio.automesh_from_sprite`, `proscenio.bind_mesh_to_armature`, `proscenio.edit_weights_modal`, `proscenio.mirror_weights`, `proscenio.restore_weight_snapshot`, `proscenio.diagnose_weight_failure`. Invocable from the Skinning subpanel and from F3 search.
 - **Panel**: `Skinning` subpanel inside the Proscenio sidebar, alongside `Skeleton`. Shows the active mesh's vertex groups, binding status (bound to picker armature? which bones have non-empty weights? which are orphan?), preset state, the operator buttons.
-- **Active armature picker** (`scene.proscenio.active_armature`) - canonical source of truth (SPEC 012 D16 contract).
+- **Active armature picker** (`scene.proscenio.active_armature`) - canonical source of truth (the quick-armature spec D16 contract).
 - **Active sprite** (`scene.proscenio.active_sprite`) tells which mesh receives operations.
 - **Modal overlay scaffold** (`core/bpy_helpers/modal_overlay.py`) - lift for the GPU weight overlay + the edit-weights status hints.
 
@@ -499,42 +499,47 @@ class ProscenioSkinningProps(bpy.types.PropertyGroup):
     )
 ```
 
-Lives at `scene.proscenio.skinning`. Naming pattern parallel to `scene.proscenio.quick_armature` (SPEC 012 D15).
+Lives at `scene.proscenio.skinning`. Naming pattern parallel to `scene.proscenio.quick_armature` (the quick-armature spec D15).
 
-### Out of scope (deferred to successor SPECs or backlog)
+### Out of scope (deferred to successor specs or backlog)
 
-- **Auto-attach mesh to slot.** Coupling between vertex groups and SPEC 004 slot system; deferred until SPEC 004 maturity.
-- **Bezier brush stroke for the alpha-boundary trace.** COA Tools 2 uses straight-segment strokes; SPEC 013 follows the same minimal model.
+- **Auto-attach mesh to slot.** Coupling between vertex groups and the slot system; deferred until slot-system maturity.
+- **Bezier brush stroke for the alpha-boundary trace.** COA Tools 2 uses straight-segment strokes; this spec follows the same minimal model.
 - **GPU-accelerated weight sampling.** All weight math is bmesh + Python loops. If performance becomes a complaint on >5000-vertex meshes, escalate to backlog.
-- **Multi-mesh batch bind.** Operator targets a single active mesh. Batch bind = Wave 13.2 candidate.
-- **Live2D-style deformer paradigm.** Proscenio is bone-based; deformers are a different SPEC entirely if ever pursued.
-- **Soft vs Hard bone toggle (Adobe Animate lift)** - Wave 13.2 candidate; first-cut delivers proximity falloff which behaves like "soft" by default.
-- **Bone strength region painting (Moho lift)** - Wave 13.2 candidate; foundational and high-value but requires a custom widget + viewport draw that doubles SPEC scope if first-cut.
-- **Auto-patch joint cover at articulations (Toon Boom Harmony lift)** - Wave 13.3 candidate; requires both child-mesh detection and a custom seam generator.
-- **Smart-Bone-style corrective drivers** - SPEC 014+ material; couples to animation system not authoring.
-- **Cubism Glue equivalent** (seam binding between two ArtMeshes) - Wave 13.3.
+- **Multi-mesh batch bind.** Operator targets a single active mesh. Batch bind = follow-up candidate.
+- **Live2D-style deformer paradigm.** Proscenio is bone-based; deformers are a different spec entirely if ever pursued.
+- **Soft vs Hard bone toggle (Adobe Animate lift)** - follow-up candidate; first-cut delivers proximity falloff which behaves like "soft" by default.
+- **Bone strength region painting (Moho lift)** - follow-up candidate; foundational and high-value but requires a custom widget + viewport draw that doubles spec scope if first-cut.
+- **Auto-patch joint cover at articulations (Toon Boom Harmony lift)** - successor candidate; requires both child-mesh detection and a custom seam generator.
+- **Smart-Bone-style corrective drivers** - a future animation-system spec+ material; couples to animation system not authoring.
+- **Cubism Glue equivalent** (seam binding between two ArtMeshes) - successor work.
 - **Mirror humanoid binding** (one mesh on one side, click to mirror to the other) - couples to symmetric rigs. Currently no Proscenio fixture exercises symmetric humanoids end-to-end. Trigger: first humanoid fixture lands.
 
 ## Design decisions (locked)
 
-| ID | Question | Locked answer | Wave |
+| ID | Question | Locked answer | Tier |
 | --- | --- | --- | --- |
-| D1 | Automesh paradigm | **A** alpha-trace one-shot (pure-Python, no OpenCV) | 1 |
-| D2 | Mesh topology shape | **B** annulus (outer + inner contour + triangle_fill) | 1 |
-| D3 | Mesh data preservation anchor | **A** `proscenio_base_sprite` vertex group | 1 |
-| D4 | Bone heat solver usage | **C** explicit user opt-in only, NEVER default (AMENDED Wave 13.2-panel: BONE_HEAT now allowed as default for 2D pickers) | 1 |
-| D5 | Initial bind algorithm default | **C** planar proximity falloff (AMENDED Wave 13.2-panel: BONE_HEAT becomes default; planar proximity demoted to fallback) | 1 |
-| D6 | Weight preservation through mesh regen | **A** sidecar JSON keyed by UV anchors + auto-reproject | 1 |
-| D7 | Weight paint modal wrapper | **A** one-button enter / exit, auto-restore on exit + crash | 1 |
-| D8 | 2D paint preset application | **A** auto-apply on Edit Weights modal enter, header pill visible | 1 |
-| D9 | GPU weight overlay viz | **A** colorband discs per vertex (lift from COA2) | 1 |
-| D10 | ESC handling in draw modal | **A** hard exit + release pending stroke | 1 |
-| D11 | Pre-flight diagnosis on auto-weight failure | **A** structured guidance per failure cause, never raw stack trace | 1 |
-| D12 | Tablet RELEASE detection | **C** `event.pressure==0` + `WINDOW_DEACTIVATE` + timer fallback | 1 |
-| D13 | Subpanel placement | **A** new `Skinning` subpanel parallel to `Skeleton` | 1 |
-| D14 | Symmetry mirror axis source | **A** picker armature mirror flag (single source of truth) | 1 |
-| D15 | Density-under-bones automesh | **A** ON by default when picker has armature, OFF otherwise | 1 |
-| D16 | Soft vs Hard bone toggle | **B** defer to Wave 13.2 | 13.2 |
+| D1 | Automesh paradigm | **A** alpha-trace one-shot (pure-Python, no OpenCV) | first cut |
+| D2 | Mesh topology shape | **B** annulus (outer + inner contour + triangle_fill) | first cut |
+| D3 | Mesh data preservation anchor | **A** `proscenio_base_sprite` vertex group | first cut |
+| D4 | Bone heat solver usage | **C** explicit user opt-in only, NEVER default (amended in the panel work: BONE_HEAT now allowed as default for 2D pickers) | first cut |
+| D5 | Initial bind algorithm default | **C** planar proximity falloff (amended in the panel work: BONE_HEAT becomes default; planar proximity demoted to fallback) | first cut |
+| D6 | Weight preservation through mesh regen | **A** sidecar JSON keyed by UV anchors + auto-reproject | first cut |
+| D7 | Weight paint modal wrapper | **A** one-button enter / exit, auto-restore on exit + crash | first cut |
+| D8 | 2D paint preset application | **A** auto-apply on Edit Weights modal enter, header pill visible | first cut |
+| D9 | GPU weight overlay viz | **A** colorband discs per vertex (lift from COA2) | first cut |
+| D10 | ESC handling in draw modal | **A** hard exit + release pending stroke | first cut |
+| D11 | Pre-flight diagnosis on auto-weight failure | **A** structured guidance per failure cause, never raw stack trace | first cut |
+| D12 | Tablet RELEASE detection | **C** `event.pressure==0` + `WINDOW_DEACTIVATE` + timer fallback | first cut |
+| D13 | Subpanel placement | **A** new `Skinning` subpanel parallel to `Skeleton` | first cut |
+| D14 | Symmetry mirror axis source | **A** picker armature mirror flag (single source of truth) | first cut |
+| D15 | Density-under-bones automesh | **A** ON by default when picker has armature, OFF otherwise | first cut |
+| D16 | Soft vs Hard bone toggle | **B** defer to a follow-up | follow-up |
+| D17 | Stage 3 interior input paradigm | **B** stroke = polyline CDT constraint (not density bias, not point-only) | follow-up |
+| D18 | Mixed-flow auto-snapshot before automesh regen | **A** build sidecar on-the-fly from vertex_groups + UV anchor when missing, mark entries `provenance="auto_seed"` | follow-up |
+| D19 | Interior fill mode | **A** enum `{SIMPLE, DENSE}`, default `SIMPLE` (Spine-like sparse, only artist verts), `DENSE` keeps the current uniform grid + bone density | follow-up |
+| D20 | Fold/cut drawing gesture | **A** toggle-modal pen (tap Shift = fold-draw, tap Ctrl = cut-draw, X/Z lock axis, scroll/digit set subdivision count, RMB/Enter commit, Esc cancel) | follow-up |
+| D21 | Stage 2 (outer silhouette) input model | **A** modifier-driven (Shift = extend, Ctrl = cut, Alt = delete), unified with Stage 4; cut overlay color = red (was orange) | follow-up |
 
 Each section below preserves the option set + rationale for posterity.
 
@@ -544,7 +549,7 @@ Each section below preserves the option set + rationale for posterity.
 - D1.B - Free-draw stroke (a la COA Tools 2 "Draw 2D Polygon"). User clicks vertices around the silhouette; modal closes when stroke closes; tessellate inside. Higher control, requires modal scaffold + tablet handling.
 - D1.C - Hybrid - auto-trace boundary, user can refine in edit modal before tessellation.
 
-**Locked: D1.A.** Most user flows in the survey want "one click, sane default" before reaching for manual refinement. Free-draw (D1.B) is COA2's primary surface and is bug-prone exactly because it requires perfect modal lifecycle hygiene (the very bug in the user-supplied screenshot). Hybrid (D1.C) doubles the operator surface for marginal benefit on the first cut. SPEC 013 ships D1.A; D1.B + D1.C become Wave 13.2 additions if real workflows demand them. Pure-Python alpha walker (no OpenCV) is non-negotiable per Constraints.
+**Locked: D1.A.** Most user flows in the survey want "one click, sane default" before reaching for manual refinement. Free-draw (D1.B) is COA2's primary surface and is bug-prone exactly because it requires perfect modal lifecycle hygiene (the very bug in the user-supplied screenshot). Hybrid (D1.C) doubles the operator surface for marginal benefit on the first cut. this spec ships D1.A; D1.B + D1.C become the productivity follow-up additions if real workflows demand them. Pure-Python alpha walker (no OpenCV) is non-negotiable per Constraints.
 
 ### D2 - Mesh topology shape: flat triangulation or annulus?
 
@@ -554,7 +559,7 @@ Each section below preserves the option set + rationale for posterity.
 
 **Locked: D2.B.** COA2 has the right answer here; flat triangulation produces ugly silhouette triangles that bend awkwardly. Annulus is also more amenable to D15's density-under-bones because the bone-density layer can subdivide only the interior fill without touching the silhouette ring. D2.C is captured separately by D15 - this decision is about the topology shape, not the density distribution.
 
-**Amendment (Wave 13.1.b - hole support).** Annulus topology now layers ALPHA HOLES on top: every disjoint background island fully enclosed by the silhouette becomes a CDT constraint loop, and the mesh excludes those regions. Detection runs on a 1-cell-dilated foreground so the mesh-side hole boundary sits INSIDE the actual alpha hole, preserving the "never cut alpha" invariant. Steiner interior points falling inside any hole are dropped before triangulation; faces whose centroid lands inside any hole are pruned after triangulation (CDT's nested-loop hole detection is unreliable against the bridge's Y-flip orientation flow, so the post-process pass is the deterministic fallback). The flip side is a small bleed band of mesh covering ~1 cell of transparent pixels at the hole edge - symmetric analogue of the outer silhouette's 1-cell safety dilate. Spine + COA Tools 2 explicitly refuse to support holes ("meshes can be concave but cannot have holes" - Spine docs); Proscenio differentiates by lifting that restriction. Per-hole annulus rings (extra edge loops along each hole boundary for cleaner deformation) are Wave 13.2+ if hole edges become visually important under bone deformation - the ring fixture is currently a static cutout.
+**Amendment (the hole-support amendment - hole support).** Annulus topology now layers ALPHA HOLES on top: every disjoint background island fully enclosed by the silhouette becomes a CDT constraint loop, and the mesh excludes those regions. Detection runs on a 1-cell-dilated foreground so the mesh-side hole boundary sits INSIDE the actual alpha hole, preserving the "never cut alpha" invariant. Steiner interior points falling inside any hole are dropped before triangulation; faces whose centroid lands inside any hole are pruned after triangulation (CDT's nested-loop hole detection is unreliable against the bridge's Y-flip orientation flow, so the post-process pass is the deterministic fallback). The flip side is a small bleed band of mesh covering ~1 cell of transparent pixels at the hole edge - symmetric analogue of the outer silhouette's 1-cell safety dilate. Spine + COA Tools 2 explicitly refuse to support holes ("meshes can be concave but cannot have holes" - Spine docs); Proscenio differentiates by lifting that restriction. Per-hole annulus rings (extra edge loops along each hole boundary for cleaner deformation) are the productivity follow-up+ if hole edges become visually important under bone deformation - the ring fixture is currently a static cutout.
 
 ### D3 - Mesh data preservation anchor
 
@@ -572,7 +577,7 @@ Each section below preserves the option set + rationale for posterity.
 
 **Locked: D4.C.** Bone heat fails on the exact topology Proscenio targets (planar 2D meshes). Every survey signal (Stack Exchange #1 question, T45493, T70834, T37685) confirms this. Defaulting to it would replicate the worst pain in vanilla Blender 2D rigging. Power users who *want* bone heat for specific topology can opt in via the F3 redo or by switching `bind_init_mode` to a future "BONE_HEAT" enum value (currently not even an option in D5). The right default is planar proximity (D5.C).
 
-**Amended (Wave 13.2-panel, 2026-05-20):** BONE_HEAT is now allowed as the DEFAULT bind mode for the 2D picker workflow. Original D4 was guarding against COA Tools 2's bone-heat failure mode for 3D characters; that failure mode does not apply when bones are tangent to the sprite picture plane (the common 2D case). Real-world manual smoke on PR #54 showed Blender's bone heat produces visibly better falloff than our planar proximity (which spreads weight across all bones in range, washing out gradients). Proscenio's PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY modes remain available as F3-redo + panel-dropdown opt-in fallbacks for cases where bone heat fails or finer control is needed. The 5 D11 pre-flight diagnoses still run before EVERY bind path including BONE_HEAT.
+**Amended (the panel work, 2026-05-20):** BONE_HEAT is now allowed as the DEFAULT bind mode for the 2D picker workflow. Original D4 was guarding against COA Tools 2's bone-heat failure mode for 3D characters; that failure mode does not apply when bones are tangent to the sprite picture plane (the common 2D case). Real-world manual smoke on PR #54 showed Blender's bone heat produces visibly better falloff than our planar proximity (which spreads weight across all bones in range, washing out gradients). Proscenio's PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY modes remain available as F3-redo + panel-dropdown opt-in fallbacks for cases where bone heat fails or finer control is needed. The 5 D11 pre-flight diagnoses still run before EVERY bind path including BONE_HEAT.
 
 ### D5 - Initial bind algorithm default
 
@@ -584,7 +589,7 @@ Each section below preserves the option set + rationale for posterity.
 
 **Locked: D5.C as default, D5.A / D5.B / D5.E offered via `bind_init_mode` enum, D5.D dropped from defaults per D4.** Planar proximity is the algorithm Animate uses (proximity-based) and DragonBones uses ("relative position"); it is robust on planar meshes by construction, gives sane initial weights for most rigs, and degrades gracefully (worst case: bones far from mesh get 0 weight, which is correct). Envelope (D5.B) is reasonable as a "more rigid" alternative for cutout-style rigs where bleed between body parts is undesired. Empty (D5.A) and Single Nearest (D5.E) cover the manual-paint and hard-binding cases respectively. Bone heat dropped from defaults per D4.
 
-**Amended (Wave 13.2-panel, 2026-05-20):** D5.D (bone heat) is now ADDED to the `bind_init_mode` enum AND becomes the default per the D4 amendment. The "known to fail on planar meshes" claim was specific to COA Tools 2's 3D-character bone-heat use case; for 2D pickers with bones tangent to the picture plane, Blender's bone heat produces visibly better falloff than D5.C (planar proximity). New default ordering: D5.D (BONE_HEAT) default; D5.C (PROXIMITY) / D5.B (ENVELOPE) / D5.E (SINGLE_NEAREST) / D5.A (EMPTY) remain available as opt-in fallbacks via the panel dropdown + F3 redo. See D4 amendment for the trigger event (PR #54 manual smoke).
+**Amended (the panel work, 2026-05-20):** D5.D (bone heat) is now ADDED to the `bind_init_mode` enum AND becomes the default per the D4 amendment. The "known to fail on planar meshes" claim was specific to COA Tools 2's 3D-character bone-heat use case; for 2D pickers with bones tangent to the picture plane, Blender's bone heat produces visibly better falloff than D5.C (planar proximity). New default ordering: D5.D (BONE_HEAT) default; D5.C (PROXIMITY) / D5.B (ENVELOPE) / D5.E (SINGLE_NEAREST) / D5.A (EMPTY) remain available as opt-in fallbacks via the panel dropdown + F3 redo. See D4 amendment for the trigger event (PR #54 manual smoke).
 
 ### D6 - Weight preservation through mesh regen
 
@@ -649,7 +654,7 @@ Each section below preserves the option set + rationale for posterity.
 - D13.B - Extend `Skeleton` subpanel with a Skinning section.
 - D13.C - Inline on active sprite panel.
 
-**Locked: D13.A.** Parallel structure to SPEC 012's Skeleton panel; clear semantic separation (Skeleton = bones, Skinning = mesh+weights). Extending Skeleton (D13.B) would crowd the existing Quick Armature surface. Inline (D13.C) splits the operator surface across multiple panels and hurts discoverability.
+**Locked: D13.A.** Parallel structure to the quick-armature spec's Skeleton panel; clear semantic separation (Skeleton = bones, Skinning = mesh+weights). Extending Skeleton (D13.B) would crowd the existing Quick Armature surface. Inline (D13.C) splits the operator surface across multiple panels and hurts discoverability.
 
 ### D14 - Symmetry mirror axis source
 
@@ -657,7 +662,7 @@ Each section below preserves the option set + rationale for posterity.
 - D14.B - Per-operator axis option.
 - D14.C - Use Blender's per-brush mirror.
 
-**Locked: D14.A.** Single source of truth principle, parallel to SPEC 012 D16 "picker is the contract." Theme 4 from community pain is unambiguous: per-brush mirror is the wrong default and users cannot find it. Mirror state is also rendered in the header pill alongside the 2D paint preset state per D8.
+**Locked: D14.A.** Single source of truth principle, parallel to the quick-armature spec D16 "picker is the contract." Theme 4 from community pain is unambiguous: per-brush mirror is the wrong default and users cannot find it. Mirror state is also rendered in the header pill alongside the 2D paint preset state per D8.
 
 ### D15 - Density-under-bones automesh
 
@@ -665,27 +670,67 @@ Each section below preserves the option set + rationale for posterity.
 - D15.B - Always uniform density.
 - D15.C - User toggle, default OFF.
 
-**Locked: D15.A.** Theme 3 from community pain identifies this as the key unshipped feature across all surveyed tools (Spine forum has multi-year request thread). Doing the bone-aware densification by default when an armature is present means new users get the better result without needing to know the feature exists; users without an armature get the safe uniform default. The implementation reuses bone positions already exposed via the picker contract (SPEC 012 D16) so no new picker / state is needed.
+**Locked: D15.A.** Theme 3 from community pain identifies this as the key unshipped feature across all surveyed tools (Spine forum has multi-year request thread). Doing the bone-aware densification by default when an armature is present means new users get the better result without needing to know the feature exists; users without an armature get the safe uniform default. The implementation reuses bone positions already exposed via the picker contract (the quick-armature spec D16) so no new picker / state is needed.
 
 ### D16 - Soft vs Hard bone toggle (Animate lift)
 
 - D16.A - First cut.
-- D16.B - **Defer to Wave 13.2.**
+- D16.B - **Defer to the productivity follow-up.**
 - D16.C - Don't ship.
 
-**Locked: D16.B.** First cut already ships `bind_init_mode` with four options (PROXIMITY, ENVELOPE, SINGLE_NEAREST, EMPTY) per D5 - this covers the "soft" (PROXIMITY) and "hard" (SINGLE_NEAREST) cases at bind time. The Animate-style runtime toggle (where soft / hard can be flipped per-bone after bind and weights re-derive) is a productivity polish, not a first-cut blocker. Wave 13.2.
+**Locked: D16.B.** First cut already ships `bind_init_mode` with four options (PROXIMITY, ENVELOPE, SINGLE_NEAREST, EMPTY) per D5 - this covers the "soft" (PROXIMITY) and "hard" (SINGLE_NEAREST) cases at bind time. The Animate-style runtime toggle (where soft / hard can be flipped per-bone after bind and weights re-derive) is a productivity polish, not a first-cut blocker. Deferred.
+
+### D17 - Stage 3 interior input paradigm
+
+- D17.A - Stroke biases interior density (no extra verts on the line).
+- D17.B - **Stroke = polyline CDT constraint.** Each released stroke smooths via Chaikin (2 iterations, fixed), resamples to `interior_spacing` cadence, then commits as a chain of Steiner points connected by constrained edges. Endpoints auto-snap to the nearest outer-contour vert when closer than `interior_spacing * 1.5`. Multi-stroke management via modal-local `Ctrl+Z` undo stack + `Shift+LMB-on-vert` (deletes the whole stroke containing the clicked vert). Drag under 5 screen-pixels collapses to a single Steiner (backward compatible with the original click-place behavior). Strokes round-trip in `proscenio_user_steiners` as `[{kind, points}, ...]` records; legacy `[[x, z], ...]` arrays read as `{kind: "point", points: [[x, z]]}`.
+- D17.C - Point-Steiner only (original first cut).
+
+**Locked: D17.B.** The user's mental model for Stage 3 is "the line I draw becomes an edge in the mesh", not "a hint to add verts near where I clicked". Paradigm A (density bias) wrongly adds verts when the artist just wants alignment. Paradigm C (point-only, the original first cut) misses the fold-line case entirely. Polyline-as-constraint is what `mathutils.geometry.delaunay_2d_cdt` already supports natively via its `edges_constraint` list, so the wiring is mechanical. Chaikin smoothing is fixed at 2 iterations because raw mouse paths trace noisy edges and an exposed slider is premature configuration; auto-snap reuses `interior_spacing` so no new property surfaces.
+
+### D18 - Mixed-flow auto-snapshot before automesh regen
+
+- D18.A - **Build sidecar on-the-fly from `vertex_groups` + UV anchor when `proscenio_weight_sidecar` is missing AND `obj.vertex_groups` is non-empty AND an armature is set.** Auto-built entries get `provenance="auto_seed"` (not `user_paint`).
+- D18.B - Refuse to regen until the user runs an explicit "Snapshot weights" operator.
+- D18.C - Keep the early-abort behavior; users who bound via `Ctrl+P` lose their weights on regen.
+
+**Locked: D18.A.** Users who bind via `Ctrl+P -> Armature Auto Weights` instead of the Proscenio panel land in a working-but-unprotected state: weights exist on the mesh, but `proscenio_weight_sidecar` is absent because that bind path never ran. The original early-abort (D18.C) silently dropped those weights on the first automesh resolution change. Refusing the regen (D18.B) blocks a legitimate workflow on a piece of bookkeeping the user did not opt into. Auto-snapshotting closes the gap without nagging. The `provenance="auto_seed"` tag is conservative: the addon did not record whether the existing paint was artist-touched, so it does not claim `user_paint` retroactively.
+
+### D19 - Interior fill mode
+
+- D19.A - **Enum `{SIMPLE, DENSE}`, default `SIMPLE`.** SIMPLE skips the uniform grid + bone-density fill; the CDT receives only the outer contour, holes, and the artist's verts (fold/cut/Steiner). DENSE keeps the original path (uniform grid + bone density). The modal step list is mode-dependent: SIMPLE drops the `INNER_LOOPS` step and relabels `PREVIEW_INTERIOR` as a triangulation preview (the Spine "Generate" equivalent); DENSE keeps the original 6-step flow. Statusbar progress reflects the active mode's step count.
+- D19.B - Always DENSE (original first cut).
+- D19.C - Always SIMPLE.
+
+**Locked: D19.A.** Dense fill is overkill for flat 2D-skinning sprites (Spine and DragonBones default to sparse). DENSE stays for cape/hair/fine-border cases where the bone-aware densification meaningfully improves deformation. Default SIMPLE because it fits the majority workflow; the artist opts into DENSE per mesh. The mode-dependent step list keeps SIMPLE from showing dead steps that do nothing in that mode.
+
+### D20 - Fold/cut drawing gesture
+
+- D20.A - **Toggle-modal pen.** Tap Shift enters fold-draw mode; tap Ctrl enters cut-draw mode (no holding). In draw mode: LMB click places a pen vert; `X` / `Z` lock the next segment to the horizontal / vertical axis (Blender front-ortho XZ convention); scroll or a typed digit sets the per-edge subdivision count; RMB or Enter commits the polyline; Esc discards the in-progress line. Tapping the active modifier again exits to NEUTRAL when the line is empty (ignored once verts exist). LMB drag stays the free-draw path (resampled, committed on release, modal stays in DRAW). Applies to both Stage 2 (silhouette edit) and Stage 4 (interior fold/cut).
+- D20.B - Hold-modifier pen (original first cut).
+- D20.C - Stroke-only (no axis-lock, no subdivisions).
+
+**Locked: D20.A.** Holding a modifier the entire stroke is fatiguing and blocks axis-lock + subdivision keyboard input. A toggle pen frees the keyboard for `X`/`Z` and digits and matches Blender's knife/poly-build modality, which artists already know. Subdivisions stop a straight 2-vert pen line from collapsing into a single long edge that wrecks the triangulation; scroll-to-nudge plus digit-to-type-exact covers both quick adjustments and precise counts.
+
+### D21 - Stage 2 (outer silhouette) input model
+
+- D21.A - **Modifier-driven, unified with Stage 4.** Shift = extend, Ctrl = cut, Alt = delete. Stage 2 cut overlay color = red (matches Stage 4 cut). Tooltip reflects the modifier vocabulary ("Extend", "Cut", "Delete").
+- D21.B - Location-driven (inside the silhouette = cut, outside = extend) - original first cut.
+- D21.C - Stage 2 read-only.
+
+**Locked: D21.A.** Location-driven intent was imprecise: aiming inside vs outside while the silhouette overlay was busy made the user guess. Explicit modifier removes the ambiguity. Unified vocabulary across Stage 2 and Stage 4 is one less thing to learn. Cut color unification (the original Stage 2 cut was orange) makes the semantic match the visual.
 
 ## Successor considerations
 
-- **SPEC 004 (slots)** interacts with skinned meshes when a slot swap changes the attachment mesh. Each attachment already carries its own `weights` (SPEC 003 D7 model). SPEC 013 outputs feed this without further changes. Auto-copy weights across slot attachments is a Wave 13.2 candidate (parallels COA2 issue [#73](https://github.com/Aodaruma/coa_tools2/issues/73)).
-- **Photoshop importer (SPEC 011)** evolution: a `[mesh:HIGH]` tag could let the artist hint at desired automesh resolution per layer at PSD authoring time. Out of scope here; backlog-worthy follow-up if real workflows surface it.
-- **Live weight-paint preview in Pose mode** ("pose the bone, see how the mesh deforms in real time without leaving Weight Paint") is a Blender native feature with known papercuts (mode toggle latency, no painting from rest pose). Edit Weights wrapper (D7) already touches both POSE + WEIGHT_PAINT modes; a Wave 13.2 follow-up could add a "scrub to pose, return to rest" affordance without leaving the modal.
-- **Soft vs Hard bone toggle (D16)** - Wave 13.2 per locked decision.
-- **Bone strength region painting (Moho lift)** - Wave 13.2. Region widget + viewport draw doubles SPEC scope if first-cut.
-- **Auto-patch joint cover at articulations (Toon Boom Harmony lift)** - Wave 13.3. Requires child-mesh detection + custom seam generator + integration with slot system.
-- **Cubism Glue equivalent** (seam binding between two ArtMeshes) - Wave 13.3. Different operator surface than Auto-Patch (covers any seam, not just articulations).
-- **Smart-Bone-style corrective drivers** - SPEC 014+. Couples to animation system not authoring.
-- **Quick Mesh operator** (mentioned in SPEC 012 successor list) is the direct sibling to automesh; lift the modal scaffold from this SPEC if pursued.
+- **the slot system** interacts with skinned meshes when a slot swap changes the attachment mesh. Each attachment already carries its own `weights` (the skinning-weights wire format). this spec outputs feed this without further changes. Auto-copy weights across slot attachments is a follow-up candidate (parallels COA2 issue [#73](https://github.com/Aodaruma/coa_tools2/issues/73)).
+- **Photoshop importer (the photoshop tag system)** evolution: a `[mesh:HIGH]` tag could let the artist hint at desired automesh resolution per layer at PSD authoring time. Out of scope here; backlog-worthy follow-up if real workflows surface it.
+- **Live weight-paint preview in Pose mode** ("pose the bone, see how the mesh deforms in real time without leaving Weight Paint") is a Blender native feature with known papercuts (mode toggle latency, no painting from rest pose). Edit Weights wrapper (D7) already touches both POSE + WEIGHT_PAINT modes; a follow-up could add a "scrub to pose, return to rest" affordance without leaving the modal.
+- **Soft vs Hard bone toggle (D16)** - the productivity follow-up per locked decision.
+- **Bone strength region painting (Moho lift)** - the productivity follow-up. Region widget + viewport draw doubles spec scope if first-cut.
+- **Auto-patch joint cover at articulations (Toon Boom Harmony lift)** - successor work. Requires child-mesh detection + custom seam generator + integration with slot system.
+- **Cubism Glue equivalent** (seam binding between two ArtMeshes) - successor work. Different operator surface than Auto-Patch (covers any seam, not just articulations).
+- **Smart-Bone-style corrective drivers** - a future animation-system spec+. Couples to animation system not authoring.
+- **Quick Mesh operator** (mentioned in the quick-armature spec's successor list) is the direct sibling to automesh; lift the modal scaffold from this spec if pursued.
 - **Mirror humanoid binding** (one mesh on one side, click to mirror to the other) - couples to symmetric rigs. No Proscenio fixture exercises symmetric humanoids end-to-end today.
-- **Multi-mesh batch bind** - apply auto-weights to N selected meshes in one operation. Wave 13.2.
-- **Weight transfer between sprites** (rig clone across near-duplicate sprites - line / colour / shadow layered Live2D-style) - Wave 13.2. Foundational request open since COA2 inception ([#18](https://github.com/Aodaruma/coa_tools2/issues/18), [#73](https://github.com/Aodaruma/coa_tools2/issues/73)).
+- **Multi-mesh batch bind** - apply auto-weights to N selected meshes in one operation. the productivity follow-up.
+- **Weight transfer between sprites** (rig clone across near-duplicate sprites - line / colour / shadow layered Live2D-style) - the productivity follow-up. Foundational request open since COA2 inception ([#18](https://github.com/Aodaruma/coa_tools2/issues/18), [#73](https://github.com/Aodaruma/coa_tools2/issues/73)).

@@ -136,7 +136,7 @@ Imported library is regenerated on every reimport; user library is wrapper-owned
 
 - **Bone rename in Blender** invalidates wrapper `NodePath`s referencing the old name. Treat renames as cross-DCC operations - rename in Blender, then grep the wrapper for the old name.
 - **Sprite added or removed in `.proscenio`**: removed sprites kill any wrapper code addressing them (loud at runtime). Added sprites are visible but inert until the wrapper opts to address them.
-- **Mass animation events** scale painfully past roughly 10 events per animation with the mirror-`AnimationPlayer` pattern. If real friction hits, that is the cue to promote the dedicated `event` track type from idea to SPEC.
+- **Mass animation events** scale painfully past roughly 10 events per animation with the mirror-`AnimationPlayer` pattern. If real friction hits, that is the cue to promote the dedicated `event` track type from idea to spec.
 - **No live link Blender ↔ Godot today**. Each Blender re-export forces a Godot reimport. Tracked as a long-term idea; closing it likely reopens the GDExtension question.
 
 ## Why not just merge?
@@ -147,4 +147,4 @@ Three options were considered when the wrapper pattern was locked:
 - **Marker-based merge**: rejected because the schema has no stable IDs - bone renames would silently lose user-attached scripts. Plus it duplicates code paths and grows the bug surface.
 - **Hybrid (full overwrite default + marker merge opt-in)**: deferred. Reopens if concrete pain emerges that wrapper composition genuinely cannot serve.
 
-Most pain points (events, effects, AI, materials, colliders) have wrapper-pattern recipes documented above. The remaining real friction (animation events, live link) is better solved by dedicated SPECs than by merge logic.
+Most pain points (events, effects, AI, materials, colliders) have wrapper-pattern recipes documented above. The remaining real friction (animation events, live link) is better solved by dedicated specs than by merge logic.

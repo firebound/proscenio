@@ -28,7 +28,7 @@ class SpriteInvariants:
 
     Zero for solid sprites; >0 for hole-support fixtures where the
     1-cell safety dilate leaves a small bleed band along each hole
-    boundary (see SPEC 013 D2 amendment)."""
+    boundary (see the weight-paint-automesh spec D2 amendment)."""
 
     ci_safe: bool = True
     """True when the per-pixel validator finishes inside the CI budget.
@@ -55,7 +55,7 @@ SPRITE_BOUNDS: dict[str, SpriteInvariants] = {
         min_coverage=0.96,
         max_hole_bleed=0,
     ),
-    # ring: SPEC 013 D2 amendment - hole-support smoke target. Hard
+    # ring: the weight-paint-automesh spec D2 amendment - hole-support smoke target. Hard
     # invariant: leaks=0 (mesh NEVER cuts alpha). Achieved by detecting
     # holes on a 1-cell-DILATED foreground so the mesh-hole boundary
     # sits INSIDE the alpha hole. Flip side: mesh covers a band of
@@ -63,7 +63,7 @@ SPRITE_BOUNDS: dict[str, SpriteInvariants] = {
     # =0.25 the band can reach ~50% of small holes (the donut hole is
     # 12 cells wide on the downscaled grid; shrinking by 1 cell on
     # each side leaves a 10-cell cutout). Bumping downscale toward
-    # 1.0 or upscaling the hole contour after detection are Wave 13.3
+    # 1.0 or upscaling the hole contour after detection are aspirational successor work
     # work. For now, accept the bleed band as the price of "never
     # cut alpha".
     "ring": SpriteInvariants(

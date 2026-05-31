@@ -1,6 +1,6 @@
 """Headless re-exporter - runs the addon's writer over a fixture .blend.
 
-Companion to the SPEC 007 builders. After ``build_<fixture>.py`` produces
+Companion to the testing-fixtures spec builders. After ``build_<fixture>.py`` produces
 the ``.blend``, this script opens it and writes the ``.proscenio`` golden
 to ``<fixture_dir>/<fixture>.expected.proscenio``.
 

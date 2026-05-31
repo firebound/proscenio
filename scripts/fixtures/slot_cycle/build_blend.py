@@ -1,4 +1,4 @@
-"""Assemble slot_cycle.blend (SPEC 004 Wave 4.3).
+"""Assemble slot_cycle.blend (the slot system).
 
 Run with::
 
@@ -12,7 +12,7 @@ Builds the smallest possible slot fixture:
   attachments. Each is a 32x32 quad weight-mapped to the root bone.
 - ``slot_default = "attachment_red"`` - red shows at scene load.
 - An action ``cycle`` keyframing each attachment per second
-  (Wave 4.2 imports as one visibility track per attachment in Godot).
+  (the slot system imports as one visibility track per attachment in Godot).
 
 Run ``draw_layers.py`` first or the textures will be missing.
 """
@@ -105,7 +105,7 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     # Also write Custom Property fallback so headless writer (CI) detects
     # the slot without relying on the addon's PropertyGroup being
     # registered. Mirrors the proscenio_<field> pattern used by sprite
-    # meshes (SPEC 005 PG-canonical / CP-fallback contract).
+    # meshes (the authoring panel PG-canonical / CP-fallback contract).
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = ATTACHMENT_NAMES[0]
     return empty

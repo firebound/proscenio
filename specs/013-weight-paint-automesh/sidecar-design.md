@@ -1,4 +1,4 @@
-# Wave 13.2 - Weight Sidecar + Reproject: Design
+# the productivity follow-up - Weight Sidecar + Reproject: Design
 
 Status: design locked 2026-05-20. Decisions taken autonomously per user delegation; UX-touching items confirmed via questions.
 
@@ -29,7 +29,7 @@ Locked decision: D6 (sidecar JSON keyed by UV anchors + auto-reproject on regen 
 | # | Decision | Locked value |
 | --- | --- | --- |
 | U1 | `preserve_on_regen` default | **ON** - automesh regen auto snapshot + reproject by default. PG flag exposed in panel for explicit opt-out |
-| U2 | Provenance overlay visibility | **Toggle in panel, default OFF** - "Show provenance" checkbox in Snapshot sub-box. GPU draw handler ships in Wave 13.2-paint (this wave provides data + toggle only) |
+| U2 | Provenance overlay visibility | **Toggle in panel, default OFF** - "Show provenance" checkbox in Snapshot sub-box. GPU draw handler ships in the paint work (this wave provides data + toggle only) |
 
 ## Scope split
 
@@ -43,12 +43,12 @@ Locked decision: D6 (sidecar JSON keyed by UV anchors + auto-reproject on regen 
 - Panel sub-box with counts text + toggles
 - Tests (pure + headless)
 
-**Deferred to Wave 13.2-paint:**
+**Deferred to the paint work:**
 
 - Provenance overlay GPU draw handler (cyan/white/gray colored discs)
 - Live `user_paint` tagging via diff during paint modal
 
-**Deferred to Wave 13.3:**
+**Deferred to successor work:**
 
 - `proscenio.copy_weights_to_selected` (cross-mesh transfer)
 - Sidecar import/export to external file
@@ -239,7 +239,7 @@ preserve_on_regen: BoolProperty(
 )
 show_provenance_overlay: BoolProperty(
     name="Show provenance overlay",
-    description="Color verts by source: cyan=reprojected, white=user paint, gray=auto seed. Requires Wave 13.2-paint",
+    description="Color verts by source: cyan=reprojected, white=user paint, gray=auto seed. Requires the paint work",
     default=False,
 )
 ```
@@ -360,8 +360,8 @@ T4 - Counts pill:
 
 ## Out of scope (deferred)
 
-- Provenance overlay GPU draw handler -> Wave 13.2-paint
-- Live `user_paint` provenance tagging via paint modal diff -> Wave 13.2-paint
-- Sidecar import/export to external file -> Wave 13.3
-- `proscenio.copy_weights_to_selected` cross-mesh transfer -> Wave 13.3
+- Provenance overlay GPU draw handler -> the paint work
+- Live `user_paint` provenance tagging via paint modal diff -> the paint work
+- Sidecar import/export to external file -> successor work
+- `proscenio.copy_weights_to_selected` cross-mesh transfer -> successor work
 - Sidecar versioning bump infrastructure (v2/v3) -> only when schema actually breaks

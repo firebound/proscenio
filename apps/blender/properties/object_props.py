@@ -1,4 +1,4 @@
-"""Per-Object Proscenio PropertyGroup (SPEC 009 wave 9.10).
+"""Per-Object Proscenio PropertyGroup (the code-modularity work).
 
 Holds every typed setting that lives on a mesh / Empty: sprite type,
 sprite-frame metadata, texture region, slot flags, driver picker.
@@ -71,7 +71,7 @@ class ProscenioObjectProps(PropertyGroup):
 
     sprite_type: EnumProperty(  # type: ignore[valid-type]
         name="Sprite type",
-        description="Rendering path for this sprite - see SPEC 002",
+        description="Rendering path for this sprite - see the spritesheet sprite2d work",
         items=SPRITE_TYPE_ITEMS,
         default="polygon",
         update=on_any_update,
@@ -202,7 +202,7 @@ class ProscenioObjectProps(PropertyGroup):
     is_outliner_favorite: BoolProperty(  # type: ignore[valid-type]
         name="Outliner favorite",
         description=(
-            "Pin this object to the top of the Proscenio outliner (5.1.d.4). "
+            "Pin this object to the top of the Proscenio outliner (the outliner subpanel). "
             "Toggle 'Show favorites only' on the panel to hide everything else."
         ),
         default=False,

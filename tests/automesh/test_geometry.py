@@ -1,12 +1,12 @@
-"""Unit tests for SPEC 013 automesh geometry pipeline.
+"""Unit tests for the automesh geometry pipeline.
 
 bpy-free. Exercises the Laplacian smoothing + arc-length resample +
 annulus edge construction consumed by
-``core/bpy_helpers/automesh_bmesh.py``.
+``core/bpy_helpers/automesh/bridge.py``.
 
 Run from the repo root:
 
-    pytest tests/test_automesh_geometry.py
+    pytest tests/automesh/test_geometry.py
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
-# automesh fixture (SPEC 013 Wave 13.1)
+# automesh fixture (weight-paint-automesh first cut)
 
-Workbench for the **SPEC 013 automesh from sprite** operator + future Wave 13.1 bind / weight paint / sidecar follow-ups. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the smoke checklist in [`tests/MANUAL_TESTING.md` section 1.19](../../../tests/MANUAL_TESTING.md) end-to-end.
+Workbench for the **automesh-from-sprite** operator + follow-up bind / weight paint / sidecar work. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the Automesh smoke checklist in [`tests/MANUAL_TESTING.md`](../../../tests/MANUAL_TESTING.md) end-to-end.
 
 ## Directory layout
 
@@ -20,7 +20,7 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 | Element | Detail |
 | --- | --- |
-| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` -> `palm` -> `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so SPEC 013 D15 density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
+| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` -> `palm` -> `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so D15 of the weight-paint-automesh spec density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
 | Sprite `hand` | 2.0x2.0 unit quad at world (-3, 0, 0), parented to `automesh.hand_rig`. Image-textured with `pillow_layers/hand.png`. The density-under-bones smoke target. |
 | Sprite `blob` | 2.0x2.0 unit quad at world (0, 0, 0), unparented. Smooth convex baseline. |
 | Sprite `lshape` | 2.0x2.0 unit quad at world (3, 0, 0), unparented. Concave hull stress test. |
@@ -31,7 +31,7 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 ## Why these four shapes
 
-Each silhouette exercises a different aspect of the SPEC 013 pure-Python alpha contour walker + annulus geometry pipeline:
+Each silhouette exercises a different aspect of the weight-paint-automesh pure-Python alpha contour walker + annulus geometry pipeline:
 
 - **`hand`** is the canonical "real character part" - tapered finger tips + palm + gaps between fingers stress Moore Neighbour tracing on a non-trivial contour, and the 3-bone chain over it lets the user see D15 bone-aware density in action vs OFF (the density-under-bones triangle clusters near each bone segment).
 - **`blob`** is the simplest possible convex silhouette - baseline regression target. Any future change that breaks blob automesh almost certainly broke the basics.
@@ -54,7 +54,7 @@ Re-run both steps when smoke surfaces a need for an updated baseline (new shape,
 
 ## Smoke usage
 
-See [`tests/MANUAL_TESTING.md` section 1.15](../../../tests/MANUAL_TESTING.md) for the T1-T16 checklist. Quick reference:
+See the Automesh section of [`tests/MANUAL_TESTING.md`](../../../tests/MANUAL_TESTING.md) for the scenario checklist. Quick reference:
 
 1. Open `automesh.blend` in Blender.
 2. Enable Proscenio addon (if not auto-loaded).

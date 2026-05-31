@@ -1,10 +1,10 @@
-# Wave 13.2 - Edit Weights Modal + Provenance Overlay: Design
+# the productivity follow-up - Edit Weights Modal + Provenance Overlay: Design
 
 Status: design locked 2026-05-21. Decisions taken autonomously per user delegation; UX-touching items confirmed via questions.
 
 Scope: one-button entry into a 2D-safe weight paint context with custom GPU provenance overlay, per-stroke `user_paint` provenance tagging, hard exit guarantees, and `Edit Weights` sub-box in the Skinning panel. Closes D6 (provenance overlay GPU draw), D7 (modal wrapper - includes Bone Collections visibility snapshot per COA2 lift), D8 (2D paint preset), D9 (paint diff tagging), D10 (ESC hard-exit), D12 (tablet release), D14 (mirror axis source from picker rig).
 
-Foundation: Wave 13.2-sidecar shipped (entries populated, `show_provenance_overlay` PG flag reserved, `SidecarEntry.provenance` literal supports `auto_seed` / `user_paint` / `reprojected`).
+Foundation: the sidecar work shipped (entries populated, `show_provenance_overlay` PG flag reserved, `SidecarEntry.provenance` literal supports `auto_seed` / `user_paint` / `reprojected`).
 
 ## Decisions
 
@@ -21,7 +21,7 @@ Foundation: Wave 13.2-sidecar shipped (entries populated, `show_provenance_overl
 | T7 | Tablet pressure | `event.pressure` check on `MOUSEMOVE` for pen-lift fallback (D12); pressure==0 mid-drag triggers diff | Workaround for known tablet bugs (T82432, T73377, T93069) |
 | T8 | WINDOW_DEACTIVATE | Flushes in-flight stroke diff before yielding focus | Prevents lost provenance updates when user alt-tabs mid-stroke |
 | T9 | Overlay handler | Single `register_handler(obj, mode)` returning handle; mode is `Literal["weight", "provenance"]` (only `provenance` used this wave) | Same module supports the future weight-gradient overlay; one entry point, one cleanup |
-| T10 | Overlay shader | POST_VIEW `UNIFORM_COLOR` shader, per-vert 6px disc batched as POINTS primitive | Reuses SPEC 012 `modal_overlay.py` shader; batched draw beats per-vert immediate mode |
+| T10 | Overlay shader | POST_VIEW `UNIFORM_COLOR` shader, per-vert 6px disc batched as POINTS primitive | Reuses the quick-armature spec `modal_overlay.py` shader; batched draw beats per-vert immediate mode |
 | T11 | Provenance colors | cyan = reprojected (0.0, 0.8, 1.0, 0.9), white = user_paint (1.0, 1.0, 1.0, 0.9), gray = auto_seed (0.5, 0.5, 0.5, 0.6) | Matches TODO.md sketch; gray alpha lower so user_paint stands out as foreground |
 | T12 | Diff storage | `StrokeDiffTracker` keeps in-memory pre-stroke weights dict; writes sidecar JSON only on post-stroke flip | One JSON serialize per stroke (not per mouse move) |
 | T13 | Single undo push | Wrap cumulative paint in single `bpy.ops.ed.undo_push(message="Edit Weights")` at `_finish` | Spec D7 - one Ctrl+Z reverts the whole session |
@@ -48,10 +48,10 @@ Foundation: Wave 13.2-sidecar shipped (entries populated, `show_provenance_overl
 - GPU provenance overlay (cyan/white/gray per-vert discs)
 - Per-stroke `user_paint` provenance flip via diff
 - `Edit Weights` sub-box in Skinning panel (button + status text)
-- Header pill via SPEC 012 D6 chord-layout helper
+- Header pill via the quick-armature spec D6 chord-layout helper
 - Tests (pure pytest + headless operator pytest)
 
-**Deferred to Wave 13.3:**
+**Deferred to successor work:**
 
 - Weight-gradient overlay mode (the `mode="weight"` branch of `register_handler` - data shape supported but UI does not toggle)
 - Per-bone soft/hard mode toggle (D16)
@@ -60,7 +60,7 @@ Foundation: Wave 13.2-sidecar shipped (entries populated, `show_provenance_overl
 
 **Deferred to later waves:**
 
-- Smart Bones / corrective-action drivers (Wave 14+ per STUDY.md)
+- Smart Bones / corrective-action drivers (a future animation-system spec)
 - Live pose-mode preview in weight paint (TODO.md L293)
 - Brush settings curve presets (TODO.md L295)
 
@@ -422,11 +422,11 @@ T6 - Button disabled affordance:
 
 ## Out of scope (deferred)
 
-- Weight-gradient overlay UI toggle (data shape supported, no panel button) -> Wave 13.3
-- Per-bone soft/hard mode toggle (D16) -> Wave 13.3
-- Region painting (paint into a procedural region rather than per-vert) -> Wave 13.3
-- `proscenio.copy_weights_to_selected` cross-mesh transfer -> Wave 13.3
-- Smart Bones / corrective-action drivers -> Wave 14+
-- Live pose-mode preview in weight paint -> Wave 13.3
-- Brush curve presets ("Hard edge" / "Soft falloff" / "Crease") -> Wave 13.3
-- Bezier brush stroke for alpha-boundary trace -> Wave 13.3
+- Weight-gradient overlay UI toggle (data shape supported, no panel button) -> successor work
+- Per-bone soft/hard mode toggle (D16) -> successor work
+- Region painting (paint into a procedural region rather than per-vert) -> successor work
+- `proscenio.copy_weights_to_selected` cross-mesh transfer -> successor work
+- Smart Bones / corrective-action drivers -> a future animation-system spec
+- Live pose-mode preview in weight paint -> successor work
+- Brush curve presets ("Hard edge" / "Soft falloff" / "Crease") -> successor work
+- Bezier brush stroke for alpha-boundary trace -> successor work

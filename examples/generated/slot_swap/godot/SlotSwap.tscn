@@ -3,7 +3,7 @@
 ; Minimal slot-system isolation test: a pseudo-arm swings while its
 ; weapon attachment swaps mid-animation (axe <-> sword). Wraps the
 ; imported scene so the user can attach scripts / collisions / extra
-; nodes here without losing them on reimport (SPEC 001 Option A).
+; nodes here without losing them on reimport (the reimport-merge work Option A).
 ;
 ; Drop `examples/generated/slot_swap/` at `res://examples/slot_swap/` in your Godot
 ; project, or adjust paths to match your layout.

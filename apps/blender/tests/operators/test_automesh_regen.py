@@ -1,4 +1,4 @@
-"""Headless tests for the automesh sidecar hook (SPEC 013.2 sidecar)."""
+"""Headless tests for the automesh sidecar hook (the sidecar work)."""
 
 from __future__ import annotations
 

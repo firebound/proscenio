@@ -1,4 +1,4 @@
-"""Assemble the shared_atlas .blend (SPEC 007 step 2, Blender side).
+"""Assemble the shared_atlas .blend (the testing-fixtures spec step 2, Blender side).
 
 Run with::
 

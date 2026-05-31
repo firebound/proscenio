@@ -1,10 +1,10 @@
-"""Sprite-frame body draw (SPEC 004 D13 + 5.1.c.1 region readout).
+"""Sprite-frame body draw (the slot system D13 + the mirror-fix work region readout).
 
 Renders the sprite-frame metadata block: hframes / vframes / frame /
 centered, the atlas+region readout, the preview-shader setup buttons,
 and the shared region authoring box.
 
-Pulled out of ``panels/active_sprite.py`` by SPEC 009 wave 9.10 so
+Pulled out of ``panels/active_sprite.py`` by the code-modularity work so
 that file becomes a thin dispatcher over per-mode draw modules.
 """
 
@@ -99,7 +99,7 @@ def _first_tex_image_size(mat: bpy.types.Material | None) -> tuple[int, int] | N
 
 
 def _draw_preview_shader_buttons(layout: bpy.types.UILayout, obj: bpy.types.Object) -> None:
-    """Render Material Preview slicer setup/remove buttons (SPEC 004 D13)."""
+    """Render Material Preview slicer setup/remove buttons (the slot system D13)."""
     has_slicer = _material_has_slicer(obj)
     row = layout.row(align=True)
     setup = row.row()

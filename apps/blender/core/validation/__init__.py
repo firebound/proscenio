@@ -1,11 +1,11 @@
-"""Proscenio validation surface (SPEC 005, repackaged in SPEC 009 wave 9.5).
+"""Proscenio validation surface (the authoring panel, repackaged in the code-modularity work).
 
 Two entry points map to the panel's two validation paths:
 
 - :func:`validate_active_sprite` - cheap structural checks for inline
   feedback; called on every panel redraw, must stay O(1) on the active
   object.
-- :func:`validate_active_slot` - cheap slot-Empty checks (SPEC 004
+- :func:`validate_active_slot` - cheap slot-Empty checks (the slot system
   D9 + D10) for inline feedback in the Active Slot subpanel.
 - :func:`validate_export` - full lazy pass triggered by the Validate
   button or the Export operator; allowed to walk every scene object,

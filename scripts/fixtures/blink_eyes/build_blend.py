@@ -1,4 +1,4 @@
-"""Assemble the blink_eyes .blend (SPEC 007 step 1, Blender side).
+"""Assemble the blink_eyes .blend (the testing-fixtures spec step 1, Blender side).
 
 Run with::
 

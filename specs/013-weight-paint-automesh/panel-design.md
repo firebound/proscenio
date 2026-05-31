@@ -1,4 +1,4 @@
-# Wave 13.2 - Skinning Panel + Bind Pivot B: Design
+# the productivity follow-up - Skinning Panel + Bind Pivot B: Design
 
 Status: design locked via `/brainstorming` session 2026-05-19. Ready for implementation plan.
 
@@ -331,8 +331,8 @@ T2 - Panel button disabled when picker missing:
 
 ## Out of scope (deferred to other waves)
 
-- Edit Weights sub-box (Wave 13.2-paint - depends on edit_weights modal operator)
-- Snapshot sub-box (Wave 13.2-sidecar - depends on restore_weight_snapshot operator + populated sidecar entries)
+- Edit Weights sub-box (the paint work - depends on edit_weights modal operator)
+- Snapshot sub-box (the sidecar work - depends on restore_weight_snapshot operator + populated sidecar entries)
 - F3 menu binding for operators (cross-cutting addon change, separate concern)
 - Fixing the projection bug + tightening falloff in PROXIMITY mode (low priority - PROXIMITY is now a rarely-used fallback)
 - New BindMode values (e.g. BONE_HEAT_WITH_SMOOTHING) - YAGNI

@@ -1,4 +1,4 @@
-// Wave 11.5 reveal-output detail surface (read-only). When the artist
+// the photoshop-tag work.5 reveal-output detail surface (read-only). When the artist
 // selects a PS layer that maps to a manifest entry, this panel shows
 // what the export will emit for it - kind, name, manifest path,
 // position, size, origin, blend, subfolder - plus the resolved on-disk

@@ -1,4 +1,4 @@
-"""Unit tests for the SPEC 004 Wave 4.1 slot emission helpers.
+"""Unit tests for the slot system slot emission helpers.
 
 Pure pytest, no Blender. Covers the bpy-free projection from
 ``SlotInput`` records into the schema-shaped ``slots[]`` dicts the

@@ -10,7 +10,7 @@
     "format_version": {
       "type": "integer",
       "const": 2,
-      "description": "Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in SPEC 011 (anchor, per-entry origin, blend_mode, subfolder, kind: mesh)."
+      "description": "Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in the photoshop tag system (anchor, per-entry origin, blend_mode, subfolder, kind: mesh)."
     },
     "doc": {
       "type": "string",
@@ -65,7 +65,7 @@
         "kind": {
           "type": "string",
           "enum": ["polygon", "mesh"],
-          "description": "polygon = single PNG, single quad mesh. mesh = polygon flagged as deformable mesh source (SPEC 002 / 008 hint; renders as polygon when no rig is bound)."
+          "description": "polygon = single PNG, single quad mesh. mesh = polygon flagged as deformable mesh source (the spritesheet sprite2d work / 008 hint; renders as polygon when no rig is bound)."
         },
         "name": { "type": "string", "minLength": 1 },
         "path": {

@@ -1,4 +1,4 @@
-"""Slot-attachment animation emission (SPEC 004 D5)."""
+"""Slot-attachment animation emission (the slot system D5)."""
 
 from __future__ import annotations
 

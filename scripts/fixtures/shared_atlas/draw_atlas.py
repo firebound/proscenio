@@ -1,4 +1,4 @@
-"""Generate the shared_atlas atlas PNG (SPEC 007 step 2, Pillow only).
+"""Generate the shared_atlas atlas PNG (the testing-fixtures spec step 2, Pillow only).
 
 Run with::
 

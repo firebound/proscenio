@@ -1,4 +1,4 @@
-"""Unit tests for the SPEC 005 PropertyGroup hydration logic.
+"""Unit tests for the authoring panel PropertyGroup hydration logic.
 
 Mocks ``bpy.types.Object`` via :class:`SimpleNamespace` so the hydration
 helper is exercised without a Blender session. The Blender side of the

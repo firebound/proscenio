@@ -1,4 +1,4 @@
-"""Export the doll fixture as a SPEC 011 v2 PSD manifest (roundtrip tooling).
+"""Export the doll fixture as a the photoshop tag system v2 PSD manifest (roundtrip tooling).
 
 Run with::
 

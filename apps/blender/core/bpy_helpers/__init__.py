@@ -1,4 +1,4 @@
-"""bpy-bound helpers (SPEC 009 wave 9.6).
+"""bpy-bound helpers (the code-modularity work).
 
 Submodules in this subpackage import ``bpy`` at module top. Code that
 runs in pytest contexts (no Blender) must NOT import from here. The

@@ -117,7 +117,7 @@ def _collect_envelope_radii(armature: bpy.types.Object) -> dict[str, float]:
     """Read per-bone ``proscenio_envelope_radius`` Custom Property.
 
     Missing keys default to ``_ENVELOPE_DEFAULT_RADIUS`` (1.0).
-    Edit Weights modal (Wave 13.2-paint) becomes the UI surface
+    Edit Weights modal (the paint work) becomes the UI surface
     for these radii; bind alone exposes them via the manual
     Custom Property editor.
     """
@@ -264,9 +264,9 @@ def apply_bind(
 def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[str, int]:
     """Delegate weight computation to Blender's parent_set ARMATURE_AUTO.
 
-    Wipes any prior sidecar BEFORE the bpy.ops call (atomicity per
-    fix(spec-013.2)); stamps a populated WeightSidecar via
-    ``snapshot_sidecar`` (provenance="auto_seed") AFTER on success.
+    Wipes any prior sidecar BEFORE the bpy.ops call (atomicity gate);
+    stamps a populated WeightSidecar via ``snapshot_sidecar``
+    (provenance="auto_seed") AFTER on success.
     Failure raises RuntimeError upward - operator surfaces a hint
     about trying PROXIMITY as fallback.
     """

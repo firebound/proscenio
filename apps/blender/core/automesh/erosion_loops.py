@@ -1,4 +1,4 @@
-"""Inner-loop erosion for interactive automesh authoring (SPEC 013.2).
+"""Inner-loop erosion for interactive automesh authoring (the weight-paint productivity follow-up).
 
 Each loop = a successively-eroded version of the outer mask, traced
 to a contour. Reuses contour.erode + contour.find_first_boundary +

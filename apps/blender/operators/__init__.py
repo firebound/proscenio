@@ -1,4 +1,4 @@
-"""Proscenio operators package (SPEC 009 wave 9.2).
+"""Proscenio operators package (the code-modularity work).
 
 Each topical concern lives in its own submodule with its own
 ``register`` / ``unregister``. This file orchestrates the package:
@@ -13,19 +13,19 @@ Submodules:
 - authoring_camera  - Preview Camera (ortho)
 - authoring_ik      - Toggle IK chain
 - uv_authoring      - Reproject UV, Snap region to UV
-- driver            - Drive sprite from bone (5.1.d.1)
+- driver            - Drive sprite from bone (the Drive-from-Bone shortcut)
 - pose_library      - Save Pose to Library, Bake Current Pose
-- quick_armature    - Quick Armature modal (5.1.d.3)
-- skeleton_target   - Set Proscenio active armature pointer (SPEC 012.2)
-- automesh          - PNG sprite -> annulus mesh (SPEC 013 Wave 13.1)
-- automesh_authoring - PROSCENIO_OT_automesh_authoring modal (SPEC 013.2 interactive-modal)
-- bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (SPEC 013.2 Wave 13.2)
-- restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (SPEC 013.2 sidecar)
-- edit_weights      - PROSCENIO_OT_edit_weights_modal (SPEC 013.2 paint)
-- set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (SPEC 013 O1)
-- sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO (SPEC 013 O3)
-- brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint (SPEC 013 O4)
-- copy_weights_to_selected - PROSCENIO_OT_copy_weights_to_selected KNN weight copy (SPEC 013 O7)
+- quick_armature    - Quick Armature modal (the Quick Armature shortcut)
+- skeleton_target   - Set Proscenio active armature pointer (the quick-armature follow-up)
+- automesh          - PNG sprite -> annulus mesh (the weight-paint-automesh first cut)
+- automesh_authoring - PROSCENIO_OT_automesh_authoring modal (the interactive-modal work)
+- bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (the weight-paint productivity follow-up)
+- restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (the sidecar work)
+- edit_weights      - PROSCENIO_OT_edit_weights_modal (the paint work)
+- set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle (the weight-paint productivity follow-up (per-bone mode toggle))
+- sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO (the weight-paint productivity follow-up (sidecar IO))
+- brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint (the weight-paint productivity follow-up (brush presets))
+- copy_weights_to_selected - PROSCENIO_OT_copy_weights_to_selected KNN weight copy (the weight-paint productivity follow-up (weight transfer))
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)

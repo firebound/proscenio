@@ -1,4 +1,4 @@
-"""Issue dataclass + Severity literal (SPEC 005)."""
+"""Issue dataclass + Severity literal (the authoring panel)."""
 
 from __future__ import annotations
 

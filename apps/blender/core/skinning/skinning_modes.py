@@ -1,4 +1,4 @@
-"""BindMode dispatcher (SPEC 013.2 bind, D5).
+"""BindMode dispatcher (the bind work, D5).
 
 Translates a chosen ``BindMode`` to a per-bone-per-vert weight
 matrix, or None for BONE_HEAT sentinel. PROXIMITY delegates to

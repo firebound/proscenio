@@ -79,4 +79,4 @@ The only case where GDExtension would be worth the cost is a custom node type wi
 
 The hard rule above ("must run in stock Godot without the Proscenio plugin installed") is the operational test for this design. If a generated `.tscn` ever depends on plugin code, the design has slipped - fix it before merging.
 
-For deeper reasoning and the prior-art investigation, see [`specs/000-initial-plan/STUDY.md`](../../specs/000-initial-plan/STUDY.md).
+For deeper reasoning, see the core architecture and Phase 1 MVP entries in [`specs/decisions.md`](../../specs/decisions.md).

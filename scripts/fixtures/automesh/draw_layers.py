@@ -1,4 +1,4 @@
-"""Generate automesh PNG layers (SPEC 013 Wave 13.1 fixture).
+"""Generate automesh PNG layers (the weight-paint-automesh first cut fixture).
 
 Run with::
 
@@ -6,7 +6,7 @@ Run with::
 
 Pure Python - no Blender required. Produces 5 PNGs under
 ``examples/generated/automesh/pillow_layers/`` that
-exercise different alpha silhouette shapes the SPEC 013 automesh
+exercise different alpha silhouette shapes the weight-paint-automesh spec automesh
 operator needs to handle:
 
 - ``hand.png``    - hand silhouette (palm + 5 tapered fingers). The
@@ -24,8 +24,8 @@ operator needs to handle:
                     concave support; this is the local regression
                     guard for it).
 - ``ring.png``    - donut / ring (alpha hole in the middle). Hole
-                    support smoke target (SPEC 013 D2 amendment,
-                    Wave 13.1.b). Validates that
+                    support smoke target (the weight-paint-automesh spec D2 amendment,
+                    the hole-support amendment). Validates that
                     ``alpha_contour.extract_holes`` detects the
                     centered cutout, the bridge passes it as a
                     CDT constraint loop, and the post-process

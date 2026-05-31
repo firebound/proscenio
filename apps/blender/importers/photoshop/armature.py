@@ -1,4 +1,4 @@
-"""Stub armature builder for the Photoshop importer (SPEC 006 D3).
+"""Stub armature builder for the Photoshop importer (the photoshop importer D3).
 
 Single root-level bone at the world origin. Default name is ``root``,
 but rigs that prefer ``spine`` (or any other identifier) can pass a
@@ -22,7 +22,7 @@ def build_root_armature(
 ) -> bpy.types.Object:
     """Create a fresh armature with a single root-level bone at the world origin.
 
-    Under the SPEC 011 Spine-style anchor model the manifest's anchor
+    Under the photoshop tag system Spine-style anchor model the manifest's anchor
     re-zeros every layer's world position, so the bone always sits at
     (0, 0, 0) and represents the artist-chosen pivot.
     """

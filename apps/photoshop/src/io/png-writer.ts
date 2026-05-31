@@ -1,7 +1,7 @@
 // PNG writer. For each `PngWrite` the export plan emits, isolate the
 // source PsLayer onto a same-canvas-size temp document, trim the
 // transparent border, save as PNG into the target folder, then close
-// the temp doc without saving. Mirrors the JSX exporter's
+// the temp doc without saving. Mirrors the legacy JSX exporter's
 // `exportLayerToFile` step.
 //
 // All Photoshop document operations have to run inside

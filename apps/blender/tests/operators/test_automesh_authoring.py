@@ -1,4 +1,4 @@
-"""Headless tests for the automesh authoring modal (SPEC 013.2 interactive-modal)."""
+"""Headless tests for the automesh authoring modal (the interactive-modal work)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image:
 
 
 def test_active_stages_simple_drops_inner_loops(automesh_fixture):
-    """AS-AM15: SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
+    """: SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
     )
@@ -49,8 +49,8 @@ def test_active_stages_simple_drops_inner_loops(automesh_fixture):
 
 
 def test_stage_label_numbering_tracks_active_len(automesh_fixture):
-    """AS-AM15: statusbar N/M derives from the active mode's stage count;
-    STEINER_PREVIEW relabels to 'Triangulation preview' in SIMPLE."""
+    """: statusbar N/M derives from the active mode's stage count;
+    PREVIEW_INTERIOR relabels to 'Triangulation preview' in SIMPLE."""
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
     )
@@ -58,16 +58,16 @@ def test_stage_label_numbering_tracks_active_len(automesh_fixture):
         _stage_label,  # type: ignore[import-not-found]
     )
 
-    assert _stage_label(AuthoringStage.STEINER_PREVIEW, "SIMPLE").startswith("4/5")
-    assert "Triangulation preview" in _stage_label(AuthoringStage.STEINER_PREVIEW, "SIMPLE")
-    assert _stage_label(AuthoringStage.STEINER_PREVIEW, "DENSE").startswith("5/6")
-    assert "Vertex preview" in _stage_label(AuthoringStage.STEINER_PREVIEW, "DENSE")
+    assert _stage_label(AuthoringStage.PREVIEW_INTERIOR, "SIMPLE").startswith("4/5")
+    assert "Triangulation preview" in _stage_label(AuthoringStage.PREVIEW_INTERIOR, "SIMPLE")
+    assert _stage_label(AuthoringStage.PREVIEW_INTERIOR, "DENSE").startswith("5/6")
+    assert "Vertex preview" in _stage_label(AuthoringStage.PREVIEW_INTERIOR, "DENSE")
     assert _stage_label(AuthoringStage.OUTER, "SIMPLE").startswith("1/5")
     assert _stage_label(AuthoringStage.APPLY, "DENSE").startswith("6/6")
 
 
 def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
-    """AS-AM17: Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
+    """: Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
     the orange chunk-remove color is retired."""
     from proscenio.core.bpy_helpers.automesh import (
         authoring_overlay,  # type: ignore[import-not-found]
@@ -86,7 +86,7 @@ def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
 
 
 def test_automesh_from_sprite_operator_honors_interior_mode(automesh_fixture):
-    """AS-AM14: the standalone Automesh-from-Sprite operator (not just the
+    """: the standalone Automesh-from-Sprite operator (not just the
     authoring modal) must honor interior_mode - SIMPLE yields fewer verts
     than DENSE on the same sprite."""
     obj = _activate("hand")
@@ -197,7 +197,7 @@ def test_apply_mesh_runs_with_prior_sidecar(automesh_fixture):
 
 
 def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
-    """AS-AM14: SIMPLE drops the uniform interior fill, so it must yield
+    """: SIMPLE drops the uniform interior fill, so it must yield
     fewer total verts than DENSE on the same fixture while still being a
     valid triangulation (>=1 face)."""
     obj = _activate("hand")
@@ -231,7 +231,7 @@ def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
 
 
 def test_triangulation_preview_returns_world_edges_without_mutating_obj(automesh_fixture):
-    """AS-AM15: SIMPLE preview returns world-XZ edges and must NOT mutate the
+    """: SIMPLE preview returns world-XZ edges and must NOT mutate the
     source object's mesh (it runs the real build on a throwaway copy)."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
@@ -386,7 +386,7 @@ def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
 
 
 def test_user_outer_strokes_round_trip(automesh_fixture):
-    """Stage 2 persistence key read/write round-trip (AS-AM3 T3 scaffold)."""
+    """Stage 2 persistence key read/write round-trip ( T3 scaffold)."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,
@@ -402,7 +402,7 @@ def test_user_outer_strokes_round_trip(automesh_fixture):
 
 
 def test_user_outer_strokes_empty_when_absent(automesh_fixture):
-    """Stage 2 persistence key returns empty list when key is absent (AS-AM3 T3)."""
+    """Stage 2 persistence key returns empty list when key is absent ( T3)."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,
@@ -452,7 +452,7 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
     counters_before = apply_mesh(obj, image, StageOutput(), params, armature)
     counters_after = apply_mesh(obj, image, output, params, armature)
     # Stroke should apply cleanly (no exception, valid counters). Vert count
-    # may DECREASE vs baseline because exclude_zones (AS-AM2) makes auto-fill
+    # may DECREASE vs baseline because exclude_zones makes auto-fill
     # skip regions near stroke verts - net effect can be fewer total verts
     # when stroke replaces denser auto-fill mass. The actual fold-line is
     # validated structurally (constraint edges in mesh) elsewhere.
@@ -465,7 +465,7 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
 
 
 def test_user_outer_strokes_persist_via_custom_property(automesh_fixture):
-    """Stage 2 strokes round-trip through the custom property (AS-AM4 T6)."""
+    """Stage 2 strokes round-trip through the custom property ( T6)."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,
@@ -605,7 +605,7 @@ def test_apply_mesh_cut_stroke_carves_clean_corridor(automesh_fixture):
 
 def test_apply_mesh_outer_extend_stroke_grows_silhouette(automesh_fixture):
     """Stage 2 extend stroke (kind='stroke' in user_outer_strokes) extends
-    the silhouette - mesh face count grows vs baseline (AS-AM10)."""
+    the silhouette - mesh face count grows vs baseline."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()
@@ -730,7 +730,7 @@ def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
 
 def test_apply_mesh_cut_to_alpha_severs_to_boundary(automesh_fixture):
     """Cut stroke ending in alpha still carves a corridor that breaches the
-    silhouette boundary (AS-AM7-REV2). The artist draws from interior toward
+    silhouette boundary. The artist draws from interior toward
     an alpha gap without tracing to the exact edge; the corridor severs there.
 
     Stroke: starts inside the palm, ends OUTSIDE the silhouette (alpha). The

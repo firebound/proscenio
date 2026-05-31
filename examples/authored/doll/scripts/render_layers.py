@@ -1,4 +1,4 @@
-"""Render every mesh in ``doll_base.blend`` to its own flat PNG layer (SPEC 007).
+"""Render every mesh in ``doll_base.blend`` to its own flat PNG layer (the testing-fixtures spec).
 
 Run with::
 

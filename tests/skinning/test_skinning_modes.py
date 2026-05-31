@@ -1,4 +1,4 @@
-"""Pure tests for skinning mode dispatcher (SPEC 013.2 bind, D5)."""
+"""Pure tests for skinning mode dispatcher (the bind work, D5)."""
 
 from __future__ import annotations
 

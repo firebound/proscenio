@@ -1,4 +1,4 @@
-"""Headless automesh validator entry point (SPEC 013 Wave 13.1).
+"""Headless automesh validator entry point (the weight-paint-automesh first cut).
 
 Thin shim. Actual code lives under ``scripts/automesh_validator/``:
 

@@ -1,4 +1,4 @@
-// v2 manifest shape (SPEC 011). Mirrors `schemas/psd_manifest.schema.json`.
+// v2 manifest shape (the photoshop tag system). Mirrors `schemas/psd_manifest.schema.json`.
 //
 // v2 adds the tag-driven taxonomy: top-level `anchor` from PSD guides;
 // per-entry `origin`, `blend_mode`, `subfolder`; `kind: "mesh"` is a

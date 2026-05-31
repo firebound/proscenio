@@ -1,4 +1,4 @@
-"""Edit Weights modal operator (SPEC 013.2 paint).
+"""Edit Weights modal operator (the paint work).
 
 One-button entry into a 2D-safe weight paint context with provenance
 overlay + per-stroke user_paint flip. ESC hard-exits via try/finally.

@@ -1,4 +1,4 @@
-"""Bone Collections visibility snapshot/restore (SPEC 013.2 paint, T4).
+"""Bone Collections visibility snapshot/restore (the paint work, T4).
 
 Blender 4.0+ exposes `armature.data.collections` with per-collection
 `is_visible`. Blender 3.x has no Bone Collections; we fall back to

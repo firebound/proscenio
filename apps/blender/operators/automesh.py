@@ -1,11 +1,11 @@
-"""Automesh operator: PNG sprite -> deformable annulus mesh (SPEC 013).
+"""Automesh operator: PNG sprite -> deformable annulus mesh (the weight-paint-automesh spec).
 
-Wave 13.1 first cut. Resolves the upstream half of skinning that
-SPEC 003 already shipped on the export side. Turns a sprite plane
+the first cut first cut. Resolves the upstream half of skinning that
+the skinning-weights wire format already shipped on the export side. Turns a sprite plane
 with an image texture (or a `[mesh]`-tagged Photoshop import) into
 an annulus mesh whose density follows the picker armature's bones.
 
-Decision map (see SPEC 013 STUDY):
+Decision map (see the weight-paint-automesh spec STUDY):
 - D1: alpha-trace one-shot, pure-Python alpha walker (no OpenCV).
 - D2: annulus topology (outer dilate + inner erode + triangle_fill).
 - D3: ``proscenio_base_sprite`` vertex group preserves UV-pinned base.

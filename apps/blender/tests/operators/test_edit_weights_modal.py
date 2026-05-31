@@ -1,4 +1,4 @@
-"""Headless tests for Edit Weights modal (SPEC 013.2 paint)."""
+"""Headless tests for Edit Weights modal (the paint work)."""
 
 from __future__ import annotations
 

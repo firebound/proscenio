@@ -1,6 +1,6 @@
 # scripts/fixtures/
 
-Build scripts for the SPEC 007 + SPEC 006 fixtures under `examples/`. Organised **by fixture**, not by tool, so finding "the script that builds the doll PSD manifest" is one folder hop.
+Build scripts for the testing-fixtures spec + the photoshop importer fixtures under `examples/`. Organised **by fixture**, not by tool, so finding "the script that builds the doll PSD manifest" is one folder hop.
 
 ## Layout
 

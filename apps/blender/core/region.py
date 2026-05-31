@@ -1,4 +1,4 @@
-"""Texture-region computation (SPEC 005.1.c.1).
+"""Texture-region computation (the authoring panel.1.c.1).
 
 Pulled out of the writer so the override resolution can be tested without
 a Blender session. The two entry points cover both modes:
@@ -20,7 +20,7 @@ from typing import Any
 
 
 def _read_field(obj: Any, field: str, custom_key: str, default: Any) -> Any:
-    """PropertyGroup-first read with Custom Property fallback (SPEC 005)."""
+    """PropertyGroup-first read with Custom Property fallback (the authoring panel)."""
     props = getattr(obj, "proscenio", None)
     if props is not None and hasattr(props, field):
         return getattr(props, field)

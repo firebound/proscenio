@@ -1,4 +1,4 @@
-"""Custom Property key registry (SPEC 009 wave 9.1).
+"""Custom Property key registry (the code-modularity work).
 
 Single source of truth for every Blender Custom Property key the
 Proscenio addon reads or writes. The literal strings used to be
@@ -24,7 +24,7 @@ PROSCENIO_IS_SLOT = "proscenio_is_slot"
 # ProscenioObjectProps.slot_default.
 PROSCENIO_SLOT_DEFAULT = "proscenio_slot_default"
 
-# Per-Object outliner-favorite pin (SPEC 005.1.d.4). Mirrors
+# Per-Object outliner-favorite pin (the outliner subpanel). Mirrors
 # ProscenioObjectProps.is_outliner_favorite.
 PROSCENIO_OUTLINER_FAVORITE = "proscenio_outliner_favorite"
 

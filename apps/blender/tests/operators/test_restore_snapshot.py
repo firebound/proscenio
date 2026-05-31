@@ -1,4 +1,4 @@
-"""Headless tests for restore_weight_snapshot operator (SPEC 013.2 sidecar)."""
+"""Headless tests for restore_weight_snapshot operator (the sidecar work)."""
 
 from __future__ import annotations
 

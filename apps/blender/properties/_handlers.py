@@ -1,4 +1,4 @@
-"""Hydration handlers + deferred-hydrate timer (SPEC 009 wave 9.7).
+"""Hydration handlers + deferred-hydrate timer (the code-modularity work).
 
 Isolates the persistent ``bpy.app.handlers`` integration so the main
 properties module reads as a clean PG declaration list. Three jobs:
@@ -41,7 +41,7 @@ def hydrate_existing_objects() -> None:
 def auto_populate_active_armature() -> None:
     """Pre-fill ``scene.proscenio.active_armature`` when unambiguous.
 
-    SPEC 012.2 hybrid Opcao A.5: when the user opens a `.blend` whose
+    the quick-armature follow-up hybrid Opcao A.5: when the user opens a `.blend` whose
     scene contains exactly one armature and the Proscenio pointer is
     still empty, set it. The picker in the Skeleton subpanel then
     visibly reflects the rig that every Proscenio skeleton operation

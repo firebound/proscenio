@@ -6,7 +6,7 @@ Fixtures used by the Proscenio test harness + as on-disk documentation for the p
 
 Fixtures created and maintained by hand in Blender. Treat the `.blend` as the source-of-truth - there is no script that rebuilds it. Modifications happen interactively, with explicit regeneration of every derived artefact (render layers, photoshop manifest, goldens) afterwards.
 
-- [`authored/doll/`](authored/doll/) - canonical SPEC 004 + SPEC 006 character rig. Body parts as polygon meshes, skinned to an Armature; lives at the centre of the Blender ↔ Photoshop authoring loop.
+- [`authored/doll/`](authored/doll/) - canonical slot-system + photoshop-importer character rig. Body parts as polygon meshes, skinned to an Armature; lives at the centre of the Blender ↔ Photoshop authoring loop.
 
 The `authored/` subdirectory exists specifically to telegraph this asymmetry. New hand-authored fixtures land there too.
 
@@ -20,7 +20,7 @@ New fixtures land under one of two **pipeline-direction subdirectories**; the pr
 
 | Fixture                                                                       | Feature exercised                                                                              |
 |-------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| [`generated/psd_to_blender/tag_smoke/`](generated/psd_to_blender/tag_smoke/)  | SPEC 011 v1 bracket-tag taxonomy parity oracle (synthetic input + committed manifest golden)   |
+| [`generated/psd_to_blender/tag_smoke/`](generated/psd_to_blender/tag_smoke/)  | the photoshop tag system v1 bracket-tag taxonomy parity oracle (synthetic input + committed manifest golden)   |
 
 See [`generated/psd_to_blender/README.md`](generated/psd_to_blender/README.md) for the bucket's testing posture.
 

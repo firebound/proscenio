@@ -114,7 +114,7 @@ static func _add_slot_attachment_tracks(
 	# child of the slot Node2D. At each key time, exactly one attachment is
 	# visible (the one named in `key.attachment`); the rest go hidden. Uses
 	# NEAREST interpolation - attachment swaps are hard cuts, not blends
-	# (SPEC 004 D5).
+	# (the slot system D5).
 	var slot_path := str(character_root.get_path_to(slot_node))
 	for child in slot_node.get_children():
 		if not (child is CanvasItem):

@@ -1,4 +1,4 @@
-"""Generate the simple_psd PNG layers (SPEC 006 Wave 6.5, Pillow only).
+"""Generate the simple_psd PNG layers (the photoshop importer, Pillow only).
 
 Run with::
 
@@ -15,7 +15,7 @@ Pure Python - no Blender required. Produces:
 The accompanying ``build_blend.py`` runs in headless Blender, calls the
 addon's ``import_manifest()`` on the committed manifest, and saves
 ``simple_psd.blend``. The fixture is the smallest end-to-end exercise
-of both layer kinds (polygon + sprite_frame) defined by SPEC 006 v1.
+of both layer kinds (polygon + sprite_frame) defined by the photoshop importer v1.
 """
 
 from __future__ import annotations

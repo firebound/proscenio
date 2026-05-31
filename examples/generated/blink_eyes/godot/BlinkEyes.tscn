@@ -3,7 +3,7 @@
 ; Minimal sprite_frame isolation test — a single eye mesh with a 4-frame
 ; spritesheet animated by the `blink` action. The wrapper instances the
 ; imported scene and lets the user attach scripts / collisions / extra
-; nodes here without losing them on reimport (SPEC 001 Option A).
+; nodes here without losing them on reimport (the reimport-merge work Option A).
 ;
 ; Drop `examples/generated/blink_eyes/` at `res://examples/blink_eyes/` in your Godot project,
 ; or adjust paths to match your layout.

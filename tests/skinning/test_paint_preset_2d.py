@@ -1,4 +1,4 @@
-"""Pure tests for the 2D paint preset (SPEC 013.2 paint, T2)."""
+"""Pure tests for the 2D paint preset (the paint work, T2)."""
 
 from __future__ import annotations
 

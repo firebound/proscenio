@@ -1,4 +1,4 @@
-"""Pure-Python skinning algorithms (SPEC 013.2).
+"""Pure-Python skinning algorithms (the weight-paint productivity follow-up).
 
 Public surface: weight computation, mode dispatcher, diagnoses,
 sidecar schema. Zero bpy import - testable without Blender.

@@ -35,17 +35,17 @@ Pick whichever entry point matches your asset:
 
 In the Blender sidebar (`N → Proscenio`):
 
-- Need a quick skeleton for a doodle? **Skeleton → Quick Armature** (5.1.d.3) - click-drag in the viewport to draw bones (Shift to chain). The result is a normal armature; rename and refine in Edit Mode as usual.
-- Parent your meshes to the armature (`Ctrl+P → Armature Deform`). The writer reads vertex-group names and matches them to bone names - see [SPEC 003](specs/003-skinning-weights/STUDY.md) for the matching rules.
+- Need a quick skeleton for a doodle? **Skeleton → Quick Armature** - click-drag in the viewport to draw bones (Shift to chain). The result is a normal armature; rename and refine in Edit Mode as usual.
+- Parent your meshes to the armature (`Ctrl+P → Armature Deform`). The writer reads vertex-group names and matches them to bone names - see the skinning weights entry in [`specs/decisions.md`](specs/decisions.md#skinning-weights-export) for the matching rules.
 - Use **Skeleton → Bake Current Pose** + **Toggle IK** + **Save Pose to Library** as authoring shortcuts. None of them affect the export - they only help you iterate.
 
 ### 3. Set per-sprite knobs
 
-- **Active Sprite** - pick `Polygon` for cutout meshes or `Sprite Frame` for spritesheets. Set `hframes / vframes / frame` for sprite_frame; the in-panel preview slicer (5.1.d.5) lets you preview the cell choice in the 3D viewport without exporting.
+- **Active Sprite** - pick `Polygon` for cutout meshes or `Sprite Frame` for spritesheets. Set `hframes / vframes / frame` for sprite_frame; the in-panel preview slicer lets you preview the cell choice in the 3D viewport without exporting.
 - **Texture region** - auto computes from UV bounds; manual lets you slice an atlas. Click **Snap to UV bounds** to populate from the current UV.
-- Need to swap textures based on bone rotation? **Drive from Bone** (5.1.d.1) wires a Blender driver between a pose bone and a sprite property in one click. For HARD swaps (forearm front/back, sword/staff), use the slot system below instead.
+- Need to swap textures based on bone rotation? **Drive from Bone** wires a Blender driver between a pose bone and a sprite property in one click. For HARD swaps (forearm front/back, sword/staff), use the slot system below instead.
 
-### 4. Slot system (SPEC 004)
+### 4. Slot system
 
 For attachments that toggle between N variants - sword/staff/empty hand, brow up/down, expression swap:
 
@@ -55,7 +55,7 @@ For attachments that toggle between N variants - sword/staff/empty hand, brow up
 
 ### 5. Find things in big rigs
 
-Big rigs (the doll fixture has 64 bones + 22 sprite meshes) drown Blender's native outliner. Use the **Outliner** subpanel (5.1.d.4): substring filter, favorites toggle, sprite-centric flat list. Click a row to make that object active.
+Big rigs (the doll fixture has 64 bones + 22 sprite meshes) drown Blender's native outliner. Use the **Outliner** subpanel: substring filter, favorites toggle, sprite-centric flat list. Click a row to make that object active.
 
 ### 6. Validate, export, and wrap
 

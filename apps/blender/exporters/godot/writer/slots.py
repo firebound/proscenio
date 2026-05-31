@@ -1,4 +1,4 @@
-"""Slot emission (SPEC 004 D8) - bpy walker delegating to core/slot_emit."""
+"""Slot emission (the slot system D8) - bpy walker delegating to core/slot_emit."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[dict[str, object]]:
 
     Bpy walker - delegates the schema-shaped projection to
     ``core.slot_emit.build_slots`` so the slot logic can be exercised
-    under plain pytest. Per SPEC 004 D3, ``bone`` is the Empty's
+    under plain pytest. Per the slot system D3, ``bone`` is the Empty's
     ``parent_bone`` when ``parent_type == "BONE"``. Per D6, attachments
     are mesh names only - the meshes themselves still emit normally
     in ``sprites[]``.
@@ -48,7 +48,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[dict[str, object]]:
 def is_slot_empty(obj: bpy.types.Object) -> bool:
     """True when ``obj`` is a slot-flagged Empty.
 
-    Reads PropertyGroup first (canonical post-SPEC 005), Custom Property
+    Reads PropertyGroup first (canonical post-the authoring panel), Custom Property
     ``proscenio_is_slot`` as legacy fallback. The fallback matters in
     headless contexts where the addon's PropertyGroup is not registered
     - CI runs Blender without the addon enabled. Delegates to

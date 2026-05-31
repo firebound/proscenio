@@ -1,4 +1,4 @@
-"""Cross-cutting panel helpers (SPEC 009 wave 9.3).
+"""Cross-cutting panel helpers (the code-modularity work).
 
 Shared across every panel module: the subpanel-header drawer (status
 icon + help button), the mode-friendly predicate sets, and the idname

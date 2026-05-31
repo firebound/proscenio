@@ -1,10 +1,10 @@
 ; Documentation-by-example wrapper scene for the Proscenio atlas_pack fixture.
 ;
 ; Nine flat-colored quads, each with its own texture. Workbench for the
-; atlas packer (SPEC 005.1.c) -- after running Pack Atlas + Apply on the
+; atlas packer (the authoring panel.1.c) -- after running Pack Atlas + Apply on the
 ; .blend, the importer drops a packed atlas + rewritten UVs here. Wraps
 ; the imported scene so the user can attach scripts / collisions / extra
-; nodes here without losing them on reimport (SPEC 001 Option A).
+; nodes here without losing them on reimport (the reimport-merge work Option A).
 ;
 ; Drop `examples/generated/atlas_pack/` at `res://examples/atlas_pack/` in your Godot
 ; project, or adjust paths to match your layout.

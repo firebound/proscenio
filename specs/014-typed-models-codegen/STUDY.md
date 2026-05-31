@@ -1,10 +1,10 @@
 # Typed domain models as source of truth + codegen + living docs
 
-Status: **decisions locked, ready for implementation**. D1-D9 closed (see Design decisions section). Open questions resolved via research + decision; see "Open questions" for the outcomes.
+Status: **decisions locked, ready for implementation**. Depends on [the monorepo packages spec](../015-monorepo-packages/STUDY.md) landing first so `packages/models/` and `packages/codegen/` have a home. D1-D11 closed (see Design decisions section). Open questions resolved via research + decision; see "Open questions" for the outcomes.
 
 ## Problem
 
-The cross-component JSON schemas under [`schemas/`](../../schemas/) are currently the *de facto* source of truth for the data flowing between the three apps:
+The cross-component JSON schemas at the repo root under `schemas/` are currently the *de facto* source of truth for the data flowing between the three apps:
 
 - Blender addon (Python) writes `.proscenio` and the PSD manifest.
 - Photoshop UXP plugin (TypeScript) reads/writes the PSD manifest.
@@ -62,7 +62,7 @@ The pattern - "language-native doc generator -> normalization script -> Docusaur
 | Option | Pros | Cons | Verdict |
 | --- | --- | --- | --- |
 | **A1.** JSON Schema in `schemas/` (status quo) | Already in CI. Tool-rich ecosystem. | All weaknesses listed above. | Reject as source. Keep as artifact. |
-| **A2.** Pydantic v2 models in `apps/blender/core/models/` | Hub language is Python (Blender addon). Validators + discriminated unions land where the data is born. `model_json_schema()` is a one-liner. Pydantic v2 perf is fine for our payload sizes. | Adds runtime dep to the Blender addon (Blender 5.x ships its own Python; pydantic v2 has no C extension surface to worry about on a clean install). One more thing to learn. | **Lock as default.** |
+| **A2.** Pydantic v2 models in `packages/models/` | Hub language is Python (Blender addon). Validators + discriminated unions land where the data is born. `model_json_schema()` is a one-liner. Pydantic v2 perf is fine for our payload sizes. | Adds runtime dep to the Blender addon. Pydantic ships pre-compiled wheels per platform; bundling resolved by the wheels declaration in the Blender extension manifest. | **Lock as default.** |
 | **A3.** `msgspec` Struct models | Faster than pydantic, codegen-friendly, stdlib-only at runtime. | Smaller ecosystem; fewer docs tools target msgspec; less idiomatic on the Blender side. | Defer. Re-evaluate only if pydantic perf becomes an issue. |
 | **A4.** IDL (Protobuf, Cap'n Proto, FlatBuffers) | Cross-language by design. | Toolchain weight. We do not need binary serialization. Blender authors do not want to learn `.proto`. | Reject. Overkill for a small JSON pipeline with one writer per format. |
 | **A5.** TypeScript-first (`zod` schemas in Photoshop, generate Python+GDScript) | Strong runtime guards out of the box. | Photoshop is the smallest of the three apps and not the writer of either format. Wrong hub. | Reject. |
@@ -71,10 +71,10 @@ The pattern - "language-native doc generator -> normalization script -> Docusaur
 
 | Target | Tool | Maturity | Notes |
 | --- | --- | --- | --- |
-| JSON Schema | `pydantic.BaseModel.model_json_schema()` | Built-in | Per-model, dumped by a script under `scripts/`. |
-| TypeScript types | `json-schema-to-typescript` (npm) | Mature | Reads the dumped schema; emits `apps/photoshop/src/generated/*.ts`. |
-| GDScript Resources | **custom Python script** | Not off-the-shelf | Walks pydantic model fields and emits `class_name FooData extends Resource` with `@export` vars + a `from_dict` parser. ~150-250 LOC. |
-| Markdown docs | `@adobe/jsonschema2md` or `json-schema-static-docs` | Mature | Reads the dumped schema; emits `docs/content/api/schemas/*.md`. |
+| JSON Schema | `pydantic.BaseModel.model_json_schema()` | Built-in | Per-model, dumped by `proscenio_codegen.schema_dump`. |
+| TypeScript types | `json-schema-to-typescript` (npm) | Mature | Invoked via subprocess from `proscenio_codegen.ts_emit`; reads the dumped schema; emits `apps/photoshop/src/schema_bindings/*.ts`. |
+| GDScript Resources | Custom Python emitter in `proscenio_codegen.godot_emit` | Not off-the-shelf | Walks pydantic model fields and emits `class_name FooData extends Resource` with `@export` vars + a `from_dict` parser. ~150-250 LOC. |
+| Markdown docs | `@adobe/jsonschema2md` or `json-schema-static-docs` | Mature | Invoked via subprocess from `proscenio_codegen.docs_emit`; reads the dumped schema; emits `docs/content/api/schemas/*.md`. |
 
 ### Axis C - Stricter typing per language
 
@@ -118,7 +118,7 @@ Today (`apps/photoshop/tsconfig.json`) - `strict: true` plus a few belt-and-susp
 "useUnknownInCatchVariables": true
 ```
 
-Plus: ESLint with `@typescript-eslint/strict-type-checked`; replace ad-hoc ajv boundary with `zod` (or keep ajv, but parse into a generated TS interface from the codegen pipeline).
+Plus: ESLint with `@typescript-eslint/strict-type-checked`. ajv keeps the boundary check; the generated TS interfaces from `json-schema-to-typescript` give the static side.
 
 #### C3. GDScript (project.godot warnings)
 
@@ -160,41 +160,99 @@ Two layers, matching Firebound's "generator -> normalizer -> Docusaurus" split:
 
 Optional later: GDScript class docs via `godot --doctool` -> XML -> normalizer (mirror of `processApiFiles.js`), TS docs via TypeDoc + markdown plugin. Both are deferred until the schema layer ships and proves the integration.
 
+### Axis E - Codegen tool shape
+
+| Option | Pros | Cons | Verdict |
+| --- | --- | --- | --- |
+| **E1.** One fat script (`scripts/codegen.py` with a giant `main()`) | Single entry point. | One file grows unbounded; testing each emitter in isolation needs careful sys.argv mocking. | Reject. |
+| **E2.** Four separate scripts (`dump_schemas.py`, `emit_ts.sh`, `emit_godot.py`, `emit_docs.sh`) | Each script focused. | Four entry points to maintain; shell scripts in the mix breaks the "one language" principle; cross-helper code (atomic writes, header banner) gets copy-pasted. | Reject. |
+| **E3.** One Python package (`packages/codegen/`) with helper modules per target + a single CLI coordinator | Each helper is a focused module with its own tests; the CLI coordinator (`__main__.py`) parses subcommands and delegates; shared code (`_io.py`) lives in one place; everything in Python (TS / docs invocations go through `subprocess`). | One more package in the workspace. | **Lock.** |
+
+E3 ships as `packages/codegen/`, with helpers `schema_dump`, `ts_emit`, `godot_emit`, `docs_emit`, and shared `_io`. CLI surface: `python -m proscenio_codegen schemas|ts|godot|docs|all`.
+
 ## Architecture sketch
 
+The new structure assumes [the monorepo packages spec](../015-monorepo-packages/STUDY.md) has landed. Net additions on top of that layout:
+
+```text
+packages/
+  models/                                   # NEW workspace member
+    pyproject.toml                          # name = "proscenio-models"
+    src/proscenio_models/
+      __init__.py                           # re-exports the public model classes
+      proscenio.py                          # ProscenioDocument, Bone, Sprite (discriminated), Animation, Track, ...
+      psd_manifest.py                       # PsdManifest discriminated union
+    schemas/                                # dumped artifacts
+      proscenio.schema.json
+      psd_manifest.schema.json
+    tests/
+
+  codegen/                                  # NEW workspace member
+    pyproject.toml                          # name = "proscenio-codegen", depends on proscenio-models
+    src/proscenio_codegen/
+      __init__.py
+      __main__.py                           # python -m proscenio_codegen schemas|ts|godot|docs|all
+      schema_dump.py                        # pydantic -> JSON Schema -> packages/models/schemas/
+      ts_emit.py                            # subprocess to json-schema-to-typescript -> apps/photoshop/src/schema_bindings/
+      godot_emit.py                         # custom emitter -> apps/godot/addons/proscenio/schema_bindings/
+      docs_emit.py                          # subprocess to jsonschema2md -> docs/content/api/schemas/
+      _io.py                                # paths, AUTO-GENERATED header, atomic write
+    tests/
+
+apps/
+  blender/
+    wheels/                                 # gains proscenio_models-*.whl + pydantic wheels
+      pydantic-*.whl
+      pydantic_core-*-<plat>.whl
+      proscenio_models-*.whl                # built from packages/models/ in CI
+    blender_manifest.toml                   # gains wheels = [...]
+
+  photoshop/
+    src/
+      schema_bindings/                      # populated by proscenio_codegen.ts_emit
+        proscenio.ts
+        psd_manifest.ts
+
+  godot/
+    addons/
+      proscenio/
+        schema_bindings/                    # populated by proscenio_codegen.godot_emit
+          proscenio_document.gd
+          bone.gd
+          sprite_polygon.gd
+          sprite_frame.gd
+          slot.gd
+          animation.gd
+          ...
+
+docs/
+  content/
+    api/
+      schemas/                              # populated by proscenio_codegen.docs_emit (P5)
+        proscenio.md
+        psd_manifest.md
+
+tests/
+  codegen/                                  # NEW: round-trip + smoke
+    test_schema_roundtrip.py
+    test_discriminated_union.py
 ```
-apps/blender/core/models/                      <- source of truth (pydantic v2)
-  proscenio.py        # PsdManifest? No - it's ProscenioDoc, slots, bones, sprites, anims
-  psd_manifest.py     # PSD manifest discriminated union
-  __init__.py         # re-exports the public model classes
 
-scripts/codegen/
-  dump_schemas.py     # python -m scripts.codegen.dump_schemas -> schemas/generated/*.json
-  emit_godot.py       # python -m scripts.codegen.emit_godot   -> apps/godot/addons/proscenio/generated/*.gd
-  emit_ts.sh          # wraps `npx json-schema-to-typescript`  -> apps/photoshop/src/generated/*.ts
-  emit_docs.sh        # wraps `npx jsonschema2md`              -> docs/content/api/schemas/*.md
+`.gitattributes` marks every `schema_bindings/` path and `packages/models/schemas/` as `linguist-generated=true`; each generated file carries a `# AUTO-GENERATED - DO NOT EDIT` header; CI runs `python -m proscenio_codegen all` and fails if `git status` is non-empty.
 
-schemas/
-  generated/          # checked-in artifacts; CI fails if stale
-  *.schema.json       # current hand-maintained; migrated into generated/ during this spec
+The top-level `schemas/` folder at the repo root is deleted at the end of P2 (see Migration plan). Before then, `packages/models/schemas/` is generated alongside the old folder and a round-trip test confirms byte equality.
 
-apps/photoshop/src/generated/                  # checked-in artifacts
-apps/godot/addons/proscenio/generated/         # checked-in artifacts
-```
-
-`.gitattributes` marks every `generated/` path as `linguist-generated=true`; each generated file carries a `# AUTO-GENERATED - DO NOT EDIT` header; CI runs the codegen pipeline and fails if `git status` is non-empty.
-
-## Migration plan (rough)
+## Migration plan
 
 Each phase is one PR. None of this requires a `format_version` bump in itself - the schemas should round-trip byte-for-byte against the existing hand-maintained ones until the model gains a field that the schema did not have.
 
 | Phase | Scope | Risk |
 | --- | --- | --- |
-| **P1.** Pydantic models for `.proscenio` | `core/models/proscenio.py`; `dump_schemas.py`; round-trip assertion against `schemas/proscenio.schema.json`. Writer untouched. | Low. Models are dead code until phase 2. |
-| **P2.** Writer uses models | `writer/` swaps `dict[str, Any]` -> `ProscenioDoc.model_dump()`. Tests still diff against golden fixtures. | Medium. Touches writer extensively. Golden fixtures catch shape regressions. |
-| **P3.** TS codegen + Photoshop adoption | `emit_ts.sh`; `apps/photoshop/src/generated/`; replace hand-written manifest interfaces. Validate ajv -> zod (or keep ajv but typed by codegen). | Medium. UXP plugin is small; surface is the manifest reader/writer. |
-| **P4.** GDScript codegen + importer adoption | `emit_godot.py`; `apps/godot/.../generated/`; importer accepts `Resource` instead of `Dictionary`. Turn on unsafe-warnings. | High. Importer is the biggest module; needs incremental migration alongside the warning bump. |
-| **P5.** Docs pipeline | `emit_docs.sh`; `docs/content/api/schemas/`; Docusaurus wiring in the `docs/` site (if not already present - the site itself may be its own deferred item, but the generated MD is producible regardless). | Low. Generated MD is additive. |
+| **P1.** Pydantic models for `.proscenio` + codegen package skeleton | Create `packages/models/` (only `proscenio.py`, no PSD manifest yet) and `packages/codegen/` (only `schema_dump.py` + `_io.py`, no TS/Godot/docs emitters yet). Add both to the uv workspace. Add wheels for pydantic + `proscenio-models` to `apps/blender/blender_manifest.toml`. Round-trip test in `tests/codegen/test_schema_roundtrip.py` asserts the dumped schema matches `schemas/proscenio.schema.json` byte-for-byte. Smoke test in `tests/codegen/test_discriminated_union.py` covers the `Sprite.type` union. Writer untouched; models dormant. | Low. New files only; no existing code changes. |
+| **P2.** Writer uses models + delete top-level `schemas/` | Writer swaps `dict[str, Any]` -> `ProscenioDocument.model_dump()`. Tests still diff against golden fixtures. Once the writer is green and the round-trip test stays byte-equal, delete the top-level `schemas/proscenio.schema.json` and update any reference to point at `packages/models/schemas/`. | Medium. Touches writer extensively. Golden fixtures catch shape regressions. |
+| **P3.** PSD manifest model + TS codegen + Photoshop adoption | Add `packages/models/psd_manifest.py`. Add `proscenio_codegen.ts_emit`. Populate `apps/photoshop/src/schema_bindings/`. Replace hand-written manifest interfaces in the UXP plugin. Delete top-level `schemas/psd_manifest.schema.json` at the end of this phase. | Medium. UXP plugin is small; surface is the manifest reader/writer. |
+| **P4.** GDScript codegen + importer adoption | Add `proscenio_codegen.godot_emit`. Populate `apps/godot/addons/proscenio/schema_bindings/`. Importer accepts `Resource` instead of `Dictionary`. Turn on unsafe-warnings family. | High. Importer is the biggest module; needs incremental migration alongside the warning bump. |
+| **P5.** Docs pipeline | Add `proscenio_codegen.docs_emit`. Populate `docs/content/api/schemas/`. Docusaurus wiring in the `docs/` site (if not already present - the site itself may be its own deferred item, but the generated MD is producible regardless). | Low. Generated MD is additive. |
 | **P6.** Stricter typing flags | mypy extras, tsc extras, GDScript unsafe family. One PR per language. | Low-Medium. Each flag will surface a finite list of fixes; do them inline. |
 
 Phases P1-P2 + P6/Python are the smallest viable cut and ship value without touching the other apps.
@@ -204,23 +262,25 @@ Phases P1-P2 + P6/Python are the smallest viable cut and ship value without touc
 | ID | Question | Locked answer |
 | --- | --- | --- |
 | D1 | Source of truth | **pydantic v2**, bundled via wheels in the Blender extension manifest. Pure-Python pydantic + Rust-backed pydantic-core; pre-compiled wheels per platform (Linux x64/arm64, macOS x64/arm64, Windows x64) declared under `wheels = [...]` in `blender_manifest.toml`. |
-| D2 | Generated artifact location | **Checked in** under `schemas/generated/` and per-app `generated/` folders. CI verifies staleness on every PR. |
+| D2 | Generated artifact location | **Checked in.** Per-app `schema_bindings/` folders (TS + GDScript bindings); `packages/models/schemas/` for the dumped JSON Schema. CI verifies staleness on every PR. |
 | D3 | `format_version` policy | Models carry `Literal["v1"]`. Future v2 lives in a separate module + `migrations/v1_to_v2.py` adapter, same shape as the current writer migrators. Pre-1.0 / PoC scope is free to break and replace without compatibility guarantees; the migrator pattern formalises once 1.0 lands. |
-| D4 | GDScript layer | **Typed `Resource` classes** with `@export` vars + `from_dict` parsers. Custom Python codegen script under `scripts/codegen/` (estimated ~150-250 LOC). |
+| D4 | GDScript layer | **Typed `Resource` classes** with `@export` vars + `from_dict` parsers. Custom Python emitter in `packages/codegen/src/proscenio_codegen/godot_emit.py` (estimated ~150-250 LOC). |
 | D5 | TypeScript runtime guard | **Keep ajv** (consumes JSON Schema directly; smaller bundle; mature discriminated-union handling). Generated TS interfaces from `json-schema-to-typescript`. Revisit `z.fromJSONSchema()` once it leaves experimental and `json-schema-to-zod` matures its discriminated-union support (currently flagged "here be dragons" in its README). |
 | D6 | Stricter-typing rollout | **One PR per language** (mypy / tsc / GDScript warnings tightened independently). Each PR surfaces a finite list of fixes; per-language scope keeps the noise bounded. |
 | D7 | Docs site | **Generate markdown artifacts only**, fed into Docusaurus later as a separate chore. Documentation extracted from the pydantic models themselves (descriptions, types, discriminators); not extracted from docstrings or hand-written prose. Code is the source of truth. |
-| D8 | Schema location | Move hand-maintained `schemas/*.schema.json` to `schemas/generated/*.schema.json`. Old paths are dropped (no symlinks - Windows pain). |
+| D8 | Schema location | **`packages/models/schemas/`** (dumped artifacts living next to the models that produced them). Top-level `schemas/` folder deleted progressively: `proscenio.schema.json` at the end of P2, `psd_manifest.schema.json` at the end of P3. |
 | D9 | TypeScript codegen tool | **`json-schema-to-typescript`** consumes the generated JSON Schema and emits TS interfaces. Standard tool, mature discriminated-union support, already aligned with the ajv runtime path. Wires into the existing webpack pipeline as a pre-build step. |
+| D10 | Codegen tool shape | **One Python package (`packages/codegen/`) with helper modules per target and a single CLI coordinator.** Avoids both the fat-script and four-separate-scripts traps; shared `_io.py` lives in one place; TS / docs invocations go through `subprocess` (no shell scripts). |
+| D11 | Per-app binding folder name | **`schema_bindings/`** (locked in [the monorepo packages spec](../015-monorepo-packages/STUDY.md) D3). Used in `apps/photoshop/src/schema_bindings/` and `apps/godot/addons/proscenio/schema_bindings/`. |
 
 ## Open questions (resolved)
 
 | OQ | Outcome |
 | --- | --- |
-| OQ1 - pydantic in Blender's bundled Python | **Resolved: bundle wheels in the extension manifest.** Blender does not ship pydantic, but Blender 4.2+ supports declaring third-party wheels under `wheels = [...]` in `blender_manifest.toml`. pydantic v2 + pydantic-core ship pre-compiled platform wheels on PyPI; the `--split-platforms` build flag produces per-platform extension zips when bundle size becomes a concern. See sources cited in the implementation plan below. |
-| OQ2 - pydantic + `bpy.props` on the same class | **Resolved: no.** Models live as plain pydantic, entirely outside the bpy class graph. bpy classes hold references to pydantic instances or transient data only. Documented as a guideline in this spec's implementation rules. |
-| OQ3 - discriminated unions across emitters | **Resolved: smoke test in the first implementation PR.** The first PR (see "Implementation plan" below) includes a fixture covering the `Sprite.type` discriminated union round-tripped through pydantic -> JSON Schema -> `json-schema-to-typescript`. If the generated TS is degraded, fix at codegen layer before continuing. |
-| OQ4 - `.ai/skills/format-spec.md` source of truth | **Resolved: yes.** Once schemas move to `schemas/generated/`, the skill page points readers at the pydantic model file as the canonical source. Update lands in the docs-pass PR (see implementation plan). |
+| OQ1 - pydantic in Blender's bundled Python | **Resolved: bundle wheels in the extension manifest.** Blender does not ship pydantic, but Blender 4.2+ supports declaring third-party wheels under `wheels = [...]` in `blender_manifest.toml`. pydantic v2 + pydantic-core ship pre-compiled platform wheels on PyPI; the `--split-platforms` build flag produces per-platform extension zips when bundle size becomes a concern. |
+| OQ2 - pydantic + `bpy.props` on the same class | **Resolved: no.** Models live as plain pydantic in `packages/models/`, entirely outside the bpy class graph. bpy classes hold references to pydantic instances or transient data only. Documented as a guideline in this spec's implementation rules. |
+| OQ3 - discriminated unions across emitters | **Resolved: smoke test in the first implementation PR.** P1 includes a fixture covering the `Sprite.type` discriminated union round-tripped through pydantic -> JSON Schema -> `json-schema-to-typescript`. If the generated TS is degraded, fix at codegen layer before continuing. |
+| OQ4 - `.ai/skills/format-spec.md` source of truth | **Resolved: yes.** Once schemas move to `packages/models/schemas/`, the skill page points readers at the pydantic model file (`packages/models/src/proscenio_models/proscenio.py`) as the canonical source. Update lands in the docs-pass PR. |
 
 ## Out of scope (deferred)
 
@@ -233,9 +293,10 @@ Phases P1-P2 + P6/Python are the smallest viable cut and ship value without touc
 
 A future "this spec is done" looks like:
 
-- Every cross-component JSON document is `model_dump()` of a pydantic model.
-- `schemas/generated/*.schema.json` is reproducible from `scripts/codegen/dump_schemas.py`.
-- `apps/photoshop/src/generated/*.ts` and `apps/godot/addons/proscenio/generated/*.gd` exist and are imported by their respective apps.
+- Every cross-component JSON document is `model_dump()` of a pydantic model in `packages/models/`.
+- `packages/models/schemas/*.schema.json` is reproducible from `python -m proscenio_codegen schemas`.
+- `apps/photoshop/src/schema_bindings/*.ts` and `apps/godot/addons/proscenio/schema_bindings/*.gd` exist and are imported by their respective apps.
 - `docs/content/api/schemas/*.md` is reproducible and (optionally) consumed by Docusaurus.
 - mypy / tsc / Godot warnings are tightened per Axis C and the build is green at the new strictness.
 - A schema field added in pydantic flows automatically to all three consumers; a consumer that does not adapt fails its build, not its runtime.
+- The top-level `schemas/` folder no longer exists.

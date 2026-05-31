@@ -25,7 +25,10 @@ import json
 from pathlib import Path
 
 import pytest
-from proscenio_codegen.schema_dump import build_proscenio_schema
+from proscenio_codegen.schema_dump import (
+    build_proscenio_schema,
+    build_psd_manifest_schema,
+)
 from proscenio_models import ProscenioDocument
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -126,8 +129,6 @@ def test_proscenio_schema_on_disk_matches_models() -> None:
 
 def test_psd_manifest_schema_on_disk_matches_models() -> None:
     """The on-disk PSD manifest schema dump matches the in-memory build."""
-    from proscenio_codegen.schema_dump import build_psd_manifest_schema
-
     assert PSD_MANIFEST_SCHEMA.is_file(), (
         "Run `python -m proscenio_codegen schemas` to regenerate."
     )

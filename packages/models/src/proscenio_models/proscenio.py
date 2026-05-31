@@ -179,7 +179,7 @@ class SpriteFrameSprite(_Strict):
         return self
 
 
-def _sprite_discriminator(payload: Any) -> str:
+def _sprite_discriminator(payload: Any) -> str | None:
     """Return the discriminator tag for a Sprite payload.
 
     ``type`` is optional on the polygon variant (v1 backwards
@@ -188,13 +188,17 @@ def _sprite_discriminator(payload: Any) -> str:
     a missing ``type`` would fail union resolution. A callable
     discriminator runs against the raw input, lets us default to
     ``"polygon"``, and rejects unknown tags up front.
+
+    Returns ``None`` for unexpected ``type`` values so pydantic raises
+    a ``union_tag_not_found`` ValidationError rather than dispatching
+    to a non-existent variant.
     """
     if isinstance(payload, dict):
         tag = payload.get("type", "polygon")
     else:
         tag = getattr(payload, "type", "polygon")
     if tag not in {"polygon", "sprite_frame"}:
-        return "unknown"
+        return None
     return str(tag)
 
 

@@ -3,9 +3,12 @@
 Subcommands:
 
 - ``schemas`` - dump JSON Schema from the pydantic models.
-- ``ts`` / ``godot`` / ``docs`` - placeholders for SPEC 014 P3-P5;
-  they print a "not implemented yet" notice and exit 0 so a future
-  CI step can wire them in once the emitters land.
+- ``ts`` - emit TypeScript bindings from the dumped JSON Schemas via
+  ``json-schema-to-typescript``; output lands under
+  ``apps/photoshop/src/schema_bindings/``.
+- ``godot`` / ``docs`` - placeholders for later SPEC 014 phases; they
+  print a "not implemented yet" notice and exit 0 so a future CI
+  step can wire them in once the emitters land.
 - ``all`` - run every emitter in order.
 
 Exit code 0 on success, non-zero on emitter failure. The expected

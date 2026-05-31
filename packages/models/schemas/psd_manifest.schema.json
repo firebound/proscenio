@@ -63,6 +63,7 @@
           "anyOf": [
             {
               "items": {
+                "minimum": 0,
                 "type": "integer"
               },
               "maxItems": 2,
@@ -86,6 +87,7 @@
         "position": {
           "description": "PSD top-left bbox of the layer in pixels.",
           "items": {
+            "minimum": 0,
             "type": "integer"
           },
           "maxItems": 2,
@@ -96,6 +98,7 @@
         "size": {
           "description": "Layer bbox size in pixels.",
           "items": {
+            "minimum": 0,
             "type": "integer"
           },
           "maxItems": 2,
@@ -179,6 +182,7 @@
           "anyOf": [
             {
               "items": {
+                "minimum": 0,
                 "type": "integer"
               },
               "maxItems": 2,
@@ -196,6 +200,7 @@
         "position": {
           "description": "PSD top-left bbox of the largest frame.",
           "items": {
+            "minimum": 0,
             "type": "integer"
           },
           "maxItems": 2,
@@ -206,6 +211,7 @@
         "size": {
           "description": "Largest frame bbox size in pixels (importer pads smaller frames to match).",
           "items": {
+            "minimum": 0,
             "type": "integer"
           },
           "maxItems": 2,
@@ -252,6 +258,7 @@
       "anyOf": [
         {
           "items": {
+            "minimum": 0,
             "type": "integer"
           },
           "maxItems": 2,
@@ -302,6 +309,7 @@
     "size": {
       "description": "[doc_width_px, doc_height_px].",
       "items": {
+        "minimum": 0,
         "type": "integer"
       },
       "maxItems": 2,

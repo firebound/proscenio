@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 UintPair = Annotated[
-    list[int],
+    list[Annotated[int, Field(ge=0)]],
     Field(min_length=2, max_length=2),
 ]
 
@@ -115,8 +115,14 @@ class SpriteFrameLayer(_Strict):
     subfolder: str | None = Field(default=None, min_length=1)
 
 
-def _layer_discriminator(payload: Any) -> str:
-    """Route polygon and mesh kinds to the same class; sprite_frame to its own."""
+def _layer_discriminator(payload: Any) -> str | None:
+    """Route polygon and mesh kinds to the same class; sprite_frame to its own.
+
+    Returns ``None`` for unexpected ``kind`` values so pydantic raises
+    a ``union_tag_not_found`` ValidationError rather than dispatching
+    to a non-existent variant. The error message names the bad tag in
+    the validation report.
+    """
     if isinstance(payload, dict):
         kind = payload.get("kind")
     else:
@@ -125,7 +131,7 @@ def _layer_discriminator(payload: Any) -> str:
         return "sprite_frame"
     if kind in {"polygon", "mesh"}:
         return "polygon_or_mesh"
-    return "unknown"
+    return None
 
 
 Layer = Annotated[

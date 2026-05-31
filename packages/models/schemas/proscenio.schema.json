@@ -1,0 +1,653 @@
+{
+  "$defs": {
+    "Animation": {
+      "additionalProperties": false,
+      "properties": {
+        "length": {
+          "exclusiveMinimum": 0,
+          "title": "Length",
+          "type": "number"
+        },
+        "loop": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loop"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "tracks": {
+          "items": {
+            "$ref": "#/$defs/Track"
+          },
+          "title": "Tracks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "length",
+        "tracks"
+      ],
+      "title": "Animation",
+      "type": "object"
+    },
+    "Bone": {
+      "additionalProperties": false,
+      "properties": {
+        "length": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "rotation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rotation"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Bone",
+      "type": "object"
+    },
+    "Key": {
+      "additionalProperties": false,
+      "properties": {
+        "attachment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attachment"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame"
+        },
+        "interp": {
+          "anyOf": [
+            {
+              "enum": [
+                "linear",
+                "constant"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interp"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "rotation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rotation"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        },
+        "time": {
+          "minimum": 0,
+          "title": "Time",
+          "type": "number"
+        },
+        "visible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible"
+        }
+      },
+      "required": [
+        "time"
+      ],
+      "title": "Key",
+      "type": "object"
+    },
+    "PolygonSprite": {
+      "additionalProperties": false,
+      "description": "Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.\n\nDefault sprite kind when ``type`` is omitted (backwards-compatible\nwith v1 documents).",
+      "properties": {
+        "bone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bone"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "polygon": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "title": "Polygon",
+          "type": "array"
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each sprite picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.",
+          "title": "Texture"
+        },
+        "texture_region": {
+          "description": "[x, y, width, height] in atlas pixels.",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Texture Region",
+          "type": "array"
+        },
+        "type": {
+          "const": "polygon",
+          "default": "polygon",
+          "description": "Discriminator. Optional; absence means `polygon`.",
+          "title": "Type",
+          "type": "string"
+        },
+        "uv": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "title": "Uv",
+          "type": "array"
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Weight"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights"
+        }
+      },
+      "required": [
+        "name",
+        "texture_region",
+        "polygon",
+        "uv"
+      ],
+      "title": "PolygonSprite",
+      "type": "object"
+    },
+    "Skeleton": {
+      "additionalProperties": false,
+      "properties": {
+        "bones": {
+          "items": {
+            "$ref": "#/$defs/Bone"
+          },
+          "title": "Bones",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bones"
+      ],
+      "title": "Skeleton",
+      "type": "object"
+    },
+    "Slot": {
+      "additionalProperties": false,
+      "properties": {
+        "attachments": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Attachments",
+          "type": "array"
+        },
+        "bone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bone"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "attachments"
+      ],
+      "title": "Slot",
+      "type": "object"
+    },
+    "SpriteFrameSprite": {
+      "additionalProperties": false,
+      "description": "Spritesheet sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present).",
+      "properties": {
+        "bone": {
+          "title": "Bone",
+          "type": "string"
+        },
+        "centered": {
+          "default": true,
+          "title": "Centered",
+          "type": "boolean"
+        },
+        "frame": {
+          "default": 0,
+          "description": "Initial frame index (row-major). Animation tracks override at runtime.",
+          "minimum": 0,
+          "title": "Frame",
+          "type": "integer"
+        },
+        "hframes": {
+          "minimum": 1,
+          "title": "Hframes",
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "offset": {
+          "default": [
+            0.0,
+            0.0
+          ],
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Offset",
+          "type": "array"
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Mirrors the polygon-sprite field. Importers fall back to the top-level `atlas` field when absent.",
+          "title": "Texture"
+        },
+        "texture_region": {
+          "anyOf": [
+            {
+              "description": "[x, y, width, height] in atlas pixels.",
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional sub-rectangle within the atlas where the spritesheet lives. Absent means use the full atlas.",
+          "title": "Texture Region"
+        },
+        "type": {
+          "const": "sprite_frame",
+          "description": "Discriminator. Required and constant.",
+          "title": "Type",
+          "type": "string"
+        },
+        "vframes": {
+          "minimum": 1,
+          "title": "Vframes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "bone",
+        "hframes",
+        "vframes"
+      ],
+      "title": "SpriteFrameSprite",
+      "type": "object"
+    },
+    "Track": {
+      "additionalProperties": false,
+      "properties": {
+        "keys": {
+          "items": {
+            "$ref": "#/$defs/Key"
+          },
+          "title": "Keys",
+          "type": "array"
+        },
+        "target": {
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "bone_transform",
+            "sprite_frame",
+            "slot_attachment",
+            "visibility"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target",
+        "keys"
+      ],
+      "title": "Track",
+      "type": "object"
+    },
+    "Weight": {
+      "additionalProperties": false,
+      "properties": {
+        "bone": {
+          "title": "Bone",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bone",
+        "values"
+      ],
+      "title": "Weight",
+      "type": "object"
+    }
+  },
+  "$id": "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json",
+  "additionalProperties": false,
+  "description": "Root of a .proscenio v1 document.\n\nSchema id mirrors the hand-maintained file so consumer ajv\nvalidators that key off ``$id`` continue to resolve.",
+  "properties": {
+    "animations": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Animation"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Animations"
+    },
+    "atlas": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Atlas"
+    },
+    "format_version": {
+      "const": 1,
+      "description": "Bump on any breaking change to the shape of this document.",
+      "title": "Format Version",
+      "type": "integer"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "pixels_per_unit": {
+      "exclusiveMinimum": 0,
+      "title": "Pixels Per Unit",
+      "type": "number"
+    },
+    "skeleton": {
+      "$ref": "#/$defs/Skeleton"
+    },
+    "slots": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Slot"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Slots"
+    },
+    "sprites": {
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/PolygonSprite"
+          },
+          {
+            "$ref": "#/$defs/SpriteFrameSprite"
+          }
+        ]
+      },
+      "title": "Sprites",
+      "type": "array"
+    }
+  },
+  "required": [
+    "format_version",
+    "name",
+    "pixels_per_unit",
+    "skeleton",
+    "sprites"
+  ],
+  "title": "Proscenio character",
+  "type": "object"
+}

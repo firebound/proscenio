@@ -1,0 +1,16 @@
+[project]
+name = "proscenio-models"
+version = "0.1.0"
+description = "Pydantic models that describe the .proscenio interchange format produced by the Blender addon and consumed by the Godot plugin. Source of truth for the JSON Schema, the Photoshop TypeScript bindings, and the Godot Resource bindings."
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+dependencies = [
+    "pydantic>=2.8,<3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proscenio_models"]

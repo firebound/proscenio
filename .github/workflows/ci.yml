@@ -18,8 +18,10 @@ jobs:
       - name: Mypy strict
         working-directory: apps/blender
         run: uvx --with mypy mypy --config-file pyproject.toml
+      - name: Sync uv workspace
+        run: uv sync --all-packages
       - name: Pytest (validation unit tests, no Blender)
-        run: uvx --with pytest pytest tests/
+        run: uv run pytest tests/
 
   lint-photoshop:
     runs-on: ubuntu-latest

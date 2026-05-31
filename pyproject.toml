@@ -10,6 +10,8 @@ package = false
 [tool.uv.workspace]
 members = [
     "apps/blender",
+    "packages/codegen",
+    "packages/models",
     "packages/validator",
 ]
 exclude = []

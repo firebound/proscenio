@@ -1,6 +1,6 @@
 # Typed domain models as source of truth + codegen + living docs
 
-Status: **STUDY**. Open questions tracked at the bottom; nothing locked.
+Status: **decisions locked, ready for implementation**. D1-D9 closed (see Design decisions section). Open questions resolved via research + decision; see "Open questions" for the outcomes.
 
 ## Problem
 
@@ -199,33 +199,28 @@ Each phase is one PR. None of this requires a `format_version` bump in itself - 
 
 Phases P1-P2 + P6/Python are the smallest viable cut and ship value without touching the other apps.
 
-## Decisions to lock before scaffolding
+## Design decisions (locked)
 
-D1. **Source of truth = pydantic v2** (A2). Confirm or counter.
+| ID | Question | Locked answer |
+| --- | --- | --- |
+| D1 | Source of truth | **pydantic v2**, bundled via wheels in the Blender extension manifest. Pure-Python pydantic + Rust-backed pydantic-core; pre-compiled wheels per platform (Linux x64/arm64, macOS x64/arm64, Windows x64) declared under `wheels = [...]` in `blender_manifest.toml`. |
+| D2 | Generated artifact location | **Checked in** under `schemas/generated/` and per-app `generated/` folders. CI verifies staleness on every PR. |
+| D3 | `format_version` policy | Models carry `Literal["v1"]`. Future v2 lives in a separate module + `migrations/v1_to_v2.py` adapter, same shape as the current writer migrators. Pre-1.0 / PoC scope is free to break and replace without compatibility guarantees; the migrator pattern formalises once 1.0 lands. |
+| D4 | GDScript layer | **Typed `Resource` classes** with `@export` vars + `from_dict` parsers. Custom Python codegen script under `scripts/codegen/` (estimated ~150-250 LOC). |
+| D5 | TypeScript runtime guard | **Keep ajv** (consumes JSON Schema directly; smaller bundle; mature discriminated-union handling). Generated TS interfaces from `json-schema-to-typescript`. Revisit `z.fromJSONSchema()` once it leaves experimental and `json-schema-to-zod` matures its discriminated-union support (currently flagged "here be dragons" in its README). |
+| D6 | Stricter-typing rollout | **One PR per language** (mypy / tsc / GDScript warnings tightened independently). Each PR surfaces a finite list of fixes; per-language scope keeps the noise bounded. |
+| D7 | Docs site | **Generate markdown artifacts only**, fed into Docusaurus later as a separate chore. Documentation extracted from the pydantic models themselves (descriptions, types, discriminators); not extracted from docstrings or hand-written prose. Code is the source of truth. |
+| D8 | Schema location | Move hand-maintained `schemas/*.schema.json` to `schemas/generated/*.schema.json`. Old paths are dropped (no symlinks - Windows pain). |
+| D9 | TypeScript codegen tool | **`json-schema-to-typescript`** consumes the generated JSON Schema and emits TS interfaces. Standard tool, mature discriminated-union support, already aligned with the ajv runtime path. Wires into the existing webpack pipeline as a pre-build step. |
 
-D2. **Generated artifacts are checked in** vs *generated at build time*. Checked-in artifacts give offline diffs and IDE autocompletion without running codegen, at the cost of CI verifying staleness. Recommend **checked-in** to match the project's existing posture (`schemas/` is checked in today).
+## Open questions (resolved)
 
-D3. **`format_version` policy under pydantic.** Models carry `Literal["v1"]`; future v2 lives in a separate model module + a `migrations/v1_to_v2.py` adapter, same shape as the current writer migrators. Confirm or counter.
-
-D4. **GDScript layer.** Generate full `Resource` classes (typed, statically accessed) vs `Dictionary[String, Variant]` with a `validate()` helper. Recommend **Resource** (full upside; unblocks D6 on the Godot side).
-
-D5. **TS runtime guard.** Replace ajv with zod (more idiomatic with generated TS types) vs keep ajv (already wired). Recommend **keep ajv**, parse into the generated `interface` types. Less churn; ajv is the current contract surface.
-
-D6. **Stricter-typing flag bump - one PR per language** or one big PR. Recommend per-language; each one's noise is bounded.
-
-D7. **Docs site.** Is the Docusaurus site itself in scope for this spec, or do we only produce `docs/content/api/schemas/*.md` artifacts and defer the site wiring? Recommend artifacts only here, with a separate spec or chore for the site.
-
-D8. **Schema location.** Hand-maintained `schemas/*.schema.json` becomes `schemas/generated/*.schema.json`. The old paths either become symlinks (during transition) or are dropped. Confirm which.
-
-## Open questions
-
-OQ1. Does the Blender addon's packaging tolerate adding `pydantic` as a runtime dep? Blender 5.x ships its own Python; the addon would need to vendor pydantic or rely on a known-good ship-with-blender version. Need to verify.
-
-OQ2. Pydantic on a registered `bpy` class: do `bpy.props.*Property` annotations and pydantic field annotations coexist on the same class? Almost certainly **no** - the models should be plain pydantic and live entirely outside the bpy class graph; bpy classes hold references to pydantic instances or transient data only. This needs an explicit guideline.
-
-OQ3. Discriminated unions in JSON Schema vary by emitter. `pydantic.Discriminator` produces `oneOf` with `propertyNames` - need to verify `json-schema-to-typescript` and the GDScript codegen handle that shape cleanly.
-
-OQ4. `.ai/skills/format-spec.md` is the human-readable contract today; if schemas move to `generated/`, does the skill page need to reference the model file (`core/models/proscenio.py`) as the source instead? Probably yes.
+| OQ | Outcome |
+| --- | --- |
+| OQ1 - pydantic in Blender's bundled Python | **Resolved: bundle wheels in the extension manifest.** Blender does not ship pydantic, but Blender 4.2+ supports declaring third-party wheels under `wheels = [...]` in `blender_manifest.toml`. pydantic v2 + pydantic-core ship pre-compiled platform wheels on PyPI; the `--split-platforms` build flag produces per-platform extension zips when bundle size becomes a concern. See sources cited in the implementation plan below. |
+| OQ2 - pydantic + `bpy.props` on the same class | **Resolved: no.** Models live as plain pydantic, entirely outside the bpy class graph. bpy classes hold references to pydantic instances or transient data only. Documented as a guideline in this spec's implementation rules. |
+| OQ3 - discriminated unions across emitters | **Resolved: smoke test in the first implementation PR.** The first PR (see "Implementation plan" below) includes a fixture covering the `Sprite.type` discriminated union round-tripped through pydantic -> JSON Schema -> `json-schema-to-typescript`. If the generated TS is degraded, fix at codegen layer before continuing. |
+| OQ4 - `.ai/skills/format-spec.md` source of truth | **Resolved: yes.** Once schemas move to `schemas/generated/`, the skill page points readers at the pydantic model file as the canonical source. Update lands in the docs-pass PR (see implementation plan). |
 
 ## Out of scope (deferred)
 

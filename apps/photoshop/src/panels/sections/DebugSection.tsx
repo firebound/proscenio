@@ -54,7 +54,7 @@ const PreviewBody: React.FC<{
     const skipped = preview.skipped ?? [];
     const warnings = preview.warnings ?? [];
     const entryRefs = preview.entryRefs ?? [];
-    const anchorLabel = manifest?.anchor === undefined
+    const anchorLabel = manifest?.anchor == null
         ? "(canvas centre)"
         : `${manifest.anchor[0]}, ${manifest.anchor[1]} px`;
     return (
@@ -112,8 +112,8 @@ const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry
 
 function badges(entry: ManifestEntry): string {
     const parts: string[] = [];
-    if (entry.subfolder !== undefined) parts.push(`folder=${entry.subfolder}`);
-    if (entry.blend_mode !== undefined) parts.push(`blend=${entry.blend_mode}`);
-    if (entry.origin !== undefined) parts.push(`origin=${entry.origin[0]},${entry.origin[1]}`);
+    if (entry.subfolder != null) parts.push(`folder=${entry.subfolder}`);
+    if (entry.blend_mode != null) parts.push(`blend=${entry.blend_mode}`);
+    if (entry.origin != null) parts.push(`origin=${entry.origin[0]},${entry.origin[1]}`);
     return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }

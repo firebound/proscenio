@@ -1,7 +1,7 @@
 // ajv-backed validation gate for the v1 PSD manifest.
 //
 // Schema source of truth lives at the repo root
-// (`schemas/psd_manifest.schema.json`) and is shared by every
+// (`packages/models/schemas/psd_manifest.schema.json`) and is shared by every
 // consumer / downstream importer of the manifest. The TypeScript
 // build pulls it in via a relative import widened in tsconfig
 // include; webpack inlines the JSON at bundle time.
@@ -18,7 +18,7 @@
 import Ajv2020 from "ajv/dist/2020";
 import type { ErrorObject } from "ajv";
 
-import schema from "../../../../schemas/psd_manifest.schema.json";
+import schema from "../../../../packages/models/schemas/psd_manifest.schema.json";
 import type { Manifest } from "../domain/manifest";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });

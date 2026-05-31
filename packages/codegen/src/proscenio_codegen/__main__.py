@@ -20,12 +20,19 @@ import argparse
 import sys
 from typing import Callable
 
-from proscenio_codegen.schema_dump import emit_proscenio_schema
+from proscenio_codegen.schema_dump import emit_all_schemas
+from proscenio_codegen.ts_emit import emit_ts_bindings
 
 
 def _run_schemas() -> int:
-    target = emit_proscenio_schema()
-    print(f"[codegen] wrote {target}")
+    for target in emit_all_schemas():
+        print(f"[codegen] wrote {target}")
+    return 0
+
+
+def _run_ts() -> int:
+    for target in emit_ts_bindings():
+        print(f"[codegen] wrote {target}")
     return 0
 
 
@@ -40,7 +47,10 @@ def _run_all() -> int:
     rc = _run_schemas()
     if rc != 0:
         return rc
-    for name in ("ts", "godot", "docs"):
+    rc = _run_ts()
+    if rc != 0:
+        return rc
+    for name in ("godot", "docs"):
         rc = _run_pending(name)
         if rc != 0:
             return rc
@@ -49,7 +59,7 @@ def _run_all() -> int:
 
 _EMITTERS: dict[str, Callable[[], int]] = {
     "schemas": _run_schemas,
-    "ts": lambda: _run_pending("ts"),
+    "ts": _run_ts,
     "godot": lambda: _run_pending("godot"),
     "docs": lambda: _run_pending("docs"),
     "all": _run_all,

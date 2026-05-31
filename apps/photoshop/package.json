@@ -9,6 +9,7 @@
     "build": "webpack --mode development",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "codegen": "cd ../.. && uv run python -m proscenio_codegen ts",
     "uxp:load": "cd dist && uxp plugin load",
     "uxp:reload": "cd dist && uxp plugin reload",
     "uxp:watch": "cd dist && nodemon --exec \"uxp plugin reload\" -e js,css,html",

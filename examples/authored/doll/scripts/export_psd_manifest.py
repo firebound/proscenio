@@ -8,7 +8,7 @@ Run with::
 Walks every ``MESH`` object in ``doll_base.blend``, projects its world XZ
 bounding box onto a Photoshop-style top-left canvas at
 ``PIXELS_PER_UNIT``, and emits a manifest matching
-``schemas/psd_manifest.schema.json`` (format_version=2, kind=polygon
+``packages/models/schemas/psd_manifest.schema.json`` (format_version=2, kind=polygon
 for every mesh). Output sits at
 ``examples/authored/doll/00_blender_base/doll_base.photoshop_manifest.json``
 and references the existing

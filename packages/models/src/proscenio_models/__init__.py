@@ -19,16 +19,30 @@ from proscenio_models.proscenio import (
     Track,
     Weight,
 )
+from proscenio_models.psd_manifest import (
+    BlendMode,
+    FrameEntry,
+    Layer,
+    PolygonLayer,
+    PsdManifest,
+    SpriteFrameLayer,
+)
 
 __all__ = [
     "Animation",
+    "BlendMode",
     "Bone",
+    "FrameEntry",
     "Key",
+    "Layer",
+    "PolygonLayer",
     "PolygonSprite",
     "ProscenioDocument",
+    "PsdManifest",
     "Skeleton",
     "Slot",
     "Sprite",
+    "SpriteFrameLayer",
     "SpriteFrameSprite",
     "Track",
     "Weight",

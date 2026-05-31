@@ -29,8 +29,11 @@ from proscenio_codegen.schema_dump import build_proscenio_schema
 from proscenio_models import ProscenioDocument
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-GENERATED_SCHEMA = (
+PROSCENIO_SCHEMA = (
     REPO_ROOT / "packages" / "models" / "schemas" / "proscenio.schema.json"
+)
+PSD_MANIFEST_SCHEMA = (
+    REPO_ROOT / "packages" / "models" / "schemas" / "psd_manifest.schema.json"
 )
 GENERATED_FIXTURES_DIR = REPO_ROOT / "examples" / "generated"
 
@@ -108,22 +111,29 @@ def test_model_dump_json_reproduces_goldens(fixture_path: Path) -> None:
     assert actual.rstrip("\n") == golden_text.rstrip("\n").replace("\r\n", "\n")
 
 
-def test_generated_schema_is_on_disk() -> None:
-    """The on-disk schema dump exists and matches the in-memory build.
-
-    The writer-side ``check-jsonschema`` step in CI reads the file at
-    ``packages/models/schemas/proscenio.schema.json``; this test
-    confirms regenerating it via ``proscenio_codegen schemas`` does
-    not drift from what the test process holds in memory. If this
-    fails, ``python -m proscenio_codegen schemas`` was not re-run
-    after a model change.
-    """
-    assert GENERATED_SCHEMA.is_file(), (
+def test_proscenio_schema_on_disk_matches_models() -> None:
+    """The on-disk .proscenio schema dump matches the in-memory build."""
+    assert PROSCENIO_SCHEMA.is_file(), (
         "Run `python -m proscenio_codegen schemas` to regenerate."
     )
-    on_disk = json.loads(GENERATED_SCHEMA.read_text(encoding="utf-8"))
+    on_disk = json.loads(PROSCENIO_SCHEMA.read_text(encoding="utf-8"))
     in_memory = build_proscenio_schema()
     assert on_disk == in_memory, (
-        "Dumped schema drifted from the pydantic models. "
+        "Dumped .proscenio schema drifted from the pydantic models. "
+        "Run `python -m proscenio_codegen schemas`."
+    )
+
+
+def test_psd_manifest_schema_on_disk_matches_models() -> None:
+    """The on-disk PSD manifest schema dump matches the in-memory build."""
+    from proscenio_codegen.schema_dump import build_psd_manifest_schema
+
+    assert PSD_MANIFEST_SCHEMA.is_file(), (
+        "Run `python -m proscenio_codegen schemas` to regenerate."
+    )
+    on_disk = json.loads(PSD_MANIFEST_SCHEMA.read_text(encoding="utf-8"))
+    in_memory = build_psd_manifest_schema()
+    assert on_disk == in_memory, (
+        "Dumped PSD manifest schema drifted from the pydantic models. "
         "Run `python -m proscenio_codegen schemas`."
     )

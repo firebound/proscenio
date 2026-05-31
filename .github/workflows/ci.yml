@@ -83,7 +83,7 @@ jobs:
             echo "No PSD manifest fixtures yet - skipping."
             exit 0
           fi
-          check-jsonschema --schemafile schemas/psd_manifest.schema.json "${files[@]}"
+          check-jsonschema --schemafile packages/models/schemas/psd_manifest.schema.json "${files[@]}"
 
   test-blender:
     runs-on: ubuntu-latest

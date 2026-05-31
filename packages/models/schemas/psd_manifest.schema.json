@@ -1,0 +1,322 @@
+{
+  "$defs": {
+    "FrameEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "description": "Frame index, 0-based, contiguous, ordered.",
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "path": {
+          "description": "Path to the frame PNG, relative to the manifest file.",
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "path"
+      ],
+      "title": "FrameEntry",
+      "type": "object"
+    },
+    "PolygonLayer": {
+      "additionalProperties": false,
+      "description": "Single PNG, single quad mesh.\n\n``kind: \"mesh\"`` is a polygon superset flagged as a deformable mesh\nsource; renders as polygon when no rig is bound.",
+      "properties": {
+        "blend_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "normal",
+                "multiply",
+                "screen",
+                "additive"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Layer blend mode emitted from the PSD; importer maps to material blend mode.",
+          "title": "Blend Mode"
+        },
+        "kind": {
+          "enum": [
+            "polygon",
+            "mesh"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional pivot in PSD pixels. Set by the [origin:x,y] tag or by an [origin] marker layer inside the group. Importer uses this as the mesh's Object.location when present; falls back to bbox center otherwise.",
+          "title": "Origin"
+        },
+        "path": {
+          "description": "Path to the layer PNG, relative to the manifest file.",
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "position": {
+          "description": "PSD top-left bbox of the layer in pixels.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Position",
+          "type": "array"
+        },
+        "size": {
+          "description": "Layer bbox size in pixels.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Size",
+          "type": "array"
+        },
+        "subfolder": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional output sub-folder under images/, set by the [folder:name] tag. Importer ignores; this is purely a disk-layout hint reflected in `path`.",
+          "title": "Subfolder"
+        },
+        "z_order": {
+          "description": "Stack index, 0 = top.",
+          "minimum": 0,
+          "title": "Z Order",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "path",
+        "position",
+        "size",
+        "z_order"
+      ],
+      "title": "PolygonLayer",
+      "type": "object"
+    },
+    "SpriteFrameLayer": {
+      "additionalProperties": false,
+      "description": "N frames, single quad mesh, animated via ``proscenio.frame``.\n\nAuthored as a LayerSet tagged ``[spritesheet]``.",
+      "properties": {
+        "blend_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "normal",
+                "multiply",
+                "screen",
+                "additive"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blend Mode"
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/FrameEntry"
+          },
+          "minItems": 2,
+          "title": "Frames",
+          "type": "array"
+        },
+        "kind": {
+          "const": "sprite_frame",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional pivot in PSD pixels (see polygon_layer.origin).",
+          "title": "Origin"
+        },
+        "position": {
+          "description": "PSD top-left bbox of the largest frame.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Position",
+          "type": "array"
+        },
+        "size": {
+          "description": "Largest frame bbox size in pixels (importer pads smaller frames to match).",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Size",
+          "type": "array"
+        },
+        "subfolder": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subfolder"
+        },
+        "z_order": {
+          "minimum": 0,
+          "title": "Z Order",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "position",
+        "size",
+        "z_order",
+        "frames"
+      ],
+      "title": "SpriteFrameLayer",
+      "type": "object"
+    }
+  },
+  "$id": "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json",
+  "additionalProperties": false,
+  "description": "Root of a PSD manifest v2 document.",
+  "properties": {
+    "anchor": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Document anchor in PSD pixels. Set by the first horizontal + vertical PSD guide; importer places the root bone here. Omitted when no guides were authored.",
+      "title": "Anchor"
+    },
+    "doc": {
+      "description": "Original PSD filename. Display only - not a resolvable path.",
+      "minLength": 1,
+      "title": "Doc",
+      "type": "string"
+    },
+    "format_version": {
+      "const": 2,
+      "description": "Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in the photoshop tag system (anchor, per-entry origin, blend_mode, subfolder, kind: \"mesh\").",
+      "title": "Format Version",
+      "type": "integer"
+    },
+    "layers": {
+      "description": "Z-ordered top-to-bottom. Each entry is a single mesh in Blender after import.",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/PolygonLayer"
+          },
+          {
+            "$ref": "#/$defs/SpriteFrameLayer"
+          }
+        ]
+      },
+      "title": "Layers",
+      "type": "array"
+    },
+    "pixels_per_unit": {
+      "description": "Importer divides PSD pixels by this when stamping mesh size and position.",
+      "exclusiveMinimum": 0,
+      "title": "Pixels Per Unit",
+      "type": "number"
+    },
+    "size": {
+      "description": "[doc_width_px, doc_height_px].",
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Size",
+      "type": "array"
+    }
+  },
+  "required": [
+    "format_version",
+    "doc",
+    "size",
+    "pixels_per_unit",
+    "layers"
+  ],
+  "title": "Proscenio PSD manifest",
+  "type": "object"
+}

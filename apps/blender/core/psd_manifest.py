@@ -19,7 +19,7 @@ Usage::
             stamp_sprite_frame(layer)
 
 The data classes mirror the JSON Schema 2020-12 contract under
-``schemas/psd_manifest.schema.json``. Bumping the schema requires
+``packages/models/schemas/psd_manifest.schema.json``. Bumping the schema requires
 bumping ``MANIFEST_FORMAT_VERSION`` here in lockstep.
 """
 

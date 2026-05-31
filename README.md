@@ -44,7 +44,7 @@ What Proscenio gives you:
 | Photoshop side ([`apps/photoshop/`](apps/photoshop/)) | UXP plugin, TypeScript + React | PSD -> manifest JSON + per-layer PNGs. Optional manifest mirror back to PSD. Photoshop CC 2024+ (PS 25). |
 | Blender side ([`apps/blender/`](apps/blender/)) | Python 3.11, mypy `--strict` | Manifest import, sprite/armature authoring panel, validation, `.proscenio` writer. |
 | Godot side ([`apps/godot/`](apps/godot/)) | GDScript 2.0 typed | `EditorImportPlugin` reading `.proscenio` and regenerating `.scn` on every reimport. |
-| Schema ([`schemas/`](schemas/)) | JSON Schema 2020-12 | Source of truth. `proscenio.schema.json` (Blender↔Godot) and `psd_manifest.schema.json` (Photoshop↔Blender). |
+| Schema ([`packages/models/`](packages/models/)) | Pydantic v2 + generated JSON Schema 2020-12 | Source of truth lives as pydantic models; the JSON Schema artifacts (`proscenio.schema.json`, `psd_manifest.schema.json`) are regenerated from them by `proscenio-codegen`. |
 
 ## In scope
 

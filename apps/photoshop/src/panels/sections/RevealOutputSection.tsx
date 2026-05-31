@@ -48,11 +48,11 @@ export const RevealOutputSection: React.FC<Props> = ({ preview, activeLayerPath,
             {polygon !== null && <KeyValueRow label="manifest" value={polygon.path} mono />}
             <KeyValueRow label="position" value={`${entry.position[0]}, ${entry.position[1]} px`} mono />
             <KeyValueRow label="size" value={`${entry.size[0]} x ${entry.size[1]} px`} mono />
-            {entry.origin !== undefined && (
+            {entry.origin != null && (
                 <KeyValueRow label="origin" value={`${entry.origin[0]}, ${entry.origin[1]} px`} mono />
             )}
-            {entry.blend_mode !== undefined && <KeyValueRow label="blend" value={entry.blend_mode} />}
-            {entry.subfolder !== undefined && <KeyValueRow label="subfolder" value={entry.subfolder} mono />}
+            {entry.blend_mode != null && <KeyValueRow label="blend" value={entry.blend_mode} />}
+            {entry.subfolder != null && <KeyValueRow label="subfolder" value={entry.subfolder} mono />}
             {entry.kind === "sprite_frame" && (
                 <KeyValueRow label="frames" value={String(entry.frames.length)} />
             )}

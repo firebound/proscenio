@@ -2,10 +2,12 @@
 extends RefCounted
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
+const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
 
 
 static func _resolve_sprite_texture(
-	sprite_data: Dictionary,
+	per_sprite_path: String,
+	sprite_name: String,
 	fallback_atlas: Texture2D,
 	source_dir: String,
 ) -> Texture2D:
@@ -16,13 +18,12 @@ static func _resolve_sprite_texture(
 	#    fallback for fixtures (doll) whose materials carry flat colors but
 	#    whose body parts ship as separate PNGs alongside the document.
 	# 3. fallback_atlas - the scene-wide single-image case.
-	var per_sprite: String = sprite_data.get("texture", "")
-	if per_sprite != "" and source_dir != "":
-		var path := source_dir.path_join(per_sprite)
+	if per_sprite_path != "" and source_dir != "":
+		var path := source_dir.path_join(per_sprite_path)
 		if ResourceLoader.exists(path):
 			return ResourceLoader.load(path, "Texture2D") as Texture2D
 	if source_dir != "":
-		var by_name := source_dir.path_join("%s.png" % sprite_data.get("name", ""))
+		var by_name := source_dir.path_join("%s.png" % sprite_name)
 		if ResourceLoader.exists(by_name):
 			return ResourceLoader.load(by_name, "Texture2D") as Texture2D
 	return fallback_atlas
@@ -31,16 +32,16 @@ static func _resolve_sprite_texture(
 static func _apply_skinning(
 	poly: Polygon2D,
 	skeleton: Skeleton2D,
-	weights_data: Array,
+	weights: Array[ProscenioWeight],
 ) -> void:
-	# Wire Polygon2D.skeleton + per-bone weight arrays. Each entry in
-	# weights_data is `{bone, values[]}` from the .proscenio document.
-	# Bones whose name does not resolve under the skeleton are reported
-	# and skipped - the rest of the rig still imports.
+	# Wire Polygon2D.skeleton + per-bone weight arrays. Each Weight entry
+	# from the .proscenio document carries `{bone, values[]}`. Bones whose
+	# name does not resolve under the skeleton are reported and skipped;
+	# the rest of the rig still imports.
 	poly.skeleton = poly.get_path_to(skeleton)
 	poly.clear_bones()
-	for weight_entry in weights_data:
-		var bone_name: String = NodeNameUtil.sanitize(weight_entry.get("bone", ""))
+	for weight in weights:
+		var bone_name := NodeNameUtil.sanitize(weight.bone)
 		var bone_node := skeleton.find_child(bone_name, true, false)
 		if bone_node == null:
 			push_error(
@@ -50,80 +51,84 @@ static func _apply_skinning(
 				)
 			)
 			continue
-		var values: Array = weight_entry.get("values", [])
-		var packed := PackedFloat32Array()
-		packed.resize(values.size())
-		for i in range(values.size()):
-			packed[i] = float(values[i])
+		var packed := PackedFloat32Array(weight.values)
 		poly.add_bone(poly.get_path_to(bone_node), packed)
 
 
 static func attach_sprites(
 	skeleton: Skeleton2D,
-	sprites_data: Array,
+	sprites: Array[ProscenioSprite],
 	atlas: Texture2D,
 	slot_map: Dictionary = {},
 	source_dir: String = "",
 ) -> void:
-	for sprite_data in sprites_data:
+	if sprites == null:
+		return
+	for sprite_res: ProscenioSprite in sprites:
 		# Discriminator dispatch: this builder only handles polygon sprites.
-		# Default to "polygon" when `type` is absent (v1 backwards-compat).
-		var sprite_type: String = sprite_data.get("type", "polygon")
-		if sprite_type != "polygon":
+		# Default to ProscenioPolygonSprite when `type` is absent (v1 backwards-compat).
+		if not (sprite_res is ProscenioPolygonSprite):
 			continue
+		_build_polygon(sprite_res as ProscenioPolygonSprite, skeleton, atlas, slot_map, source_dir)
 
-		var poly := Polygon2D.new()
-		poly.name = sprite_data.get("name", "sprite")
 
-		var polygon_pts: Array = sprite_data.get("polygon", [])
-		var pts := PackedVector2Array()
-		for p in polygon_pts:
-			pts.append(Vector2(p[0], p[1]))
-		poly.polygon = pts
+static func _build_polygon(
+	sprite: ProscenioPolygonSprite,
+	skeleton: Skeleton2D,
+	atlas: Texture2D,
+	slot_map: Dictionary,
+	source_dir: String,
+) -> void:
+	var poly := Polygon2D.new()
+	poly.name = sprite.name
 
-		var sprite_tex := _resolve_sprite_texture(sprite_data, atlas, source_dir)
+	var pts := PackedVector2Array()
+	for p: PackedFloat32Array in sprite.polygon:
+		pts.append(Vector2(p[0], p[1]))
+	poly.polygon = pts
 
-		var uv_pts: Array = sprite_data.get("uv", [])
-		var uvs := PackedVector2Array()
-		# .proscenio stores UVs normalized [0, 1] - engine-agnostic. Godot's
-		# Polygon2D expects UVs in texture pixel space, so multiply by the
-		# resolved texture's size at import time. Sprites without a texture
-		# keep raw UVs.
-		var uv_scale := Vector2.ONE
-		if sprite_tex != null:
-			uv_scale = sprite_tex.get_size()
-		for u in uv_pts:
-			uvs.append(Vector2(u[0] * uv_scale.x, u[1] * uv_scale.y))
-		poly.uv = uvs
+	var sprite_tex := _resolve_sprite_texture(sprite.texture, sprite.name, atlas, source_dir)
 
-		if sprite_tex != null:
-			poly.texture = sprite_tex
+	var uvs := PackedVector2Array()
+	# .proscenio stores UVs normalized [0, 1] - engine-agnostic. Godot's
+	# Polygon2D expects UVs in texture pixel space, so multiply by the
+	# resolved texture's size at import time. Sprites without a texture
+	# keep raw UVs.
+	var uv_scale := Vector2.ONE
+	if sprite_tex != null:
+		uv_scale = sprite_tex.get_size()
+	for u: PackedFloat32Array in sprite.uv:
+		uvs.append(Vector2(u[0] * uv_scale.x, u[1] * uv_scale.y))
+	poly.uv = uvs
 
-		var weights_data: Array = sprite_data.get("weights", [])
-		var is_skinned: bool = not weights_data.is_empty()
+	if sprite_tex != null:
+		poly.texture = sprite_tex
 
-		var bone_name: String = NodeNameUtil.sanitize(sprite_data.get("bone", ""))
-		# Slot routing (the slot system D6): sprites whose name appears in a slot's
-		# attachments[] reparent under the slot Node2D and inherit visibility
-		# from the slot's default. Otherwise: skinned polygons live under the
-		# skeleton (per-vertex weights drive deformation), rigid polygons stay
-		# parented to the matching Bone2D so the bone transform carries them.
-		# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set);
-		# slot_map keys are sanitized in slot_builder for consistency.
-		var sanitized_name: String = String(poly.name)
-		var slot_info = slot_map.get(sanitized_name, null)
-		var parent: Node
-		if slot_info != null:
-			parent = slot_info.node
-			poly.visible = sanitized_name == slot_info.default
-		elif not is_skinned and bone_name != "":
-			parent = skeleton
-			var found := skeleton.find_child(bone_name, true, false)
-			if found != null:
-				parent = found
-		else:
-			parent = skeleton
-		parent.add_child(poly)
+	var weights: Array[ProscenioWeight] = sprite.weights
+	var is_skinned: bool = weights != null and not weights.is_empty()
 
-		if is_skinned:
-			_apply_skinning(poly, skeleton, weights_data)
+	var bone_name := NodeNameUtil.sanitize(sprite.bone)
+	# Slot routing (the slot system D6): sprites whose name appears in a slot's
+	# attachments[] reparent under the slot Node2D and inherit visibility
+	# from the slot's default. Otherwise: skinned polygons live under the
+	# skeleton (per-vertex weights drive deformation), rigid polygons stay
+	# parented to the matching Bone2D so the bone transform carries them.
+	# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set);
+	# slot_map keys are sanitized in slot_builder for consistency.
+	var sanitized_name := String(poly.name)
+	var slot_info: SlotBuilder.SlotInfo = slot_map.get(sanitized_name, null)
+	var parent: Node
+	if slot_info != null:
+		parent = slot_info.node
+		poly.visible = sanitized_name == slot_info.default
+	elif not is_skinned and bone_name != "":
+		parent = skeleton
+		var found := skeleton.find_child(bone_name, true, false)
+		if found != null:
+			parent = found
+	else:
+		parent = skeleton
+	parent.add_child(poly)
+
+	if is_skinned:
+		_apply_skinning(poly, skeleton, weights)

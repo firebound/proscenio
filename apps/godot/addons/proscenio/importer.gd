@@ -61,54 +61,34 @@ func _import(
 	_platform_variants: Array[String],
 	_gen_files: Array[String]
 ) -> Error:
-	var file := FileAccess.open(source_file, FileAccess.READ)
-	if file == null:
-		return FileAccess.get_open_error()
-
-	var json := JSON.new()
-	var parse_err := json.parse(file.get_as_text())
-	if parse_err != OK:
-		push_error(
-			(
-				"Proscenio: JSON parse failed at line %d: %s"
-				% [json.get_error_line(), json.get_error_message()]
-			)
-		)
-		return ERR_PARSE_ERROR
-
-	var data: Dictionary = json.data
-	var version: int = int(data.get("format_version", 0))
-	if version != SUPPORTED_FORMAT_VERSION:
-		push_error(
-			(
-				"Proscenio: unsupported format_version %d (need %d)"
-				% [version, SUPPORTED_FORMAT_VERSION]
-			)
-		)
+	var document := _load_document(source_file)
+	if document == null:
+		# `_load_document` already pushed the diagnostic; surface a
+		# consistent error code here so the editor reimport flow stays
+		# deterministic.
 		return ERR_INVALID_DATA
 
 	var root := Node2D.new()
-	root.name = data.get("name", "Character")
+	root.name = document.name if document.name != "" else "Character"
 
-	var skeleton := SkeletonBuilder.build(data.get("skeleton", {}))
+	var skeleton := SkeletonBuilder.build(document.skeleton)
 	root.add_child(skeleton)
 
-	var atlas := _load_atlas(source_file, data.get("atlas", ""))
+	var atlas := _load_atlas(source_file, document.atlas)
 	var source_dir := source_file.get_base_dir()
 	# Slots build BEFORE sprites so the sprite builders can route attachment
-	# children under the slot Node2D parent (the slot system). Empty slots[]
+	# children under the slot Node2D parent (the slot system). Empty slots
 	# leaves the map empty and sprite routing falls back to bone-parented.
-	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
+	var slot_map := SlotBuilder.build(skeleton, document.slots)
 	# Each builder discriminator-filters its own sprite kind; calling both is
 	# cheap and keeps the dispatch table flat. Order does not matter.
-	var sprites_data: Array = data.get("sprites", [])
-	PolygonBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map, source_dir)
-	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, atlas, slot_map, source_dir)
+	PolygonBuilder.attach_sprites(skeleton, document.sprites, atlas, slot_map, source_dir)
+	SpriteFrameBuilder.attach_sprites(skeleton, document.sprites, atlas, slot_map, source_dir)
 
 	var animation_player := AnimationPlayer.new()
 	animation_player.name = "AnimationPlayer"
 	root.add_child(animation_player)
-	AnimationBuilder.populate(animation_player, skeleton, data.get("animations", []))
+	AnimationBuilder.populate(animation_player, skeleton, document.animations)
 
 	_set_owner_recursive(root, root)
 
@@ -123,6 +103,51 @@ func _import(
 			"Proscenio: regenerating %s (existing scene will be overwritten)" % output_path
 		)
 	return ResourceSaver.save(packed, output_path)
+
+
+static func _load_document(source_file: String) -> ProscenioDocument:
+	# Open the .proscenio file, parse JSON, and validate the document root
+	# against the typed model. Pushes its own error on every failure path
+	# and returns null so the caller surfaces a single error code.
+	var file := FileAccess.open(source_file, FileAccess.READ)
+	if file == null:
+		push_error(
+			"Proscenio: cannot open '%s' (error %d)" % [source_file, FileAccess.get_open_error()]
+		)
+		return null
+
+	var json := JSON.new()
+	var parse_err := json.parse(file.get_as_text())
+	if parse_err != OK:
+		push_error(
+			(
+				"Proscenio: JSON parse failed at line %d: %s"
+				% [json.get_error_line(), json.get_error_message()]
+			)
+		)
+		return null
+
+	if typeof(json.data) != TYPE_DICTIONARY:
+		push_error("Proscenio: expected JSON object at document root")
+		return null
+
+	var raw: Dictionary = json.data
+	# Parse through the schema-derived Resource. Future schema additions land
+	# in the pydantic source (packages/models/) + a codegen re-run; the
+	# importer reads typed fields off the resulting Resource graph.
+	var document := ProscenioDocument.from_dict(raw)
+	if document == null:
+		push_error("Proscenio: ProscenioDocument.from_dict returned null")
+		return null
+	if document.format_version != SUPPORTED_FORMAT_VERSION:
+		push_error(
+			(
+				"Proscenio: unsupported format_version %d (need %d)"
+				% [document.format_version, SUPPORTED_FORMAT_VERSION]
+			)
+		)
+		return null
+	return document
 
 
 static func _load_atlas(source_file: String, atlas_path: String) -> Texture2D:

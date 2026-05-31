@@ -157,6 +157,15 @@ jobs:
           unzip /tmp/godot.zip -d ~/godot
           mv ~/godot/Godot_v4.6.2-stable_linux.x86_64 ~/godot/godot
           chmod +x ~/godot/godot
+      - name: Prime Godot class_name cache
+        # The test_importer.gd script and the schema_bindings/ Resources
+        # reference each other via class_name. The cache that maps those
+        # global names to file paths is only populated when Godot opens
+        # the project once; without it, the script parse errors out with
+        # "Could not resolve external class member". Run a quick headless
+        # editor pass to trigger the scan, then quit.
+        run: |
+          ~/godot/godot --headless --path apps/godot --editor --quit 2>&1
       - name: Run importer smoke test
         run: |
           ~/godot/godot --headless --path apps/godot \

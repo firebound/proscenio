@@ -6,9 +6,11 @@ Subcommands:
 - ``ts`` - emit TypeScript bindings from the dumped JSON Schemas via
   ``json-schema-to-typescript``; output lands under
   ``apps/photoshop/src/schema_bindings/``.
-- ``godot`` / ``docs`` - placeholders for later SPEC 014 phases; they
-  print a "not implemented yet" notice and exit 0 so a future CI
-  step can wire them in once the emitters land.
+- ``godot`` - emit GDScript ``Resource`` classes from the pydantic
+  models directly; output lands under
+  ``apps/godot/addons/proscenio/schema_bindings/``.
+- ``docs`` - placeholder for SPEC 014 P5; prints a "not implemented
+  yet" notice and exits 0.
 - ``all`` - run every emitter in order.
 
 Exit code 0 on success, non-zero on emitter failure. The expected
@@ -23,6 +25,7 @@ import argparse
 import sys
 from typing import Callable
 
+from proscenio_codegen.godot_emit import emit_godot_resources
 from proscenio_codegen.schema_dump import emit_all_schemas
 from proscenio_codegen.ts_emit import emit_ts_bindings
 
@@ -35,6 +38,12 @@ def _run_schemas() -> int:
 
 def _run_ts() -> int:
     for target in emit_ts_bindings():
+        print(f"[codegen] wrote {target}")
+    return 0
+
+
+def _run_godot() -> int:
+    for target in emit_godot_resources():
         print(f"[codegen] wrote {target}")
     return 0
 
@@ -53,17 +62,16 @@ def _run_all() -> int:
     rc = _run_ts()
     if rc != 0:
         return rc
-    for name in ("godot", "docs"):
-        rc = _run_pending(name)
-        if rc != 0:
-            return rc
-    return 0
+    rc = _run_godot()
+    if rc != 0:
+        return rc
+    return _run_pending("docs")
 
 
 _EMITTERS: dict[str, Callable[[], int]] = {
     "schemas": _run_schemas,
     "ts": _run_ts,
-    "godot": lambda: _run_pending("godot"),
+    "godot": _run_godot,
     "docs": lambda: _run_pending("docs"),
     "all": _run_all,
 }

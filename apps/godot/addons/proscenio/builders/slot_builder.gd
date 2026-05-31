@@ -33,32 +33,32 @@ static func sanitize(name: String) -> String:
 	return NodeNameUtil.sanitize(name)
 
 
-static func build(skeleton: Skeleton2D, slots_data: Array) -> Dictionary:
+static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) -> Dictionary:
 	# Returns `{sanitized_attachment_name: SlotInfo}`. Sprite builders look up
 	# by their sprite's sanitized name (matching what Godot stored in
 	# ``Node.name``); absence means the sprite is not in any slot and falls
 	# back to bone-routing.
 	var slot_map: Dictionary = {}
-	for slot_data in slots_data:
-		var info := _build_one_slot(skeleton, slot_data)
+	if slot_resources == null:
+		return slot_map
+	for slot_res: ProscenioSlot in slot_resources:
+		var info := _build_one_slot(skeleton, slot_res)
 		if info == null:
 			continue
-		var attachments: Array = slot_data.get("attachments", [])
-		for attachment_name in attachments:
-			slot_map[sanitize(String(attachment_name))] = info
+		for attachment_name: String in slot_res.attachments:
+			slot_map[sanitize(attachment_name)] = info
 	return slot_map
 
 
-static func _build_one_slot(skeleton: Skeleton2D, slot_data: Dictionary) -> SlotInfo:
-	var raw_slot_name: String = slot_data.get("name", "")
-	if raw_slot_name == "":
+static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> SlotInfo:
+	if slot_res.name == "":
 		push_warning("Proscenio: slot entry missing name - skipping")
 		return null
 
 	var node := Node2D.new()
-	node.name = sanitize(raw_slot_name)
+	node.name = sanitize(slot_res.name)
 
-	var bone_name: String = sanitize(String(slot_data.get("bone", "")))
+	var bone_name := sanitize(slot_res.bone)
 	var parent: Node = skeleton
 	if bone_name != "":
 		var bone := skeleton.find_child(bone_name, true, false)
@@ -71,12 +71,12 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_data: Dictionary) -> Slot
 						"Proscenio: slot '%s' references missing bone '%s' - "
 						+ "anchoring at skeleton root."
 					)
-					% [raw_slot_name, bone_name]
+					% [slot_res.name, bone_name]
 				)
 			)
 	parent.add_child(node)
 
 	var info := SlotInfo.new()
 	info.node = node
-	info.default = sanitize(String(slot_data.get("default", "")))
+	info.default = sanitize(slot_res.default)
 	return info

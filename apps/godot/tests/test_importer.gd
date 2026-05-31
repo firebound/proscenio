@@ -19,6 +19,14 @@ const PolygonBuilder := preload("res://addons/proscenio/builders/polygon_builder
 const SpriteFrameBuilder := preload("res://addons/proscenio/builders/sprite_frame_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
 
+# Schema bindings live inside the addon. When the addon is disabled
+# (this test project keeps it off to validate the no-runtime-plugin
+# rule) the `class_name` global registry does not include them, so
+# preload explicitly here.
+const ProscenioDocumentRes := preload(
+	"res://addons/proscenio/schema_bindings/proscenio_document.gd"
+)
+
 const FIXTURE := "res://tests/fixtures/dummy.proscenio"
 const EFFECT_FIXTURE := "res://tests/fixtures/effect.proscenio"
 const SKINNED_FIXTURE := "res://tests/fixtures/skinned_dummy.proscenio"
@@ -223,25 +231,25 @@ func _run_slot_checks() -> void:
 
 
 func _build_character(data: Dictionary) -> Node2D:
+	var document: ProscenioDocumentRes = ProscenioDocumentRes.from_dict(data)
 	var character := Node2D.new()
-	character.name = data.get("name", "Character")
+	character.name = document.name if document.name != "" else "Character"
 
-	var skeleton: Skeleton2D = SkeletonBuilder.build(data.get("skeleton", {}))
+	var skeleton := SkeletonBuilder.build(document.skeleton)
 	character.add_child(skeleton)
 	# Slots build BEFORE sprites so the sprite builders can route attachment
 	# children under the slot Node2D parent (the slot system). Mirrors the
 	# order in importer.gd._import.
-	var slot_map: Dictionary = SlotBuilder.build(skeleton, data.get("slots", []))
+	var slot_map := SlotBuilder.build(skeleton, document.slots)
 	# Both builders discriminator-filter their own kind - calling both is
 	# the same dispatch flow used in importer.gd._import.
-	var sprites_data: Array = data.get("sprites", [])
-	PolygonBuilder.attach_sprites(skeleton, sprites_data, null, slot_map)
-	SpriteFrameBuilder.attach_sprites(skeleton, sprites_data, null, slot_map)
+	PolygonBuilder.attach_sprites(skeleton, document.sprites, null, slot_map)
+	SpriteFrameBuilder.attach_sprites(skeleton, document.sprites, null, slot_map)
 
 	var player := AnimationPlayer.new()
 	player.name = "AnimationPlayer"
 	character.add_child(player)
-	AnimationBuilder.populate(player, skeleton, data.get("animations", []))
+	AnimationBuilder.populate(player, skeleton, document.animations)
 
 	return character
 
@@ -290,7 +298,10 @@ func _load_fixture(path: String) -> Dictionary:
 	var json := JSON.new()
 	if json.parse(file.get_as_text()) != OK:
 		return {}
-	return json.data as Dictionary
+	if typeof(json.data) != TYPE_DICTIONARY:
+		return {}
+	var data: Dictionary = json.data
+	return data
 
 
 func _collect_descendants_of_type(node: Node, type_name: String) -> Array:

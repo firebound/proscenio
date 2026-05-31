@@ -249,7 +249,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Runs the writer, validates against schemas/proscenio.schema.json,",
+                "Runs the writer, validates against packages/models/schemas/proscenio.schema.json,",
                 "writes the result. Sticky - the path is remembered next to the",
                 ".blend so Re-export skips the file dialog.",
             ),

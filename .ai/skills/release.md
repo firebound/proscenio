@@ -13,7 +13,7 @@ SemVer per component. Tag format: `<component>-vX.Y.Z`.
 - `apps/godot-v0.1.0`
 - `apps/photoshop-v0.1.0`
 
-`schemas/proscenio.schema.json` carries its own integer `format_version`, **independent** of component versions. Bumping the schema version is a separate decision documented in the PR.
+`packages/models/schemas/proscenio.schema.json` carries its own integer `format_version`, **independent** of component versions. Bumping the schema version is a separate decision documented in the PR.
 
 ## Blender addon
 

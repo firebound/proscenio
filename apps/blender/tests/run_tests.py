@@ -7,7 +7,7 @@ Invoke from the repository root:
 Walks every fixture under ``examples/*/`` that owns a paired
 ``<name>.blend`` + ``<name>.expected.proscenio``. For each pair, opens
 the ``.blend``, runs the addon writer, validates the JSON against
-``schemas/proscenio.schema.json`` (when ``jsonschema`` is available in
+``packages/models/schemas/proscenio.schema.json`` (when ``jsonschema`` is available in
 Blender's bundled Python), and diffs the actual output against the
 golden. Exits non-zero on the first failure.
 

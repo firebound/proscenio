@@ -243,7 +243,7 @@
     },
     "PolygonSprite": {
       "additionalProperties": false,
-      "description": "Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.\n\nDefault sprite kind when ``type`` is omitted (backwards-compatible\nwith v1 documents).",
+      "description": "Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.\n\nDefault sprite kind when ``type`` is omitted (backwards-compatible\nwith v1 documents).\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
       "properties": {
         "bone": {
           "anyOf": [
@@ -407,7 +407,7 @@
     },
     "SpriteFrameSprite": {
       "additionalProperties": false,
-      "description": "Spritesheet sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present).",
+      "description": "Spritesheet sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present).\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
       "properties": {
         "bone": {
           "title": "Bone",

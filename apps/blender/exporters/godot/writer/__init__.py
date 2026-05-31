@@ -1,7 +1,7 @@
 """Proscenio ``.proscenio`` writer (the code-modularity work).
 
 Walks the active Blender scene and emits a JSON document conforming to
-``schemas/proscenio.schema.json``.
+``packages/models/schemas/proscenio.schema.json``.
 
 Coordinate conventions
 ----------------------
@@ -38,7 +38,6 @@ function consumers should call.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -114,5 +113,16 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     if animations:
         doc["animations"] = animations
 
+    # Serialize through the pydantic source of truth in
+    # packages/models/. `model_validate(doc)` enforces shape; the
+    # `model_dump_json(exclude_unset=True)` round-trip reproduces the
+    # writer's historical field order (mirrored in the model field
+    # declaration) without re-emitting optional fields the writer
+    # deliberately omitted.
+    from proscenio_models import ProscenioDocument
+
+    model = ProscenioDocument.model_validate(doc)
+    payload = model.model_dump_json(indent=2, exclude_unset=True)
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    path.write_text(payload, encoding="utf-8")

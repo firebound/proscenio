@@ -7,19 +7,16 @@ Confirms:
    reproducible from the models alone).
 2. Every committed ``.proscenio`` fixture under ``examples/generated/``
    validates against the pydantic model. This is the practical gate
-   for SPEC 014 P1: if the model fails to accept a real shipped
-   fixture, the model is wrong.
-3. The hand-maintained schema at ``schemas/proscenio.schema.json``
-   accepts the same fixtures (sanity check that the existing schema
-   and the new model are in the same ballpark).
-
-Byte-for-byte equality between the dumped schema and the hand-maintained
-file is *not* enforced here. Pydantic v2 inlines small types (``Vec2``,
-``Rect``, the ``Sprite`` discriminated union) where the hand-maintained
-file uses ``$defs`` references; the two are semantically equivalent
-but textually different. SPEC 014 P2 reconciles this by replacing the
-hand-maintained file with the generated one once the writer migrates
-to ``model_dump()``.
+   for SPEC 014: if the model fails to accept a real shipped fixture,
+   the model is wrong.
+3. ``model_dump_json(exclude_unset=True)`` reproduces each golden
+   byte-for-byte. This is the load-bearing gate for the writer
+   migration: any drift between the pydantic field order and the
+   writer's historical dict insertion order would surface here before
+   the Blender exporter regenerates a single fixture.
+4. The dumped JSON Schema at ``packages/models/schemas/proscenio.schema.json``
+   is on disk and parseable - the writer-side validation chain relies
+   on it staying in lockstep with the pydantic models.
 """
 
 from __future__ import annotations
@@ -32,7 +29,9 @@ from proscenio_codegen.schema_dump import build_proscenio_schema
 from proscenio_models import ProscenioDocument
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-HAND_MAINTAINED_SCHEMA = REPO_ROOT / "schemas" / "proscenio.schema.json"
+GENERATED_SCHEMA = (
+    REPO_ROOT / "packages" / "models" / "schemas" / "proscenio.schema.json"
+)
 GENERATED_FIXTURES_DIR = REPO_ROOT / "examples" / "generated"
 
 
@@ -88,14 +87,43 @@ def test_round_trip_dump_and_validate(fixture_path: Path) -> None:
     assert reparsed == parsed
 
 
-def test_hand_maintained_schema_still_loads() -> None:
-    """Sanity: the hand-maintained file is still a valid JSON Schema doc.
+@pytest.mark.parametrize("fixture_path", _fixture_paths(), ids=lambda p: p.name)
+def test_model_dump_json_reproduces_goldens(fixture_path: Path) -> None:
+    """Pydantic's ``model_dump_json(exclude_unset=True)`` must reproduce
+    the goldens byte-for-byte after a parse round-trip.
 
-    Not a tight gate; SPEC 014 P2 is where the hand-maintained file
-    gets retired. Until then, this test confirms the file is still
-    readable, so a regression here flags an accidental corruption.
+    The writer migration in SPEC 014 P2 swaps the hand-rolled
+    ``json.dumps(doc, indent=2)`` for the pydantic emit path; this
+    test is the load-bearing gate that catches any field-order or
+    serialization drift between the model and the historical writer.
+
+    Strip trailing whitespace before comparing because some goldens
+    were generated on Windows (CRLF) and pydantic always writes LF.
     """
-    assert HAND_MAINTAINED_SCHEMA.is_file()
-    schema = json.loads(HAND_MAINTAINED_SCHEMA.read_text(encoding="utf-8"))
-    assert schema.get("type") == "object"
-    assert "format_version" in schema.get("properties", {})
+    golden_text = fixture_path.read_text(encoding="utf-8")
+    payload = json.loads(golden_text)
+    parsed = ProscenioDocument.model_validate(payload)
+    actual = parsed.model_dump_json(indent=2, exclude_unset=True)
+    # Normalize line endings; ignore trailing newline differences.
+    assert actual.rstrip("\n") == golden_text.rstrip("\n").replace("\r\n", "\n")
+
+
+def test_generated_schema_is_on_disk() -> None:
+    """The on-disk schema dump exists and matches the in-memory build.
+
+    The writer-side ``check-jsonschema`` step in CI reads the file at
+    ``packages/models/schemas/proscenio.schema.json``; this test
+    confirms regenerating it via ``proscenio_codegen schemas`` does
+    not drift from what the test process holds in memory. If this
+    fails, ``python -m proscenio_codegen schemas`` was not re-run
+    after a model change.
+    """
+    assert GENERATED_SCHEMA.is_file(), (
+        "Run `python -m proscenio_codegen schemas` to regenerate."
+    )
+    on_disk = json.loads(GENERATED_SCHEMA.read_text(encoding="utf-8"))
+    in_memory = build_proscenio_schema()
+    assert on_disk == in_memory, (
+        "Dumped schema drifted from the pydantic models. "
+        "Run `python -m proscenio_codegen schemas`."
+    )

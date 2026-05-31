@@ -38,7 +38,7 @@ class SlotInput:
 def build_slot_dict(slot: SlotInput) -> dict[str, object]:
     """Project a :class:`SlotInput` into a schema-shaped dict.
 
-    Returns the shape required by ``schemas/proscenio.schema.json``
+    Returns the shape required by ``packages/models/schemas/proscenio.schema.json``
     ``Slot`` def: ``{name, bone, default, attachments[]}``. ``bone``
     and ``default`` are emitted only when non-empty so the writer's
     output stays minimal-surface.

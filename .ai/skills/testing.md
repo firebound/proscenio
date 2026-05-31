@@ -27,10 +27,10 @@ godot --headless --path apps/godot -s addons/gut/gut_cmdln.gd
 
 ## Schema validation
 
-Every `.proscenio` in `examples/` and `tests/fixtures/` is validated against [`schemas/proscenio.schema.json`](../../schemas/proscenio.schema.json) in CI:
+Every `.proscenio` in `examples/` and `tests/fixtures/` is validated against [`packages/models/schemas/proscenio.schema.json`](../../packages/models/schemas/proscenio.schema.json) in CI:
 
 ```sh
-check-jsonschema --schemafile schemas/proscenio.schema.json path/to/file.proscenio
+check-jsonschema --schemafile packages/models/schemas/proscenio.schema.json path/to/file.proscenio
 ```
 
 ## Lint

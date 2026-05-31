@@ -1,7 +1,7 @@
 """Schema-shaped TypedDicts for the writer (the code-modularity work).
 
 Mirrors the JSON shapes emitted by the writer. The values are closed
-over the schema literals from ``schemas/proscenio.schema.json`` so a
+over the schema literals from ``packages/models/schemas/proscenio.schema.json`` so a
 schema bump forces the writer to update both the literal sets and the
 TypedDict definitions in lockstep.
 

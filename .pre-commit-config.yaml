@@ -53,7 +53,7 @@ repos:
             files: \.proscenio$
             args:
                 - --schemafile
-                - schemas/proscenio.schema.json
+                - packages/models/schemas/proscenio.schema.json
 
     - repo: https://github.com/streetsidesoftware/cspell-cli
       rev: v8.17.1

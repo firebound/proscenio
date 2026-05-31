@@ -1,21 +1,20 @@
 """Pydantic models for the .proscenio v1 interchange format.
 
-Mirrors the hand-maintained schema at ``schemas/proscenio.schema.json``
-field-by-field. Generation of the JSON Schema from these models lives
-in the ``proscenio_codegen`` package; a round-trip test under
-``tests/codegen/`` asserts the generated schema stays semantically
-equal to the hand-maintained file until the writer migration in
-SPEC 014 P2 deletes the hand-maintained copy.
+This module is the **source of truth** for the wire shape. The JSON
+Schema artifact at ``packages/models/schemas/proscenio.schema.json``
+is regenerated from these classes by ``proscenio_codegen``; any change
+to the wire shape lands here first. The Blender writer constructs the
+output document via ``ProscenioDocument.model_dump_json(...)`` and the
+Photoshop + Godot consumers read the schema artifact downstream.
 
 Encoding choices:
 
 - ``Vec2`` and ``Rect`` are typed as ``list[float]`` with
   ``min_length`` / ``max_length`` rather than ``tuple[float, float]``
   so the emitted JSON Schema uses the ``items`` + ``minItems`` /
-  ``maxItems`` shape that matches the hand-maintained file. Pydantic's
-  default tuple serialization emits ``prefixItems`` (draft 2020-12);
-  swapping to that shape would force every existing consumer to
-  re-parse.
+  ``maxItems`` shape consumers already expect. Pydantic's default
+  tuple serialization emits ``prefixItems`` (draft 2020-12); swapping
+  to that shape would force every existing consumer to re-parse.
 - ``model_config["extra"] = "forbid"`` mirrors the
   ``additionalProperties: false`` clause on every object in the
   schema; pydantic's default ``"ignore"`` would silently drop unknown
@@ -23,8 +22,11 @@ Encoding choices:
 - ``Sprite`` is a discriminated union on the ``type`` literal. The
   polygon variant defaults to ``"polygon"`` so pre-discriminator v1
   documents (``type`` absent) round-trip cleanly.
-- ``ProscenioDocument`` is the document root. Use ``model_dump()`` to
-  serialize, ``model_validate()`` to parse.
+- Field declaration order in each class matches the historical writer
+  dict insertion order so ``model_dump_json(exclude_unset=True)``
+  reproduces the goldens byte-for-byte.
+- ``ProscenioDocument`` is the document root. Use ``model_dump_json``
+  to serialize, ``model_validate`` to parse.
 """
 
 from __future__ import annotations
@@ -73,6 +75,10 @@ class PolygonSprite(_Strict):
 
     Default sprite kind when ``type`` is omitted (backwards-compatible
     with v1 documents).
+
+    Field declaration order mirrors the writer's dict insertion order
+    so ``model_dump_json(exclude_unset=True)`` reproduces the golden
+    fixtures byte-for-byte once the writer migrates.
     """
 
     type: Literal["polygon"] = Field(
@@ -81,6 +87,9 @@ class PolygonSprite(_Strict):
     )
     name: str = Field(min_length=1)
     bone: str | None = None
+    texture_region: Rect
+    polygon: list[Vec2]
+    uv: list[Vec2]
     texture: str | None = Field(
         default=None,
         description=(
@@ -91,9 +100,6 @@ class PolygonSprite(_Strict):
             "when absent."
         ),
     )
-    texture_region: Rect
-    polygon: list[Vec2]
-    uv: list[Vec2]
     weights: list[Weight] | None = None
 
     @model_validator(mode="after")
@@ -116,6 +122,10 @@ class SpriteFrameSprite(_Strict):
 
     ``frame`` indexes into an ``hframes`` x ``vframes`` grid carved
     out of the atlas (or out of ``texture_region`` when present).
+
+    Field declaration order mirrors the writer's dict insertion order
+    so ``model_dump_json(exclude_unset=True)`` reproduces the golden
+    fixtures byte-for-byte once the writer migrates.
     """
 
     type: Literal["sprite_frame"] = Field(
@@ -123,22 +133,6 @@ class SpriteFrameSprite(_Strict):
     )
     name: str = Field(min_length=1)
     bone: str
-    texture: str | None = Field(
-        default=None,
-        description=(
-            "Optional per-sprite texture filename, resolved relative to "
-            "the .proscenio document. Mirrors the polygon-sprite field. "
-            "Importers fall back to the top-level `atlas` field when "
-            "absent."
-        ),
-    )
-    texture_region: Rect | None = Field(
-        default=None,
-        description=(
-            "Optional sub-rectangle within the atlas where the "
-            "spritesheet lives. Absent means use the full atlas."
-        ),
-    )
     hframes: int = Field(ge=1)
     vframes: int = Field(ge=1)
     frame: int = Field(
@@ -148,8 +142,24 @@ class SpriteFrameSprite(_Strict):
             "Initial frame index (row-major). Animation tracks override at runtime."
         ),
     )
-    offset: Vec2 = Field(default=[0.0, 0.0])
     centered: bool = True
+    texture_region: Rect | None = Field(
+        default=None,
+        description=(
+            "Optional sub-rectangle within the atlas where the "
+            "spritesheet lives. Absent means use the full atlas."
+        ),
+    )
+    texture: str | None = Field(
+        default=None,
+        description=(
+            "Optional per-sprite texture filename, resolved relative to "
+            "the .proscenio document. Mirrors the polygon-sprite field. "
+            "Importers fall back to the top-level `atlas` field when "
+            "absent."
+        ),
+    )
+    offset: Vec2 = Field(default=[0.0, 0.0])
 
     @model_validator(mode="after")
     def _frame_within_grid(self) -> SpriteFrameSprite:
@@ -198,10 +208,12 @@ Sprite = Annotated[
 
 
 class Slot(_Strict):
+    # Field order matches the writer's dict emission order so
+    # `model_dump_json(exclude_unset=True)` reproduces the goldens.
     name: str = Field(min_length=1)
+    attachments: list[str]
     bone: str | None = None
     default: str | None = None
-    attachments: list[str]
 
 
 class Key(_Strict):
@@ -246,13 +258,18 @@ class ProscenioDocument(_Strict):
         title="Proscenio character",
     )
 
+    # Field declaration order matches the writer's dict insertion order so
+    # `model_dump_json()` round-trips against the existing golden fixtures.
+    # Domain order (skeleton -> sprites -> slots -> atlas -> animations)
+    # is also a natural read for a `.proscenio` file: bones before what
+    # rides them, group memberships, then the texture and the timelines.
     format_version: Literal[1] = Field(
         description="Bump on any breaking change to the shape of this document.",
     )
     name: str = Field(min_length=1)
     pixels_per_unit: float = Field(gt=0)
-    atlas: str | None = None
     skeleton: Skeleton
     sprites: list[Sprite]
     slots: list[Slot] | None = None
+    atlas: str | None = None
     animations: list[Animation] | None = None

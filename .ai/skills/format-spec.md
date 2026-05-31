@@ -5,7 +5,7 @@ description: .proscenio JSON format - fields, semantics, versioning, migrations
 
 # `.proscenio` format
 
-JSON file with extension `.proscenio`. Source of truth: [`schemas/proscenio.schema.json`](../../schemas/proscenio.schema.json). Any change to this skill must also change the schema and vice versa.
+JSON file with extension `.proscenio`. Source of truth: [`packages/models/schemas/proscenio.schema.json`](../../packages/models/schemas/proscenio.schema.json). Any change to this skill must also change the schema and vice versa.
 
 ## Top level
 

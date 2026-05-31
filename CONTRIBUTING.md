@@ -17,7 +17,7 @@ For component-specific setup, see the corresponding skill in `.ai/skills/`.
 - One component per PR (Photoshop, Blender, Godot). Exception: format-version bumps cross all components by definition.
 - Conventional Commits in commit messages and PR titles.
 - Squash merge.
-- A schema change requires a `format_version` bump in [`schemas/proscenio.schema.json`](schemas/proscenio.schema.json) and a migration note in the PR body.
+- A schema change requires a `format_version` bump in [`packages/models/schemas/proscenio.schema.json`](packages/models/schemas/proscenio.schema.json) and a migration note in the PR body.
 - Run lint and tests before pushing - see [`.ai/skills/testing.md`](.ai/skills/testing.md).
 
 ## End-to-end usage walkthrough

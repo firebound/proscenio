@@ -15,11 +15,11 @@ jobs:
         run: uvx ruff check apps/blender/
       - name: Ruff format check
         run: uvx ruff format --check apps/blender/
-      - name: Mypy strict
-        working-directory: apps/blender
-        run: uvx --with mypy mypy --config-file pyproject.toml
       - name: Sync uv workspace
         run: uv sync --all-packages
+      - name: Mypy strict
+        working-directory: apps/blender
+        run: uv run --with mypy mypy --config-file pyproject.toml
       - name: Pytest (validation unit tests, no Blender)
         run: uv run pytest tests/
 
@@ -73,7 +73,7 @@ jobs:
             echo "No .proscenio files yet - skipping."
             exit 0
           fi
-          check-jsonschema --schemafile schemas/proscenio.schema.json "${files[@]}"
+          check-jsonschema --schemafile packages/models/schemas/proscenio.schema.json "${files[@]}"
       - name: Validate PSD manifest fixtures
         shell: bash
         run: |
@@ -103,6 +103,22 @@ jobs:
           mkdir -p ~/blender
           curl -fL "https://download.blender.org/release/Blender5.1/blender-5.1.1-linux-x64.tar.xz" \
             | tar -xJ -C ~/blender --strip-components=1
+      - name: Install bundled wheels into Blender's Python
+        # Mirrors the runtime flow that Blender's extension installer
+        # uses for the wheels block in blender_manifest.toml. We feed
+        # pip the local wheel cache via --find-links + --no-index so
+        # the install resolves entirely from apps/blender/wheels/ and
+        # picks the right linux x86_64 pydantic-core wheel.
+        run: |
+          ~/blender/blender --background --python-expr "
+          import ensurepip; ensurepip.bootstrap()
+          import subprocess, sys
+          subprocess.check_call([
+              sys.executable, '-m', 'pip', 'install', '--no-index',
+              '--find-links', 'apps/blender/wheels/',
+              'pydantic', 'proscenio-models',
+          ])
+          "
       - name: Re-export every fixture and diff against goldens
         run: |
           ~/blender/blender --background \

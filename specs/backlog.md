@@ -28,6 +28,18 @@ Schema's `interp` field is per-key but the importer applies a single track-level
 
 Schema validation rejects unknown `format_version`. Once v2 lands, the Blender exporter ships `migrations/v1_to_v2.py` and the Godot importer surfaces a clear migration error pointing to the migrator.
 
+### Bone physics (joint chain export)
+
+`Joint2D` chains driven by physics for cape, hair, tail, dangly weapon ornaments. Requires a schema extension carrying joint type + stiffness / damping per chain, then a Godot-side importer that wires `PinJoint2D` / `DampedSpringJoint2D` / `Joint2D` under the relevant bones. Pairs with the live-link discussion in [`decisions.md`](decisions.md#architecture-revisits) since runtime physics on hot-reloaded poses gets interesting fast.
+
+**Trigger:** a character design surfaces dangly elements that look stiff under skeletal-only deformation.
+
+### Path constraint export
+
+Bones following a path: tail swish along a curve, eye blink along a Bezier, vehicle wheels rolling along a road. Blender ships path-following constraints today; the schema extension carries the path geometry + per-bone path attachment, and the Godot importer wires `PathFollow2D` (or a custom path resolver) under each follower bone. Requires `format_version=2` bump.
+
+**Trigger:** an animator authors a path constraint in Blender and asks why nothing happens on the Godot side.
+
 ### Continuous UV animation (texture region track)
 
 Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibility`) cover skeletal motion, grid-frame swap, attachment swap, and on/off. They do not cover continuous UV animation: animated water flow, conveyor belts, gradient sweeps, mask reveals, region resize.
@@ -72,6 +84,34 @@ Currently the writer assumes every mesh is a 2D sprite plane. A future check cou
 ### Camera orthographic preview helper
 
 A Blender operator that adds a properly configured ortho camera for pixel-perfect preview, matching the dummy's `pixels_per_unit`.
+
+### IK chain helper
+
+Blender-side scaffolding that adds an IK constraint stack to a selected bone chain in one click: target bone, pole bone, chain length, defaults. Does not change the `.proscenio` output - IK stays out of the schema per the initial-plan decision; the helper just removes the manual setup friction. Pairs with the existing Toggle IK shortcut, which currently flips a per-bone constraint but does not scaffold a whole chain.
+
+**Trigger:** an animator complains about repeatedly walking through the constraint panel to set up arm + leg IK on a fresh rig.
+
+### Joystick / slider authoring
+
+Multi-pose blend widget. The artist authors N corner poses (e.g. mouth shapes); a 2D widget interpolates between them as the artist drags a slider in the viewport. Pairs with Godot's `AnimationTree.BlendSpace2D` so the imported character can blend the same way at runtime. Requires a Blender PG carrying the pose set + corner coordinates, plus an exporter path that emits the blend space.
+
+**Trigger:** the first character with parametric facial expressions (mouth phonemes, eye direction) lands.
+
+### Onion-skin overlay
+
+Viewport draw handler that renders the rest pose plus N keyframes around the current playhead in low-opacity outlines. Authoring shortcut for animators tweaking timing without scrubbing back and forth. Pure GPU overlay; no schema or export impact.
+
+**Trigger:** an animator reports that scrubbing the timeline to compare poses is the slowest part of polishing an action.
+
+### Pose library evolution
+
+The pose-library operator (`PROSCENIO_OT_save_pose_asset`) shipped as a thin shim over Blender's native pose-asset system. Evolutions worth carrying:
+
+- One-click "apply pose to selection" that walks the asset library and lets the artist pick.
+- Auto-categorise poses by armature name so the Asset Browser stops mixing rigs.
+- Pose-asset thumbnails rendered through the Proscenio preview camera so the swatches are pipeline-flat instead of viewport-shaded.
+
+**Trigger:** the second character ships and the artist hits the asset-browser mixing problem.
 
 ### Quick Armature: Front-Ortho UX guard
 

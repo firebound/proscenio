@@ -14,7 +14,9 @@ import sys
 from pathlib import Path
 
 ADDON_PACKAGE = "proscenio"
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# packages/validator/src/proscenio_validator/addon_loader.py
+#   parents[0]=proscenio_validator [1]=src [2]=validator [3]=packages [4]=repo
+REPO_ROOT = Path(__file__).resolve().parents[4]
 ADDON_PATH = REPO_ROOT / "apps" / "blender"
 
 

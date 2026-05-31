@@ -108,7 +108,7 @@ jobs:
       - name: Validate automesh (per-pixel coverage + hole bleed, ci-safe sprites only)
         run: |
           ~/blender/blender --background \
-            --python scripts/validate_automesh.py \
+            --python packages/validator/scripts/validate_automesh.py \
             -- --ci-only
       - name: Install pytest into Blender's bundled Python
         run: |

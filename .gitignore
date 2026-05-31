@@ -37,8 +37,8 @@ apps/godot/tests/fixtures/*.import
 scripts/*.out
 scripts/*.log
 scripts/*.out.proscenio
-scripts/validate_automesh_debug/
-scripts/validate_automesh_report.json
+packages/validator/validate_automesh_debug/
+packages/validator/validate_automesh_report.json
 
 # Local workbench .blend forks of canonical fixtures (Save As copies
 # for manual testing; never the canonical source-of-truth).

@@ -18,7 +18,10 @@ from .coverage import measure_coverage
 from .invariants import SPRITE_BOUNDS, check_invariants
 
 DEGENERATE_AREA_EPSILON = 1e-8
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# packages/validator/src/proscenio_validator/measurement.py
+#   parents[0]=proscenio_validator [1]=src [2]=validator [3]=packages [4]=repo
+REPO_ROOT = Path(__file__).resolve().parents[4]
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_PATH = REPO_ROOT / "examples" / "generated" / "automesh" / "automesh.blend"
 
 
@@ -105,7 +108,7 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
     quadrants: dict[str, int] = {}
     bleed_count = 0
     if image is not None and triangles:
-        debug_dir = REPO_ROOT / "scripts" / "validate_automesh_debug"
+        debug_dir = PACKAGE_ROOT / "validate_automesh_debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
         debug_png = debug_dir / f"{sprite_obj.name}_coverage.png"
         coverage_pct, leak_count, leak_records, quadrants, bleed_count = (

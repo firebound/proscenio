@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "proscenio-blender-addon",
+    "proscenio-validator",
     "proscenio-workspace",
 ]
 
@@ -584,6 +585,11 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
 ]
+
+[[package]]
+name = "proscenio-validator"
+version = "0.1.0"
+source = { editable = "packages/validator" }
 
 [[package]]
 name = "proscenio-workspace"

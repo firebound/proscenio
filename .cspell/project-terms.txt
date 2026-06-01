@@ -51,3 +51,11 @@ equispaçados
 landaram
 lshape
 workbench
+codegen
+Persp
+persp
+pydantic
+Pydantic
+regen
+regens
+reprojection

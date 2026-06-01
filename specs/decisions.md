@@ -93,3 +93,43 @@ Highlights that crossed component boundaries or shaped a contract. Each section 
 - **PSD manifest bumped to `format_version: 2`.** Adds `anchor` at the document root and per-layer `origin`, `blend_mode`, `subfolder`. New `kind: "mesh"` variant joins `polygon` and `sprite_frame`. The `.proscenio` schema stays at v1 - this bump is PSD-side only.
 - **`kind: "mesh"` is a hint, not a branch.** The Blender importer stamps a `proscenio_psd_kind` Custom Property; no downstream code branches on it yet. The distinction exists so deformable-mesh and UV-animation work can tell editable polygons apart from rigid sprites later.
 - **Unknown tags pass through to the display name.** Artist typos and future tags stay visible; the Tags panel surfaces them as warnings rather than silently dropping the data.
+
+### Quick Armature UX (shipped)
+
+- **GPU overlay + Edit-Mode live update (D1.C).** The modal draws a preview line via `gpu.draw_handler_add` AND creates the real bone on `LEFTMOUSE PRESS` with the tail updated on every `MOUSEMOVE`. The user gets both instant feedback and Edit-Mode parity.
+- **Naming prefix = addon preference + F3 redo override (D2.E).** One sane default per install; power users can override per-invocation.
+- **Front Ortho auto-snap restores the original view on exit (D3.A).** Predictable: user in Persp -> Quick Armature -> back to Persp. Opt-out via F3 redo for legitimate persp-view authoring.
+- **Sweep empty QuickRig on cancel (D4.B).** Tracks whether the operator instantiated the armature this session and only sweeps in that case; pre-existing QuickRigs the user emptied manually stay.
+- **Picker armature carries the mirror flag (D14).** Single source of truth shared with the weight-paint spec - no per-operator mirror toggle. Mirror is a property of the rig, not a per-tool option.
+
+### Weight paint + automesh (shipped)
+
+First cut + productivity follow-up + interior modes + gesture rewrite all locked.
+
+- **Automesh paradigm = alpha-trace one-shot, pure Python (D1).** Walks the alpha channel; no OpenCV; zero third-party deps. The free-draw stroke alternative was deferred to the backlog.
+- **Mesh topology = annulus with alpha-hole support (D2 + first-cut amendment).** Outer + inner contour + Constrained Delaunay; alpha holes are traced as constraint loops + cut via centroid post-process face prune. Lifts Spine / COA2's "no holes" restriction.
+- **`proscenio_base_sprite` vertex group is the regen anchor (D3).** Re-runs remove only verts NOT in that group; the original quad corners survive.
+- **`BONE_HEAT` allowed as bind default for 2D pickers (D4 amendment).** D11 pre-flight still runs before every bind path; planar proximity demoted to fallback. Trigger for the original "never default" rule (depsgraph cost on non-2D rigs) does not apply when the picker is the 2D armature contract.
+- **Sidecar JSON + UV-anchor reprojection preserves weights across regens (D6).** Provenance overlay shows which verts are seed / paint / reprojected. Survives mesh topology changes inside the automesh `proscenio_base_sprite` envelope.
+- **Pre-flight diagnosis on auto-weight failure (D11).** Detects unapplied scale, flipped normals, overlapping verts, isolated islands, bones outside the mesh bbox; emits actionable message never a raw stack trace.
+- **Density-under-bones automesh ON by default when a picker armature exists (D15).** OFF otherwise. Reuses the picker bone positions so the interior cluster matches the rig the user already wired.
+- **Interior fill mode = SIMPLE / DENSE enum (D19).** SIMPLE drops the dense interior fill; DENSE retains it. PG default SIMPLE, `StageParams.interior_mode` default DENSE for test back-compat.
+- **Toggle-modal pen for Stage 2 + Stage 4 (D20).** Shift / Ctrl tap enters the pen; LMB click = vert, drag = free-draw, RMB / Enter = finish, Esc = cancel line. Modal event routing reordered so DRAW intercepts Enter / RMB / Esc before nav. Subdivisions baked at finish, no `Stroke.subdivisions` schema field.
+- **Stage 2 outer silhouette uses the same pen + spliced-outer preview (D21).** Green overlay shows the silhouette APPLY will build after extend edits; updates on commit / undo / delete.
+
+### Typed-models codegen (shipped)
+
+- **Pydantic v2 in `packages/models/` is the source of truth.** Bundled into the Blender addon via wheels declared in `blender_manifest.toml`; the writer constructs the document and `ProscenioDocument.model_validate(...).model_dump_json(...)` is the emit path. Validators + discriminated unions live where the data is born.
+- **Generated artifacts are checked in.** `packages/models/schemas/` for JSON Schema; `apps/photoshop/src/schema_bindings/` for TS; `apps/godot/addons/proscenio/schema_bindings/` for GDScript Resources; `docs/content/api/schemas/` for Markdown. CI fails if any of those drift from the model source.
+- **Keep ajv on the Photoshop side; TS interfaces come from `json-schema-to-typescript`.** Smaller bundle, mature discriminated-union support, already aligned with the runtime path. Revisit `z.fromJSONSchema()` once it leaves experimental.
+- **Discriminated unions use callable `Discriminator`.** The polygon-sprite variant allows `type` to be absent (v1 backwards compat); the callable defaults to `"polygon"`. Returning `None` for unexpected tags surfaces a clearer `union_tag_not_found` ValidationError than the field-string variant.
+- **GDScript Resources carry a `_set_fields: PackedStringArray`.** Populated by `from_dict` during parse; lets the animation builder tell "field set to JSON default" apart from "field absent in source" without re-walking the raw dictionary.
+- **Every emitted Godot class is prefixed `Proscenio`.** Avoids collision with engine built-ins (`Animation`, `Skeleton`, `Bone`, `Track`, ...). Filenames follow the prefix; the dispatchers (`ProscenioSprite`, `ProscenioLayer`) sit alongside the per-variant Resources.
+- **Stricter typing rolled out per language.** mypy adds `warn_return_any` + `extra_checks` + `strict_equality`; tsc adds the strict-strict family (`noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `noImplicitOverride`, `useUnknownInCatchVariables`, `noUnused*`); Godot turns on the `unsafe_*` warning family. Deferrals (`disallow_any_*` trio, `exactOptionalPropertyTypes`, ESLint strict-type-checked) are logged in `backlog.md` with triggers.
+
+### Monorepo packages (shipped)
+
+- **Top-level split = `apps/` + `packages/` + `scripts/`.** Apps ship; packages are shared building blocks consumed by apps; scripts hold true one-offs (`debug/`, `godot/`, `maintenance/`). Anything with a subpackage layout, tests, or a CLI surface belongs in `packages/`.
+- **uv workspaces declares the Python package set at the repo root.** `tool.uv.workspace.members` covers `apps/blender`, `packages/codegen`, `packages/models`, `packages/validator`. `packages/fixtures/` is data-only (no `pyproject.toml`).
+- **`schema_bindings/` is the per-app folder name for codegen output.** Describes the role (language bindings to the schema), survives a regen, and reads cleanly across Python / TypeScript / GDScript paths. Universal naming chosen over `generated/` (sounded internal) or `bindings/` (FFI overload).
+- **Package distribution names use the `proscenio-` prefix.** Folder names are unscoped inside the repo (`packages/models/`); the distribution name in `pyproject.toml` carries the prefix (`name = "proscenio-models"`) so workspace dev and the bundled wheel resolve to the same identity.

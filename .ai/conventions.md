@@ -83,10 +83,31 @@ Sections, links, and prose name the feature being discussed:
 Trigger via LMB drag in the interior-edit stage. Release happens
 on tablet pressure zero or window deactivate.
 
-See [the weight-paint-automesh spec](../specs/013-weight-paint-automesh/STUDY.md).
+See the weight-paint-automesh spec.
 ```
 
 The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Decision identifiers `D1`-`D16` stay (concise, locked, scoped to their owning spec). Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name.
+
+### Spec references in `decisions.md` and `backlog.md` are name-only
+
+The two long-lived index files - `specs/decisions.md` and `specs/backlog.md` - **never** hardlink to a spec folder. Reasons:
+
+- The locked rationale already lives in `decisions.md` itself for shipped work, or in `backlog.md` for pending work. A reader following the link would land in a `STUDY.md` that mostly re-states what the index already carries.
+- STUDY files are scheduled for periodic pruning once their decisions are mirrored back into `decisions.md`. A link that worked yesterday may target a deleted file tomorrow.
+- The feature name is searchable; `git log -p -- specs/<NNN>-<slug>/` recovers the full history when someone genuinely needs the planning archeology.
+
+Reference shape inside those two files:
+
+```markdown
+**Authoring side resolved by the weight-paint-automesh spec first cut** - ...
+The typed-models codegen D7 deferred the docs site to a separate chore.
+```
+
+Everywhere else (CONTRIBUTING.md, agent skill pages, prose under a still-active spec) the linked form remains fine while the target file exists:
+
+```markdown
+See [the weight-paint-automesh spec](../specs/013-weight-paint-automesh/STUDY.md).
+```
 
 ### Scenarios get descriptive titles
 

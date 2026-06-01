@@ -72,7 +72,7 @@ repos:
             language: pygrep
             entry: '—'
             types_or: [markdown, python, ts, tsx, gdscript]
-            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+            exclude: ^(node_modules|.+/dist|.+/__pycache__|\.ai/conventions\.md)$
 
           - id: ban-wave-numbering
             name: ban Wave N.M numeric markers in prose
@@ -100,11 +100,14 @@ repos:
             language: pygrep
             entry: "\\b(obviously|Let's|Note that|It's important to|Keep in mind)\\b"
             types_or: [markdown, python, ts, tsx, gdscript]
-            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+            # .ai/conventions.md is the canonical reference: it ships the
+            # forbidden tokens as part of the audit recipe and would
+            # self-flag without this exclusion.
+            exclude: ^(node_modules|.+/dist|.+/__pycache__|\.ai/conventions\.md)$
 
           - id: ban-substitution-artifacts
             name: ban doubled phrases left by substitution passes
             language: pygrep
             entry: '\bthe the \b|\bthis spec spec\b'
             types_or: [markdown, python, ts, tsx, gdscript]
-            exclude: ^(node_modules|.+/dist|.+/__pycache__)/
+            exclude: ^(node_modules|.+/dist|.+/__pycache__|\.ai/conventions\.md)$

@@ -67,7 +67,7 @@ Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users auth
 
 ### Skinning weights export
 
-**Resolved** - writer normalizes per-vertex weight sums and emits the bone-major `weights` array; Godot importer (`polygon_builder.gd`) branches into `Polygon2D.skeleton` + `add_bone()` when weights are present. **Authoring side resolved by [weight-paint-automesh spec](013-weight-paint-automesh/STUDY.md)** first cut - pure-Python automesh, planar-proximity bind, weight paint modal wrapper with 2D-safe preset, weight sidecar that survives mesh regen.
+**Resolved** - writer normalizes per-vertex weight sums and emits the bone-major `weights` array; Godot importer (`polygon_builder.gd`) branches into `Polygon2D.skeleton` + `add_bone()` when weights are present. **Authoring side resolved by weight-paint-automesh spec** first cut - pure-Python automesh, planar-proximity bind, weight paint modal wrapper with 2D-safe preset, weight sidecar that survives mesh regen.
 
 ### Atlas region authoring helper
 
@@ -115,11 +115,11 @@ The pose-library operator (`PROSCENIO_OT_save_pose_asset`) shipped as a thin shi
 
 ### Quick Armature: Front-Ortho UX guard
 
-**Resolved by [the quick-armature spec](012-quick-armature-ux/STUDY.md)** first cut - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same tier.
+**Resolved by the quick-armature spec** first cut - `lock_to_front_ortho` operator option (default `True`) auto-snaps to Front Orthographic on `invoke` and restores the original view on exit. Opt-out via F3 redo for legitimate persp-view authoring. Status hint + in-viewport cheatsheet ship in the same tier.
 
 ### Quick Armature follow-up candidates
 
-Items deferred from [the quick-armature spec](012-quick-armature-ux/STUDY.md) STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new spec, only a follow-up iteration (or a smaller PR) when demand justifies the work.
+Items deferred from the quick-armature spec STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new spec, only a follow-up iteration (or a smaller PR) when demand justifies the work.
 
 - **Pick-parent-in-viewport.** `Shift+click` an existing bone tip during the modal to re-target the next bone's parent. Useful for branching skeletons (humanoid second-chain off the spine) without exiting the operator. Medium effort; chord vocabulary already has `Shift+click` available because the press-time `Shift+drag` reads only on PRESS+drag combo. Highest user value on the deferred list.
 - **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the quick-armature spec's RESEARCH addendum.
@@ -127,11 +127,11 @@ Items deferred from [the quick-armature spec](012-quick-armature-ux/STUDY.md) ST
 - **Numeric length input.** `Tab` to type `0.5` Enter (Blender E-extrude convention). Bigger lift because it needs a text-input field on a modal operator; precision authoring win when implemented.
 - **D11 local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
 
-The remaining quick-armature deferred items are now [successor specs](012-quick-armature-ux/STUDY.md#successor-considerations): auto-attach mesh / sprite to bone (needs slot-system maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
+The remaining quick-armature deferred items are now successor specs (quick-armature STUDY successor-considerations section): auto-attach mesh / sprite to bone (needs slot-system maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
 
 ### Weight-paint productivity follow-up candidates
 
-Items locked as the productivity follow-up tier of [the weight-paint-automesh spec](013-weight-paint-automesh/STUDY.md) Design surface > Out of scope + [TODO productivity follow-up](013-weight-paint-automesh/TODO.md#wave-132---productivity-polish-deferred). Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
+Items locked as the productivity follow-up tier of the weight-paint-automesh spec Design surface > Out of scope + the productivity polish TODO tier. Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
 
 - **Soft vs Hard bone toggle (D16, Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
 - **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value follow-up candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.

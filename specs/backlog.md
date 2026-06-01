@@ -350,6 +350,22 @@ Residual items from the typed-models codegen rollout. The typed-models codegen a
 
 **Trigger to revisit:** the next PSD manifest schema bump, or whenever the importer needs new field-level behaviour that benefits from the typed Resource (validators, discriminated unions).
 
+### Photoshop manifest reader: cast -> validated parse
+
+**What:** `apps/photoshop/src/io/manifest-reader.ts` runs `validateManifest(parsed as Manifest)` against ajv (runtime gate) but the static type comes from a bare `as Manifest` cast on the JSON.parse output. If a future change mutates `parsed` between ajv validation and consumption, TypeScript will not catch the divergence.
+
+**Why deferred:** ajv already gates the runtime shape and the cast pattern matches the rest of the UXP / Photoshop IO surface. Moving to a typed-parse helper (`Manifest.parse(json): Manifest | ValidationError`) is purely a type-discipline upgrade; the runtime behaviour does not change.
+
+**Trigger to revisit:** the typescript layer surfaces a real bug that the cast pattern hid, or the Photoshop plugin grows a second manifest format and the cast pattern starts duplicating.
+
+### Photoshop UXP API typing gaps
+
+**What:** `apps/photoshop/src/io/xmp.ts`, `manifest-reader.ts`, `ps-selection-bounds.ts`, and `hooks/useDocumentChanges.ts` carry six `as unknown as` escape hatches at the UXP API boundary (the UXP module shape, layer carriers, file parents, the action notifier). These are not model-first violations - they live at the engine-API edge where typings ship from Adobe, not from the schema codegen - but they are the only remaining `as unknown` in the typed surface.
+
+**Why deferred:** UXP's published types underspecify the surfaces involved; chasing each one upstream takes per-call investigation. The casts compile and the runtime contract has not surfaced a bug.
+
+**Trigger to revisit:** Adobe ships richer UXP types, or one of the casts catches drift the runtime did not.
+
 ### ESLint `@typescript-eslint/strict-type-checked`
 
 The typed-models codegen Axis C2 mentions adding ESLint with `@typescript-eslint/strict-type-checked` on top of the tsconfig strict family. Not landed because the tsconfig flags already produce a meaningful gate; the ESLint layer would surface additional style + runtime hazards but is additive rather than load-bearing.

@@ -445,9 +445,9 @@ function autoDetectSpriteFrame(children: ParsedLayer[], skipHidden: boolean): bo
     if (candidates.length < 2) return false;
     const indices: number[] = [];
     for (const child of candidates) {
-        const match = /^(\d+)$/.exec(child.displayName);
-        if (match === null) return false;
-        indices.push(Number.parseInt(match[1], 10));
+        const captured = /^(\d+)$/.exec(child.displayName)?.[1];
+        if (captured === undefined) return false;
+        indices.push(Number.parseInt(captured, 10));
     }
     return indicesAreContiguousFromZero(indices);
 }
@@ -561,8 +561,8 @@ function unionArtBounds(set: LayerSet): LayerBounds | null {
 }
 
 function frameIndex(name: string): number {
-    const match = /^(\d+)$/.exec(name);
-    return match === null ? Number.NaN : Number.parseInt(match[1], 10);
+    const captured = /^(\d+)$/.exec(name)?.[1];
+    return captured === undefined ? Number.NaN : Number.parseInt(captured, 10);
 }
 
 function pickOriginMarker(children: ParsedLayer[]): [number, number] | undefined {
@@ -712,11 +712,17 @@ function toManifestEntry(entry: PlannedEntry): ManifestEntry {
 
 function toWrites(entry: PlannedEntry): PngWrite[] {
     if (entry.kind === "sprite_frame") {
-        return entry.frames.map((frame, i) => ({
-            layerPath: entry._frameSources[i].layerPath,
-            outputPath: frame.path,
-            ...(entry._frameSources[i].merge ? { merge: true } : {}),
-        }));
+        return entry.frames.map((frame, i) => {
+            const source = entry._frameSources[i];
+            if (source === undefined) {
+                throw new Error(`frame index ${i} has no matching _frameSources entry`);
+            }
+            return {
+                layerPath: source.layerPath,
+                outputPath: frame.path,
+                ...(source.merge ? { merge: true } : {}),
+            };
+        });
     }
     return [{
         layerPath: entry._source.layerPath,

@@ -94,7 +94,9 @@ async function ensureOutputFile(folder: UxpFolder, outputPath: string): Promise<
     const segments = outputPath.split("/").filter((s) => s.length > 0);
     let dir = folder;
     for (let i = 0; i < segments.length - 1; i++) {
-        dir = await ensureSubfolder(dir, segments[i]);
+        const segment = segments[i];
+        if (segment === undefined) continue;
+        dir = await ensureSubfolder(dir, segment);
     }
     const leaf = segments.at(-1);
     if (leaf === undefined) {

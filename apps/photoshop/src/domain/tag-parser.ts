@@ -122,8 +122,10 @@ function consumeOrigin(value: string, tags: TagBag): boolean {
         return true;
     }
     const match = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(value);
-    if (match === null) return false;
-    tags.origin = [Number.parseFloat(match[1]), Number.parseFloat(match[2])];
+    const x = match?.[1];
+    const y = match?.[2];
+    if (x === undefined || y === undefined) return false;
+    tags.origin = [Number.parseFloat(x), Number.parseFloat(y)];
     return true;
 }
 

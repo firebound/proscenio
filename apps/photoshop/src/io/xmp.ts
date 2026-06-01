@@ -131,16 +131,18 @@ export function readLayerTagsFromXmp(
 
 function serializableTagBag(tags: TagBag): Record<string, unknown> {
     // Drop `undefined` fields explicitly so the JSON stays compact.
+    // TagBag uses an index signature so bracket access satisfies the
+    // `noPropertyAccessFromIndexSignature` rule.
     const out: Record<string, unknown> = {};
-    if (tags.ignore === true) out.ignore = true;
-    if (tags.merge === true) out.merge = true;
-    if (tags.kind !== undefined) out.kind = tags.kind;
-    if (tags.folder !== undefined) out.folder = tags.folder;
-    if (tags.path !== undefined) out.path = tags.path;
-    if (tags.blend !== undefined) out.blend = tags.blend;
-    if (tags.scale !== undefined) out.scale = tags.scale;
-    if (tags.origin !== undefined) out.origin = tags.origin;
-    if (tags.originMarker === true) out.originMarker = true;
-    if (tags.namePattern !== undefined) out.namePattern = tags.namePattern;
+    if (tags["ignore"] === true) out["ignore"] = true;
+    if (tags["merge"] === true) out["merge"] = true;
+    if (tags["kind"] !== undefined) out["kind"] = tags["kind"];
+    if (tags["folder"] !== undefined) out["folder"] = tags["folder"];
+    if (tags["path"] !== undefined) out["path"] = tags["path"];
+    if (tags["blend"] !== undefined) out["blend"] = tags["blend"];
+    if (tags["scale"] !== undefined) out["scale"] = tags["scale"];
+    if (tags["origin"] !== undefined) out["origin"] = tags["origin"];
+    if (tags["originMarker"] === true) out["originMarker"] = true;
+    if (tags["namePattern"] !== undefined) out["namePattern"] = tags["namePattern"];
     return out;
 }

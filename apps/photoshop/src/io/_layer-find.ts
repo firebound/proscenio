@@ -19,6 +19,7 @@ export function findLayerByPath(
     let target: PsLayer | null = null;
     for (let depth = 0; depth < layerPath.length; depth++) {
         const segment = layerPath[depth];
+        if (segment === undefined) return null;
         let found: PsLayer | null = null;
         for (const layer of candidates) {
             if (layer.name === segment) { found = layer; break; }

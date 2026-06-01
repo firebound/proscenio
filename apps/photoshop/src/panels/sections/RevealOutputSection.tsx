@@ -76,6 +76,7 @@ function findMatchingEntry(
     if (refs === undefined) return null;
     for (let i = 0; i < refs.length; i++) {
         const ref = refs[i];
+        if (ref === undefined) continue;
         if (elementsEqual(ref.layerPath, activeLayerPath)) return i;
         if (ref.framePaths?.some((p) => elementsEqual(p, activeLayerPath))) return i;
     }

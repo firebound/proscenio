@@ -161,8 +161,10 @@ async function resolveRelativeFile(folder: UxpFolder, relative: string): Promise
     const segments = relative.split("/").filter((s) => s.length > 0);
     let current: UxpFolder = folder;
     for (let i = 0; i < segments.length - 1; i++) {
+        const segment = segments[i];
+        if (segment === undefined) return null;
         try {
-            const entry = await current.getEntry(segments[i]);
+            const entry = await current.getEntry(segment);
             if (!entry.isFolder) return null;
             current = entry as UxpFolder;
         } catch {

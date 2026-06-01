@@ -17,9 +17,17 @@ jobs:
         run: uvx ruff format --check apps/blender/
       - name: Sync uv workspace
         run: uv sync --all-packages
-      - name: Mypy strict
-        working-directory: apps/blender
-        run: uv run --with mypy mypy --config-file pyproject.toml
+      # Run from the repo root (not `cd apps/blender`). The addon's mypy
+      # config roots the package tree at `apps/` (mypy_path =
+      # ${MYPY_CONFIG_FILE_DIR}/..) so the addon is the package `blender`
+      # and its relative `core` imports resolve at the same depth Blender
+      # mounts them. mypy only honours that base when CWD is not the
+      # config dir itself - from `apps/blender` it falls back to a
+      # CWD-relative base (`core.*`) and the import resolution breaks.
+      - name: Mypy strict (apps/blender)
+        run: uv run --with mypy mypy --config-file apps/blender/pyproject.toml
+      - name: Mypy strict (packages/validator)
+        run: uv run --with mypy mypy --config-file packages/validator/pyproject.toml
       - name: Pytest (validation unit tests, no Blender)
         run: uv run pytest tests/
 

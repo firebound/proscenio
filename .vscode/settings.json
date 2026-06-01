@@ -17,12 +17,29 @@
     "[typescriptreact]": {
         "editor.tabSize": 4
     },
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.exclude": [
+        "**/__pycache__",
+        "**/node_modules",
+        "**/.venv",
+        "apps/blender/tests/fixtures",
+        "apps/blender/tests/operators",
+        "apps/blender/tests/run_operator_tests.py"
+    ],
+    "python.analysis.ignore": [
+        "apps/blender/core/bpy_helpers/**",
+        "apps/blender/operators/**",
+        "apps/blender/panels/**",
+        "apps/blender/properties/**"
+    ],
     "sonarlint.rules": {
         "python:S101": {
             "level": "off"
         }
     },
-    "sonarlint.analysisExcludesPattern": "**/AppData/**,**/site-packages/**,**/Lib/**,**/pythoncore-*/**",
+    "sonarlint.analysisExcludesPattern": "**/AppData/**,**/site-packages/**,**/Lib/**,**/pythoncore-*/**,**/.venv/**,**/node_modules/**",
     "markdown.validate.ignoredLinks": [
         "../../examples/dummy/Dummy.tscn"
     ]

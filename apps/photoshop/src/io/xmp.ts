@@ -10,7 +10,7 @@
 // metadata reader rejects the call, the mirror silently degrades to
 // a no-op and a debug log line.
 
-import * as uxpModule from "uxp";
+import { xmp as uxpXmp } from "uxp";
 import type { PsLayer } from "photoshop";
 
 import type { TagBag } from "../domain/tag-parser";
@@ -32,35 +32,8 @@ function xmpPropertyName(layerPath: readonly string[]): string {
     return XMP_PROPERTY_PREFIX + safe;
 }
 
-interface XMPMetaCtor {
-    new (raw?: string): XMPMetaInstance;
-    registerNamespace?(uri: string, prefix: string): void;
-}
-
-interface XMPMetaInstance {
-    serialize(): string;
-    setProperty(ns: string, key: string, value: string): void;
-    getProperty(ns: string, key: string): { value?: string } | undefined;
-    deleteProperty(ns: string, key: string): void;
-    doesPropertyExist?(ns: string, key: string): boolean;
-}
-
-interface XmpModuleShape {
-    XMPMeta?: XMPMetaCtor;
-}
-
-interface DocumentMetadataCarrier {
-    xmpMetadata?: string;
-    metadata?: { xmp?: string };
-}
-
-function xmpModule(): XmpModuleShape | undefined {
-    return (uxpModule as unknown as { xmp?: XmpModuleShape }).xmp;
-}
-
 export function isXmpAvailable(): boolean {
-    const candidate = xmpModule();
-    return candidate !== undefined && typeof candidate.XMPMeta === "function";
+    return uxpXmp !== undefined && typeof uxpXmp.XMPMeta === "function";
 }
 
 export class XmpUnavailableError extends Error {
@@ -82,20 +55,18 @@ export function writeLayerTagsToXmp(
     layerPath: readonly string[],
     tags: TagBag,
 ): boolean {
-    const mod = xmpModule();
-    if (mod?.XMPMeta === undefined) {
+    if (uxpXmp === undefined) {
         log.debug("xmp", "uxp.xmp unavailable; skipping mirror write");
         return false;
     }
     try {
-        const carrier = layer as unknown as DocumentMetadataCarrier;
-        const raw = carrier.xmpMetadata ?? carrier.metadata?.xmp ?? "";
-        const meta = new mod.XMPMeta(raw);
-        mod.XMPMeta.registerNamespace?.(PROSCENIO_XMP_NAMESPACE_URI, PROSCENIO_XMP_PREFIX);
+        const raw = layer.xmpMetadata ?? layer.metadata?.xmp ?? "";
+        const meta = new uxpXmp.XMPMeta(raw);
+        uxpXmp.XMPMeta.registerNamespace?.(PROSCENIO_XMP_NAMESPACE_URI, PROSCENIO_XMP_PREFIX);
         const key = xmpPropertyName(layerPath);
         const value = JSON.stringify(serializableTagBag(tags));
         meta.setProperty(PROSCENIO_XMP_NAMESPACE_URI, key, value);
-        carrier.xmpMetadata = meta.serialize();
+        layer.xmpMetadata = meta.serialize();
         return true;
     } catch (err) {
         log.debug("xmp", "writeLayerTagsToXmp failed (non-fatal)", err);
@@ -110,23 +81,47 @@ export function readLayerTagsFromXmp(
     layer: PsLayer,
     layerPath: readonly string[],
 ): TagBag | null {
-    const mod = xmpModule();
-    if (mod?.XMPMeta === undefined) return null;
+    if (uxpXmp === undefined) return null;
     try {
-        const carrier = layer as unknown as DocumentMetadataCarrier;
-        const raw = carrier.xmpMetadata ?? carrier.metadata?.xmp ?? "";
+        const raw = layer.xmpMetadata ?? layer.metadata?.xmp ?? "";
         if (raw === "") return null;
-        const meta = new mod.XMPMeta(raw);
+        const meta = new uxpXmp.XMPMeta(raw);
         const key = xmpPropertyName(layerPath);
         const prop = meta.getProperty(PROSCENIO_XMP_NAMESPACE_URI, key);
         if (prop?.value === undefined) return null;
         const parsed: unknown = JSON.parse(prop.value);
-        if (typeof parsed !== "object" || parsed === null) return null;
-        return parsed as TagBag;
+        // XMP is external, user-editable metadata. Validate the shape
+        // before letting it into the domain; a malformed record degrades
+        // to null (the bracket-tag canonical store is authoritative).
+        if (!isTagBag(parsed)) return null;
+        return parsed;
     } catch (err) {
         log.debug("xmp", "readLayerTagsFromXmp failed (non-fatal)", err);
         return null;
     }
+}
+
+function isTagBag(value: unknown): value is TagBag {
+    if (typeof value !== "object" || value === null) return false;
+    const v = value as Record<string, unknown>;
+    const optBool = (x: unknown): boolean => x === undefined || x === true;
+    const optStr = (x: unknown): boolean => x === undefined || typeof x === "string";
+    const optNum = (x: unknown): boolean => x === undefined || typeof x === "number";
+    const optOrigin = (x: unknown): boolean =>
+        x === undefined
+        || (Array.isArray(x) && x.length === 2 && x.every((n) => typeof n === "number"));
+    return (
+        optBool(v["ignore"])
+        && optBool(v["merge"])
+        && optBool(v["originMarker"])
+        && optStr(v["folder"])
+        && optStr(v["kind"])
+        && optStr(v["path"])
+        && optStr(v["blend"])
+        && optStr(v["namePattern"])
+        && optNum(v["scale"])
+        && optOrigin(v["origin"])
+    );
 }
 
 function serializableTagBag(tags: TagBag): Record<string, unknown> {
@@ -134,15 +129,15 @@ function serializableTagBag(tags: TagBag): Record<string, unknown> {
     // TagBag uses an index signature so bracket access satisfies the
     // `noPropertyAccessFromIndexSignature` rule.
     const out: Record<string, unknown> = {};
-    if (tags["ignore"] === true) out["ignore"] = true;
-    if (tags["merge"] === true) out["merge"] = true;
-    if (tags["kind"] !== undefined) out["kind"] = tags["kind"];
-    if (tags["folder"] !== undefined) out["folder"] = tags["folder"];
-    if (tags["path"] !== undefined) out["path"] = tags["path"];
-    if (tags["blend"] !== undefined) out["blend"] = tags["blend"];
-    if (tags["scale"] !== undefined) out["scale"] = tags["scale"];
-    if (tags["origin"] !== undefined) out["origin"] = tags["origin"];
-    if (tags["originMarker"] === true) out["originMarker"] = true;
-    if (tags["namePattern"] !== undefined) out["namePattern"] = tags["namePattern"];
+    if (tags.ignore === true) out["ignore"] = true;
+    if (tags.merge === true) out["merge"] = true;
+    if (tags.kind !== undefined) out["kind"] = tags.kind;
+    if (tags.folder !== undefined) out["folder"] = tags.folder;
+    if (tags.path !== undefined) out["path"] = tags.path;
+    if (tags.blend !== undefined) out["blend"] = tags.blend;
+    if (tags.scale !== undefined) out["scale"] = tags.scale;
+    if (tags.origin !== undefined) out["origin"] = tags.origin;
+    if (tags.originMarker === true) out["originMarker"] = true;
+    if (tags.namePattern !== undefined) out["namePattern"] = tags.namePattern;
     return out;
 }

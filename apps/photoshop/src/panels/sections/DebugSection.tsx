@@ -1,7 +1,7 @@
 import React from "react";
 
 import type { ExportPreview } from "../../controllers/export-flow";
-import type { ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../../domain/manifest";
+import type { ManifestEntry } from "../../domain/manifest";
 import type { EntryRef } from "../../domain/planner";
 import { elementsEqual } from "../../util/arrays";
 import { Accordion } from "../common/Accordion";
@@ -90,7 +90,7 @@ function isEntrySelected(
 const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry, selected }) => {
     const className = selected ? "entry-row selected" : "entry-row";
     if (entry.kind === "sprite_frame") {
-        const sf = entry as SpriteFrameEntry;
+        const sf = entry;
         return (
             <div className={className}>
                 <span className="entry-kind">sprite_frame</span>
@@ -99,7 +99,7 @@ const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry
             </div>
         );
     }
-    const p = entry as PolygonEntry;
+    const p = entry;
     return (
         <div className={className}>
             <span className="entry-kind">{p.kind}</span>

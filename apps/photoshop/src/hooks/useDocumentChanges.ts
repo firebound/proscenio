@@ -31,7 +31,7 @@ const WATCHED_EVENTS = [
 
 const DEBOUNCE_MS = 150;
 
-type ListenerHandle = { remove(): void };
+interface ListenerHandle { remove(): void }
 
 function isHandle(value: unknown): value is ListenerHandle {
     return (
@@ -80,9 +80,15 @@ export function useDocumentChanges(): number {
             else listenerHandle = handle;
         };
         try {
-            const result = action.addNotificationListener(WATCHED_EVENTS, bump) as unknown;
+            // `addNotificationListener` is typed as a union of three
+            // possible return shapes; the union is wider than what any
+            // single Photoshop build returns, so the runtime probe
+            // (`isPromiseLike` / `isHandle`) is what actually picks the
+            // shape. The union covers `void`, so the variable can
+            // legitimately be undefined at type-narrow time.
+            const result = action.addNotificationListener(WATCHED_EVENTS, bump);
             if (isPromiseLike<unknown>(result)) {
-                result.then(adopt).catch((err) => {
+                result.then(adopt).catch((err: unknown) => {
                     log.warn("useDocumentChanges", "subscription rejected", err);
                 });
             } else if (isHandle(result)) {

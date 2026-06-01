@@ -17,7 +17,7 @@ import type { UxpFile } from "uxp";
 
 export interface PlaceResult {
     layer: PsLayer | null;
-    warning?: string;
+    warning?: string | undefined;
 }
 
 export async function placePngAt(

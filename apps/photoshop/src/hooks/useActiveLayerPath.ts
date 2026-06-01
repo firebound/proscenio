@@ -33,6 +33,11 @@ export function useActiveLayerPath(version: number): readonly string[] | null {
 
     // Read on every PS notification bump.
     React.useEffect(() => {
+        // Synchronous read + dedup-aware setState. The functional updater
+        // inside updatePath returns the previous reference unchanged when
+        // the path did not move, so React skips the re-render without a
+        // microtask hop.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         updatePath(readActiveLayerPath());
     }, [version, updatePath]);
 
@@ -44,10 +49,10 @@ export function useActiveLayerPath(version: number): readonly string[] | null {
     // panels do not burn cycles.
     React.useEffect(() => {
         const id = setInterval(() => {
-            if (typeof document !== "undefined" && document.hidden === true) return;
+            if (typeof document !== "undefined" && document.hidden) return;
             updatePath(readActiveLayerPath());
         }, POLL_MS);
-        return () => clearInterval(id);
+        return () => { clearInterval(id); };
     }, [updatePath]);
 
     return path;

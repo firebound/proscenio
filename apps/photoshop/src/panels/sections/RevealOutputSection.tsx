@@ -11,7 +11,7 @@ import React from "react";
 import type { UxpFolder } from "uxp";
 
 import type { ExportPreview } from "../../controllers/export-flow";
-import type { ManifestEntry, PolygonEntry } from "../../domain/manifest";
+import type { ManifestEntry } from "../../domain/manifest";
 import { elementsEqual } from "../../util/arrays";
 import { Accordion } from "../common/Accordion";
 import { KeyValueRow } from "../common/KeyValueRow";
@@ -38,7 +38,7 @@ export const RevealOutputSection: React.FC<Props> = ({ preview, activeLayerPath,
         );
     }
 
-    const polygon = entry.kind === "sprite_frame" ? null : entry as PolygonEntry;
+    const polygon = entry.kind === "sprite_frame" ? null : entry;
     const pngPaths = collectPaths(entry);
     const folderPath = folder?.nativePath ?? null;
 

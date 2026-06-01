@@ -280,8 +280,8 @@ function parseChildren(children: Layer[]): ParsedLayer[] {
 // sprite_frame source or a `[merge]` group, both of which consume an
 // `[origin]` marker; otherwise the marker would be discarded.
 interface InheritedTags {
-    folder?: string;
-    blend?: BlendMode;
+    folder?: string | undefined;
+    blend?: BlendMode | undefined;
     pickPivot?: true;
 }
 
@@ -556,6 +556,10 @@ function unionArtBounds(set: LayerSet): LayerBounds | null {
         for (const child of layer.layers) visit(child);
     };
     for (const child of set.layers) visit(child);
+    // typescript-eslint's flow analysis cannot follow the closure
+    // mutation in `visit`; the variable genuinely tracks whether at
+    // least one art layer contributed bounds.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!any) return null;
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
@@ -741,5 +745,5 @@ export function indicesAreContiguousFromZero(indices: number[]): boolean {
 }
 
 export function sanitize(name: string): string {
-    return String(name).replace(/[^A-Za-z0-9_\-]/g, "_");
+    return name.replace(/[^A-Za-z0-9_\-]/g, "_");
 }

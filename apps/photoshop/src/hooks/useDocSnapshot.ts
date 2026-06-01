@@ -24,13 +24,14 @@ export interface UseDocSnapshot {
 export function useDocSnapshot(): UseDocSnapshot {
     const [doc, setDoc] = React.useState<DocSnapshot | null>(null);
 
-    const refresh = React.useCallback(async () => {
+    const refresh = React.useCallback((): Promise<void> => {
         setDoc(readActiveDocument());
+        return Promise.resolve();
     }, []);
 
     React.useEffect(() => {
         let cancelled = false;
-        Promise.resolve(readActiveDocument()).then((snap) => {
+        void Promise.resolve(readActiveDocument()).then((snap) => {
             if (!cancelled) setDoc(snap);
         });
         return () => {

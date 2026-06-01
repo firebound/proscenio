@@ -48,7 +48,7 @@ export const ProscenioDebugPanel: React.FC = () => {
 
     return (
         <div className="proscenio-panel">
-            <DocSection doc={doc} onRefresh={refreshDoc} />
+            <DocSection doc={doc} onRefresh={() => { void refreshDoc(); }} />
             <DebugSection
                 preview={preview.preview}
                 activeLayerPath={activeLayerPath}

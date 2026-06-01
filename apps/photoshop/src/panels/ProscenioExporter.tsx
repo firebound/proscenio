@@ -82,8 +82,12 @@ export const ProscenioExporter: React.FC = () => {
 
     return (
         <div className="proscenio-panel">
-            <DocSection doc={doc} onRefresh={refreshDoc} />
-            <FolderSection folder={folder} onPick={pickFolder} onClear={clearFolder} />
+            <DocSection doc={doc} onRefresh={() => { void refreshDoc(); }} />
+            <FolderSection
+                folder={folder}
+                onPick={() => { void pickFolder(); }}
+                onClear={clearFolder}
+            />
             <ExportSection
                 opts={exportFlow.opts}
                 busy={exportFlow.busy}
@@ -113,7 +117,7 @@ export const ProscenioExporter: React.FC = () => {
                 busy={importFlow.busy}
                 last={importFlow.last}
                 manifestErrors={importFlow.manifestErrors}
-                onImport={importFlow.run}
+                onImport={() => { void importFlow.run(); }}
             />
             <MigrationSection
                 preview={migration.preview}

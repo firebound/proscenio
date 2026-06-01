@@ -10,7 +10,7 @@ PropertyGroup registration).
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Protocol, runtime_checkable
 
 OBJECT_PROPS: tuple[tuple[str, str], ...] = (
     ("proscenio_type", "sprite_type"),
@@ -27,8 +27,20 @@ OBJECT_PROPS: tuple[tuple[str, str], ...] = (
 )
 
 
+@runtime_checkable
+class _CPLookup(Protocol):
+    """Anything that exposes ``__contains__`` + ``__getitem__`` (legacy CP).
+
+    Both ``bpy.types.Object`` and pytest ``SimpleNamespace`` mocks
+    satisfy this Protocol.
+    """
+
+    def __contains__(self, key: object) -> bool: ...
+    def __getitem__(self, key: str) -> object: ...
+
+
 def hydrate_object(
-    obj: Any,
+    obj: object,
     mapping: tuple[tuple[str, str], ...] = OBJECT_PROPS,
 ) -> None:
     """Copy legacy Custom Properties on ``obj`` into ``obj.proscenio``.
@@ -39,6 +51,8 @@ def hydrate_object(
     """
     props = getattr(obj, "proscenio", None)
     if props is None:
+        return
+    if not isinstance(obj, _CPLookup):
         return
     for custom_key, prop_name in mapping:
         if custom_key in obj:

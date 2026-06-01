@@ -24,8 +24,8 @@ export function readActiveLayerPath(): string[] | null {
         const doc = app.activeDocument;
         if (doc === null) return null;
         const active = doc.activeLayers;
-        if (active === undefined || active.length !== 1) {
-            log.trace("ps-selection", "no single active layer", active?.length);
+        if (active.length !== 1) {
+            log.trace("ps-selection", "no single active layer", active.length);
             return null;
         }
         const chain: string[] = [];

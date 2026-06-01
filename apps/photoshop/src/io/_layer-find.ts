@@ -15,7 +15,7 @@ export function findLayerByPath(
     layerPath: readonly string[],
 ): PsLayer | null {
     if (layerPath.length === 0) return null;
-    let candidates: PsLayer[] = toArray(doc.layers as ArrayLike<PsLayer> | undefined);
+    let candidates: PsLayer[] = toArray(doc.layers);
     let target: PsLayer | null = null;
     for (let depth = 0; depth < layerPath.length; depth++) {
         const segment = layerPath[depth];
@@ -39,7 +39,7 @@ export function findLayerByPath(
 }
 
 function toArray(value: ArrayLike<PsLayer> | undefined): PsLayer[] {
-    if (value === undefined || value === null) return [];
+    if (value === undefined) return [];
     return Array.from(value);
 }
 

@@ -51,6 +51,6 @@ function walk(
 
 function nextName(stripped: string): string {
     if (stripped.length === 0) return "[ignore]";
-    if (/\[ignore\]/.test(stripped)) return stripped;
+    if (stripped.includes('[ignore]')) return stripped;
     return `${stripped} [ignore]`;
 }

@@ -37,7 +37,7 @@ export const ProscenioValidatePanel: React.FC = () => {
 
     return (
         <div className="proscenio-panel">
-            <DocSection doc={doc} onRefresh={refreshDoc} />
+            <DocSection doc={doc} onRefresh={() => { void refreshDoc(); }} />
             <ValidateSection preview={preview.preview} />
         </div>
     );

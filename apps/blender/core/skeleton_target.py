@@ -16,7 +16,7 @@ sees in the panel == what the operator targets.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import bpy
@@ -31,6 +31,10 @@ def resolve_skeleton_target(
     picker is unset (initial state or user-cleared) - the caller
     decides whether to fall back to the legacy ``Proscenio.QuickRig``
     auto-create or report a warning.
+
+    The duck-typed accessor pattern (``getattr(...)``) lets the pytest
+    suite drive this with ``SimpleNamespace`` mocks; runtime callers
+    pass real ``bpy.types.Object`` instances.
     """
     scene = getattr(context, "scene", None)
     if scene is None:
@@ -39,6 +43,9 @@ def resolve_skeleton_target(
     if proscenio is None:
         return None
     explicit = getattr(proscenio, "active_armature", None)
-    if explicit is not None and explicit.type == "ARMATURE":
-        return explicit
-    return None
+    if explicit is None:
+        return None
+    explicit_type = getattr(explicit, "type", None)
+    if explicit_type != "ARMATURE":
+        return None
+    return cast("bpy.types.Object", explicit)

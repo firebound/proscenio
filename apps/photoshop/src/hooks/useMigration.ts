@@ -28,6 +28,9 @@ export function useMigration(version: number): UseMigration {
     const [lastResult, setLastResult] = React.useState<MigrationResult | null>(null);
 
     React.useEffect(() => {
+        // Synchronous read on every PS notification bump; the previewer
+        // is pure and idempotent.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPreview(previewUnderscoreMigration());
     }, [version]);
 

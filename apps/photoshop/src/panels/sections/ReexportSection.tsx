@@ -63,7 +63,7 @@ export const ReexportSection: React.FC<Props> = ({ preview, activeLayerPath, fol
                 </>
             )}
             <sp-action-button
-                onClick={onReexport}
+                onClick={() => { void onReexport(); }}
                 disabled={busy || matched === null || folder === null ? true : undefined}
             >
                 {busy ? "Re-exporting..." : "Re-export this entry's PNG"}

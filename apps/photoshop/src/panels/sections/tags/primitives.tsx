@@ -47,7 +47,7 @@ export const ClickSpan: React.FC<ClickSpanProps> = ({
         },
         [disabled, onClick],
     );
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+
     return (
         <span
             className={className}

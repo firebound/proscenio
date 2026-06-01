@@ -62,6 +62,7 @@ export async function applyUnderscoreMigration(): Promise<MigrationResult> {
     const failures: MigrationResult["failures"] = [];
     let renamed = 0;
     await core.executeAsModal(
+        // eslint-disable-next-line @typescript-eslint/require-await -- modal callback is async by API contract
         async () => {
             for (const candidate of candidates) {
                 const layer = findLayerByPath(doc, candidate.layerPath);

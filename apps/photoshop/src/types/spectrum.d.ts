@@ -3,6 +3,12 @@
 // not in React's JSX intrinsic table, so each panel that uses them
 // would otherwise have to redeclare the JSX namespace.
 //
+// Optional props explicitly include `| undefined` so the panels can
+// pass through state-derived values that may be undefined under
+// `exactOptionalPropertyTypes: true`. React DOM treats `prop={undefined}`
+// as absent at runtime, matching Spectrum's actual behaviour - this
+// widening is honest, not a workaround.
+//
 // The prop surface is intentionally minimal - we widen as the panels
 // touch new attributes. Forking the upstream Spectrum typings package
 // is not worth the build complexity for the small surface we use.
@@ -21,26 +27,26 @@ declare global {
     }
 
     interface SpectrumElementProps extends React.HTMLAttributes<HTMLElement>, React.Attributes {
-        size?: "XS" | "S" | "M" | "L" | "XL";
+        size?: "XS" | "S" | "M" | "L" | "XL" | undefined;
     }
 
     interface SpectrumCheckboxProps extends SpectrumElementProps {
-        checked?: boolean;
-        disabled?: boolean;
-        onChange?: (e: React.SyntheticEvent) => void;
+        checked?: boolean | undefined;
+        disabled?: boolean | undefined;
+        onChange?: ((e: React.SyntheticEvent) => void) | undefined;
     }
 
     interface SpectrumActionButtonProps extends SpectrumElementProps {
-        disabled?: boolean;
-        quiet?: "true";
-        onClick?: (e: React.SyntheticEvent) => void;
+        disabled?: boolean | undefined;
+        quiet?: "true" | undefined;
+        onClick?: ((e: React.SyntheticEvent) => void) | undefined;
     }
 
     interface SpectrumTextfieldProps extends SpectrumElementProps {
-        value?: string;
-        placeholder?: string;
-        disabled?: boolean;
-        onInput?: (e: React.SyntheticEvent) => void;
-        onChange?: (e: React.SyntheticEvent) => void;
+        value?: string | undefined;
+        placeholder?: string | undefined;
+        disabled?: boolean | undefined;
+        onInput?: ((e: React.SyntheticEvent) => void) | undefined;
+        onChange?: ((e: React.SyntheticEvent) => void) | undefined;
     }
 }

@@ -37,6 +37,7 @@ export async function renameLayer(
     let result: RenameResult = { ok: false, reason: "rename did not run" };
     try {
         await core.executeAsModal(
+            // eslint-disable-next-line @typescript-eslint/require-await -- modal callback is async by API contract
             async () => {
                 target.name = newName;
                 // Best-effort XMP mirror per the photoshop tag system D2. Bracket

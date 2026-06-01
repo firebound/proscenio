@@ -178,7 +178,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Skeleton2DIK.",
             ),
         ),
-        see_also=("specs/013-weight-paint-automesh",),
+        see_also=("specs/decisions.md",),
     ),
     "animation": HelpTopic(
         title="Animation",
@@ -330,7 +330,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "into your main rig as usual.",
             ),
         ),
-        see_also=("specs/012-quick-armature-ux",),
+        see_also=("specs/decisions.md",),
     ),
     "outliner": HelpTopic(
         title="Outliner",

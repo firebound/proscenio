@@ -1,7 +1,11 @@
 {
   "version": "0.2",
   "language": "pt-BR,en",
-  "ignorePaths": [],
+  "ignorePaths": [
+    "**/pnpm-lock.yaml",
+    "**/uv.lock",
+    "**/package-lock.json"
+  ],
   "dictionaries": [
     "developer-terms",
     "names",

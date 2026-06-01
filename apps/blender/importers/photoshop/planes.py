@@ -18,15 +18,28 @@ left for the user to clean up manually.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal, cast
 
 import bpy
 
-from ...core import psd_manifest  # type: ignore[import-not-found]
-from ...core.bpy_helpers.psd_spritesheet import (  # type: ignore[import-not-found]
-    compose_spritesheet,
+from ...core import psd_manifest
+from ...core._bpy_compat import (
+    expect_mesh,
+    expect_scene,
+    first_uv_layer,
+    iter_blend_objects,
+    iter_collection_children,
+    iter_shader_nodes,
+    material_by_name,
+    node_input_by_name,
+    node_output_by_name,
+    set_material_at,
+    uv_loop_at,
 )
+from ...core.bpy_helpers.psd_spritesheet import compose_spritesheet
 
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
@@ -56,7 +69,7 @@ class StampedSpriteFrame:
 
 def stamp_polygon(
     layer: psd_manifest.PolygonLayer,
-    manifest: psd_manifest.Manifest,
+    manifest: psd_manifest.LoadedManifest,
     armature_obj: bpy.types.Object,
 ) -> bpy.types.Object | None:
     """Stamp a single-PNG polygon layer. Returns the mesh object."""
@@ -87,7 +100,7 @@ def stamp_polygon(
 
 def stamp_sprite_frame(
     layer: psd_manifest.SpriteFrameLayer,
-    manifest: psd_manifest.Manifest,
+    manifest: psd_manifest.LoadedManifest,
     armature_obj: bpy.types.Object,
 ) -> StampedSpriteFrame | None:
     """Stamp a sprite_frame layer: compose spritesheet, build single mesh."""
@@ -140,13 +153,13 @@ class _Placement:
 
 
 def _layer_placement(
-    position_px: tuple[int, int],
-    size_px: tuple[int, int],
-    doc_size_px: tuple[int, int],
+    position_px: Sequence[int],
+    size_px: Sequence[int],
+    doc_size_px: Sequence[int],
     pixels_per_unit: float,
     z_order: int,
-    origin_px: tuple[int, int] | None,
-    anchor_px: tuple[int, int] | None,
+    origin_px: Sequence[int] | None,
+    anchor_px: Sequence[int] | None,
 ) -> _Placement:
     """Translate PSD pixel coords + optional origin / anchor into Blender world placement.
 
@@ -214,10 +227,10 @@ def _ensure_mesh(
     width, height = size
     ox, oz = geometry_offset
     if obj is None:
-        mesh = bpy.data.meshes.new(name)
-        obj = bpy.data.objects.new(name, mesh)
-        bpy.context.scene.collection.objects.link(obj)
-    mesh = obj.data
+        new_mesh = bpy.data.meshes.new(name)
+        obj = bpy.data.objects.new(name, new_mesh)
+        expect_scene(bpy.context.scene).collection.objects.link(obj)
+    mesh = expect_mesh(obj)
     mesh.clear_geometry()
     half_w = width / 2.0
     half_h = height / 2.0
@@ -232,11 +245,11 @@ def _ensure_mesh(
         faces=[(0, 1, 2, 3)],
     )
     mesh.update()
-    uv = mesh.uv_layers[0] if mesh.uv_layers else mesh.uv_layers.new(name="UVMap")
-    uv.data[0].uv = (0.0, 0.0)
-    uv.data[1].uv = (1.0, 0.0)
-    uv.data[2].uv = (1.0, 1.0)
-    uv.data[3].uv = (0.0, 1.0)
+    uv = first_uv_layer(mesh) or mesh.uv_layers.new(name="UVMap")
+    uv_loop_at(uv, 0).uv = (0.0, 0.0)
+    uv_loop_at(uv, 1).uv = (1.0, 0.0)
+    uv_loop_at(uv, 2).uv = (1.0, 1.0)
+    uv_loop_at(uv, 3).uv = (0.0, 1.0)
     return obj
 
 
@@ -249,12 +262,12 @@ def _find_existing(name: str) -> bpy.types.Object | None:
     uses the layer's name is treated as the existing one.
     """
     target = f"psd:{name}"
-    for obj in bpy.data.objects:
+    for obj in iter_blend_objects():
         if obj.type != "MESH":
             continue
         if obj.get("proscenio_import_origin") == target:
             return obj
-        if obj.name == name and "proscenio_import_origin" not in obj:
+        if obj.name == name and obj.get("proscenio_import_origin") is None:
             return obj
     return None
 
@@ -275,34 +288,52 @@ def _attach_material(
     viewport approximation. The exact mode is preserved as a custom
     property by ``_tag_blend_mode`` for downstream writers.
     """
-    mesh = obj.data
+    mesh = expect_mesh(obj)
     image = bpy.data.images.load(str(image_path), check_existing=True)
     image.name = image_path.stem
     mat_name = f"{obj.name}.mat"
-    mat = bpy.data.materials.get(mat_name) or bpy.data.materials.new(name=mat_name)
+    mat = material_by_name(mat_name) or bpy.data.materials.new(name=mat_name)
     mat.use_nodes = True
     nt = mat.node_tree
+    if nt is None:
+        raise RuntimeError(
+            f"Proscenio: material {mat_name!r} has no node tree after use_nodes=True"
+        )
     while nt.nodes:
-        nt.nodes.remove(nt.nodes[0])
+        nt.nodes.remove(next(iter_shader_nodes(nt)))
     out = nt.nodes.new(type="ShaderNodeOutputMaterial")
     bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
     tex = nt.nodes.new(type="ShaderNodeTexImage")
+    if not isinstance(tex, bpy.types.ShaderNodeTexImage):
+        raise RuntimeError("Proscenio: nodes.new returned the wrong type for ShaderNodeTexImage")
     tex.image = image
-    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-    method = _BLEND_METHOD_BY_MODE.get(blend_mode or "normal", "BLEND")
-    if hasattr(mat, "blend_method"):
-        # Defensive against Blender enum drift (e.g. ADDITIVE retired in
-        # 4.2): look the value up in the property's enum_items before
-        # assigning so a stale mapping does not abort the entire import.
-        prop = mat.bl_rna.properties.get("blend_method")
-        valid = {item.identifier for item in prop.enum_items} if prop is not None else set()
-        mat.blend_method = method if method in valid else "BLEND"
+    nt.links.new(node_output_by_name(tex, "Color"), node_input_by_name(bsdf, "Base Color"))
+    nt.links.new(node_output_by_name(tex, "Alpha"), node_input_by_name(bsdf, "Alpha"))
+    nt.links.new(node_output_by_name(bsdf, "BSDF"), node_input_by_name(out, "Surface"))
+    _set_material_blend_method(mat, blend_mode)
     if mesh.materials:
-        mesh.materials[0] = mat
+        set_material_at(mesh, 0, mat)
     else:
         mesh.materials.append(mat)
+
+
+def _set_material_blend_method(mat: bpy.types.Material, blend_mode: str | None) -> None:
+    """Map the manifest blend mode onto the EEVEE material's ``blend_method``.
+
+    Defensive against Blender enum drift (e.g. ADDITIVE retired in 4.2):
+    look the value up in the property's enum_items before assigning so a
+    stale mapping does not abort the entire import.
+    """
+    if not hasattr(mat, "blend_method"):
+        return
+    method = _BLEND_METHOD_BY_MODE.get(blend_mode or "normal", "BLEND")
+    prop = mat.bl_rna.properties.get("blend_method")
+    enum_items = cast(Iterable[bpy.types.EnumPropertyItem], getattr(prop, "enum_items", ()))
+    valid: set[str] = {item.identifier for item in enum_items} if prop is not None else set()
+    mat.blend_method = cast(
+        Literal["OPAQUE", "CLIP", "HASHED", "BLEND"],
+        method if method in valid else "BLEND",
+    )
 
 
 def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
@@ -331,14 +362,22 @@ def _link_to_subfolder(obj: bpy.types.Object, subfolder: str | None) -> None:
     """
     if not subfolder:
         return
-    scene = bpy.context.scene
-    parent = scene.collection
+    parent = expect_scene(bpy.context.scene).collection
     for part in subfolder.split("/"):
         clean = part.strip()
         if not clean:
             continue
-        child = bpy.data.collections.get(clean) or bpy.data.collections.new(clean)
-        if child.name not in {c.name for c in parent.children}:
+        # Scope the lookup to the current parent's children, not the global
+        # collection table. Two hierarchies sharing a leaf name (e.g.
+        # `body/torso` and `props/torso`) must not collapse onto the same
+        # Collection - a global lookup would re-link the existing one under
+        # a different parent and flatten the import tree.
+        child = next(
+            (c for c in iter_collection_children(parent) if c.name == clean),
+            None,
+        )
+        if child is None:
+            child = bpy.data.collections.new(clean)
             parent.children.link(child)
         parent = child
     for existing in obj.users_collection:

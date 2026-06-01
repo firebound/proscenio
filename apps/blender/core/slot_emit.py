@@ -1,28 +1,47 @@
 """Pure-Python slot emission helpers (the slot system).
 
-Bpy-free. The writer's bpy walker (``_build_slots`` in
-``exporters/godot/writer.py``) shapes its inputs into the structures
+Bpy-free. The writer's bpy walker (``build_slots_for_scene`` in
+``exporters/godot/writer/slots.py``) shapes its inputs into the structures
 this module accepts, then dispatches here for the actual ``slots[]``
 list construction. Keeps the slot logic unit-testable without booting
 Blender.
 
-Conventions
------------
+Conventions:
+
 - Slot ``name`` defaults to the Empty object's name.
 - ``bone`` is the Empty's ``parent_bone`` when ``parent_type == "BONE"``,
-  empty string otherwise (per D3).
+  empty string otherwise (per D3). The pydantic ``Slot`` field is
+  ``Optional[str]``; an empty string from the bpy walker maps to
+  ``bone=None`` so the document does not emit the field.
 - ``attachments`` ordered by the Empty's child list as the bpy walker
-  feeds it in - the writer can sort or preserve outliner order. The
-  writer side currently feeds in ``children`` order; D12 z-order
-  follows that.
+  feeds it in.
 - ``default`` resolves to the explicit ``slot_default`` field when
   non-empty AND it names an existing attachment; otherwise falls back
-  to the first attachment by sorted name (per D2).
+  to the first attachment by sorted name (per D2). Empty resolves to
+  ``None`` so the document does not emit the field.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NotRequired, TypedDict
+
+from proscenio_models import Slot
+
+
+class _SlotKwargs(TypedDict):
+    """Constructor kwargs for ``Slot``.
+
+    ``bone`` / ``default`` are ``NotRequired`` so an empty value omits
+    the key under ``model_dump_json(exclude_unset=True)`` rather than
+    serialising ``"bone": null`` - matching the legacy dict writer that
+    only set them when non-empty.
+    """
+
+    name: str
+    attachments: list[str]
+    bone: NotRequired[str]
+    default: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -35,24 +54,25 @@ class SlotInput:
     attachments: tuple[str, ...]
 
 
-def build_slot_dict(slot: SlotInput) -> dict[str, object]:
-    """Project a :class:`SlotInput` into a schema-shaped dict.
+def build_slot(slot: SlotInput) -> Slot:
+    """Project a :class:`SlotInput` into a typed ``Slot`` model.
 
-    Returns the shape required by ``packages/models/schemas/proscenio.schema.json``
-    ``Slot`` def: ``{name, bone, default, attachments[]}``. ``bone``
-    and ``default`` are emitted only when non-empty so the writer's
-    output stays minimal-surface.
+    Field order on the model mirrors the schema's ``Slot`` def
+    (``name``, ``attachments``, ``bone``, ``default``) so
+    ``model_dump_json(exclude_unset=True)`` reproduces the goldens
+    byte-for-byte. ``bone`` and ``default`` map empty strings to
+    ``None`` so the model emits the field as unset.
     """
-    out: dict[str, object] = {
+    kwargs: _SlotKwargs = {
         "name": slot.name,
         "attachments": list(slot.attachments),
     }
     if slot.bone:
-        out["bone"] = slot.bone
+        kwargs["bone"] = slot.bone
     default = _resolve_default(slot.slot_default, slot.attachments)
     if default:
-        out["default"] = default
-    return out
+        kwargs["default"] = default
+    return Slot(**kwargs)
 
 
 def _resolve_default(slot_default: str, attachments: tuple[str, ...]) -> str:
@@ -71,11 +91,11 @@ def _resolve_default(slot_default: str, attachments: tuple[str, ...]) -> str:
     return min(attachments)
 
 
-def build_slots(slots: list[SlotInput]) -> list[dict[str, object]]:
+def build_slots(slots: list[SlotInput]) -> list[Slot]:
     """Project a list of ``SlotInput`` into the writer's ``slots[]`` array.
 
     Output is sorted by slot name so the .proscenio diff stays stable
     across re-exports (mirrors how ``sprites[]`` is emitted in writer
     name order).
     """
-    return [build_slot_dict(slot) for slot in sorted(slots, key=lambda s: s.name)]
+    return [build_slot(slot) for slot in sorted(slots, key=lambda s: s.name)]

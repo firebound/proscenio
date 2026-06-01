@@ -122,7 +122,7 @@ const ValidateRow: React.FC<{
     }, [onActivate]);
     // UXP's native <button> drops text content (verified visually in
     // other panels), so we keep the div + role="button" pattern.
-    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
+
     return (
         <div
             className={`validate-row ${severity}`}

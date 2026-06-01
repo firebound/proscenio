@@ -11,17 +11,22 @@ Pure Python with bpy types only at the type-hint boundary, lazy via
 ``TYPE_CHECKING`` - the runtime path uses ``getattr`` and never
 imports bpy. Tests can call into the helpers with
 ``SimpleNamespace(proscenio=...)`` shaped objects.
+
+The return type ``object | None`` reflects that the PropertyGroup's
+exact class depends on which Blender / addon build registered it;
+callers read the typed fields they expect via subsequent ``getattr``
+or by reaching for the helpers in ``core/pg_cp_fallback.py``.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import bpy
 
 
-def scene_props(context: bpy.types.Context) -> Any | None:
+def scene_props(context: bpy.types.Context) -> object | None:
     """Return ``context.scene.proscenio`` or ``None`` when not registered.
 
     The PropertyGroup is registered in ``properties/__init__.py`` via
@@ -35,7 +40,7 @@ def scene_props(context: bpy.types.Context) -> Any | None:
     return getattr(scene, "proscenio", None)
 
 
-def object_props(obj: bpy.types.Object | None) -> Any | None:
+def object_props(obj: bpy.types.Object | None) -> object | None:
     """Return ``obj.proscenio`` or ``None`` when not registered.
 
     ``obj`` is allowed to be ``None`` so callers can chain through

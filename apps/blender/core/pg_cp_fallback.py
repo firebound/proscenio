@@ -9,37 +9,58 @@ implementations of this protocol existed in ``writer.py``
 (``_read_proscenio_field``, ``_is_slot_empty``, ``_read_slot_default``).
 This module collapses them.
 
-Pure Python. ``Any`` typing on the obj parameter so the writer can call
-into the helper with both real ``bpy.types.Object`` instances and the
-``SimpleNamespace`` mocks used by the pytest suite.
+Pure Python. The ``obj`` parameter is typed against a Protocol that
+matches both ``bpy.types.Object`` instances and the ``SimpleNamespace``
+mocks used by the pytest suite (both implement ``getattr`` access and
+either implement ``.get`` or do not - the helper guards both paths).
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Protocol, TypeVar, cast, runtime_checkable
+
+T = TypeVar("T")
 
 
-def read_field(obj: Any, *, pg_field: str, cp_key: str, default: Any) -> Any:
+@runtime_checkable
+class _CPCarrier(Protocol):
+    """Anything that exposes a ``.get(key, default)`` Custom Property reader.
+
+    Both ``bpy.types.Object`` (CP access via dict-like ``.get``) and
+    pytest's ``SimpleNamespace`` mocks with a stubbed ``get`` satisfy
+    this Protocol. Objects without ``.get`` skip the CP fallback.
+    """
+
+    def get(self, key: str, default: object | None = None) -> object: ...
+
+
+def read_field(obj: object, *, pg_field: str, cp_key: str, default: T) -> T:
     """Read a Proscenio field, PropertyGroup first, Custom Property fallback.
 
     Returns ``default`` when neither path is available. The PG path
     wins even when the field's value equals the type default - callers
     that want "explicit override only" semantics should test the PG
     presence themselves.
+
+    The CP fallback is trusted to return a value compatible with ``T``:
+    callers always know the field's domain type (int hframes, str type
+    discriminator, etc) and the PropertyGroup-side writes are typed by
+    Blender's PG schema. An incompatible CP value is a writer bug worth
+    crashing on at the call-site rather than papering over here.
     """
     props = getattr(obj, "proscenio", None)
     if props is not None:
         value = getattr(props, pg_field, None)
         if value is not None:
-            return value
-    if hasattr(obj, "get"):
+            return cast(T, value)
+    if isinstance(obj, _CPCarrier):
         cp_value = obj.get(cp_key, None)
         if cp_value is not None:
-            return cp_value
+            return cast(T, cp_value)
     return default
 
 
-def read_bool_flag(obj: Any, *, pg_field: str, cp_key: str) -> bool:
+def read_bool_flag(obj: object, *, pg_field: str, cp_key: str) -> bool:
     """Read a boolean flag, PG first, CP fallback. Defaults to ``False``.
 
     Specialised on bool because the most common shape (``is_slot``,
@@ -57,6 +78,6 @@ def read_bool_flag(obj: Any, *, pg_field: str, cp_key: str) -> bool:
         pg_value = getattr(props, pg_field, _missing)
         if pg_value is not _missing and pg_value is not None:
             return bool(pg_value)
-    if hasattr(obj, "get"):
+    if isinstance(obj, _CPCarrier):
         return bool(obj.get(cp_key, False))
     return False

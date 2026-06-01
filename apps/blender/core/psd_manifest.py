@@ -1,26 +1,27 @@
-"""PSD manifest v1 parser (the photoshop importer).
+"""PSD manifest v2 reader (the photoshop importer).
 
-Reads the JSON document emitted by the Photoshop UXP plugin (and
-the retired JSX exporter before it) and returns typed records. Pure
-Python - no bpy, no Pillow, no jsonschema required at runtime
-(validation falls back to a minimal in-process
-shape check when ``jsonschema`` is absent - Blender's bundled Python
-typically does not ship it; the dedicated CI ``validate-schema`` job
-covers strict schema validation).
+Reads the JSON document emitted by the Photoshop UXP plugin and
+returns typed pydantic records. Pure Python - no bpy, no Pillow.
 
 Usage::
 
     from blender_addon.core import psd_manifest
-    manifest = psd_manifest.load(Path("firebound/firebound.json"))
-    for layer in manifest.layers:
-        if layer.kind == "polygon":
-            stamp_polygon(layer)
+    loaded = psd_manifest.load(Path("firebound/firebound.json"))
+    for layer in loaded.manifest.layers:
+        if layer.kind in ("polygon", "mesh"):
+            stamp_polygon(layer, loaded)
         else:
-            stamp_sprite_frame(layer)
+            stamp_sprite_frame(layer, loaded)
 
-The data classes mirror the JSON Schema 2020-12 contract under
-``packages/models/schemas/psd_manifest.schema.json``. Bumping the schema requires
-bumping ``MANIFEST_FORMAT_VERSION`` here in lockstep.
+The data shape is defined by ``proscenio_models.PsdManifest`` (the
+``packages/models/`` pydantic source of truth). The JSON Schema artifact
+at ``packages/models/schemas/psd_manifest.schema.json`` is regenerated
+from that model.
+
+v1 manifests (pre-the photoshop tag system, JSX-era exporter) are no
+longer supported. v1 has been retired with the JSX exporter; the
+``format_version`` field is now constrained to ``2`` at the pydantic
+layer, and v1 documents fail validation at parse time.
 """
 
 from __future__ import annotations
@@ -28,314 +29,137 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+
+from proscenio_models import (
+    BlendMode,
+    FrameEntry,
+    Layer,
+    PolygonLayer,
+    PsdManifest,
+    SpriteFrameLayer,
+)
+from pydantic import ValidationError
 
 MANIFEST_FORMAT_VERSION = 2
-SUPPORTED_MANIFEST_VERSIONS: frozenset[int] = frozenset({1, 2})
 
-_ROOT = "<root>"
+# Re-exported for callers that still import these names through this module.
+__all__ = [
+    "MANIFEST_FORMAT_VERSION",
+    "BlendMode",
+    "FrameEntry",
+    "FrameRef",
+    "Layer",
+    "LoadedManifest",
+    "ManifestError",
+    "PolygonLayer",
+    "PsdManifest",
+    "SpriteFrameLayer",
+    "load",
+    "parse",
+    "resolve_path",
+]
 
-LayerKind = Literal["polygon", "sprite_frame", "mesh"]
-
-
-@dataclass(frozen=True)
-class FrameRef:
-    """One frame inside a sprite_frame layer."""
-
-    index: int
-    path: str  # relative to the manifest file
-
-
-BlendMode = Literal["normal", "multiply", "screen", "additive"]
-
-
-@dataclass(frozen=True)
-class PolygonLayer:
-    """Single PNG → single quad mesh. ``mesh`` is a deformable polygon hint."""
-
-    kind: Literal["polygon", "mesh"]
-    name: str
-    path: str
-    position: tuple[int, int]
-    size: tuple[int, int]
-    z_order: int
-    origin: tuple[int, int] | None = None
-    blend_mode: BlendMode | None = None
-    subfolder: str | None = None
-
-
-@dataclass(frozen=True)
-class SpriteFrameLayer:
-    """N frames → single quad mesh sized to the largest frame."""
-
-    kind: Literal["sprite_frame"]
-    name: str
-    position: tuple[int, int]
-    size: tuple[int, int]
-    z_order: int
-    frames: tuple[FrameRef, ...]
-    origin: tuple[int, int] | None = None
-    blend_mode: BlendMode | None = None
-    subfolder: str | None = None
-
-
-Layer = PolygonLayer | SpriteFrameLayer
-
-
-@dataclass(frozen=True)
-class Manifest:
-    """Top-level manifest record."""
-
-    format_version: int
-    doc: str
-    size: tuple[int, int]
-    pixels_per_unit: float
-    layers: tuple[Layer, ...]
-    source_path: Path  # the manifest file itself; used to resolve relative paths
-    anchor: tuple[int, int] | None = None
+# Back-compat alias: legacy callers used the dataclass name ``FrameRef``;
+# pydantic ships the same record under ``FrameEntry``. The alias keeps
+# import sites working while the public name on the model stays aligned
+# with the schema.
+FrameRef = FrameEntry
 
 
 class ManifestError(Exception):
-    """Raised when the manifest cannot be parsed or is structurally invalid.
+    """Raised when the manifest cannot be read or fails pydantic validation.
 
-    Strict JSON Schema validation lives in CI (``check-jsonschema``);
-    this class surfaces the in-process shape failures that survive
-    Blender's bundled Python (no jsonschema dependency assumed).
+    Wraps both IO / JSON-decode failures and ``pydantic.ValidationError``
+    so callers have a single exception type to handle.
     """
 
 
-def load(path: Path | str) -> Manifest:
-    """Load and parse a manifest from disk. Raises ``ManifestError`` on shape mismatch."""
+@dataclass(frozen=True)
+class LoadedManifest:
+    """A parsed PSD manifest plus its on-disk source path.
+
+    ``source_path`` lets the importer resolve layer-relative paths
+    (``layer.path``, ``frame.path``) against the manifest's directory.
+    """
+
+    manifest: PsdManifest
+    source_path: Path
+
+    # The pydantic ``PsdManifest`` fields are exposed as plain delegating
+    # properties so the importer can write ``loaded.layers``,
+    # ``loaded.size``, etc, without dereferencing the inner model at
+    # every call site. Read-only by design.
+
+    @property
+    def format_version(self) -> int:
+        return self.manifest.format_version
+
+    @property
+    def doc(self) -> str:
+        return self.manifest.doc
+
+    @property
+    def size(self) -> list[int]:
+        return self.manifest.size
+
+    @property
+    def pixels_per_unit(self) -> float:
+        return self.manifest.pixels_per_unit
+
+    @property
+    def anchor(self) -> list[int] | None:
+        return self.manifest.anchor
+
+    @property
+    def layers(self) -> list[Layer]:
+        return self.manifest.layers
+
+
+def load(path: Path | str) -> LoadedManifest:
+    """Load and validate a manifest from disk.
+
+    Raises ``ManifestError`` on IO failure, JSON decode failure, or
+    pydantic validation failure.
+    """
     p = Path(path)
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ManifestError(f"could not read manifest at {p}: {exc}") from exc
-    return parse(raw, source_path=p)
+    manifest = parse(raw)
+    return LoadedManifest(manifest=manifest, source_path=p)
 
 
-def parse(raw: Any, source_path: Path | None = None) -> Manifest:
-    """Parse a pre-loaded JSON document into a :class:`Manifest`.
+def parse(raw: object) -> PsdManifest:
+    """Parse a pre-loaded JSON document into a :class:`PsdManifest`.
 
-    Accepts both ``format_version: 2`` (the photoshop tag system (manifest v2) - anchor, origin,
-    blend_mode, subfolder, mesh kind) and the legacy ``format_version: 1``
-    (the photoshop importer v1). v1 documents materialise as v2-shaped records with
-    the new optional fields left as ``None`` / kind constrained to
-    ``polygon`` | ``sprite_frame``.
+    Raises ``ManifestError`` when the document fails pydantic validation
+    (unsupported format_version, missing required field, malformed
+    layer entry, etc).
     """
-    _require_dict(raw, _ROOT)
-    fv = _require_field(raw, "format_version", _ROOT)
-    if fv not in SUPPORTED_MANIFEST_VERSIONS:
-        raise ManifestError(
-            f"unsupported manifest format_version {fv!r}; "
-            f"expected one of {sorted(SUPPORTED_MANIFEST_VERSIONS)}"
-        )
-    doc = _require_field(raw, "doc", _ROOT)
-    if not isinstance(doc, str) or not doc:
-        raise ManifestError(f"{_ROOT}.doc must be a non-empty string, got {doc!r}")
-    size = _parse_uint_pair(_require_field(raw, "size", _ROOT), f"{_ROOT}.size")
-    ppu = _require_field(raw, "pixels_per_unit", _ROOT)
-    if not isinstance(ppu, (int, float)) or ppu <= 0:
-        raise ManifestError(f"{_ROOT}.pixels_per_unit must be a positive number, got {ppu!r}")
-    layers_raw = _require_field(raw, "layers", _ROOT)
-    if not isinstance(layers_raw, list):
-        raise ManifestError(f"{_ROOT}.layers must be an array, got {type(layers_raw).__name__}")
-    layers = tuple(_parse_layer(entry, idx, version=fv) for idx, entry in enumerate(layers_raw))
-    anchor = None
-    if fv >= 2 and "anchor" in raw:
-        anchor = _parse_uint_pair(raw["anchor"], f"{_ROOT}.anchor")
-    elif fv == 1 and "anchor" in raw:
-        raise ManifestError(f"{_ROOT}.anchor is not supported in format_version 1")
-    return Manifest(
-        format_version=fv,
-        doc=doc,
-        size=size,
-        pixels_per_unit=float(ppu),
-        layers=layers,
-        source_path=Path(source_path) if source_path is not None else Path("."),
-        anchor=anchor,
-    )
+    try:
+        return PsdManifest.model_validate(raw)
+    except ValidationError as exc:
+        raise ManifestError(_format_validation_error(exc)) from exc
 
 
-def resolve_path(manifest: Manifest, relative: str) -> Path:
+def resolve_path(loaded: LoadedManifest, relative: str) -> Path:
     """Resolve a layer- or frame-relative path against the manifest's directory."""
-    return (manifest.source_path.parent / relative).resolve()
+    return (loaded.source_path.parent / relative).resolve()
 
 
-_BLEND_MODES: frozenset[str] = frozenset(("normal", "multiply", "screen", "additive"))
-_POLYGON_KEYS: frozenset[str] = frozenset(
-    (
-        "kind",
-        "name",
-        "path",
-        "position",
-        "size",
-        "z_order",
-        "origin",
-        "blend_mode",
-        "subfolder",
-    )
-)
-_SPRITE_FRAME_KEYS: frozenset[str] = frozenset(
-    (
-        "kind",
-        "name",
-        "position",
-        "size",
-        "z_order",
-        "frames",
-        "origin",
-        "blend_mode",
-        "subfolder",
-    )
-)
-_POLYGON_KEYS_V1: frozenset[str] = frozenset(
-    ("kind", "name", "path", "position", "size", "z_order")
-)
-_SPRITE_FRAME_KEYS_V1: frozenset[str] = frozenset(
-    ("kind", "name", "position", "size", "z_order", "frames")
-)
+def _format_validation_error(exc: ValidationError) -> str:
+    """Render a pydantic ValidationError into a single ManifestError message.
 
-
-def _parse_layer(entry: Any, idx: int, version: int) -> Layer:
-    label = f"<root>.layers[{idx}]"
-    _require_dict(entry, label)
-    kind = _require_field(entry, "kind", label)
-    if kind == "polygon" or kind == "mesh":
-        if kind == "mesh" and version < 2:
-            raise ManifestError(f"{label}.kind 'mesh' is only valid in format_version >= 2")
-        return _parse_polygon(entry, label, kind, version=version)
-    if kind == "sprite_frame":
-        return _parse_sprite_frame(entry, label, version=version)
-    raise ManifestError(f"{label}.kind must be 'polygon', 'mesh', or 'sprite_frame', got {kind!r}")
-
-
-def _parse_polygon(
-    entry: dict[str, Any],
-    label: str,
-    kind: Literal["polygon", "mesh"],
-    version: int,
-) -> PolygonLayer:
-    name = _require_str(entry, "name", label)
-    path = _require_str(entry, "path", label)
-    position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")
-    size = _parse_uint_pair(_require_field(entry, "size", label), f"{label}.size")
-    z_order = _require_uint(entry, "z_order", label)
-    allowed = _POLYGON_KEYS if version >= 2 else _POLYGON_KEYS_V1
-    extra = set(entry) - allowed
-    if extra:
-        raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
-    return PolygonLayer(
-        kind=kind,
-        name=name,
-        path=path,
-        position=position,
-        size=size,
-        z_order=z_order,
-        origin=_optional_uint_pair(entry, "origin", label) if version >= 2 else None,
-        blend_mode=_optional_blend_mode(entry, label) if version >= 2 else None,
-        subfolder=_optional_str(entry, "subfolder", label) if version >= 2 else None,
-    )
-
-
-def _parse_sprite_frame(entry: dict[str, Any], label: str, version: int) -> SpriteFrameLayer:
-    name = _require_str(entry, "name", label)
-    position = _parse_uint_pair(_require_field(entry, "position", label), f"{label}.position")
-    size = _parse_uint_pair(_require_field(entry, "size", label), f"{label}.size")
-    z_order = _require_uint(entry, "z_order", label)
-    frames_raw = _require_field(entry, "frames", label)
-    if not isinstance(frames_raw, list) or len(frames_raw) < 2:
-        raise ManifestError(f"{label}.frames must be an array of >= 2 entries, got {frames_raw!r}")
-    frames = tuple(_parse_frame(f, f"{label}.frames[{i}]") for i, f in enumerate(frames_raw))
-    allowed = _SPRITE_FRAME_KEYS if version >= 2 else _SPRITE_FRAME_KEYS_V1
-    extra = set(entry) - allowed
-    if extra:
-        raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
-    return SpriteFrameLayer(
-        kind="sprite_frame",
-        name=name,
-        position=position,
-        size=size,
-        z_order=z_order,
-        frames=frames,
-        origin=_optional_uint_pair(entry, "origin", label) if version >= 2 else None,
-        blend_mode=_optional_blend_mode(entry, label) if version >= 2 else None,
-        subfolder=_optional_str(entry, "subfolder", label) if version >= 2 else None,
-    )
-
-
-def _optional_uint_pair(entry: dict[str, Any], key: str, label: str) -> tuple[int, int] | None:
-    if key not in entry:
-        return None
-    return _parse_uint_pair(entry[key], f"{label}.{key}")
-
-
-def _optional_str(entry: dict[str, Any], key: str, label: str) -> str | None:
-    if key not in entry:
-        return None
-    value = entry[key]
-    if not isinstance(value, str) or not value:
-        raise ManifestError(f"{label}.{key} must be a non-empty string, got {value!r}")
-    return value
-
-
-def _optional_blend_mode(entry: dict[str, Any], label: str) -> BlendMode | None:
-    if "blend_mode" not in entry:
-        return None
-    value = entry["blend_mode"]
-    if value not in _BLEND_MODES:
-        raise ManifestError(
-            f"{label}.blend_mode must be one of {sorted(_BLEND_MODES)}, got {value!r}"
-        )
-    return cast("BlendMode", value)
-
-
-def _parse_frame(entry: Any, label: str) -> FrameRef:
-    _require_dict(entry, label)
-    index = _require_uint(entry, "index", label)
-    path = _require_str(entry, "path", label)
-    extra = set(entry) - {"index", "path"}
-    if extra:
-        raise ManifestError(f"{label} has unexpected key(s): {sorted(extra)}")
-    return FrameRef(index=index, path=path)
-
-
-def _require_dict(value: Any, label: str) -> None:
-    if not isinstance(value, dict):
-        raise ManifestError(f"{label} must be an object, got {type(value).__name__}")
-
-
-def _require_field(entry: dict[str, Any], key: str, label: str) -> Any:
-    if key not in entry:
-        raise ManifestError(f"{label} is missing required field {key!r}")
-    return entry[key]
-
-
-def _require_str(entry: dict[str, Any], key: str, label: str) -> str:
-    value = _require_field(entry, key, label)
-    if not isinstance(value, str) or not value:
-        raise ManifestError(f"{label}.{key} must be a non-empty string, got {value!r}")
-    return value
-
-
-def _require_uint(entry: dict[str, Any], key: str, label: str) -> int:
-    value = _require_field(entry, key, label)
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise ManifestError(f"{label}.{key} must be a non-negative integer, got {value!r}")
-    return value
-
-
-def _parse_uint_pair(value: Any, label: str) -> tuple[int, int]:
-    if not isinstance(value, list) or len(value) != 2:
-        raise ManifestError(f"{label} must be a 2-element array, got {value!r}")
-    a, b = value
-    if (
-        not isinstance(a, int)
-        or isinstance(a, bool)
-        or not isinstance(b, int)
-        or isinstance(b, bool)
-        or a < 0
-        or b < 0
-    ):
-        raise ManifestError(f"{label} must contain non-negative integers, got {value!r}")
-    return (a, b)
+    Picks the first error so the message stays a single sentence; the
+    full report is still available via ``ManifestError.__cause__.errors()``
+    when callers want the structured view.
+    """
+    errors = exc.errors()
+    if not errors:
+        return "PSD manifest failed validation"
+    first = errors[0]
+    loc = ".".join(str(part) for part in first["loc"])
+    msg = first["msg"]
+    label = loc or "<root>"
+    return f"{label}: {msg}"

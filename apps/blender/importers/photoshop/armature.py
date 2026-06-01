@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import bpy
 
+from ...core._bpy_compat import expect_scene
+
 DEFAULT_ROOT_BONE_NAME = "root"
 ROOT_BONE_LENGTH = 0.05
 
@@ -28,8 +30,11 @@ def build_root_armature(
     """
     arm_data = bpy.data.armatures.new(name)
     arm_obj = bpy.data.objects.new(name, arm_data)
-    bpy.context.scene.collection.objects.link(arm_obj)
-    bpy.context.view_layer.objects.active = arm_obj
+    expect_scene(bpy.context.scene).collection.objects.link(arm_obj)
+    view_layer = bpy.context.view_layer
+    if view_layer is None:
+        raise RuntimeError("Proscenio: bpy.context.view_layer is None - cannot enter Edit mode")
+    view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new(root_bone_name)
     bone.head = (0.0, 0.0, 0.0)

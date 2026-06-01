@@ -25,6 +25,29 @@ declare module "uxp" {
         formats: { utf8: "utf8"; binary: "binary" };
     };
 
+    /** XMP metadata bindings exposed by PS 25 / CC 2024 and later.
+     *  Older Photoshop builds ship a UXP module without the `xmp`
+     *  member; consumers should call `isXmpAvailable()` from
+     *  `src/io/xmp.ts` rather than dereferencing the field directly. */
+    export const xmp: XmpModule | undefined;
+
+    export interface XmpModule {
+        XMPMeta: XmpMetaCtor;
+    }
+
+    export interface XmpMetaCtor {
+        new (raw?: string): XmpMetaInstance;
+        registerNamespace?(uri: string, prefix: string): void;
+    }
+
+    export interface XmpMetaInstance {
+        serialize(): string;
+        setProperty(ns: string, key: string, value: string): void;
+        getProperty(ns: string, key: string): { value?: string } | undefined;
+        deleteProperty(ns: string, key: string): void;
+        doesPropertyExist?(ns: string, key: string): boolean;
+    }
+
     export interface LocalFileSystem {
         getFolder(): Promise<UxpFolder>;
         // Single-file picker. `types` accepts an array of accepted
@@ -60,6 +83,11 @@ declare module "uxp" {
     export interface UxpFile extends UxpEntry {
         write(contents: string | ArrayBuffer, options?: { format?: "utf8" | "binary"; append?: boolean }): Promise<void>;
         read(options?: { format?: "utf8" | "binary" }): Promise<string | ArrayBuffer>;
+        /** Modern UXP exposes the parent folder of a picked entry
+         *  directly. Older host builds (and a few PS regressions) drop
+         *  this field; consumers must guard with `?.` and fall back to
+         *  reconstructing the parent path from `nativePath`. */
+        readonly parent?: UxpFolder;
     }
 }
 
@@ -74,7 +102,7 @@ declare module "photoshop" {
          *  return a sync handle, recent builds return
          *  `Promise<handle>`. Consumers must probe at runtime. */
         addNotificationListener(
-            events: ReadonlyArray<{ event: string }>,
+            events: readonly { event: string }[],
             callback: (event: { event: string }, descriptor: unknown) => void,
         ): Promise<PsNotificationListener> | PsNotificationListener | void;
     };
@@ -153,6 +181,26 @@ declare module "photoshop" {
         bottom: number;
     }
 
+    /** UXP sometimes wraps numeric coordinates in a `UnitValue`-like
+     *  object whose numeric payload lives on `value` or `_value`. The
+     *  selection bounds reader handles both shapes. */
+    export interface PsUnitNumber {
+        readonly value?: number;
+        readonly _value?: number;
+    }
+
+    /** Selection geometry reported by `PsDocument.selection`. Bounds may
+     *  carry either plain numbers or `PsUnitNumber` wrappers depending
+     *  on PS version. */
+    export interface PsSelection {
+        readonly bounds?: {
+            readonly left?: number | PsUnitNumber;
+            readonly top?: number | PsUnitNumber;
+            readonly right?: number | PsUnitNumber;
+            readonly bottom?: number | PsUnitNumber;
+        };
+    }
+
     export interface PsLayer {
         name: string;
         visible: boolean;
@@ -163,6 +211,12 @@ declare module "photoshop" {
         /** Parent in the layer tree. Either an enclosing group layer
          *  or the host document when the layer sits at the root. */
         readonly parent?: PsLayer | PsDocument;
+        /** XMP packet stamped onto the layer. PS 25 / CC 2024 exposes
+         *  it as a string directly; some host builds nest it under
+         *  `metadata.xmp`. See `src/io/xmp.ts` for the read / write
+         *  contract. */
+        xmpMetadata?: string;
+        readonly metadata?: { xmp?: string };
         duplicate(target?: PsDocument | PsLayer): Promise<PsLayer>;
         // Translate accepts deltas in pixels (UnitValue-equivalent). UXP
         // also accepts plain numbers as pixels.
@@ -196,6 +250,11 @@ declare module "photoshop" {
         readonly saved: boolean;
         readonly path: string | null;
         readonly guides?: PsGuide[];
+        /** Active marquee / lasso / region selection. Absent when the
+         *  user has no selection; `bounds` is also optional because UXP
+         *  reports the empty selection as `{ }` instead of clearing
+         *  the field. */
+        readonly selection?: PsSelection;
         trim(trimType: number, top?: boolean, bottom?: boolean, left?: boolean, right?: boolean): Promise<void>;
         closeWithoutSaving(): Promise<void>;
         // Create an empty layer group at the top of the stack.

@@ -47,55 +47,65 @@ function formsEqual(a: DetailForm, b: DetailForm): boolean {
     );
 }
 
-function diffFolder(form: DetailForm, baseline: DetailForm): TagBag["folder"] | undefined | "skip" {
+// Sentinel returned by `diff*` helpers when the form value matches
+// the baseline. Distinct symbol so the diff type cannot collapse with
+// `string`-typed fields (TagBag.folder, TagBag.path, etc).
+const SKIP = Symbol("skip");
+type Diff<T> = T | undefined | typeof SKIP;
+
+function diffFolder(form: DetailForm, baseline: DetailForm): Diff<TagBag["folder"]> {
     const value = form.folder.trim();
-    if (value === baseline.folder.trim()) return "skip";
+    if (value === baseline.folder.trim()) return SKIP;
     return value.length === 0 ? undefined : value;
 }
 
-function diffPath(form: DetailForm, baseline: DetailForm): TagBag["path"] | undefined | "skip" {
+function diffPath(form: DetailForm, baseline: DetailForm): Diff<TagBag["path"]> {
     const value = form.path.trim();
-    if (value === baseline.path.trim()) return "skip";
+    if (value === baseline.path.trim()) return SKIP;
     if (value.length === 0) return undefined;
-    if (value.includes("/") || value.includes("\\") || value === "." || value === "..") return "skip";
+    if (value.includes("/") || value.includes("\\") || value === "." || value === "..") return SKIP;
     return value;
 }
 
-function diffScale(form: DetailForm, baseline: DetailForm): TagBag["scale"] | undefined | "skip" {
+function diffScale(form: DetailForm, baseline: DetailForm): Diff<TagBag["scale"]> {
     const value = form.scale.trim();
-    if (value === baseline.scale.trim()) return "skip";
+    if (value === baseline.scale.trim()) return SKIP;
     if (value.length === 0) return undefined;
-    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) return "skip";
+    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) return SKIP;
     const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) return "skip";
+    if (!Number.isFinite(n) || n <= 0) return SKIP;
     return n;
 }
 
-function diffOrigin(form: DetailForm, baseline: DetailForm): TagBag["origin"] | undefined | "skip" {
+function diffOrigin(form: DetailForm, baseline: DetailForm): Diff<TagBag["origin"]> {
     const ox = form.originX.trim();
     const oy = form.originY.trim();
-    if (ox === baseline.originX.trim() && oy === baseline.originY.trim()) return "skip";
+    if (ox === baseline.originX.trim() && oy === baseline.originY.trim()) return SKIP;
     if (ox.length === 0 && oy.length === 0) return undefined;
     const x = Number.parseFloat(ox);
     const y = Number.parseFloat(oy);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return "skip";
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return SKIP;
     return [x, y];
 }
 
-function diffNamePattern(form: DetailForm, baseline: DetailForm): TagBag["namePattern"] | undefined | "skip" {
+function diffNamePattern(form: DetailForm, baseline: DetailForm): Diff<TagBag["namePattern"]> {
     const value = form.namePattern.trim();
-    if (value === baseline.namePattern.trim()) return "skip";
+    if (value === baseline.namePattern.trim()) return SKIP;
     if (value.length === 0) return undefined;
-    if (!value.includes("*")) return "skip";
+    if (!value.includes("*")) return SKIP;
     return value;
 }
 
 function applyDiff<K extends keyof TagBag>(
     changes: Partial<TagBag>,
     key: K,
-    diff: TagBag[K] | undefined | "skip",
+    diff: Diff<TagBag[K]>,
 ): void {
-    if (diff === "skip") return;
+    if (diff === SKIP) return;
+    if (diff === undefined) {
+        delete changes[key];
+        return;
+    }
     changes[key] = diff;
 }
 
@@ -106,7 +116,11 @@ function computeChanges(form: DetailForm, baseline: DetailForm): Partial<TagBag>
     applyDiff(changes, "scale", diffScale(form, baseline));
     applyDiff(changes, "origin", diffOrigin(form, baseline));
     if (form.originMarker !== baseline.originMarker) {
-        changes.originMarker = form.originMarker ? true : undefined;
+        if (form.originMarker) {
+            changes.originMarker = true;
+        } else {
+            delete changes.originMarker;
+        }
     }
     applyDiff(changes, "namePattern", diffNamePattern(form, baseline));
     return changes;
@@ -148,31 +162,31 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
     }, [baseline]);
 
     const onFolder = React.useCallback(
-        (e: React.SyntheticEvent) => setField("folder", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("folder", (e.target as HTMLInputElement).value); },
         [setField],
     );
     const onPath = React.useCallback(
-        (e: React.SyntheticEvent) => setField("path", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("path", (e.target as HTMLInputElement).value); },
         [setField],
     );
     const onScale = React.useCallback(
-        (e: React.SyntheticEvent) => setField("scale", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("scale", (e.target as HTMLInputElement).value); },
         [setField],
     );
     const onOriginX = React.useCallback(
-        (e: React.SyntheticEvent) => setField("originX", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("originX", (e.target as HTMLInputElement).value); },
         [setField],
     );
     const onOriginY = React.useCallback(
-        (e: React.SyntheticEvent) => setField("originY", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("originY", (e.target as HTMLInputElement).value); },
         [setField],
     );
     const onOriginMarker = React.useCallback(
-        (e: React.SyntheticEvent) => setField("originMarker", (e.target as HTMLInputElement).checked),
+        (e: React.SyntheticEvent) => { setField("originMarker", (e.target as HTMLInputElement).checked); },
         [setField],
     );
     const onNamePattern = React.useCallback(
-        (e: React.SyntheticEvent) => setField("namePattern", (e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { setField("namePattern", (e.target as HTMLInputElement).value); },
         [setField],
     );
 

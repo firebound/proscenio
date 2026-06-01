@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import bpy
+from proscenio_models import Slot
 
-from ....core.cp_keys import (  # type: ignore[import-not-found]
-    PROSCENIO_IS_SLOT,
-    PROSCENIO_SLOT_DEFAULT,
-)
-from ....core.pg_cp_fallback import read_bool_flag  # type: ignore[import-not-found]
-from ....core.slot_emit import (  # type: ignore[import-not-found]
-    SlotInput,
-    build_slots,
-)
+from ....core._bpy_compat import iter_objects
+from ....core.cp_keys import PROSCENIO_IS_SLOT, PROSCENIO_SLOT_DEFAULT
+from ....core.pg_cp_fallback import read_bool_flag
+from ....core.slot_emit import SlotInput, build_slots
 
 
-def build_slots_for_scene(scene: bpy.types.Scene) -> list[dict[str, object]]:
+def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
     """Walk Empty objects flagged with ``proscenio.is_slot`` and emit slots[].
 
     Bpy walker - delegates the schema-shaped projection to
@@ -26,7 +22,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[dict[str, object]]:
     in ``sprites[]``.
     """
     slot_inputs: list[SlotInput] = []
-    for obj in scene.objects:
+    for obj in iter_objects(scene):
         if obj.type != "EMPTY":
             continue
         if not is_slot_empty(obj):
@@ -41,8 +37,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[dict[str, object]]:
                 attachments=attachments,
             )
         )
-    result: list[dict[str, object]] = build_slots(slot_inputs)
-    return result
+    return build_slots(slot_inputs)
 
 
 def is_slot_empty(obj: bpy.types.Object) -> bool:

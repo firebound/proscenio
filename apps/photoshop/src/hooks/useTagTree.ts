@@ -46,7 +46,7 @@ export function useTagTree(version: number): UseTagTree {
     const noDocRef = React.useRef<boolean>(true);
 
     const syncOnce = React.useCallback(() => {
-        if (typeof document !== "undefined" && document.hidden === true) return;
+        if (typeof document !== "undefined" && document.hidden) return;
         const snap = readTree(treeRef.current);
         // `buildTagTreeReusing` preserves node refs for unchanged
         // subtrees, so a top-level element-wise compare is enough
@@ -69,7 +69,7 @@ export function useTagTree(version: number): UseTagTree {
     React.useEffect(() => {
         let id: ReturnType<typeof setInterval> | null = null;
         const start = (): void => {
-            const hidden = typeof document !== "undefined" && document.hidden === true;
+            const hidden = typeof document !== "undefined" && document.hidden;
             const interval = hidden ? IDLE_POLL_MS : ACTIVE_POLL_MS;
             id = setInterval(syncOnce, interval);
         };
@@ -95,7 +95,7 @@ export function useTagTree(version: number): UseTagTree {
         };
     }, [syncOnce]);
 
-    const refresh = React.useCallback(() => setTick((t) => t + 1), []);
+    const refresh = React.useCallback(() => { setTick((t) => t + 1); }, []);
 
     const rename = React.useCallback(
         async (layerPath: readonly string[], newName: string) => {

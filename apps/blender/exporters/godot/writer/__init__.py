@@ -24,9 +24,8 @@ by the user so they live in the XZ world plane.
 
 Module organization (the code-modularity work):
 
-- ``_schema.py``         TypedDicts mirroring the JSON shapes
 - ``scene_discovery.py`` find armature, sprite meshes, atlas image
-- ``skeleton.py``        coord conversion + bone world transforms
+- ``skeleton.py``        coord conversion + bone world transforms + rest-local dataclass
 - ``sprites.py``         polygon body + sprite_frame metadata + weights
 - ``slots.py``           the slot system D8 slot Empty walker
 - ``slot_animations.py`` the slot system D5 slot_attachment track emission
@@ -39,17 +38,49 @@ function consumers should call.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Literal, NotRequired, TypedDict
 
 import bpy
+from proscenio_models import (
+    Animation,
+    ProscenioDocument,
+    Skeleton,
+    Slot,
+)
+from proscenio_models import (
+    Sprite as SpriteModel,
+)
 
-from ._schema import DEFAULT_PIXELS_PER_UNIT, SCHEMA_VERSION
 from .animations import build_animations
 from .scene_discovery import doc_name, find_armature, find_atlas_image, find_sprite_meshes
 from .skeleton import build_skeleton, compute_bone_world_godot
 from .slot_animations import build_slot_animations, merge_slot_animations_into
 from .slots import build_slots_for_scene
 from .sprites import build_sprite
+
+
+class _DocumentKwargs(TypedDict):
+    """Constructor kwargs for ``ProscenioDocument``.
+
+    The optional fields (``slots`` / ``atlas`` / ``animations``) are
+    ``NotRequired`` so the writer can omit them entirely when empty.
+    Passing them explicitly as ``None`` would mark them "set" and make
+    ``model_dump_json(exclude_unset=True)`` emit ``"field": null`` -
+    drifting the wire shape away from the goldens, which omit the key.
+    """
+
+    format_version: Literal[1]
+    name: str
+    pixels_per_unit: float
+    skeleton: Skeleton
+    sprites: list[SpriteModel]
+    slots: NotRequired[list[Slot]]
+    atlas: NotRequired[str]
+    animations: NotRequired[list[Animation]]
+
+
+SCHEMA_VERSION: Literal[1] = 1
+DEFAULT_PIXELS_PER_UNIT = 100.0
 
 __all__ = ["DEFAULT_PIXELS_PER_UNIT", "SCHEMA_VERSION", "export"]
 
@@ -59,6 +90,8 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     path_str = str(filepath)
     path = Path(bpy.path.abspath(path_str)) if path_str.startswith("//") else Path(path_str)
     scene = bpy.context.scene
+    if scene is None:
+        raise RuntimeError("Proscenio export needs an active scene")
 
     armature_obj = find_armature(scene)
     if armature_obj is None:
@@ -82,47 +115,42 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
 
     try:
         if hidden_state:
-            # Inside the try so that a failure during view_layer.update()
-            # still triggers the finally below and restores hide_viewport.
-            bpy.context.view_layer.update()
+            view_layer = bpy.context.view_layer
+            if view_layer is not None:
+                view_layer.update()
         sprites_out = [build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
     finally:
         for obj in hidden_state:
             obj.hide_viewport = True
 
-    doc: dict[str, Any] = {
+    slots = build_slots_for_scene(scene)
+    atlas = find_atlas_image(path)
+
+    animations = build_animations(scene.render.fps, pixels_per_unit, bone_rest_local)
+    slot_anims = build_slot_animations(scene)
+    if slot_anims:
+        animations = merge_slot_animations_into(animations, slot_anims)
+
+    # Assemble kwargs so empty optionals are omitted entirely (not passed
+    # as None). With exclude_unset=True, an explicit None still serialises
+    # as `"field": null`; omitting the key leaves the field unset so the
+    # dump drops it - matching the goldens.
+    kwargs: _DocumentKwargs = {
         "format_version": SCHEMA_VERSION,
         "name": doc_name(),
         "pixels_per_unit": pixels_per_unit,
         "skeleton": skeleton,
         "sprites": sprites_out,
     }
-
-    slots = build_slots_for_scene(scene)
     if slots:
-        doc["slots"] = slots
-
-    atlas = find_atlas_image(path)
-    if atlas:
-        doc["atlas"] = atlas
-
-    animations = build_animations(scene.render.fps, pixels_per_unit, bone_rest_local)
-    slot_anims = build_slot_animations(scene)
-    if slot_anims:
-        animations = merge_slot_animations_into(animations or [], slot_anims)
+        kwargs["slots"] = slots
+    if atlas is not None:
+        kwargs["atlas"] = atlas
     if animations:
-        doc["animations"] = animations
+        kwargs["animations"] = animations
 
-    # Serialize through the pydantic source of truth in
-    # packages/models/. `model_validate(doc)` enforces shape; the
-    # `model_dump_json(exclude_unset=True)` round-trip reproduces the
-    # writer's historical field order (mirrored in the model field
-    # declaration) without re-emitting optional fields the writer
-    # deliberately omitted.
-    from proscenio_models import ProscenioDocument
-
-    model = ProscenioDocument.model_validate(doc)
-    payload = model.model_dump_json(indent=2, exclude_unset=True)
+    document = ProscenioDocument(**kwargs)
+    payload = document.model_dump_json(indent=2, exclude_unset=True)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(payload, encoding="utf-8")

@@ -23,7 +23,7 @@ from typing import Literal
 
 import bpy
 
-from ...core import psd_manifest  # type: ignore[import-not-found]
+from ...core import psd_manifest
 from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
 from .planes import stamp_polygon, stamp_sprite_frame
 
@@ -91,7 +91,7 @@ def import_manifest(
 
 def _anchor_meshes_at_feet(
     meshes: list[bpy.types.Object],
-    manifest: psd_manifest.Manifest,
+    manifest: psd_manifest.LoadedManifest,
 ) -> None:
     """Shift every stamped mesh upward so the lowest figure point sits on Z=0.
 
@@ -120,7 +120,7 @@ def _anchor_meshes_at_feet(
         obj.location.z -= lowest_z
 
 
-def _armature_name(manifest: psd_manifest.Manifest) -> str:
+def _armature_name(manifest: psd_manifest.LoadedManifest) -> str:
     """Derive a root-armature name from the manifest's ``doc`` field."""
     stem = Path(manifest.doc).stem or "psd_import"
     return f"{stem}.rig"

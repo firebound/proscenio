@@ -79,3 +79,9 @@ reza
 braba
 vitest
 Vite
+getitem
+objs
+dataclasses
+mult
+scrn
+teste

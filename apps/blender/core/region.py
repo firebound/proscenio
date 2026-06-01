@@ -16,16 +16,34 @@ fallback. Real Blender ``bpy.types.Object`` satisfies it; tests pass a
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Protocol, TypeVar, cast, runtime_checkable
+
+T = TypeVar("T")
 
 
-def _read_field(obj: Any, field: str, custom_key: str, default: Any) -> Any:
-    """PropertyGroup-first read with Custom Property fallback (the authoring panel)."""
+@runtime_checkable
+class _CPLookup(Protocol):
+    """Anything that exposes ``__contains__`` + ``__getitem__`` (the legacy
+    Custom Property dict-style access). Both ``bpy.types.Object`` and the
+    pytest ``SimpleNamespace`` mocks satisfy it."""
+
+    def __contains__(self, key: object) -> bool: ...
+    def __getitem__(self, key: str) -> object: ...
+
+
+def _read_field(obj: object, field: str, custom_key: str, default: T) -> T:
+    """PropertyGroup-first read with Custom Property fallback (the authoring panel).
+
+    Same trust-the-CP-callsite contract as ``core.pg_cp_fallback.read_field``:
+    the caller declares ``default``'s type, and the CP path is cast back to
+    it. A writer that stores the wrong type under a Custom Property is a
+    bug at the writer site, not a defensive check here.
+    """
     props = getattr(obj, "proscenio", None)
     if props is not None and hasattr(props, field):
-        return getattr(props, field)
-    if hasattr(obj, "__contains__") and custom_key in obj:
-        return obj[custom_key]
+        return cast(T, getattr(props, field))
+    if isinstance(obj, _CPLookup) and custom_key in obj:
+        return cast(T, obj[custom_key])
     return default
 
 
@@ -45,19 +63,15 @@ def compute_region_from_uvs(uvs: list[list[float]]) -> list[float]:
     ]
 
 
-def resolve_region(obj: Any, uvs: list[list[float]]) -> list[float]:
+def resolve_region(obj: object, uvs: list[list[float]]) -> list[float]:
     """Return the manual region override or fall back to UV bounds."""
     mode = str(_read_field(obj, "region_mode", "proscenio_region_mode", "auto"))
     if mode != "manual":
         return compute_region_from_uvs(uvs)
-    rx = float(_read_field(obj, "region_x", "proscenio_region_x", 0.0))
-    ry = float(_read_field(obj, "region_y", "proscenio_region_y", 0.0))
-    rw = float(_read_field(obj, "region_w", "proscenio_region_w", 1.0))
-    rh = float(_read_field(obj, "region_h", "proscenio_region_h", 1.0))
-    return [round(rx, 6), round(ry, 6), round(rw, 6), round(rh, 6)]
+    return _manual_region_floats(obj)
 
 
-def manual_region_or_none(obj: Any) -> list[float] | None:
+def manual_region_or_none(obj: object) -> list[float] | None:
     """Return the manual region tuple, or ``None`` when in auto mode.
 
     Used by ``sprite_frame`` where auto mode means "omit ``texture_region``
@@ -66,6 +80,10 @@ def manual_region_or_none(obj: Any) -> list[float] | None:
     mode = str(_read_field(obj, "region_mode", "proscenio_region_mode", "auto"))
     if mode != "manual":
         return None
+    return _manual_region_floats(obj)
+
+
+def _manual_region_floats(obj: object) -> list[float]:
     rx = float(_read_field(obj, "region_x", "proscenio_region_x", 0.0))
     ry = float(_read_field(obj, "region_y", "proscenio_region_y", 0.0))
     rw = float(_read_field(obj, "region_w", "proscenio_region_w", 1.0))

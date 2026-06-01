@@ -1,7 +1,7 @@
 """Unit tests for the slot system slot emission helpers.
 
 Pure pytest, no Blender. Covers the bpy-free projection from
-``SlotInput`` records into the schema-shaped ``slots[]`` dicts the
+``SlotInput`` records into the typed ``Slot`` pydantic models the
 writer emits.
 """
 
@@ -13,61 +13,60 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.slot_emit import SlotInput, build_slot_dict, build_slots  # noqa: E402
+from core.slot_emit import SlotInput, build_slot, build_slots  # noqa: E402
 
 
 def test_minimal_slot_emits_name_and_attachments() -> None:
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(name="eye.swap", bone="", slot_default="", attachments=("a", "b"))
     )
-    assert slot == {
-        "name": "eye.swap",
-        "attachments": ["a", "b"],
-        "default": "a",  # falls back to sorted-first
-    }
+    assert slot.name == "eye.swap"
+    assert slot.attachments == ["a", "b"]
+    assert slot.default == "a"  # falls back to sorted-first
+    assert slot.bone is None
 
 
 def test_explicit_default_overrides_sorted_fallback() -> None:
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(name="s", bone="", slot_default="b", attachments=("a", "b"))
     )
-    assert slot["default"] == "b"
+    assert slot.default == "b"
 
 
 def test_invalid_default_falls_back_to_sorted_first() -> None:
     """Dangling slot_default (names a child that no longer exists) does not
     block emission - the writer still ships a usable default; the panel
     surfaces the broken reference via the validation pass."""
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(name="s", bone="", slot_default="zzz_missing", attachments=("b", "a"))
     )
-    assert slot["default"] == "a"
+    assert slot.default == "a"
 
 
 def test_bone_emitted_only_when_set() -> None:
-    with_bone = build_slot_dict(
+    with_bone = build_slot(
         SlotInput(name="s", bone="forearm.L", slot_default="", attachments=("a",))
     )
-    no_bone = build_slot_dict(
+    no_bone = build_slot(
         SlotInput(name="s", bone="", slot_default="", attachments=("a",))
     )
-    assert with_bone["bone"] == "forearm.L"
-    assert "bone" not in no_bone
+    assert with_bone.bone == "forearm.L"
+    assert no_bone.bone is None
 
 
 def test_empty_attachments_omits_default() -> None:
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(name="s", bone="", slot_default="", attachments=())
     )
-    assert slot["attachments"] == []
-    assert "default" not in slot
+    assert slot.attachments == []
+    assert slot.default is None
 
 
 def test_attachments_preserve_input_order() -> None:
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(name="s", bone="", slot_default="", attachments=("c", "a", "b"))
     )
-    assert slot["attachments"] == ["c", "a", "b"]
+    assert slot.attachments == ["c", "a", "b"]
 
 
 def test_build_slots_sorts_by_name_for_deterministic_output() -> None:
@@ -78,7 +77,7 @@ def test_build_slots_sorts_by_name_for_deterministic_output() -> None:
             SlotInput(name="middle", bone="", slot_default="", attachments=("a",)),
         ]
     )
-    assert [slot["name"] for slot in out] == ["aaa", "middle", "zee"]
+    assert [slot.name for slot in out] == ["aaa", "middle", "zee"]
 
 
 def test_build_slots_empty_input_yields_empty_list() -> None:
@@ -88,7 +87,7 @@ def test_build_slots_empty_input_yields_empty_list() -> None:
 def test_kind_agnostic_attachments_emit_unchanged() -> None:
     """D14: attachments[] is just string[] - the kind lives on each Sprite,
     not on the slot. Confirm slot emission ignores any kind hint."""
-    slot = build_slot_dict(
+    slot = build_slot(
         SlotInput(
             name="face.state",
             bone="head",
@@ -96,9 +95,9 @@ def test_kind_agnostic_attachments_emit_unchanged() -> None:
             attachments=("face.poly_open", "face.cycle_anim", "face.poly_closed"),
         )
     )
-    assert slot["attachments"] == [
+    assert slot.attachments == [
         "face.poly_open",
         "face.cycle_anim",
         "face.poly_closed",
     ]
-    assert slot["bone"] == "head"
+    assert slot.bone == "head"

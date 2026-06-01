@@ -32,7 +32,7 @@ from core import psd_manifest  # noqa: E402
 
 
 @pytest.fixture(scope="module")
-def manifest_raw() -> dict:
+def manifest_raw() -> object:
     if not MANIFEST_PATH.exists():
         pytest.skip(
             f"doll_tagged manifest missing at {MANIFEST_PATH}; re-export from "
@@ -42,23 +42,23 @@ def manifest_raw() -> dict:
 
 
 @pytest.fixture(scope="module")
-def manifest(manifest_raw: dict) -> psd_manifest.Manifest:
-    return psd_manifest.parse(manifest_raw, source_path=MANIFEST_PATH)
+def manifest(manifest_raw: object) -> psd_manifest.PsdManifest:
+    return psd_manifest.parse(manifest_raw)
 
 
-def test_format_version_is_v2(manifest: psd_manifest.Manifest) -> None:
+def test_format_version_is_v2(manifest: psd_manifest.PsdManifest) -> None:
     assert manifest.format_version == 2
 
 
-def test_canvas_size_matches_doll_psd(manifest: psd_manifest.Manifest) -> None:
-    assert manifest.size == (837, 1731)
+def test_canvas_size_matches_doll_psd(manifest: psd_manifest.PsdManifest) -> None:
+    assert manifest.size == [837, 1731]
 
 
-def test_doc_name(manifest: psd_manifest.Manifest) -> None:
+def test_doc_name(manifest: psd_manifest.PsdManifest) -> None:
     assert manifest.doc == "doll_tagged.psd"
 
 
-def test_anchor_is_set_from_guides(manifest: psd_manifest.Manifest) -> None:
+def test_anchor_is_set_from_guides(manifest: psd_manifest.PsdManifest) -> None:
     # The artist authored horizontal + vertical guides on the tagged PSD;
     # the planner emits them as the document anchor.
     assert manifest.anchor is not None
@@ -67,7 +67,7 @@ def test_anchor_is_set_from_guides(manifest: psd_manifest.Manifest) -> None:
     assert 0 < ay < manifest.size[1]
 
 
-def test_entry_count_matches_oracle(manifest: psd_manifest.Manifest) -> None:
+def test_entry_count_matches_oracle(manifest: psd_manifest.PsdManifest) -> None:
     # 22 baseline layers + 4 blend-stack duplicates + 1 sprite_frame
     # (brow_states absorbs the nested merge frames into a single entry)
     # - head 2 + Camada 1 skipped during export.
@@ -75,7 +75,7 @@ def test_entry_count_matches_oracle(manifest: psd_manifest.Manifest) -> None:
     assert len(manifest.layers) == 24
 
 
-def test_kind_distribution(manifest: psd_manifest.Manifest) -> None:
+def test_kind_distribution(manifest: psd_manifest.PsdManifest) -> None:
     kinds = [L.kind for L in manifest.layers]
     assert kinds.count("mesh") == 2  # chest + chest mult
     assert kinds.count("sprite_frame") == 1  # brow_states
@@ -83,7 +83,7 @@ def test_kind_distribution(manifest: psd_manifest.Manifest) -> None:
     assert kinds.count("polygon") == len(manifest.layers) - 3
 
 
-def test_blend_modes_round_tripped(manifest: psd_manifest.Manifest) -> None:
+def test_blend_modes_round_tripped(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     # Names cascade via joinName when a parent [folder:NAME] tag is
     # present, so the eye blend variants land under the `eyes` prefix.
@@ -92,7 +92,7 @@ def test_blend_modes_round_tripped(manifest: psd_manifest.Manifest) -> None:
     assert by_name["eyes__eye.R add"].blend_mode == "additive"
 
 
-def test_subfolders_from_folder_tags(manifest: psd_manifest.Manifest) -> None:
+def test_subfolders_from_folder_tags(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     assert by_name["chest"].subfolder == "body"
     assert by_name["belly"].subfolder == "body"
@@ -101,28 +101,28 @@ def test_subfolders_from_folder_tags(manifest: psd_manifest.Manifest) -> None:
 
 
 def test_origins_from_explicit_and_marker(
-    manifest: psd_manifest.Manifest,
+    manifest: psd_manifest.PsdManifest,
 ) -> None:
     by_name = {L.name: L for L in manifest.layers}
     # Explicit [origin:X,Y]
-    assert by_name["arm.R"].origin == (10, 20)
-    assert by_name["belly"].origin == (532, 333)
+    assert by_name["arm.R"].origin == [10, 20]
+    assert by_name["belly"].origin == [532, 333]
     # Sprite_frame origin from the [origin] marker inside the spritesheet group
     brow_states = by_name["brow_states"]
     assert brow_states.kind == "sprite_frame"
     assert brow_states.origin is not None
 
 
-def test_path_tag_overrides_filename(manifest: psd_manifest.Manifest) -> None:
+def test_path_tag_overrides_filename(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     # arm.R carries [path:test] - the leaf filename becomes `test.png`,
     # not `arm_R.png`.
     arm = by_name["arm.R"]
-    assert arm.path is not None
+    assert isinstance(arm, psd_manifest.PolygonLayer)
     assert arm.path.endswith("/test.png")
 
 
-def test_scale_tag_applied_to_size(manifest: psd_manifest.Manifest) -> None:
+def test_scale_tag_applied_to_size(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     # arm.R: source bbox 145x254, [scale:2.5] -> 362.5x635. The
     # planner rounds the integer part for the manifest (subpixel
@@ -133,10 +133,10 @@ def test_scale_tag_applied_to_size(manifest: psd_manifest.Manifest) -> None:
     assert arm.size[1] in (634, 635)
 
 
-def test_sprite_frame_has_frames(manifest: psd_manifest.Manifest) -> None:
+def test_sprite_frame_has_frames(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     brow_states = by_name["brow_states"]
-    assert brow_states.kind == "sprite_frame"
+    assert isinstance(brow_states, psd_manifest.SpriteFrameLayer)
     # Nested `1.1 [merge]` inside `1 [merge]` collapses into the parent
     # frame; only `0` and `1` survive as top-level numeric children.
     assert len(brow_states.frames) == 2
@@ -144,7 +144,7 @@ def test_sprite_frame_has_frames(manifest: psd_manifest.Manifest) -> None:
     assert indices == [0, 1]
 
 
-def test_no_ignored_layers_present(manifest: psd_manifest.Manifest) -> None:
+def test_no_ignored_layers_present(manifest: psd_manifest.PsdManifest) -> None:
     names = {L.name for L in manifest.layers}
     # `head 2 [ignore]` and `Camada 1` (empty placeholder) must not appear.
     assert "head 2" not in names

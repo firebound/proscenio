@@ -12,11 +12,23 @@ dev = [
     "check-jsonschema>=0.29",
     "pytest>=8",
     "pre-commit>=4.0",
-    # Pillow is used only by the testing-fixtures spec fixture builders under
-    # ``packages/fixtures/`` to generate PNG layers without Blender.
-    # Not bundled with the addon — strictly dev / fixture tooling.
     "pillow>=10.0",
+    # fake-bpy-module ships PEP 561 stub-only packages for bpy / bmesh /
+    # mathutils / gpu / blf so mypy can resolve the Blender API at the
+    # dev-environment boundary. Pinned to a snapshot newer than the
+    # Blender LTS the addon targets; bump when a new LTS lands.
+    "fake-bpy-module-latest>=20260501",
+    # `proscenio-models` (workspace) + `numpy` are Blender-runtime deps
+    # that the addon imports at execution time inside Blender's bundled
+    # Python. They are not packaged with the extension build; they live in
+    # the dev group so the host environment can type-check and pytest the
+    # addon without launching Blender.
+    "proscenio-models",
+    "numpy>=2.0",
 ]
+
+[tool.uv.sources]
+proscenio-models = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -38,27 +50,44 @@ ignore = [
 quote-style = "double"
 
 [tool.mypy]
-python_version = "3.11"
+# Blender 5.x ships Python 3.13. fake-bpy stubs use 3.12+ type-parameter
+# list syntax, so the type-check target must be >= 3.12 even though the
+# `requires-python` floor stays at 3.11 for tooling compatibility.
+python_version = "3.13"
 strict = true
 warn_unused_ignores = true
 warn_unreachable = true
 warn_return_any = true
 extra_checks = true
 strict_equality = true
-# `disallow_any_explicit`, `disallow_any_decorated`, and
-# `disallow_any_unimported` are deliberately off because bpy / mathutils
-# / bmesh are stubbed as `Any` at the import boundary (see the overrides
-# block below). Turning them on would flag every Operator subclass,
-# every typed bpy.* parameter, and every `dict[str, Any]` that holds
-# a bpy property bag - a finite but large fix surface that requires
-# real Blender stubs to resolve. Stubs for bpy exist (fake-bpy-module)
-# but pinning them across Blender versions is fragile, so the boundary
-# stays Any-typed. Revisit once `bpy-stubgen` lands a stable per-release
-# snapshot.
+disallow_any_explicit = true
+disallow_any_decorated = true
+disallow_any_unimported = true
+disallow_subclassing_any = true
 explicit_package_bases = true
 namespace_packages = true
-mypy_path = "."
-files = ["exporters", "operators", "panels", "properties", "core", "importers", "tests"]
+# Root one level ABOVE this addon (the `apps/` dir) so the addon is
+# the package `blender`. Blender mounts the addon as the package named
+# in blender_manifest.toml (`proscenio`), and every submodule imports
+# `core` via a relative import counted from the addon root
+# (`operators` -> `from ..core`, `importers/photoshop` -> `from ...core`,
+# `exporters/godot/writer` -> `from ....core`). Rooting mypy at `apps/`
+# gives the module tree the same depth (`blender.exporters.godot.writer`
+# == runtime `proscenio.exporters.godot.writer`), so those relative
+# imports resolve identically in the type checker and at runtime - no
+# `type: ignore[import-not-found]` needed for the typed surface.
+# ${MYPY_CONFIG_FILE_DIR} keeps the gate CWD-independent (was `.`, which
+# silently masked 1499 errors when CI ran mypy from the repo root).
+mypy_path = "${MYPY_CONFIG_FILE_DIR}/.."
+files = [
+    "${MYPY_CONFIG_FILE_DIR}/exporters",
+    "${MYPY_CONFIG_FILE_DIR}/operators",
+    "${MYPY_CONFIG_FILE_DIR}/panels",
+    "${MYPY_CONFIG_FILE_DIR}/properties",
+    "${MYPY_CONFIG_FILE_DIR}/core",
+    "${MYPY_CONFIG_FILE_DIR}/importers",
+    "${MYPY_CONFIG_FILE_DIR}/tests",
+]
 # `tests/fixtures/` holds frozen JSON, not Python.
 # `tests/operators/` is the weight-paint productivity follow-up headless operator pytest layer:
 # runs INSIDE Blender's bundled Python (which has pytest installed),
@@ -66,31 +95,33 @@ files = ["exporters", "operators", "panels", "properties", "core", "importers", 
 # state. mypy strict on the host environment trips on the missing
 # pytest stub + the deliberately-untyped test signatures. Excluded
 # here; correctness comes from running the tests against Blender.
-# `scripts/` (under repo root, not apps/blender/) holds one-off debug
-# helpers that print bpy hierarchies; typing them strictly is not worth
-# the cost -- they re-run from scratch each Blender invocation.
-exclude = ["tests/fixtures", "tests/operators", "tests/run_operator_tests.py"]
-# bpy.types.* resolve to Any (no stubs); allow subclassing them.
-disallow_subclassing_any = false
-# Blender's bpy / mathutils have no published stubs we want to bind to —
-# fake-bpy-module exists but pinning to it is fragile across Blender releases.
-# Treat them as Any-typed at the import boundary.
+exclude = [
+    "tests/fixtures",
+    "tests/operators",
+    "tests/run_operator_tests.py",
+]
+
+# Tier-2 paths: deep bpy-bound surface that still carries `dict[str, Any]`
+# payload bags + bare `import bpy` inside function bodies + fake-bpy stub
+# limitations (collections marked non-iterable, MeshVertices not indexable,
+# bpy_prop_array missing __getitem__). Cleaned module-by-module via the
+# "bpy stub sweep" backlog entry. mypy still parses these for syntax /
+# import-cycle errors but ignores type errors so the boundary modules
+# (writer, importers, non-bpy_helpers core, tests) gate at full strict.
 [[tool.mypy.overrides]]
 module = [
-    "bpy",
-    "bpy.*",
-    "bpy_extras.*",
-    "bmesh",
-    "bmesh.*",
-    "blf",
-    "gpu",
-    "gpu.*",
-    "gpu_extras",
-    "gpu_extras.*",
-    "mathutils",
-    "mathutils.*",
-    "numpy",
-    "numpy.*",
+    "blender.core.bpy_helpers.*",
+    "blender.operators.*",
+    "blender.panels.*",
+    "blender.properties.*",
 ]
-ignore_missing_imports = true
-follow_imports = "skip"
+ignore_errors = true
+
+# Tier-1-pending paths: cleaned module-by-module as the model-first
+# migration lands. Each module exits the override when its pydantic
+# conversion + Protocol typing + bpy stub narrowing pass mypy strict-strict.
+# Entry order tracks the migration item it gets cleaned with:
+#   - core.psd_manifest, importers.photoshop.* -> "PSD manifest reader" item
+#   - core.validation.*, core.report, core.mirror, core.hydrate,
+#     core.props_access, core.skeleton_target -> "tier-1 sweep" item
+#   - tests.run_tests -> swept with the tier-1 cleanup

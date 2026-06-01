@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import bpy
+from proscenio_models import Animation, Key, Track
 
-from ....core.cp_keys import PROSCENIO_SLOT_INDEX  # type: ignore[import-not-found]
+from ....core._bpy_compat import iter_keyframe_points, iter_objects
+from ....core.cp_keys import PROSCENIO_SLOT_INDEX
 from .animations import action_fcurves
 from .slots import is_slot_empty
 
 
-def build_slot_animations(scene: bpy.types.Scene) -> list[dict[str, Any]]:
+def build_slot_animations(scene: bpy.types.Scene) -> list[Animation]:
     """Walk slot Empties for actions keyframing ``proscenio_slot_index``.
 
     Each fcurve key maps an integer index to one of the slot's
@@ -21,8 +21,8 @@ def build_slot_animations(scene: bpy.types.Scene) -> list[dict[str, Any]]:
     helper consolidates entries that share an action name.
     """
     fps = scene.render.fps
-    out: list[dict[str, Any]] = []
-    for obj in scene.objects:
+    out: list[Animation] = []
+    for obj in iter_objects(scene):
         if obj.type != "EMPTY":
             continue
         if not is_slot_empty(obj):
@@ -34,23 +34,24 @@ def build_slot_animations(scene: bpy.types.Scene) -> list[dict[str, Any]]:
         track = _build_slot_attachment_track(obj, action, fps)
         if track is None:
             continue
-        frame_start, frame_end = action.frame_range
+        frame_start = float(action.frame_range[0])
+        frame_end = float(action.frame_range[1])
         length = max(0.001, (frame_end - frame_start) / float(fps))
         out.append(
-            {
-                "name": action.name,
-                "length": round(length, 6),
-                "loop": True,
-                "tracks": [track],
-            }
+            Animation(
+                name=action.name,
+                length=round(length, 6),
+                loop=True,
+                tracks=[track],
+            )
         )
     return out
 
 
 def merge_slot_animations_into(
-    existing: list[dict[str, Any]],
-    new_anims: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    existing: list[Animation],
+    new_anims: list[Animation],
+) -> list[Animation]:
     """Merge slot animations into the existing list by action name.
 
     Same-name animations get their ``tracks[]`` extended + the longer
@@ -58,17 +59,21 @@ def merge_slot_animations_into(
     bone-transform action and a slot-attachment action share the same
     Animation in Godot when the user authored both under the same
     action name.
+
+    Returns a new list with merged Animations (existing animations may
+    have their ``tracks`` and ``length`` fields mutated to absorb the
+    new entries).
     """
     out = list(existing)
-    by_name: dict[str, dict[str, Any]] = {anim["name"]: anim for anim in out}
+    by_name: dict[str, Animation] = {anim.name: anim for anim in out}
     for anim in new_anims:
-        existing_anim = by_name.get(anim["name"])
+        existing_anim = by_name.get(anim.name)
         if existing_anim is None:
             out.append(anim)
-            by_name[anim["name"]] = anim
+            by_name[anim.name] = anim
             continue
-        existing_anim["tracks"].extend(anim["tracks"])
-        existing_anim["length"] = max(float(existing_anim["length"]), float(anim["length"]))
+        existing_anim.tracks.extend(anim.tracks)
+        existing_anim.length = max(existing_anim.length, anim.length)
     return out
 
 
@@ -76,33 +81,29 @@ def _build_slot_attachment_track(
     empty_obj: bpy.types.Object,
     action: bpy.types.Action,
     fps: int,
-) -> dict[str, Any] | None:
+) -> Track | None:
     """Project ``proscenio_slot_index`` fcurve keys to a slot_attachment track."""
     attachments = tuple(c.name for c in empty_obj.children if c.type == "MESH")
     if not attachments:
         return None
-    keys: list[dict[str, Any]] = []
+    keys: list[Key] = []
     target_path = f'["{PROSCENIO_SLOT_INDEX}"]'
     for fcurve in action_fcurves(action):
         if fcurve.data_path != target_path:
             continue
-        for kp in fcurve.keyframe_points:
+        for kp in iter_keyframe_points(fcurve):
             frame = float(kp.co.x)
             t = max(0.0, (frame - 1) / float(fps))
             idx = int(kp.co.y)
             if 0 <= idx < len(attachments):
                 keys.append(
-                    {
-                        "time": round(t, 6),
-                        "interp": "constant",
-                        "attachment": attachments[idx],
-                    }
+                    Key(
+                        time=round(t, 6),
+                        interp="constant",
+                        attachment=attachments[idx],
+                    )
                 )
     if not keys:
         return None
-    keys.sort(key=lambda k: k["time"])
-    return {
-        "type": "slot_attachment",
-        "target": empty_obj.name,
-        "keys": keys,
-    }
+    keys.sort(key=lambda k: k.time)
+    return Track(type="slot_attachment", target=empty_obj.name, keys=keys)

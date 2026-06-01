@@ -26,7 +26,7 @@ const exporterController = new PanelController(() => <ProscenioExporter />, {
             label: "Reload Plugin",
             enabled: true,
             checked: false,
-            oninvoke: () => location.reload(),
+            oninvoke: () => { location.reload(); },
         },
     ],
 });
@@ -39,7 +39,7 @@ const debugController = new PanelController(() => <ProscenioDebugPanel />, {
             label: "Reload Plugin",
             enabled: true,
             checked: false,
-            oninvoke: () => location.reload(),
+            oninvoke: () => { location.reload(); },
         },
     ],
 });
@@ -52,7 +52,7 @@ const tagsController = new PanelController(() => <ProscenioTagsPanel />, {
             label: "Reload Plugin",
             enabled: true,
             checked: false,
-            oninvoke: () => location.reload(),
+            oninvoke: () => { location.reload(); },
         },
     ],
 });
@@ -65,7 +65,7 @@ const validateController = new PanelController(() => <ProscenioValidatePanel />,
             label: "Reload Plugin",
             enabled: true,
             checked: false,
-            oninvoke: () => location.reload(),
+            oninvoke: () => { location.reload(); },
         },
     ],
 });

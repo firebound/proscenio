@@ -45,15 +45,15 @@ export const ExportSection: React.FC<Props> = ({
     onExport,
 }) => {
     const onSkipHidden = React.useCallback(
-        (e: React.SyntheticEvent) => onToggleOption("skipHidden", (e.target as HTMLInputElement).checked),
+        (e: React.SyntheticEvent) => { onToggleOption("skipHidden", (e.target as HTMLInputElement).checked); },
         [onToggleOption],
     );
     const onPolygonInput = React.useCallback(
-        (e: React.SyntheticEvent) => onPolygonTemplateChange((e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { onPolygonTemplateChange((e.target as HTMLInputElement).value); },
         [onPolygonTemplateChange],
     );
     const onFramesInput = React.useCallback(
-        (e: React.SyntheticEvent) => onFramesTemplateChange((e.target as HTMLInputElement).value),
+        (e: React.SyntheticEvent) => { onFramesTemplateChange((e.target as HTMLInputElement).value); },
         [onFramesTemplateChange],
     );
     const onPpuInput = React.useCallback(
@@ -65,7 +65,7 @@ export const ExportSection: React.FC<Props> = ({
         [onPixelsPerUnitChange],
     );
     const onPpuReset = React.useCallback(
-        () => onPixelsPerUnitChange(pixelsPerUnitDefault),
+        () => { onPixelsPerUnitChange(pixelsPerUnitDefault); },
         [onPixelsPerUnitChange, pixelsPerUnitDefault],
     );
 

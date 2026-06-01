@@ -21,10 +21,21 @@ import difflib
 import importlib.util
 import json
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Protocol
 
 import bpy
+
+# JSON-shape values that `json.loads` can return.
+JsonValue = Mapping[str, "JsonValue"] | Sequence["JsonValue"] | str | int | float | bool | None
+
+
+class _WriterModule(Protocol):
+    """Subset of the writer module the runner consumes."""
+
+    def export(self, path: Path, *, pixels_per_unit: float) -> None: ...
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADDON_PATH = REPO_ROOT / "apps" / "blender"
@@ -57,11 +68,11 @@ def _load_addon_as_package() -> None:
     spec.loader.exec_module(module)
 
 
-def _normalize(doc: dict[str, Any]) -> str:
+def _normalize(doc: JsonValue) -> str:
     return json.dumps(doc, sort_keys=True, indent=2)
 
 
-def _validate_against_schema(doc: dict[str, Any]) -> list[str]:
+def _validate_against_schema(doc: JsonValue) -> list[str]:
     """Return schema violations for ``doc``, empty if valid.
 
     Falls back gracefully if ``jsonschema`` is not in Blender's bundled
@@ -107,7 +118,7 @@ def _discover_fixtures() -> list[tuple[Path, Path]]:
     return pairs
 
 
-def _run_one(blend: Path, expected: Path, writer_module: Any) -> bool:
+def _run_one(blend: Path, expected: Path, writer_module: _WriterModule) -> bool:
     """Open ``blend``, re-export, validate + diff. Return True on pass."""
     label = f"{blend.parent.name}/{blend.stem}"
     print(f"--- {label}", flush=True)

@@ -1,4 +1,4 @@
-"""PropertyGroup → Custom Property mirror logic (post-00the mirror-fix work fix).
+"""PropertyGroup -> Custom Property mirror logic (post-00the mirror-fix work fix).
 
 Lives outside ``properties/__init__.py`` so the unit tests can exercise
 the mirror without dragging in ``bpy``. Pure Python - only requires
@@ -21,27 +21,66 @@ Map covers the full Object-side schema:
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
-OBJECT_MIRROR_MAP: tuple[tuple[str, str, type], ...] = (
-    ("proscenio_type", "sprite_type", str),
-    ("proscenio_hframes", "hframes", int),
-    ("proscenio_vframes", "vframes", int),
-    ("proscenio_frame", "frame", int),
-    ("proscenio_centered", "centered", bool),
-    ("proscenio_region_mode", "region_mode", str),
-    ("proscenio_region_x", "region_x", float),
-    ("proscenio_region_y", "region_y", float),
-    ("proscenio_region_w", "region_w", float),
-    ("proscenio_region_h", "region_h", float),
-    ("proscenio_material_isolated", "material_isolated", bool),
-    ("proscenio_is_slot", "is_slot", bool),
-    ("proscenio_slot_default", "slot_default", str),
-    ("proscenio_outliner_favorite", "is_outliner_favorite", bool),
+
+def _as_str(v: object) -> str:
+    return str(v)
+
+
+def _as_int(v: object) -> int:
+    if isinstance(v, int | float | str) and not isinstance(v, bool):
+        return int(v)
+    if isinstance(v, bool):
+        return int(v)
+    raise TypeError(f"cannot coerce {type(v).__name__} to int")
+
+
+def _as_float(v: object) -> float:
+    if isinstance(v, int | float | str):
+        return float(v)
+    raise TypeError(f"cannot coerce {type(v).__name__} to float")
+
+
+def _as_bool(v: object) -> bool:
+    if isinstance(v, int | float | bool | str):
+        return bool(v)
+    raise TypeError(f"cannot coerce {type(v).__name__} to bool")
+
+
+Caster = Callable[[object], object]
+
+OBJECT_MIRROR_MAP: tuple[tuple[str, str, Caster], ...] = (
+    ("proscenio_type", "sprite_type", _as_str),
+    ("proscenio_hframes", "hframes", _as_int),
+    ("proscenio_vframes", "vframes", _as_int),
+    ("proscenio_frame", "frame", _as_int),
+    ("proscenio_centered", "centered", _as_bool),
+    ("proscenio_region_mode", "region_mode", _as_str),
+    ("proscenio_region_x", "region_x", _as_float),
+    ("proscenio_region_y", "region_y", _as_float),
+    ("proscenio_region_w", "region_w", _as_float),
+    ("proscenio_region_h", "region_h", _as_float),
+    ("proscenio_material_isolated", "material_isolated", _as_bool),
+    ("proscenio_is_slot", "is_slot", _as_bool),
+    ("proscenio_slot_default", "slot_default", _as_str),
+    ("proscenio_outliner_favorite", "is_outliner_favorite", _as_bool),
 )
 
 
-def mirror_all_fields(props: Any, obj: Any) -> None:
+@runtime_checkable
+class _CPWriter(Protocol):
+    """Anything that exposes dict-style assignment ``obj[key] = value``.
+
+    Both ``bpy.types.Object`` (Custom Property storage) and ``SimpleNamespace``
+    mocks with a stubbed ``__setitem__`` satisfy this Protocol.
+    """
+
+    def __setitem__(self, key: str, value: object) -> None: ...
+
+
+def mirror_all_fields(props: object, obj: _CPWriter) -> None:
     """Write every Proscenio PropertyGroup field to its Custom Property mirror.
 
     Type-cast through ``caster`` to coerce Blender's typed property values

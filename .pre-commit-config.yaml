@@ -17,7 +17,10 @@ repos:
           - id: check-merge-conflict
           - id: check-added-large-files
             args: [--maxkb=1024]
-            exclude: ^examples/.*\.(blend|psd|psb|kra|png)$
+            # Bundled binary fixtures + the pydantic-core Rust wheels
+            # (~2 MB each, one per platform x ABI) are intentional repo
+            # artifacts pinned to uv.lock; they exceed the source-file cap.
+            exclude: ^(examples/.*\.(blend|psd|psb|kra|png)|apps/blender/wheels/.*\.whl)$
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
       rev: v0.8.4
@@ -28,13 +31,23 @@ repos:
           - id: ruff-format
             files: ^apps/blender/
 
-    - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.13.0
+    # mypy runs via uv (not mirrors-mypy) so the strict-strict gate sees
+    # the workspace deps it needs: pydantic, proscenio_models, the
+    # fake-bpy stubs, numpy. mirrors-mypy installs mypy in isolation and
+    # cannot resolve the workspace, which makes it useless for this repo.
+    - repo: local
       hooks:
           - id: mypy
-            files: ^apps/blender/
-            args: [--config-file, apps/blender/pyproject.toml]
-            additional_dependencies: []
+            name: mypy (apps/blender)
+            language: system
+            entry: uv run --project apps/blender --quiet mypy --config-file apps/blender/pyproject.toml
+            files: ^apps/blender/.*\.py$
+            pass_filenames: false
+          - id: mypy-validator
+            name: mypy (packages/validator)
+            language: system
+            entry: uv run --project apps/blender --quiet mypy --config-file packages/validator/pyproject.toml
+            files: ^packages/validator/.*\.py$
             pass_filenames: false
 
     - repo: https://github.com/Scony/godot-gdscript-toolkit

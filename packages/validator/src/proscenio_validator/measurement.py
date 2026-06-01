@@ -14,6 +14,7 @@ from pathlib import Path
 
 import bpy  # type: ignore[import-not-found]
 
+from ._types import Metrics, Quadrants, SpritePayload, ValidationReport
 from .coverage import measure_coverage
 from .invariants import SPRITE_BOUNDS, check_invariants
 
@@ -45,13 +46,7 @@ def _first_tex_image_in_material(
 
 
 def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
-    """Find the first TEX_IMAGE node image across the mesh's materials.
-
-    Priority: the active material first (matches what the operator
-    uses), then every other material slot. Returns ``None`` when no
-    material exposes a texture - the operator's pre-flight catches
-    this case earlier with an actionable error.
-    """
+    """Find the first TEX_IMAGE node image across the mesh's materials."""
     if obj.data is None:
         return None
     found = _first_tex_image_in_material(getattr(obj, "active_material", None))
@@ -64,8 +59,8 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
     return None
 
 
-def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
-    """Inspect the generated mesh + return metrics + invariant flags."""
+def measure_mesh(sprite_obj: bpy.types.Object) -> Metrics:
+    """Inspect the generated mesh + return typed metrics."""
     mesh = sprite_obj.data
     verts = [v.co for v in mesh.vertices]
     triangles: list[
@@ -95,8 +90,6 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
 
     uv_out_of_range = 0
     if mesh.uv_layers.active is not None:
-        # 1e-3 epsilon tolerates float rounding around the [0, 1]
-        # edges without flagging legitimate boundary verts.
         for uv in mesh.uv_layers.active.data:
             if any(not (-1e-3 <= component <= 1.0 + 1e-3) for component in uv.uv):
                 uv_out_of_range += 1
@@ -105,7 +98,7 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
     coverage_pct: float | None = None
     leak_count = 0
     leak_records: list[dict[str, object]] = []
-    quadrants: dict[str, int] = {}
+    quadrants: dict[str, int] = {"TL": 0, "TR": 0, "BL": 0, "BR": 0}
     bleed_count = 0
     if image is not None and triangles:
         debug_dir = PACKAGE_ROOT / "validate_automesh_debug"
@@ -115,34 +108,50 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> dict[str, object]:
             measure_coverage(image, triangles, debug_png)
         )
 
-    return {
-        "verts": len(verts),
-        "faces": len(mesh.polygons),
-        "triangles": len(triangles),
-        "degenerate_triangles": degenerate,
-        "mean_area": sum(areas) / len(areas) if areas else 0.0,
-        "uv_out_of_range_loops": uv_out_of_range,
-        "coverage_pct": coverage_pct,
-        "leak_count": leak_count,
-        "leak_quadrants": quadrants,
-        # First 30 leak records inline; full list in report JSON only
-        # when leak_count > 0 to keep noise down.
-        "leak_records_sample": leak_records[:30],
-        # the weight-paint-automesh spec D2 amendment: mesh-over-transparent-pixel count.
-        # Non-zero indicates hole-aware CDT failed to exclude an
-        # alpha gap. Zero is the invariant for hole-supporting
-        # sprites (ring etc.).
-        "hole_bleed_count": bleed_count,
-    }
+    return Metrics(
+        verts=len(verts),
+        faces=len(mesh.polygons),
+        triangles=len(triangles),
+        degenerate_triangles=degenerate,
+        mean_area=sum(areas) / len(areas) if areas else 0.0,
+        uv_out_of_range_loops=uv_out_of_range,
+        coverage_pct=coverage_pct,
+        leak_count=leak_count,
+        leak_quadrants=Quadrants(
+            TL=quadrants["TL"],
+            TR=quadrants["TR"],
+            BL=quadrants["BL"],
+            BR=quadrants["BR"],
+        ),
+        # First 30 leak records inline; full list still flows into the
+        # JSON report via _types.LeakRecord.
+        leak_records_sample=[_to_leak_record(rec) for rec in leak_records[:30]],
+        hole_bleed_count=bleed_count,
+    )
 
 
-def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, object]:
+def _to_leak_record(payload: dict[str, object]):  # type: ignore[no-untyped-def]
+    """Project a coverage.py leak dict into a typed LeakRecord."""
+    from ._types import LeakRecord  # local import keeps the module bpy-importable
+
+    return LeakRecord(
+        pixel_x=int(payload["pixel_x"]),  # type: ignore[arg-type]
+        pixel_y_storage=int(payload["pixel_y_storage"]),  # type: ignore[arg-type]
+        pixel_y_visual_pil=int(payload["pixel_y_visual_pil"]),  # type: ignore[arg-type]
+        alpha=int(payload["alpha"]),  # type: ignore[arg-type]
+        world_x=float(payload["world_x"]),  # type: ignore[arg-type]
+        world_z=float(payload["world_z"]),  # type: ignore[arg-type]
+        quadrant=str(payload["quadrant"]),
+    )
+
+
+def run_validation(sprites: list[str], args: argparse.Namespace) -> ValidationReport:
     """Run the operator against each sprite name + collect metrics."""
-    report: dict[str, object] = {"sprites": {}, "failures": []}
+    report = ValidationReport()
     for sprite_name in sprites:
         sprite_obj = bpy.data.objects.get(sprite_name)
         if sprite_obj is None or sprite_obj.type != "MESH":
-            report["failures"].append(f"sprite '{sprite_name}' missing or not a mesh")
+            report.failures.append(f"sprite '{sprite_name}' missing or not a mesh")
             continue
         bpy.context.view_layer.objects.active = sprite_obj
         sprite_obj.select_set(True)
@@ -151,22 +160,13 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
                 margin_pixels=args.margin_pixels,
                 alpha_threshold=args.alpha_threshold,
                 debug_stage="off",
-                #  made the operator prop default SIMPLE (sparse), but the
-                # vert/face ranges below were calibrated for the historical DENSE
-                # fill. Pin DENSE here so the validation stays deterministic
-                # regardless of the PG default flip.
                 interior_mode="DENSE",
             )
         except Exception as exc:
-            report["failures"].append(f"{sprite_name}: operator raised: {exc}")
+            report.failures.append(f"{sprite_name}: operator raised: {exc}")
             continue
-        # bpy.ops returns a set containing one of FINISHED / CANCELLED
-        # / RUNNING_MODAL / PASS_THROUGH. CANCELLED is silent (no
-        # exception) but means the operator aborted before writing to
-        # the mesh - measuring the unchanged mesh would produce a false
-        # PASS. Treat anything except FINISHED as a failure.
         if "FINISHED" not in op_result:
-            report["failures"].append(
+            report.failures.append(
                 f"{sprite_name}: operator returned {sorted(op_result)} "
                 "(expected {'FINISHED'}); mesh not updated"
             )
@@ -174,11 +174,10 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> dict[str, ob
         metrics = measure_mesh(sprite_obj)
         bounds = SPRITE_BOUNDS.get(sprite_name)
         invariants = check_invariants(metrics, bounds)
-        report["sprites"][sprite_name] = {
-            "metrics": metrics,
-            "invariants": invariants,
-        }
-        if invariants["failures"]:
-            for msg in invariants["failures"]:
-                report["failures"].append(f"{sprite_name}: {msg}")
+        report.sprites[sprite_name] = SpritePayload(
+            metrics=metrics, invariants=invariants
+        )
+        if invariants.failures:
+            for msg in invariants.failures:
+                report.failures.append(f"{sprite_name}: {msg}")
     return report

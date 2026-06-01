@@ -13,8 +13,9 @@ function nextId(): number {
 
 interface Props {
     title: string;
-    /** Optional small label rendered next to the title (e.g. counts). */
-    badge?: string;
+    /** Optional small label rendered next to the title (e.g. counts).
+     *  Accepts `undefined` so callers can pass derived state directly. */
+    badge?: string | undefined;
     /** Closed by default for sections the artist rarely needs (Import). */
     defaultOpen?: boolean;
     /** Long-form description; shown as an HTML title tooltip on the
@@ -31,7 +32,7 @@ export const Accordion: React.FC<Props> = ({
     children,
 }) => {
     const [open, setOpen] = React.useState(defaultOpen);
-    const onToggle = React.useCallback(() => setOpen((o) => !o), []);
+    const onToggle = React.useCallback(() => { setOpen((o) => !o); }, []);
     const onKey = React.useCallback((e: React.KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -42,7 +43,7 @@ export const Accordion: React.FC<Props> = ({
 
     return (
         <section className={`accordion ${open ? "open" : "closed"}`}>
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+            { }
             <span
                 className="accordion-header"
                 role="button"

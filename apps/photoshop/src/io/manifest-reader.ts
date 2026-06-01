@@ -1,16 +1,20 @@
 // Manifest JSON reader. Picks a `.json` file via the UXP file picker,
-// parses it, then validates against the v1 schema. Validation errors
+// parses it, then validates against the v2 schema. Validation errors
 // surface as plain strings so the panel can list them - identical
 // posture to `manifest-validator.ts` on the export side.
 //
 // Returns a discriminated result so the caller can branch without
 // throwing across the UXP IPC boundary (exceptions inside
 // `executeAsModal` etc. tend to surface as opaque host errors).
+//
+// The Manifest type flows from ajv's type-narrowing predicate (see
+// `parseManifest` in `manifest-validator.ts`), not from a cast. A
+// document that survives ajv is statically typed as `Manifest`.
 
 import { storage } from "uxp";
 import type { UxpFile, UxpFolder } from "uxp";
 
-import { validateManifest } from "./manifest-validator";
+import { parseManifest } from "./manifest-validator";
 import type { Manifest } from "../domain/manifest";
 
 export interface PickedManifest {
@@ -41,9 +45,9 @@ export async function readManifestFromPicker(): Promise<ReadManifestResult> {
             errors: [`manifest is not valid JSON: ${err instanceof Error ? err.message : String(err)}`],
         };
     }
-    const errors = validateManifest(parsed as Manifest);
-    if (errors.length > 0) {
-        return { kind: "invalid", errors };
+    const result = parseManifest(parsed);
+    if (result.kind === "invalid") {
+        return result;
     }
     const folder = await resolveParentFolder(file);
     if (folder === null) {
@@ -54,7 +58,7 @@ export async function readManifestFromPicker(): Promise<ReadManifestResult> {
     }
     return {
         kind: "ok",
-        picked: { file, folder, manifest: parsed as Manifest },
+        picked: { file, folder, manifest: result.value },
     };
 }
 
@@ -63,14 +67,10 @@ async function resolveParentFolder(file: UxpFile): Promise<UxpFolder | null> {
     // Older builds (and a few host-version regressions) drop it; fall
     // back to reconstructing the parent path from `nativePath` and
     // re-resolving via `getEntryWithUrl`.
-    interface FileWithParent {
-        parent?: UxpFolder;
-    }
-    const direct = (file as unknown as FileWithParent).parent;
-    if (direct?.isFolder) return direct;
+    if (file.parent?.isFolder === true) return file.parent;
 
     const native = file.nativePath;
-    if (native === undefined || native.length === 0) return null;
+    if (native.length === 0) return null;
     const parentPath = native.replace(/[\\/][^\\/]+$/, "");
     if (parentPath.length === 0 || parentPath === native) return null;
     try {

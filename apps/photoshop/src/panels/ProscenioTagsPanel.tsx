@@ -65,7 +65,7 @@ export const ProscenioTagsPanel: React.FC = () => {
 
     return (
         <div className="proscenio-panel">
-            <DocSection doc={doc} onRefresh={refreshDoc} />
+            <DocSection doc={doc} onRefresh={() => { void refreshDoc(); }} />
             <TagsSection
                 tree={tags.tree}
                 activeLayerPath={activeLayerPath}

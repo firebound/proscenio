@@ -2,64 +2,69 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Iterable
 
 from .issue import Issue
 
 
-def validate_active_slot(obj: Any) -> list[Issue]:
+def _name_of(obj: object) -> str:
+    return str(getattr(obj, "name", ""))
+
+
+def validate_active_slot(obj: object) -> list[Issue]:
     """Return per-active-Empty slot issues.
 
     Validates: (1) at least one child mesh, (2) ``slot_default`` resolves
     to an existing child, (3) child meshes share the Empty's
     ``parent_bone`` if any, (4) no slot child carries a
-    ``bone_transform``-shaped fcurve (warning - visibility toggling
-    makes bone keys silent unless the child is the visible attachment
-    at that frame).
+    ``bone_transform``-shaped fcurve.
     """
     if not _is_active_slot(obj):
         return []
-    children = [c for c in getattr(obj, "children", ()) if getattr(c, "type", None) == "MESH"]
+    children_attr: Iterable[object] = getattr(obj, "children", ())
+    children = [c for c in children_attr if getattr(c, "type", None) == "MESH"]
+    name = _name_of(obj)
     if not children:
-        return [Issue("error", f"slot '{obj.name}' has no MESH children", obj.name)]
+        return [Issue("error", f"slot '{name}' has no MESH children", name)]
 
     issues: list[Issue] = []
-    issues.extend(_check_slot_default(obj, children))
-    issues.extend(_check_slot_child_bones(obj, children))
+    issues.extend(_check_slot_default(obj, children, name))
+    issues.extend(_check_slot_child_bones(obj, children, name))
     issues.extend(_check_slot_child_transform_keys(children))
     return issues
 
 
-def _is_active_slot(obj: Any) -> bool:
+def _is_active_slot(obj: object) -> bool:
     if obj is None or getattr(obj, "type", None) != "EMPTY":
         return False
     props = getattr(obj, "proscenio", None)
     return props is not None and bool(getattr(props, "is_slot", False))
 
 
-def _check_slot_default(obj: Any, children: list[Any]) -> list[Issue]:
-    slot_default = str(getattr(obj.proscenio, "slot_default", ""))
+def _check_slot_default(obj: object, children: list[object], obj_name: str) -> list[Issue]:
+    props = getattr(obj, "proscenio", None)
+    slot_default = str(getattr(props, "slot_default", "")) if props is not None else ""
     if not slot_default:
         return []
-    child_names = {c.name for c in children}
+    child_names = {_name_of(c) for c in children}
     if slot_default in child_names:
         return []
     return [
         Issue(
             "error",
-            f"slot default '{slot_default}' is not a child of '{obj.name}'",
-            obj.name,
+            f"slot default '{slot_default}' is not a child of '{obj_name}'",
+            obj_name,
         )
     ]
 
 
-def _slot_bone_of(obj: Any) -> str:
+def _slot_bone_of(obj: object) -> str:
     if getattr(obj, "parent_type", "") != "BONE":
         return ""
     return str(getattr(obj, "parent_bone", ""))
 
 
-def _check_slot_child_bones(obj: Any, children: list[Any]) -> list[Issue]:
+def _check_slot_child_bones(obj: object, children: list[object], obj_name: str) -> list[Issue]:
     slot_bone = _slot_bone_of(obj)
     if not slot_bone:
         return []
@@ -67,33 +72,36 @@ def _check_slot_child_bones(obj: Any, children: list[Any]) -> list[Issue]:
     for child in children:
         child_bone = _slot_bone_of(child)
         if child_bone and child_bone != slot_bone:
+            child_name = _name_of(child)
             issues.append(
                 Issue(
                     "warning",
-                    f"attachment '{child.name}' parent bone '{child_bone}' "
+                    f"attachment '{child_name}' parent bone '{child_bone}' "
                     f"differs from slot bone '{slot_bone}'",
-                    child.name,
+                    child_name,
                 )
             )
+    _ = obj_name  # accept for symmetry with _check_slot_default
     return issues
 
 
-def _check_slot_child_transform_keys(children: list[Any]) -> list[Issue]:
+def _check_slot_child_transform_keys(children: list[object]) -> list[Issue]:
     issues: list[Issue] = []
     for child in children:
         if _has_bone_transform_keys(child):
+            child_name = _name_of(child)
             issues.append(
                 Issue(
                     "warning",
-                    f"slot child '{child.name}' carries bone-transform keyframes; "
+                    f"slot child '{child_name}' carries bone-transform keyframes; "
                     f"visibility is the only thing the slot animates",
-                    child.name,
+                    child_name,
                 )
             )
     return issues
 
 
-def _has_bone_transform_keys(obj: Any) -> bool:
+def _has_bone_transform_keys(obj: object) -> bool:
     """True when ``obj`` has any fcurve targeting location/rotation/scale."""
     anim = getattr(obj, "animation_data", None)
     action = getattr(anim, "action", None) if anim is not None else None

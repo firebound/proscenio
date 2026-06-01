@@ -54,7 +54,7 @@ const CandidateRow: React.FC<{ candidate: UnderscoreMigrationCandidate }> = ({ c
             void selectLayerByPath(candidate.layerPath);
         }
     }, [candidate.layerPath]);
-    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
+
     return (
         <div
             className="migration-row"

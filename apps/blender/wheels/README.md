@@ -9,7 +9,7 @@ Blender 4.2 added extension manifests that ship third-party wheels in an isolate
 | Wheel | Origin | Why bundled |
 | --- | --- | --- |
 | `pydantic-*.whl` | PyPI, pure Python | Domain-model runtime: validators, discriminated unions, schema dump. |
-| `pydantic_core-*-<plat>.whl` (5 platforms) | PyPI, Rust-backed | Pydantic's parser core. Per-platform wheels: Linux x86_64 / aarch64, macOS x86_64 / arm64, Windows amd64. |
+| `pydantic_core-*-<plat>.whl` (5 platforms x 2 ABIs) | PyPI, Rust-backed | Pydantic's parser core. Per-platform wheels: Linux x86_64 / aarch64, macOS x86_64 / arm64, Windows amd64. Two ABIs: cp311 for Blender 4.2 LTS (Python 3.11), cp313 for Blender 5.x (Python 3.13). Blender installs the wheel matching the running interpreter. |
 | `annotated_types-*.whl` | PyPI, pure Python | Required by `pydantic`. |
 | `typing_extensions-*.whl` | PyPI, pure Python | Required by `pydantic`. |
 | `typing_inspection-*.whl` | PyPI, pure Python | Required by `pydantic`. |
@@ -45,10 +45,18 @@ $platforms = @(
     "macosx_11_0_arm64",
     "win_amd64"
 )
+# Two ABIs: cp311 (Blender 4.2 LTS) + cp313 (Blender 5.x). Blender picks
+# the wheel matching the running interpreter at install time.
+$abis = @(
+    @{ pyver = "3.11"; abi = "cp311" },
+    @{ pyver = "3.13"; abi = "cp313" }
+)
 foreach ($plat in $platforms) {
-    pip download pydantic-core==2.46.4 --no-deps --only-binary=:all: `
-        -d apps/blender/wheels `
-        --platform $plat --python-version 3.11 --implementation cp --abi cp311
+    foreach ($a in $abis) {
+        pip download pydantic-core==2.46.4 --no-deps --only-binary=:all: `
+            -d apps/blender/wheels `
+            --platform $plat --python-version $a.pyver --implementation cp --abi $a.abi
+    }
 }
 
 # proscenio-models - built from the workspace

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import Any
 
 from ._shared import abspath_or_none, armature_bone_names
 from .active_slot import validate_active_slot
@@ -12,7 +11,11 @@ from .active_sprite import validate_active_sprite
 from .issue import Issue
 
 
-def validate_export(scene: Any) -> list[Issue]:
+def _name_of(obj: object) -> str:
+    return str(getattr(obj, "name", ""))
+
+
+def validate_export(scene: object) -> list[Issue]:
     """Full pre-export pass. Walks the scene, hits the disk for the atlas.
 
     Returns every issue found; the caller decides whether to abort.
@@ -42,7 +45,7 @@ def validate_export(scene: Any) -> list[Issue]:
     return issues
 
 
-def _validate_slots(scene_objects: list[Any]) -> list[Issue]:
+def _validate_slots(scene_objects: Sequence[object]) -> list[Issue]:
     """Walk slot Empties + cross-check name uniqueness (D9)."""
     seen: set[str] = set()
     issues: list[Issue] = []
@@ -52,20 +55,22 @@ def _validate_slots(scene_objects: list[Any]) -> list[Issue]:
         props = getattr(obj, "proscenio", None)
         if props is None or not bool(getattr(props, "is_slot", False)):
             continue
-        if obj.name in seen:
-            issues.append(Issue("error", f"duplicate slot name '{obj.name}'", obj.name))
-        seen.add(obj.name)
+        name = _name_of(obj)
+        if name in seen:
+            issues.append(Issue("error", f"duplicate slot name '{name}'", name))
+        seen.add(name)
         issues.extend(validate_active_slot(obj))
     return issues
 
 
-def _validate_sprite_against_armature(obj: Any, bones: set[str]) -> list[Issue]:
+def _validate_sprite_against_armature(obj: object, bones: set[str]) -> list[Issue]:
     issues: list[Issue] = []
 
     parent_bone = getattr(obj, "parent_bone", "")
     has_parent_bone = bool(parent_bone) and parent_bone in bones
     vertex_groups = getattr(obj, "vertex_groups", ())
     matching_groups = [vg for vg in vertex_groups if str(vg.name) in bones]
+    name = _name_of(obj)
 
     if not has_parent_bone and not matching_groups:
         issues.append(
@@ -73,7 +78,7 @@ def _validate_sprite_against_armature(obj: Any, bones: set[str]) -> list[Issue]:
                 "warning",
                 "sprite has no parent bone and no vertex groups matching armature bones - "
                 "writer will fall back to empty bone field",
-                obj.name,
+                name,
             )
         )
 
@@ -83,27 +88,26 @@ def _validate_sprite_against_armature(obj: Any, bones: set[str]) -> list[Issue]:
                 "error",
                 "sprite has vertex groups but none resolve to bones - "
                 "writer will raise RuntimeError at export",
-                obj.name,
+                name,
             )
         )
 
     return issues
 
 
-def _validate_atlas_files(scene_objects: list[Any]) -> list[Issue]:
+def _validate_atlas_files(scene_objects: Sequence[object]) -> list[Issue]:
     """Check that every linked image used as an atlas resolves on disk."""
     issues: list[Issue] = []
     seen: set[str] = set()
     for obj in scene_objects:
-        for image, fp_raw in _iter_object_atlas_images(obj, seen):
+        for fp_raw in _iter_object_atlas_filepaths(obj, seen):
             if not _atlas_path_resolves(fp_raw):
                 issues.append(_atlas_missing_issue(obj, fp_raw))
-            del image  # silence "unused" - kept available for future checks
     return issues
 
 
-def _iter_object_atlas_images(obj: Any, seen: set[str]) -> Iterator[tuple[Any, str]]:
-    """Yield (image, filepath) tuples for unique TEX_IMAGE nodes on `obj`."""
+def _iter_object_atlas_filepaths(obj: object, seen: set[str]) -> Iterator[str]:
+    """Yield filepaths for unique TEX_IMAGE nodes on `obj`."""
     for slot in getattr(obj, "material_slots", ()):
         material = getattr(slot, "material", None)
         if material is None or not getattr(material, "use_nodes", False):
@@ -112,20 +116,20 @@ def _iter_object_atlas_images(obj: Any, seen: set[str]) -> Iterator[tuple[Any, s
         if tree is None:
             continue
         for node in tree.nodes:
-            image, fp_raw = _texture_image_filepath(node)
+            fp_raw = _texture_image_filepath(node)
             if fp_raw and fp_raw not in seen:
                 seen.add(fp_raw)
-                yield image, fp_raw
+                yield fp_raw
 
 
-def _texture_image_filepath(node: Any) -> tuple[Any, str]:
-    """Return (image, raw_filepath) for a TEX_IMAGE node, or (None, '')."""
+def _texture_image_filepath(node: object) -> str:
+    """Return raw_filepath for a TEX_IMAGE node, or '' when absent."""
     if getattr(node, "type", "") != "TEX_IMAGE":
-        return None, ""
+        return ""
     image = getattr(node, "image", None)
     if image is None:
-        return None, ""
-    return image, str(getattr(image, "filepath", "") or "")
+        return ""
+    return str(getattr(image, "filepath", "") or "")
 
 
 def _atlas_path_resolves(fp_raw: str) -> bool:
@@ -133,9 +137,9 @@ def _atlas_path_resolves(fp_raw: str) -> bool:
     return resolved is not None and Path(resolved).exists()
 
 
-def _atlas_missing_issue(obj: Any, fp_raw: str) -> Issue:
+def _atlas_missing_issue(obj: object, fp_raw: str) -> Issue:
     return Issue(
         "warning",
         f"atlas image {fp_raw!r} not found on disk - Godot will warn at import",
-        getattr(obj, "name", None),
+        _name_of(obj),
     )

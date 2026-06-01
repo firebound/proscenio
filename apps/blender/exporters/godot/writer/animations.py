@@ -4,32 +4,69 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterator
-from typing import Any
+from dataclasses import dataclass
+from typing import NotRequired, TypedDict
 
 import bpy
+from proscenio_models import Animation, Key, Track
 
-from .skeleton import wrap_pi
+from ....core._bpy_compat import (
+    iter_action_layers,
+    iter_action_strips,
+    iter_actions,
+    iter_keyframe_points,
+)
+from .skeleton import BoneRestLocal, wrap_pi
 
 
-def action_fcurves(action: bpy.types.Action) -> Iterator[Any]:
+class _KeyKwargs(TypedDict):
+    """Constructor kwargs for a ``bone_transform`` ``Key``.
+
+    Channel fields are ``NotRequired`` so a track only emits the
+    channels it actually animates; an explicit ``None`` would serialise
+    as ``"position": null`` under exclude_unset and drift from the
+    goldens (the legacy dict writer set each channel conditionally).
+    """
+
+    time: float
+    position: NotRequired[list[float]]
+    rotation: NotRequired[float]
+    scale: NotRequired[list[float]]
+
+
+def action_fcurves(action: bpy.types.Action) -> Iterator[bpy.types.FCurve]:
     """Yield FCurves from a Blender 4.4+ layered action or a legacy action."""
     if hasattr(action, "fcurves") and action.fcurves:
         yield from action.fcurves
         return
     if not hasattr(action, "layers"):
         return
-    for layer in action.layers:
-        for strip in layer.strips:
+    for layer in iter_action_layers(action):
+        for strip in iter_action_strips(layer):
             channelbags = getattr(strip, "channelbags", None) or []
             for cb in channelbags:
                 yield from cb.fcurves
 
 
-_REST_FALLBACK: dict[str, Any] = {
-    "position": (0.0, 0.0),
-    "rotation": 0.0,
-    "scale": (1.0, 1.0),
-}
+_REST_FALLBACK = BoneRestLocal(
+    position=(0.0, 0.0),
+    rotation=0.0,
+    scale=(1.0, 1.0),
+)
+
+
+@dataclass(frozen=True)
+class PoseDelta:
+    """Per-keyframe (position, rotation, scale) delta extracted from fcurves.
+
+    Each field is ``None`` when the fcurve produced no significant delta
+    on that channel; the writer then drops the channel from the emitted
+    track so the rest pose survives unchanged.
+    """
+
+    position: list[float] | None
+    rotation: float | None
+    scale: list[float] | None
 
 
 def collect_bone_keys(
@@ -41,8 +78,8 @@ def collect_bone_keys(
         bone_name, prop = _parse_bone_data_path(fc.data_path)
         if bone_name is None or prop is None:
             continue
-        for kp in fc.keyframe_points:
-            time = (kp.co[0] - 1.0) / float(fps)
+        for kp in iter_keyframe_points(fc):
+            time = (float(kp.co.x) - 1.0) / float(fps)
             entry = bone_keys.setdefault(bone_name, {}).setdefault(time, {})
             entry.setdefault(prop, {})[fc.array_index] = float(kp.co[1])
     return bone_keys
@@ -66,40 +103,44 @@ def build_bone_track(
     bone_name: str,
     by_time: dict[float, dict[str, dict[int, float]]],
     ppu: float,
-    rest_local: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
+    rest_local: dict[str, BoneRestLocal],
+) -> Track:
     """Build one ``bone_transform`` track. Channels with no non-rest deltas are
     dropped so the Bone2D rest pose is preserved on import. A bone keyed at
     rest still gets a track (timing markers only) - useful for ``root`` handles.
     """
     resolved = {t: _resolve_pose_entry(entry, ppu) for t, entry in by_time.items()}
-    has = {
-        p: any(r[p] is not None for r in resolved.values())
-        for p in ("position", "rotation", "scale")
-    }
+    has_position = any(r.position is not None for r in resolved.values())
+    has_rotation = any(r.rotation is not None for r in resolved.values())
+    has_scale = any(r.scale is not None for r in resolved.values())
     rest = rest_local.get(bone_name, _REST_FALLBACK)
 
-    keys: list[dict[str, Any]] = []
+    keys: list[Key] = []
     for t in sorted(resolved.keys()):
         r = resolved[t]
-        key: dict[str, Any] = {"time": round(t, 6)}
-        if has["position"]:
-            key["position"] = _absolute_position(rest["position"], r["position"])
-        if has["rotation"]:
-            key["rotation"] = _absolute_rotation(rest["rotation"], r["rotation"])
-        if has["scale"]:
-            key["scale"] = _absolute_scale(rest["scale"], r["scale"])
-        keys.append(key)
+        # Pass only the channels this track carries. Omitting a channel
+        # leaves the Key field unset so model_dump_json(exclude_unset=True)
+        # drops the key entirely - matching the legacy dict writer that
+        # only set `position`/`rotation`/`scale` when the channel had a
+        # delta. Passing None explicitly would emit `"position": null`.
+        key_kwargs: _KeyKwargs = {"time": round(t, 6)}
+        if has_position:
+            key_kwargs["position"] = _absolute_position(rest.position, r.position)
+        if has_rotation:
+            key_kwargs["rotation"] = _absolute_rotation(rest.rotation, r.rotation)
+        if has_scale:
+            key_kwargs["scale"] = _absolute_scale(rest.scale, r.scale)
+        keys.append(Key(**key_kwargs))
 
-    return {"type": "bone_transform", "target": bone_name, "keys": keys}
+    return Track(type="bone_transform", target=bone_name, keys=keys)
 
 
 def build_animation(
     action: bpy.types.Action,
     fps: int,
     ppu: float,
-    rest_local: dict[str, dict[str, Any]],
-) -> dict[str, Any] | None:
+    rest_local: dict[str, BoneRestLocal],
+) -> Animation | None:
     bone_keys = collect_bone_keys(action, fps)
     if not bone_keys:
         return None
@@ -107,29 +148,28 @@ def build_animation(
     tracks = [
         build_bone_track(name, by_time, ppu, rest_local) for name, by_time in bone_keys.items()
     ]
-    frame_start, frame_end = action.frame_range
+    frame_start = float(action.frame_range[0])
+    frame_end = float(action.frame_range[1])
     length = max(0.001, (frame_end - frame_start) / float(fps))
 
-    return {
-        "name": action.name,
-        "length": round(length, 6),
-        "loop": True,
-        "tracks": tracks,
-    }
+    return Animation(
+        name=action.name,
+        length=round(length, 6),
+        loop=True,
+        tracks=tracks,
+    )
 
 
-def build_animations(
-    fps: int, ppu: float, rest_local: dict[str, dict[str, Any]]
-) -> list[dict[str, Any]]:
-    animations: list[dict[str, Any]] = []
-    for action in bpy.data.actions:
+def build_animations(fps: int, ppu: float, rest_local: dict[str, BoneRestLocal]) -> list[Animation]:
+    animations: list[Animation] = []
+    for action in iter_actions():
         anim = build_animation(action, fps, ppu, rest_local)
         if anim is not None:
             animations.append(anim)
     return animations
 
 
-def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[str, Any]:
+def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> PoseDelta:
     """Reduce a per-time bucket of fcurve samples to (position, rotation, scale)."""
     position: list[float] | None = None
     rotation: float | None = None
@@ -164,7 +204,7 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> dict[
         if max(abs(sx - 1.0), abs(sz - 1.0)) > 1e-6:
             scale = [round(sx, 6), round(sz, 6)]
 
-    return {"position": position, "rotation": rotation, "scale": scale}
+    return PoseDelta(position=position, rotation=rotation, scale=scale)
 
 
 def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:

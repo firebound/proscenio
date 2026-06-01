@@ -330,6 +330,64 @@ The dev junction setup for the Blender addon is a manual `New-Item -ItemType Jun
 
 `.github/workflows/release.yml` line 39 still runs `cp apps/photoshop/proscenio_export.jsx "dist/proscenio-photoshop-${version}.jsx"`. The legacy JSX exporter is gone; the plugin is now a UXP bundle that webpack emits into `apps/photoshop/dist/` (`index.html`, `index.js`, `manifest.json`, `icons/`). A `photoshop-v*` tag would fail at this step. **Why deferred**: no release has been cut yet on the UXP branch; current development uses `pnpm uxp:load` from the dev folder. **Trigger to revisit**: before cutting the first `photoshop-v*` tag. Replace the `cp` with `(cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-${version}.ccx" .)` (or `.zip` if `.ccx` packaging is out of scope), and adjust the release artifact pattern in the same job.
 
+## Typed-models migration follow-ups
+
+Residual items from the typed-models codegen rollout. SPEC 014's acceptance criteria are met (pydantic is the source of truth; codegen produces all four artifact families; warnings tightened per language), but the consumer-side adoption is partial in a couple of places.
+
+### Writer builders construct pydantic models directly
+
+**What:** `apps/blender/exporters/godot/writer/__init__.py` validates + serialises through `ProscenioDocument.model_dump_json()`, but the per-feature builders (`sprites.py`, `skeleton.py`, `slots.py`, `animations.py`, `slot_animations.py`) still construct `dict[str, Any]` payloads + the `TypedDict` aliases in `_schema.py`. The pydantic model re-parses those dicts at the doc-root level; a builder that drifts only surfaces at the final validation step.
+
+**Why deferred:** the dict-based builders work and the goldens lock the shape. Migrating each builder to construct `Bone()` / `PolygonSprite()` / `Animation()` instances directly is a refactor with limited functional payoff (the validation gate already catches drift) and would touch every writer module.
+
+**Trigger to revisit:** the first schema field that surfaces a drift the gate cannot localise to a specific builder, or any future PR that touches multiple writer modules at once (piggyback the migration on the same change).
+
+### PSD manifest reader adopts the pydantic model
+
+**What:** `apps/blender/core/psd_manifest.py` (the Photoshop importer's read path) still parses the manifest into the legacy hand-written types instead of `PsdManifest.model_validate(data)`. The pydantic model exists in `packages/models/`; nothing on the importer side consumes it yet.
+
+**Why deferred:** the importer works and the v2 manifest is locked. Adoption is mechanical (replace `dict.get()` calls with field access) but the importer module is large and the typed PSD bindings already cover the validation side at the schema layer.
+
+**Trigger to revisit:** the next PSD manifest schema bump, or whenever the importer needs new field-level behaviour that benefits from the typed Resource (validators, discriminated unions).
+
+### ESLint `@typescript-eslint/strict-type-checked`
+
+SPEC 014 Axis C2 mentions adding ESLint with `@typescript-eslint/strict-type-checked` on top of the tsconfig strict family. Not landed because the tsconfig flags already produce a meaningful gate; the ESLint layer would surface additional style + runtime hazards but is additive rather than load-bearing.
+
+**Trigger to revisit:** if a new contributor lands a hazard the tsconfig didn't catch and ESLint would have, or before the v0.2.0 ship gate.
+
+### `exactOptionalPropertyTypes` revisit
+
+Flag deliberately off in `apps/photoshop/tsconfig.json` because it fights React idioms (`{field: maybeUndefined}` spread) and Spectrum component prop types use plain `field?:` declarations. First pass produced 14 errors concentrated in panel components.
+
+**Trigger to revisit:** Spectrum types adopt `exactOptional`, or the panel components rewrite their prop spreaders.
+
+### mypy `disallow_any_*` trio
+
+`disallow_any_explicit`, `disallow_any_decorated`, `disallow_any_unimported` stay off in `apps/blender/pyproject.toml`. With them on, the bpy / mathutils / bmesh boundary (no stubs) produced 778 errors on the first pass.
+
+**Trigger to revisit:** a stable per-release bpy stubgen snapshot lands and the import boundary can be typed.
+
+### bpy stubs via fake-bpy-module / bpy-stubgen
+
+Investigated as a precondition for the `disallow_any_*` trio. Both options exist; both are fragile across Blender releases. Pinning to a frozen snapshot per release matrix is the realistic path.
+
+**Trigger to revisit:** the next Blender LTS jump that breaks an existing typed surface, OR adoption of the `disallow_any_*` trio is gated on this work.
+
+### Docusaurus wiring of generated docs
+
+`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it. SPEC 014 D7 deferred the site itself as a separate chore.
+
+**Trigger to revisit:** the first time someone wants to ship public schema documentation.
+
+## Quick Armature follow-ups (deferred polish)
+
+Three small items deferred from SPEC 012's TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up.
+
+- **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
+- **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.
+- **Add the ClassVar mutation rule to `.ai/conventions.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in BUGS_FOUND.md; promoting it to the conventions doc is low-priority because the bug is rare enough.
+
 ## Architecture revisits
 
 These items intentionally violate or expand on a current hard rule. They are **not slated** - listed only so that if the trigger condition appears in a future spec discussion, we have prior art on the alternatives we already considered.

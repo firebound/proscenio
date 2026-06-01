@@ -534,6 +534,29 @@ Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via 
 
 (Headless coverage: `apps/blender/tests/operators/test_automesh_authoring.py` - 5 tests run via `blender --background --python apps/blender/tests/run_operator_tests.py`. Pure coverage: `tests/skinning/test_erosion_loops.py` + `test_authoring_stages.py` - 8 tests.)
 
+### 1.24 Automesh interior modes (SIMPLE / DENSE)
+
+SPEC 013 D19/D20/D21. Mode toggle in the Skinning subpanel; SIMPLE drops the dense interior fill, DENSE retains it. Post-merge smoke validation - visual, cannot verify headless.
+
+Setup: open `examples/generated/automesh/automesh.blend`. Pick `automesh.hand_rig` in the Skeleton subpanel.
+
+- [ ] T1 - SIMPLE step 4 wireframe: enter authoring modal on a sprite, switch interior mode to SIMPLE. The cyan triangulation overlay at step 4 matches the mesh APPLY produces (silhouette + fold/cut/steiner verts, no dense fill).
+- [ ] T2 - Stage 2 red + modifier: Stage 2 cut overlay reads RED (matches Stage 4). Shift / Ctrl / Alt dispatch is precise regardless of whether the cursor sits inside or outside the silhouette.
+
+### 1.25 Automesh toggle pen + axis lock + subdivisions
+
+SPEC 013 productivity follow-up gesture rewrite. Toggle-modal pen shared by Stage 2 + Stage 4. Post-merge smoke validation - visual, cannot verify headless.
+
+- [ ] T1 - Toggle entry / exit: tap Shift -> enters fold-pen (statusbar / tooltip show DRAW). Tap Shift again on an empty line -> exits to NEUTRAL.
+- [ ] T2 - Pen + finish / cancel: click 3 verts, RMB or Enter commits the line. Esc on a fresh line discards without cancelling the modal. NEUTRAL Enter still advances the stage.
+- [ ] T3 - Ctrl+Z preserved: Ctrl+Z in NEUTRAL undoes the last stroke (does NOT enter cut-draw).
+- [ ] T4 - Axis lock: press X -> next segment is horizontal. Press Z -> vertical. Toggling switches.
+- [ ] T5 - Subdivisions: mouse wheel or digit keys bump the tooltip count. A straight 2-click line with subdiv=2 commits with 2 inserted verts per edge (no single long edge).
+- [ ] T6 - Stage 2 parity: the same pen works in Stage 2 (extend / cut). Cut overlay reads red.
+- [ ] T7 - Tooltip / statusbar live: tapping a tool (Shift / Ctrl) or scrolling subdivisions updates the tooltip + statusbar immediately, without a mouse move.
+- [ ] T8 - Snap + merge + loop: drawing a line whose endpoint touches an existing same-kind stroke's endpoint merges into ONE stroke (deleting it removes the whole connected trace, not half). Clicking the first vert of the in-progress line closes a loop.
+- [ ] T9 - Stage 2 outer preview: after an extend edit, the green spliced-outer overlay shows the silhouette APPLY will build. Updates on commit / undo / delete.
+
 ---
 
 ## 2. Apps/Godot

@@ -7,7 +7,7 @@ plus a top-level index that Docusaurus (or any other Markdown reader)
 can consume directly.
 
 The Docusaurus integration itself is out of scope for this emitter -
-SPEC 014 P5 ships the regenerable artifacts; wiring the docs site to
+the typed-models codegen P5 ships the regenerable artifacts; wiring the docs site to
 read them lands as a follow-up chore.
 """
 

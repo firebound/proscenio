@@ -1,4 +1,4 @@
-"""Smoke test for the Sprite discriminated union (OQ3 of SPEC 014).
+"""Smoke test for the Sprite discriminated union (OQ3 of the typed-models codegen).
 
 Covers:
 
@@ -12,7 +12,7 @@ Covers:
 
 Why this matters: the discriminated union is the trickiest part of
 the model. If pydantic's output drifts from what downstream codegens
-(``json-schema-to-typescript`` in SPEC 014 P3, the GDScript emitter
+(``json-schema-to-typescript`` in the typed-models codegen P3, the GDScript emitter
 in P4) understand, every consumer breaks at once. Catch drift here
 before it ripples.
 """
@@ -176,7 +176,7 @@ def test_generated_schema_carries_both_sprite_variants() -> None:
     The schema may inline them under ``properties.sprites.items`` or
     reference them through ``$defs``. Either is acceptable so long as
     both variants surface, which is what the TS / GDScript emitters
-    need to walk in SPEC 014 P3 / P4.
+    need to walk in the typed-models codegen P3 / P4.
     """
     schema = build_proscenio_schema()
     text = repr(schema)

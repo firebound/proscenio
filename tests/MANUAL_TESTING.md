@@ -536,7 +536,7 @@ Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via 
 
 ### 1.24 Automesh interior modes (SIMPLE / DENSE)
 
-SPEC 013 D19/D20/D21. Mode toggle in the Skinning subpanel; SIMPLE drops the dense interior fill, DENSE retains it. Post-merge smoke validation - visual, cannot verify headless.
+The weight-paint-automesh D19 / D20 / D21. Mode toggle in the Skinning subpanel; SIMPLE drops the dense interior fill, DENSE retains it. Post-merge smoke validation - visual, cannot verify headless.
 
 Setup: open `examples/generated/automesh/automesh.blend`. Pick `automesh.hand_rig` in the Skeleton subpanel.
 
@@ -545,7 +545,7 @@ Setup: open `examples/generated/automesh/automesh.blend`. Pick `automesh.hand_ri
 
 ### 1.25 Automesh toggle pen + axis lock + subdivisions
 
-SPEC 013 productivity follow-up gesture rewrite. Toggle-modal pen shared by Stage 2 + Stage 4. Post-merge smoke validation - visual, cannot verify headless.
+The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal pen shared by Stage 2 + Stage 4. Post-merge smoke validation - visual, cannot verify headless.
 
 - [ ] T1 - Toggle entry / exit: tap Shift -> enters fold-pen (statusbar / tooltip show DRAW). Tap Shift again on an empty line -> exits to NEUTRAL.
 - [ ] T2 - Pen + finish / cancel: click 3 verts, RMB or Enter commits the line. Esc on a fresh line discards without cancelling the modal. NEUTRAL Enter still advances the stage.

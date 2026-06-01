@@ -332,7 +332,7 @@ The dev junction setup for the Blender addon is a manual `New-Item -ItemType Jun
 
 ## Typed-models migration follow-ups
 
-Residual items from the typed-models codegen rollout. SPEC 014's acceptance criteria are met (pydantic is the source of truth; codegen produces all four artifact families; warnings tightened per language), but the consumer-side adoption is partial in a couple of places.
+Residual items from the typed-models codegen rollout. The typed-models codegen acceptance criteria are met (pydantic is the source of truth; codegen produces all four artifact families; warnings tightened per language), but the consumer-side adoption is partial in a couple of places.
 
 ### Writer builders construct pydantic models directly
 
@@ -352,7 +352,7 @@ Residual items from the typed-models codegen rollout. SPEC 014's acceptance crit
 
 ### ESLint `@typescript-eslint/strict-type-checked`
 
-SPEC 014 Axis C2 mentions adding ESLint with `@typescript-eslint/strict-type-checked` on top of the tsconfig strict family. Not landed because the tsconfig flags already produce a meaningful gate; the ESLint layer would surface additional style + runtime hazards but is additive rather than load-bearing.
+The typed-models codegen Axis C2 mentions adding ESLint with `@typescript-eslint/strict-type-checked` on top of the tsconfig strict family. Not landed because the tsconfig flags already produce a meaningful gate; the ESLint layer would surface additional style + runtime hazards but is additive rather than load-bearing.
 
 **Trigger to revisit:** if a new contributor lands a hazard the tsconfig didn't catch and ESLint would have, or before the v0.2.0 ship gate.
 
@@ -376,13 +376,13 @@ Investigated as a precondition for the `disallow_any_*` trio. Both options exist
 
 ### Docusaurus wiring of generated docs
 
-`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it. SPEC 014 D7 deferred the site itself as a separate chore.
+`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it. The typed-models codegen D7 deferred the site itself as a separate chore.
 
 **Trigger to revisit:** the first time someone wants to ship public schema documentation.
 
 ## Quick Armature follow-ups (deferred polish)
 
-Three small items deferred from SPEC 012's TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up.
+Three small items deferred from the quick-armature TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up.
 
 - **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
 - **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.

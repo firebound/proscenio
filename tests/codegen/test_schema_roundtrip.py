@@ -7,7 +7,7 @@ Confirms:
    reproducible from the models alone).
 2. Every committed ``.proscenio`` fixture under ``examples/generated/``
    validates against the pydantic model. This is the practical gate
-   for SPEC 014: if the model fails to accept a real shipped fixture,
+   for the typed-models codegen: if the model fails to accept a real shipped fixture,
    the model is wrong.
 3. ``model_dump_json(exclude_unset=True)`` reproduces each golden
    byte-for-byte. This is the load-bearing gate for the writer
@@ -98,7 +98,7 @@ def test_model_dump_json_reproduces_goldens(fixture_path: Path) -> None:
     """Pydantic's ``model_dump_json(exclude_unset=True)`` must reproduce
     the goldens byte-for-byte after a parse round-trip.
 
-    The writer migration in SPEC 014 P2 swaps the hand-rolled
+    The writer migration in the typed-models codegen P2 swaps the hand-rolled
     ``json.dumps(doc, indent=2)`` for the pydantic emit path; this
     test is the load-bearing gate that catches any field-order or
     serialization drift between the model and the historical writer.

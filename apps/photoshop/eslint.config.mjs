@@ -20,6 +20,13 @@ export default tseslint.config(
             "out/**",
             "node_modules/**",
             "uxp-plugin-tests/**",
+            // Build / lint config files at the package root are not part
+            // of the typed `src` project; the type-aware project service
+            // cannot resolve them, so the editor ESLint pass parse-errors.
+            // The `pnpm lint` CLI only targets `src`, so these never need
+            // linting anyway.
+            "eslint.config.mjs",
+            "webpack.config.js",
             // Adobe React UXP starter adapter. Carries `@ts-nocheck`
             // because the Symbol-keyed private fields + untyped Component
             // contract are what `entrypoints.setup({ panels: ... })`

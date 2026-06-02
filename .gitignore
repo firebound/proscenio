@@ -52,6 +52,10 @@ examples/**/*.expected.actual.proscenio
 # Per-developer Claude Code workspace state
 .claude/
 
+# Local VS Code "Problems" panel export (diagnostic dump, not source)
+PROBLEMS
+PROBLEMS.md
+
 # OS
 .DS_Store
 Thumbs.db

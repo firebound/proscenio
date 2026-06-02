@@ -14,6 +14,7 @@
         "tests"
     ],
     "exclude": [
+        "**/.*",
         "**/__pycache__",
         "**/node_modules",
         "**/.venv",
@@ -125,6 +126,74 @@
             "reportArgumentType": "none",
             "reportIndexIssue": "none",
             "reportPossiblyUnboundVariable": "none"
+        },
+        {
+            "//": "Fixture + example .blend build scripts live at the bpy.data / node-tree boundary and are not gated by mypy strict; Pylance drops the same type reports so the editor count tracks the gate.",
+            "root": "packages/fixtures",
+            "reportGeneralTypeIssues": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportArgumentType": "none",
+            "reportIndexIssue": "none",
+            "reportOptionalSubscript": "none",
+            "reportOptionalIterable": "none",
+            "reportAssignmentType": "none",
+            "reportReturnType": "none",
+            "reportPossiblyUnboundVariable": "none"
+        },
+        {
+            "root": "examples",
+            "reportGeneralTypeIssues": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportArgumentType": "none",
+            "reportIndexIssue": "none",
+            "reportOptionalSubscript": "none",
+            "reportOptionalIterable": "none",
+            "reportAssignmentType": "none",
+            "reportReturnType": "none",
+            "reportPossiblyUnboundVariable": "none"
+        },
+        {
+            "//": "Headless operator + props pytest layer exercises bpy ops/data and passes SimpleNamespace mocks to typed params; correctness comes from running against Blender, not the static gate.",
+            "root": "apps/blender/tests",
+            "reportGeneralTypeIssues": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportArgumentType": "none",
+            "reportIndexIssue": "none",
+            "reportOptionalSubscript": "none",
+            "reportOptionalIterable": "none",
+            "reportAssignmentType": "none",
+            "reportReturnType": "none",
+            "reportPossiblyUnboundVariable": "none"
+        },
+        {
+            "//": "Repo-root pytest layer (skinning / automesh / codegen) passes SimpleNamespace mocks + bpy stubs to typed params; correctness comes from running the tests, not the static gate.",
+            "root": "tests",
+            "reportGeneralTypeIssues": "none",
+            "reportArgumentType": "none",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportOptionalSubscript": "none",
+            "reportOptionalIterable": "none",
+            "reportIndexIssue": "none",
+            "reportAssignmentType": "none",
+            "reportReturnType": "none",
+            "reportPossiblyUnboundVariable": "none"
+        },
+        {
+            "//": "writer + importers touch the bpy attribute boundary (Action.fcurves, the registered Object.proscenio PropertyGroup) that mypy treats as untyped; drop the matching reports so the editor tracks the mypy gate while structural reports stay on.",
+            "root": "apps/blender/exporters",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportArgumentType": "none"
+        },
+        {
+            "root": "apps/blender/importers",
+            "reportAttributeAccessIssue": "none",
+            "reportOptionalMemberAccess": "none",
+            "reportArgumentType": "none"
         }
     ]
 }

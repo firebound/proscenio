@@ -32,7 +32,7 @@ let cacheUntil = 0;
 
 function loadLevel(): LogLevel {
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = globalThis.localStorage.getItem(STORAGE_KEY);
         if (raw !== null && raw in ORDER) return raw as LogLevel;
     } catch {
         // ignore
@@ -51,7 +51,7 @@ function liveLevel(): LogLevel {
 
 function persistLevel(level: LogLevel): void {
     try {
-        window.localStorage.setItem(STORAGE_KEY, level);
+        globalThis.localStorage.setItem(STORAGE_KEY, level);
     } catch {
         // ignore
     }
@@ -111,8 +111,8 @@ declare global {
     }
 }
 
-if (typeof window !== "undefined") {
-    window.proscenio = {
+if (typeof globalThis.window !== "undefined") {
+    globalThis.window.proscenio = {
         setLogLevel,
         getLogLevel,
         levels: Object.keys(ORDER) as LogLevel[],

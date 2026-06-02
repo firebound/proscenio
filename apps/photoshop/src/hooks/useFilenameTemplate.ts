@@ -18,7 +18,7 @@ const KEY_FRAMES = "proscenio.template.frames";
 
 function load(key: string, fallback: string): string {
     try {
-        const v = window.localStorage.getItem(key);
+        const v = globalThis.localStorage.getItem(key);
         return v === null || v === "" ? fallback : v;
     } catch {
         return fallback;
@@ -27,7 +27,7 @@ function load(key: string, fallback: string): string {
 
 function save(key: string, value: string): void {
     try {
-        window.localStorage.setItem(key, value);
+        globalThis.localStorage.setItem(key, value);
     } catch {
         // localStorage not available (UXP variants, tests) - keep
         // in-memory state only.

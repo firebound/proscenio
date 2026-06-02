@@ -10,7 +10,7 @@ const KEY = "proscenio.pixelsPerUnit";
 
 function load(): number {
     try {
-        const raw = window.localStorage.getItem(KEY);
+        const raw = globalThis.localStorage.getItem(KEY);
         if (raw === null || raw === "") return DEFAULT_PPU;
         const parsed = Number.parseFloat(raw);
         return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PPU;
@@ -21,7 +21,7 @@ function load(): number {
 
 function save(value: number): void {
     try {
-        window.localStorage.setItem(KEY, String(value));
+        globalThis.localStorage.setItem(KEY, String(value));
     } catch {
         // localStorage unavailable; in-memory only.
     }

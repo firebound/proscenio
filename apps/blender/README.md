@@ -1,6 +1,6 @@
 # Proscenio - Blender addon
 
-Blender 4.2+ addon. See repo root [AGENTS.md](../AGENTS.md) and the dev skill at [`.ai/skills/blender-addon-dev.md`](../.ai/skills/blender-addon-dev.md) before editing.
+Blender 4.2+ addon. See repo root [AGENTS.md](../../AGENTS.md) and the dev skill at [`.ai/skills/blender-dev.md`](../../.ai/skills/blender-dev.md) before editing.
 
 ## Install for development
 

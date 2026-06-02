@@ -1,8 +1,8 @@
 # Photoshop UXP plugin
 
-UXP plugin that exports PSD layers to a Proscenio manifest + per-layer PNGs, and re-imports a manifest back into a PSD. Schema target: [`packages/models/schemas/psd_manifest.schema.json`](../packages/models/schemas/psd_manifest.schema.json) v1.
+UXP plugin that exports PSD layers to a Proscenio manifest + per-layer PNGs, and re-imports a manifest back into a PSD. Schema target: [`packages/models/schemas/psd_manifest.schema.json`](../../packages/models/schemas/psd_manifest.schema.json) v1.
 
-Deeper context: [`.ai/skills/photoshop-uxp-dev.md`](../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../docs/PHOTOSHOP-WORKFLOW.md). Locked stack and migration decisions live in the Photoshop UXP migration entry of [`specs/decisions.md`](../specs/decisions.md#photoshop-uxp-migration-shipped).
+Deeper context: [`.ai/skills/photoshop-uxp-dev.md`](../../.ai/skills/photoshop-uxp-dev.md) and [`docs/PHOTOSHOP-WORKFLOW.md`](../../docs/PHOTOSHOP-WORKFLOW.md). Locked stack and migration decisions live in the Photoshop UXP migration entry of [`specs/decisions.md`](../../specs/decisions.md#photoshop-uxp-migration-shipped).
 
 ## Stack
 
@@ -65,4 +65,4 @@ The output folder is persisted across plugin reloads via UXP's `createPersistent
 
 ## Folder layout
 
-See [.ai/skills/photoshop-uxp-dev.md](../.ai/skills/photoshop-uxp-dev.md) for the canonical map (domain / adapters / io / controllers / hooks / panels / types).
+See [.ai/skills/photoshop-uxp-dev.md](../../.ai/skills/photoshop-uxp-dev.md) for the canonical map (domain / adapters / io / controllers / hooks / panels / types).

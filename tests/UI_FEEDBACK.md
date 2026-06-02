@@ -19,8 +19,8 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 - Sub-blocks (Sprite Frame / Polygon body, Texture Region, Drive from Bone) deveriam ser collapsibles individualmente (acordeão). Hoje vê tudo de uma vez sem jeito de esconder.
 - `Initial frame` field deveria ser clamped em `[0, hframes*vframes-1]` (hoje aceita qualquer int). Pode causar confusão - usuário digita 99 sem feedback de que só existem 4 frames. Idem `frame` field se editado fora desse range. UI atual: `min=0` está, `max` falta (ou usa `soft_max`).
 - `Initial frame` label confunde no contexto de animação. Quando usuário keyframa o field, ele NÃO é "initial" - é THE frame value sendo animado. Renomear label pra `Frame` (mais simples, alinha com Sprite2D do Godot). Description pode manter "frame index at rest pose; animation tracks override at runtime" - explica o duplo papel sem polluir a label. File: `apps/blender/properties/object_props.py:124`.
-- `Drive from Bone` - expression default `var` é misleading pra o caso `Frame index`. Bone rotation em radianos típica varia [-pi, pi], mas frame range é [0, hframes*vframes-1]. Expression `var` faz negativos clamparem em 0 e valores acima de N-1 clamparem no max - usuário rotaciona bone e parece que driver não funciona.
-- **Expression como string crua é hostil** pra usuário não-programador: `var * 0.5 + 0.3` parece números mágicos. Usuário tem que entender que `var` = rotação em radianos e fazer álgebra mental pra mapear [bone_min, bone_max] em [prop_min, prop_max]. Animator não pensa nisso - pensa em "quando bone rotaciona deste jeito, sprite mostra essa faixa".
+- `Drive from Bone` - expression default `var` é misleading pra o caso `Frame index`. Bone rotation em radianos típica varia `[-pi, pi]`, mas frame range é `[0, hframes*vframes-1]`. Expression `var` faz negativos clamparem em 0 e valores acima de N-1 clamparem no max - usuário rotaciona bone e parece que driver não funciona.
+- **Expression como string crua é hostil** pra usuário não-programador: `var * 0.5 + 0.3` parece números mágicos. Usuário tem que entender que `var` = rotação em radianos e fazer álgebra mental pra mapear `[bone_min, bone_max]` em `[prop_min, prop_max]`. Animator não pensa nisso - pensa em "quando bone rotaciona deste jeito, sprite mostra essa faixa".
 - **Proposta UX:** substituir Expression por 2 ranges editáveis:
   - "Bone rotation range" - 2 sliders / fields: `from -90°` to `+90°`
   - "Sprite property range" - 2 sliders: `from 0` to `3` (pra Frame index, com default = full range; pra Region X, default = `0` to `1`)
@@ -106,7 +106,7 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
   - **Pretty print JSON:** debug-friendly manifest output.
   - **Pages (multi-atlas):** quando sprites não cabem num único atlas, gera page1/page2/... automaticamente.
   - **Filter min/mag + Wrap X/Y:** metadata runtime (Linear vs Nearest, ClampToEdge vs Repeat) que vai pro manifest.
-  
+
   Hoje todos esses defaultam ao implícito (no whitespace strip, no rotation, no bleed). Pra um pipeline de produção 2D, vários desses são *table stakes*. Não precisa de tudo de uma vez; priorizar **Edge padding + Strip whitespace** primeiro (maior impacto visual + tamanho).
 - **Falta visibility sobre PPU (pixels per unit) através do pipeline.** Hoje PPU vive como Scene-prop / parâmetro CLI no writer (`pixels_per_unit=100`), mas:
   - PSD manifest tem `pixels_per_unit` no schema - vira *implicit* depois que o importer carrega.

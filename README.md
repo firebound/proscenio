@@ -172,7 +172,7 @@ In one sentence: Proscenio trades Spine's multi-runtime, polished preview, and r
 - [`docs/GODOT-WORKFLOW.md`](docs/GODOT-WORKFLOW.md) - customizing imported characters Godot-side without losing work on reimport.
 - [`specs/`](specs/) - per-feature design documents.
 - [`specs/backlog.md`](specs/backlog.md) - finer-grained backlog (operators, CI, repo polish).
-- [`schemas/`](schemas/) - `.proscenio` and PSD manifest schemas.
+- [`packages/models/schemas/`](packages/models/schemas/) - `.proscenio` and PSD manifest schemas.
 
 ## License
 

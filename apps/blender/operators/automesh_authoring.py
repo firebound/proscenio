@@ -865,7 +865,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def _pen_tooltip_text(self, stage: str) -> str:
-        verb = "Cut" if self._pen_kind == "cut" else "Extend" if stage == "outer" else "Fold"
+        if self._pen_kind == "cut":
+            verb = "Cut"
+        elif stage == "outer":
+            verb = "Extend"
+        else:
+            verb = "Fold"
         axis = f" | {self._axis_lock.upper()}-lock" if self._axis_lock else ""
         return (
             f"{verb} pen | subdiv {self._pen_subdivisions}{axis} - "

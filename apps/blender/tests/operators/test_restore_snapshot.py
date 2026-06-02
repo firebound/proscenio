@@ -38,7 +38,7 @@ def test_restore_after_paint_reverts_to_snapshot(automesh_fixture):
     wrist = obj.vertex_groups["wrist"]
     for vert in obj.data.vertices:
         wrist.add([vert.index], 0.0, "REPLACE")
-    assert _first_wrist_weight(obj) == 0.0
+    assert abs(_first_wrist_weight(obj)) < 1e-9
     result = bpy.ops.proscenio.restore_weight_snapshot()
     assert "FINISHED" in result
     restored = _first_wrist_weight(obj)

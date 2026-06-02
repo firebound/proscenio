@@ -1,6 +1,6 @@
 # Proscenio - Godot plugin
 
-Godot 4.3+ editor plugin. See repo root [AGENTS.md](../AGENTS.md) and the dev skill at [`.ai/skills/godot-plugin-dev.md`](../.ai/skills/godot-plugin-dev.md) before editing.
+Godot 4.3+ editor plugin. See repo root [AGENTS.md](../../AGENTS.md) and the dev skill at [`.ai/skills/godot-dev.md`](../../.ai/skills/godot-dev.md) before editing.
 
 ## Structure
 

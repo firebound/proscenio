@@ -65,7 +65,7 @@ def test_bind_preserves_base_sprite_group_on_rerun(automesh_fixture):
 def test_bind_writes_populated_sidecar(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
-    bpy.ops.proscenio.bind_mesh_to_armature()  # default = BONE_HEAT
+    bpy.ops.proscenio.bind_mesh_to_armature()  # BONE_HEAT is the default mode
     payload = obj.get("proscenio_weight_sidecar")
     assert payload is not None
     sidecar = json.loads(payload)

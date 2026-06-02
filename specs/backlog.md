@@ -30,7 +30,7 @@ Schema validation rejects unknown `format_version`. Once v2 lands, the Blender e
 
 ### Bone physics (joint chain export)
 
-`Joint2D` chains driven by physics for cape, hair, tail, dangly weapon ornaments. Requires a schema extension carrying joint type + stiffness / damping per chain, then a Godot-side importer that wires `PinJoint2D` / `DampedSpringJoint2D` / `Joint2D` under the relevant bones. Pairs with the live-link discussion in [`decisions.md`](decisions.md#architecture-revisits) since runtime physics on hot-reloaded poses gets interesting fast.
+`Joint2D` chains driven by physics for cape, hair, tail, dangly weapon ornaments. Requires a schema extension carrying joint type + stiffness / damping per chain, then a Godot-side importer that wires `PinJoint2D` / `DampedSpringJoint2D` / `Joint2D` under the relevant bones. Pairs with the live-link discussion in [Architecture revisits](#architecture-revisits) since runtime physics on hot-reloaded poses gets interesting fast.
 
 **Trigger:** a character design surfaces dangly elements that look stiff under skeletal-only deformation.
 
@@ -51,6 +51,41 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 **Trigger:** a user asks for animated water, conveyor-belt, or region-resize effects. If the request is "swap whole image" - slot system covers it. If "swap frame in grid" - sprite_frame already covers it.
 
 **Out of scope definitively:** polygon UV animation (Spine-only feature, niche), shader-driven UV scroll (no schema, runtime-only), per-vertex UV animation (free-form deformation territory, separate concern).
+
+### sprite_frame animation track - Blender export path
+
+**What:** the `.proscenio` schema defines a `sprite_frame` track type and the Godot importer (`apps/godot/addons/proscenio/builders/animation_builder.gd`) already consumes it (animates `Sprite2D.frame` over time), but the Blender writer never emits one. `apps/blender/exporters/godot/writer/animations.py` only walks `pose.bones[...]` location / rotation / scale fcurves and emits `bone_transform` tracks (and `slot_animations.py` emits `slot_attachment`); a keyframed or bone-driven `proscenio.frame` channel does not become a `sprite_frame` track. The `drive_from_bone` shortcut is `BLENDER_ONLY` (`core/feature_status.py`), so the mouth_drive fixture's frame swap is a Blender-preview effect that never round-trips - its golden carries only a `bone_transform` track.
+
+**Why:** closes the producer half of an existing importer capability and the mouth_drive UX cliff ("I drove the mouth frame from a bone in Blender, why does Godot not animate it?"). Today the importer branch is reachable only by hand-authored documents; no Blender-produced fixture exercises it.
+
+**Scope sketch:** read keyframes on the sprite's `frame` channel (and/or bake the `drive_from_bone` driver) into a `sprite_frame` track targeting the sprite name; emit `interp: "constant"` keys (frame index is a hard step). Add a fixture with a `.blend` source whose golden carries a `sprite_frame` track so the CI re-export diff covers the path.
+
+**Trigger:** an animator authors a frame swap (blink, mouth phoneme) on the timeline and asks why Godot does not play it.
+
+### visibility animation track - Blender export path
+
+**What:** the schema defines a `visibility` track and the Godot importer consumes it (`animation_builder.gd`, emits per-key visibility tracks), but nothing on the Blender side emits one and no fixture exercises it. Like `sprite_frame`, it is reachable only via a hand-authored `.proscenio`.
+
+**Why:** either complete the loop (a keyframed `hide_render` / `hide_viewport` or a `proscenio.visible` channel becomes a `visibility` track) or retire the importer branch so the consumer side stops carrying an unexercised path.
+
+**Trigger:** a feature needs timeline-driven show / hide of a sprite (swap a whole limb on / off), or a code-health pass decides to drop dead importer branches.
+
+### Sprite appearance fields - modulate / draw order / flip / blend-mode passthrough
+
+**What:** the `.proscenio` sprite types (`PolygonSprite`, `SpriteFrameSprite`) carry geometry, skinning, frame metadata and texture, but none of the *appearance* properties that Godot's `Polygon2D` / `Sprite2D` expose and 2D artists routinely use:
+
+- **modulate / colour tint** - no per-sprite colour; a tinted material in Blender is lost. Also absent as an animation track (Godot animates `modulate` freely).
+- **draw order / z_index** - draw order is implicit in the `sprites[]` array order only; there is no explicit per-sprite `z_index`. Interleaving sprites across bones (an arm in front of the torso but behind the head) is not expressible.
+- **flip_h / flip_v** on the `Sprite2D` path.
+- **blend_mode** - the *PSD manifest* already carries `blend_mode` (`PolygonLayer.blend_mode` / `SpriteFrameLayer.blend_mode`, mapped to a Blender material on import), but the `.proscenio` sprite has no `blend_mode` field, so the value is dropped at the Blender -> Godot hop. This is a pipeline discontinuity, not just a deferred feature: the upstream schema knows the blend mode and the downstream format throws it away.
+
+**Why:** the format was scoped to geometry + skeleton + skinning + frame swap + slots + TRS animation - enough for a rigged character to deform and play. Appearance fidelity (tint, layering, blend) was outside the MVP. But these are not exotic: blend_mode is already half-plumbed (PSD -> Blender), modulate and z_index are first-class 2D rendering knobs, and their absence means an artist's colour / blend / layer choices silently do not reach Godot.
+
+**Scope sketch:** add optional `modulate: [r, g, b, a]`, `z_index: int`, and `blend_mode` (reuse the manifest's `normal | multiply | screen | additive` literal) to both sprite variants; `flip_h` / `flip_v` to `SpriteFrameSprite`. Writer reads them from the Blender material / object; importer stamps the matching node property. For animation, add `modulate` and `z_index` as new track-target properties (or new track types) once the static fields land. Keep every field optional and defaulted so existing v1 goldens round-trip unchanged - additive optionals need no `format_version` bump.
+
+**Out of scope for this entry:** `material` / custom shader references (collides with the GDScript-only, no-GDExtension architecture rule) and method / audio tracks (separate animation-events entry above).
+
+**Trigger:** an artist tints or sets a blend mode on a sprite in Blender / Photoshop and finds it flat / normal in Godot, or a scene needs explicit cross-bone draw layering the array order cannot express.
 
 ## Blender addon
 
@@ -254,7 +289,7 @@ Behaviours that landed as "by design" in the v1 taxonomy. Each is intentional to
 
 #### Nested `[merge]` collapses silently
 
-A `[merge]` group inside another `[merge]` is flattened into the outer entry without a warning. Confirmed end-to-end on the doll oracle: `brow_states [spritesheet]` with `1 [merge]` containing `1.1 [merge]` emits two frames (`0`, `1`) instead of three, because `1.1` collapses into `1`. **Why deferred**: this is the obvious recursive semantics for `[merge]` and the doll authoring run produced no surprise; no warning means no false-positive fatigue. **Trigger to revisit**: an artist reports "I added a sub-layer inside [merge] and it vanished" without realising it was deliberate - then we surface a `merge-nested` info-level entry on the Validate tab so the collapse is visible at authoring time.
+A `[merge]` group inside another `[merge]` is flattened into the outer entry without a warning. Confirmed end-to-end on the doll oracle: `brow_states [spritesheet]` with `1 [merge]` containing `1.1 [merge]` emits two frames (`0`, `1`) instead of three, because `1.1` collapses into `1`. **Why deferred**: this is the obvious recursive semantics for `[merge]` and the doll authoring run produced no surprise; no warning means no false-positive fatigue. **Trigger to revisit**: an artist reports "I added a sub-layer inside `[merge]` and it vanished" without realising it was deliberate - then we surface a `merge-nested` info-level entry on the Validate tab so the collapse is visible at authoring time.
 
 #### `[name:pre*suf]` parsed but planner does not rewrite
 

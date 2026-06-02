@@ -26,8 +26,10 @@ from pathlib import Path
 
 import pytest
 from proscenio_codegen.schema_dump import (
+    SCHEMAS_DIR,
     build_proscenio_schema,
     build_psd_manifest_schema,
+    emit_all_schemas,
 )
 from proscenio_models import ProscenioDocument
 
@@ -63,6 +65,28 @@ def test_schema_dump_has_root_metadata() -> None:
     schema = build_proscenio_schema()
     assert schema.get("title") == "Proscenio character"
     assert schema.get("$id", "").endswith("/proscenio.schema.json")
+
+
+def test_committed_schemas_match_emit(tmp_path: Path) -> None:
+    """The checked-in JSON Schemas reproduce from the current pydantic models.
+
+    Staleness gate (mirrors the GDScript emitter's committed-match test):
+    a contributor who edits a model but forgets to re-run
+    ``python -m proscenio_codegen schemas`` leaves the committed schema out
+    of sync, which leaves the TS / GDScript / docs artifacts that derive
+    from it stale. JSON Schema is the root artifact, so locking it here
+    catches model drift at the source without any external tooling.
+    """
+    emit_all_schemas(tmp_path)
+    committed = sorted(SCHEMAS_DIR.glob("*.json"))
+    assert committed, "expected committed schemas under packages/models/schemas/"
+    for c in committed:
+        fresh = tmp_path / c.name
+        assert fresh.is_file(), f"emitter no longer produces {c.name}"
+        assert fresh.read_text(encoding="utf-8") == c.read_text(encoding="utf-8"), (
+            f"{c.name} differs from the pydantic-derived emit. "
+            "Run `python -m proscenio_codegen schemas`."
+        )
 
 
 def test_pydantic_model_accepts_every_committed_fixture() -> None:

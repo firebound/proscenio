@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Weight
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Weight](proscenio-defs-weight.md))
 
-# Weight Properties
+## Weight Properties
 
 | Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                         |
 | :---------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,8 +20,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [values](#values) | `array`  | Required | cannot be null | [Proscenio character](proscenio-defs-weight-properties-values.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Weight/properties/values") |
 
 ## bone
-
-
 
 `bone`
 
@@ -40,8 +36,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 `string` ([Bone](proscenio-defs-weight-properties-bone.md))
 
 ## values
-
-
 
 `values`
 

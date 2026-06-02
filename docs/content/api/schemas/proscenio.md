@@ -17,7 +17,7 @@ validators that key off `$id` continue to resolve.
 
 `object` ([Proscenio character](proscenio.md))
 
-# Proscenio character Properties
+## Proscenio character Properties
 
 | Property                              | Type      | Required | Nullable       | Defined by                                                                                                                                                                  |
 | :------------------------------------ | :-------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,8 +31,6 @@ validators that key off `$id` continue to resolve.
 | [sprites](#sprites)                   | `array`   | Required | cannot be null | [Proscenio character](proscenio-properties-sprites.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/properties/sprites")                 |
 
 ## animations
-
-
 
 `animations`
 
@@ -55,8 +53,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-properties-animations-anyof-1.md "check type definition")
 
 ## atlas
-
-
 
 `atlas`
 
@@ -106,8 +102,6 @@ Bump on any breaking change to the shape of this document.
 
 ## name
 
-
-
 `name`
 
 * is required
@@ -127,8 +121,6 @@ Bump on any breaking change to the shape of this document.
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## pixels\_per\_unit
-
-
 
 `pixels_per_unit`
 
@@ -150,8 +142,6 @@ Bump on any breaking change to the shape of this document.
 
 ## skeleton
 
-
-
 `skeleton`
 
 * is required
@@ -167,8 +157,6 @@ Bump on any breaking change to the shape of this document.
 `object` ([Skeleton](proscenio-defs-skeleton.md))
 
 ## slots
-
-
 
 `slots`
 
@@ -192,8 +180,6 @@ any of
 
 ## sprites
 
-
-
 `sprites`
 
 * is required
@@ -208,7 +194,7 @@ any of
 
 an array of merged types ([Details](proscenio-properties-sprites-items.md))
 
-# Proscenio character Definitions
+## Proscenio character Definitions
 
 ## Definitions group Animation
 
@@ -226,8 +212,6 @@ Reference this group by using
 | [tracks](#tracks) | `array`  | Required | cannot be null | [Proscenio character](proscenio-defs-animation-properties-tracks.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Animation/properties/tracks") |
 
 ### length
-
-
 
 `length`
 
@@ -248,8 +232,6 @@ Reference this group by using
 **minimum (exclusive)**: the value of this number must be greater than: `0`
 
 ### loop
-
-
 
 `loop`
 
@@ -273,8 +255,6 @@ any of
 
 ### name
 
-
-
 `name`
 
 * is required
@@ -294,8 +274,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ### tracks
-
-
 
 `tracks`
 
@@ -330,8 +308,6 @@ Reference this group by using
 
 ### length
 
-
-
 `length`
 
 * is optional
@@ -354,8 +330,6 @@ any of
 
 ### name
 
-
-
 `name`
 
 * is required
@@ -375,8 +349,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ### parent
-
-
 
 `parent`
 
@@ -400,8 +372,6 @@ any of
 
 ### position
 
-
-
 `position`
 
 * is optional
@@ -424,8 +394,6 @@ any of
 
 ### rotation
 
-
-
 `rotation`
 
 * is optional
@@ -447,8 +415,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-bone-properties-rotation-anyof-1.md "check type definition")
 
 ### scale
-
-
 
 `scale`
 
@@ -491,8 +457,6 @@ Reference this group by using
 
 ### attachment
 
-
-
 `attachment`
 
 * is optional
@@ -514,8 +478,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-key-properties-attachment-anyof-1.md "check type definition")
 
 ### frame
-
-
 
 `frame`
 
@@ -539,8 +501,6 @@ any of
 
 ### interp
 
-
-
 `interp`
 
 * is optional
@@ -562,8 +522,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-key-properties-interp-anyof-1.md "check type definition")
 
 ### position
-
-
 
 `position`
 
@@ -587,8 +545,6 @@ any of
 
 ### rotation
 
-
-
 `rotation`
 
 * is optional
@@ -610,8 +566,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-key-properties-rotation-anyof-1.md "check type definition")
 
 ### scale
-
-
 
 `scale`
 
@@ -635,8 +589,6 @@ any of
 
 ### time
 
-
-
 `time`
 
 * is required
@@ -656,8 +608,6 @@ any of
 **minimum**: the value of this number must greater than or equal to: `0`
 
 ### visible
-
-
 
 `visible`
 
@@ -700,8 +650,6 @@ Reference this group by using
 
 ### bone
 
-
-
 `bone`
 
 * is optional
@@ -724,8 +672,6 @@ any of
 
 ### name
 
-
-
 `name`
 
 * is required
@@ -745,8 +691,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ### polygon
-
-
 
 `polygon`
 
@@ -846,8 +790,6 @@ The default value is:
 
 ### uv
 
-
-
 `uv`
 
 * is required
@@ -863,8 +805,6 @@ The default value is:
 `number[][]`
 
 ### weights
-
-
 
 `weights`
 
@@ -900,8 +840,6 @@ Reference this group by using
 
 ### bones
 
-
-
 `bones`
 
 * is required
@@ -933,8 +871,6 @@ Reference this group by using
 
 ### attachments
 
-
-
 `attachments`
 
 * is required
@@ -950,8 +886,6 @@ Reference this group by using
 `string[]`
 
 ### bone
-
-
 
 `bone`
 
@@ -975,8 +909,6 @@ any of
 
 ### default
 
-
-
 `default`
 
 * is optional
@@ -998,8 +930,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-slot-properties-default-anyof-1.md "check type definition")
 
 ### name
-
-
 
 `name`
 
@@ -1042,8 +972,6 @@ Reference this group by using
 
 ### bone
 
-
-
 `bone`
 
 * is required
@@ -1059,8 +987,6 @@ Reference this group by using
 `string` ([Bone](proscenio-defs-spriteframesprite-properties-bone.md))
 
 ### centered
-
-
 
 `centered`
 
@@ -1108,8 +1034,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 
 ### hframes
 
-
-
 `hframes`
 
 * is required
@@ -1130,8 +1054,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 
 ### name
 
-
-
 `name`
 
 * is required
@@ -1151,8 +1073,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ### offset
-
-
 
 `offset`
 
@@ -1261,8 +1181,6 @@ Discriminator. Required and constant.
 
 ### vframes
 
-
-
 `vframes`
 
 * is required
@@ -1297,8 +1215,6 @@ Reference this group by using
 
 ### keys
 
-
-
 `keys`
 
 * is required
@@ -1314,8 +1230,6 @@ Reference this group by using
 `object[]` ([Key](proscenio-defs-key.md))
 
 ### target
-
-
 
 `target`
 
@@ -1336,8 +1250,6 @@ Reference this group by using
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ### type
-
-
 
 `type`
 
@@ -1379,8 +1291,6 @@ Reference this group by using
 
 ### bone
 
-
-
 `bone`
 
 * is required
@@ -1396,8 +1306,6 @@ Reference this group by using
 `string` ([Bone](proscenio-defs-weight-properties-bone.md))
 
 ### values
-
-
 
 `values`
 

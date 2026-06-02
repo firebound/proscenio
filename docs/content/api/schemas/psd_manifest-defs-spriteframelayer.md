@@ -16,7 +16,7 @@ Authored as a LayerSet tagged `[spritesheet]`.
 
 `object` ([SpriteFrameLayer](psd_manifest-defs-spriteframelayer.md))
 
-# 1 Properties
+## 1 Properties
 
 | Property                   | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                              |
 | :------------------------- | :-------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,8 +31,6 @@ Authored as a LayerSet tagged `[spritesheet]`.
 | [z\_order](#z_order)       | `integer` | Required | cannot be null | [Proscenio PSD manifest](psd_manifest-defs-spriteframelayer-properties-z-order.md "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json#/$defs/SpriteFrameLayer/properties/z_order")       |
 
 ## blend\_mode
-
-
 
 `blend_mode`
 
@@ -56,8 +54,6 @@ any of
 
 ## frames
 
-
-
 `frames`
 
 * is required
@@ -77,8 +73,6 @@ any of
 **minimum number of items**: the minimum number of items for this array is: `2`
 
 ## kind
-
-
 
 `kind`
 
@@ -103,8 +97,6 @@ any of
 ```
 
 ## name
-
-
 
 `name`
 
@@ -198,8 +190,6 @@ Largest frame bbox size in pixels (importer pads smaller frames to match).
 
 ## subfolder
 
-
-
 `subfolder`
 
 * is optional
@@ -221,8 +211,6 @@ any of
 * [Untitled null in Proscenio PSD manifest](psd_manifest-defs-spriteframelayer-properties-subfolder-anyof-1.md "check type definition")
 
 ## z\_order
-
-
 
 `z_order`
 

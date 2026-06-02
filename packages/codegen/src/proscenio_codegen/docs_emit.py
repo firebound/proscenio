@@ -13,11 +13,36 @@ read them lands as a follow-up chore.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
 from proscenio_codegen._io import REPO_ROOT
+
+_MULTI_BLANK = re.compile(r"\n{3,}")
+
+
+def postprocess_markdown(text: str) -> str:
+    """Normalise jsonschema2md output so it is well-formed Markdown.
+
+    The generator emits runs of 2-3 blank lines (markdownlint MD012) and
+    repeats a top-level ``#`` heading per referenced definition
+    (markdownlint MD025). Collapse blank runs to a single blank line and
+    demote every heading after the first ``#`` to ``##`` so the committed
+    reference is clean without a lint-ignore over the whole tree.
+    """
+    text = _MULTI_BLANK.sub("\n\n", text)
+    out: list[str] = []
+    seen_h1 = False
+    for line in text.split("\n"):
+        if line.startswith("# "):
+            if seen_h1:
+                line = "#" + line
+            else:
+                seen_h1 = True
+        out.append(line)
+    return "\n".join(out)
 
 SCHEMAS_DIR = REPO_ROOT / "packages" / "models" / "schemas"
 DOCS_DIR = REPO_ROOT / "docs" / "content" / "api" / "schemas"
@@ -74,4 +99,14 @@ def emit_docs(
         encoding="utf-8",
     )
 
-    return sorted(docs_dir.glob("*.md"))
+    # jsonschema2md output carries MD012 (blank runs) + MD025 (repeated
+    # top-level headings); normalise each file in place so the committed
+    # docs are clean Markdown.
+    written = sorted(docs_dir.glob("*.md"))
+    for md in written:
+        original = md.read_text(encoding="utf-8")
+        normalised = postprocess_markdown(original)
+        if normalised != original:
+            md.write_text(normalised, encoding="utf-8")
+
+    return written

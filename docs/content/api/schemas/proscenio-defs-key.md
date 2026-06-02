@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Key
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Key](proscenio-defs-key.md))
 
-# Key Properties
+## Key Properties
 
 | Property                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                           |
 | :------------------------ | :------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -28,8 +26,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [visible](#visible)       | Merged   | Optional | cannot be null | [Proscenio character](proscenio-defs-key-properties-visible.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Key/properties/visible")       |
 
 ## attachment
-
-
 
 `attachment`
 
@@ -53,8 +49,6 @@ any of
 
 ## frame
 
-
-
 `frame`
 
 * is optional
@@ -76,8 +70,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-key-properties-frame-anyof-1.md "check type definition")
 
 ## interp
-
-
 
 `interp`
 
@@ -101,8 +93,6 @@ any of
 
 ## position
 
-
-
 `position`
 
 * is optional
@@ -124,8 +114,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-key-properties-position-anyof-1.md "check type definition")
 
 ## rotation
-
-
 
 `rotation`
 
@@ -149,8 +137,6 @@ any of
 
 ## scale
 
-
-
 `scale`
 
 * is optional
@@ -173,8 +159,6 @@ any of
 
 ## time
 
-
-
 `time`
 
 * is required
@@ -194,8 +178,6 @@ any of
 **minimum**: the value of this number must greater than or equal to: `0`
 
 ## visible
-
-
 
 `visible`
 

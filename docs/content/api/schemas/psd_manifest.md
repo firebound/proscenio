@@ -14,7 +14,7 @@ Root of a PSD manifest v2 document.
 
 `object` ([Proscenio PSD manifest](psd_manifest.md))
 
-# Proscenio PSD manifest Properties
+## Proscenio PSD manifest Properties
 
 | Property                              | Type      | Required | Nullable       | Defined by                                                                                                                                                                           |
 | :------------------------------------ | :-------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -161,7 +161,7 @@ Importer divides PSD pixels by this when stamping mesh size and position.
 
 **minimum number of items**: the minimum number of items for this array is: `2`
 
-# Proscenio PSD manifest Definitions
+## Proscenio PSD manifest Definitions
 
 ## Definitions group FrameEntry
 
@@ -266,8 +266,6 @@ any of
 
 ### kind
 
-
-
 `kind`
 
 * is required
@@ -292,8 +290,6 @@ any of
 | `"mesh"`    |             |
 
 ### name
-
-
 
 `name`
 
@@ -475,8 +471,6 @@ Reference this group by using
 
 ### blend\_mode
 
-
-
 `blend_mode`
 
 * is optional
@@ -499,8 +493,6 @@ any of
 
 ### frames
 
-
-
 `frames`
 
 * is required
@@ -520,8 +512,6 @@ any of
 **minimum number of items**: the minimum number of items for this array is: `2`
 
 ### kind
-
-
 
 `kind`
 
@@ -546,8 +536,6 @@ any of
 ```
 
 ### name
-
-
 
 `name`
 
@@ -641,8 +629,6 @@ Largest frame bbox size in pixels (importer pads smaller frames to match).
 
 ### subfolder
 
-
-
 `subfolder`
 
 * is optional
@@ -664,8 +650,6 @@ any of
 * [Untitled null in Proscenio PSD manifest](psd_manifest-defs-spriteframelayer-properties-subfolder-anyof-1.md "check type definition")
 
 ### z\_order
-
-
 
 `z_order`
 

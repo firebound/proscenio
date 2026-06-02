@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/properties/slots/anyOf/0/items
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Slot](proscenio-defs-slot.md))
 
-# items Properties
+## items Properties
 
 | Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                               |
 | :-------------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,8 +22,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [name](#name)               | `string` | Required | cannot be null | [Proscenio character](proscenio-defs-slot-properties-name.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Slot/properties/name")               |
 
 ## attachments
-
-
 
 `attachments`
 
@@ -42,8 +38,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 `string[]`
 
 ## bone
-
-
 
 `bone`
 
@@ -67,8 +61,6 @@ any of
 
 ## default
 
-
-
 `default`
 
 * is optional
@@ -90,8 +82,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-slot-properties-default-anyof-1.md "check type definition")
 
 ## name
-
-
 
 `name`
 

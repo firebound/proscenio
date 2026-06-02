@@ -21,7 +21,7 @@ fixtures byte-for-byte once the writer migrates.
 
 `object` ([SpriteFrameSprite](proscenio-defs-spriteframesprite.md))
 
-# 1 Properties
+## 1 Properties
 
 | Property                           | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                               |
 | :--------------------------------- | :-------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,8 +38,6 @@ fixtures byte-for-byte once the writer migrates.
 
 ## bone
 
-
-
 `bone`
 
 * is required
@@ -55,8 +53,6 @@ fixtures byte-for-byte once the writer migrates.
 `string` ([Bone](proscenio-defs-spriteframesprite-properties-bone.md))
 
 ## centered
-
-
 
 `centered`
 
@@ -104,8 +100,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 
 ## hframes
 
-
-
 `hframes`
 
 * is required
@@ -126,8 +120,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 
 ## name
 
-
-
 `name`
 
 * is required
@@ -147,8 +139,6 @@ Initial frame index (row-major). Animation tracks override at runtime.
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## offset
-
-
 
 `offset`
 
@@ -256,8 +246,6 @@ Discriminator. Required and constant.
 ```
 
 ## vframes
-
-
 
 `vframes`
 

@@ -17,7 +17,7 @@ source; renders as polygon when no rig is bound.
 
 `object` ([PolygonLayer](psd_manifest-defs-polygonlayer.md))
 
-# 0 Properties
+## 0 Properties
 
 | Property                   | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                      |
 | :------------------------- | :-------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -57,8 +57,6 @@ any of
 
 ## kind
 
-
-
 `kind`
 
 * is required
@@ -83,8 +81,6 @@ any of
 | `"mesh"`    |             |
 
 ## name
-
-
 
 `name`
 

@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/properties/animations/anyOf/0/items
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Animation](proscenio-defs-animation.md))
 
-# items Properties
+## items Properties
 
 | Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                               |
 | :---------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,8 +22,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [tracks](#tracks) | `array`  | Required | cannot be null | [Proscenio character](proscenio-defs-animation-properties-tracks.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Animation/properties/tracks") |
 
 ## length
-
-
 
 `length`
 
@@ -46,8 +42,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 **minimum (exclusive)**: the value of this number must be greater than: `0`
 
 ## loop
-
-
 
 `loop`
 
@@ -71,8 +65,6 @@ any of
 
 ## name
 
-
-
 `name`
 
 * is required
@@ -92,8 +84,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## tracks
-
-
 
 `tracks`
 

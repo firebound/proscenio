@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Skeleton/properties/bones/items
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Bone](proscenio-defs-bone.md))
 
-# items Properties
+## items Properties
 
 | Property              | Type     | Required | Nullable       | Defined by                                                                                                                                                                         |
 | :-------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,8 +24,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [scale](#scale)       | Merged   | Optional | cannot be null | [Proscenio character](proscenio-defs-bone-properties-scale.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Bone/properties/scale")       |
 
 ## length
-
-
 
 `length`
 
@@ -51,8 +47,6 @@ any of
 
 ## name
 
-
-
 `name`
 
 * is required
@@ -72,8 +66,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## parent
-
-
 
 `parent`
 
@@ -97,8 +89,6 @@ any of
 
 ## position
 
-
-
 `position`
 
 * is optional
@@ -121,8 +111,6 @@ any of
 
 ## rotation
 
-
-
 `rotation`
 
 * is optional
@@ -144,8 +132,6 @@ any of
 * [Untitled null in Proscenio character](proscenio-defs-bone-properties-rotation-anyof-1.md "check type definition")
 
 ## scale
-
-
 
 `scale`
 

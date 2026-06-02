@@ -21,7 +21,7 @@ fixtures byte-for-byte once the writer migrates.
 
 `object` ([PolygonSprite](proscenio-defs-polygonsprite.md))
 
-# 0 Properties
+## 0 Properties
 
 | Property                           | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                       |
 | :--------------------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -35,8 +35,6 @@ fixtures byte-for-byte once the writer migrates.
 | [weights](#weights)                | Merged   | Optional | cannot be null | [Proscenio character](proscenio-defs-polygonsprite-properties-weights.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/PolygonSprite/properties/weights")               |
 
 ## bone
-
-
 
 `bone`
 
@@ -60,8 +58,6 @@ any of
 
 ## name
 
-
-
 `name`
 
 * is required
@@ -81,8 +77,6 @@ any of
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## polygon
-
-
 
 `polygon`
 
@@ -182,8 +176,6 @@ The default value is:
 
 ## uv
 
-
-
 `uv`
 
 * is required
@@ -199,8 +191,6 @@ The default value is:
 `number[][]`
 
 ## weights
-
-
 
 `weights`
 

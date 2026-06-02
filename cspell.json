@@ -4,7 +4,13 @@
   "ignorePaths": [
     "**/pnpm-lock.yaml",
     "**/uv.lock",
-    "**/package-lock.json"
+    "**/package-lock.json",
+    "**/*.uid",
+    "PROBLEMS",
+    "PROBLEMS.md",
+    "tests/BUGS_FOUND.md",
+    "tests/MANUAL_TESTING.md",
+    "tests/UI_FEEDBACK.md"
   ],
   "dictionaries": [
     "developer-terms",

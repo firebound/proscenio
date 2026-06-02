@@ -4,8 +4,6 @@
 https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Track
 ```
 
-
-
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
 | Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [proscenio.schema.json\*](../../../../out/proscenio.schema.json "open original schema") |
@@ -14,7 +12,7 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 
 `object` ([Track](proscenio-defs-track.md))
 
-# Track Properties
+## Track Properties
 
 | Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                       |
 | :---------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,8 +21,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 | [type](#type)     | `string` | Required | cannot be null | [Proscenio character](proscenio-defs-track-properties-type.md "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/$defs/Track/properties/type")     |
 
 ## keys
-
-
 
 `keys`
 
@@ -41,8 +37,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 `object[]` ([Key](proscenio-defs-key.md))
 
 ## target
-
-
 
 `target`
 
@@ -63,8 +57,6 @@ https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json#/
 **minimum length**: the minimum number of characters for this string is: `1`
 
 ## type
-
-
 
 `type`
 

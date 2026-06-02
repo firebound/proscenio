@@ -71,7 +71,7 @@ function diffScale(form: DetailForm, baseline: DetailForm): Diff<TagBag["scale"]
     const value = form.scale.trim();
     if (value === baseline.scale.trim()) return SKIP;
     if (value.length === 0) return undefined;
-    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) return SKIP;
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return SKIP;
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return SKIP;
     return n;

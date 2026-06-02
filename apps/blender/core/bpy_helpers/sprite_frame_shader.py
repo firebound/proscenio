@@ -155,7 +155,7 @@ def apply_slicer_to_material(
     group = ensure_slicer_group(node_groups)
     slicer = _ensure_slicer_node_in_tree(nt, group)
     _wire_slicer_to_tex(nt, slicer, tex_node)
-    _wire_slicer_drivers(material, slicer, obj)
+    _wire_slicer_drivers(slicer, obj)
     return True
 
 
@@ -247,7 +247,7 @@ def _slicer_upstream_uv(slicer: Any) -> Any:
     return uv_input.links[0].from_socket
 
 
-def _wire_slicer_drivers(material: Any, slicer: Any, obj: Any) -> None:
+def _wire_slicer_drivers(slicer: Any, obj: Any) -> None:
     """Wire `obj.proscenio.{frame,hframes,vframes}` -> slicer inputs."""
     spec = (
         (_SOCK_FRAME, "frame"),

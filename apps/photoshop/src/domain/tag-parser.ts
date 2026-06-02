@@ -134,7 +134,7 @@ function consumeScale(value: string, tags: TagBag): boolean {
     // `"1abc"` would silently parse as `1`. Pre-validate against a
     // strict numeric pattern (digits + optional fractional part) so
     // tag-only strings reach `Number()` and trailing garbage rejects.
-    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) return false;
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return false;
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return false;
     tags.scale = n;

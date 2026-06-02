@@ -308,3 +308,7 @@ classmethod
 frozenset
 staticmethod
 WCAG
+usedforsecurity
+hashlib
+hexdigest
+stdlib

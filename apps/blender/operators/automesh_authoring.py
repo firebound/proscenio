@@ -955,9 +955,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._reset_draw_state()
             self._refresh_outer_preview(context)
         elif next_stage == AuthoringStage.INNER_LOOPS:
-            self._output.inner_loops = compute_inner_loops_for_stage(
-                obj, image, self._output.outer, params
-            )
+            self._output.inner_loops = compute_inner_loops_for_stage(obj, image, params)
         elif next_stage == AuthoringStage.EDIT_INTERIOR_POINTS:
             self._user_strokes = read_user_strokes(obj)
             self._reset_draw_state()
@@ -1105,9 +1103,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._output.outer = compute_outer(obj, image, params)
             self._refresh_outer_preview(context)
         elif self._stage == AuthoringStage.INNER_LOOPS:
-            self._output.inner_loops = compute_inner_loops_for_stage(
-                obj, image, self._output.outer, params
-            )
+            self._output.inner_loops = compute_inner_loops_for_stage(obj, image, params)
         elif self._stage == AuthoringStage.PREVIEW_INTERIOR:
             try:
                 self._refresh_steiner_preview(context, obj, image, params)

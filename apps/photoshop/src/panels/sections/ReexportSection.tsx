@@ -63,7 +63,11 @@ export const ReexportSection: React.FC<Props> = ({ preview, activeLayerPath, fol
                 </>
             )}
             <sp-action-button
-                onClick={() => { void onReexport(); }}
+                onClick={() => {
+                    onReexport().catch((err: unknown) => {
+                        log.error("ReexportSection", "re-export failed", err);
+                    });
+                }}
                 disabled={busy || matched === null || folder === null ? true : undefined}
             >
                 {busy ? "Re-exporting..." : "Re-export this entry's PNG"}

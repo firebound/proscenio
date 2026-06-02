@@ -750,5 +750,5 @@ export function indicesAreContiguousFromZero(indices: number[]): boolean {
 }
 
 export function sanitize(name: string): string {
-    return name.replace(/[^A-Za-z0-9_-]/g, "_");
+    return name.replaceAll(/[^A-Za-z0-9_-]/g, "_");
 }

@@ -82,7 +82,6 @@ def compute_outer(
 def compute_inner_loops_for_stage(
     obj: bpy.types.Object,
     image: bpy.types.Image,
-    outer: list[Point2D],
     params: StageParams,
 ) -> list[list[Point2D]]:
     """N concentric inner loops via pure erosion_loops.

@@ -41,12 +41,18 @@ class WeightSidecar:
 
 
 def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str:
-    """sha1 over vert count + flattened face index tuples."""
+    """sha1 over vert count + flattened face index tuples.
+
+    Pure content fingerprint to detect mesh topology changes between
+    sidecar writes - not a security digest, so ``usedforsecurity=False``
+    keeps the cheap sha1 while telling scanners collision resistance is
+    irrelevant here.
+    """
     payload_parts = [str(vert_count)]
     for face in face_indices:
         payload_parts.append(",".join(str(v) for v in face))
     payload = "|".join(payload_parts).encode("utf-8")
-    return hashlib.sha1(payload).hexdigest()
+    return hashlib.sha1(payload, usedforsecurity=False).hexdigest()
 
 
 def build_minimal_stub(vertex_group_names: list[str], topology_hash: str) -> WeightSidecar:
@@ -96,7 +102,7 @@ def _entry_from_dict(item: object) -> SidecarEntry:
     if not isinstance(item, dict):
         raise ValueError("sidecar entry must be a JSON object")
     anchor_raw = item.get("uv_anchor")
-    if not isinstance(anchor_raw, (list, tuple)) or len(anchor_raw) != 2:
+    if not isinstance(anchor_raw, list | tuple) or len(anchor_raw) != 2:
         raise ValueError("entry uv_anchor must be a length-2 array")
     weights_raw = item.get("weights", {})
     if not isinstance(weights_raw, dict):

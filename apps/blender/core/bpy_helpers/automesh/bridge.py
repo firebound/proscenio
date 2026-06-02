@@ -29,6 +29,7 @@ calls). Operator + panel live in their own modules and call
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import bmesh
@@ -122,6 +123,45 @@ through stages to pinpoint which step produced bad output.
 ``final`` matches ``off`` behavior except it clears any prior
 debug companions for the sprite so reruns leave the scene clean.
 """
+
+
+@dataclass(frozen=True, slots=True)
+class AutomeshBuildParams:
+    """Scalar tuning knobs :func:`build_automesh` resolves up front.
+
+    Both call sites (the operator and the stroke-authoring pipeline)
+    derive these from their own property bags, so grouping them keeps
+    the build call readable while the algorithm body reads each knob by
+    name after a single destructure.
+    """
+
+    downscale_factor: float
+    alpha_threshold: int
+    margin_pixels: int
+    target_contour_vertices: int
+    interior_spacing: float
+    world_scale: float
+    bone_density_radius: float = 0.0
+    bone_density_factor: int = 1
+    debug_stage: DebugStage = "off"
+    preserve_base_quad: bool = False
+    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE"
+
+
+@dataclass(frozen=True, slots=True)
+class AutomeshOverrides:
+    """Optional geometry the stroke-authoring pipeline injects.
+
+    The plain operator path leaves every field at its default so the
+    alpha walker drives the contour; apply_mesh fills them in to splice
+    user strokes, extra Steiner points, cut corridors, and bone density.
+    """
+
+    bone_segments: list[BoneSegment2D] | None = None
+    outer_override: list[tuple[float, float]] | None = None
+    extra_steiners: list[tuple[float, float]] | None = None
+    extra_edges: list[tuple[int, int]] | None = None
+    cut_hole_loops: list[list[tuple[float, float]]] | None = None
 
 
 def _max_alpha_in_block(
@@ -665,26 +705,60 @@ def _finalize_mesh(
     print(f"[automesh] === END mesh now has {len(mesh.vertices)} verts, {len(mesh.polygons)} faces")
 
 
+def _compute_interior_and_remap_edges(
+    outer_world: list[tuple[float, float]],
+    inner_world: list[tuple[float, float]],
+    holes_world: list[list[tuple[float, float]]],
+    params: AutomeshBuildParams,
+    overrides: AutomeshOverrides,
+) -> tuple[list[tuple[float, float]], list[tuple[int, int]] | None]:
+    """Interior Steiner points + remapped stroke extra-edge indices.
+
+    SIMPLE mode seeds only the silhouette, holes, and user verts (no grid);
+    DENSE fills the uniform grid plus bone density. User extras merge in
+    after, and sentinel-namespaced ``extra_edges`` shift to their true coord
+    base (outer + inner + auto-interior count).
+    """
+    if params.interior_mode == "SIMPLE":
+        # Sparse Spine-like mesh: drop the uniform grid + bone-density fill
+        # (the expensive step) so only the silhouette, holes, and user-placed
+        # verts seed the Constrained Delaunay.
+        interior_points: list[tuple[float, float]] = []
+    else:
+        exclude_zones: list[tuple[float, float, float]] | None = None
+        if overrides.extra_steiners:
+            exclude_zones = [
+                (p[0], p[1], params.interior_spacing * 0.5) for p in overrides.extra_steiners
+            ]
+        interior_points = _compute_steiner_points(
+            outer_world,
+            inner_world,
+            holes_world,
+            params.interior_spacing,
+            overrides.bone_segments,
+            params.bone_density_radius,
+            params.bone_density_factor,
+            exclude_zones=exclude_zones,
+        )
+    # Capture the auto-fill count BEFORE merging extras so extra_edges indices
+    # remap to their true position in the final coord array.
+    auto_interior_count = len(interior_points)
+    if overrides.extra_steiners:
+        interior_points = _merge_extra_steiners(
+            interior_points, overrides.extra_steiners, outer_world, inner_world, holes_world
+        )
+    extra_edges = overrides.extra_edges
+    if extra_edges:
+        extra_base = len(outer_world) + len(inner_world) + auto_interior_count
+        extra_edges = _remap_extra_edge_indices(extra_edges, extra_base)
+    return interior_points, extra_edges
+
+
 def build_automesh(
     obj: Object,
     image: Image,
-    *,
-    downscale_factor: float,
-    alpha_threshold: int,
-    margin_pixels: int,
-    target_contour_vertices: int,
-    interior_spacing: float,
-    world_scale: float,
-    bone_segments: list[BoneSegment2D] | None = None,
-    bone_density_radius: float = 0.0,
-    bone_density_factor: int = 1,
-    debug_stage: DebugStage = "off",
-    preserve_base_quad: bool = False,
-    outer_override: list[tuple[float, float]] | None = None,
-    extra_steiners: list[tuple[float, float]] | None = None,
-    extra_edges: list[tuple[int, int]] | None = None,
-    cut_hole_loops: list[list[tuple[float, float]]] | None = None,
-    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE",
+    params: AutomeshBuildParams,
+    overrides: AutomeshOverrides | None = None,
 ) -> dict[str, int]:
     """Generate the annulus mesh on ``obj`` from ``image`` alpha.
 
@@ -706,6 +780,22 @@ def build_automesh(
     these before getting here so the user sees an actionable
     message rather than a stack trace.
     """
+    # Destructure the param bundles into working locals; some
+    # (outer_world, holes_world) are reassigned downstream as the pipeline
+    # splices overrides, so locals - not frozen fields - carry the mutation.
+    overrides = overrides or AutomeshOverrides()
+    downscale_factor = params.downscale_factor
+    alpha_threshold = params.alpha_threshold
+    margin_pixels = params.margin_pixels
+    target_contour_vertices = params.target_contour_vertices
+    interior_spacing = params.interior_spacing
+    world_scale = params.world_scale
+    debug_stage = params.debug_stage
+    preserve_base_quad = params.preserve_base_quad
+    bone_segments = overrides.bone_segments
+    outer_override = overrides.outer_override
+    cut_hole_loops = overrides.cut_hole_loops
+
     if debug_stage in ("off", "final"):
         clear_debug_objects(obj)
     _log_begin(
@@ -762,38 +852,9 @@ def build_automesh(
         emit_contour_debug(obj, "resampled", outer_world, inner_world)
         return _debug_stage_report("resampled", len(outer_world), len(inner_world))
 
-    if interior_mode == "SIMPLE":
-        # : sparse Spine-like mesh. Drop the uniform grid + bone-density
-        # fill so only the silhouette, holes, and the user-placed verts
-        # (extra_steiners) seed the Constrained Delaunay. Skipping the grid
-        # compute entirely (it is the expensive step) is the whole point.
-        interior_points: list[tuple[float, float]] = []
-    else:
-        exclude_zones: list[tuple[float, float, float]] | None = None
-        if extra_steiners:
-            exclude_zones = [(p[0], p[1], interior_spacing * 0.5) for p in extra_steiners]
-        interior_points = _compute_steiner_points(
-            outer_world,
-            inner_world,
-            holes_world,
-            interior_spacing,
-            bone_segments,
-            bone_density_radius,
-            bone_density_factor,
-            exclude_zones=exclude_zones,
-        )
-    # Capture the auto-fill count BEFORE merging extras so extra_edges
-    # indices can be remapped to their true position in the final coord
-    # array (outer + inner + auto_interior + extras). The caller indexes
-    # extra verts from _EXTRA_INDEX_SENTINEL; we shift them to the real base.
-    auto_interior_count = len(interior_points)
-    if extra_steiners:
-        interior_points = _merge_extra_steiners(
-            interior_points, extra_steiners, outer_world, inner_world, holes_world
-        )
-    if extra_edges:
-        extra_base = len(outer_world) + len(inner_world) + auto_interior_count
-        extra_edges = _remap_extra_edge_indices(extra_edges, extra_base)
+    interior_points, extra_edges = _compute_interior_and_remap_edges(
+        outer_world, inner_world, holes_world, params, overrides
+    )
     if debug_stage == "interior_points":
         emit_points_debug(obj, "interior_points", interior_points)
         return _debug_stage_report(

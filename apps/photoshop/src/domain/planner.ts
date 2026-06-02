@@ -332,16 +332,16 @@ function walkLayers(
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
             continue;
         }
-        const entry = buildPolygonEntry(
-            parsed,
-            joinName(prefix, displayName),
-            childPath,
-            ctx.zCounter.value,
-            inherit(inherited, parsed.tags),
-            ctx.settings,
-            { layerPath: childPath, name: displayName },
+        const entry = buildPolygonEntry({
+            source: parsed,
+            name: joinName(prefix, displayName),
+            layerPath: childPath,
+            zOrder: ctx.zCounter.value,
+            inherited: inherit(inherited, parsed.tags),
+            settings: ctx.settings,
+            warnRef: { layerPath: childPath, name: displayName },
             ctx,
-        );
+        });
         if (entry === null) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
             ctx.warnings.push({
@@ -401,16 +401,16 @@ function handleGroup(
         }
     }
     if (parsed.tags.merge === true) {
-        const entry = buildPolygonEntry(
-            parsed,
-            joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
+        const entry = buildPolygonEntry({
+            source: parsed,
+            name: joinName(prefix, fallbackName(parsed.displayName, parsed.raw)),
             layerPath,
-            ctx.zCounter.value,
-            groupInherited,
-            ctx.settings,
-            { layerPath, name: fallbackName(parsed.displayName, parsed.raw) },
+            zOrder: ctx.zCounter.value,
+            inherited: groupInherited,
+            settings: ctx.settings,
+            warnRef: { layerPath, name: fallbackName(parsed.displayName, parsed.raw) },
             ctx,
-        );
+        });
         if (entry !== null) {
             ctx.out.push(entry);
             ctx.zCounter.value += 1;
@@ -586,16 +586,21 @@ interface WarnRef {
     name: string;
 }
 
-function buildPolygonEntry(
-    source: ParsedLayer,
-    name: string,
-    layerPath: string[],
-    zOrder: number,
-    inherited: InheritedTags,
-    settings: PlannerSettings,
-    warnRef?: WarnRef,
-    ctx?: WalkContext,
-): PlannedPolygon | null {
+interface PolygonEntryArgs {
+    source: ParsedLayer;
+    name: string;
+    layerPath: string[];
+    zOrder: number;
+    inherited: InheritedTags;
+    settings: PlannerSettings;
+    /** Present together with `ctx` when the caller wants sub-pixel
+     *  scale warnings surfaced; both omitted for context-free builds. */
+    warnRef?: WarnRef;
+    ctx?: WalkContext;
+}
+
+function buildPolygonEntry(args: PolygonEntryArgs): PlannedPolygon | null {
+    const { source, name, layerPath, zOrder, inherited, settings, warnRef, ctx } = args;
     const bounds = scaledBounds(effectiveBounds(source), source.tags.scale);
     if (bounds === null) return null;
     if (

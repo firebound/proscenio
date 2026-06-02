@@ -307,3 +307,4 @@ nodemon
 classmethod
 frozenset
 staticmethod
+WCAG

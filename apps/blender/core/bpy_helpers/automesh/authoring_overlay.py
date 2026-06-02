@@ -151,6 +151,78 @@ def _register_interactive_handlers(
         )
 
 
+def _register_contour_handlers(
+    handles: OverlayHandles, stage: AuthoringStage, output: StageOutput
+) -> None:
+    """Outer + inner contour and user-dot handlers, dimmed past their stage."""
+    if stage >= AuthoringStage.OUTER and output.outer:
+        color = _OUTER_COLOR if stage == AuthoringStage.OUTER else _OUTER_DIM
+        handles["outer"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_polyline,
+            (list(output.outer), color, _LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if stage >= AuthoringStage.INNER_LOOPS and output.inner_loops:
+        color = _INNER_BASE if stage == AuthoringStage.INNER_LOOPS else _INNER_DIM
+        handles["inner"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_polylines,
+            (list(output.inner_loops), color, _LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if stage >= AuthoringStage.EDIT_INTERIOR_POINTS and output.user_steiners:
+        handles["user_dots"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_points,
+            (list(output.user_steiners), _USER_DOT_COLOR, _DOT_SIZE_USER),
+            "WINDOW",
+            "POST_VIEW",
+        )
+
+
+def _register_preview_handlers(
+    handles: OverlayHandles,
+    stage: AuthoringStage,
+    output: StageOutput,
+    user_strokes: list[Stroke] | None,
+    user_outer_strokes: list[Stroke] | None,
+) -> None:
+    """Stage >= PREVIEW_INTERIOR: the Steiner cloud or SIMPLE-mode wireframe,
+    plus both committed stroke lists kept visible (cut = red)."""
+    if stage < AuthoringStage.PREVIEW_INTERIOR:
+        return
+    if output.all_steiners:
+        handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_points,
+            (list(output.all_steiners), _STEINER_COLOR, _DOT_SIZE_STEINER),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    # SIMPLE mode draws the real triangulation wireframe instead of the dense
+    # Steiner point cloud (the two are mutually exclusive by mode).
+    if output.triangulation_preview:
+        handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_edges,
+            (list(output.triangulation_preview), _TRIANGULATION_COLOR, _TRIANGULATION_LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if user_strokes is not None:
+        handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_user_strokes,
+            (user_strokes,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if user_outer_strokes is not None:
+        handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_user_strokes,
+            (user_outer_strokes,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+
+
 def register_overlay(
     stage: AuthoringStage,
     output: StageOutput,
@@ -192,29 +264,7 @@ def register_overlay(
         "delete_hover": None,
         "tooltip": None,
     }
-    if stage >= AuthoringStage.OUTER and output.outer:
-        color = _OUTER_COLOR if stage == AuthoringStage.OUTER else _OUTER_DIM
-        handles["outer"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_polyline,
-            (list(output.outer), color, _LINE_WIDTH),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    if stage >= AuthoringStage.INNER_LOOPS and output.inner_loops:
-        color = _INNER_BASE if stage == AuthoringStage.INNER_LOOPS else _INNER_DIM
-        handles["inner"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_polylines,
-            (list(output.inner_loops), color, _LINE_WIDTH),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    if stage >= AuthoringStage.EDIT_INTERIOR_POINTS and output.user_steiners:
-        handles["user_dots"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_points,
-            (list(output.user_steiners), _USER_DOT_COLOR, _DOT_SIZE_USER),
-            "WINDOW",
-            "POST_VIEW",
-        )
+    _register_contour_handlers(handles, stage, output)
     if stage == AuthoringStage.EDIT_OUTLINE:
         # Stage 2: outer strokes only (cut = red, ). The spliced-outer
         # preview holds the live output.outer_preview list by
@@ -254,38 +304,7 @@ def register_overlay(
                 "WINDOW",
                 "POST_VIEW",
             )
-    if stage >= AuthoringStage.PREVIEW_INTERIOR and output.all_steiners:
-        handles["steiners"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_points,
-            (list(output.all_steiners), _STEINER_COLOR, _DOT_SIZE_STEINER),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    # : SIMPLE mode draws the real triangulation wireframe instead of
-    # the dense Steiner point cloud (the two are mutually exclusive by mode).
-    if stage >= AuthoringStage.PREVIEW_INTERIOR and output.triangulation_preview:
-        handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_edges,
-            (list(output.triangulation_preview), _TRIANGULATION_COLOR, _TRIANGULATION_LINE_WIDTH),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    if stage >= AuthoringStage.PREVIEW_INTERIOR:
-        # Both stroke lists remain visible (cut = red for both, ).
-        if user_strokes is not None:
-            handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
-                _draw_user_strokes,
-                (user_strokes,),
-                "WINDOW",
-                "POST_VIEW",
-            )
-        if user_outer_strokes is not None:
-            handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
-                _draw_user_strokes,
-                (user_outer_strokes,),
-                "WINDOW",
-                "POST_VIEW",
-            )
+    _register_preview_handlers(handles, stage, output, user_strokes, user_outer_strokes)
     return handles
 
 

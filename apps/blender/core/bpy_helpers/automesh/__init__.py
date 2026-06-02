@@ -16,6 +16,8 @@ from __future__ import annotations
 from .base_sprite import BASE_SPRITE_GROUP_NAME
 from .bridge import _STAGE_BY_INDEX as _STAGE_BY_INDEX
 from .bridge import (
+    AutomeshBuildParams,
+    AutomeshOverrides,
     DebugStage,
     build_automesh,
     collect_bone_segments,
@@ -31,6 +33,8 @@ from .debug import (
 
 __all__ = [
     "BASE_SPRITE_GROUP_NAME",
+    "AutomeshBuildParams",
+    "AutomeshOverrides",
     "DebugStage",
     "build_automesh",
     "clear_debug_objects",

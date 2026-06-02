@@ -26,6 +26,8 @@ from ...automesh import (
 from ...skinning.authoring_stages import Point2D, StageOutput, StageParams, Stroke
 from .bridge import (
     _EXTRA_INDEX_SENTINEL,
+    AutomeshBuildParams,
+    AutomeshOverrides,
     build_automesh,
     collect_bone_segments,
     pixel_contour_to_world,
@@ -127,7 +129,7 @@ def read_user_steiners(obj: bpy.types.Object) -> list[Point2D]:
         return []
     points: list[Point2D] = []
     for item in data:
-        if not (isinstance(item, (list, tuple)) and len(item) == 2):
+        if not (isinstance(item, list | tuple) and len(item) == 2):
             continue
         try:
             x = float(item[0])
@@ -189,6 +191,23 @@ def write_user_outer_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> No
     )
 
 
+def _parse_stroke_points(raw_pts: list[object]) -> list[tuple[float, float]]:
+    """Coerce a raw points array into validated ``(x, y)`` float pairs.
+
+    Silently drops any element that is not a 2-long list/tuple of
+    number-coercible values.
+    """
+    pts: list[tuple[float, float]] = []
+    for raw_pt in raw_pts:
+        if not (isinstance(raw_pt, list | tuple) and len(raw_pt) == 2):
+            continue
+        try:
+            pts.append((float(raw_pt[0]), float(raw_pt[1])))
+        except (TypeError, ValueError):
+            continue
+    return pts
+
+
 def _parse_strokes(data: object) -> list[Stroke]:
     if not isinstance(data, list):
         return []
@@ -202,15 +221,7 @@ def _parse_strokes(data: object) -> list[Stroke]:
         raw_pts = item.get("points")
         if not isinstance(raw_pts, list):
             continue
-        pts: list[tuple[float, float]] = []
-        for raw_pt in raw_pts:
-            if not (isinstance(raw_pt, (list, tuple)) and len(raw_pt) == 2):
-                continue
-            try:
-                pts.append((float(raw_pt[0]), float(raw_pt[1])))
-            except (TypeError, ValueError):
-                continue
-        out.append({"kind": kind, "points": pts})
+        out.append({"kind": kind, "points": _parse_stroke_points(raw_pts)})
     return out
 
 
@@ -427,22 +438,26 @@ def _build_authoring_mesh(
     counters = build_automesh(
         obj,
         image,
-        downscale_factor=params.resolution,
-        alpha_threshold=params.alpha_threshold,
-        margin_pixels=params.margin_pixels,
-        target_contour_vertices=params.contour_vertices,
-        interior_spacing=params.interior_spacing,
-        world_scale=world_scale,
-        bone_segments=bone_segments,
-        bone_density_radius=params.bone_radius if bone_segments else 0.0,
-        bone_density_factor=params.bone_factor if bone_segments else 1,
-        debug_stage="off",
-        preserve_base_quad=False,
-        outer_override=outer_override_local,
-        extra_steiners=extras_local if extras_local else None,
-        extra_edges=extra_edges if extra_edges else None,
-        cut_hole_loops=cut_hole_loops if cut_hole_loops else None,
-        interior_mode=params.interior_mode,
+        AutomeshBuildParams(
+            downscale_factor=params.resolution,
+            alpha_threshold=params.alpha_threshold,
+            margin_pixels=params.margin_pixels,
+            target_contour_vertices=params.contour_vertices,
+            interior_spacing=params.interior_spacing,
+            world_scale=world_scale,
+            bone_density_radius=params.bone_radius if bone_segments else 0.0,
+            bone_density_factor=params.bone_factor if bone_segments else 1,
+            debug_stage="off",
+            preserve_base_quad=False,
+            interior_mode=params.interior_mode,
+        ),
+        AutomeshOverrides(
+            bone_segments=bone_segments,
+            outer_override=outer_override_local,
+            extra_steiners=extras_local if extras_local else None,
+            extra_edges=extra_edges if extra_edges else None,
+            cut_hole_loops=cut_hole_loops if cut_hole_loops else None,
+        ),
     )
     if stroke_verts_dropped > 0:
         counters["stroke_verts_dropped"] = stroke_verts_dropped

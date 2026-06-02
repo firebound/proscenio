@@ -18,7 +18,7 @@ without re-clicking. Defaults read from
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import bpy
 from bpy.props import (
@@ -30,6 +30,8 @@ from bpy.props import (
 
 from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     _STAGE_BY_INDEX,
+    AutomeshBuildParams,
+    AutomeshOverrides,
     build_automesh,
     clear_debug_objects,
     collect_bone_segments,
@@ -43,6 +45,9 @@ from ..core.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
+
+if TYPE_CHECKING:
+    from ..core.automesh import BoneSegment2D
 
 
 def _find_tex_image(material: bpy.types.Material | None) -> bpy.types.Image | None:
@@ -224,53 +229,11 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
             report_error(self, "active object must be a mesh")
             return {"CANCELLED"}
 
-        image = _resolve_image(obj)
+        image = self._preflight_image(obj)
         if image is None:
-            report_error(
-                self,
-                "active mesh has no image texture - add a material with a "
-                "TEX_IMAGE node first, or use an automesh-able imported sprite",
-            )
             return {"CANCELLED"}
 
-        if image.size[0] <= 0 or image.size[1] <= 0:
-            report_error(
-                self,
-                f"image '{image.name}' has zero size - reload or pick a real texture",
-            )
-            return {"CANCELLED"}
-
-        if max(image.size) > 4096:
-            report_warn(
-                self,
-                f"image '{image.name}' is large ({image.size[0]}x{image.size[1]}) - "
-                "consider lowering resolution to keep automesh fast",
-            )
-
-        bone_segments = None
-        # SIMPLE skips the uniform grid + bone-density fill in build_automesh,
-        # so collecting bone_segments + the "uniform density" report_info is
-        # wasted work and misleading (CodeRabbit nitpick).
-        if self.density_under_bones and self.interior_mode == "DENSE":
-            scene_props = getattr(context.scene, "proscenio", None)
-            picker = getattr(scene_props, "active_armature", None) if scene_props else None
-            if picker is not None and picker.type == "ARMATURE":
-                segments = collect_bone_segments(picker)
-                if segments:
-                    bone_segments = segments
-                else:
-                    report_info(
-                        self,
-                        f"picker armature '{picker.name}' has no deform bones - "
-                        "automesh falls back to uniform density",
-                    )
-            else:
-                report_info(
-                    self,
-                    "no picker armature - automesh uses uniform interior density "
-                    "(pick an armature in the Skeleton panel for density-under-bones)",
-                )
-
+        bone_segments = self._resolve_bone_segments(context)
         world_scale = 1.0 / _resolve_pixels_per_unit(context)
 
         scene_props = getattr(context.scene, "proscenio", None)
@@ -281,23 +244,92 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
             counters = build_automesh(
                 obj,
                 image,
-                downscale_factor=self.resolution,
-                alpha_threshold=self.alpha_threshold,
-                margin_pixels=self.margin_pixels,
-                target_contour_vertices=self.contour_vertices,
-                interior_spacing=self.interior_spacing,
-                world_scale=world_scale,
-                bone_segments=bone_segments,
-                bone_density_radius=self.bone_radius if bone_segments else 0.0,
-                bone_density_factor=self.bone_factor if bone_segments else 1,
-                debug_stage=self.debug_stage,
-                preserve_base_quad=self.preserve_base_quad,
-                interior_mode=self.interior_mode,
+                AutomeshBuildParams(
+                    downscale_factor=self.resolution,
+                    alpha_threshold=self.alpha_threshold,
+                    margin_pixels=self.margin_pixels,
+                    target_contour_vertices=self.contour_vertices,
+                    interior_spacing=self.interior_spacing,
+                    world_scale=world_scale,
+                    bone_density_radius=self.bone_radius if bone_segments else 0.0,
+                    bone_density_factor=self.bone_factor if bone_segments else 1,
+                    debug_stage=self.debug_stage,
+                    preserve_base_quad=self.preserve_base_quad,
+                    interior_mode=self.interior_mode,
+                ),
+                AutomeshOverrides(bone_segments=bone_segments),
             )
         except ValueError as exc:
             report_error(self, f"automesh failed: {exc}")
             return {"CANCELLED"}
 
+        self._report_build_result(counters)
+        if prior_sidecar is not None and picker_armature is not None:
+            sidecar_counts = maybe_post_regen_reproject(obj, picker_armature, prior_sidecar)
+            report_info(
+                self,
+                (
+                    f"sidecar: {sidecar_counts['reprojected']} reprojected + "
+                    f"{sidecar_counts['auto_seed']} auto-seed of "
+                    f"{sidecar_counts['total']} verts"
+                ),
+            )
+        return {"FINISHED"}
+
+    def _preflight_image(self, obj: bpy.types.Object) -> bpy.types.Image | None:
+        """Resolve + validate the sprite texture; report + return None on failure."""
+        image = _resolve_image(obj)
+        if image is None:
+            report_error(
+                self,
+                "active mesh has no image texture - add a material with a "
+                "TEX_IMAGE node first, or use an automesh-able imported sprite",
+            )
+            return None
+        if image.size[0] <= 0 or image.size[1] <= 0:
+            report_error(
+                self,
+                f"image '{image.name}' has zero size - reload or pick a real texture",
+            )
+            return None
+        if max(image.size) > 4096:
+            report_warn(
+                self,
+                f"image '{image.name}' is large ({image.size[0]}x{image.size[1]}) - "
+                "consider lowering resolution to keep automesh fast",
+            )
+        return image
+
+    def _resolve_bone_segments(self, context: bpy.types.Context) -> list[BoneSegment2D] | None:
+        """Collect deform-bone segments for density-under-bones, or None.
+
+        SIMPLE mode skips the uniform grid + bone-density fill in
+        build_automesh, so collecting segments there is wasted work and
+        the "uniform density" report would mislead; only DENSE collects.
+        """
+        if not (self.density_under_bones and self.interior_mode == "DENSE"):
+            return None
+        scene_props = getattr(context.scene, "proscenio", None)
+        picker = getattr(scene_props, "active_armature", None) if scene_props else None
+        if picker is None or picker.type != "ARMATURE":
+            report_info(
+                self,
+                "no picker armature - automesh uses uniform interior density "
+                "(pick an armature in the Skeleton panel for density-under-bones)",
+            )
+            return None
+        segments = collect_bone_segments(picker)
+        if not segments:
+            report_info(
+                self,
+                f"picker armature '{picker.name}' has no deform bones - "
+                "automesh falls back to uniform density",
+            )
+            return None
+        return segments
+
+    def _report_build_result(self, counters: dict[str, int]) -> None:
+        """Surface the vert/face counters (or the debug-stage snapshot) as INFO."""
         stage_index = counters.get("_debug_stage_index", 0)
         stage_label = _STAGE_BY_INDEX.get(stage_index, "off")
         if stage_label not in ("off", "final"):
@@ -314,28 +346,17 @@ class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
                     f"{extras} (companion in Proscenio.Debug collection)"
                 ),
             )
-        else:
-            report_info(
-                self,
-                (
-                    f"automesh built: {counters['outer_verts']} outer + "
-                    f"{counters['inner_verts']} inner + "
-                    f"{counters['interior_verts']} interior = "
-                    f"{counters['total_verts']} total, "
-                    f"{counters['total_faces']} faces"
-                ),
-            )
-        if prior_sidecar is not None and picker_armature is not None:
-            sidecar_counts = maybe_post_regen_reproject(obj, picker_armature, prior_sidecar)
-            report_info(
-                self,
-                (
-                    f"sidecar: {sidecar_counts['reprojected']} reprojected + "
-                    f"{sidecar_counts['auto_seed']} auto-seed of "
-                    f"{sidecar_counts['total']} verts"
-                ),
-            )
-        return {"FINISHED"}
+            return
+        report_info(
+            self,
+            (
+                f"automesh built: {counters['outer_verts']} outer + "
+                f"{counters['inner_verts']} inner + "
+                f"{counters['interior_verts']} interior = "
+                f"{counters['total_verts']} total, "
+                f"{counters['total_faces']} faces"
+            ),
+        )
 
 
 class PROSCENIO_OT_clear_automesh_debug(bpy.types.Operator):

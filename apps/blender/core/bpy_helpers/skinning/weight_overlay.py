@@ -43,37 +43,37 @@ def unregister_handler(handle: object) -> None:
         bpy.types.SpaceView3D.draw_handler_remove(handle, "WINDOW")
 
 
-def _draw_callback(obj: bpy.types.Object, mode: OverlayMode) -> None:
-    """Internal handler body. Reads sidecar + mesh + draws colored discs."""
+_PointColorGroups = dict[tuple[float, float, float, float], list[tuple[float, float, float]]]
+
+
+def _read_provenance_entries(obj: bpy.types.Object, mode: OverlayMode) -> list[object] | None:
+    """Return per-vert provenance entries when the overlay should draw.
+
+    ``None`` (skip drawing) when there is no mesh, the sidecar is missing
+    or malformed, the mode is not ``provenance``, or the entry count does
+    not match the mesh vertex count.
+    """
     if obj is None or obj.data is None:
-        return
+        return None
     payload = obj.get(_SIDECAR_KEY)
     if payload is None:
-        return
+        return None
     try:
         data = json.loads(payload)
     except (ValueError, TypeError):
-        return
+        return None
     entries = data.get("entries") or []
     if not entries:
-        return
+        return None
     if mode != "provenance":
-        return
-    matrix_world = obj.matrix_world
-    verts = obj.data.vertices
-    if len(entries) != len(verts):
-        return
-    color_groups: dict[tuple[float, float, float, float], list[tuple[float, float, float]]] = {}
-    for vert_idx, vert in enumerate(verts):
-        entry = entries[vert_idx]
-        provenance = entry.get("provenance") if isinstance(entry, dict) else None
-        if not isinstance(provenance, str):
-            continue
-        color = _PROVENANCE_COLORS.get(provenance)
-        if color is None:
-            continue
-        world_pos = matrix_world @ vert.co
-        color_groups.setdefault(color, []).append((world_pos.x, world_pos.y, world_pos.z))
+        return None
+    if len(entries) != len(obj.data.vertices):
+        return None
+    return entries
+
+
+def _draw_color_groups(color_groups: _PointColorGroups) -> None:
+    """Render each color's world points as discs via the uniform shader."""
     shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
     gpu.state.blend_set("ALPHA")
     gpu.state.point_size_set(_DISC_SIZE)
@@ -86,3 +86,23 @@ def _draw_callback(obj: bpy.types.Object, mode: OverlayMode) -> None:
     finally:
         gpu.state.point_size_set(1.0)
         gpu.state.blend_set("NONE")
+
+
+def _draw_callback(obj: bpy.types.Object, mode: OverlayMode) -> None:
+    """Internal handler body. Reads sidecar + mesh + draws colored discs."""
+    entries = _read_provenance_entries(obj, mode)
+    if entries is None:
+        return
+    matrix_world = obj.matrix_world
+    color_groups: _PointColorGroups = {}
+    for vert_idx, vert in enumerate(obj.data.vertices):
+        entry = entries[vert_idx]
+        provenance = entry.get("provenance") if isinstance(entry, dict) else None
+        if not isinstance(provenance, str):
+            continue
+        color = _PROVENANCE_COLORS.get(provenance)
+        if color is None:
+            continue
+        world_pos = matrix_world @ vert.co
+        color_groups.setdefault(color, []).append((world_pos.x, world_pos.y, world_pos.z))
+    _draw_color_groups(color_groups)

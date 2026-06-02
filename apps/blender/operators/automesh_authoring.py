@@ -308,16 +308,21 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             if event.type == "BACK_SPACE" and event.value == "PRESS":
                 return self._retreat(context)
             if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
-                current = _snapshot_params(context)
-                if current != self._last_params:
-                    if current.interior_mode != self._interior_mode:
-                        self._apply_interior_mode_change(context, current.interior_mode)
-                    self._recompute_current_stage(context, current)
-                    self._last_params = current
+                self._handle_timer_tick(context)
         except Exception:
             traceback.print_exc()
             return self._finish(context, cancel=True)
         return {"PASS_THROUGH"}
+
+    def _handle_timer_tick(self, context: bpy.types.Context) -> None:
+        """Re-snapshot the param panel; recompute the stage when it changed."""
+        current = _snapshot_params(context)
+        if current == self._last_params:
+            return
+        if current.interior_mode != self._interior_mode:
+            self._apply_interior_mode_change(context, current.interior_mode)
+        self._recompute_current_stage(context, current)
+        self._last_params = current
 
     def _handle_user_outer_event(
         self, context: bpy.types.Context, event: bpy.types.Event
@@ -344,26 +349,45 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         mouse_world = _region_to_world_xz(context, event)
         if mouse_world is None:
             return
-        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
-        if near_world is None:
-            spacing = self._resolve_interior_spacing(context)
-            pick_d2 = spacing * spacing
-        else:
-            pick_dist = (
-                (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
-            ) ** 0.5
-            pick_d2 = pick_dist * pick_dist
+        pick_d2 = self._pick_radius_sq(context, event, mouse_world)
         for idx, stroke in enumerate(self._user_outer_strokes):
             for pt in stroke["points"]:
                 d2 = (pt[0] - mouse_world[0]) ** 2 + (pt[1] - mouse_world[1]) ** 2
                 if d2 <= pick_d2:
-                    self._user_outer_strokes.pop(idx)
-                    obj = context.active_object
-                    if obj is not None:
-                        write_user_outer_strokes(obj, self._user_outer_strokes)
-                    if self._outer_preview_relevant():
-                        self._refresh_outer_preview(context)
+                    self._remove_outer_stroke(context, idx)
                     return
+
+    def _pick_radius_sq(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+        mouse_world: tuple[float, float],
+    ) -> float:
+        """Squared world-space pick radius for a screen-space pixel offset.
+
+        Falls back to the interior spacing when the offset point cannot be
+        projected (e.g. cursor off the picture plane)."""
+        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        if near_world is None:
+            spacing = self._resolve_interior_spacing(context)
+            return spacing * spacing
+        pick_dist = (
+            (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
+        ) ** 0.5
+        return pick_dist * pick_dist
+
+    def _remove_outer_stroke(self, context: bpy.types.Context, idx: int) -> None:
+        """Pop the outer stroke at ``idx``, clear its stale delete-hover
+        highlight, persist, and refresh the preview."""
+        self._user_outer_strokes.pop(idx)
+        # The hovered stroke just went away; drop its highlight now instead of
+        # leaving it on screen until the next MOUSEMOVE recomputes the hover.
+        self._delete_hover_points.clear()
+        obj = context.active_object
+        if obj is not None:
+            write_user_outer_strokes(obj, self._user_outer_strokes)
+        if self._outer_preview_relevant():
+            self._refresh_outer_preview(context)
 
     def _point_inside_outer(self, point_world_xz: tuple[float, float]) -> bool:
         """Check if a WORLD XZ point lies inside the current outer contour.

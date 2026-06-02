@@ -269,7 +269,7 @@
 }
 
 .proscenio-panel .entry-row .entry-meta {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.6);
     font-size: 10px;
 }
 
@@ -299,7 +299,7 @@
 }
 
 .proscenio-panel .migration-row .migration-arrow {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.6);
     font-family: monospace;
 }
 
@@ -658,8 +658,8 @@
 }
 
 .proscenio-panel input.tag-input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.6);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.6);
     font-size: 11px;
 }
 

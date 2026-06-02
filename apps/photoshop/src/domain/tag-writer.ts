@@ -43,38 +43,34 @@ function collectSegments(tags: TagBag): string[] {
     return out;
 }
 
+/** One serializer per tag key. The mapped type makes the table
+ *  exhaustive: adding a key to `TAG_ORDER`'s union without a builder
+ *  here is a compile error, so the dispatch stays total without a
+ *  switch's per-case branching. */
+const SEGMENT_BUILDERS: Record<typeof TAG_ORDER[number], (tags: TagBag) => string | null> = {
+    ignore: (tags) => (tags.ignore === true ? "[ignore]" : null),
+    merge: (tags) => (tags.merge === true ? "[merge]" : null),
+    kind: (tags) => (tags.kind === undefined ? null : kindSegment(tags.kind)),
+    folder: (tags) => (tags.folder === undefined ? null : `[folder:${tags.folder}]`),
+    path: (tags) => (tags.path === undefined ? null : `[path:${tags.path}]`),
+    // `normal` is the default composite mode; emitting `[blend:normal]`
+    // clutters the layer name without changing behavior. Treat as no tag.
+    blend: (tags) =>
+        tags.blend === undefined || tags.blend === "normal" ? null : `[blend:${tags.blend}]`,
+    scale: (tags) => (tags.scale === undefined ? null : `[scale:${String(tags.scale)}]`),
+    origin: (tags) =>
+        tags.origin === undefined
+            ? null
+            : `[origin:${String(tags.origin[0])},${String(tags.origin[1])}]`,
+    // `[origin]` and `[origin:x,y]` are mutually exclusive in the parser;
+    // do not emit the marker when explicit coords exist.
+    originMarker: (tags) =>
+        tags.originMarker === true && tags.origin === undefined ? "[origin]" : null,
+    namePattern: (tags) => (tags.namePattern === undefined ? null : `[name:${tags.namePattern}]`),
+};
+
 function segmentFor(key: typeof TAG_ORDER[number], tags: TagBag): string | null {
-    switch (key) {
-        case "ignore":
-            return tags.ignore === true ? "[ignore]" : null;
-        case "merge":
-            return tags.merge === true ? "[merge]" : null;
-        case "kind":
-            return tags.kind === undefined ? null : kindSegment(tags.kind);
-        case "folder":
-            return tags.folder === undefined ? null : `[folder:${tags.folder}]`;
-        case "path":
-            return tags.path === undefined ? null : `[path:${tags.path}]`;
-        case "blend":
-            // `normal` is the default composite mode; emitting
-            // `[blend:normal]` clutters the layer name without
-            // changing behavior. Treat as no tag.
-            return tags.blend === undefined || tags.blend === "normal"
-                ? null
-                : `[blend:${tags.blend}]`;
-        case "scale":
-            return tags.scale === undefined ? null : `[scale:${String(tags.scale)}]`;
-        case "origin":
-            return tags.origin === undefined
-                ? null
-                : `[origin:${String(tags.origin[0])},${String(tags.origin[1])}]`;
-        case "originMarker":
-            // `[origin]` and `[origin:x,y]` are mutually exclusive in the
-            // parser; do not emit the marker when explicit coords exist.
-            return tags.originMarker === true && tags.origin === undefined ? "[origin]" : null;
-        case "namePattern":
-            return tags.namePattern === undefined ? null : `[name:${tags.namePattern}]`;
-    }
+    return SEGMENT_BUILDERS[key](tags);
 }
 
 function kindSegment(kind: NonNullable<TagBag["kind"]>): string {

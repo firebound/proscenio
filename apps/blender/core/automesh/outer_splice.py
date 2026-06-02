@@ -58,6 +58,81 @@ def _nearest_outer_vert_index(query: Point2D, outer: Sequence[Point2D]) -> int:
     return best_idx
 
 
+def _extract_outside_run(
+    stroke: list[Point2D],
+    inside_mask: list[bool],
+) -> tuple[list[Point2D], Point2D, Point2D] | None:
+    """Return ``(outside_run, anchor_in, anchor_out)`` for an extend stroke.
+
+    ``outside_run`` is the contiguous outside portion of the stroke;
+    ``anchor_in`` / ``anchor_out`` are the inside samples that bracket it
+    (equal when the stroke only crosses the boundary once). Returns
+    ``None`` when no non-empty outside run exists.
+    """
+    n = len(stroke)
+    departure_idx: int | None = None
+    # First transition inside -> outside marks the last inside vert.
+    for i in range(1, n):
+        if inside_mask[i - 1] and not inside_mask[i]:
+            departure_idx = i - 1
+            break
+
+    if departure_idx is None:
+        # Stroke starts outside; treat the arc up to the first inside vert
+        # as the outside run, anchored on that single re-entry sample.
+        first_inside = next((i for i, m in enumerate(inside_mask) if m), None)
+        if first_inside is None or first_inside == 0:
+            return None
+        anchor = stroke[first_inside]
+        return list(stroke[:first_inside]), anchor, anchor
+
+    # Walk forward from departure to find the first re-entry.
+    return_idx: int | None = None
+    for i in range(departure_idx + 2, n):
+        if inside_mask[i]:
+            return_idx = i
+            break
+
+    if return_idx is None:
+        # Stroke leaves and never returns - single-point splice anchor.
+        anchor = stroke[departure_idx]
+        outside_run = list(stroke[departure_idx + 1 :])
+        return (outside_run, anchor, anchor) if outside_run else None
+
+    outside_run = list(stroke[departure_idx + 1 : return_idx])
+    if not outside_run:
+        return None
+    return outside_run, stroke[departure_idx], stroke[return_idx]
+
+
+def _splice_outside_run(
+    outer: list[Point2D],
+    outside_run: list[Point2D],
+    entry_outer_idx: int,
+    exit_outer_idx: int,
+) -> list[Point2D]:
+    """Insert ``outside_run`` into ``outer`` between the entry/exit verts.
+
+    Take ``outer[0..entry]`` inclusive, then the run, then continue from
+    ``exit`` onward. The wrap case (``exit < entry``) keeps only the
+    complementary arc ``[exit..entry]`` plus the run; same-vert reinserts
+    at the shared index.
+    """
+    spliced: list[Point2D] = []
+    if exit_outer_idx > entry_outer_idx:
+        spliced.extend(outer[: entry_outer_idx + 1])
+        spliced.extend(outside_run)
+        spliced.extend(outer[exit_outer_idx:])
+    elif exit_outer_idx == entry_outer_idx:
+        spliced.extend(outer[: entry_outer_idx + 1])
+        spliced.extend(outside_run)
+        spliced.extend(outer[entry_outer_idx:])
+    else:
+        spliced.extend(outer[exit_outer_idx : entry_outer_idx + 1])
+        spliced.extend(outside_run)
+    return spliced
+
+
 def splice_extend_stroke(
     outer: list[Point2D],
     stroke: list[Point2D],
@@ -92,77 +167,14 @@ def splice_extend_stroke(
     if not any(inside_mask):
         return None  # fully outside - caller handles WARN
 
-    n = len(stroke)
-    departure_idx: int | None = None
-
-    # Find first transition inside -> outside.
-    for i in range(1, n):
-        if inside_mask[i - 1] and not inside_mask[i]:
-            departure_idx = i - 1  # last inside vert before going outside
-            break
-
-    if departure_idx is None:
-        # Stroke starts outside; find first inside vert - treat the arc from
-        # stroke[0] to that vert as the outside run, anchor on first_inside.
-        first_inside = next((i for i, m in enumerate(inside_mask) if m), None)
-        if first_inside is None or first_inside == 0:
-            return None
-        outside_run = list(stroke[:first_inside])
-        anchor_in = stroke[first_inside]
-        anchor_out = stroke[first_inside]
-    else:
-        # Walk forward from departure_idx+1 to find the first re-entry.
-        return_idx: int | None = None
-        for i in range(departure_idx + 2, n):
-            if inside_mask[i]:
-                return_idx = i
-                break
-
-        if return_idx is None:
-            # Stroke leaves and never returns; outside run = stroke[departure_idx+1:]
-            outside_run = list(stroke[departure_idx + 1 :])
-            anchor_in = stroke[departure_idx]
-            anchor_out = stroke[departure_idx]  # single-point splice
-        else:
-            outside_run = list(stroke[departure_idx + 1 : return_idx])
-            anchor_in = stroke[departure_idx]
-            anchor_out = stroke[return_idx]
-
-    if not outside_run:
+    run = _extract_outside_run(stroke, inside_mask)
+    if run is None:
         return None
+    outside_run, anchor_in, anchor_out = run
 
     entry_outer_idx = _nearest_outer_vert_index(anchor_in, outer)
     exit_outer_idx = _nearest_outer_vert_index(anchor_out, outer)
-
-    # Build spliced outer. Take outer[0..entry_outer_idx] inclusive, then
-    # insert the outside run, then continue from exit_outer_idx onward.
-    # The wrap case (exit <= entry) is handled by taking outer[exit..end]
-    # which naturally brings the tail before 0..entry arcs back in order.
-    spliced: list[Point2D] = []
-
-    if exit_outer_idx > entry_outer_idx:
-        # Normal case: entry before exit in list order.
-        # outer[0..entry] + outside_run + outer[exit..N-1]
-        for i in range(entry_outer_idx + 1):
-            spliced.append(outer[i])
-        spliced.extend(outside_run)
-        for i in range(exit_outer_idx, len(outer)):
-            spliced.append(outer[i])
-    elif exit_outer_idx == entry_outer_idx:
-        # Stroke departs and returns at same outer vert - insert run there.
-        for i in range(entry_outer_idx + 1):
-            spliced.append(outer[i])
-        spliced.extend(outside_run)
-        for i in range(entry_outer_idx, len(outer)):
-            spliced.append(outer[i])
-    else:
-        # Wrap-around case: exit < entry. The forward arc from entry through
-        # the seam to exit is the portion being REPLACED by outside_run.
-        # Keep only the complementary arc [exit..entry] + outside_run.
-        for i in range(exit_outer_idx, entry_outer_idx + 1):
-            spliced.append(outer[i])
-        spliced.extend(outside_run)
-
+    spliced = _splice_outside_run(outer, outside_run, entry_outer_idx, exit_outer_idx)
     return spliced if len(spliced) >= 3 else None
 
 

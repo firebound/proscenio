@@ -1,4 +1,6 @@
-# Proscenio
+# PROSCENIO TOOLSET
+
+![Proscenio's logo](docs/proscenio.png)
 
 **A Photoshop -> Blender -> Godot pipeline for 2D cutout animation.**
 
@@ -7,20 +9,22 @@
 
 ## What it is
 
-Proscenio is an open-source pipeline for 2D cutout animation, built for artists. You paint in Photoshop, rig and animate in Blender, and ship to Godot - every step on open, free tooling.
+Proscenio is an open-source pipeline for 2D cutout animation, built for artists: you paint in Photoshop, rig and animate in Blender, and ship to Godot - every step on open, free tooling.
 
-The pipeline runs one direction:
+Part of the [Firebound](https://github.com/Space-Wizard-Studios/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no standalone editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
 
-1. Photoshop slices your layered artwork into one PNG per layer.
-2. Blender imports that, where you build the mesh, rig the skeleton, paint weights, and animate with Blender's toolset (dopesheet, NLA, drivers).
-3. Godot reads the single versioned file Blender exports and rebuilds the character as a native scene - an ordinary `Skeleton2D` + `Bone2D` + `Polygon2D` + `AnimationPlayer` tree that runs with nothing else installed.
+The pipeline flows in one direction:
+
+1. Photoshop slices your layered artwork into one PNG per layer and emits a manifest JSON: the layer hierarchy, per-layer metadata, and document properties (canvas size, pixels-per-unit).
+2. Blender imports that, where you build the mesh, rig the skeleton, paint weights, and animate with Blender's features (dopesheet, NLA, drivers).
+3. Godot reads the file Blender exports and rebuilds the character as a native scene - an ordinary `Skeleton2D` + `Bone2D` + `Polygon2D` + `AnimationPlayer` tree that runs with nothing else installed.
 
 ```text
 Photoshop -> manifest + PNGs -> Blender -> .proscenio + atlas / spritesheets -> Godot (.scn)
 ```
 
 > [!NOTE]
-> This project has used AI-assisted heavily through the actual Proof of Concept development, all code and documentation is human reviewed but may contain AI artifacts as I'm a single developer and the project is in early stages.
+> This project has been heavily AI-assisted throughout the current proof-of-concept development. All code and documentation are human-reviewed but may contain AI artifacts, as I'm a single developer and the project is in its early stages.
 
 ## Who it's for
 
@@ -29,10 +33,6 @@ Artists and game devs who want a practical 2D cutout workflow on Godot 4, with e
 - **Photoshop 2024+** for rasterized art - paint, layer, organize.
 - **Blender 4.2+** for everything animation - rig, weight, keyframe.
 - **Godot 4.6+** as the final engine - native scenes, no proprietary runtime.
-
-It is an open, no lock-in, free alternative to Spine and other 2D animation workflows - no custom runtime and no standalone editor, just open tools tied together by one versioned JSON format.
-
-If you want a practical, artist-friendly pipeline that leverages open tools and outputs native Godot scenes, Proscenio is for you.
 
 ## The promises
 
@@ -75,7 +75,7 @@ Paradigm-locked non-goals that will not reopen without a fundamental shift:
 
 You can find the contribution guidelines, the end-to-end walkthrough, and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/skills/README.md) for guidance on the project structure and best practices.
 
-For the full feature list, see:
+For more, see:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - the systems and how the data flows.
 - [`docs/COMPARISON.md`](docs/COMPARISON.md) - feature matrix vs Spine, COA Tools 2, Live2D, and others.

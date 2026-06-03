@@ -7,8 +7,8 @@ description: Develop, lint, and test the Godot editor plugin
 
 ## Target versions
 
-- **Minimum:** Godot 4.3 - `AnimationLibrary` is stable and `EditorImportPlugin` is mature.
-- **Tested:** Godot 4.4+, latest 4.x.
+- **Built against:** Godot 4.6 - declared in `project.godot` (`config/features`); the load-bearing APIs are `EditorImportPlugin` and `AnimationLibrary`.
+- **Tested in CI:** Godot 4.6.2-stable on Linux.
 
 ## Project layout
 
@@ -59,7 +59,7 @@ Mixing both kinds inside the same character is supported - a cutout body with a 
 
 ## The "no GDExtension" rule
 
-The plugin runs **only** at editor import time. Generated scenes use built-in nodes only. Operational test: open a generated `.tscn` in another Godot project that does not have Proscenio installed - it must work.
+The plugin runs **only** at editor import time. Generated scenes use built-in nodes only. Operational test: open a generated `.scn` in another Godot project that does not have Proscenio installed - it must work.
 
 ## Reimport behavior
 

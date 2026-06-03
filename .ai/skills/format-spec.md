@@ -49,8 +49,8 @@ UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of 
 
 ## Coordinate system
 
-- 2D plane: Blender XY → Godot XY.
-- Y is up in Blender, down in Godot. The exporter flips Y.
+- 2D plane: Blender XZ → Godot XY (Blender's Y axis is depth, into the screen, and is unused).
+- Z is up in Blender, Y is down in Godot. The exporter maps Blender +Z to Godot -Y.
 - Rotations are in radians, CCW in Blender, CW in Godot. The exporter negates.
 - Scales are Vec2 multipliers around the bone origin.
 - **Origin.** The character origin is the scene-root `Node2D` at `(0, 0)`. The `Skeleton2D` lives at `(0, 0)` relative to it. Any global offset is carried by the `root` bone.
@@ -80,12 +80,12 @@ Sprites with the field absent or empty stay rigid-attached (a child of the `Bone
 
 ### Authoring story
 
-The format above defines the **wire shape**; the [weight-paint-automesh spec](../../specs/013-weight-paint-automesh/STUDY.md) defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
+The format above defines the **wire shape**; the weight-paint-automesh authoring work defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
 
-1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV). See [the weight-paint-automesh spec](../../specs/013-weight-paint-automesh/STUDY.md).
-2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`. See [the panel design](../../specs/013-weight-paint-automesh/panel-design.md).
-3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection. See [the paint design](../../specs/013-weight-paint-automesh/paint-design.md).
-4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen. See [the sidecar design](../../specs/013-weight-paint-automesh/sidecar-design.md).
+1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV).
+2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`.
+3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection.
+4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen.
 5. **Restore Weight Snapshot** - one-click revert to the last saved sidecar; topology mismatch aborts with a hint to re-run automesh with preserve ON.
 
 The writer (`proscenio_writer`) reads the final vertex groups and emits the `weights` array - it does not care which authoring path produced them.

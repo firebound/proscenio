@@ -32,7 +32,7 @@ Each format carries its own `format_version`; see [`format-spec.md`](format-spec
 - **Photoshop exporter** (UXP plugin, TypeScript + React) knows nothing of Blender or Godot. Output conforms to the PSD manifest schema.
 - **Blender addon** knows the Photoshop manifest format and the `.proscenio` output format. Knows nothing of Godot internals.
 - **Godot plugin** knows only the `.proscenio` schema. Does not parse `.blend`. Does not depend on Python.
-- **Two schemas, two contracts**, both under `schemas/`:
+- **Two schemas, two contracts**, both under `packages/models/schemas/`:
   - `psd_manifest.schema.json` - Photoshop ↔ Blender bridge.
   - `proscenio.schema.json` - Blender ↔ Godot bridge.
 
@@ -56,7 +56,7 @@ Each format carries its own `format_version`; see [`format-spec.md`](format-spec
 
 ## Hard rules
 
-- Generated `.tscn` must run in stock Godot **without** the Proscenio plugin installed. The plugin is import-time only.
+- Generated `.scn` must run in stock Godot **without** the Proscenio plugin installed. The plugin is import-time only.
 - No GDExtension. No native libraries. No runtime dependencies in user games.
 - Blender addon is GPL-3.0 (Blender constraint). Repo is GPL-3.0 throughout for simplicity.
 - Format change requires `format_version` bump and a migration path.
@@ -65,7 +65,7 @@ Each format carries its own `format_version`; see [`format-spec.md`](format-spec
 
 Spine ships a GDExtension because their `.skel` is a binary format, interpreted by their proprietary code at runtime, frame by frame, while the game runs. Native code is required to do that with acceptable performance.
 
-Proscenio does the conversion **once, at editor import time**. The output is a `.tscn` made of built-in nodes - `Skeleton2D`, `Bone2D`, `Polygon2D`, `Sprite2D`, `AnimationPlayer`, `AnimationLibrary` - all already C++ in Godot core. At runtime the game uses Godot's own animation system. There is nothing for our plugin to do.
+Proscenio does the conversion **once, at editor import time**. The output is a `.scn` made of built-in nodes - `Skeleton2D`, `Bone2D`, `Polygon2D`, `Sprite2D`, `AnimationPlayer`, `AnimationLibrary` - all already C++ in Godot core. At runtime the game uses Godot's own animation system. There is nothing for our plugin to do.
 
 | Dimension | Spine GDExtension | Proscenio EditorImportPlugin |
 | --- | --- | --- |
@@ -77,6 +77,6 @@ Proscenio does the conversion **once, at editor import time**. The output is a `
 
 The only case where GDExtension would be worth the cost is a custom node type with proprietary tools (e.g. `ProscenioCharacter`). That is explicitly out of scope. Pure GDScript stays.
 
-The hard rule above ("must run in stock Godot without the Proscenio plugin installed") is the operational test for this design. If a generated `.tscn` ever depends on plugin code, the design has slipped - fix it before merging.
+The hard rule above ("must run in stock Godot without the Proscenio plugin installed") is the operational test for this design. If a generated `.scn` ever depends on plugin code, the design has slipped - fix it before merging.
 
 For deeper reasoning, see the core architecture and Phase 1 MVP entries in [`specs/decisions.md`](../../specs/decisions.md).

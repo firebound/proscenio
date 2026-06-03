@@ -314,3 +314,5 @@ hexdigest
 stdlib
 rstrip
 ungated
+pyupgrade
+conftest

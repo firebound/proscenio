@@ -23,7 +23,7 @@ godot --headless --path apps/godot -s addons/gut/gut_cmdln.gd
 
 - GUT framework.
 - Fixtures: `.proscenio` files in `apps/godot/tests/fixtures/`.
-- CI runs against Godot 4.3 and the latest stable on Linux.
+- CI runs against Godot 4.6.2-stable on Linux.
 
 ## Schema validation
 

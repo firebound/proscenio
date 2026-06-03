@@ -45,7 +45,7 @@ Rules:
 - New shared code goes under `packages/`, not `scripts/` or `apps/<app>/`. If two apps consume the same module or data, it belongs in a package.
 - New Python packages register as uv workspace members in the root `pyproject.toml` (`tool.uv.workspace.members`). The package's own `pyproject.toml` declares `name = "proscenio-<slug>"`; the import path uses the underscored form (`proscenio_<slug>`).
 - `scripts/` accepts only true one-offs (a single maintenance script, a dev convenience). Anything with subpackage layout, tests, or a CLI surface belongs in `packages/`.
-- Per-app folders under `apps/<app>/.../schema_bindings/` hold codegen output (TypeScript interfaces, GDScript `Resource` classes). They are never edited by hand; every file carries an `AUTO-GENERATED` header and CI verifies staleness. See [the typed models codegen spec](../specs/014-typed-models-codegen/STUDY.md) and [the monorepo packages spec](../specs/015-monorepo-packages/STUDY.md).
+- Per-app folders under `apps/<app>/.../schema_bindings/` hold codegen output (TypeScript interfaces, GDScript `Resource` classes). They are never edited by hand; every file carries an `AUTO-GENERATED` header and committed-match tests under `tests/codegen/` fail on drift. See the typed-models codegen and monorepo packages decisions in [`decisions.md`](../specs/decisions.md).
 - Editing the workspace root `pyproject.toml` is allowed; do not add a real `[project]` package to it (the root is a virtual workspace marker, not a publishable distribution).
 
 ## Files and folders
@@ -106,7 +106,7 @@ The typed-models codegen D7 deferred the docs site to a separate chore.
 Everywhere else (CONTRIBUTING.md, agent skill pages, prose under a still-active spec) the linked form remains fine while the target file exists:
 
 ```markdown
-See [the weight-paint-automesh spec](../specs/013-weight-paint-automesh/STUDY.md).
+See [the weight-paint-automesh spec](../specs/NNN-weight-paint-automesh/STUDY.md).
 ```
 
 ### Scenarios get descriptive titles
@@ -180,7 +180,7 @@ A clean sweep returns no output. A noisy sweep means the drift list grew - eithe
 
 ## JSON keys
 
-Cross-component JSON formats (`.proscenio`, PSD manifest) use `snake_case` keys throughout. The schemas under `schemas/` are the source of truth - any new field must follow the same rule and be added to the schema before being emitted or consumed.
+Cross-component JSON formats (`.proscenio`, PSD manifest) use `snake_case` keys throughout. The pydantic models under `packages/models/` are the source of truth (the JSON Schemas under `packages/models/schemas/` are generated from them) - any new field must follow the same rule and be added to the model before being emitted or consumed.
 
 ## Module organization (Blender addon)
 

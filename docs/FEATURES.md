@@ -2,7 +2,7 @@
 
 A Photoshop -> Blender -> Godot 4 pipeline for 2D cutout animation. The output is a native Godot scene with no runtime of its own.
 
-This list is grouped by plugin and verified by reading the actual code (operators, planner, modals), not the specs or comments. For the systems behind these features and how the data flows between them, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+This list is grouped by plugin and verified by reading the actual code (operators, planner, modals), not the specs or comments. For the systems behind these features and how the data flows between them, see [`docs/ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Photoshop (UXP plugin)
 

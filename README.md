@@ -73,7 +73,7 @@ Paradigm-locked non-goals that will not reopen without a fundamental shift:
 
 ## More
 
-You can find the contribution guidelines, the end-to-end walkthrough, and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/skills/README.md) for guidance on how to use AI in contributions.
+You can find the contribution guidelines, the end-to-end walkthrough, and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/skills/README.md) for guidance on the project structure and best practices.
 
 For the full feature list, see:
 

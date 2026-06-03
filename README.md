@@ -25,9 +25,10 @@ Photoshop -> manifest + PNGs -> Blender -> .proscenio + atlas / spritesheets -> 
 
 > [!NOTE]
 > This project has been heavily AI-assisted throughout the current proof-of-concept development. All code and documentation are human-reviewed but may contain AI artifacts, as I'm a single developer and the project is in its early stages.
+
 <details>
-<summary></summary>
-![ehe](docs/ehe.jpg)
+  <summary></summary>
+  ![ehe](docs/ehe.jpg)
 </details>
 
 ## Who it's for

@@ -1,0 +1,9 @@
+{
+  "label": "Proscenio character",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Proscenio character (.proscenio)",
+    "description": "The document the Godot importer reads, grouped by feature."
+  }
+}

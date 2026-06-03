@@ -1,0 +1,24 @@
+---
+title: Layers
+sidebar_position: 2
+---
+
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import schema from "../../../packages/models/schemas/psd_manifest.schema.json";
+import {withDefs} from "@site/src/schema/withDefs";
+
+# Layers
+
+The layer kinds a manifest carries: a `polygon` layer (one PNG per layer) or a `sprite_frame` layer (a group of frames, each a `FrameEntry`).
+
+## PolygonLayer
+
+<JSONSchemaViewer schema={withDefs(schema, "PolygonLayer")} />
+
+## SpriteFrameLayer
+
+<JSONSchemaViewer schema={withDefs(schema, "SpriteFrameLayer")} />
+
+## FrameEntry
+
+<JSONSchemaViewer schema={withDefs(schema, "FrameEntry")} />

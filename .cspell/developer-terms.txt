@@ -316,3 +316,8 @@ rstrip
 ungated
 pyupgrade
 conftest
+easyops
+keytar
+jiti
+extname
+Infima

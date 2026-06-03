@@ -1,0 +1,24 @@
+---
+title: Animation
+sidebar_position: 5
+---
+
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import schema from "../../../packages/models/schemas/proscenio.schema.json";
+import {withDefs} from "@site/src/schema/withDefs";
+
+# Animation
+
+A named clip is a set of `Track`s; each track is a list of `Key`s on a single target.
+
+## Animation
+
+<JSONSchemaViewer schema={withDefs(schema, "Animation")} />
+
+## Track
+
+<JSONSchemaViewer schema={withDefs(schema, "Track")} />
+
+## Key
+
+<JSONSchemaViewer schema={withDefs(schema, "Key")} />

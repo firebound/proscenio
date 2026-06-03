@@ -1,0 +1,16 @@
+---
+title: Slots
+sidebar_position: 4
+---
+
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import schema from "../../../packages/models/schemas/proscenio.schema.json";
+import {withDefs} from "@site/src/schema/withDefs";
+
+# Slots
+
+A sprite-swap group: one named anchor with N alternate attachments, exactly one visible at a time.
+
+## Slot
+
+<JSONSchemaViewer schema={withDefs(schema, "Slot")} />

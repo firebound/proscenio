@@ -9,11 +9,11 @@ Subcommands:
 - ``godot`` - emit GDScript ``Resource`` classes from the pydantic
   models directly; output lands under
   ``apps/godot/addons/proscenio/schema_bindings/``.
-- ``docs`` - emit Markdown reference for every dumped schema via
-  ``@adobe/jsonschema2md``; output lands under
-  ``docs/content/api/schemas/`` for Docusaurus (or any other Markdown
-  reader) to pick up.
 - ``all`` - run every emitter in order.
+
+The schema reference on the docs site is rendered live from the dumped
+JSON Schemas by the ``docusaurus-json-schema-plugin`` viewer in
+``apps/docs``; there is no Markdown docs emitter here anymore.
 
 Exit code 0 on success, non-zero on emitter failure. The expected
 operator invocation is::
@@ -27,7 +27,6 @@ import argparse
 import sys
 from typing import Callable
 
-from proscenio_codegen.docs_emit import emit_docs
 from proscenio_codegen.godot_emit import emit_godot_resources
 from proscenio_codegen.schema_dump import emit_all_schemas
 from proscenio_codegen.ts_emit import emit_ts_bindings
@@ -51,12 +50,6 @@ def _run_godot() -> int:
     return 0
 
 
-def _run_docs() -> int:
-    for target in emit_docs():
-        print(f"[codegen] wrote {target}")
-    return 0
-
-
 def _run_all() -> int:
     rc = _run_schemas()
     if rc != 0:
@@ -64,17 +57,13 @@ def _run_all() -> int:
     rc = _run_ts()
     if rc != 0:
         return rc
-    rc = _run_godot()
-    if rc != 0:
-        return rc
-    return _run_docs()
+    return _run_godot()
 
 
 _EMITTERS: dict[str, Callable[[], int]] = {
     "schemas": _run_schemas,
     "ts": _run_ts,
     "godot": _run_godot,
-    "docs": _run_docs,
     "all": _run_all,
 }
 

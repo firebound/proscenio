@@ -1,0 +1,24 @@
+---
+title: Skeleton
+sidebar_position: 2
+---
+
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import schema from "../../../packages/models/schemas/proscenio.schema.json";
+import {withDefs} from "@site/src/schema/withDefs";
+
+# Skeleton
+
+The bone hierarchy and how mesh vertices bind to it.
+
+## Skeleton
+
+<JSONSchemaViewer schema={withDefs(schema, "Skeleton")} />
+
+## Bone
+
+<JSONSchemaViewer schema={withDefs(schema, "Bone")} />
+
+## Weight
+
+<JSONSchemaViewer schema={withDefs(schema, "Weight")} />

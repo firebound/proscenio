@@ -28,7 +28,9 @@ Photoshop -> manifest + PNGs -> Blender -> .proscenio + atlas / spritesheets -> 
 
 <details>
   <summary></summary>
-  ![ehe](docs/ehe.jpg)
+
+![ehe](docs/ehe.jpg)
+
 </details>
 
 ## Who it's for

@@ -1,64 +1,67 @@
-# Proscenio - Features (verified against the code)
+# Proscenio - Features
 
-Pipeline Photoshop -> Blender -> Godot 4 for 2D cutout animation. Output is a native Godot scene with no runtime of its own.
+A Photoshop -> Blender -> Godot 4 pipeline for 2D cutout animation. The output is a native Godot scene with no runtime of its own.
 
-Verified by reading the actual code (operators, planner, modals), ignoring specs / docstrings / comments.
+This list is grouped by plugin and verified by reading the actual code (operators, planner, modals), not the specs or comments. For the systems behind these features and how the data flows between them, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## 1. Photoshop side (UXP plugin)
+## Photoshop (UXP plugin)
 
-- Group layers and mark them as a spritesheet. The exporter does NOT produce the composed sheet image: it tags the group as `sprite_frame` in the manifest and exports one PNG per frame (`name/0.png`, `name/1.png`...). Composing them into a single image (laid out side by side, padded to the largest frame) is the Blender importer's job (`compose_spritesheet`).
-- Tag layers via brackets in the layer name without touching the artwork (a UI panel ships for this too). Tags actually parsed by the code: `[ignore]`, `[merge]` (flatten a group into a single PNG), `[folder:name]`, `[polygon]`, `[mesh]`, `[spritesheet]`, `[origin]` and `[origin:x,y]` (pivot), `[scale:n]`, `[blend:multiply/screen/additive]`, `[path:name]`, `[name:pre*suf]`.
-- Manifest validation before save.
-- Mirror manifest -> PSD (rebuilds a PSD from the manifest; this is NOT a way to round-trip Blender edits back into the PSD).
+- **Tag layers from their name.** Markers in brackets drive the export without touching the artwork (a UI panel ships for this too). The tags the code parses: `[ignore]`, `[merge]` (flatten a group into one PNG), `[folder:name]`, `[polygon]`, `[mesh]`, `[spritesheet]`, `[origin]` and `[origin:x,y]` (pivot), `[scale:n]`, `[blend:multiply|screen|additive]`, `[path:name]`, `[name:pre*suf]`.
+- **Export.** A recursive layer walk produces one PNG per layer plus a manifest JSON. The manifest is validated before it is written, so a broken manifest never reaches disk.
+- **Spritesheets.** Marking a group as a spritesheet tags it as `sprite_frame` and exports one PNG per frame (`name/0.png`, `name/1.png`, ...). Composing those into a single sheet is the Blender importer's job, not Photoshop's.
+- **Mirror back to PSD.** The plugin can rebuild a PSD from a manifest. This is a way to reconstruct the source layout, not a way to round-trip Blender edits back into the PSD.
 
-## 2. Mesh authoring (automesh)
+## Blender (addon)
 
-- Simple automesh: one click, traces the alpha-channel silhouette (no OpenCV), produces a deformable annulus mesh, densifies the interior under bones. Parameters via redo (F3).
-- Interactive automesh: a six-stage modal that controls the SHAPE of the mesh (outer silhouette, edit silhouette, inner loops, interior detail, vertex preview, apply). Gestures use mouse + modifiers instead of keyboard combos: LMB = vertex, Shift+LMB = fold, Ctrl+LMB = cut, Alt+LMB = delete, Ctrl+Z = undo; click = pen (point by point), drag = free-draw. IMPORTANT: the interactive modal controls the shape, NOT the weights.
-- Mesh regeneration that preserves weights: snapshot before, weight reprojection after.
+The heavy lifting lives here.
 
-## 3. Skeleton authoring (Quick Armature)
+### Mesh authoring (automesh)
 
-- Draw bones by dragging in the viewport (head -> tail), with mouse + modifiers: Shift = chain, Alt = unconnected parent, X/Z = axis lock, Ctrl = grid snap, Ctrl+Z / Ctrl+Shift+Z = undo / redo, Enter = confirm, Esc / RMB = exit. Output is a standard Blender armature.
+- **One-click automesh.** Traces the alpha silhouette (no OpenCV), produces a deformable mesh, and densifies the interior under the bones. Parameters are tweaked via the redo panel (F3).
+- **Interactive automesh.** A six-stage modal that controls the *shape* of the mesh (outer silhouette, edit silhouette, inner loops, interior detail, vertex preview, apply). Gestures use mouse + modifiers instead of key combos: LMB = vertex, Shift+LMB = fold, Ctrl+LMB = cut, Alt+LMB = delete, Ctrl+Z = undo; a click places points one by one, a drag free-draws. This modal controls the shape, not the weights.
+- **Weight-preserving regeneration.** A snapshot is taken before regeneration and the weights are reprojected afterwards, so reshaping the mesh does not throw away paint work.
 
-## 4. Weight bind and paint (separate from automesh)
+### Skeleton authoring (Quick Armature)
 
-- Bind the mesh to the skeleton with five auto-weight modes: Bone Heat (delegates to Blender's native solver), Proximity (1/d^p), Envelope (per-bone radius), Single Nearest (one bone per vertex), Empty (zero weights, for painting by hand). Only three modes actually compute weights; bone heat is Blender's and empty is zero by definition.
-- Per-bone SOFT / HARD mode.
-- "Edit Weights" modal (a weight-paint wrapper adapted for 2D).
-- Brush curve presets, copy weights to selected.
-- Save / restore weight snapshot; export / import weight sidecar.
+- **Draw bones in the viewport** by dragging head -> tail, with mouse + modifiers: Shift = chain, Alt = unconnected parent, X/Z = axis lock, Ctrl = grid snap, Ctrl+Z / Ctrl+Shift+Z = undo / redo, Enter = confirm, Esc / RMB = exit. The output is a plain Blender armature you refine in Edit Mode as usual.
 
-## 5. Slots (sprite swapping)
+### Weight bind and paint
 
-- Create a slot, add an attachment, set the default attachment, animate the slot index.
+Separate from automesh - automesh shapes the mesh, this binds it to the bones.
 
-## 6. Atlas
+- **Five bind modes.** Bone Heat (delegates to Blender's native solver), Proximity (1/d^p), Envelope (per-bone radius), Single Nearest (one bone per vertex), and Empty (zero weights, for painting by hand).
+- **Edit Weights modal** - a weight-paint wrapper adapted for 2D - plus per-bone SOFT / HARD mode and brush-curve presets.
+- **Copy weights to selected** between sprites with matching topology.
+- **Save / restore a weight snapshot**, and **export / import the weight sidecar** (a JSON of the weights and their provenance).
 
-- Pack, unpack, and apply atlas.
+### Slots (sprite swapping)
 
-## 7. Sprite and UV metadata
+- Create a slot, add an attachment, set the default attachment, and animate the slot index to flip attachments per keyframe.
 
-- Sprite type (polygon / sprite_frame), spritesheet metadata (hframes / vframes / frame), reproject UV, snap region to UV, frame-preview material.
+### Atlas
 
-## 8. Animation / rig shortcuts
+- Pack regions into a single atlas, unpack it back into source images, and apply the result.
 
-- Drive a sprite from a bone (driver), Toggle IK, save current pose to the library, bake current pose.
+### Sprite and UV metadata
 
-## 9. Support
+- Sprite type (`polygon` / `sprite_frame`), spritesheet metadata (`hframes` / `vframes` / `frame`), reproject UV, snap region to UV bounds, and a frame-preview material that shows the chosen cell in the viewport.
 
-- Orthographic preview camera.
-- Validation with per-subpanel badges and click-to-select the offending object.
-- A dedicated outliner (favorites / selection).
+### Animation and rig shortcuts
 
-## 10. Photoshop import
+- Drive a sprite from a bone (a driver), Toggle IK, save the current pose to the library, and bake the current pose. These sit on top of Blender's native operators - they never replace them.
 
-- Imports the manifest (planes + root bone + names). Idempotent re-import that preserves weights, rotation, and parenting.
+### Source-art ingestion (Photoshop import)
 
-## 11. Godot export
+- Imports the manifest into planes plus a root bone, with the naming convention pre-populated. The re-import is idempotent: it preserves weights, rotation, and parenting on objects that already exist.
 
-- Validate, export `.proscenio` (plus atlas), re-export with a sticky path.
+### Export to Godot
 
-## 12. Godot side
+- Validate the scene, write the `.proscenio` file (plus the atlas) next to the source `.blend`, and re-export silently to the last path on later saves.
 
-- The importer regenerates a native scene (Skeleton2D + Bone2D + Polygon2D + AnimationPlayer) on every reimport; the scene runs without the plugin installed. (Builders exist in the code; detailed verification focused on Photoshop and Blender.)
+### Support
+
+- An orthographic preview camera, validation with per-subpanel status badges and click-to-select for the offending object, and a sprite-centric outliner (favorites and filter) that leaves Blender's native outliner untouched.
+
+## Godot (editor plugin)
+
+- An `EditorImportPlugin` regenerates a native scene (Skeleton2D + Bone2D + Polygon2D / Sprite2D + AnimationPlayer) on every reimport of a `.proscenio` file. The generated scene runs with the plugin uninstalled - it is plain Godot 4 nodes. A user-authored wrapper scene that instances the generated one survives every reimport.

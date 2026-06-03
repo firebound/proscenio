@@ -80,10 +80,11 @@ Paradigm-locked non-goals that will not reopen without a fundamental shift:
 
 ## More
 
-You can find the contribution guidelines, the end-to-end walkthrough, and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/skills/README.md) for guidance on the project structure and best practices.
+You can find the contribution guidelines and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/skills/README.md) for guidance on the project structure and best practices.
 
 For more, see:
 
+- [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) - the full Photoshop -> Blender -> Godot loop, end to end.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - the systems and how the data flows.
 - [`docs/COMPARISON.md`](docs/COMPARISON.md) - feature matrix vs Spine, COA Tools 2, Live2D, and others.
 - [`docs/DEFERRED.md`](docs/DEFERRED.md) - features planned but not shipped yet.

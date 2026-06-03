@@ -11,7 +11,7 @@
 
 Proscenio is an open-source pipeline for 2D cutout animation, built for artists: you paint in Photoshop, rig and animate in Blender, and ship to Godot - every step on open, free tooling.
 
-Part of the [Firebound](https://github.com/Space-Wizard-Studios/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no standalone editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
+Part of the [Firebound](https://github.com/Space-Wizard-Studios/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no proprietary editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
 
 The pipeline flows in one direction:
 

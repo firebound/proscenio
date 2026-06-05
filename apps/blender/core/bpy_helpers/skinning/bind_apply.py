@@ -15,6 +15,12 @@ from typing import Any
 
 import bpy
 
+from ..._shared.cp_keys import (
+    PROSCENIO_ENVELOPE_RADIUS as _ENVELOPE_RADIUS_KEY,
+)
+from ..._shared.cp_keys import (
+    PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
+)
 from ...skinning.bone_modes import BoneMode, bone_mode_for
 from ...skinning.planar_proximity import BoneSegmentNamed2D
 from ...skinning.sidecar_schema import to_json
@@ -22,8 +28,6 @@ from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
 from ._helpers import wipe_non_base_groups
 from .sidecar_io import snapshot_sidecar
 
-_SIDECAR_KEY = "proscenio_weight_sidecar"
-_ENVELOPE_RADIUS_KEY = "proscenio_envelope_radius"
 _ENVELOPE_DEFAULT_RADIUS = 1.0
 _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5

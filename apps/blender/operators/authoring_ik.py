@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import IntProperty
 
-from ..core.report import report_info  # type: ignore[import-not-found]
+from ..core._shared.report import report_info  # type: ignore[import-not-found]
 
 _IK_CONSTRAINT_NAME = "Proscenio IK"
 

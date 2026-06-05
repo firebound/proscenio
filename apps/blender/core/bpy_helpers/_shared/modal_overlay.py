@@ -12,7 +12,7 @@ in-viewport feedback:
   space (modifier cheatsheet, status header).
 
 Pure-geometry helpers (vertex builders) live in
-:mod:`core.modal_overlay_geometry` and are bpy-free so they can be unit
+:mod:`core._shared.modal_overlay_geometry` and are bpy-free so they can be unit
 tested without booting Blender.
 """
 
@@ -25,7 +25,7 @@ import blf
 import gpu
 from gpu_extras.batch import batch_for_shader
 
-from ..modal_overlay_geometry import (
+from ..._shared.modal_overlay_geometry import (
     PlaneAxis,
     build_circle_vertices,
     build_rect_vertices,

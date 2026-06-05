@@ -18,7 +18,7 @@ from types import SimpleNamespace
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.skeleton_target import (  # noqa: E402  - sys.path setup above
+from core.armature.skeleton_target import (  # noqa: E402  - sys.path setup above
     resolve_skeleton_target,
 )
 

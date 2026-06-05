@@ -19,7 +19,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.modal_overlay_geometry import (  # noqa: E402  - sys.path setup above
+from core._shared.modal_overlay_geometry import (  # noqa: E402  - sys.path setup above
     build_circle_vertices,
     build_rect_vertices,
 )

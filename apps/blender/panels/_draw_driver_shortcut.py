@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..core.feature_status import (  # type: ignore[import-not-found]
+from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     badge_for,
     status_for,
 )

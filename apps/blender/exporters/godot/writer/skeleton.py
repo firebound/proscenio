@@ -9,7 +9,7 @@ import bpy
 from mathutils import Vector
 from proscenio_models import Bone, Skeleton
 
-from ....core._bpy_compat import expect_armature, iter_bones
+from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
 
 
 @dataclass(frozen=True)

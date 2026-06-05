@@ -19,7 +19,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.quick_armature_math import (  # noqa: E402  - sys.path setup above
+from core.armature.quick_armature_math import (  # noqa: E402  - sys.path setup above
     DEFAULT_NAME_PREFIX,
     apply_axis_lock,
     format_bone_name,

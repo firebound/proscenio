@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import bpy
 
-from ...core._bpy_compat import expect_scene
+from ...core.bpy_helpers._shared._bpy_compat import expect_scene
 
 DEFAULT_ROOT_BONE_NAME = "root"
 ROOT_BONE_LENGTH = 0.05

@@ -17,7 +17,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.viewport_state import is_front_ortho  # noqa: E402  - sys.path setup above
+from core._shared.viewport_state import is_front_ortho  # noqa: E402  - sys.path setup above
 
 
 _IDENTITY = [

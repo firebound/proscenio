@@ -18,9 +18,10 @@ import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
+from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
+
 OverlayMode = Literal["weight", "provenance"]
 
-_SIDECAR_KEY = "proscenio_weight_sidecar"
 _DISC_SIZE = 6.0
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 

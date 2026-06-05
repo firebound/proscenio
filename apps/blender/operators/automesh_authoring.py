@@ -13,6 +13,11 @@ from typing import ClassVar, Literal, cast
 
 import bpy
 
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 from ..core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
     refresh_overlay,
@@ -42,11 +47,6 @@ from ..core.bpy_helpers.automesh.authoring_session import (
 )
 from ..core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
     collect_bone_segments,
-)
-from ..core.report import (  # type: ignore[import-not-found]
-    report_error,
-    report_info,
-    report_warn,
 )
 from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,

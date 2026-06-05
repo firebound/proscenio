@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..core.feature_status import badge_for, status_for  # type: ignore[import-not-found]
+from ..core._shared.feature_status import badge_for, status_for  # type: ignore[import-not-found]
 
 _OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}

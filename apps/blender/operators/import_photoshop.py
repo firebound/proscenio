@@ -15,7 +15,7 @@ import bpy
 from bpy.props import EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
-from ..core import psd_manifest  # type: ignore[import-not-found]
+from ..core.psd import psd_manifest  # type: ignore[import-not-found]
 from ..importers.photoshop import import_manifest  # type: ignore[import-not-found]
 
 

@@ -28,8 +28,12 @@ from typing import Literal, cast
 
 import bpy
 
-from ...core import psd_manifest
-from ...core._bpy_compat import (
+from ...core._shared.cp_keys import (
+    PROSCENIO_BLEND_MODE,
+    PROSCENIO_IMPORT_ORIGIN,
+    PROSCENIO_PSD_KIND,
+)
+from ...core.bpy_helpers._shared._bpy_compat import (
     expect_mesh,
     expect_scene,
     first_uv_layer,
@@ -42,7 +46,8 @@ from ...core._bpy_compat import (
     set_material_at,
     uv_loop_at,
 )
-from ...core.bpy_helpers.psd_spritesheet import compose_spritesheet
+from ...core.bpy_helpers.psd.psd_spritesheet import compose_spritesheet
+from ...core.psd import psd_manifest
 
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
@@ -268,9 +273,9 @@ def _find_existing(name: str) -> bpy.types.Object | None:
     for obj in iter_blend_objects():
         if obj.type != "MESH":
             continue
-        if obj.get("proscenio_import_origin") == target:
+        if obj.get(PROSCENIO_IMPORT_ORIGIN) == target:
             return obj
-        if obj.name == name and obj.get("proscenio_import_origin") is None:
+        if obj.name == name and obj.get(PROSCENIO_IMPORT_ORIGIN) is None:
             return obj
     return None
 
@@ -389,19 +394,19 @@ def _link_to_subfolder(obj: bpy.types.Object, subfolder: str | None) -> None:
 
 
 def _tag_origin(obj: bpy.types.Object, layer_name: str) -> None:
-    obj["proscenio_import_origin"] = f"psd:{layer_name}"
+    obj[PROSCENIO_IMPORT_ORIGIN] = f"psd:{layer_name}"
 
 
 def _tag_kind(obj: bpy.types.Object, kind: str) -> None:
     """Stamp the manifest ``kind`` so downstream writers can branch on it."""
-    obj["proscenio_psd_kind"] = kind
+    obj[PROSCENIO_PSD_KIND] = kind
 
 
 def _tag_blend_mode(obj: bpy.types.Object, blend_mode: str | None) -> None:
     """Preserve the manifest-declared blend mode for downstream writers."""
     if blend_mode is None:
         return
-    obj["proscenio_blend_mode"] = blend_mode
+    obj[PROSCENIO_BLEND_MODE] = blend_mode
 
 
 def _tag_sprite_type(

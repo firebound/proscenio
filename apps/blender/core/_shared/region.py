@@ -34,7 +34,7 @@ class _CPLookup(Protocol):
 def _read_field(obj: object, field: str, custom_key: str, default: T) -> T:
     """PropertyGroup-first read with Custom Property fallback (the authoring panel).
 
-    Same trust-the-CP-callsite contract as ``core.pg_cp_fallback.read_field``:
+    Same trust-the-CP-callsite contract as ``core._shared.pg_cp_fallback.read_field``:
     the caller declares ``default``'s type, and the CP path is cast back to
     it. A writer that stores the wrong type under a Custom Property is a
     bug at the writer site, not a defensive check here.

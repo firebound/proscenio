@@ -17,14 +17,14 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, FloatProperty
 
-from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
-    apply_bind,
-    collect_diagnoses_for_object,
-)
-from ..core.report import (  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
     report_warn,
+)
+from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+    apply_bind,
+    collect_diagnoses_for_object,
 )
 
 

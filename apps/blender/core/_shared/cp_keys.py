@@ -51,3 +51,25 @@ PROSCENIO_REGION_Y = "proscenio_region_y"
 PROSCENIO_REGION_W = "proscenio_region_w"
 PROSCENIO_REGION_H = "proscenio_region_h"
 PROSCENIO_MATERIAL_ISOLATED = "proscenio_material_isolated"
+
+# Skinning sidecar + bind metadata. The weight sidecar is the per-Object JSON
+# store of bind/paint provenance; bone modes, envelope radius, and the mirror
+# flag are bind-time inputs read by the skinning operators and bpy helpers.
+PROSCENIO_WEIGHT_SIDECAR = "proscenio_weight_sidecar"
+PROSCENIO_BONE_MODES = "proscenio_bone_modes"
+PROSCENIO_ENVELOPE_RADIUS = "proscenio_envelope_radius"
+PROSCENIO_MIRROR_X = "proscenio_mirror_x"
+
+# Automesh authoring strokes. Per-Object JSON Custom Properties holding the
+# user's interactive Steiner points and cut / extend strokes; read back to
+# rebuild the authored mesh on APPLY.
+PROSCENIO_USER_STEINERS = "proscenio_user_steiners"
+PROSCENIO_USER_STROKES = "proscenio_user_strokes"
+PROSCENIO_USER_OUTER_STROKES = "proscenio_user_outer_strokes"
+
+# Photoshop import tags. Stamped onto imported meshes by the photoshop
+# importer: the source-layer origin marker (``psd:<layer>``), the manifest
+# kind hint, and the manifest-declared blend mode kept for downstream writers.
+PROSCENIO_IMPORT_ORIGIN = "proscenio_import_origin"
+PROSCENIO_PSD_KIND = "proscenio_psd_kind"
+PROSCENIO_BLEND_MODE = "proscenio_blend_mode"

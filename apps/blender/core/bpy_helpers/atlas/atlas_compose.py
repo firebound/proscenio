@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..atlas_packer import PackResult, Rect
+from ...atlas.atlas_packer import PackResult, Rect
 from .atlas_collect import SourceImage
 
 

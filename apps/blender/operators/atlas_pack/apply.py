@@ -7,8 +7,12 @@ from typing import Any, ClassVar
 
 import bpy
 
-from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 from ._paths import (
     duplicate_active_uv_layer,
     first_texture_image_name,
@@ -46,7 +50,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         return manifest.exists()
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers.atlas_manifest import (  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.atlas.atlas_manifest import (  # type: ignore[import-not-found]
             read_manifest,
         )
 

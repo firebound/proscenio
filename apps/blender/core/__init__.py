@@ -11,31 +11,25 @@ writer share. The contract is:
   when running outside Blender.
 - ``core/validation/`` is a subpackage of bpy-free validators.
 
-Top-level modules (bpy-free):
+Top-level modules (bpy-free, single-file features not yet grouped):
 
-- ``cp_keys.py``         Custom Property string constants registry
-- ``feature_status.py``  Feature-readiness dispatch table
-- ``help_topics.py``     In-panel help topic registry
-- ``hydrate.py``         CP -> PG hydration logic
-- ``mirror.py``          PG -> CP mirror logic
-- ``pg_cp_fallback.py``  PG-first / CP-fallback reader
-- ``props_access.py``    typed accessors for scene/object PGs
-- ``psd_manifest.py``    Photoshop manifest dataclass + reader
-- ``psd_naming.py``      PSD layer-name parsing
-- ``region.py``          texture region resolver
-- ``report.py``          operator report helpers (Proscenio: prefix)
-- ``slot_emit.py``       slot dict projection
-- ``sprite_frame_math.py`` per-cell UV slicing math (bpy-free counterpart
-                         of ``bpy_helpers/sprite_frame_shader.py``)
-- ``uv_bounds.py``       UV-bounds rect computation
-- ``atlas_packer.py``    pure-Python MaxRects packer
+- ``help_topics.py``       In-panel help topic registry
+- ``mirror.py``            PG -> CP mirror logic
+- ``uv_bounds.py``         UV-bounds rect computation
 
 Subpackages:
 
-- ``bpy_helpers/``  bpy-bound helpers (atlas_io, psd_spritesheet,
-                    sprite_frame_shader, select, viewport_math)
-- ``validation/``   per-validator submodules (active_sprite,
-                    active_slot, export, issue, _shared)
+- ``_shared/``      cross-cutting infra (cp_keys, report, props_access,
+                    pg_cp_fallback, feature_status, hydrate, geometry_2d,
+                    region, viewport_state, modal_overlay_geometry)
+- ``armature/``     quick-armature math + target resolver
+- ``atlas/``        pure MaxRects packer (``atlas_packer``)
+- ``psd/``          PSD manifest reader + layer-name parsing
+- ``slot/``         pure slot[] projection (``slot_emit``)
+- ``sprite_frame/`` pure UV-cell math (``sprite_frame_math``)
+- ``automesh/`` / ``skinning/`` / ``validation/``  per-feature domain packages
+- ``bpy_helpers/``  bpy-bound helpers (``_shared/``, ``atlas/``, ``psd/``,
+                    ``automesh/``, ``skinning/``, ``sprite_frame/``)
 
 Adding new code: pick the subdirectory by its bpy dependency. A pure
 Python helper goes at the top level. A helper that calls

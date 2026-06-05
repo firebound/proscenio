@@ -13,11 +13,12 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Literal
 
+from .._shared.cp_keys import PROSCENIO_BONE_MODES as _KEY
+
 if TYPE_CHECKING:
     import bpy
 
 BoneMode = Literal["SOFT", "HARD"]
-_KEY = "proscenio_bone_modes"
 
 
 def read_bone_modes(obj: bpy.types.Object) -> dict[str, BoneMode]:

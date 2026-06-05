@@ -16,7 +16,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core import psd_naming  # noqa: E402
+from core.psd import psd_naming  # noqa: E402
 
 
 def test_match_pure_digit_returns_empty_base() -> None:

@@ -7,8 +7,8 @@ from typing import Any, ClassVar
 
 import bpy
 
-from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 from ._paths import pre_pack_snapshot_for, scene_has_pre_pack_snapshot, swap_image_in_materials
 
 

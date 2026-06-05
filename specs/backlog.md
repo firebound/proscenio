@@ -2,6 +2,8 @@
 
 Items that are not in any active spec. Each entry promotes into a numbered spec under `specs/` when work begins. Order within a section is rough priority.
 
+Forward-compatibility items gated on a future Blender release live in a dedicated [`blender-6-backlog.md`](blender-6-backlog.md).
+
 ## Format and schema
 
 ### Bezier curve preservation

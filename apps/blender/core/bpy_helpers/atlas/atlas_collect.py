@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ..uv_bounds import uv_bbox_to_pixels
+from ...uv_bounds import uv_bbox_to_pixels
 
 
 @dataclass(frozen=True)

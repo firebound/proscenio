@@ -28,7 +28,7 @@ MANIFEST_PATH = (
     / "examples/authored/doll/02_photoshop_setup/export/doll_tagged.photoshop_exported.json"
 )
 
-from core import psd_manifest  # noqa: E402
+from core.psd import psd_manifest  # noqa: E402
 
 
 @pytest.fixture(scope="module")

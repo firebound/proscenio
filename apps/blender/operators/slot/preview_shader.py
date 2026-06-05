@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import bpy
 
-from ...core.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
@@ -33,7 +33,9 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
         return any(m is not None for m in materials)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers import sprite_frame_shader  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.sprite_frame import (
+            sprite_frame_shader,  # type: ignore[import-not-found]
+        )
 
         obj = context.active_object
         material = next((m for m in obj.data.materials if m is not None), None)
@@ -77,7 +79,7 @@ class PROSCENIO_OT_remove_sprite_frame_preview(bpy.types.Operator):
         return any(m is not None for m in materials)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers import sprite_frame_shader
+        from ...core.bpy_helpers.sprite_frame import sprite_frame_shader
 
         obj = context.active_object
         removed = 0

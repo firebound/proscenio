@@ -5,8 +5,8 @@ from __future__ import annotations
 import bpy
 from proscenio_models import Animation, Key, Track
 
-from ....core._bpy_compat import iter_keyframe_points, iter_objects
-from ....core.cp_keys import PROSCENIO_SLOT_INDEX
+from ....core._shared.cp_keys import PROSCENIO_SLOT_INDEX
+from ....core.bpy_helpers._shared._bpy_compat import iter_keyframe_points, iter_objects
 from .animations import action_fcurves
 from .slots import is_slot_empty
 

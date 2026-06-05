@@ -19,7 +19,7 @@ from gpu_extras.batch import batch_for_shader
 
 from ...automesh.stroke_geometry import subdivide_polyline
 from ...skinning.authoring_stages import AuthoringStage, StageOutput, Stroke
-from ..modal_overlay import draw_text_panel_2d
+from .._shared.modal_overlay import draw_text_panel_2d
 
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 _OUTER_COLOR = (0.0, 0.8, 1.0, 0.9)

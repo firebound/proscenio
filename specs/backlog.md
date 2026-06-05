@@ -184,7 +184,7 @@ Items deferred from the quick-armature spec STUDY out-of-scope after PR #50 ship
 - **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the quick-armature spec's RESEARCH addendum.
 - **Mirror auto-suffix `_L`/`_R`** when X-Mirror is enabled in the armature data. Auto-creates the symmetric pair on each press so humanoid rigs save half the work. Small effort but only pays off with a humanoid fixture - currently no Proscenio fixture exercises symmetric rigs end-to-end.
 - **Numeric length input.** `Tab` to type `0.5` Enter (Blender E-extrude convention). Bigger lift because it needs a text-input field on a modal operator; precision authoring win when implemented.
-- **D11 local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
+- **Local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
 
 The remaining quick-armature deferred items are now successor specs (quick-armature STUDY successor-considerations section): auto-attach mesh / sprite to bone (needs slot-system maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
 
@@ -192,7 +192,7 @@ The remaining quick-armature deferred items are now successor specs (quick-armat
 
 Items locked as the productivity follow-up tier of the weight-paint-automesh spec Design surface > Out of scope + the productivity polish TODO tier. Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
 
-- **Soft vs Hard bone toggle (D16, Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
+- **Soft vs Hard bone toggle (Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
 - **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value follow-up candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
 - **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active) and applies the same algorithm against the picker armature. Trigger: imported-character workflow with N sprites + 1 rig stresses this.
 - **Weight transfer between sprites.** `proscenio.copy_weights_to_selected` operator. Active mesh = source; selected meshes = targets; nearest-world-position vertex lookup copies weight dict. Solves COA Tools 2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73). Foundational for Live2D-style line / colour / shadow layered sprites.
@@ -208,7 +208,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 - **Cubism Glue equivalent.** Seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations). Trigger: layered-sprite use case stresses this.
 - **Smart-Bone-style corrective drivers (Moho lift).** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle, the addon emits a driver. Belongs in a future animation-system spec not the weight-paint-automesh spec (authoring), but listed here for visibility because the trigger is the same as Auto-Patch.
 - **Mirror humanoid binding.** One mesh on one side, click to mirror to other. Couples to symmetric rigs. Trigger: first humanoid fixture lands end-to-end.
-- **Bezier brush stroke for alpha-boundary trace.** Adds a D1.B free-draw path on top of D1.A one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (D12 helpers already in place from first cut).
+- **Bezier brush stroke for alpha-boundary trace.** Adds a free-draw path on top of the one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (the gesture helpers are already in place from the first cut).
 
 ### Blender 4.3 legacy actions compatibility
 
@@ -218,7 +218,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 
 **What:** the current authoring-panel design mirrors every PropertyGroup field on `Object.proscenio` to a sibling raw Custom Property (`obj["proscenio_type"]`, `obj["proscenio_frame"]`, ...) via `update` callbacks, and `core/hydrate.py` rehydrates the PG from CPs on `load_post`. The 11 fields in `OBJECT_PROPS` are mirrored uniformly, which is over-broad: some fields are editor-time only and could live as PG-canonical with no CP at all, while others are animatable / driver targets where the CP is the durable storage and the PG is just a typed widget projection.
 
-**Why:** PropertyGroup data is backed by IDProperty but its visibility depends on the addon's RNA descriptor being registered. Disable → save → reenable cycles can purge orphaned IDProperty data depending on Blender version, so PG is a brittle home for anything that must survive addon-absent file states or be a stable driver target. Raw CPs have none of those constraints, which is why Rigify and similar mature addons keep the *animator-facing* surface (IK/FK switches, layer toggles) on CPs and reserve PGs for *generator-internal* metadata. Mirroring everything pays the cost (doubled write paths, sync risk, undo desync, `deferred_hydrate` timer, dual-key reader fallback in `read_field`) for fields that do not need the resilience. Mirroring nothing loses real resilience for fields that do (`frame` is keyframable into Godot's `AnimationPlayer`; Drive-from-Bone wires drivers onto sprite properties).
+**Why:** PropertyGroup data is backed by IDProperty but its visibility depends on the addon's RNA descriptor being registered. Disable → save → reenable cycles can purge orphaned IDProperty data depending on Blender version, so PG is a brittle home for anything that must survive addon-absent file states or be a stable driver target. Raw CPs have none of those constraints, which is why Rigify and similar mature addons keep the *animator-facing* surface (IK/FK switches, layer toggles) on CPs and reserve PGs for *generator-internal* metadata. Mirroring everything pays the cost (doubled write paths, sync risk, undo desync, `deferred_hydrate` timer, dual-key reader fallback in `read_field`) for fields that do not need the resilience. Mirroring nothing loses real resilience for fields that do (`frame` is keyframable into Godot's `AnimationPlayer`; Drive-from-Bone wires drivers onto sprite properties). Blender also cannot keyframe a field nested inside a PropertyGroup ([T48975](https://developer.blender.org/T48975)), so an animatable / driver-target field has to live as a top-level Custom Property regardless.
 
 **Decision (locked):** option **A** - split by intent. Editor-time-only fields become PG-canonical with no CP mirror; animatable / driver-target fields become CP-canonical with PG as a typed widget wrapper. Documented as a deliberate contract, not legacy debt - rewrite the `properties/__init__.py` docstring to call this out instead of describing CPs as "legacy".
 
@@ -226,6 +226,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 
 - PG-canonical (drop the CP mirror): `sprite_type`, `region_mode`, `region_x`, `region_y`, `region_w`, `region_h`, `material_isolated`.
 - CP-canonical (PG is the typed widget; writer reads CP directly): `frame`, `hframes`, `vframes`, `centered`, `proscenio_slot_index`.
+- Drop the mirror entirely (PG-only, pure UI / editor state never exported and never a driver target): `is_outliner_favorite`. It carries a CP mirror today via the blanket `on_any_update` path yet is not even in the `hydrate` map - asymmetric dead weight.
 - Reader (`writer/sprites.py`, slot index reads, etc.) drops the `read_field(pg_field=..., cp_key=..., default=...)` dual fallback and reads each field from its canonical home.
 - `_update_*` mirror callbacks deleted for the PG-canonical group; retained only as PG → CP one-way for the CP-canonical group (since the PG is the widget the user touches).
 - `core/hydrate.py` becomes a one-shot migrator: on `load_post`, hydrate any `.blend` that still has legacy CPs in the PG-canonical group into the PG, then *delete* those CPs so the field has a single source of truth post-migration. Gate behind a `format_version` check on the scene PG so it runs at most once per file.
@@ -291,7 +292,7 @@ Groups named `Frontal` / `Left Profile` / `Left Quarter` / `Right Quarter` / `Ri
 
 #### Pseudo-keyword auto-tagging (`Head`, `Mouth`, `Eye_Open`, ...)
 
-Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (the photoshop tag system D1) is cleaner and ships first.
+Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (in the photoshop tag system) is cleaner and ships first.
 
 #### `[isolated]` warp-independent flag (Character Animator's `+` prefix)
 
@@ -325,7 +326,7 @@ The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does 
 
 The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: a future Photoshop-roundtrip cycle plumbs PPU through XMP so the round-trip is lossless.
 
-### photoshop tag system follow-ups deferred from the photoshop tag system waves
+### photoshop tag system follow-ups deferred from the photoshop tag system work
 
 #### Dedicated origin / pivot fixture (a photoshop tag system follow-up)
 
@@ -393,7 +394,7 @@ The mypy `disallow_any_*` trio landed with per-module overrides that relax the `
 
 ### Docusaurus wiring of generated docs
 
-`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it, and the committed markdown has drifted from a fresh emit - it is the one codegen artifact without a committed-match staleness test, because it depends on the npx `jsonschema2md` output rather than pure-Python emit. The typed-models codegen D7 deferred the site itself as a separate chore; regenerating (or deleting) the stale markdown rides along with wiring or dropping the site.
+`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it, and the committed markdown has drifted from a fresh emit - it is the one codegen artifact without a committed-match staleness test, because it depends on the npx `jsonschema2md` output rather than pure-Python emit. The typed-models codegen deferred the site itself as a separate chore; regenerating (or deleting) the stale markdown rides along with wiring or dropping the site.
 
 **Trigger to revisit:** the first time someone wants to ship public schema documentation, or a code-health pass decides to drop the unconsumed markdown.
 

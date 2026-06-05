@@ -1,9 +1,9 @@
-"""WeightSidecar schema (the sidecar work wave).
+"""WeightSidecar schema.
 
 Populated entries live here as ``SidecarEntry`` dataclasses keyed
 by UV anchor + tagged with provenance. ``build_minimal_stub`` still
 returns an empty-entries instance for pre-paint sprites; the bind
-path swaps it for a populated snapshot in this wave.
+path swaps it for a populated snapshot in the sidecar work.
 
 Pure Python: stdlib only (json + hashlib + dataclasses + typing).
 """

@@ -1,4 +1,4 @@
-"""Contact sheet of every doll sprite PNG (the testing-fixtures spec fixture review).
+"""Contact sheet of every doll sprite PNG (fixture review).
 
 Run with::
 

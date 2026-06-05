@@ -1,4 +1,4 @@
-"""Pure tests for authoring stage dataclasses (the interactive-modal work, T12;  T3)."""
+"""Pure tests for authoring stage dataclasses."""
 
 from __future__ import annotations
 

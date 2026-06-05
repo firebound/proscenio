@@ -1,4 +1,4 @@
-"""Pure-Python automesh helpers (the weight-paint-automesh spec).
+"""Pure-Python automesh helpers.
 
 Domain package grouping the bpy-free pieces of the automesh
 pipeline: alpha contour walking + morphology, geometric helpers

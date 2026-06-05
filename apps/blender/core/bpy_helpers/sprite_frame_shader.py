@@ -1,4 +1,4 @@
-"""Sprite_frame preview shader-node group builder (the slot system D13).
+"""Sprite_frame preview shader-node group builder.
 
 Bpy graph builder: assembles the ``Proscenio.SpriteFrameSlicer`` node
 group + wires drivers from ``obj.proscenio.frame / hframes / vframes``

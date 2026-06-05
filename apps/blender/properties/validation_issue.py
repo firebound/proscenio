@@ -1,4 +1,4 @@
-"""Validation finding PropertyGroup (the code-modularity work).
+"""Validation finding PropertyGroup.
 
 A single entry in ``ProscenioSceneProps.validation_results``. Surfaced
 in the Validation panel + the Diagnostics panel.

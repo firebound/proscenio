@@ -1,4 +1,4 @@
-"""Authoring pipeline dispatch (the interactive-modal work, T10).
+"""Authoring pipeline dispatch.
 
 Per-stage compute helpers that bridge between pure modules and the
 running modal operator. Final apply_mesh pipes through build_automesh
@@ -169,7 +169,7 @@ def write_user_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
 def read_user_outer_strokes(obj: bpy.types.Object) -> list[Stroke]:
     """Read obj['proscenio_user_outer_strokes']; empty list when absent or corrupt.
 
-    Reserved for Stage 2 (EDIT_OUTLINE). Capture logic comes in T6/T7; this
+    Reserved for Stage 2 (EDIT_OUTLINE). Capture logic comes later; this
     helper is scaffolded here so the persistence key is registered and
     round-trip tests can verify it before capture is wired.
     """
@@ -773,7 +773,7 @@ def _strokes_to_cdt_inputs(
       holes_world so the CDT treats the corridor as a HOLE - the triangulation
       excludes it + never crosses it (the user's algorithm). This is the same
       battle-tested path the swirl fixture's alpha holes use, so the result is
-      a clean gap with no slivers (vs T5 post-prune) and no jaggedness (vs
+      a clean gap with no slivers (vs post-prune) and no jaggedness (vs
       T-REV2 split_edges rip).
 
     Silhouette filter: every vert is tested BEFORE index allocation.

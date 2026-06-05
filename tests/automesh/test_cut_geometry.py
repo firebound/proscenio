@@ -99,7 +99,7 @@ def test_degenerate_tangent_fallback_uses_previous_perpendicular():
 
 
 def test_perpendicular_offsets_scales_with_half_width():
-    """Larger half_width produces a larger perpendicular offset (T9 )."""
+    """Larger half_width produces a larger perpendicular offset."""
     poly = [(0.0, 0.0), (1.0, 0.0)]
     left_small, _ = perpendicular_offsets(poly, half_width=0.1)
     left_large, _ = perpendicular_offsets(poly, half_width=1.0)

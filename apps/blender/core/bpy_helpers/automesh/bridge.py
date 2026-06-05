@@ -1,4 +1,4 @@
-"""bpy-bound bridge for the weight-paint-automesh spec automesh.
+"""bpy-bound bridge for the automesh.
 
 bpy-bound. Imports ``bpy`` + ``bmesh`` at module top. Lives in
 ``core/bpy_helpers/``.
@@ -11,13 +11,13 @@ bits that need real Blender data:
   int alpha grid the pure helpers consume - with downscale + clip
   + alpha-only extraction.
 * Convert pixel-coordinate contours to world XZ units on the Y=0
-  picture plane (Proscenio convention, the quick-armature spec D11 axis lock).
+  picture plane (Proscenio convention, the quick-armature axis lock).
 * Build a ``bmesh.types.BMesh``: add the outer + inner contour
   vertices + interior Steiner points, lay down the cyclic edge
   pairs from :func:`core.automesh_geometry.build_annulus_edge_pairs`,
   call ``bmesh.ops.triangle_fill`` to triangulate the annulus.
 * Preserve the original quad's 4 corner vertices via the
-  ``proscenio_base_sprite`` vertex group (the weight-paint-automesh spec D3) so re-runs
+  ``proscenio_base_sprite`` vertex group so re-runs
   only remove generated geometry, never the user-UV-pinned base.
 * Write the resulting bmesh back to the active object's mesh.
 
@@ -302,7 +302,7 @@ def collect_bone_segments(
     Walks ``armature_obj.data.edit_bones`` (or ``bones`` when not in
     Edit Mode) and emits ``((head_x, head_z), (tail_x, tail_z))`` for
     each deform-flagged bone. Y components are dropped since
-    Proscenio bones live on the Y=0 picture plane per the quick-armature spec
+    Proscenio bones live on the Y=0 picture plane per the quick-armature work
     convention.
 
     Head / tail are transformed by ``armature_obj.matrix_world`` so
@@ -433,7 +433,7 @@ def _read_alpha_and_extract_contours(
     outer_pixels, inner_pixels, hole_pixels = extract_contours(
         alpha_grid, alpha_threshold, grid_margin
     )
-    # the weight-paint-automesh spec D2 amendment: hole contours feed CDT as additional
+    # the weight-paint-automesh amendment: hole contours feed CDT as additional
     # constraint loops so the mesh excludes alpha holes. Proscenio
     # differentiates from Spine + COA Tools 2 here - both refuse
     # to support holes.
@@ -637,7 +637,7 @@ def _merge_extra_steiners(
     if late_dropped:
         print(
             f"[automesh] WARNING: _merge_extra_steiners dropped {late_dropped} late-stage "
-            f"vert(s) - caller should pre-filter (see )"
+            f"vert(s) - caller should pre-filter"
         )
     return list(auto_interior) + accepted
 
@@ -764,7 +764,7 @@ def build_automesh(
 
     Replaces any previously generated automesh geometry while
     preserving vertices flagged in the ``proscenio_base_sprite``
-    group (D3). Returns counters the operator surfaces in the
+    group. Returns counters the operator surfaces in the
     INFO report: ``{"outer_verts", "inner_verts", "interior_verts",
     "total_verts", "total_faces"}``.
 

@@ -1,4 +1,4 @@
-// the photoshop tag system D3: the legacy `_<name>` skip convention is gone, replaced
+// the photoshop tag system: the legacy `_<name>` skip convention is gone, replaced
 // by `[ignore]`. Old PSDs authored under the photoshop UXP migration routinely use the
 // underscore prefix to opt layers out of the export. This module walks
 // the adapted layer tree and produces a list of rename candidates so

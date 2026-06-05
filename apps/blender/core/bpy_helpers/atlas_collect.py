@@ -1,4 +1,4 @@
-"""Atlas source image collection (the code-modularity work split of atlas_io).
+"""Atlas source image collection (split out of atlas_io).
 
 Walks a mesh list, returns one ``SourceImage`` per object whose first
 material has an image-textured node. Each carries a ``slice_px`` rect

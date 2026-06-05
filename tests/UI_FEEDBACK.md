@@ -5,7 +5,7 @@ defaults. Não são bugs (não vão para `[!]` no MANUAL_TESTING.md), são
 melhorias de qualidade. Eventualmente viram issues / spec próprio.
 
 Formato livre. Quando tiver massa crítica de itens, agrupa por área e
-abre spec dedicado (ex: `specs/011-ui-polish/`).
+promove pro backlog.
 
 ## Cross-panel / general
 
@@ -82,7 +82,7 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
   - **A. Clamp visual no boundary do canvas-livre.** No MOUSEMOVE, se cursor entra zona de overlay, projeta `_cursor_world` pra borda mais proxima do retangulo canvas-menos-overlays. Linha para visualmente na borda do panel em vez de sumir sob ele.
   - **B. Indicacao por cor.** Linha muda pra cinza/vermelho `(0.6, 0.6, 0.6, 0.7)` quando cursor sobre overlay zone. Sinaliza "click aqui = no-op" sem precisar matematica de clamp.
   - **C. Ambos.** Clamp + cor diferente.
-  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra the second wave polish ou a quick-armature follow-up.
+  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra a quick-armature follow-up.
 
 ## Outliner panel
 
@@ -169,7 +169,7 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 - Versão (Pipeline v0.1.0) poderia ficar aqui no Help panel
 - Adicionar botão "GitHub" / link pro repo
 - **See-also references nos popups de help NÃO são clickáveis.** `help_dispatch.py:88-89` rendera cada ref como `layout.label(text="  " + ref)` puro - sem operator, sem hyperlink. Header da seção mostra ícone URL induzindo expectativa de click. Usuário só consegue ler os paths e abrir manual fora do Blender. Sugestões (em ordem de impacto):
-  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, `specs/013-weight-paint-automesh/` (abre file manager) etc. Mínimo viável.
+  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, pastas de exemplo (abre file manager) etc. Mínimo viável.
   - **B. wm.url_open** se ref começa com `http`. Mistura A+B detectando prefixo.
   - **C. Copy to clipboard button** próximo de cada ref - alternativa baixa-fricção.
   - **D. Ícone visual:** se decidir não fazer A/B, ao menos trocar ícone URL no header da seção pra algo menos clicky (DOT, INFO), pra não enganar.

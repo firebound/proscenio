@@ -54,11 +54,11 @@ shows up as a golden-diff in the next `run_tests.py` pass.
 
 Canvas is 256 x 128 px at `pixels_per_unit = 100`. The polygon sits
 left, the arrow sits right; z_order 0 (arrow) lands closer to the
-camera than z_order 1 (square) via the `Z_EPSILON` offset (D6).
+camera than z_order 1 (square) via the `Z_EPSILON` offset.
 
 ## Skeleton
 
-Stub armature with a single `root` bone (D3). Both meshes are parented
+Stub armature with a single `root` bone. Both meshes are parented
 to the armature object via `parent_type='OBJECT'`.
 
 ## Building from source
@@ -88,7 +88,7 @@ place; no edit to the runner required.
 - Polygon stamper regression: mesh size, world rect, UV layout.
 - Sprite_frame stamper regression: spritesheet compose ordering, frame
   count, `hframes`/`vframes` tagging, full-canvas UV.
-- Coordinate conversion regression (D6): PSD top-left vs Blender
+- Coordinate conversion regression: PSD top-left vs Blender
   XZ-centred.
 - Idempotent re-import: rerunning `build_blend.py` reuses meshes by
   `proscenio_import_origin` tag instead of duplicating.

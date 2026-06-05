@@ -1,4 +1,4 @@
-"""Pure polyline helpers for Stage 3 stroke pipeline (the weight-paint-automesh spec).
+"""Pure polyline helpers for Stage 3 stroke pipeline.
 
 Stage 3 captures raw mouse paths during EDIT_INTERIOR_POINTS; this module
 processes them before they reach the CDT:

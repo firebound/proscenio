@@ -1,11 +1,11 @@
-"""bpy-bound selection helpers (the code-modularity work).
+"""bpy-bound selection helpers.
 
 Replaces the 5+ inline copies of the deselect-all-then-select-one
 idiom across operators (select_issue_object, select_outliner_object,
 create_ortho_camera, reproject_sprite_uv, create_slot, etc).
 
 Lives in ``core/`` for now; will move to ``core/bpy_helpers/`` once
-wave 9.6 lands. The bpy import here is intentional and acknowledged
+the code-modularity split lands. The bpy import here is intentional and acknowledged
 via the file docstring rather than the package-level "bpy-free"
 contract.
 """

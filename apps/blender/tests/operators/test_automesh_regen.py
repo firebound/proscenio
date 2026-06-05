@@ -1,4 +1,4 @@
-"""Headless tests for the automesh sidecar hook (the sidecar work)."""
+"""Headless tests for the automesh sidecar hook."""
 
 from __future__ import annotations
 

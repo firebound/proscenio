@@ -77,7 +77,7 @@ func _import(
 	var atlas := _load_atlas(source_file, document.atlas)
 	var source_dir := source_file.get_base_dir()
 	# Slots build BEFORE sprites so the sprite builders can route attachment
-	# children under the slot Node2D parent (the slot system). Empty slots
+	# children under the slot Node2D parent. Empty slots
 	# leaves the map empty and sprite routing falls back to bone-parented.
 	var slot_map := SlotBuilder.build(skeleton, document.slots)
 	# Each builder discriminator-filters its own sprite kind; calling both is

@@ -1,7 +1,7 @@
 [project]
 name = "proscenio-blender-addon"
 version = "0.1.0"
-description = "Proscenio Blender addon — dev tooling configuration. The addon itself is packaged by `blender --command extension build`, not by pip."
+description = "Proscenio Blender addon - dev tooling configuration. The addon itself is packaged by `blender --command extension build`, not by pip."
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
 

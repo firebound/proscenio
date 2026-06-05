@@ -1,4 +1,4 @@
-"""Pure tests for bone collection visibility snapshot (the paint work, T4)."""
+"""Pure tests for bone collection visibility snapshot."""
 
 from __future__ import annotations
 

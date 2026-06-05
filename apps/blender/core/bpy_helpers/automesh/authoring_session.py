@@ -1,4 +1,4 @@
-"""Authoring modal session state (the interactive-modal work, T16).
+"""Authoring modal session state.
 
 Captures viewport state at invoke so _finish can restore it via
 try/finally even on exception. Object lookups by name so undo-driven

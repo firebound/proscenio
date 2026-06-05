@@ -1,4 +1,4 @@
-"""Modal overlay drawing helpers (the quick-armature first cut).
+"""Modal overlay drawing helpers.
 
 bpy-bound. Imports ``gpu``, ``blf`` and the GPU shader plumbing at module
 top. Lives in ``core/bpy_helpers/``.

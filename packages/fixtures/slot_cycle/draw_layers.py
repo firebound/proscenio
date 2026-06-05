@@ -12,7 +12,7 @@ quads as slot attachments under a single Empty, and adds an action
 that cycles the active attachment per keyframe.
 
 Smallest possible slot fixture - mirrors the simple_psd / blink_eyes
-shape (the testing-fixtures spec layout, Pillow + bpy two-stage).
+shape (two-stage layout, Pillow + bpy).
 """
 
 from __future__ import annotations

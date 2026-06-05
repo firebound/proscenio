@@ -1,4 +1,4 @@
-"""Pure tests for weight reproject (the sidecar work, T3)."""
+"""Pure tests for weight reproject."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def test_degenerate_collinear_triangle_falls_back_to_nearest():
     # triangle, OR donors collinear so triangle is degenerate), fall back
     # to nearest donor instead of auto_seed. Prior behavior dropped
     # weights at every silhouette-boundary vert and produced the chaotic
-    # weight pattern seen during paint-wave smoke.
+    # weight pattern seen during weight-paint smoke.
     old = [
         _entry((0.0, 0.0), {"A": 1.0}),
         _entry((0.5, 0.0), {"A": 1.0}),

@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-# Builds slot anchor Node2D parents under the skeleton (the slot system).
+# Builds slot anchor Node2D parents under the skeleton.
 #
 # A slot in the .proscenio document is a `{name, bone, default,
 # attachments[]}` record. Each slot becomes a `Node2D` child of the

@@ -1,4 +1,4 @@
-"""Pure tests for planar proximity weight computation (the bind work)."""
+"""Pure tests for planar proximity weight computation."""
 
 from __future__ import annotations
 

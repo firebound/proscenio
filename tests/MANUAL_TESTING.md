@@ -102,7 +102,7 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 
 ### 1.7 Outliner panel
 
-- [x] Lista todos sprite meshes + armatures + slot Empties + attachments (não bones, não Empties não-slot, não cameras/lights). Label `<name> @ <parent_bone>` só aparece com `parent_type=BONE` rígido - doll usa skinning então label só mostra nome. Coverage gap registrado em `specs/007-testing-fixtures/TODO.md` (falta fixture `rigid_prop/`).
+- [x] Lista todos sprite meshes + armatures + slot Empties + attachments (não bones, não Empties não-slot, não cameras/lights). Label `<name> @ <parent_bone>` só aparece com `parent_type=BONE` rígido - doll usa skinning então label só mostra nome. Coverage gap registrado no backlog de fixtures (falta fixture `rigid_prop/`).
 - [!] Filtro substring funciona. **Bug:** campo nativo do UIList (rodapé `▼`) não filtra - só o campo do topo (ícone VIEWZOOM, `scene_props.outliner_filter`) funciona. `filter_items` ignora `self.filter_name`. Bug em BUGS_FOUND.md.
 - [x] Favorites toggle (star) persiste no save (`is_outliner_favorite` é Object PG)
 - [x] "Show favorites only" filtra corretamente (botão SOLO_ON ao lado do search no header)
@@ -160,7 +160,7 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 - [x] Click `?` em cada subpanel → abre help popup topic-specific (topic id == feature_id).
 - [x] Pipeline overview popup (root `?`) renderiza topic `pipeline_overview` com sections + see-also.
 - [x] Drive-from-bone help topic conteúdo confere (sections What it does / How to use it presentes).
-- [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, specs/013-weight-paint-automesh, examples/generated/simple_psd, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
+- [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, examples/generated/simple_psd, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
 - [x] `slot_system` topic abre via Active Slot `?` button. Confirmado em slot_swap_workbench (slot Empty chamado `weapon`).
 - [!] `sprite_frame_preview` topic abre via Active Sprite `?` button (sprite_frame mode). **Bug:** topic existe em `help_topics.py:432` + `feature_status.py:115` mas nenhuma sub-box do panel renderiza `?` button pra ele. `_draw_sprite_frame.py:26` mostra só label puro `box.label(text="Sprite frame", icon="IMAGE_DATA")` - orphan help topic. Bug em BUGS_FOUND.md.
 
@@ -178,7 +178,7 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 #### Quick Armature re-test after the first cut (first-cut ship)
 
-Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que **nao** mudam no the second wave inversion D10 + axis lock D11 + grid snap D12 + panel D15). Full suite fica deferida pra pos-second-wave ship.
+Branch `feat/quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que **nao** mudam na feedback pass: inversion + axis lock + grid snap + panel). Full suite fica deferida pra ship da feedback pass.
 
 **Smoke set (the first cut estavel - sem retrabalho previsto):**
 
@@ -193,42 +193,42 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 
 **Drive-by bugs descobertos + corrigidos durante sessão:**
 
-- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente em `specs/012-quick-armature-ux/TODO.md` the second wave.
+- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente no backlog.
 - `view_matrix` 4x4 acumula float drift entre mode toggles → falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
 - `context.region` em modal handler congela em invoke; quando invocado via N-panel button aponta UI sidebar. Fix: snapshot WINDOW region via `_find_window_region(context.area)` + filter via `event.mouse_x/y` contra rect.
 - WINDOW region rect cobre área inteira do viewport (panels overlay são sobrepostos). Filtering apenas pelo WINDOW rect deixava clicks em panel passar. Fix: itera todas regions da área; rejeita se cursor cair em qualquer overlay (UI/TOOLS/HEADER/ASSET_SHELF).
 - Double-invoke (user clica botao Quick Armature 2x sem sair do primeiro modal) empilhava handlers. Fix: invoke detecta handles existentes + sweep antes de re-init.
 - `_log_view` pre-snap + post-snap + exit (before/after restore decision) printados pro System Console permitiram debug rapido das comparison e restore paths.
 
-**Smoke deferidos (mudam comportamento no the second wave - testar apos second-wave ship):**
+**Smoke deferidos (mudam comportamento na feedback pass - testar apos o ship dela):**
 
-- T3 Opt-out F3 (`lock_to_front_ortho`) - vai ganhar UI no painel (D15).
-- T5 Cheatsheet texto - layout muda de 2 → 3 linhas + novos chords (D11, D12, D14).
-- T6 Bone creation default - inverte (D10: LMB sozinho = chain, antes = unparented root).
-- T7 Shift chain - inverte (D10: Shift = new root, antes = chain).
+- T3 Opt-out F3 (`lock_to_front_ortho`) - vai ganhar UI no painel.
+- T5 Cheatsheet texto - layout muda de 2 → 3 linhas + novos chords.
+- T6 Bone creation default - inverte (LMB sozinho = chain, antes = unparented root).
+- T7 Shift chain - inverte (Shift = new root, antes = chain).
 - T9 Sweep só se operator criou (corner case) - logic igual mas retesta com chord vocab novo.
 - T10 Reload scripts safety - reteste apos chord vocab + panel mudancas.
 - T11 Esc com bones criados - logic igual mas confirma INFO bar message com chord vocab final.
-- Axis lock (D11) X/Z toggle + linha colorida no preview.
-- Grid snap (D12) Ctrl held + alinhamento por increment configuravel.
-- In-modal undo/redo (D7) Ctrl+Z / Ctrl+Shift+Z.
-- Naming prefix (D2) com Scene PG override + F3 redo override.
-- Panel "Quick Armature defaults" sub-box (D15) - lock_to_front_ortho checkbox, prefix, default_chain, snap_increment.
+- Axis lock X/Z toggle + linha colorida no preview.
+- Grid snap Ctrl held + alinhamento por increment configuravel.
+- In-modal undo/redo Ctrl+Z / Ctrl+Shift+Z.
+- Naming prefix com Scene PG override + F3 redo override.
+- Panel "Quick Armature defaults" sub-box - lock_to_front_ortho checkbox, prefix, default_chain, snap_increment.
 
-**Trigger pra re-test full suite:** the second wave PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
+**Trigger pra re-test full suite:** a feedback pass PR merged em `main`. Re-rodar full T1-T11 + items deferidos acima.
 
-#### Quick Armature re-test after the second wave (the second wave ship + iterative refinement)
+#### Quick Armature re-test after the feedback pass (feedback-pass ship + iterative refinement)
 
-Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cut + second wave + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
+Branch `feat/quick-armature-feedback` (mesmo branch carregou first cut + feedback pass + 9 refinement commits via PR #50). Status após rounds iterativos de feedback do user:
 
-**the second wave features (todos confirmados em smoke iterativo):**
+**Feedback-pass features (todos confirmados em smoke iterativo):**
 
-- [x] **T-ChordInvert (D10).** PASS. LMB sem modifier chains connected; Shift+LMB = unparented; Alt+LMB = parented disconnected. Cheatsheet + status bar atualizam quando `default_chain` toggla.
-- [x] **T-AxisLock (D11).** PASS. X / Z toggle axis lock; press 2x clears. Linha colorida vermelha (X) ou azul (Z) renderiza através do head antes do PRESS.
-- [x] **T-GridSnap (D12).** PASS. Ctrl held arredonda cursor X/Z pro `snap_increment` configurado no Scene PG. Y preservado (picture plane).
-- [x] **T-UndoRedo (D7).** PASS. Ctrl+Z dentro do modal remove ultimo bone; Ctrl+Shift+Z replays. New PRESS clears redo stack.
-- [x] **T-NamingPrefix (D2).** PASS. PG `name_prefix` aplicado nos auto-named bones; sanitize whitespace.
-- [x] **T-PanelSubbox (D15).** PASS. Skeleton subpanel renderiza sub-box "Quick Armature defaults" com 4 fields. Valores persistem no .blend.
+- [x] **T-ChordInvert.** PASS. LMB sem modifier chains connected; Shift+LMB = unparented; Alt+LMB = parented disconnected. Cheatsheet + status bar atualizam quando `default_chain` toggla.
+- [x] **T-AxisLock.** PASS. X / Z toggle axis lock; press 2x clears. Linha colorida vermelha (X) ou azul (Z) renderiza através do head antes do PRESS.
+- [x] **T-GridSnap.** PASS. Ctrl held arredonda cursor X/Z pro `snap_increment` configurado no Scene PG. Y preservado (picture plane).
+- [x] **T-UndoRedo.** PASS. Ctrl+Z dentro do modal remove ultimo bone; Ctrl+Shift+Z replays. New PRESS clears redo stack.
+- [x] **T-NamingPrefix.** PASS. PG `name_prefix` aplicado nos auto-named bones; sanitize whitespace.
+- [x] **T-PanelSubbox.** PASS. Skeleton subpanel renderiza sub-box "Quick Armature defaults" com 4 fields. Valores persistem no .blend.
 - [x] **T-DashedDisconnected.** PASS. Alt+drag mostra linha tracejada amarela do parent.tail ao novo head.
 - [x] **T-StatusBarIcons + ViewportHeader.** PASS. Status bar bottom-left + viewport header top renderizam chord vocabulary com ícones nativos Blender (`MOUSE_LMB_DRAG`, `EVENT_SHIFT/ALT/CTRL/X/Z/RETURN/ESC`).
 - [x] **T-ActiveArmaturePicker (Opção 3 hybrid).** PASS. Picker no topo da Skeleton subpanel; explicit pointer é fonte única de verdade no operator-time; auto-populate via `load_post` + `deferred_hydrate` handler quando scene tem armature única.
@@ -246,7 +246,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cu
 - `9eb5a52` respect Blender auto-rename (`arm_obj.name` em vez de literal pra evitar shadow por orphan)
 - `ff12680` defensive try/except no `on_depsgraph_update` + crash gizmo log em BUGS_FOUND
 
-**Drive-by bugs descobertos + corrigidos durante the second wave sessão:**
+**Drive-by bugs descobertos + corrigidos durante a sessão da feedback pass:**
 
 - `_target_armature_name` literal vs Blender auto-rename `.001` quando data block orphan existia. Fix: storage `arm_obj.name`.
 - Picker draw-time mutation crashed com `AttributeError: Writing to ID classes in this context is not allowed`. Fix: drop draw-time write; handler `auto_populate_active_armature` no `load_post` + `deferred_hydrate` cobre initial fill; mutação explícita via operator pra deletion ou button.
@@ -254,7 +254,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cu
 
 **Crash isolado (1x) durante smoke:** Blender 5.1.1 NULL write em `gizmo_button2d_draw` após `view3d.snap_cursor_to_center`. Stack trace 100% Blender internals + AMD GPU driver loaded. User identificou como driver issue pós-restart. Defensive `try/except` adicionado no `on_depsgraph_update` mesmo assim. Logged in `tests/BUGS_FOUND.md` como suspeito upstream/driver, severity low, trigger pra escalar: 2x+ repro.
 
-**Status final the second wave:** todas features locked do STUDY D1-D15 implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
+**Status final da feedback pass:** todas features locked do STUDY implementadas. PR #50 ready pra review/merge depois de full smoke pos-driver-restart.
 
 ### 1.15 Pose library
 
@@ -295,7 +295,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cu
 
 ### 1.19 Automesh from sprite (first-cut)
 
-Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
+Status: **pendente** - operator + panel + fixture chegaram à branch `feat/automesh` mas smoke ainda não executado em sessão Blender.
 
 Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone vertical hand chain (`wrist` → `palm` → `fingertip`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
 
@@ -307,7 +307,7 @@ Sequência:
 - [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
 - [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
 - [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` → ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
-- [ ] T5 - Select `blob` → click Automesh → INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per the weight-paint-automesh spec D2 amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
+- [ ] T5 - Select `blob` → click Automesh → INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per the weight-paint-automesh amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
 - [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
 - [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
 - [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh → interior uniform (verts espalhados uniforme no annulus).
@@ -536,7 +536,7 @@ Expected: Snapshot pill shows `X seed / Y reprojected` (sidecar reprojected via 
 
 ### 1.24 Automesh interior modes (SIMPLE / DENSE)
 
-The weight-paint-automesh D19 / D20 / D21. Mode toggle in the Skinning subpanel; SIMPLE drops the dense interior fill, DENSE retains it. Post-merge smoke validation - visual, cannot verify headless.
+The weight-paint-automesh interior-fill modes (SIMPLE/DENSE). Mode toggle in the Skinning subpanel; SIMPLE drops the dense interior fill, DENSE retains it. Post-merge smoke validation - visual, cannot verify headless.
 
 Setup: open `examples/generated/automesh/automesh.blend`. Pick `automesh.hand_rig` in the Skeleton subpanel.
 
@@ -572,7 +572,7 @@ The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal p
 - [x] `slot_swap.proscenio` → Skeleton2D + Polygon2D children (substitui doll, que ficou skipped no canonical Godot sync por ser authoring-only PS roundtrip). SlotSwapCharacter root contém Skeleton2D + slot Node2D + Polygon2D `arm`.
 - [x] `slot_swap.proscenio` → Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
 - [x] sprite_frame meshes → Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
-- [~] polygon meshes → Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (specs/007 Coverage gaps) chegar.
+- [~] polygon meshes → Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (fixtures backlog) chegar.
 - [!] Animations → AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per packages/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
 - [~] slot_attachment tracks → visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 - 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em BUGS_FOUND.md.
 - [x] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D. Validado em shared_atlas: 3 Polygon2D (red_circle/green_triangle/blue_square) compartilham mesma CompressedTexture2D (`atlas.png`) com UV por quadrante.

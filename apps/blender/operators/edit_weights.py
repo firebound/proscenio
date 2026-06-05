@@ -1,4 +1,4 @@
-"""Edit Weights modal operator (the paint work).
+"""Edit Weights modal operator.
 
 One-button entry into a 2D-safe weight paint context with provenance
 overlay + per-stroke user_paint flip. ESC hard-exits via try/finally.
@@ -181,7 +181,7 @@ def _validate_invoke_preconditions(
         report_error(operator, f"existing sidecar is corrupt: {exc} - re-bind to reset")
         return None
     if not sidecar.entries:
-        report_error(operator, "sidecar has no entries (pre-wave bind) - re-bind to populate")
+        report_error(operator, "sidecar has no entries (legacy bind) - re-bind to populate")
         return None
     if len(sidecar.entries) != len(obj.data.vertices):
         report_error(

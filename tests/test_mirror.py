@@ -1,4 +1,4 @@
-"""Unit tests for the mirror-all-fields semantics (post-00the mirror-fix work fix).
+"""Unit tests for the mirror-all-fields semantics.
 
 The bug: per-field update callbacks only fired when the user touched that
 specific field. Defaults never triggered a callback → Custom Property

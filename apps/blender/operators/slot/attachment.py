@@ -1,4 +1,4 @@
-"""Slot attachment operators (the slot system): add attachment, set default."""
+"""Slot attachment operators: add attachment, set default."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ...core.report import report_info, report_warn  # type: ignore[import-not-f
 
 
 class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
-    """Re-parent the active mesh into the active slot Empty (the slot system)."""
+    """Re-parent the active mesh into the active slot Empty."""
 
     bl_idname = "proscenio.add_slot_attachment"
     bl_label = "Proscenio: Add Slot Attachment"
@@ -45,7 +45,7 @@ class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
 
 
 class PROSCENIO_OT_set_slot_default(bpy.types.Operator):
-    """Mark the named attachment as the slot's default (the slot system D2)."""
+    """Mark the named attachment as the slot's default."""
 
     bl_idname = "proscenio.set_slot_default"
     bl_label = "Proscenio: Set Slot Default"

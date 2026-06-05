@@ -1,4 +1,4 @@
-"""Restore weight snapshot operator (the sidecar work, T10).
+"""Restore weight snapshot operator.
 
 Reapplies the stored sidecar to the active mesh. Single
 responsibility - reverts manual paint to the last saved bind /
@@ -68,7 +68,7 @@ class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
         if not sidecar.entries:
             report_error(
                 self,
-                "sidecar has no entries (pre-wave bind) - re-bind to populate",
+                "sidecar has no entries (legacy bind) - re-bind to populate",
             )
             return {"CANCELLED"}
         current_hash = compute_topology_hash(

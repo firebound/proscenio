@@ -1,4 +1,4 @@
-"""Proscenio core helpers (the code-modularity work split).
+"""Proscenio core helpers.
 
 This package hosts the small, focused modules the operators / panels /
 writer share. The contract is:
@@ -14,8 +14,8 @@ writer share. The contract is:
 Top-level modules (bpy-free):
 
 - ``cp_keys.py``         Custom Property string constants registry
-- ``feature_status.py``  Feature-readiness dispatch table (the in-panel help system)
-- ``help_topics.py``     In-panel help topic registry (the in-panel help system)
+- ``feature_status.py``  Feature-readiness dispatch table
+- ``help_topics.py``     In-panel help topic registry
 - ``hydrate.py``         CP -> PG hydration logic
 - ``mirror.py``          PG -> CP mirror logic
 - ``pg_cp_fallback.py``  PG-first / CP-fallback reader

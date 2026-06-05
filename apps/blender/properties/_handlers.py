@@ -1,4 +1,4 @@
-"""Hydration handlers + deferred-hydrate timer (the code-modularity work).
+"""Hydration handlers + deferred-hydrate timer.
 
 Isolates the persistent ``bpy.app.handlers`` integration so the main
 properties module reads as a clean PG declaration list. Three jobs:

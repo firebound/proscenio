@@ -1,4 +1,4 @@
-"""Assemble slot_cycle.blend (the slot system).
+"""Assemble slot_cycle.blend.
 
 Run with::
 

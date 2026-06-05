@@ -1,4 +1,4 @@
-"""Per-Object Proscenio PropertyGroup (the code-modularity work).
+"""Per-Object Proscenio PropertyGroup.
 
 Holds every typed setting that lives on a mesh / Empty: sprite type,
 sprite-frame metadata, texture region, slot flags, driver picker.

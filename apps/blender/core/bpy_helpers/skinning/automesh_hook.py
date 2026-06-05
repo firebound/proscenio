@@ -1,11 +1,11 @@
-"""Automesh pre/post regen hook (the sidecar work, T11).
+"""Automesh pre/post regen hook.
 
 Pre-hook: snapshot current weights into a WeightSidecar.
 Post-hook: reproject prior entries onto new topology + apply.
 
 Both hooks are no-op-safe (return None / pass-through) when (a) no
 picker armature, (b) PG preserve_on_regen flag OFF, (c) sprite has
-no populated sidecar yet (pre-wave migration state).
+no populated sidecar yet (legacy migration state).
 """
 
 from __future__ import annotations
@@ -112,7 +112,7 @@ def maybe_post_regen_reproject(
         [list(p.vertices) for p in obj.data.polygons],
     )
     if new_hash == prior_sidecar.mesh_topology_hash:
-        # T4: identical topology = entries reapply verbatim
+        # identical topology = entries reapply verbatim
         applied = apply_sidecar(obj, prior_sidecar)
         obj[_SIDECAR_KEY] = to_json(prior_sidecar)
         return {
@@ -123,7 +123,7 @@ def maybe_post_regen_reproject(
         }
     new_anchors = per_vert_uv_anchors(obj)
     if new_anchors is None:
-        # T8: target mesh has no UVs - skip reproject; mesh ends weightless
+        # target mesh has no UVs - skip reproject; mesh ends weightless
         stub = snapshot_sidecar(obj, armature, provenance="auto_seed")
         obj[_SIDECAR_KEY] = to_json(stub)
         return {

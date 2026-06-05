@@ -1,4 +1,4 @@
-// the photoshop tag system the photoshop-tag work.4: Validate tab. Re-uses the planner's `warnings`
+// the photoshop tag system: Validate tab. Re-uses the planner's `warnings`
 // and `skipped` outputs from a live preview run. Each row is clickable
 // (selects the offending layer in PS) so the artist can jump straight
 // to the fix.

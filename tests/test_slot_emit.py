@@ -85,7 +85,7 @@ def test_build_slots_empty_input_yields_empty_list() -> None:
 
 
 def test_kind_agnostic_attachments_emit_unchanged() -> None:
-    """D14: attachments[] is just string[] - the kind lives on each Sprite,
+    """Attachments[] is just string[] - the kind lives on each Sprite,
     not on the slot. Confirm slot emission ignores any kind hint."""
     slot = build_slot(
         SlotInput(

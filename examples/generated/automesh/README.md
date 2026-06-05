@@ -1,4 +1,4 @@
-# automesh fixture (weight-paint-automesh first cut)
+# automesh fixture
 
 Workbench for the **automesh-from-sprite** operator + follow-up bind / weight paint / sidecar work. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the Automesh smoke checklist in [`tests/MANUAL_TESTING.md`](../../../tests/MANUAL_TESTING.md) end-to-end.
 
@@ -20,7 +20,7 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 | Element | Detail |
 | --- | --- |
-| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` → `palm` → `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so D15 of the weight-paint-automesh spec density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
+| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` → `palm` → `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so the weight-paint-automesh work's density-under-bones pass produces denser triangulation along the centerline where the fingers actually bend. |
 | Sprite `hand` | 2.0x2.0 unit quad at world (-3, 0, 0), parented to `automesh.hand_rig`. Image-textured with `pillow_layers/hand.png`. The density-under-bones smoke target. |
 | Sprite `blob` | 2.0x2.0 unit quad at world (0, 0, 0), unparented. Smooth convex baseline. |
 | Sprite `lshape` | 2.0x2.0 unit quad at world (3, 0, 0), unparented. Concave hull stress test. |
@@ -33,7 +33,7 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 Each silhouette exercises a different aspect of the weight-paint-automesh pure-Python alpha contour walker + annulus geometry pipeline:
 
-- **`hand`** is the canonical "real character part" - tapered finger tips + palm + gaps between fingers stress Moore Neighbour tracing on a non-trivial contour, and the 3-bone chain over it lets the user see D15 bone-aware density in action vs OFF (the density-under-bones triangle clusters near each bone segment).
+- **`hand`** is the canonical "real character part" - tapered finger tips + palm + gaps between fingers stress Moore Neighbour tracing on a non-trivial contour, and the 3-bone chain over it lets the user see bone-aware density in action vs OFF (the density-under-bones triangle clusters near each bone segment).
 - **`blob`** is the simplest possible convex silhouette - baseline regression target. Any future change that breaks blob automesh almost certainly broke the basics.
 - **`lshape`** stresses concave hull handling - the contour walker has to follow the inward-pointing corner without giving up. Spine `Trace` documents concave support; this is the local regression guard.
 - **`ring`** is a deliberate **anti-fixture** for the "no holes" contract Spine + Proscenio both ship. The outer contour walks the outside fine; the inner contour walker meets the alpha hole's silhouette and the resulting topology is degenerate. Smoke exists to confirm Proscenio degrades visibly (operator runs but produces a malformed mesh) rather than crashing - if a user violates the contract we want them to notice.

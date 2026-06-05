@@ -1,4 +1,4 @@
-"""Headless operator pytest entry (the bind work, Q7).
+"""Headless operator pytest entry.
 
 Invoke from the repository root:
 
@@ -7,7 +7,7 @@ Invoke from the repository root:
 Runs pytest on apps/blender/tests/operators/ INSIDE Blender so
 ``bpy.ops.proscenio.*`` operators register + execute end-to-end.
 Exits non-zero on any test failure. This is the NEW test layer
-the bind work introduces; paint / sidecar / modal waves reuse
+the bind work introduces; the paint / sidecar / modal work reuses
 the same pattern.
 """
 

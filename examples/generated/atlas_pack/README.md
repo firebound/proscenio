@@ -13,7 +13,7 @@ examples/generated/atlas_pack/
 ├── pillow_layers/
 │   ├── sprite_1.png .. sprite_9.png   32x32, distinct color + digit
 └── godot/
-    ├── AtlasPack.tscn           Godot wrapper (the reimport-merge work pattern)
+    ├── AtlasPack.tscn           Godot wrapper
     └── AtlasPack.gd             empty stub
 ```
 

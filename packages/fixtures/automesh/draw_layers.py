@@ -1,4 +1,4 @@
-"""Generate automesh PNG layers (the weight-paint-automesh first cut fixture).
+"""Generate automesh PNG layers.
 
 Run with::
 
@@ -6,14 +6,14 @@ Run with::
 
 Pure Python - no Blender required. Produces 5 PNGs under
 ``examples/generated/automesh/pillow_layers/`` that
-exercise different alpha silhouette shapes the weight-paint-automesh spec automesh
+exercise different alpha silhouette shapes the automesh
 operator needs to handle:
 
 - ``hand.png``    - hand silhouette (palm + 5 tapered fingers). The
                     canonical "real character part" smoke target;
                     covers convex + tapered tips that the contour
                     walker has to follow + paired with the 3-bone
-                    arm chain in build_blend.py to validate the D15
+                    arm chain in build_blend.py to validate the
                     density-under-bones path end-to-end.
 - ``blob.png``    - irregular ellipse-ish blob. Simplest smooth
                     convex silhouette; baseline that any future
@@ -24,7 +24,7 @@ operator needs to handle:
                     concave support; this is the local regression
                     guard for it).
 - ``ring.png``    - donut / ring (alpha hole in the middle). Hole
-                    support smoke target (the weight-paint-automesh spec D2 amendment,
+                    support smoke target (the weight-paint-automesh amendment,
                     the hole-support amendment). Validates that
                     ``alpha_contour.extract_holes`` detects the
                     centered cutout, the bridge passes it as a

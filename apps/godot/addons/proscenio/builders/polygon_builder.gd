@@ -108,7 +108,7 @@ static func _build_polygon(
 	var is_skinned: bool = weights != null and not weights.is_empty()
 
 	var bone_name := NodeNameUtil.sanitize(sprite.bone)
-	# Slot routing (the slot system D6): sprites whose name appears in a slot's
+	# Slot routing: sprites whose name appears in a slot's
 	# attachments[] reparent under the slot Node2D and inherit visibility
 	# from the slot's default. Otherwise: skinned polygons live under the
 	# skeleton (per-vertex weights drive deformation), rigid polygons stay

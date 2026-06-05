@@ -1,4 +1,4 @@
-"""Quick armature modal operator (the Quick Armature shortcut, the quick-armature first cut).
+"""Quick armature modal operator (the Quick Armature shortcut).
 
 Note: this file deliberately does NOT use ``from __future__ import
 annotations``. Blender 5.1's RNA metaclass evaluates operator
@@ -6,7 +6,7 @@ annotations eagerly via ``isinstance(value, _PropertyDeferred)``;
 PEP 563 leaves the values as strings and the check fails silently,
 so ``bpy.props.*Property`` annotations never promote to RNA properties.
 Same constraint applies to every other ``bpy.types.Operator`` /
-``PropertyGroup`` / ``Panel`` subclass in the addon - see the quick-armature first cut
+``PropertyGroup`` / ``Panel`` subclass in the addon
 post-mortem in ``tests/BUGS_FOUND.md``.
 """
 
@@ -144,7 +144,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
     _view3d_header_appended: ClassVar[bool] = False
-    # the second wave state: chord vocabulary, axis lock, grid snap, undo
+    # feedback-pass state: chord vocabulary, axis lock, grid snap, undo
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
     _snap_increment: ClassVar[float] = 1.0
@@ -207,7 +207,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # Read PG defaults so the modal honours the document-level
         # configuration without forcing each invocation through F3
         # redo. Per-invoke override goes through the existing operator
-        # options (only ``lock_to_front_ortho`` for the second wave).
+        # options (only ``lock_to_front_ortho`` for now).
         pg = _resolve_quick_armature_props(context)
         cls._default_chain = bool(pg.default_chain) if pg is not None else True
         cls._name_prefix = _sanitize_prefix(

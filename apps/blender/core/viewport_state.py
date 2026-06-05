@@ -1,4 +1,4 @@
-"""Pure helpers for inspecting viewport state (the quick-armature first cut).
+"""Pure helpers for inspecting viewport state.
 
 bpy-free. Operates on plain matrix data (sequences of sequences) so
 unit tests can verify the Front-Orthographic detection without a

@@ -1,4 +1,4 @@
-"""Pure-Python interior-point generation for the weight-paint-automesh spec automesh (D15).
+"""Pure-Python interior-point generation for the automesh.
 
 bpy-free. Produces the Steiner points that the bpy bridge inserts
 into the annulus triangulation before calling
@@ -9,14 +9,14 @@ Two density modes ship together:
 
 * **Uniform** - regular grid spaced by ``spacing``, clipped to
   the annulus interior. Used when no armature is targeted.
-* **Bone-aware** (D15 default when picker has an armature) -
+* **Bone-aware** (default when picker has an armature) -
   uniform base grid plus extra subdivision near bone segments so
   the mesh has more triangles where deformation happens. Reuses
-  the picker contract from the quick-armature spec D16: bone positions come
+  the picker contract from the quick-armature work: bone positions come
   from the active armature, not from heuristics.
 
 All geometry math is XZ plane in world units (the Y=0 picture
-plane convention, parallel to the quick-armature spec axis lock contract).
+plane convention, parallel to the quick-armature axis lock contract).
 """
 
 from __future__ import annotations
@@ -296,7 +296,7 @@ def interior_points_for_annulus(
     adds bone-aware subdivision points near each bone segment.
 
     Without bones, the output is just the uniform grid clipped to
-    the annulus - the safe default per D15 ("OFF when no picker
+    the annulus - the safe default ("OFF when no picker
     armature").
 
     ``exclude_zones`` is an optional list of ``(cx, cz, radius)`` tuples.

@@ -1,4 +1,4 @@
-"""PropertyGroup-first / Custom-Property-fallback reader (the code-modularity work).
+"""PropertyGroup-first / Custom-Property-fallback reader.
 
 The writer's headless path (Blender ``--background``, addon not
 registered) cannot rely on ``Object.proscenio`` because the

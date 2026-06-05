@@ -1,13 +1,13 @@
-"""Skinning subpanel (the weight-paint-automesh first cut).
+"""Skinning subpanel.
 
-Parallel to ``PROSCENIO_PT_skeleton`` per D13. Surfaces the
+Parallel to ``PROSCENIO_PT_skeleton``. Surfaces the
 Automesh + Bind + Edit Weights operators alongside the
 ``scene.proscenio.skinning`` defaults so the user can tune the
 density / threshold / margin in context.
 
-the first cut first cut ships only the Automesh sub-box. Bind +
-Edit Weights buttons appear here in later the first cut commits;
-they live behind ``# TODO(the weight-paint-automesh spec follow-up)`` comments so
+The initial version ships only the Automesh sub-box. Bind +
+Edit Weights buttons appear here in later commits;
+they live behind ``# TODO(weight-paint-automesh follow-up)`` comments so
 the layout shape is stable.
 """
 
@@ -288,9 +288,9 @@ def _draw_snapshot_box(
     """Sub-box surfacing the sidecar toggles + counts pill + Restore button.
 
     Counts are recomputed live from the JSON payload stored on the
-    active mesh (single source of truth per T6 of sidecar-design).
-    Toggle for show_provenance_overlay reserves UI for the paint work
-    even though the GPU draw handler is not in scope this wave.
+    active mesh (single source of truth on the active mesh).
+    Toggle for show_provenance_overlay reserves UI for the weight-paint overlay
+    even though the GPU draw handler is not in scope yet.
     """
     box = layout.box()
     box.label(text="Snapshot", icon="FILE_TICK")

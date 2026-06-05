@@ -1,4 +1,4 @@
-"""Pure-Python slot emission helpers (the slot system).
+"""Pure-Python slot emission helpers.
 
 Bpy-free. The writer's bpy walker (``build_slots_for_scene`` in
 ``exporters/godot/writer/slots.py``) shapes its inputs into the structures
@@ -10,14 +10,14 @@ Conventions:
 
 - Slot ``name`` defaults to the Empty object's name.
 - ``bone`` is the Empty's ``parent_bone`` when ``parent_type == "BONE"``,
-  empty string otherwise (per D3). The pydantic ``Slot`` field is
+  empty string otherwise. The pydantic ``Slot`` field is
   ``Optional[str]``; an empty string from the bpy walker maps to
   ``bone=None`` so the document does not emit the field.
 - ``attachments`` ordered by the Empty's child list as the bpy walker
   feeds it in.
 - ``default`` resolves to the explicit ``slot_default`` field when
   non-empty AND it names an existing attachment; otherwise falls back
-  to the first attachment by sorted name (per D2). Empty resolves to
+  to the first attachment by sorted name. Empty resolves to
   ``None`` so the document does not emit the field.
 """
 
@@ -76,7 +76,7 @@ def build_slot(slot: SlotInput) -> Slot:
 
 
 def _resolve_default(slot_default: str, attachments: tuple[str, ...]) -> str:
-    """D2: explicit slot_default wins when valid; else first sorted attachment.
+    """Explicit slot_default wins when valid; else first sorted attachment.
 
     Empty attachments list yields ``""`` (no default emitted). An invalid
     ``slot_default`` (names a child that does not exist) silently falls

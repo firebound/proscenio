@@ -1,6 +1,6 @@
 """Quad mesh + material stamper for the Photoshop importer (the photoshop importer).
 
-Coordinate conversion (D6): PSD top-left → Blender XZ centre at the
+Coordinate conversion: PSD top-left → Blender XZ centre at the
 manifest's ``pixels_per_unit``::
 
     mesh_center.x = (px_x + px_w / 2 - W / 2) / pixels_per_unit
@@ -9,7 +9,7 @@ manifest's ``pixels_per_unit``::
     mesh_size.x   = px_w / pixels_per_unit
     mesh_size.z   = px_h / pixels_per_unit
 
-Re-import semantics (D5): existing meshes are identified by the
+Re-import semantics: existing meshes are identified by the
 ``proscenio_import_origin == "psd:<layer_name>"`` custom property and
 re-used in place. Object-level data (transform, parenting,
 vertex-group names, custom properties) is left alone, but the mesh is
@@ -340,7 +340,7 @@ def _set_material_blend_method(mat: bpy.types.Material, blend_mode: str | None) 
 
 
 def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
-    """Parent ``obj`` to the armature object (D3 stub armature).
+    """Parent ``obj`` to the armature object (stub armature).
 
     Uses ``parent_type='OBJECT'`` rather than ``parent_type='BONE'``
     because bone-parenting rotates the child so its local Y aligns
@@ -349,7 +349,7 @@ def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> No
     would rotate every mesh out of the XZ world plane, leaving the
     figure visible only in Top Ortho instead of Front Ortho.
     Object-parenting keeps the mesh's authored XZ orientation.
-    Per-bone vertex weights for posing land in a future wave.
+    Per-bone vertex weights for posing land in a future iteration.
     """
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"

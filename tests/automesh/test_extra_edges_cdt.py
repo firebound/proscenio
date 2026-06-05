@@ -1,4 +1,4 @@
-"""Pure tests for CDT extra_edges threading (the weight-paint-automesh spec S8) and  pre-filter."""
+"""Pure tests for CDT extra_edges threading (the weight-paint-automesh) and pre-filter."""
 from __future__ import annotations
 
 import sys

@@ -1,4 +1,4 @@
-"""Shared atlas-pack filesystem + snapshot helpers (the code-modularity work)."""
+"""Shared atlas-pack filesystem + snapshot helpers."""
 
 from __future__ import annotations
 

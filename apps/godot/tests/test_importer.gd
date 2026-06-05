@@ -202,7 +202,7 @@ func _run_slot_checks() -> void:
 	_assert_true(angry != null and not (angry as CanvasItem).visible, "slots: non-default hidden")
 	_assert_true(glow != null and not (glow as CanvasItem).visible, "slots: glow hidden by default")
 
-	# Kind agnosticism (D14): polygon + sprite_frame attachments coexist.
+	# Kind agnosticism: polygon + sprite_frame attachments coexist.
 	_assert_true(neutral is Polygon2D, "slots: face_neutral kind = Polygon2D")
 	_assert_true(angry is Polygon2D, "slots: face_angry kind = Polygon2D")
 	_assert_true(glow is Sprite2D, "slots: face_glow_cycle kind = Sprite2D")
@@ -238,7 +238,7 @@ func _build_character(data: Dictionary) -> Node2D:
 	var skeleton := SkeletonBuilder.build(document.skeleton)
 	character.add_child(skeleton)
 	# Slots build BEFORE sprites so the sprite builders can route attachment
-	# children under the slot Node2D parent (the slot system). Mirrors the
+	# children under the slot Node2D parent. Mirrors the
 	# order in importer.gd._import.
 	var slot_map := SlotBuilder.build(skeleton, document.slots)
 	# Both builders discriminator-filter their own kind - calling both is

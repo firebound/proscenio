@@ -1,4 +1,4 @@
-"""Feature-readiness taxonomy for Proscenio panels (the in-panel help system).
+"""Feature-readiness taxonomy for Proscenio panels.
 
 Source of truth for the small status badges the sidebar shows next to
 every subpanel + every operator row. Pure Python - no bpy imports --
@@ -24,7 +24,7 @@ class FeatureStatus(Enum):
     """Readiness band for a Proscenio feature.
 
     The four bands cover everything the panel exposes today and leave
-    room for SPEC-on-paper features (PLANNED) + opinionated
+    room for spec-on-paper features (PLANNED) + opinionated
     non-features (OUT_OF_SCOPE), so the user sees a consistent badge
     even on rows that intentionally do nothing at export time.
     """
@@ -64,17 +64,13 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
     FeatureStatus.PLANNED: StatusBadge(
         icon="EXPERIMENTAL",
         short_label="planned",
-        tooltip=(
-            "Designed in the SPECs but not yet implemented. The UI surface "
-            "exists today as a placeholder."
-        ),
+        tooltip=("Designed but not yet implemented. The UI surface exists today as a placeholder."),
     ),
     FeatureStatus.OUT_OF_SCOPE: StatusBadge(
         icon="CANCEL",
         short_label="out-of-scope",
         tooltip=(
-            "Intentionally not exported (see the initial-plan work). Authored in Blender "
-            "for the user's own workflow only."
+            "Intentionally not exported. Authored in Blender for the user's own workflow only."
         ),
     ),
 }
@@ -107,17 +103,17 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "apply_packed_atlas": FeatureStatus.GODOT_READY,
     "unpack_atlas": FeatureStatus.BLENDER_ONLY,
     "import_photoshop": FeatureStatus.BLENDER_ONLY,
-    # the slot system - slot system (Blender side: writer + panel + preview shader).
+    # the slot system (Blender side: writer + panel + preview shader).
     # Stays GODOT_READY because the writer emits slots[] in the .proscenio
-    # output even before the Godot importer (the slot system) ships - the entry
-    # is then a documented no-op on the Godot side until that wave lands.
+    # output even before the Godot importer ships - the entry
+    # is then a documented no-op on the Godot side until that work lands.
     "slot_system": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
-    # the pose-library shortcut - pose library shim. Tiny wrapper around Blender's
+    # the pose-library shim. Tiny wrapper around Blender's
     # native poselib.create_pose_asset; pose assets live in the Asset
     # Browser, never reach the .proscenio. Pure authoring shortcut.
     "pose_library": FeatureStatus.BLENDER_ONLY,
-    # Future / planned - placeholder rows ready for the SPECs that ship them.
+    # Future / planned - placeholder rows ready for the work that ships them.
     "uv_animation": FeatureStatus.PLANNED,
     "live_link": FeatureStatus.PLANNED,
     # Out-of-scope sentinels (not currently rendered, but available for

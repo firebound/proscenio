@@ -1,8 +1,8 @@
-"""Bind mesh to picker armature (the weight-paint productivity follow-up).
+"""Bind mesh to picker armature.
 
-Defaults to Blender's bone-heat solver (D4). Surfaces 5 pre-flight
-diagnoses (D11) before touching geometry. Writes a WeightSidecar stub
-the sidecar work wave consumes for reproject.
+Defaults to Blender's bone-heat solver. Surfaces 5 pre-flight
+diagnoses before touching geometry. Writes a WeightSidecar stub
+the reproject step consumes.
 
 F3 redo exposes bind_init_mode enum (BONE_HEAT default, PROXIMITY/ENVELOPE/
 SINGLE_NEAREST/EMPTY fallbacks) + falloff_power + max_distance.
@@ -38,7 +38,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         "delegates to Blender's bone heat (best for 2D pickers); Proscenio's "
         "planar proximity / envelope / single-nearest / empty modes are "
         "available as F3-redo fallbacks. Surfaces 5 pre-flight diagnoses + "
-        "writes a sidecar stub the reproject wave consumes"
+        "writes a sidecar stub the reproject step consumes"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -122,7 +122,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         if len(mesh_obj.data.vertices) == 0:
             raise ValueError("mesh has 0 verts")
 
-        # D11 contract: ALL bind paths run pre-flight diagnoses.
+        # Contract: ALL bind paths run pre-flight diagnoses.
         findings = collect_diagnoses_for_object(mesh_obj, armature)
         errors = [f for f in findings if f.severity == "error"]
         warns = [f for f in findings if f.severity == "warn"]

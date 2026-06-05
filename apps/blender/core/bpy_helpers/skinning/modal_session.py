@@ -1,4 +1,4 @@
-"""Edit Weights modal session state (the paint work, T14).
+"""Edit Weights modal session state.
 
 EditWeightsSession captures the world state at invoke so _finish
 can restore it via try/finally even on exception.

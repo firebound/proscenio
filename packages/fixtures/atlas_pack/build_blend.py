@@ -1,4 +1,4 @@
-"""Assemble the atlas_pack .blend (the testing-fixtures spec / the authoring panel.1.c workbench).
+"""Assemble the atlas_pack .blend (the testing-fixtures / authoring-panel workbench).
 
 Run with::
 

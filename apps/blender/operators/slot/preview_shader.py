@@ -1,4 +1,4 @@
-"""sprite_frame preview slicer setup / remove (the slot system D13)."""
+"""sprite_frame preview slicer setup / remove."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from ...core.report import report_info, report_warn  # type: ignore[import-not-f
 
 
 class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
-    """Insert the SpriteFrameSlicer node group into the active mesh's material (D13)."""
+    """Insert the SpriteFrameSlicer node group into the active mesh's material."""
 
     bl_idname = "proscenio.setup_sprite_frame_preview"
     bl_label = "Proscenio: Setup Preview Material"
@@ -57,7 +57,7 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
 
 
 class PROSCENIO_OT_remove_sprite_frame_preview(bpy.types.Operator):
-    """Strip the SpriteFrameSlicer from the active mesh's material (D13)."""
+    """Strip the SpriteFrameSlicer from the active mesh's material."""
 
     bl_idname = "proscenio.remove_sprite_frame_preview"
     bl_label = "Proscenio: Remove Preview Material"

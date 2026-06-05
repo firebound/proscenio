@@ -1,4 +1,4 @@
-# blink_eyes fixture (the testing-fixtures spec)
+# blink_eyes fixture
 
 Tests the **`sprite_frame` track type** end-to-end: a Blender mesh
 tagged as sprite_frame, its `frame` property animated through a Blender

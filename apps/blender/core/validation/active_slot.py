@@ -1,4 +1,4 @@
-"""Active-slot validation (the slot system D9 + D10) - cheap, runs every redraw."""
+"""Active-slot validation - cheap, runs every redraw."""
 
 from __future__ import annotations
 

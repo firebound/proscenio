@@ -1,4 +1,4 @@
-"""Slot emission (the slot system D8) - bpy walker delegating to core/slot_emit."""
+"""Slot emission - bpy walker delegating to core/slot_emit."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
 
     Bpy walker - delegates the schema-shaped projection to
     ``core.slot_emit.build_slots`` so the slot logic can be exercised
-    under plain pytest. Per the slot system D3, ``bone`` is the Empty's
-    ``parent_bone`` when ``parent_type == "BONE"``. Per D6, attachments
+    under plain pytest. Per the slot system, ``bone`` is the Empty's
+    ``parent_bone`` when ``parent_type == "BONE"``. Attachments
     are mesh names only - the meshes themselves still emit normally
     in ``sprites[]``.
     """

@@ -1,4 +1,4 @@
-"""Proscenio operators package (the code-modularity work).
+"""Proscenio operators package.
 
 Each topical concern lives in its own submodule with its own
 ``register`` / ``unregister``. This file orchestrates the package:
@@ -17,11 +17,11 @@ Submodules:
 - pose_library      - Save Pose to Library, Bake Current Pose
 - quick_armature    - Quick Armature modal (the Quick Armature shortcut)
 - skeleton_target   - Set Proscenio active armature pointer (the quick-armature follow-up)
-- automesh          - PNG sprite -> annulus mesh (the weight-paint-automesh first cut)
-- automesh_authoring - PROSCENIO_OT_automesh_authoring modal (the interactive-modal work)
+- automesh          - PNG sprite -> annulus mesh
+- automesh_authoring - PROSCENIO_OT_automesh_authoring modal
 - bind_mesh         - PROSCENIO_OT_bind_mesh_to_armature (the weight-paint productivity follow-up)
-- restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot (the sidecar work)
-- edit_weights      - PROSCENIO_OT_edit_weights_modal (the paint work)
+- restore_weight_snapshot - PROSCENIO_OT_restore_weight_snapshot
+- edit_weights      - PROSCENIO_OT_edit_weights_modal
 - set_bone_mode     - PROSCENIO_OT_set_bone_mode per-bone SOFT/HARD toggle
 - sidecar_io        - PROSCENIO_OT_export_sidecar / import_sidecar file-dialog IO
 - brush_preset      - PROSCENIO_OT_set_brush_preset curve presets for weight-paint

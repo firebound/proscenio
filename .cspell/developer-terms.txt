@@ -321,3 +321,14 @@ keytar
 jiti
 extname
 Infima
+consola
+defaultdict
+dtype
+isclose
+iterdir
+itertools
+rebalances
+rmtree
+subdirs
+tolist
+tris

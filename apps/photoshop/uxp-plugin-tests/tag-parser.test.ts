@@ -1,4 +1,4 @@
-// Unit tests for the bracket-tag lexer (the photoshop tag system the first photoshop-tag cut).
+// Unit tests for the bracket-tag lexer.
 
 import { describe, expect, it } from "vitest";
 

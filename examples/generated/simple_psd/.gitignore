@@ -3,6 +3,6 @@
 # importer, which composes _spritesheets/<sprite_frame>.png on the fly).
 _spritesheets/
 
-# Test runner side-effect when goldens diverge — written next to the golden
+# Test runner side-effect when goldens diverge - written next to the golden
 # by apps/blender/tests/run_tests.py and removed on PASS.
 *.actual.proscenio

@@ -1,4 +1,4 @@
-"""GPU draw handlers for the authoring modal (the weight-paint productivity follow-up, T8 + T13).
+"""GPU draw handlers for the authoring modal.
 
 POST_VIEW SpaceView3D handlers per stage. Reuses UNIFORM_COLOR shader
 from modal_overlay. Polylines as LINE_STRIP batches; Steiner / user

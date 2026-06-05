@@ -1,4 +1,4 @@
-# gdlint config — keeps GDScript typing-friendly while staying out of the
+# gdlint config - keeps GDScript typing-friendly while staying out of the
 # way for cosmetics. Defaults documented at:
 # https://github.com/Scony/godot-gdscript-toolkit/wiki/3.-Linter
 #
@@ -6,14 +6,14 @@
 # `apps/godot/project.godot`) for the typing enforcement; gdlint here
 # covers structural / sizing / design rules that the editor parser does not.
 
-# Sizing — surface reviews early.
+# Sizing - surface reviews early.
 max-file-lines: 500
 max-line-length: 100
 function-arguments-number: 6
 max-public-methods: 20
 function-statements-number: 30
 
-# Design — keep the plugin idiomatic.
+# Design - keep the plugin idiomatic.
 duplicated-load: true
 no-elif-return: true
 no-else-return: true

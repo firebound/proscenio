@@ -1,4 +1,4 @@
-"""Snapshot + reapply weight sidecar (the sidecar work wave).
+"""Snapshot + reapply weight sidecar.
 
 snapshot_sidecar reads obj's current vertex_groups + active UV layer
 and builds a populated WeightSidecar. apply_sidecar writes the
@@ -84,8 +84,8 @@ def snapshot_sidecar(
 def apply_sidecar(obj: bpy.types.Object, sidecar: WeightSidecar) -> dict[str, int]:
     """Write sidecar entries into obj's vertex groups.
 
-    Wipes every vertex group EXCEPT proscenio_base_sprite (D3
-    UV anchor must survive), recreates one group per vertex_group_names
+    Wipes every vertex group EXCEPT proscenio_base_sprite (the UV
+    anchor must survive), recreates one group per vertex_group_names
     entry, populates per-vert weights from entries[i].weights.
 
     Counters: {verts_applied, groups_created, missing_entry_verts}.

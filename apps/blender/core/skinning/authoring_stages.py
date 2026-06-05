@@ -31,9 +31,9 @@ class AuthoringStage(IntEnum):
 
 
 class Stroke(TypedDict):
-    """Stage 3 stroke or single-Steiner placement (the weight-paint-automesh spec S7 + ).
+    """Stage 3 stroke or single-Steiner placement (the weight-paint-automesh).
 
-    kind="point": single Steiner from a click without drag (S6 backward compat).
+    kind="point": single Steiner from a click without drag (backward compat).
     kind="stroke": resampled polyline that becomes constraint edges + verts.
     kind="cut" on user_outer_strokes (Stage 2): perpendicular offset lens +
         post-CDT face-prune removes faces inside the lens (silhouette trim).

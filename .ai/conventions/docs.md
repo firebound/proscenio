@@ -43,7 +43,7 @@ on tablet pressure zero or window deactivate.
 See the weight-paint-automesh spec.
 ```
 
-The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Decision identifiers `D1`-`D16` stay (concise, locked, scoped to their owning spec). Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name.
+The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name. A decision reference is only meaningful when it points at an explicit, written `Decision N: ...` definition it can link to; a bare `DN` token whose definition lived in a since-deleted STUDY resolves to nothing, so do not use them.
 
 ## Spec references in `decisions.md` and `backlog.md` are name-only
 
@@ -57,7 +57,7 @@ Reference shape inside those two files:
 
 ```markdown
 **Authoring side resolved by the weight-paint-automesh spec first cut** - ...
-The typed-models codegen D7 deferred the docs site to a separate chore.
+The typed-models codegen deferred the docs site to a separate chore.
 ```
 
 Everywhere else (CONTRIBUTING.md, agent skill pages, prose under a still-active spec) the linked form remains fine while the target file exists:

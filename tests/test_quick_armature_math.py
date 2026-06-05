@@ -1,7 +1,7 @@
 """Unit tests for the quick-armature follow-up Quick Armature pure-math helpers.
 
-bpy-free. Covers chord resolution (D10), grid snap (D12), axis lock
-(D11), and naming (D2 + D15) primitives consumed by
+bpy-free. Covers chord resolution, grid snap, axis lock, and naming
+primitives consumed by
 ``apps/blender/operators/quick_armature.py``.
 
 Run from the repo root:
@@ -31,7 +31,7 @@ from core.quick_armature_math import (  # noqa: E402  - sys.path setup above
 
 
 class TestResolvePressMode:
-    """D10 + refinement: chord vocabulary aligned with Blender bone parenting."""
+    """Chord vocabulary aligned with Blender bone parenting."""
 
     def test_default_chain_no_modifier_returns_connected(self) -> None:
         assert resolve_press_mode(shift_held=False, default_chain=True) == (True, True)
@@ -57,7 +57,7 @@ class TestResolvePressMode:
         )
 
     def test_legacy_with_shift_returns_disconnected(self) -> None:
-        # the quick-armature first cut shipped Shift = parent + use_connect=False; the
+        # the original cut shipped Shift = parent + use_connect=False; the
         # refinement keeps that vocabulary when the user opts back in.
         assert resolve_press_mode(shift_held=True, default_chain=False) == (True, False)
 
@@ -107,7 +107,7 @@ class TestResolvePressModeLabel:
 
 
 class TestSnapWorldPointXz:
-    """D12: snap X / Z to nearest grid increment; preserve Y."""
+    """Snap X / Z to nearest grid increment; preserve Y."""
 
     def test_snap_to_unit_grid(self) -> None:
         assert snap_world_point_xz((1.4, 0.0, 2.7), 1.0) == (1.0, 0.0, 3.0)
@@ -131,7 +131,7 @@ class TestSnapWorldPointXz:
 
 
 class TestApplyAxisLock:
-    """D11: clamp the non-locked component of tail to head's value."""
+    """Clamp the non-locked component of tail to head's value."""
 
     def test_lock_x_keeps_x_free_clamps_y_z(self) -> None:
         head = (1.0, 0.0, 5.0)

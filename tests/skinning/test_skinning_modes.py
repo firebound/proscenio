@@ -1,4 +1,4 @@
-"""Pure tests for skinning mode dispatcher (the bind work, D5)."""
+"""Pure tests for skinning mode dispatcher."""
 
 from __future__ import annotations
 
@@ -64,8 +64,8 @@ def test_envelope_inside_radius_full_outside_zero():
 
 def test_envelope_two_overlapping_bones_split_weight():
     # vert at origin sits inside BOTH bone envelopes (radius 2.0 covers
-    # both bones at distance 0 and 1). Per-vert sum must = 1.0 (D5 +
-    # SPEC bind-design 119); each bone gets 0.5 (1/N share).
+    # both bones at distance 0 and 1). Per-vert sum must = 1.0;
+    # each bone gets 0.5 (1/N share).
     out = bind_weights_for_mode(
         "ENVELOPE",
         [(0.0, 0.0)],

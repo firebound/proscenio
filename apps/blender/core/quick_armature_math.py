@@ -41,7 +41,7 @@ def resolve_press_mode_label(
         return "disconnected"
     if default_chain:
         return "unparented" if shift_held else "connected"
-    # Legacy the quick-armature first cut vocabulary: no modifier = unparented root,
+    # Legacy vocabulary: no modifier = unparented root,
     # Shift = parented but disconnected (head free, parent set).
     return "disconnected" if shift_held else "unparented"
 
@@ -54,11 +54,11 @@ def resolve_press_mode(
 ) -> tuple[bool, bool]:
     """Decide ``(parent_to_last, connect)`` for a left-mouse PRESS.
 
-    ``default_chain=True`` (D10 recommendation) matches Blender's E
+    ``default_chain=True`` (recommendation) matches Blender's E
     extrude reflex: no modifier chains the new bone connected to the
     previous tail; Shift starts a fresh unparented root. Hold Alt for
     a parented + disconnected bone (head free, parent set). When
-    ``default_chain=False`` the quick-armature first cut vocabulary applies and
+    ``default_chain=False`` the vocabulary applies and
     Shift means chain-disconnected.
     """
     label = resolve_press_mode_label(

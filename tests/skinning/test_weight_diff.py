@@ -1,4 +1,4 @@
-"""Pure tests for weight diff (the paint work, T6)."""
+"""Pure tests for weight diff."""
 
 from __future__ import annotations
 

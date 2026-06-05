@@ -1,4 +1,4 @@
-"""Atlas image assembly + manifest write (the code-modularity work split of atlas_io).
+"""Atlas image assembly + manifest write (split out of atlas_io).
 
 Bpy-bound: the function lazily imports ``bpy`` + ``numpy`` so pytest
 contexts that import the parent package without Blender don't break.

@@ -29,6 +29,6 @@ There is nothing to regenerate in this folder - the files are authored once and 
 - `Doll.gd::_find_player()` resolves a non-null `AnimationPlayer`; `idle` plays on ready.
 - Actions authored in step 03 (`idle`, `wave`, `walk`) appear in the AnimationPlayer's default library.
 
-## Wrapper script contract (the reimport-merge work)
+## Wrapper script contract
 
 The wrapper is **separate** from the imported scene so reimports never touch it. Customise gameplay logic (`autoplay` flag, animation defaults, signal hookups) in `Doll.gd`; never edit the inner generated scene. See `.ai/skills/godot-dev.md` for the full pattern.

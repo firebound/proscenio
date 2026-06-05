@@ -1,4 +1,4 @@
-"""Cut stroke geometry (the weight-paint-automesh spec ).
+"""Cut stroke geometry (the weight-paint-automesh).
 
 Generate 2 parallel offset polylines perpendicular to a stroke path.
 Each pair forms a "lens" polygon used for post-CDT face-prune.

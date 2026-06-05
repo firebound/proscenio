@@ -1,4 +1,4 @@
-"""Per-stroke weight diff + provenance flip (the paint work, T6/T12).
+"""Per-stroke weight diff + provenance flip.
 
 StrokeDiffTracker captures pre-stroke weights for the active vertex
 group; after stroke, diffs against current state, flips touched

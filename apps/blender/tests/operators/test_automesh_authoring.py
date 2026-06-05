@@ -1,4 +1,4 @@
-"""Headless tests for the automesh authoring modal (the interactive-modal work)."""
+"""Headless tests for the automesh authoring modal."""
 
 from __future__ import annotations
 
@@ -386,7 +386,7 @@ def test_user_strokes_corrupt_payload_returns_empty(automesh_fixture):
 
 
 def test_user_outer_strokes_round_trip(automesh_fixture):
-    """Stage 2 persistence key read/write round-trip ( T3 scaffold)."""
+    """Stage 2 persistence key read/write round-trip (scaffold)."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,
@@ -402,7 +402,7 @@ def test_user_outer_strokes_round_trip(automesh_fixture):
 
 
 def test_user_outer_strokes_empty_when_absent(automesh_fixture):
-    """Stage 2 persistence key returns empty list when key is absent ( T3)."""
+    """Stage 2 persistence key returns empty list when key is absent."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,
@@ -465,7 +465,7 @@ def test_apply_mesh_stroke_creates_edges(automesh_fixture):
 
 
 def test_user_outer_strokes_persist_via_custom_property(automesh_fixture):
-    """Stage 2 strokes round-trip through the custom property ( T6)."""
+    """Stage 2 strokes round-trip through the custom property."""
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
         read_user_outer_strokes,

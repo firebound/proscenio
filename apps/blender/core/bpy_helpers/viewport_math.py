@@ -1,7 +1,7 @@
-"""Viewport math helpers (the code-modularity work).
+"""Viewport math helpers.
 
 bpy-bound - imports ``bpy_extras.view3d_utils`` and ``mathutils``.
-Lives in ``core/bpy_helpers/`` (wave 9.6).
+Lives in ``core/bpy_helpers/`` (the code-modularity split).
 """
 
 from __future__ import annotations

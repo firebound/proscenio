@@ -1,4 +1,4 @@
-"""PropertyGroup -> Custom Property mirror logic (post-00the mirror-fix work fix).
+"""PropertyGroup -> Custom Property mirror logic.
 
 Lives outside ``properties/__init__.py`` so the unit tests can exercise
 the mirror without dragging in ``bpy``. Pure Python - only requires
@@ -15,7 +15,7 @@ Map covers the full Object-side schema:
 
 - sprite_type, hframes, vframes, frame, centered (the authoring panel)
 - region_mode, region_x/y/w/h (the authoring panel.1.c.1)
-- is_slot, slot_default (the slot system)
+- is_slot, slot_default
 - is_outliner_favorite (the outliner subpanel)
 """
 

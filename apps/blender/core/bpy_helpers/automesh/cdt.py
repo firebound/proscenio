@@ -1,4 +1,4 @@
-"""Constrained Delaunay triangulation + hole-face prune (the weight-paint-automesh spec).
+"""Constrained Delaunay triangulation + hole-face prune.
 
 Wraps ``mathutils.geometry.delaunay_2d_cdt`` for the automesh
 bridge: produces the bmesh triangulation that covers the alpha

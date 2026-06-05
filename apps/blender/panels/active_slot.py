@@ -1,4 +1,4 @@
-"""Active Slot subpanel + helpers (the slot system)."""
+"""Active Slot subpanel + helpers."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def _attachment_icon_for(kind: str) -> str:
 
 
 class PROSCENIO_PT_active_slot(bpy.types.Panel):
-    """Slot authoring - visible when the active Empty is flagged as a slot (the slot system)."""
+    """Slot authoring - visible when the active Empty is flagged as a slot."""
 
     bl_label = "Active Slot"
     bl_idname = "PROSCENIO_PT_active_slot"

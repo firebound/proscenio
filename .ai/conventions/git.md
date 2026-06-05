@@ -16,7 +16,7 @@ ci/<slug>                     # Workflow changes
 
 Prefix vocabulary matches [Conventional Commits](https://www.conventionalcommits.org/). When the work implements a numbered spec under `specs/`, embed the number after the prefix as a stable search token: `feat/spec-<NNN>-<slug>`. The spec infix is a navigation aid, not a hard gate - omit it when the work is component-wide rather than spec-driven.
 
-Examples: `feat/spec-013-weight-paint-automesh`, `feat/photoshop-ui`, `fix/blender-bugs`, `chore/install-dev`.
+Examples: `feat/spec-<NNN>-<slug>` (numbered spec), `feat/photoshop-ui`, `fix/blender-bugs`, `chore/install-dev`.
 
 Reference issues in the commit body (`Refs: #42`), not in the branch name. Keep branch names readable.
 

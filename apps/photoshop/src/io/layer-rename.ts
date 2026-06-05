@@ -40,7 +40,7 @@ export async function renameLayer(
             // eslint-disable-next-line @typescript-eslint/require-await -- modal callback is async by API contract
             async () => {
                 target.name = newName;
-                // Best-effort XMP mirror per the photoshop tag system D2. Bracket
+                // Best-effort XMP mirror per the photoshop tag system. Bracket
                 // tag in the name stays canonical; if this fails it
                 // logs at debug and the rename still counts as ok.
                 const newLayerPath = [...layerPath.slice(0, -1), newName];

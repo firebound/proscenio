@@ -4,8 +4,7 @@ bpy-free. Lives in ``core/`` so unit tests + the headless validator
 can import without booting Blender. Domain-agnostic; anything
 beyond a primitive XZ math op belongs in a feature module.
 
-Conventions for the XZ plane (the quick-armature spec D11 axis lock + the weight-paint-automesh spec
-automesh):
+Conventions for the XZ plane (the quick-armature axis lock + the automesh):
 
 - Coordinates are ``(x, z)`` tuples in world units (Y is locked
   to the picture plane).

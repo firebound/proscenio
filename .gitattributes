@@ -1,7 +1,7 @@
 # Default to LF line endings, auto-detect text vs binary
 * text=auto eol=lf
 
-# Always LF for these — they break with CRLF
+# Always LF for these - they break with CRLF
 *.gd text eol=lf
 *.gdshader text eol=lf
 *.tscn text eol=lf
@@ -26,7 +26,7 @@
 *.kra binary
 *.blend binary
 
-# Git LFS — only for the examples folder, to keep the repo light
+# Git LFS - only for the examples folder, to keep the repo light
 examples/**/*.psd  filter=lfs diff=lfs merge=lfs -text
 examples/**/*.psb  filter=lfs diff=lfs merge=lfs -text
 examples/**/*.kra  filter=lfs diff=lfs merge=lfs -text

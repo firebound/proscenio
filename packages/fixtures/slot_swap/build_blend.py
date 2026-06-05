@@ -284,7 +284,7 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
 def _build_swap_action(slot_empty: bpy.types.Object) -> None:
     """Keyframe slot_index 0 -> 1 -> 0 over 24 frames, constant interp.
 
-    Mirrors the slot system D5 contract: keys are sampled at the action's
+    Mirrors the slot system contract: keys are sampled at the action's
     fcurve-key timestamps; the writer expands them into
     ``slot_attachment`` tracks with constant interpolation.
 

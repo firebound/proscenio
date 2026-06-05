@@ -1,8 +1,8 @@
-"""GPU draw handler for per-vert weight + provenance overlay (the paint work, T9/T10/T11).
+"""GPU draw handler for per-vert weight + provenance overlay.
 
 Two modes: 'weight' (6-stop colorband on active VG weight) and
 'provenance' (cyan/white/gray per entry provenance). Only 'provenance'
-is user-toggleable this wave; 'weight' data is supported for aspirational successor work.
+is user-toggleable now; 'weight' data is supported for aspirational successor work.
 
 POST_VIEW handler. Uses UNIFORM_COLOR shader (shared with modal_overlay).
 Per-vert disc rendered as POINTS primitive with point_size.

@@ -1,11 +1,11 @@
-"""Pure-Python alpha-channel contour walker (the weight-paint-automesh first cut).
+"""Pure-Python alpha-channel contour walker.
 
 bpy-free. Lives under ``core/`` so unit tests can exercise the
 contour tracing + morphology math without booting Blender. The
 bpy bridge in ``core/bpy_helpers/automesh/bridge.py`` reads the
 image pixels and feeds the binary mask into the helpers here.
 
-No third-party dependencies. Per the weight-paint-automesh spec Constraints, the addon
+No third-party dependencies. Per the weight-paint-automesh constraints, the addon
 must not depend on OpenCV / numpy at runtime (COA Tools 2 issues
 #94 / #107 prove that PyPI-fetch dependencies are the addon's
 single biggest adoption blocker - corp / ISP firewalls, version
@@ -51,7 +51,7 @@ _NEIGHBOUR_OFFSETS_4: tuple[tuple[int, int], ...] = (
 HOLE_SAFETY_DILATE_CELLS: int = 1
 """Foreground dilation applied to the mask before hole detection.
 
-DEPRECATED - no longer used by :func:`extract_contours` (see B3 fix
+DEPRECATED - no longer used by :func:`extract_contours` (see the flood-fill fix
 below). Retained as a public constant to avoid breaking callers that
 imported it directly.
 
@@ -61,7 +61,7 @@ hole boundary (user invariant: never cut alpha). In practice it
 closed narrow inter-finger corridors at coarse downscale factors
 (e.g. resolution=0.5 with 3-4px source gaps -> 1-2 cell gaps in the
 grid -> closed by dilation -> false enclosed background -> spurious
-CDT hole punches -> disconnected face fragments, B3 regression).
+CDT hole punches -> disconnected face fragments).
 
 Fix: :func:`extract_contours` now calls :func:`extract_holes` on the
 undilated raw mask. The alpha-safety invariant for real holes still
@@ -393,7 +393,7 @@ def extract_contour_pair(
     threshold: int,
     margin_px: int,
 ) -> tuple[Contour, Contour]:
-    """Extract paired outer+inner contours for annulus topology (D2).
+    """Extract paired outer+inner contours for annulus topology.
 
     Convenience back-compat wrapper around :func:`extract_contours`
     that drops the holes list. Existing callers (and unit tests)
@@ -415,16 +415,16 @@ def extract_contours(
     Builds on the annulus topology of :func:`extract_contour_pair`
     by also returning every alpha hole inside the silhouette. The
     bpy bridge feeds the hole contours to CDT as additional
-    constraint loops so the mesh excludes the hole interior - SPEC
-    013 D2 amendment (Proscenio differentiates from Spine + COA2
-    here, which both refuse to support holes).
+    constraint loops so the mesh excludes the hole interior. Proscenio
+    differentiates from Spine + COA2 here, which both refuse to support
+    holes.
 
     ``margin_px`` controls the OUTER annulus thickness exactly as
     in :func:`extract_contour_pair`. Holes are detected on the RAW
     (undilated) mask via :func:`extract_holes`, not the dilated
     outer mask: foreground dilation would close 1-2 cell inter-finger
     corridors at low resolution and convert border-connected
-    background into false enclosed holes (B3). Flood-filling from the
+    background into false enclosed holes. Flood-filling from the
     border of the undilated mask keeps still-open corridors draining
     to the border; only genuinely enclosed background islands (e.g.
     ring sprites) are returned as holes.
@@ -452,7 +452,7 @@ def extract_contours(
     outer = trace_contour(outer_mask, seed)
     # Detect holes on the RAW (undilated) mask. Using a foreground-
     # dilated mask was the original approach (HOLE_SAFETY_DILATE_CELLS)
-    # but it caused B3: at resolution=0.5 inter-finger gaps in the
+    # but it caused a regression: at resolution=0.5 inter-finger gaps in the
     # source image are only 1-2 cells wide in the downscaled grid;
     # 1-cell foreground dilation closes those corridors entirely,
     # converting border-connected external background into apparently-

@@ -137,7 +137,7 @@ def _draw_quick_armature_defaults(
     layout: bpy.types.UILayout,
     context: bpy.types.Context,
 ) -> None:
-    """Inline sub-box exposing the quick-armature spec D15 Quick Armature defaults.
+    """Inline sub-box exposing the Quick Armature defaults.
 
     Settings live on ``scene.proscenio.quick_armature`` so they ride
     with the .blend file and let one-off documents ship their own

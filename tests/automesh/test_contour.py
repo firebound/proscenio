@@ -334,7 +334,7 @@ class TestExtractContours:
     def test_b3_narrow_corridor_not_a_hole(self) -> None:
         """Regression: narrow inter-finger corridor must not appear as an enclosed hole.
 
-        B3 root cause (the weight-paint-automesh spec): at resolution=0.5 the 3-4 source-pixel gaps between
+        Root cause: at resolution=0.5 the 3-4 source-pixel gaps between
         fingers downscale to 1-2 grid cells. The old code dilated the foreground by 1
         cell before calling extract_holes; that dilation closed 1-cell-wide corridors,
         turning border-connected external background into apparently-enclosed regions

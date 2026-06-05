@@ -5,7 +5,7 @@ mode, then defers to the per-mode draw module. Per-mode helpers live
 in ``_draw_sprite_frame.py``, ``_draw_polygon.py``, and the shared
 ``_draw_region.py`` / ``_draw_driver_shortcut.py``.
 
-the code-modularity work of the code-modularity work split the 13 ``_draw_*`` helpers out of this
+The code-modularity work split the 13 ``_draw_*`` helpers out of this
 file so each draw concern owns its module.
 """
 

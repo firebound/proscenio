@@ -12,7 +12,7 @@ Distinto de UI_FEEDBACK.md (que cobre polish, não comportamento).
 
 ### Blender 5.1.1 crash em gizmo_button2d_draw apos view3d.snap_cursor_to_center (suspeito upstream)
 
-**Repro:** intermitente. Sessão second-wave manual smoke (15-mai-2026): após clear do active_armature picker + invoke Quick Armature + algumas operações de viewport, Blender crashou em `EXCEPTION_ACCESS_VIOLATION (NULL write)`. Last logged op: `bpy.ops.view3d.snap_cursor_to_center()`. Re-roda do mesmo workflow não reproduziu.
+**Repro:** intermitente. Sessão de smoke manual (15-mai-2026): após clear do active_armature picker + invoke Quick Armature + algumas operações de viewport, Blender crashou em `EXCEPTION_ACCESS_VIOLATION (NULL write)`. Last logged op: `bpy.ops.view3d.snap_cursor_to_center()`. Re-roda do mesmo workflow não reproduziu.
 
 **Stack trace:**
 
@@ -30,7 +30,7 @@ blender.exe: view3d_main_region_draw
 
 **Análise:** stack 100% Blender internals. Nenhum frame Proscenio. `imm_draw_circle_fill_3d` (filled circle) não é chamado pelos nossos overlays - usamos `LINE_LOOP` via `draw_circle_3d`. Modules carregados incluem AMD GPU drivers (`atio6axx.dll`, `amdihk64.dll`). Provável: bug Blender 5.1.1 gizmo drawing OU AMD driver issue.
 
-**Mitigação defensive (the quick-armature second wave):** `on_depsgraph_update` handler (`apps/blender/properties/_handlers.py`) wrapped em `try/except Exception` blanket - depsgraph callbacks rodam dentro do draw/event loop e exception bubble-out pode deixar C side mid-state, candidato pra trigger crashes em draw subsequente. Handler agora swallow silenciosamente.
+**Mitigação defensive (quick-armature feedback pass):** `on_depsgraph_update` handler (`apps/blender/properties/_handlers.py`) wrapped em `try/except Exception` blanket - depsgraph callbacks rodam dentro do draw/event loop e exception bubble-out pode deixar C side mid-state, candidato pra trigger crashes em draw subsequente. Handler agora swallow silenciosamente.
 
 **Severity:** low - intermitente, não reproduzido na re-tentativa, fora do nosso código. Mantido watch caso vire recorrente.
 
@@ -38,9 +38,9 @@ blender.exe: view3d_main_region_draw
 
 ### bpy.props annotations falham em Operator com PEP 563 + ClassVar referenciando tipo TYPE_CHECKING-only
 
-**Repro original (the quick-armature first cut):** `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
+**Repro original:** `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
 
-**Causa real (post-mortem refinado em the quick-armature second wave audit):** o problema **não** é PEP 563 em si. É a combinação tripla:
+**Causa real (post-mortem refinado na auditoria da quick-armature feedback pass):** o problema **não** é PEP 563 em si. É a combinação tripla:
 
 1. `from __future__ import annotations` (PEP 563) ativo no arquivo
 2. ClassVar annotation referenciando tipo só importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
@@ -50,11 +50,11 @@ blender.exe: view3d_main_region_draw
 
 Confirmado via headless `--background --python` instrumentando `get_type_hints`. Após remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registração volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagógica + consistência.
 
-**Audit codebase-wide (the quick-armature second wave):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso é ARTEFATO de `bl_rna.properties.keys()` não expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
+**Audit codebase-wide (quick-armature feedback pass):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso é ARTEFATO de `bl_rna.properties.keys()` não expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
 
 **Conclusão:** o bug se manifesta APENAS quando o combo das 3 condições acima ocorre. Todos os outros operators usam ClassVar só com tipos builtin (`set[str]`) e não tem TYPE_CHECKING import referenciado em ClassVar - imunes ao bug. Sem fix necessário em demais operators.
 
-**Fix aplicado em the quick-armature first cut (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
+**Fix aplicado (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
 
 **Lesson learned para [`.ai/conventions/code.md`](../.ai/conventions/code.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` só existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug é silent + difícil de debugar (annotation walk falha sem erro visível; só `self.<prop>` raises AttributeError tarde).
 
@@ -120,7 +120,7 @@ Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y 
 
 **Fix proposto:** walker em validate_export() que pra cada mesh filho direto de slot Empty (parent.proscenio.is_slot=True), checa animation_data.action.fcurves e flagga fcurves com data_path em `("location", "rotation_euler", "rotation_quaternion", "scale")`.
 
-**Severity:** medium -- regra documentada em the slot system D10. Sem o warning, usuário descobre o problema só em runtime (sprite parece travado).
+**Severity:** medium -- regra documentada no slot system. Sem o warning, usuário descobre o problema só em runtime (sprite parece travado).
 
 ### Validator flagga slot attachments como "no parent bone" (false positive)
 
@@ -175,7 +175,7 @@ empty.matrix_parent_inverse = empty.parent.matrix_world.inverted()
 empty.location = seed.matrix_world.to_translation()  # agora consistente
 ```
 
-**Severity:** medium -- Path B funciona para meshes sem parent (cenário documentado em the slot system), mas quebra para meshes já parented (cenário comum: criando slot dentro de um rig que já tem armature).
+**Severity:** medium -- Path B funciona para meshes sem parent (cenário documentado no slot system), mas quebra para meshes já parented (cenário comum: criando slot dentro de um rig que já tem armature).
 
 ### Slot fields: PG <-> CP mirror não dispara (`is_slot`, `slot_default`, `is_outliner_favorite`)
 
@@ -199,7 +199,7 @@ Resultado: PG e CP divergem assim que usuário toca esses fields. Headless write
    ("proscenio_outliner_favorite", "is_outliner_favorite", bool),
    ```
 
-**Severity:** high - afeta correctness do round-trip slot. Bug-of-omission no the mirror-fix work (fix do mirror cobriu sprite fields, esqueceu slot fields que vieram em the slot system depois).
+**Severity:** high - afeta correctness do round-trip slot. Bug-of-omission no mirror-fix (fix do mirror cobriu sprite fields, esqueceu slot fields que vieram no slot system depois).
 
 ### Drive from Bone: F9 redo trocando target NÃO migra driver, adiciona outro
 
@@ -614,7 +614,7 @@ Diff esperado byte-equal contra a (1) falha só nesse campo (+ paths esperados p
 
 **Arquivo:** `apps/photoshop/proscenio_export.jsx:54,100`; `apps/photoshop/proscenio_import.jsx` (no write site).
 
-**Severity:** medium - quebra parity oracle. UXP exporter (an early UXP-migration cycle) reproduz o mesmo bug por enquanto (default 100); só foi descoberto agora porque a the early UXP-migration wave rodou o roundtrip pela primeira vez. Bloquearia retirement da JSX (the JSX retirement) sem fix porque importer roundtrip falha em escala.
+**Severity:** medium - quebra parity oracle. UXP exporter reproduz o mesmo bug por enquanto (default 100); só foi descoberto agora porque esse roundtrip rodou pela primeira vez. Bloquearia a retirada da JSX sem fix porque importer roundtrip falha em escala.
 
 ### JSX exporter: `waist` size difere 1px entre Blender bbox e Photoshop layer.bounds
 

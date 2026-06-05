@@ -1,4 +1,4 @@
-// the photoshop tag system the photoshop-tag work.4: dedicated Validate panel. Lives next to the
+// the photoshop tag system: dedicated Validate panel. Lives next to the
 // Tags / Debug / Exporter panels so the artist can keep warnings +
 // skipped layers visible while editing tags or running the export.
 // Shares the same `useExportPreview` polling pipeline; nothing here

@@ -46,7 +46,7 @@ def validate_export(scene: object) -> list[Issue]:
 
 
 def _validate_slots(scene_objects: Sequence[object]) -> list[Issue]:
-    """Walk slot Empties + cross-check name uniqueness (D9)."""
+    """Walk slot Empties + cross-check name uniqueness."""
     seen: set[str] = set()
     issues: list[Issue] = []
     for obj in scene_objects:

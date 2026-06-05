@@ -98,7 +98,7 @@ describe("buildManifest - baseline (no tags)", () => {
         expect(sf[0].frames[0].path).toBe("images/blink/0.png");
     });
 
-    it("does NOT auto-aggregate flat <base>_<index> siblings (the photoshop tag system D4)", () => {
+    it("does NOT auto-aggregate flat <base>_<index> siblings (the photoshop tag system)", () => {
         const layers: Layer[] = [
             art("walk_0"),
             art("walk_1"),
@@ -108,7 +108,7 @@ describe("buildManifest - baseline (no tags)", () => {
         expect(m.layers.map((e) => e.name)).toEqual(["walk_0", "walk_1"]);
     });
 
-    it("does NOT skip layers with `_` prefix (the photoshop tag system D3 drops the legacy convention)", () => {
+    it("does NOT skip layers with `_` prefix (the photoshop tag system drops the legacy convention)", () => {
         const layers: Layer[] = [art("_helper"), art("keep")];
         const m = buildManifest(doc, layers, opts);
         expect(m.layers.map((e) => e.name)).toEqual(["_helper", "keep"]);

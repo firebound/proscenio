@@ -1,4 +1,4 @@
-# shared_atlas fixture (the testing-fixtures spec)
+# shared_atlas fixture
 
 Tests the **sliced atlas packer** end-to-end (the atlas-packer feature). Three polygon meshes reference the same shared atlas PNG, each mapped to a different quadrant via UV bounds. The packer must extract each sprite's slice (just its quadrant, not the whole atlas) into the new packed atlas.
 
@@ -10,7 +10,7 @@ examples/generated/shared_atlas/
 ├── shared_atlas.expected.proscenio [GOLDEN - CI-diffed validation midpoint]
 ├── atlas.png                       256x256, three colored shapes in three quadrants
 └── godot/
-    ├── SharedAtlas.tscn            Godot wrapper (the reimport-merge work)
+    ├── SharedAtlas.tscn            Godot wrapper
     └── SharedAtlas.gd              empty stub
 ```
 

@@ -1,4 +1,4 @@
-"""Sprite-frame UV slicing math (the code-modularity work split).
+"""Sprite-frame UV slicing math.
 
 Pure-Python helpers that compute the UV slicing constants for a
 spritesheet cell at ``frame`` index in an ``hframes`` x ``vframes``

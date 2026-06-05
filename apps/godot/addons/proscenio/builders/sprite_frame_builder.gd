@@ -83,7 +83,7 @@ static func _build_sprite_frame(
 		)
 
 	var bone_name := NodeNameUtil.sanitize(sprite_res.bone)
-	# Slot routing (the slot system D6): sprite_frame attachments compose with
+	# Slot routing: sprite_frame attachments compose with
 	# polygon attachments under the same slot Node2D. Default-attachment
 	# starts visible, others start hidden - the slot_attachment track
 	# (animation_builder.gd) flips visibility per key at runtime.

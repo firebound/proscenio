@@ -1,4 +1,4 @@
-"""Unit tests for the quick-armature first cut viewport-state helpers.
+"""Unit tests for the viewport-state helpers.
 
 bpy-free. Verifies the Front-Orthographic detection used by
 ``operators/quick_armature.py`` to decide whether to call

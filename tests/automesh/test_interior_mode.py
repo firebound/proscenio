@@ -1,4 +1,4 @@
-"""Pure tests for the weight-paint-automesh spec interior_mode."""
+"""Pure tests for the automesh interior_mode."""
 
 from __future__ import annotations
 

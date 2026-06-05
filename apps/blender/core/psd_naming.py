@@ -7,7 +7,7 @@ Python mirror so the importer can sanity-check that a sprite_frame
 manifest entry's children look like indexed frames before composing
 the spritesheet.
 
-Locked conventions (photoshop importer D9):
+Locked conventions (photoshop importer):
 
 - Indexed frame layer names match one of:
     - ``\\d+``           (e.g. ``0``, ``1``, ``12``)
@@ -18,7 +18,7 @@ Locked conventions (photoshop importer D9):
   matches one of the patterns above with the **same** convention,
   the indices are 0-based, contiguous, and start at 0.
 
-- Fallback (the testing-fixtures spec D4): top-level layers ``eye_0``, ``eye_1`` … get
+- Fallback: top-level layers ``eye_0``, ``eye_1`` … get
   grouped by stripping the ``_<index>`` suffix.
 """
 
@@ -103,7 +103,7 @@ def is_uniform_indexed_group(child_names: list[str]) -> bool:
 
 
 def group_by_index_suffix(layer_names: list[str]) -> dict[str, list[tuple[int, str]]]:
-    """Aggregate flat ``<base>_<index>`` layers (the testing-fixtures spec D4 fallback).
+    """Aggregate flat ``<base>_<index>`` layers (fallback).
 
     Walks ``layer_names`` and groups every entry that matches the
     ``<base>_<index>`` convention by base. Layers that do not match

@@ -30,7 +30,7 @@ class SpriteInvariants:
 
     Zero for solid sprites; >0 for hole-support fixtures where the
     1-cell safety dilate leaves a small bleed band along each hole
-    boundary (see the weight-paint-automesh spec D2 amendment)."""
+    boundary (see the weight-paint-automesh amendment)."""
 
     ci_safe: bool = True
     """True when the per-pixel validator finishes inside the CI budget.
@@ -53,7 +53,7 @@ SPRITE_BOUNDS: dict[str, SpriteInvariants] = {
         min_coverage=0.96,
         max_hole_bleed=0,
     ),
-    # ring: the weight-paint-automesh spec D2 amendment - hole-support smoke target.
+    # ring: the weight-paint-automesh amendment - hole-support smoke target.
     "ring": SpriteInvariants(
         verts=(150, 400),
         faces=(200, 700),

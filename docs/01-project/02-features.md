@@ -33,8 +33,8 @@ The heavy lifting lives here.
 Separate from automesh - automesh shapes the mesh, this binds it to the bones.
 
 - **Five bind modes**, from fully automatic to fully manual:
-  - `Bone Heat` - hands off to Blender's built-in automatic weights. Ideal when the bones lie inside or touching the mesh. But the heat solver depends on that contact, so a 2D rig whose bones sit off the sprite plane - or away from a given sprite's area, a common cutout setup - weights poorly or fails to solve. Reach for `Proximity` in that case.
-  - `Proximity` - every nearby bone pulls on the vertex by how close it is: influence falls off with distance (by default with the square of the distance), then each vertex's weights are normalized to sum to 1. The smooth, general-purpose default.
+  - `Bone Heat` - the default bind mode; hands off to Blender's built-in automatic weights. Ideal when the bones lie inside or touching the mesh. But the heat solver depends on that contact, so a 2D rig whose bones sit off the sprite plane - or away from a given sprite's area, a common cutout setup - weights poorly or fails to solve. Reach for `Proximity` in that case.
+  - `Proximity` - every nearby bone pulls on the vertex by how close it is: influence falls off with distance (by default with the square of the distance), then each vertex's weights are normalized to sum to 1. The smooth, general-purpose fallback when bone heat cannot solve.
   - `Envelope` - each bone has a radius; a vertex inside that radius binds to the bone, and where several radii overlap it splits evenly between them.
   - `Single Nearest` - each vertex binds fully to its one closest bone. Rigid, no blending - good for hard props.
   - `Empty` - no weights at all; you paint every weight by hand.

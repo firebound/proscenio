@@ -1,4 +1,4 @@
-"""Pure reproject algorithm (the sidecar work, T3).
+"""Pure reproject algorithm.
 
 Hand-rolled O(n) KNN + 2D barycentric interpolation over UV anchors.
 Zero bpy / mathutils import so the module is testable in vanilla
@@ -36,12 +36,12 @@ def reproject_entries(
 
     The fallback exists because dropping straight from "3-donor barycentric"
     to "auto_seed empty weights" produces visible weight corruption after
-    automesh regen (B2 from the paint work smoke). Inheriting the nearest
+    automesh regen (found in paint-work smoke). Inheriting the nearest
     donor's weights is strictly better than empty: Blender's Auto-Normalize
     smooths the resulting per-vert pattern, and the artist's painted
     regions stay anchored where the source mesh had them.
 
-    Default max_distance bumped from 0.1 to 0.5 in B2 fix - 0.1 was too
+    Default max_distance bumped from 0.1 to 0.5 - 0.1 was too
     tight for typical sprite UV space (full sprite covers up to 1.0 in
     each axis; 0.1 = 10% would-be neighborhood missed half the verts
     when the new mesh's anchor density differed slightly from the old).

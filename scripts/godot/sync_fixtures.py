@@ -64,7 +64,7 @@ _TEXTURE_SUBDIRS: tuple[str, ...] = (
 # world coordinates instead of being centred per-mesh, and the rest
 # pose was never authored for direct Godot consumption. The proper
 # Godot-target fixture is the future ``doll-from-photoshop`` derived
-# .blend documented in specs/007-testing-fixtures/TODO.md.
+# .blend tracked in the fixtures backlog.
 _GODOT_SKIP: frozenset[str] = frozenset({"doll"})
 
 

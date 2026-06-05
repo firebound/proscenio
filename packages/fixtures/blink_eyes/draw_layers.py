@@ -1,4 +1,4 @@
-"""Generate the blink_eyes PNG layers (the testing-fixtures spec step 1, Pillow only).
+"""Generate the blink_eyes PNG layers (step 1, Pillow only).
 
 Run with::
 

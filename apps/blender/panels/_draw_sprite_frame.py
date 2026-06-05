@@ -1,4 +1,4 @@
-"""Sprite-frame body draw (the slot system D13 + the mirror-fix work region readout).
+"""Sprite-frame body draw (slot panel + region readout).
 
 Renders the sprite-frame metadata block: hframes / vframes / frame /
 centered, the atlas+region readout, the preview-shader setup buttons,
@@ -99,7 +99,7 @@ def _first_tex_image_size(mat: bpy.types.Material | None) -> tuple[int, int] | N
 
 
 def _draw_preview_shader_buttons(layout: bpy.types.UILayout, obj: bpy.types.Object) -> None:
-    """Render Material Preview slicer setup/remove buttons (the slot system D13)."""
+    """Render Material Preview slicer setup/remove buttons."""
     has_slicer = _material_has_slicer(obj)
     row = layout.row(align=True)
     setup = row.row()

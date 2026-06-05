@@ -223,7 +223,7 @@ def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:
         godot_angle = 2 * atan2(q.y, q.w) = +theta
 
     Breaks down for rigs not aligned with the XZ plane - a future
-    SPEC will generalize via the bone's rest matrix.
+    spec will generalize via the bone's rest matrix.
     """
     w = float(quat_axes.get(0, 1.0))
     y = float(quat_axes.get(2, 0.0))

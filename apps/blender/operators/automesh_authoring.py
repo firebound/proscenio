@@ -152,7 +152,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
-    # Stage 3 stroke capture state (Wave: stroke redesign)
+    # Stage 3 stroke capture state (gesture rewrite)
     _DRAG_THRESHOLD_PX: ClassVar[int] = 5
     _STROKE_SMOOTH_ITERS: ClassVar[int] = 2
     _STROKE_PICK_RADIUS_PX: ClassVar[int] = 12

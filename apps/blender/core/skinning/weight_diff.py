@@ -1,4 +1,4 @@
-"""Pure weight diff (the paint work, T6).
+"""Pure weight diff.
 
 Detects vertex indices whose weight changed by more than ``eps``.
 StrokeDiffTracker uses this to know which sidecar entries flip to

@@ -1,4 +1,4 @@
-"""Slot system operators (the slot system).
+"""Slot system operators.
 
 Subpackage with:
 

@@ -1,4 +1,4 @@
-"""Unit tests for the slot system slot validation rules (D9 + D10).
+"""Unit tests for the slot system slot validation rules.
 
 Pure pytest, no Blender. Mocks ``bpy.types.Object`` via ``SimpleNamespace``
 so the validation module is exercised without Blender's RNA layer.

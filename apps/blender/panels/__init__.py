@@ -1,4 +1,4 @@
-"""Proscenio panels package (the code-modularity work).
+"""Proscenio panels package.
 
 The sidebar is anchored by ``PROSCENIO_PT_main``. Every other panel is
 a child via ``bl_parent_id``, which gives us collapsible subsections
@@ -11,7 +11,7 @@ Submodules per concern:
 - active_sprite.py   - PROSCENIO_PT_active_sprite + 9 helpers
 - active_slot.py     - PROSCENIO_PT_active_slot + attachment helpers
 - skeleton.py        - PROSCENIO_PT_skeleton + UL_bones
-- skinning.py        - PROSCENIO_PT_skinning (the weight-paint-automesh first cut)
+- skinning.py        - PROSCENIO_PT_skinning
 - outliner.py        - PROSCENIO_PT_outliner + UL_sprite_outliner
 - animation.py       - PROSCENIO_PT_animation + UL_actions
 - atlas.py           - PROSCENIO_PT_atlas + packer box

@@ -1,4 +1,4 @@
-"""BindMode dispatcher (the bind work, D5).
+"""BindMode dispatcher.
 
 Translates a chosen ``BindMode`` to a per-bone-per-vert weight
 matrix, or None for BONE_HEAT sentinel. PROXIMITY delegates to
@@ -78,7 +78,7 @@ def _envelope(
 ) -> dict[str, list[float]]:
     """Per-vert weight 1/N across the N bones whose envelope covers it.
 
-    Spec ``bind-design.md:119`` requires per-vert normalization so a vert
+    Per-vert normalization is required so a vert
     inside K overlapping envelopes contributes weight 1.0 total (1/K to
     each bone), not K. Without this, Blender's Auto-Normalize silently
     rebalances at deform time and the user sees unpredictable weight

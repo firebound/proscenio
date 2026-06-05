@@ -1,4 +1,4 @@
-"""Vertex-group bookkeeping for the original quad corners (the weight-paint-automesh spec D3).
+"""Vertex-group bookkeeping for the original quad corners.
 
 Every automesh regen preserves the user's UV-pinned base quad by
 tagging the original 4 corner verts in a named vertex group and
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 BASE_SPRITE_GROUP_NAME = "proscenio_base_sprite"
 """Vertex group flagged on the original 4 quad corners so automesh
 regen knows which verts to preserve. Lifted from COA Tools 2's
-``coa_base_sprite`` pattern per the weight-paint-automesh spec D3."""
+``coa_base_sprite`` pattern per the weight-paint-automesh work."""
 
 
 def initialize_base_sprite_group(obj: Object) -> tuple[int, bool]:

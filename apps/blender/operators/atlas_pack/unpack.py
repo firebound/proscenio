@@ -96,7 +96,7 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             # Snapshot stored the material by name; a manual rename between
             # Apply and Unpack breaks the lookup. Surface the partial restore
             # so the user knows UVs were rolled back but the material was
-            # not (a later SPEC may switch the snapshot to a PointerProperty
+            # not (a later spec may switch the snapshot to a PointerProperty
             # so renames track automatically).
             report_warn(
                 self,

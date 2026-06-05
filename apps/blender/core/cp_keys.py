@@ -1,4 +1,4 @@
-"""Custom Property key registry (the code-modularity work).
+"""Custom Property key registry.
 
 Single source of truth for every Blender Custom Property key the
 Proscenio addon reads or writes. The literal strings used to be

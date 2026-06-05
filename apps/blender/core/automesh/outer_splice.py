@@ -1,4 +1,4 @@
-"""Splice extend strokes into the outer contour (the weight-paint-automesh spec ).
+"""Splice extend strokes into the outer contour (the weight-paint-automesh).
 
 Used by Stage 2 EDIT_OUTLINE to extend the auto-walker silhouette with
 artist-drawn paths. Pure module: no bpy / mathutils.

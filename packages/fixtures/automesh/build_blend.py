@@ -1,4 +1,4 @@
-"""Assemble the automesh .blend (the weight-paint-automesh first cut fixture).
+"""Assemble the automesh .blend.
 
 Run with::
 
@@ -9,7 +9,7 @@ Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
 - 3-bone vertical hand armature (``automesh.hand_rig``:
   ``wrist`` -> ``palm`` -> ``fingertip``) positioned along the Z
   axis at X=-3 so the chain follows the hand's natural deformation
-  direction (palm flex + finger bend). Exercises the weight-paint-automesh spec D15
+  direction (palm flex + finger bend). Exercises the weight-paint-automesh density-under-bones path
   density-under-bones end-to-end (the hand mesh gets thicker
   triangulation along the chain when automesh runs against the
   picker).

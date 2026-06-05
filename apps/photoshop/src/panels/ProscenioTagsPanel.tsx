@@ -1,4 +1,4 @@
-// the photoshop tag system the photoshop-tag work.3 + 11.4: Tags + Validate panel. Lists the active
+// the photoshop tag system: Tags + Validate panel. Lists the active
 // document's layer tree with bracket-tag controls per row and shows
 // the live planner warnings / skipped layers underneath. Tag writes
 // flow through `useTagTree.rename` -> `io/layer-rename.ts` ->

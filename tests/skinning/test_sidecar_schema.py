@@ -1,4 +1,4 @@
-"""Pure tests for WeightSidecar schema (the bind work, Q3)."""
+"""Pure tests for WeightSidecar schema."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """Apply bind weights to a bpy mesh + stamp the populated WeightSidecar.
 
-Wipes every vertex group EXCEPT ``proscenio_base_sprite`` (D3 UV
+Wipes every vertex group EXCEPT ``proscenio_base_sprite`` (UV
 anchor must survive), recreates one group per deform bone, then
 populates per-vert weights from the chosen ``BindMode``. After
 weights succeed, builds a populated ``WeightSidecar`` via
@@ -117,7 +117,7 @@ def _collect_envelope_radii(armature: bpy.types.Object) -> dict[str, float]:
     """Read per-bone ``proscenio_envelope_radius`` Custom Property.
 
     Missing keys default to ``_ENVELOPE_DEFAULT_RADIUS`` (1.0).
-    Edit Weights modal (the paint work) becomes the UI surface
+    Edit Weights modal becomes the UI surface
     for these radii; bind alone exposes them via the manual
     Custom Property editor.
     """
@@ -147,7 +147,7 @@ def _apply_bone_mode_overrides(
     falloff_power: float,
     effective_max: float,
 ) -> dict[str, list[float]]:
-    """Apply per-bone SOFT/HARD overrides (D16) by substituting bone columns.
+    """Apply per-bone SOFT/HARD overrides by substituting bone columns.
 
     Returns ``weights`` unchanged when no overrides are stored on ``obj``.
     When at least one bone differs from the operator default, computes the
@@ -215,7 +215,7 @@ def apply_bind(
     ``groups_wiped``. BONE_HEAT dispatches to ``_apply_bone_heat``
     which delegates to Blender's parent_set ARMATURE_AUTO; other
     modes use the planar proximity / envelope / single-nearest /
-    empty algorithms. Per-bone SOFT/HARD overrides (D16) are applied
+    empty algorithms. Per-bone SOFT/HARD overrides are applied
     after the primary matrix is computed.
     """
     if mode == "BONE_HEAT":

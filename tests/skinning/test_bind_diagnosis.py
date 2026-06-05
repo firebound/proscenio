@@ -1,4 +1,4 @@
-"""Pure tests for bind diagnoses (the bind work, D11)."""
+"""Pure tests for bind diagnoses."""
 
 from __future__ import annotations
 

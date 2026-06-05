@@ -1,4 +1,4 @@
-"""Proscenio ``.proscenio`` writer (the code-modularity work).
+"""Proscenio ``.proscenio`` writer.
 
 Walks the active Blender scene and emits a JSON document conforming to
 ``packages/models/schemas/proscenio.schema.json``.
@@ -22,13 +22,13 @@ Vertex Y in mesh local space is dropped: sprite planes are assumed to
 be authored as flat quads in Blender XY local then rotated 90 deg on X
 by the user so they live in the XZ world plane.
 
-Module organization (the code-modularity work):
+Module organization:
 
 - ``scene_discovery.py`` find armature, sprite meshes, atlas image
 - ``skeleton.py``        coord conversion + bone world transforms + rest-local dataclass
 - ``sprites.py``         polygon body + sprite_frame metadata + weights
-- ``slots.py``           the slot system D8 slot Empty walker
-- ``slot_animations.py`` the slot system D5 slot_attachment track emission
+- ``slots.py``           the slot system slot Empty walker
+- ``slot_animations.py`` the slot system slot_attachment track emission
 - ``animations.py``      bone_transform track emission
 
 Public API: ``export(filepath, *, pixels_per_unit)`` - the only

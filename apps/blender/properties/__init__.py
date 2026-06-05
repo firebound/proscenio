@@ -1,4 +1,4 @@
-"""Proscenio property groups (the authoring panel, repackaged in the code-modularity work).
+"""Proscenio property groups (the authoring panel).
 
 These property groups expose typed widgets for the addon panel. Their
 values round-trip with the legacy Custom Properties on the same data
@@ -15,7 +15,7 @@ Contract:
 - On ``register()``, every existing Custom Property is hydrated into
   the PropertyGroup so legacy data shows up in the new UI.
 
-Submodules per concern (wave 9.10 split):
+Submodules per concern (the code-modularity split):
 
 - ``object_props.py``     ``ProscenioObjectProps`` + EnumProperty items
                           tuples (sprite type, region mode, driver target,

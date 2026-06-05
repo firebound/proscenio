@@ -624,7 +624,7 @@ Quando UXP migration shippa:
 - [ ] `03_blender_setup/doll_rigged.blend` → Export Godot → `doll.proscenio`
 - [ ] `doll.proscenio` → Godot import → `doll.scn`
 - [ ] Wrapper scene plays → doll renderiza no editor + runtime
-- [ ] `doll_slots.blend` → mesmo pipeline → brow_raise animation visível
+- [ ] `slot_swap.blend` / `slot_cycle.blend` → mesmo pipeline → slot swap/cycle animation visível
 
 ### 4.3 simple_psd
 

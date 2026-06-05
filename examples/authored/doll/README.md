@@ -39,7 +39,7 @@ Each subfolder owns its own `README.md` documenting **what it consumes**, **what
     export/doll_tagged.photoshop_exported.json + export/images/<...>.png
         |
         v
-[03_blender_setup/]       doll_rigged.blend   (gitignored; regenerable)
+[03_blender_setup/]       doll_rigged.blend   (tracked; hand-authored rig/weights/actions)
         |   (Proscenio Blender importer + manual rig/weights/actions)
         |
         |   (Proscenio Blender exporter → Godot project)

@@ -19,7 +19,7 @@ For component-specific setup, see the corresponding skill in [`.ai/skills/`](.ai
 ## PR rules
 
 - One component per PR (Photoshop, Blender, Godot).
-  - Exception: format-version bumps cross all components by definition.
+  - Exception: format_version bumps cross all components by definition.
 - Conventional Commits in commit messages and PR titles.
 - A schema change requires a `format_version` bump in [`packages/models/schemas/proscenio.schema.json`](packages/models/schemas/proscenio.schema.json) and a migration note in the PR body.
 

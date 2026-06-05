@@ -1,4 +1,4 @@
-"""Unit tests for the code-modularity work - core.cp_keys constants.
+"""Unit tests for the code-modularity work - core._shared.cp_keys constants.
 
 Pure pytest, no Blender. Confirms every constant is a non-empty string
 and they are pairwise distinct (no two PG fields point at the same CP
@@ -13,7 +13,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core import cp_keys  # noqa: E402
+from core._shared import cp_keys  # noqa: E402
 
 
 def _public_keys() -> dict[str, str]:

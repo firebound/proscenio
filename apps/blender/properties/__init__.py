@@ -45,7 +45,7 @@ from bpy.props import PointerProperty
 from bpy.types import Object as _Object
 from bpy.types import Scene
 
-from ..core.hydrate import (  # type: ignore[import-not-found]
+from ..core._shared.hydrate import (  # type: ignore[import-not-found]
     OBJECT_PROPS as _OBJECT_PROPS,  # noqa: F401
 )
 from ._handlers import (

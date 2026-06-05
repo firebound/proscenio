@@ -1,4 +1,4 @@
-"""Unit tests for the code-modularity work - core.props_access helpers.
+"""Unit tests for the code-modularity work - core._shared.props_access helpers.
 
 Pure pytest, no Blender. Uses SimpleNamespace mocks shaped to mirror
 the real Blender Context/Object/PropertyGroup so the helpers exercise
@@ -14,7 +14,7 @@ from types import SimpleNamespace
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.props_access import object_props, scene_props  # noqa: E402
+from core._shared.props_access import object_props, scene_props  # noqa: E402
 
 
 def test_scene_props_returns_pg() -> None:

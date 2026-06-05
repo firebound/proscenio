@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
-from ...core.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):

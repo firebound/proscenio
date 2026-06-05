@@ -7,7 +7,11 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
-from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 
 
 def _default_pose_asset_name(armature: bpy.types.Object, context: bpy.types.Context) -> str:

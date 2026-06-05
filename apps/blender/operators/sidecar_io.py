@@ -9,6 +9,8 @@ import bpy
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
+from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
+
 
 class PROSCENIO_OT_export_sidecar(bpy.types.Operator, ExportHelper):
     bl_idname = "proscenio.export_sidecar"
@@ -25,14 +27,12 @@ class PROSCENIO_OT_export_sidecar(bpy.types.Operator, ExportHelper):
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
         return (
-            obj is not None
-            and obj.type == "MESH"
-            and obj.get("proscenio_weight_sidecar") is not None
+            obj is not None and obj.type == "MESH" and obj.get(PROSCENIO_WEIGHT_SIDECAR) is not None
         )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
-        payload = obj["proscenio_weight_sidecar"]
+        payload = obj[PROSCENIO_WEIGHT_SIDECAR]
         try:
             text = payload if isinstance(payload, str) else json.dumps(payload)
         except (TypeError, ValueError) as exc:
@@ -83,7 +83,7 @@ class PROSCENIO_OT_import_sidecar(bpy.types.Operator, ImportHelper):
         except ValueError as exc:
             self.report({"WARNING"}, f"Invalid sidecar: {exc}")
             return {"CANCELLED"}
-        context.active_object["proscenio_weight_sidecar"] = payload
+        context.active_object[PROSCENIO_WEIGHT_SIDECAR] = payload
         self.report({"INFO"}, f"Sidecar imported from {self.filepath}")
         return {"FINISHED"}
 

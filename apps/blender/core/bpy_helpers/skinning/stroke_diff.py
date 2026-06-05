@@ -12,10 +12,9 @@ from __future__ import annotations
 
 import bpy
 
+from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
 from ...skinning.sidecar_schema import SidecarEntry, WeightSidecar, to_json
 from ...skinning.weight_diff import diff_weights
-
-_SIDECAR_KEY = "proscenio_weight_sidecar"
 
 
 class StrokeDiffTracker:

@@ -13,7 +13,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.slot_emit import SlotInput, build_slot, build_slots  # noqa: E402
+from core.slot.slot_emit import SlotInput, build_slot, build_slots  # noqa: E402
 
 
 def test_minimal_slot_emits_name_and_attachments() -> None:

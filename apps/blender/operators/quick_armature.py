@@ -18,43 +18,49 @@ import bpy
 from bpy.props import BoolProperty
 from mathutils import Quaternion, Vector
 
-from ..core.bpy_helpers.modal_overlay import (  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
+from ..core._shared.viewport_state import is_front_ortho  # type: ignore[import-not-found]
+from ..core.armature.quick_armature_math import (  # type: ignore[import-not-found]
+    DEFAULT_NAME_PREFIX as _DEFAULT_NAME_PREFIX_CORE,
+)
+from ..core.armature.quick_armature_math import (
+    AxisLock,
+    PressMode,
+)
+from ..core.armature.quick_armature_math import (
+    apply_axis_lock as _apply_axis_lock,
+)
+from ..core.armature.quick_armature_math import (
+    format_bone_name as _format_bone_name,
+)
+from ..core.armature.quick_armature_math import (
+    resolve_press_mode as _resolve_press_mode,
+)
+from ..core.armature.quick_armature_math import (
+    resolve_press_mode_label as _resolve_press_mode_label,
+)
+from ..core.armature.quick_armature_math import (
+    sanitize_prefix as _sanitize_prefix,
+)
+from ..core.armature.quick_armature_math import (
+    snap_world_point_xz as _snap_world_point_xz,
+)
+from ..core.armature.skeleton_target import (
+    resolve_skeleton_target,  # type: ignore[import-not-found]
+)
+from ..core.bpy_helpers._shared.modal_overlay import (  # type: ignore[import-not-found]
     draw_circle_3d,
     draw_dashed_line_3d,
     draw_line_3d,
     draw_text_panel_2d,
 )
-from ..core.bpy_helpers.viewport_math import (  # type: ignore[import-not-found]
+from ..core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     mouse_event_to_plane_point,
 )
-from ..core.quick_armature_math import (  # type: ignore[import-not-found]
-    DEFAULT_NAME_PREFIX as _DEFAULT_NAME_PREFIX_CORE,
-)
-from ..core.quick_armature_math import (
-    AxisLock,
-    PressMode,
-)
-from ..core.quick_armature_math import (
-    apply_axis_lock as _apply_axis_lock,
-)
-from ..core.quick_armature_math import (
-    format_bone_name as _format_bone_name,
-)
-from ..core.quick_armature_math import (
-    resolve_press_mode as _resolve_press_mode,
-)
-from ..core.quick_armature_math import (
-    resolve_press_mode_label as _resolve_press_mode_label,
-)
-from ..core.quick_armature_math import (
-    sanitize_prefix as _sanitize_prefix,
-)
-from ..core.quick_armature_math import (
-    snap_world_point_xz as _snap_world_point_xz,
-)
-from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
-from ..core.skeleton_target import resolve_skeleton_target  # type: ignore[import-not-found]
-from ..core.viewport_state import is_front_ortho  # type: ignore[import-not-found]
 
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 

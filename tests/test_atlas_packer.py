@@ -23,7 +23,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.atlas_packer import Rect, pack  # noqa: E402
+from core.atlas.atlas_packer import Rect, pack  # noqa: E402
 
 
 def _overlaps(a: Rect, b: Rect) -> bool:

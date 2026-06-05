@@ -23,7 +23,8 @@ from typing import Literal
 
 import bpy
 
-from ...core import psd_manifest
+from ...core._shared.cp_keys import PROSCENIO_IMPORT_ORIGIN
+from ...core.psd import psd_manifest
 from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
 from .planes import stamp_polygon, stamp_sprite_frame
 
@@ -106,7 +107,7 @@ def _anchor_meshes_at_feet(
     lowest_z: float | None = None
     for obj in meshes:
         layer = layer_by_name.get(obj.name) or layer_by_name.get(
-            (obj.get("proscenio_import_origin") or "").removeprefix("psd:")
+            (obj.get(PROSCENIO_IMPORT_ORIGIN) or "").removeprefix("psd:")
         )
         if layer is None:
             continue

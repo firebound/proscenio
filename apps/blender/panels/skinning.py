@@ -17,6 +17,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
 from ._helpers import draw_subpanel_header
 
 
@@ -238,7 +239,7 @@ def _draw_edit_weights_box(
     )
     if obj is None or obj.type != "MESH":
         return
-    if obj.get("proscenio_weight_sidecar") is None:
+    if obj.get(PROSCENIO_WEIGHT_SIDECAR) is None:
         box.label(text="bind first to enable", icon="INFO")
 
     box.label(text="Brush curve preset:")
@@ -266,7 +267,7 @@ def _edit_weights_button_enabled(
         return False
     if len(obj.vertex_groups) == 0:
         return False
-    return obj.get("proscenio_weight_sidecar") is not None
+    return obj.get(PROSCENIO_WEIGHT_SIDECAR) is not None
 
 
 def _draw_weight_transfer_box(layout: bpy.types.UILayout) -> None:
@@ -321,7 +322,7 @@ def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
     """Parse the sidecar JSON + count entries by provenance. None = no sidecar."""
     if obj is None or obj.type != "MESH":
         return None
-    payload = obj.get("proscenio_weight_sidecar")
+    payload = obj.get(PROSCENIO_WEIGHT_SIDECAR)
     if payload is None:
         return None
     try:
@@ -348,7 +349,7 @@ def _draw_sidecar_io_box(
     row = box.row(align=True)
     row.operator("proscenio.export_sidecar", text="Export", icon="EXPORT")
     row.operator("proscenio.import_sidecar", text="Import", icon="IMPORT")
-    if obj is not None and obj.type == "MESH" and obj.get("proscenio_weight_sidecar") is None:
+    if obj is not None and obj.type == "MESH" and obj.get(PROSCENIO_WEIGHT_SIDECAR) is None:
         box.label(text="no sidecar yet (run Bind first)", icon="INFO")
 
 

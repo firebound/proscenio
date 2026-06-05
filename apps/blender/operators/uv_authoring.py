@@ -8,8 +8,8 @@ from typing import ClassVar
 import bpy
 from bpy.props import FloatProperty
 
-from ..core.props_access import object_props  # type: ignore[import-not-found]
-from ..core.report import report_info, report_warn  # type: ignore[import-not-found]
+from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
+from ..core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):

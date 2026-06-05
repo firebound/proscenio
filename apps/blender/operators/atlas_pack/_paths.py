@@ -8,7 +8,7 @@ from typing import Any
 
 import bpy
 
-from ...core.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
 
 
 def first_texture_image_name(mat: bpy.types.Material) -> str:

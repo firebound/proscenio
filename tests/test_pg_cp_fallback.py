@@ -1,4 +1,4 @@
-"""Unit tests for the code-modularity work - core.pg_cp_fallback helpers.
+"""Unit tests for the code-modularity work - core._shared.pg_cp_fallback helpers.
 
 Pure pytest, no Blender. The fallback contract: PropertyGroup field
 wins, Custom Property literal as legacy fallback, ``default`` as last
@@ -15,7 +15,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.pg_cp_fallback import read_bool_flag, read_field  # noqa: E402
+from core._shared.pg_cp_fallback import read_bool_flag, read_field  # noqa: E402
 
 
 class FakeObj:

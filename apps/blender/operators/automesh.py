@@ -28,6 +28,11 @@ from bpy.props import (
     IntProperty,
 )
 
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     _STAGE_BY_INDEX,
     AutomeshBuildParams,
@@ -39,11 +44,6 @@ from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
 from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     maybe_post_regen_reproject,
     maybe_pre_regen_snapshot,
-)
-from ..core.report import (  # type: ignore[import-not-found]
-    report_error,
-    report_info,
-    report_warn,
 )
 
 if TYPE_CHECKING:

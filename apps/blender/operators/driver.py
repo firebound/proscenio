@@ -7,8 +7,8 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, StringProperty
 
-from ..core.props_access import object_props  # type: ignore[import-not-found]
-from ..core.report import report_error, report_info  # type: ignore[import-not-found]
+from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
+from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
 
 _DRIVER_VAR_NAME = "var"
 _DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (

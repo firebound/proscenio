@@ -14,6 +14,13 @@ from typing import ClassVar
 
 import bpy
 
+from ..core._shared.cp_keys import (  # type: ignore[import-not-found]
+    PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
+)
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+)
 from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     StrokeDiffTracker,
     apply_paint_preset,
@@ -25,15 +32,9 @@ from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     snapshot_paint_preset,
     unregister_handler,
 )
-from ..core.report import (  # type: ignore[import-not-found]
-    report_error,
-    report_info,
-)
 from ..core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     from_json,
 )
-
-_SIDECAR_KEY = "proscenio_weight_sidecar"
 
 
 class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):

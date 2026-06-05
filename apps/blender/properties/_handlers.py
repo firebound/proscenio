@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..core.hydrate import hydrate_object  # type: ignore[import-not-found]
+from ..core._shared.hydrate import hydrate_object  # type: ignore[import-not-found]
 from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 
 

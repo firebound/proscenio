@@ -6,8 +6,12 @@ from typing import ClassVar
 
 import bpy
 
-from ...core.props_access import scene_props  # type: ignore[import-not-found]
-from ...core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ...core._shared.props_access import scene_props  # type: ignore[import-not-found]
+from ...core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 from ._paths import packed_atlas_paths
 
 
@@ -31,11 +35,11 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
         return bool(bpy.data.filepath and context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core import atlas_packer  # type: ignore[import-not-found]
-        from ...core.bpy_helpers.atlas_collect import (  # type: ignore[import-not-found]
+        from ...core.atlas import atlas_packer  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.atlas.atlas_collect import (  # type: ignore[import-not-found]
             collect_source_images,
         )
-        from ...core.bpy_helpers.atlas_compose import (  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.atlas.atlas_compose import (  # type: ignore[import-not-found]
             compose_atlas,
             write_manifest,
         )

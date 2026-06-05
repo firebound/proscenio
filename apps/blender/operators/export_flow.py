@@ -10,8 +10,12 @@ from bpy.props import FloatProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
-from ..core.props_access import scene_props  # type: ignore[import-not-found]
-from ..core.report import report_error, report_info, report_warn  # type: ignore[import-not-found]
+from ..core._shared.props_access import scene_props  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 
 
 def _populate_validation_results(scene: bpy.types.Scene, issues: list[validation.Issue]) -> None:

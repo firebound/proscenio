@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import bpy
 
+from ..._shared.cp_keys import PROSCENIO_MIRROR_X as _MIRROR_FLAG_KEY
 from ...skinning.paint_preset_2d import PaintPresetSnapshot, build_target_preset
-
-_MIRROR_FLAG_KEY = "proscenio_mirror_x"
 
 
 def snapshot_paint_preset(context: bpy.types.Context) -> PaintPresetSnapshot:

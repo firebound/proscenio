@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
-from ..core.feature_status import (  # type: ignore[import-not-found]
+from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     STATUS_BADGES,
     FeatureStatus,
 )

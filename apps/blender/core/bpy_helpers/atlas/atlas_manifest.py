@@ -11,7 +11,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..atlas_packer import Rect
+from ...atlas.atlas_packer import Rect
 
 
 @dataclass(frozen=True)

@@ -1,21 +1,21 @@
-"""Slot emission - bpy walker delegating to core/slot_emit."""
+"""Slot emission - bpy walker delegating to core/slot/slot_emit."""
 
 from __future__ import annotations
 
 import bpy
 from proscenio_models import Slot
 
-from ....core._bpy_compat import iter_objects
-from ....core.cp_keys import PROSCENIO_IS_SLOT, PROSCENIO_SLOT_DEFAULT
-from ....core.pg_cp_fallback import read_bool_flag
-from ....core.slot_emit import SlotInput, build_slots
+from ....core._shared.cp_keys import PROSCENIO_IS_SLOT, PROSCENIO_SLOT_DEFAULT
+from ....core._shared.pg_cp_fallback import read_bool_flag
+from ....core.bpy_helpers._shared._bpy_compat import iter_objects
+from ....core.slot.slot_emit import SlotInput, build_slots
 
 
 def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
     """Walk Empty objects flagged with ``proscenio.is_slot`` and emit slots[].
 
     Bpy walker - delegates the schema-shaped projection to
-    ``core.slot_emit.build_slots`` so the slot logic can be exercised
+    ``core.slot.slot_emit.build_slots`` so the slot logic can be exercised
     under plain pytest. Per the slot system, ``bone`` is the Empty's
     ``parent_bone`` when ``parent_type == "BONE"``. Attachments
     are mesh names only - the meshes themselves still emit normally

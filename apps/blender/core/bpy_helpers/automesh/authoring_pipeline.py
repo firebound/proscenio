@@ -13,6 +13,15 @@ from collections.abc import Callable
 import bpy
 from mathutils import Vector
 
+from ..._shared.cp_keys import (
+    PROSCENIO_USER_OUTER_STROKES as _EDIT_OUTLINE_STROKES_KEY,
+)
+from ..._shared.cp_keys import (
+    PROSCENIO_USER_STEINERS as _EDIT_INTERIOR_POINTS_KEY,
+)
+from ..._shared.cp_keys import (
+    PROSCENIO_USER_STROKES as _USER_STROKES_KEY,
+)
 from ...automesh import (
     BoneSegment2D,
     arc_length_resample,
@@ -33,10 +42,6 @@ from .bridge import (
     pixel_contour_to_world,
     read_alpha_grid,
 )
-
-_EDIT_INTERIOR_POINTS_KEY = "proscenio_user_steiners"
-_USER_STROKES_KEY = "proscenio_user_strokes"
-_EDIT_OUTLINE_STROKES_KEY = "proscenio_user_outer_strokes"
 
 # Local imports to keep this module's top-level free of optional
 # bpy-skinning helper coupling for callers that only need the

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import bpy
 
+from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
 from ...skinning.sidecar_schema import (
     SIDECAR_VERSION,
     SidecarEntry,
@@ -22,8 +23,6 @@ from ...skinning.sidecar_schema import (
 )
 from ...skinning.weight_reproject import reproject_entries
 from .sidecar_io import apply_sidecar, per_vert_uv_anchors, snapshot_sidecar
-
-_SIDECAR_KEY = "proscenio_weight_sidecar"
 
 
 def maybe_pre_regen_snapshot(

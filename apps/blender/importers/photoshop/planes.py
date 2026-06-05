@@ -9,11 +9,14 @@ manifest's ``pixels_per_unit``::
     mesh_size.x   = px_w / pixels_per_unit
     mesh_size.z   = px_h / pixels_per_unit
 
-Re-import semantics (D5): existing meshes are identified by
-``proscenio.import_origin == "psd:<layer_name>"`` and re-used (mesh
-data + material refreshed; transform / parenting / weights left
-alone). Meshes whose layer no longer appears in the manifest are
-left for the user to clean up manually.
+Re-import semantics (D5): existing meshes are identified by the
+``proscenio_import_origin == "psd:<layer_name>"`` custom property and
+re-used in place. Object-level data (transform, parenting,
+vertex-group names, custom properties) is left alone, but the mesh is
+rebuilt from the manifest art via ``clear_geometry`` + a fresh quad,
+so vertex data - painted weights and any automesh densification
+included - is NOT preserved. Meshes whose layer no longer appears in
+the manifest are left for the user to clean up manually.
 """
 
 from __future__ import annotations
@@ -215,7 +218,7 @@ def _ensure_mesh(
     size: tuple[float, float],
     geometry_offset: tuple[float, float] = (0.0, 0.0),
 ) -> bpy.types.Object:
-    """Reuse an existing mesh by ``proscenio.import_origin`` tag, else create.
+    """Reuse an existing mesh by ``proscenio_import_origin`` tag, else create.
 
     Mesh data + UVs are rewritten on every import so size changes
     propagate. ``geometry_offset`` shifts the quad in local space so

@@ -21,7 +21,7 @@ description: UXP plugin for Photoshop - layer slicing and manifest JSON via Type
 ```text
 src/
 |-- domain/        pure logic + types (planner, layer, manifest, tag parser/writer)
-|-- adapters/      PS DOM -> domain mappers
+|-- adapters/      PS DOM → domain mappers
 |-- io/            UXP filesystem, ajv, manifest IO, XMP, PNG writes
 |-- controllers/   orchestrators (export-flow, import-flow, PanelController)
 |-- hooks/         React state hooks (one per useXxx file)
@@ -30,7 +30,7 @@ src/
 |-- index.tsx      plugin entry
 ```
 
-Layer direction: `panels` -> `hooks` / `controllers` -> `domain` + `io` -> `adapters`. `domain/` never imports UXP APIs.
+Layer direction: `panels` → `hooks` / `controllers` → `domain` + `io` → `adapters`. `domain/` never imports UXP APIs.
 
 ## Output format
 

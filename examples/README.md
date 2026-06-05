@@ -26,9 +26,9 @@ See [`generated/psd_to_blender/README.md`](generated/psd_to_blender/README.md) f
 
 ### `generated/blender_to_godot/` - Blender-to-Godot scene pipeline
 
-Empty for new entries today; existing Blender -> Godot fixtures still live at the legacy flat layout (below). See [`generated/blender_to_godot/README.md`](generated/blender_to_godot/README.md) for the deferred-migration rationale.
+Empty for new entries today; existing Blender → Godot fixtures still live at the legacy flat layout (below). See [`generated/blender_to_godot/README.md`](generated/blender_to_godot/README.md) for the deferred-migration rationale.
 
-### Legacy flat layout (Blender -> Godot fixtures)
+### Legacy flat layout (Blender → Godot fixtures)
 
 | Fixture | Feature exercised |
 |---|---|

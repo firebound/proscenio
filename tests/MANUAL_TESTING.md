@@ -25,7 +25,7 @@ Validam que addon carrega + workflow básico funciona.
 - [x] **Addon load**: Edit > Preferences > Add-ons > "proscenio" check. Sem warnings de import.
 - [x] **Addon reload**: Edit > Preferences > addon disable + enable. Após pycache clear + restart, registra limpo em cena fresh, doll.blend, doll_workbench.blend.
 - [x] **Reload Scripts** (F3 > "Reload Scripts" ou Code editor): nenhuma exception no console.
-- [x] **Operator dispatch**: Diagnostics panel > "Run Smoke Test" -> INFO bar mostra "Proscenio smoke test OK", console imprime mesma string.
+- [x] **Operator dispatch**: Diagnostics panel > "Run Smoke Test" → INFO bar mostra "Proscenio smoke test OK", console imprime mesma string.
 - [x] **Properties registered**: abrir `examples/authored/doll/doll_workbench.blend`, selecionar mesh, ver "Proscenio" panel no Item tab da N-panel.
 - [x] **Scene props**: Scene PG não espelha pra CPs (by design). Verificar via panel surface: Export panel mostra `pixels_per_unit` field + `last_export_path` text; Atlas panel mostra pack settings.
 - [~] **PG hydration**: abrir um .blend antigo (legacy) com Custom Properties manuais (`proscenio_type=sprite_frame`) - PG inicializa com mesmo valor. Deferred - testar quando produzir cena from-scratch e validar populate.
@@ -39,7 +39,7 @@ Workbench file recomendado: `examples/authored/doll/doll_workbench.blend` (clone
 ### 1.1 Active Sprite panel
 
 - [x] sprite_type dropdown: polygon <-> sprite_frame muda body do panel
-- [x] hframes/vframes/frame fields: edit -> Custom Property mirror atualiza
+- [x] hframes/vframes/frame fields: edit → Custom Property mirror atualiza
 - [x] Region mode auto: hint label "computed from UV bounds at export"
 - [x] Region mode manual: 4 floats (region_x/y/w/h) editáveis
 - [!] "Snap to UV bounds" button (polygon, manual mode): preenche os 4 floats baseado em UV. **Bug**: edit mode crasha (`IndexError` em `uv_layer.data[li]`, faltam guards de poll/contexto). Object mode funciona se UVs forem válidas. (Doll baseline tem UVs degeneradas em (0,0) - esperado para snap retornar bbox vazio nesse caso.)
@@ -84,9 +84,9 @@ Workbench file: `examples/generated/slot_swap/slot_swap.blend` (arm + slot Empty
 
 Em workbench limpo:
 
-- [x] **Path A**: pose mode + bone selecionado -> Skeleton panel > "Create Slot" -> Empty `<bone>.slot` parent_type=BONE (testado em slot_swap_workbench, criou `arm.slot`)
-- [!] **Path B**: object mode + N meshes selecionadas -> "Create Slot" -> Empty wraps meshes, parent herdado do seed mesh. **Bug**: novo Empty fica em posição errada quando seed mesh já tem parent (BUGS_FOUND.md). Reparenting funciona, posicionamento não.
-- [x] DnD mesh -> slot Empty no outliner: reparenteia, attachment aparece no panel. (User report: plain drag não funcionou, precisou Ctrl+P ou Shift+drag em Blender 5.1.1 -- divergente da doc oficial.)
+- [x] **Path A**: pose mode + bone selecionado → Skeleton panel > "Create Slot" → Empty `<bone>.slot` parent_type=BONE (testado em slot_swap_workbench, criou `arm.slot`)
+- [!] **Path B**: object mode + N meshes selecionadas → "Create Slot" → Empty wraps meshes, parent herdado do seed mesh. **Bug**: novo Empty fica em posição errada quando seed mesh já tem parent (BUGS_FOUND.md). Reparenting funciona, posicionamento não.
+- [x] DnD mesh → slot Empty no outliner: reparenteia, attachment aparece no panel. (User report: plain drag não funcionou, precisou Ctrl+P ou Shift+drag em Blender 5.1.1 -- divergente da doc oficial.)
 
 ### 1.6 Slot validation
 
@@ -97,8 +97,8 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 - [~] Divergent bone: slot Empty parent_bone=`forearm.L`, child mesh parent_bone=`forearm.R`: warning amarelo. Deferred -- slot_swap só tem 1 bone, precisa fixture com 2+ bones pra testar.
 - [!] Bone-transform keys em slot child: validator NÃO detecta. Insert Keyframe em location do club (filho de slot Empty), nenhum warning. Bug em BUGS_FOUND.md.
 - [!] Slot attachments flaggadas como "no parent bone" (false positive). **Bug:** validator dispara em attachment que tá legitimamente parented ao slot Empty (que por sua vez é parented ao bone). Bug em BUGS_FOUND.md.
-- [~] Validate button -> resultados aparecem no Validation subpanel. **UI feedback:** botão Validate mora no Export panel, não no Validation panel - confunde usuário. Feedback em UI_FEEDBACK.md.
-- [~] Click issue na Validation panel -> seleciona objeto offending. Funciona via outliner, mas viewport não reflete se objeto está com `hide_viewport=True` (caso comum em slot non-default attachments). Feedback em UI_FEEDBACK.md.
+- [~] Validate button → resultados aparecem no Validation subpanel. **UI feedback:** botão Validate mora no Export panel, não no Validation panel - confunde usuário. Feedback em UI_FEEDBACK.md.
+- [~] Click issue na Validation panel → seleciona objeto offending. Funciona via outliner, mas viewport não reflete se objeto está com `hide_viewport=True` (caso comum em slot non-default attachments). Feedback em UI_FEEDBACK.md.
 
 ### 1.7 Outliner panel
 
@@ -106,13 +106,13 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 - [!] Filtro substring funciona. **Bug:** campo nativo do UIList (rodapé `▼`) não filtra - só o campo do topo (ícone VIEWZOOM, `scene_props.outliner_filter`) funciona. `filter_items` ignora `self.filter_name`. Bug em BUGS_FOUND.md.
 - [x] Favorites toggle (star) persiste no save (`is_outliner_favorite` é Object PG)
 - [x] "Show favorites only" filtra corretamente (botão SOLO_ON ao lado do search no header)
-- [x] Click linha -> seleciona no scene + active object troca (`proscenio.select_outliner_object` operator dispara no row click)
+- [x] Click linha → seleciona no scene + active object troca (`proscenio.select_outliner_object` operator dispara no row click)
 - [x] Categorização visual via ícones distintos: `LINK_BLEND` (slot), `OBJECT_DATAMODE` (attachment indent `-> name`), `MESH_DATA` (sprite - polygon e sprite_frame com mesmo ícone, sem diferenciação interna), `ARMATURE_DATA` (armature, prefixo `[arm]`). Validado criando slot em workbench dedicado.
 
 ### 1.8 Skeleton panel
 
 - [x] Lista bones do active armature (header `Armature 'doll.rig' - N bone(s)` + UIList com nome / parent / length). Pega `armatures[0]` da scene (não active object); cena com >1 armature mostra warning.
-- [!] Click bone -> seleciona em pose mode. **Gap:** `active_bone_index` é IntProperty puro sem `update=` callback; row click só atualiza index do PG, não sincroniza viewport selection. Bug em BUGS_FOUND.md.
+- [!] Click bone → seleciona em pose mode. **Gap:** `active_bone_index` é IntProperty puro sem `update=` callback; row click só atualiza index do PG, não sincroniza viewport selection. Bug em BUGS_FOUND.md.
 - [x] Active bone index sticky entre saves (Scene PG persiste no .blend)
 
 ### 1.9 Animation panel
@@ -131,33 +131,33 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 - [x] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite. **Pré-condição obrigatória:** Object Mode - em Edit Mode silenciosamente skip todos os sprites (bug em BUGS_FOUND.md). Operator deveria ter poll() guard.
 - [x] material_isolated=True: sprite_5 manteve `sprite_5.mat` (não foi trocado pelo shared); Image Texture do material trocou pra atlas packed; outros 8 sprites linkados a `Proscenio.PackedAtlas` shared (8 users). Confirmado via Material Slots dropdown: shared mostra 8 users, sprite_5.mat sem prefixo "0" (ainda em uso), outros sprite_N.mat com prefixo "0" (órfãos).
 - [x] "Unpack": restaura UVs originais (consome + remove layer `<active>.pre_pack`) + cada sprite_N volta pra `sprite_N.mat`. `Proscenio.PackedAtlas` fica orphan (0 users) - esperado. `proscenio_pre_pack` CP deletada.
-- [!] Ciclo Pack > Apply > Pack > Apply: estado **NÃO idempotente**. Cada Apply consecutivo remapeia UVs como se estivessem em source-image space, mas após primeiro Apply elas já estão em atlas space -> shrink iterativo (UVs convergem pra ponto único no slot). Pack em si é idempotente (item 2); a quebra é no Apply re-clickado. Bug em BUGS_FOUND.md.
-- [x] pack_padding_px setting respeitado. pack_padding_px=8 -> atlas.json `"padding": 8`, stride entre sprites na mesma coluna passa de 36 (padding=2) pra 48 px (padding=8). Gap visível no atlas.png.
+- [!] Ciclo Pack > Apply > Pack > Apply: estado **NÃO idempotente**. Cada Apply consecutivo remapeia UVs como se estivessem em source-image space, mas após primeiro Apply elas já estão em atlas space → shrink iterativo (UVs convergem pra ponto único no slot). Pack em si é idempotente (item 2); a quebra é no Apply re-clickado. Bug em BUGS_FOUND.md.
+- [x] pack_padding_px setting respeitado. pack_padding_px=8 → atlas.json `"padding": 8`, stride entre sprites na mesma coluna passa de 36 (padding=2) pra 48 px (padding=8). Gap visível no atlas.png.
 - [x] pack_max_size: cap=64 com 9 sprites 32x32 - pack falha graciosamente. ERROR bar: `Proscenio: pack failed - 9 sprite(s) do not fit in 64x64 px atlas.` Sem crash. Atlas files do item 8 ficam intactos.
 - [x] pack_pot=True: atlas resultante 256x256 (POT, 2^8). Coincide com tamanho pot=False porque packer não shrinka start_size pra fit tight - 9 sprites caberiam em ~96x96, mas start_size default é 256. POT semântica preservada (atlas é POT); para ver round-up real precisaria de mais sprites empurrando além de start_size.
 
 ### 1.11 Validation panel
 
 - [x] "Validate" button: roda `validation.validate_export(scene)`, popula `validation_results`, seta `validation_ran=True`. Botão mora no Export panel (já loggado em UI_FEEDBACK como reposicionar pra Validation panel).
-- [x] Errors em vermelho (`row.alert = True`), warnings em cinza (icon INFO). Confirmado: vertex_group inválido em sprite_1 -> row vermelho; sprite_2 unparented -> row cinza com icon INFO.
-- [x] Click issue: row click invoca `proscenio.select_issue_object` -> sprite offending vira active object no 3D viewport. Validado em ambos error e warning rows.
+- [x] Errors em vermelho (`row.alert = True`), warnings em cinza (icon INFO). Confirmado: vertex_group inválido em sprite_1 → row vermelho; sprite_2 unparented → row cinza com icon INFO.
+- [x] Click issue: row click invoca `proscenio.select_issue_object` → sprite offending vira active object no 3D viewport. Validado em ambos error e warning rows.
 - [x] Validation results sticky entre saves (`validation_ran` + `validation_results` são Scene PG, persistem no .blend).
 - [x] Export auto-roda validação inline ([export_flow.py:42-53](../apps/blender/operators/export_flow.py#L42-L53) `_gate_on_validation`). Bloqueia **apenas se houver issues com severity=="error"**; warnings passam. `validation_ran` flag é estado de UI (mostra "run Validate" vs results), **não é gate**. Item original ("flag bloqueia export até primeira run") era descrição errada; corrigido para refletir código real.
 
 ### 1.12 Export panel
 
-- [x] "Export Godot" button: ExportHelper file picker abre, sidebar tem field `Pixels per unit`. Path escolhido -> .proscenio escrito. INFO bar `wrote <name>.proscenio`.
+- [x] "Export Godot" button: ExportHelper file picker abre, sidebar tem field `Pixels per unit`. Path escolhido → .proscenio escrito. INFO bar `wrote <name>.proscenio`.
 - [x] Last export path sticky em `Scene.proscenio.last_export_path` (campo visível no panel; persiste no .blend após save/reload).
-- [x] "Re-export" usa sticky path sem prompt (botão visível só se `last_export_path` non-empty; sem dialog; INFO bar `re-exported -> <name>.proscenio`).
-- [x] Pixels per unit setting respeitado. PPU=50 no Scene PG -> .proscenio header `"pixels_per_unit": 50.0` + polygon vertices em 16x16 px (vs 32x32 px com PPU=100; mesh 0.32m * 50 = 16 px). Re-export usa Scene PG `props.pixels_per_unit`. **Caveat código:** `PROSCENIO_OT_export_godot` tem operator-local `pixels_per_unit` FloatProperty (default 100) que sobrescreve no file dialog - divergência potencial vs Scene PG. Worth investigar se export do file dialog também respeita Scene PG ou só Re-export.
-- [x] Validation gate bloqueia export se errors críticos não resolvidos. Confirmado: vertex_group `bogus` em sprite_1 -> Export blocked com ERROR bar exata `Proscenio: export blocked by 1 validation error(s) - see Validation panel.` Operator retorna `{CANCELLED}`, file dialog não abre. Mesmo gate vale pra Re-export.
+- [x] "Re-export" usa sticky path sem prompt (botão visível só se `last_export_path` non-empty; sem dialog; INFO bar `re-exported → <name>.proscenio`).
+- [x] Pixels per unit setting respeitado. PPU=50 no Scene PG → .proscenio header `"pixels_per_unit": 50.0` + polygon vertices em 16x16 px (vs 32x32 px com PPU=100; mesh 0.32m * 50 = 16 px). Re-export usa Scene PG `props.pixels_per_unit`. **Caveat código:** `PROSCENIO_OT_export_godot` tem operator-local `pixels_per_unit` FloatProperty (default 100) que sobrescreve no file dialog - divergência potencial vs Scene PG. Worth investigar se export do file dialog também respeita Scene PG ou só Re-export.
+- [x] Validation gate bloqueia export se errors críticos não resolvidos. Confirmado: vertex_group `bogus` em sprite_1 → Export blocked com ERROR bar exata `Proscenio: export blocked by 1 validation error(s) - see Validation panel.` Operator retorna `{CANCELLED}`, file dialog não abre. Mesmo gate vale pra Re-export.
 
 ### 1.13 Help + status badges
 
 - [x] Cada subpanel mostra ícone status + `?` alinhados à direita do header. Active Sprite/Skeleton/Animation/Atlas/Validation/Export = CHECKMARK; Outliner = TOOL_SETTINGS.
-- [x] Hover ícone -> tooltip per-band. CHECKMARK -> `Exports to .proscenio...`; TOOL_SETTINGS -> `Authoring shortcut. Lives entirely on the Blender side...`.
-- [x] Click ícone status -> abre popup `status_legend` (title "Status badges" + 5 sections + see-also STATUS.md).
-- [x] Click `?` em cada subpanel -> abre help popup topic-specific (topic id == feature_id).
+- [x] Hover ícone → tooltip per-band. CHECKMARK → `Exports to .proscenio...`; TOOL_SETTINGS → `Authoring shortcut. Lives entirely on the Blender side...`.
+- [x] Click ícone status → abre popup `status_legend` (title "Status badges" + 5 sections + see-also STATUS.md).
+- [x] Click `?` em cada subpanel → abre help popup topic-specific (topic id == feature_id).
 - [x] Pipeline overview popup (root `?`) renderiza topic `pipeline_overview` com sections + see-also.
 - [x] Drive-from-bone help topic conteúdo confere (sections What it does / How to use it presentes).
 - [~] See-also links resolvem em paths reais. **Paths existem on disk** (STATUS.md, specs/013-weight-paint-automesh, examples/generated/simple_psd, etc verificados). **Mas:** rendered como `layout.label` puro (`help_dispatch.py:88-89`), não clickable. Visualmente parecem links + ícone URL no header da seção, induz expectativa de click. UX gap loggado em UI_FEEDBACK.md.
@@ -166,7 +166,7 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 ### 1.14 Quick Armature
 
-- [~] "Quick Armature" operator: 3D viewport, click-drag head -> tail desenha bone. Funciona mas com bug crítico: bones sempre criados no plano Z=0 (horizontais) mesmo em Front Ortho - inviabiliza uso pro workflow Proscenio XZ. Bug em BUGS_FOUND.md.
+- [~] "Quick Armature" operator: 3D viewport, click-drag head → tail desenha bone. Funciona mas com bug crítico: bones sempre criados no plano Z=0 (horizontais) mesmo em Front Ortho - inviabiliza uso pro workflow Proscenio XZ. Bug em BUGS_FOUND.md.
 - [x] Bone aparece em armature `Proscenio.QuickRig` (criada no invoke se não existir). Confirmado: qbone.000..004 listados.
 - [x] Multiple drags em sequência: cria múltiplos bones na mesma QuickRig (sem parent automático).
 - [x] Shift hold no PRESS: bone novo parented ao anterior (sem connect). Confirmado: relations.parent setado.
@@ -184,8 +184,8 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 
 - [x] **T1 Auto-snap Front Ortho on invoke.** PASS. Snap dispara, INFO bar + status bar + cheatsheet bottom-center todos corretos. System Console `_log_view` mostra pre-snap PERSP + post-snap ORTHO com matriz Front identity.
 - [x] **T2 View restore on exit (sem user-move).** PASS. View retornou exato (loc/rot/dist matching pre-snap snapshot). INFO bar `view restored to pre-snap` + `confirmed/cancelled`. Bug inicial (matrix tolerance demais estrita) fixado migrando comparison pra decomposed values (location + rotation Quaternion + distance + perspective) em `_view_pose_equal` com tolerance 1e-3.
-- [x] **T2b View kept on exit (com user-move).** PASS. User rotaciona via middle-click; exit detecta diff (rotation > tolerance) -> view kept. INFO bar `view kept (user-moved during modal)`. Bug original (saltava pra angulo aleatorio) resolvido com decomposed comparison + restore via decomposed assign.
-- [x] **T4 Preview line + anchor circle.** PASS. Linha laranja + circulo 12-segments aparecem durante drag, atualizam smooth. Bonus regression encontrado e corrigido: clicks fora do canvas (panel/header/toolbar) disparavam tentativas de bone -> filter `_event_in_invoke_region` agora compara `event.mouse_x/y` contra rect WINDOW region resolvido via `_find_window_region` + itera overlay regions e rejeita se cursor cair em qualquer um. Bonus QoL: cursor fora da canvas vira preview vermelho `(0.9, 0.25, 0.25, 0.85)` + cheatsheet ganha 3a linha "cursor outside canvas - move back to author bones" + tooltip `outside canvas` perto do cursor (POST_PIXEL handler).
+- [x] **T2b View kept on exit (com user-move).** PASS. User rotaciona via middle-click; exit detecta diff (rotation > tolerance) → view kept. INFO bar `view kept (user-moved during modal)`. Bug original (saltava pra angulo aleatorio) resolvido com decomposed comparison + restore via decomposed assign.
+- [x] **T4 Preview line + anchor circle.** PASS. Linha laranja + circulo 12-segments aparecem durante drag, atualizam smooth. Bonus regression encontrado e corrigido: clicks fora do canvas (panel/header/toolbar) disparavam tentativas de bone → filter `_event_in_invoke_region` agora compara `event.mouse_x/y` contra rect WINDOW region resolvido via `_find_window_region` + itera overlay regions e rejeita se cursor cair em qualquer um. Bonus QoL: cursor fora da canvas vira preview vermelho `(0.9, 0.25, 0.25, 0.85)` + cheatsheet ganha 3a linha "cursor outside canvas - move back to author bones" + tooltip `outside canvas` perto do cursor (POST_PIXEL handler).
 - [x] **T8 Empty QuickRig sweep on cancel.** PASS. Esc imediato sem bones não deixa orphan no Outliner.
 - [x] **T9 Sweep só se operator criou.** PASS. Re-invocar com QuickRig com bones de sessão anterior + Esc imediato preserva o rig (sweep só age em rig criado nesta sessão via `_created_armature_this_session` flag).
 - [x] **T-Enter confirm.** PASS. Enter + Numpad Enter ambos disparam exit com `confirmed`. INFO bar reporta count correto.
@@ -194,7 +194,7 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 **Drive-by bugs descobertos + corrigidos durante sessão:**
 
 - PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `tests/BUGS_FOUND.md` + auditoria pendente em `specs/012-quick-armature-ux/TODO.md` the second wave.
-- `view_matrix` 4x4 acumula float drift entre mode toggles -> falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
+- `view_matrix` 4x4 acumula float drift entre mode toggles → falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
 - `context.region` em modal handler congela em invoke; quando invocado via N-panel button aponta UI sidebar. Fix: snapshot WINDOW region via `_find_window_region(context.area)` + filter via `event.mouse_x/y` contra rect.
 - WINDOW region rect cobre área inteira do viewport (panels overlay são sobrepostos). Filtering apenas pelo WINDOW rect deixava clicks em panel passar. Fix: itera todas regions da área; rejeita se cursor cair em qualquer overlay (UI/TOOLS/HEADER/ASSET_SHELF).
 - Double-invoke (user clica botao Quick Armature 2x sem sair do primeiro modal) empilhava handlers. Fix: invoke detecta handles existentes + sweep antes de re-init.
@@ -203,7 +203,7 @@ Branch `feat/spec-012.1-quick-armature-feedback`. Re-roda apenas o **smoke set**
 **Smoke deferidos (mudam comportamento no the second wave - testar apos second-wave ship):**
 
 - T3 Opt-out F3 (`lock_to_front_ortho`) - vai ganhar UI no painel (D15).
-- T5 Cheatsheet texto - layout muda de 2 -> 3 linhas + novos chords (D11, D12, D14).
+- T5 Cheatsheet texto - layout muda de 2 → 3 linhas + novos chords (D11, D12, D14).
 - T6 Bone creation default - inverte (D10: LMB sozinho = chain, antes = unparented root).
 - T7 Shift chain - inverte (D10: Shift = new root, antes = chain).
 - T9 Sweep só se operator criou (corner case) - logic igual mas retesta com chord vocab novo.
@@ -258,7 +258,7 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cu
 
 ### 1.15 Pose library
 
-- [!] "Save Pose to Library": com armature em pose mode, pose name -> action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em BUGS_FOUND.md.
+- [!] "Save Pose to Library": com armature em pose mode, pose name → action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em BUGS_FOUND.md.
 - [ ] Action salva apenas keyframes do current pose. **Bloqueado pelo item 1** - impossível inspecionar action que nunca foi criada.
 - [x] "Bake Current Pose": atual pose vira keyframe no frame_current. Confirmado: `baked pose at frame 16 for 65 bone(s)` - todos os 65 bones do doll.rig keyframados em location/rotation_quaternion/rotation_euler/scale. Não é "@ frame 1" como checklist diz; é o frame_current da timeline (mais útil). Texto da checklist poderia ser ajustado.
 
@@ -279,25 +279,25 @@ Branch `feat/spec-012.1-quick-armature-feedback` (mesmo branch carregou first cu
 **Cross-app roundtrip diff (00_blender_base vs 02_photoshop_setup):** drift esperado registrado:
 
 - size: +2px em ambos eixos em todas as 22 layers - PSD export captura bbox alpha-aware com 1px edge padding cada lado.
-- path: `render_layers/<name>.png` -> `images/<name_underscored>.png`. Folder convention difere (bpy vs JSX) + `.` em layer name vira `_` (PSD não permite `.`).
+- path: `render_layers/<name>.png` → `images/<name_underscored>.png`. Folder convention difere (bpy vs JSX) + `.` em layer name vira `_` (PSD não permite `.`).
 - position, z_order, kind, canvas size, format_version, layer count, layer names: **zero drift**.
 
 ### 1.18 Writer (export - via UI ou headless)
 
-- [x] `doll.blend` -> `.proscenio` writer roda limpo. Únicos warnings: `belly/chest/waist vertex group has no matching bone - dropping from weights` (3 warnings esperados; vertex groups dessas spine-region meshes não batem nome de bone porque doll usa weighted distribution ao longo da spine chain). Golden regenerated successfully.
-- [x] Slot fixture (`slot_swap.blend` substitui `doll_slots.blend` retirado em PR #40) -> `.proscenio` contém `"slots": [...]` com 2 attachments + bone field + default + 1 action `swing` (que merge swing + weapon swap). slot_cycle adiciona cobertura adicional do cycle pattern.
+- [x] `doll.blend` → `.proscenio` writer roda limpo. Únicos warnings: `belly/chest/waist vertex group has no matching bone - dropping from weights` (3 warnings esperados; vertex groups dessas spine-region meshes não batem nome de bone porque doll usa weighted distribution ao longo da spine chain). Golden regenerated successfully.
+- [x] Slot fixture (`slot_swap.blend` substitui `doll_slots.blend` retirado em PR #40) → `.proscenio` contém `"slots": [...]` com 2 attachments + bone field + default + 1 action `swing` (que merge swing + weapon swap). slot_cycle adiciona cobertura adicional do cycle pattern.
 - [x] Re-export bytes idênticos. 2 runs consecutivos de `export_proscenio.py` sobre `doll.blend` produzem bytes-por-bytes idênticos (`diff` retorna 0). Sprites sorted by name (`scene_discovery.py:24`), output via `json.dumps(sort_keys=True, indent=2)` no `_normalize`.
 - [x] Slot sem bone parent: campo `bone` omitted no JSON. Confirmado: slot_swap (bone=`arm`) tem `"bone": "arm"` no JSON; slot_cycle (sem parent_bone no Empty) tem zero `"bone":` field no slot entry.
 - [x] hide_viewport / hide_render não filtram meshes. Validado headless: mesh `arm` em slot_swap com `hide_viewport=True+hide_render=True` ainda aparece na lista de sprites do `.proscenio` output. `find_sprite_meshes` (`scene_discovery.py:18-25`) itera todos MESH sem checar hide flags.
 - [x] Atlas auto-discovery: 2 paths verificados.
   - Path 1 (material image): slot_swap.expected.proscenio `"atlas": "arm.png"`, slot_cycle `"atlas": "attachment_blue.png"` - filename do primeiro Image Texture node descoberto.
-  - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output -> `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
+  - Path 2 (sibling fallback): cenário com mesh sem material image-textured + arquivo `atlas.png` no mesmo dir do output → `find_atlas_image` retorna `"atlas.png"` (`scene_discovery.py:39-42`).
 
 ### 1.19 Automesh from sprite (first-cut)
 
 Status: **pendente** - operator + panel + fixture chegaram à branch `feat/spec-013-automesh` mas smoke ainda não executado em sessão Blender.
 
-Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone vertical hand chain (`wrist` -> `palm` -> `fingertip`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
+Pré-requisitos: fixture dedicada [`examples/generated/automesh/automesh.blend`](../examples/generated/automesh/automesh.blend) - 4 sprites (hand / blob / lshape / ring) + 3-bone vertical hand chain (`wrist` → `palm` → `fingertip`) posicionado sobre o hand sprite. README do fixture documenta cada silhueta + propósito de smoke.
 
 **Importante:** nunca `Ctrl+S` após smoke - fixture é tracked + smoke reescreve mesh in-place. Se salvar acidentalmente, regenera via `python packages/fixtures/automesh/draw_layers.py` + `blender --background --python packages/fixtures/automesh/build_blend.py`.
 
@@ -306,30 +306,30 @@ Sequência:
 - [ ] T1 - Open `automesh.blend`. Sidebar mostra `Skinning` subpanel quando sprite plane mesh (hand / blob / lshape / ring) está ativo. Subpanel está OCULTO quando seleciona `automesh.hand_rig` (armature, não mesh).
 - [ ] T2 - Subpanel mostra picker pill: `Picker: <armature name>` quando armature está set, `Picker: (none - set in Skeleton panel)` quando vazio.
 - [ ] T3 - Sub-box `Automesh from sprite` mostra 8 props (resolution, alpha threshold, margin, contour vertices, interior spacing, density-under-bones, bone radius, bone factor). Os 2 últimos ficam dim/disabled quando density-under-bones é False.
-- [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` -> ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
-- [ ] T5 - Select `blob` -> click Automesh -> INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per the weight-paint-automesh spec D2 amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
+- [ ] T4 - Add cube to scene (no material), click `Automesh from Sprite` → ERROR report "active mesh has no image texture - add a material with a TEX_IMAGE node first".
+- [ ] T5 - Select `blob` → click Automesh → INFO report `automesh built: N outer + M inner + K interior = T total, F faces`. Mesh em Edit Mode mostra annulus (ring de edge loops na silhueta + interior triangulado). Repita com `lshape` (verify concave hull) e `ring` (per the weight-paint-automesh spec D2 amendment: mesh tem cutout no centro do donut, console imprime `holes=1 ([N])` + `interior_points dropped_inside_holes=M`. O mesh-hole boundary fica visivelmente DENTRO do alpha hole - banda de ~1 cell de bleed esperado, sem cut de alpha).
 - [ ] T6 - F3 search > `Proscenio: Automesh from Sprite` chama operator. F3 redo panel expõe overrides per-invoke.
 - [ ] T7 - Re-run automesh em mesh já automesh-ado preserva `proscenio_base_sprite` vertex group (4 corners do quad original sobrevivem). Verify via Object Data > Vertex Groups > proscenio_base_sprite > Select.
-- [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh -> interior uniform (verts espalhados uniforme no annulus).
-- [ ] T9 - Set picker = `automesh.hand_rig` no Skeleton panel. Select `hand` + density-under-bones ON + Automesh -> interior tem MAIS verts perto das bone segments wrist/palm/fingertip (visual: triangulação mais densa ao longo do eixo Z central onde o hand chain corre verticalmente, do pulso ao topo dos dedos).
-- [ ] T10 - Density-under-bones ON + create new empty armature sem bones (`Add > Armature > Empty`) + set picker -> Automesh -> INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
-- [ ] T11 - Density-under-bones ON + clear picker (Skeleton panel > x button) + Automesh -> INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
-- [ ] T12 - Resolution muito baixo (0.01) + sprite small -> contour < 3 verts -> ERROR `automesh failed: automesh outer contour too short - try lowering the alpha threshold or increasing the resolution`.
-- [ ] T13 - Alpha threshold 255 (rejeita tudo) -> ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
-- [ ] T14 - Image grande (>4096) -> WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
-- [ ] T15 - Reload Scripts após automesh ON -> operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
+- [ ] T8 - Skinning panel + select `hand` + density-under-bones OFF + Automesh → interior uniform (verts espalhados uniforme no annulus).
+- [ ] T9 - Set picker = `automesh.hand_rig` no Skeleton panel. Select `hand` + density-under-bones ON + Automesh → interior tem MAIS verts perto das bone segments wrist/palm/fingertip (visual: triangulação mais densa ao longo do eixo Z central onde o hand chain corre verticalmente, do pulso ao topo dos dedos).
+- [ ] T10 - Density-under-bones ON + create new empty armature sem bones (`Add > Armature > Empty`) + set picker → Automesh → INFO `picker armature '<name>' has no deform bones - automesh falls back to uniform density`.
+- [ ] T11 - Density-under-bones ON + clear picker (Skeleton panel > x button) + Automesh → INFO `no picker armature - automesh uses uniform interior density (pick an armature in the Skeleton panel for density-under-bones)`.
+- [ ] T12 - Resolution muito baixo (0.01) + sprite small → contour < 3 verts → ERROR `automesh failed: automesh outer contour too short - try lowering the alpha threshold or increasing the resolution`.
+- [ ] T13 - Alpha threshold 255 (rejeita tudo) → ERROR `automesh failed: alpha grid contains no foreground pixels above the threshold; check the image alpha channel and the threshold setting`.
+- [ ] T14 - Image grande (>4096) → WARNING `image '<name>' is large (...) - consider lowering resolution`. Operator ainda procede.
+- [ ] T15 - Reload Scripts após automesh ON → operators + panel re-registram limpos, sem orphan classes. Re-run automesh funciona.
 - [ ] Scenario 16 - Headless smoke: `python -m pytest tests/automesh/ -q` termina com sucesso (todos os testes do diretório passam).
 
 **Debug stages** (Skinning > Debug pipeline sub-box):
 
-- [ ] T17 - Stage = "1 Raw contours" + Automesh `blob` -> companion `blob_debug_raw_contours` aparece em collection `Proscenio.Debug`, wireframe mostra contornos pixel-stair (não smoothed). Mesh original `blob` permanece intacta (não foi reescrita).
-- [ ] T18 - Stage = "2 Smoothed" -> companion `blob_debug_smoothed` mostra contornos arredondados após 3 passes Laplacian.
-- [ ] T19 - Stage = "3 Resampled" -> companion `blob_debug_resampled` mostra outer/inner verts equispaçados (64 outer + 64 inner).
-- [ ] T20 - Stage = "4 Interior points" -> companion `blob_debug_interior_points` mostra Steiner points distribuídos no annulus (sem connectivity edges).
-- [ ] T21 - Stage = "5 Bridges" -> companion `blob_debug_bridges` mostra outer + inner cyclic + radial bridges (sem triangulação ainda). User pode visualmente verificar se bridges estão alinhadas radialmente ou cruzando o annulus diagonalmente (bug).
-- [ ] T22 - Stage = "6 Triangle fill" -> mesh `blob` agora MOSTRA o annulus pós-triangle_fill mas SEM interior Steiner inseridos. User vê o strip de trapézios cru.
-- [ ] T23 - Stage = "Final" + Automesh -> full pipeline + companions debug são limpas automaticamente.
-- [ ] T24 - Click `Clear Debug Companions` button -> todos companions `blob_debug_*` removidos da collection `Proscenio.Debug` em uma operação.
+- [ ] T17 - Stage = "1 Raw contours" + Automesh `blob` → companion `blob_debug_raw_contours` aparece em collection `Proscenio.Debug`, wireframe mostra contornos pixel-stair (não smoothed). Mesh original `blob` permanece intacta (não foi reescrita).
+- [ ] T18 - Stage = "2 Smoothed" → companion `blob_debug_smoothed` mostra contornos arredondados após 3 passes Laplacian.
+- [ ] T19 - Stage = "3 Resampled" → companion `blob_debug_resampled` mostra outer/inner verts equispaçados (64 outer + 64 inner).
+- [ ] T20 - Stage = "4 Interior points" → companion `blob_debug_interior_points` mostra Steiner points distribuídos no annulus (sem connectivity edges).
+- [ ] T21 - Stage = "5 Bridges" → companion `blob_debug_bridges` mostra outer + inner cyclic + radial bridges (sem triangulação ainda). User pode visualmente verificar se bridges estão alinhadas radialmente ou cruzando o annulus diagonalmente (bug).
+- [ ] T22 - Stage = "6 Triangle fill" → mesh `blob` agora MOSTRA o annulus pós-triangle_fill mas SEM interior Steiner inseridos. User vê o strip de trapézios cru.
+- [ ] T23 - Stage = "Final" + Automesh → full pipeline + companions debug são limpas automaticamente.
+- [ ] T24 - Click `Clear Debug Companions` button → todos companions `blob_debug_*` removidos da collection `Proscenio.Debug` em uma operação.
 
 Bugs encontrados durante smoke vão para `tests/BUGS_FOUND.md`.
 
@@ -547,10 +547,10 @@ Setup: open `examples/generated/automesh/automesh.blend`. Pick `automesh.hand_ri
 
 The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal pen shared by Stage 2 + Stage 4. Post-merge smoke validation - visual, cannot verify headless.
 
-- [ ] T1 - Toggle entry / exit: tap Shift -> enters fold-pen (statusbar / tooltip show DRAW). Tap Shift again on an empty line -> exits to NEUTRAL.
+- [ ] T1 - Toggle entry / exit: tap Shift → enters fold-pen (statusbar / tooltip show DRAW). Tap Shift again on an empty line → exits to NEUTRAL.
 - [ ] T2 - Pen + finish / cancel: click 3 verts, RMB or Enter commits the line. Esc on a fresh line discards without cancelling the modal. NEUTRAL Enter still advances the stage.
 - [ ] T3 - Ctrl+Z preserved: Ctrl+Z in NEUTRAL undoes the last stroke (does NOT enter cut-draw).
-- [ ] T4 - Axis lock: press X -> next segment is horizontal. Press Z -> vertical. Toggling switches.
+- [ ] T4 - Axis lock: press X → next segment is horizontal. Press Z → vertical. Toggling switches.
 - [ ] T5 - Subdivisions: mouse wheel or digit keys bump the tooltip count. A straight 2-click line with subdiv=2 commits with 2 inserted verts per edge (no single long edge).
 - [ ] T6 - Stage 2 parity: the same pen works in Stage 2 (extend / cut). Cut overlay reads red.
 - [ ] T7 - Tooltip / statusbar live: tapping a tool (Shift / Ctrl) or scrolling subdivisions updates the tooltip + statusbar immediately, without a mouse move.
@@ -565,21 +565,21 @@ The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal p
 
 - [x] Plugin enables limpo no Project Settings > Plugins (auto-enabled via project.godot, sem warnings).
 - [x] EditorImportPlugin reconhece `.proscenio` files. Painel Import mostra "Proscenio Character" importer, right-click oferece Reimport, gera `.scn` no `.godot/imported/`.
-- [x] Re-import preserva customizações no wrapper scene. Confirmado em SlotSwap.tscn: adicionado `MyCustom` Sprite2D child do root, save, Reimport `slot_swap.proscenio`, reabre tscn -> MyCustom intacto. Wrapper pattern the reimport-merge wrapper-scene pattern funciona.
+- [x] Re-import preserva customizações no wrapper scene. Confirmado em SlotSwap.tscn: adicionado `MyCustom` Sprite2D child do root, save, Reimport `slot_swap.proscenio`, reabre tscn → MyCustom intacto. Wrapper pattern the reimport-merge wrapper-scene pattern funciona.
 
 ### 2.2 Importer
 
-- [x] `slot_swap.proscenio` -> Skeleton2D + Polygon2D children (substitui doll, que ficou skipped no canonical Godot sync por ser authoring-only PS roundtrip). SlotSwapCharacter root contém Skeleton2D + slot Node2D + Polygon2D `arm`.
-- [x] `slot_swap.proscenio` -> Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
-- [x] sprite_frame meshes -> Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
-- [~] polygon meshes -> Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (specs/007 Coverage gaps) chegar.
-- [!] Animations -> AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per packages/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
-- [~] slot_attachment tracks -> visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 - 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em BUGS_FOUND.md.
+- [x] `slot_swap.proscenio` → Skeleton2D + Polygon2D children (substitui doll, que ficou skipped no canonical Godot sync por ser authoring-only PS roundtrip). SlotSwapCharacter root contém Skeleton2D + slot Node2D + Polygon2D `arm`.
+- [x] `slot_swap.proscenio` → Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
+- [x] sprite_frame meshes → Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
+- [~] polygon meshes → Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (specs/007 Coverage gaps) chegar.
+- [!] Animations → AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per packages/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em BUGS_FOUND.md.
+- [~] slot_attachment tracks → visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 - 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em BUGS_FOUND.md.
 - [x] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D. Validado em shared_atlas: 3 Polygon2D (red_circle/green_triangle/blue_square) compartilham mesma CompressedTexture2D (`atlas.png`) com UV por quadrante.
 
 ### 2.3 Wrapper scene pattern
 
-- [x] Instance `.scn` em wrapper, attach script -> playback OK. Validado em SlotSwap.tscn: F6 play runtime sem crash.
+- [x] Instance `.scn` em wrapper, attach script → playback OK. Validado em SlotSwap.tscn: F6 play runtime sem crash.
 - [x] Re-import `.proscenio` não sobrescreve wrapper customizations. Já validado em 2.1.3 (MyCustom Sprite2D persistiu pós-reimport).
 - [x] Wrapper script acessa AnimationPlayer + dispara animações. SlotSwap.gd com `@onready var animation_player: AnimationPlayer = $SlotSwapCharacter/AnimationPlayer` + `play("swing.001")` em `_ready()` (guard `Engine.is_editor_hint()`). Runtime: visibility de club/sword flipa em loop, animação tocando.
 
@@ -587,7 +587,7 @@ The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal p
 
 - [x] Generate `.scn` com plugin enabled (importer auto-rodou ao primeiro open do project, .scn cached em `.godot/imported/`).
 - [x] Disable plugin no Project Settings (Project > Project Settings > Plugins > uncheck Proscenio).
-- [x] Reload project -> abrir scene -> roda sem erros. `.proscenio` source files somem do FileSystem dock (extensão não-reconhecida sem plugin), mas SlotSwap.tscn ainda abre e F6 roda normalmente - TSCN ext_resource resolve via UID/.import sidecar pro `.scn` cached. Skeleton2D / Bone2D / Polygon2D / AnimationPlayer / Sprite2D todos core nodes; zero dependency em GDExtension/runtime addon code. Plugin = importer-only por design.
+- [x] Reload project → abrir scene → roda sem erros. `.proscenio` source files somem do FileSystem dock (extensão não-reconhecida sem plugin), mas SlotSwap.tscn ainda abre e F6 roda normalmente - TSCN ext_resource resolve via UID/.import sidecar pro `.scn` cached. Skeleton2D / Bone2D / Polygon2D / AnimationPlayer / Sprite2D todos core nodes; zero dependency em GDExtension/runtime addon code. Plugin = importer-only por design.
 
 ---
 
@@ -597,9 +597,9 @@ The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal p
 
 Quando UXP migration shippa:
 
-- [ ] PSD layers visíveis -> "Export Manifest" button -> JSON file
-- [ ] Manifest -> "Import" button -> reconstrói layer structure no PSD novo
-- [ ] Roundtrip: export -> import = bytes equivalentes (modulo metadata flags)
+- [ ] PSD layers visíveis → "Export Manifest" button → JSON file
+- [ ] Manifest → "Import" button → reconstrói layer structure no PSD novo
+- [ ] Roundtrip: export → import = bytes equivalentes (modulo metadata flags)
 
 ### 3.2 JSX legacy (ainda funcional, será deprecated)
 
@@ -613,24 +613,24 @@ Quando UXP migration shippa:
 
 ### 4.1 doll full pipeline
 
-- [ ] `00_blender_base/doll_base.blend` -> render_layers PNG (via `examples/authored/doll/scripts/render_layers.py`)
-- [ ] PNGs -> Photoshop (Proscenio Exporter panel: Import manifest as PSD) -> `01_photoshop_base/doll_ps_base.psd`
-- [ ] PSD copy + tags -> `02_photoshop_setup/doll_tagged.psd` -> Proscenio Exporter -> `export/doll_tagged.photoshop_exported.json` + images
-- [ ] Manifest -> Blender via Import Photoshop Manifest -> `03_blender_setup/doll_rigged.blend`
+- [ ] `00_blender_base/doll_base.blend` → render_layers PNG (via `examples/authored/doll/scripts/render_layers.py`)
+- [ ] PNGs → Photoshop (Proscenio Exporter panel: Import manifest as PSD) → `01_photoshop_base/doll_ps_base.psd`
+- [ ] PSD copy + tags → `02_photoshop_setup/doll_tagged.psd` → Proscenio Exporter → `export/doll_tagged.photoshop_exported.json` + images
+- [ ] Manifest → Blender via Import Photoshop Manifest → `03_blender_setup/doll_rigged.blend`
 - [ ] Output Blender ~= input Blender (modulo round-trip drift documentada)
 
-### 4.2 doll -> Godot
+### 4.2 doll → Godot
 
-- [ ] `03_blender_setup/doll_rigged.blend` -> Export Godot -> `doll.proscenio`
-- [ ] `doll.proscenio` -> Godot import -> `doll.scn`
-- [ ] Wrapper scene plays -> doll renderiza no editor + runtime
-- [ ] `doll_slots.blend` -> mesmo pipeline -> brow_raise animation visível
+- [ ] `03_blender_setup/doll_rigged.blend` → Export Godot → `doll.proscenio`
+- [ ] `doll.proscenio` → Godot import → `doll.scn`
+- [ ] Wrapper scene plays → doll renderiza no editor + runtime
+- [ ] `doll_slots.blend` → mesmo pipeline → brow_raise animation visível
 
 ### 4.3 simple_psd
 
-- [ ] `simple_psd.psd` -> JSX export -> manifest
-- [ ] manifest -> Blender import -> stamped scene
-- [ ] export Blender -> Godot -> playback
+- [ ] `simple_psd.psd` → JSX export → manifest
+- [ ] manifest → Blender import → stamped scene
+- [ ] export Blender → Godot → playback
 
 ---
 

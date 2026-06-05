@@ -1,6 +1,6 @@
 # psd_to_blender fixtures
 
-End-to-end inputs + goldens for the **PSD -> Blender** half of the Proscenio pipeline. Each fixture exercises one slice of the photoshop importer + the photoshop tag system path that turns a PSD (or its captured manifest) into a Blender scene.
+End-to-end inputs + goldens for the **PSD → Blender** half of the Proscenio pipeline. Each fixture exercises one slice of the photoshop importer + the photoshop tag system path that turns a PSD (or its captured manifest) into a Blender scene.
 
 The bucket name follows the direction of the data: a PSD on disk is the source, a `.blend` is the consumer. Tests live with the plugin (`apps/photoshop/uxp-plugin-tests/*`) and run via vitest; manifest-schema-level tests live under `tests/test_*.py` and run via pytest.
 

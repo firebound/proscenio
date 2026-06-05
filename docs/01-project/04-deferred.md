@@ -1,4 +1,4 @@
-# Deferred - long-term direction
+# Deferred
 
 The big picture. Each item below is an *umbrella initiative* that conceptually fits Proscenio but is not committed to a roadmap. When work begins, the umbrella breaks down into one or more numbered specs.
 

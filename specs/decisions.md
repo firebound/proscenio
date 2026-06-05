@@ -98,7 +98,7 @@ Highlights that crossed component boundaries or shaped a contract. Each section 
 
 - **GPU overlay + Edit-Mode live update (D1.C).** The modal draws a preview line via `gpu.draw_handler_add` AND creates the real bone on `LEFTMOUSE PRESS` with the tail updated on every `MOUSEMOVE`. The user gets both instant feedback and Edit-Mode parity.
 - **Naming prefix = addon preference + F3 redo override (D2.E).** One sane default per install; power users can override per-invocation.
-- **Front Ortho auto-snap restores the original view on exit (D3.A).** Predictable: user in Persp -> Quick Armature -> back to Persp. Opt-out via F3 redo for legitimate persp-view authoring.
+- **Front Ortho auto-snap restores the original view on exit (D3.A).** Predictable: user in Persp → Quick Armature → back to Persp. Opt-out via F3 redo for legitimate persp-view authoring.
 - **Sweep empty QuickRig on cancel (D4.B).** Tracks whether the operator instantiated the armature this session and only sweeps in that case; pre-existing QuickRigs the user emptied manually stay.
 - **Picker armature carries the mirror flag (D14).** Single source of truth shared with the weight-paint spec - no per-operator mirror toggle. Mirror is a property of the rig, not a per-tool option.
 

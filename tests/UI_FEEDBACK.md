@@ -26,12 +26,12 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
   - "Sprite property range" - 2 sliders: `from 0` to `3` (pra Frame index, com default = full range; pra Region X, default = `0` to `1`)
   - Auto-genera expression linear: `(var - bone_min) / (bone_max - bone_min) * (prop_max - prop_min) + prop_min`
   - Modo "Advanced" colapsável que expõe a string crua pra power users que querem expressões custom (não-lineares, branching, etc).
-- **Bonus:** preview HUD na panel mostrando "agora bone está em 0.78 rad (45°) -> property = 2 (de 0..3)" enquanto rotaciona.
+- **Bonus:** preview HUD na panel mostrando "agora bone está em 0.78 rad (45°) → property = 2 (de 0..3)" enquanto rotaciona.
 - `Drive from Bone` debug é dolorido. Pra inspecionar driver value live precisa abrir Drivers Editor em outra janela / area, e ao mover seleção pra entrar em Pose Mode, perde o foco no fcurve no Drivers Editor (precisa re-clicar nele). Alternativas pro Active Sprite panel:
-  - Quando driver existe em `proscenio.<target>`, mostrar inline: "Driver from `<armature>:<bone>.<axis>` - value: 0.78 rad (45°) -> frame: 3".
+  - Quando driver existe em `proscenio.<target>`, mostrar inline: "Driver from `<armature>:<bone>.<axis>` - value: 0.78 rad (45°) → frame: 3".
   - Quick action button "Inspect Driver" abre uma popup compacta com expression, variable value, current driver result.
   - Botão "Reset Driver" (apaga + recria) pra iterar em expressions sem mexer no Drivers Editor.
-- **Mesh <-> Pose Mode swap dolorido**: pra animar drivers, usuário precisa selecionar bone em Pose Mode na armature -> active object muda -> Active Sprite panel some (porque depende do mesh estar active). Não há jeito visual fácil de "ver os campos do sprite" enquanto manipula o bone. Sugestões:
+- **Mesh <-> Pose Mode swap dolorido**: pra animar drivers, usuário precisa selecionar bone em Pose Mode na armature → active object muda → Active Sprite panel some (porque depende do mesh estar active). Não há jeito visual fácil de "ver os campos do sprite" enquanto manipula o bone. Sugestões:
   - Mostrar `Sprite watched: <obj>` no header do Drive from bone box quando active object é armature/pose bone que tem driver alimentando algum `proscenio.*` de outro mesh.
   - Pin / sticky panel mode - usuário marca `Active Sprite: locked to <obj>` e o painel para de seguir active object.
   - Side-by-side debug HUD: pequeno overlay no viewport com `frame: 2` / `region_x: 0.45` enquanto bone rotaciona.
@@ -55,7 +55,7 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
   - Click no bone na lista deveria selecionar o bone no Blender (3D viewport / pose mode)
   - Ou permitir rename inline
 - Hoje o panel é só inspect read-only, não serve de muito
-- **Warning "2 armatures - writer uses the first only" precisa contexto.** `apps/blender/panels/skeleton.py:60` pega `armatures[0]` (scene order), não active object. Quando cena tem 2+ armatures (ex: usar Quick Armature numa cena que já tem atlas_pack.armature -> cria Proscenio.QuickRig em paralelo), o panel mostra warning mas:
+- **Warning "2 armatures - writer uses the first only" precisa contexto.** `apps/blender/panels/skeleton.py:60` pega `armatures[0]` (scene order), não active object. Quando cena tem 2+ armatures (ex: usar Quick Armature numa cena que já tem atlas_pack.armature → cria Proscenio.QuickRig em paralelo), o panel mostra warning mas:
   - "the first" sem indicar QUAL armature está sendo usada - usuário tem que adivinhar pela scene order.
   - Sem botão pra trocar a armature ativa do panel.
   - Sugestões: (a) mostrar nome da armature usada no warning: `2 armatures present - writer uses 'atlas_pack.armature'`. (b) Dropdown selector no panel pra escolher qual armature trabalhar (Scene PG `active_armature_name`). (c) Sincronizar com active object se for armature, fallback pra scene order só se nenhuma armature ativa.
@@ -65,10 +65,10 @@ abre spec dedicado (ex: `specs/011-ui-polish/`).
 - **Toggle IK cria constraint sem target.** Operator (`authoring_ik.py:49-55`) só insere `IK` constraint vazia na pose bone selecionada - não wira `target` nem `subtarget`. INFO bar avisa "set the target manually" mas usuário precisa caçar Properties > Bone Constraints > Target dropdown. Para um helper de autoring, sugestão:
   - Operator pode receber `target_object` + `target_bone` como props F9; default usa controller bone irmão (heurística simples) ou um Empty auto-criado no tail do chain.
   - Alternativa low-friction: tras de Toggle IK, abrir popup pedindo target (single dialog) antes de criar.
-- **Sem bake-action gate no Export.** IK é purely authoring (BLENDER_ONLY em feature_status); writer lê FCurves diretamente. Se o usuário anima APENAS o controlador (terminal bone via IK) sem fazer `Pose > Animation > Bake Action` antes do export, os bones intermediários NÃO ganham keyframes -> Godot recebe pose torta. Sugestões:
+- **Sem bake-action gate no Export.** IK é purely authoring (BLENDER_ONLY em feature_status); writer lê FCurves diretamente. Se o usuário anima APENAS o controlador (terminal bone via IK) sem fazer `Pose > Animation > Bake Action` antes do export, os bones intermediários NÃO ganham keyframes → Godot recebe pose torta. Sugestões:
   - Validator: warning quando uma action keyframa bones com IK constraint ativa mas a chain anterior não tem keyframes. (Cheirar via cross-referencing fcurves vs bone parent chain + IK influence > 0.)
   - Botão "Bake Action (visual)" no Animation panel próximo ao action selector, wrapper de `bpy.ops.nla.bake` com defaults certos (visual_keying=True, clear_constraints=False, bake_types={'POSE'}).
-  - Doc explícito no help_topics.py `toggle_ik` ou criar topic dedicado "ik_workflow" explicando: autor IK -> bake antes do export.
+  - Doc explícito no help_topics.py `toggle_ik` ou criar topic dedicado "ik_workflow" explicando: autor IK → bake antes do export.
 - **Sem IK/FK switch.** Rigify-style runtime switching (custom property + drivers + snap ops) seria muito útil pra animação complexa, mas é spec-on-paper - por hoje, usuário pode só toggle IK on/off via panel, não trocar mid-animation. Documentar limitação até feature pousar (não tá no roadmap atual).
 
 ## Quick Armature operator
@@ -176,4 +176,4 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 
 ## Diagnostics panel
 
-- Agregar com Help -> "Help & Diagnostics" panel único
+- Agregar com Help → "Help & Diagnostics" panel único

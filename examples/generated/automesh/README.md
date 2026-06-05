@@ -20,7 +20,7 @@ No `.proscenio` expected output - this fixture is authoring-only; it never expor
 
 | Element | Detail |
 | --- | --- |
-| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` -> `palm` -> `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so D15 of the weight-paint-automesh spec density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
+| Armature `automesh.hand_rig` | 3-bone vertical chain `wrist` → `palm` → `fingertip`, connected, along world +Z from Z=-0.8 to Z=+0.7 at X=-3. Follows the hand's natural deformation direction (palm flex + finger bend), so D15 of the weight-paint-automesh spec density-under-bones produces denser triangulation along the centerline where the fingers actually bend. |
 | Sprite `hand` | 2.0x2.0 unit quad at world (-3, 0, 0), parented to `automesh.hand_rig`. Image-textured with `pillow_layers/hand.png`. The density-under-bones smoke target. |
 | Sprite `blob` | 2.0x2.0 unit quad at world (0, 0, 0), unparented. Smooth convex baseline. |
 | Sprite `lshape` | 2.0x2.0 unit quad at world (3, 0, 0), unparented. Concave hull stress test. |

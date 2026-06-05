@@ -28,3 +28,19 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+/* Keyboard keys: render shortcuts (N, Ctrl+P, Esc) as little keycaps. */
+kbd {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8em;
+  line-height: 1.4;
+  color: var(--ifm-color-emphasis-800);
+  background-color: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  box-shadow: inset 0 -2px 0 var(--ifm-color-emphasis-300);
+  white-space: nowrap;
+  vertical-align: middle;
+}

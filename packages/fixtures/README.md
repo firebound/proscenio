@@ -10,33 +10,33 @@ packages/fixtures/
 │   ├── _draw.py                    Pillow shape rasterizer (used by every Pillow-driven fixture)
 │   └── export_proscenio.py         Bpy: open <fixture>.blend, write godot/<fixture>.expected.proscenio
 ├── doll/                            (moved to examples/authored/doll/scripts/)
-│   ├── render_layers.py            Bpy: doll_base.blend  -> 00_blender_base/render_layers/*.png (Workbench flat)
-│   ├── export_psd_manifest.py      Bpy: doll_base.blend  -> 00_blender_base/doll_base.photoshop_manifest.json
-│   └── preview_pieces.py           Pillow: 00_blender_base/render_layers/*.png -> .../pieces_sheet.png
+│   ├── render_layers.py            Bpy: doll_base.blend  → 00_blender_base/render_layers/*.png (Workbench flat)
+│   ├── export_psd_manifest.py      Bpy: doll_base.blend  → 00_blender_base/doll_base.photoshop_manifest.json
+│   └── preview_pieces.py           Pillow: 00_blender_base/render_layers/*.png → .../pieces_sheet.png
 ├── blink_eyes/
-│   ├── draw_layers.py              Pillow -> pillow_layers/eye_0..3.png + eye_spritesheet.png
+│   ├── draw_layers.py              Pillow → pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py              Bpy: load spritesheet, build blink_eyes.blend
 ├── mouth_drive/
-│   ├── draw_layers.py              Pillow -> pillow_layers/mouth_0..3.png + mouth_spritesheet.png
-│   └── build_blend.py              Bpy: 2-bone armature (mouth_pos + mouth_drive) + driver + action -> mouth_drive.blend
+│   ├── draw_layers.py              Pillow → pillow_layers/mouth_0..3.png + mouth_spritesheet.png
+│   └── build_blend.py              Bpy: 2-bone armature (mouth_pos + mouth_drive) + driver + action → mouth_drive.blend
 ├── slot_swap/
-│   ├── draw_layers.py              Pillow -> pillow_layers/arm.png + club.png + sword.png
-│   └── build_blend.py              Bpy: 1-bone armature + arm mesh + slot Empty + 2 attachments + swing+swap actions -> slot_swap.blend
+│   ├── draw_layers.py              Pillow → pillow_layers/arm.png + club.png + sword.png
+│   └── build_blend.py              Bpy: 1-bone armature + arm mesh + slot Empty + 2 attachments + swing+swap actions → slot_swap.blend
 ├── shared_atlas/
-│   ├── draw_atlas.py               Pillow -> atlas.png (256x256, three colored quadrants)
+│   ├── draw_atlas.py               Pillow → atlas.png (256x256, three colored quadrants)
 │   └── build_blend.py              Bpy: load atlas, build shared_atlas.blend (3 sliced quads)
 ├── simple_psd/
-│   ├── draw_layers.py              Pillow -> pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
-│   └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json -> simple_psd.blend
+│   ├── draw_layers.py              Pillow → pillow_layers/square.png + arrow_0..3.png + arrow_spritesheet.png
+│   └── build_blend.py              Bpy: run addon importer on simple_psd.photoshop_manifest.json → simple_psd.blend
 ├── slot_cycle/
-│   ├── draw_layers.py              Pillow -> pillow_layers/attachment_red|green|blue.png (32x32 each)
-│   └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action -> slot_cycle.blend
+│   ├── draw_layers.py              Pillow → pillow_layers/attachment_red|green|blue.png (32x32 each)
+│   └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action → slot_cycle.blend
 └── atlas_pack/
-    ├── draw_layers.py              Pillow -> pillow_layers/sprite_1..9.png (32x32 each, distinct color + digit)
-    └── build_blend.py              Bpy: 1-bone armature + 9 quads + 9 materials/textures (3x3 grid) -> atlas_pack.blend
+    ├── draw_layers.py              Pillow → pillow_layers/sprite_1..9.png (32x32 each, distinct color + digit)
+    └── build_blend.py              Bpy: 1-bone armature + 9 quads + 9 materials/textures (3x3 grid) → atlas_pack.blend
 ```
 
-## Script -> output map
+## Script → output map
 
 | Fixture | Script | Input | Output |
 | --- | --- | --- | --- |

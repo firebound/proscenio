@@ -14,8 +14,8 @@ swings while its weapon attachment swaps mid-animation.
 - 2 actions named `swing` (one on the armature, one on the slot
   Empty - Blender renames the second to `swing.001` due to the
   global uniqueness constraint):
-  - Arm bone: Y rotation -pi/6 -> +pi/6 -> -pi/6 over 24 frames
-  - Slot Empty: `proscenio_slot_index` 0 (club) -> 1 (sword) -> 0
+  - Arm bone: Y rotation -pi/6 → +pi/6 → -pi/6 over 24 frames
+  - Slot Empty: `proscenio_slot_index` 0 (club) → 1 (sword) → 0
     (club), constant interpolation
 
 ## Directory layout

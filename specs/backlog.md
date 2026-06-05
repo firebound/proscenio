@@ -64,9 +64,9 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 ### visibility animation track - Blender export path
 
-**What:** the schema defines a `visibility` track and the Godot importer consumes it (`animation_builder.gd`, emits per-key visibility tracks), but nothing on the Blender side emits one and no fixture exercises it. Like `sprite_frame`, it is reachable only via a hand-authored `.proscenio`.
+**What:** the schema defines a `visibility` track type, but neither side implements it. The Godot importer stubs it - `animation_builder.gd` matches `"visibility"` and only `push_warning("not implemented yet")` - and nothing on the Blender side emits one. Only the schema enum plus a dead importer branch exist. (Not to be confused with `slot_attachment`, which is fully wired and emits per-attachment `:visible` tracks - that is how slot swaps animate today.)
 
-**Why:** either complete the loop (a keyframed `hide_render` / `hide_viewport` or a `proscenio.visible` channel becomes a `visibility` track) or retire the importer branch so the consumer side stops carrying an unexercised path.
+**Why:** either complete the loop on both sides (a keyframed `hide_render` / `hide_viewport` or a `proscenio.visible` channel becomes a `visibility` track, and the importer builds the value track) or retire the schema enum + importer stub so the format stops advertising an unimplemented track type.
 
 **Trigger:** a feature needs timeline-driven show / hide of a sprite (swap a whole limb on / off), or a code-health pass decides to drop dead importer branches.
 
@@ -77,9 +77,9 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 - **modulate / colour tint** - no per-sprite colour; a tinted material in Blender is lost. Also absent as an animation track (Godot animates `modulate` freely).
 - **draw order / z_index** - draw order is implicit in the `sprites[]` array order only; there is no explicit per-sprite `z_index`. Interleaving sprites across bones (an arm in front of the torso but behind the head) is not expressible.
 - **flip_h / flip_v** on the `Sprite2D` path.
-- **blend_mode** - the *PSD manifest* already carries `blend_mode` (`PolygonLayer.blend_mode` / `SpriteFrameLayer.blend_mode`, mapped to a Blender material on import), but the `.proscenio` sprite has no `blend_mode` field, so the value is dropped at the Blender -> Godot hop. This is a pipeline discontinuity, not just a deferred feature: the upstream schema knows the blend mode and the downstream format throws it away.
+- **blend_mode** - the *PSD manifest* already carries `blend_mode` (`PolygonLayer.blend_mode` / `SpriteFrameLayer.blend_mode`, mapped to a Blender material on import), but the `.proscenio` sprite has no `blend_mode` field, so the value is dropped at the Blender → Godot hop. This is a pipeline discontinuity, not just a deferred feature: the upstream schema knows the blend mode and the downstream format throws it away.
 
-**Why:** the format was scoped to geometry + skeleton + skinning + frame swap + slots + TRS animation - enough for a rigged character to deform and play. Appearance fidelity (tint, layering, blend) was outside the MVP. But these are not exotic: blend_mode is already half-plumbed (PSD -> Blender), modulate and z_index are first-class 2D rendering knobs, and their absence means an artist's colour / blend / layer choices silently do not reach Godot.
+**Why:** the format was scoped to geometry + skeleton + skinning + frame swap + slots + TRS animation - enough for a rigged character to deform and play. Appearance fidelity (tint, layering, blend) was outside the MVP. But these are not exotic: blend_mode is already half-plumbed (PSD → Blender), modulate and z_index are first-class 2D rendering knobs, and their absence means an artist's colour / blend / layer choices silently do not reach Godot.
 
 **Scope sketch:** add optional `modulate: [r, g, b, a]`, `z_index: int`, and `blend_mode` (reuse the manifest's `normal | multiply | screen | additive` literal) to both sprite variants; `flip_h` / `flip_v` to `SpriteFrameSprite`. Writer reads them from the Blender material / object; importer stamps the matching node property. For animation, add `modulate` and `z_index` as new track-target properties (or new track types) once the static fields land. Keep every field optional and defaulted so existing v1 goldens round-trip unchanged - additive optionals need no `format_version` bump.
 
@@ -104,9 +104,41 @@ Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users auth
 
 User UV-maps each plane in Blender to a region of the atlas; the writer reads whatever UVs are there. There is no Blender operator to "snap UV to atlas region by name". Could ship as a Phase 2 quality-of-life operator.
 
-### IK constraints export
+### Exclude sprites from the shared atlas pack
 
-Out of scope for v1. Godot has built-in `Skeleton2DIK` so the user adds IK in-engine post-import. A future spec could detect IK constraints in the armature and round-trip them.
+`Pack Atlas` is all-or-nothing today: it packs every mesh with a texture - `polygon` and `sprite_frame` alike - into one sheet. This is correct (a packed sprite_frame still slices: Godot divides its `region_rect` by `hframes`/`vframes`, not the whole atlas), but not always wanted - a large spritesheet grid bloats the shared atlas, and an effect sprite may prefer its own texture. Add an opt-out: a per-object `exclude_from_atlas` flag (keeps its own texture, skipping the pack entirely - unlike `material_isolated`, which still uses the atlas image), or auto-isolate `sprite_frame` so spritesheets keep their own composed `_spritesheets/` sheet. Pairs with Multiple atlases per character.
+
+**Trigger:** an artist packs a rig and the atlas balloons to fit a big spritesheet, or wants one effect sheet kept apart.
+
+### Validate sprite_frame UV covers the full sheet
+
+The atlas packer slices each source by its mesh UV bounds. A `sprite_frame` quad is imported with full-sheet UVs (`(0,0)-(1,1)`), so the packer takes the whole sheet as one block and the `hframes`/`vframes` grid survives the round-trip. If a user hand-edits a sprite_frame quad's UVs down to a single cell, the packer would pack just that cell and the grid breaks silently in Godot. Add a Validate check that warns when a `sprite_frame` mesh's UV bounds are not the full sheet.
+
+**Trigger:** a re-UV'd sprite_frame exports a packed atlas whose frames come out garbled in Godot.
+
+### Export bundle: gather the .proscenio and its textures into one folder
+
+The `.proscenio` references its textures by bare filename, and the Godot importer resolves them relative to the document's own folder (same directory, no subfolders). Today the writer drops the `.proscenio` next to the `.blend` and assumes the referenced PNGs (packed atlas, per-sprite, composed spritesheets) are siblings - but PSD-import assets live in `images/` / `_spritesheets/` subfolders, so the user must gather everything into one folder by hand before Godot can import it. Add an export option that writes the `.proscenio` plus copies of every texture it references into a single output folder, named by the user with a sensible default (e.g. `<doc>_proscenio/`), producing a self-contained bundle that drops straight into a Godot project. Keeps the bare-filename contract intact - it just guarantees co-location.
+
+**Trigger:** a user exports, drops only the `.proscenio` into Godot, and the import warns "atlas not found" or sprites render blank because the PNGs stayed behind.
+
+### Weight-preserving PSD re-import
+
+Re-importing a manifest rebuilds every matched plane's mesh - `importers/photoshop/planes.py:_ensure_mesh` runs `clear_geometry()` then stamps a fresh quad - so any Automesh densification and the painted vertex weights are lost on re-import (the weight values live in the vertex data that is cleared; only the vertex-group names, which sit on the object, survive). That makes re-importing PSD art after skinning destructive, and the iteration loop only safe before a sprite is skinned. The Automesh regen path already has a snapshot-and-reproject mechanism (`core/skinning/weight_snapshot`); wiring the same snapshot-before / reproject-after around the manifest re-import (for sprites whose UVs and bounds did not change, at least) would let an artist iterate the PSD after rigging without redoing weights. Pairs with the mid-edit non-destructive re-rig idea in [`docs/01-project/04-deferred.md`](../docs/01-project/04-deferred.md).
+
+**Trigger:** an artist tweaks a PSD layer, re-imports, and finds the rig's weights (and automesh) on every sprite wiped back to a flat quad.
+
+### IK constraints round-trip (Blender -> Godot)
+
+Planned - the project should support IK end to end. Today IK is Blender-only: the writer exports raw bone keyframes, not constraints, so an IK-posed animation reaches Godot only if it is baked to bone keyframes first. Two implementation paths to evaluate: bake the IK-resolved motion into the bone transform tracks at export time (no schema change, motion is flattened), or detect the IK chain and emit Godot's built-in 2D skeleton IK modifiers (`SkeletonModification2D*` on a `SkeletonModificationStack2D`) so it stays live in-engine (needs a schema field for the chain). Until it ships, bake before export or rebuild IK in-engine post-import.
+
+**Trigger:** an animator rigs with IK in Blender and the motion is flat in Godot, or asks to keep IK live in the engine.
+
+### NLA strips to Actions
+
+Planned - the project should support NLA. The writer iterates `bpy.data.actions` and ignores the NLA stack, so motion composed from non-linear strips does not export; the animator must bake to a single Action first. The target is to consume the NLA at export: flatten each object's strips (honouring blend mode and influence) into one baked Action per animation, so a strip-composed timeline round-trips to Godot's `AnimationPlayer` without manual baking.
+
+**Trigger:** an animator layers walk + overlay on the NLA, exports, and Godot plays only the base Action (or nothing).
 
 ### Auto-detect 2D rig vs 3D mesh
 
@@ -118,7 +150,7 @@ A Blender operator that adds a properly configured ortho camera for pixel-perfec
 
 ### IK chain helper
 
-Blender-side scaffolding that adds an IK constraint stack to a selected bone chain in one click: target bone, pole bone, chain length, defaults. Does not change the `.proscenio` output - IK stays out of the schema per the initial-plan decision; the helper just removes the manual setup friction. Pairs with the existing Toggle IK shortcut, which currently flips a per-bone constraint but does not scaffold a whole chain.
+Blender-side scaffolding that adds an IK constraint stack to a selected bone chain in one click: target bone, pole bone, chain length, defaults. This helper is pure authoring QoL and does not itself touch the `.proscenio` output - exporting IK is tracked separately (see IK constraints round-trip). Pairs with the existing Toggle IK shortcut, which currently flips a per-bone constraint but does not scaffold a whole chain.
 
 **Trigger:** an animator complains about repeatedly walking through the constraint panel to set up arm + leg IK on a fresh rig.
 
@@ -186,7 +218,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 
 **What:** the current authoring-panel design mirrors every PropertyGroup field on `Object.proscenio` to a sibling raw Custom Property (`obj["proscenio_type"]`, `obj["proscenio_frame"]`, ...) via `update` callbacks, and `core/hydrate.py` rehydrates the PG from CPs on `load_post`. The 11 fields in `OBJECT_PROPS` are mirrored uniformly, which is over-broad: some fields are editor-time only and could live as PG-canonical with no CP at all, while others are animatable / driver targets where the CP is the durable storage and the PG is just a typed widget projection.
 
-**Why:** PropertyGroup data is backed by IDProperty but its visibility depends on the addon's RNA descriptor being registered. Disable -> save -> reenable cycles can purge orphaned IDProperty data depending on Blender version, so PG is a brittle home for anything that must survive addon-absent file states or be a stable driver target. Raw CPs have none of those constraints, which is why Rigify and similar mature addons keep the *animator-facing* surface (IK/FK switches, layer toggles) on CPs and reserve PGs for *generator-internal* metadata. Mirroring everything pays the cost (doubled write paths, sync risk, undo desync, `deferred_hydrate` timer, dual-key reader fallback in `read_field`) for fields that do not need the resilience. Mirroring nothing loses real resilience for fields that do (`frame` is keyframable into Godot's `AnimationPlayer`; Drive-from-Bone wires drivers onto sprite properties).
+**Why:** PropertyGroup data is backed by IDProperty but its visibility depends on the addon's RNA descriptor being registered. Disable → save → reenable cycles can purge orphaned IDProperty data depending on Blender version, so PG is a brittle home for anything that must survive addon-absent file states or be a stable driver target. Raw CPs have none of those constraints, which is why Rigify and similar mature addons keep the *animator-facing* surface (IK/FK switches, layer toggles) on CPs and reserve PGs for *generator-internal* metadata. Mirroring everything pays the cost (doubled write paths, sync risk, undo desync, `deferred_hydrate` timer, dual-key reader fallback in `read_field`) for fields that do not need the resilience. Mirroring nothing loses real resilience for fields that do (`frame` is keyframable into Godot's `AnimationPlayer`; Drive-from-Bone wires drivers onto sprite properties).
 
 **Decision (locked):** option **A** - split by intent. Editor-time-only fields become PG-canonical with no CP mirror; animatable / driver-target fields become CP-canonical with PG as a typed widget wrapper. Documented as a deliberate contract, not legacy debt - rewrite the `properties/__init__.py` docstring to call this out instead of describing CPs as "legacy".
 
@@ -195,7 +227,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 - PG-canonical (drop the CP mirror): `sprite_type`, `region_mode`, `region_x`, `region_y`, `region_w`, `region_h`, `material_isolated`.
 - CP-canonical (PG is the typed widget; writer reads CP directly): `frame`, `hframes`, `vframes`, `centered`, `proscenio_slot_index`.
 - Reader (`writer/sprites.py`, slot index reads, etc.) drops the `read_field(pg_field=..., cp_key=..., default=...)` dual fallback and reads each field from its canonical home.
-- `_update_*` mirror callbacks deleted for the PG-canonical group; retained only as PG -> CP one-way for the CP-canonical group (since the PG is the widget the user touches).
+- `_update_*` mirror callbacks deleted for the PG-canonical group; retained only as PG → CP one-way for the CP-canonical group (since the PG is the widget the user touches).
 - `core/hydrate.py` becomes a one-shot migrator: on `load_post`, hydrate any `.blend` that still has legacy CPs in the PG-canonical group into the PG, then *delete* those CPs so the field has a single source of truth post-migration. Gate behind a `format_version` check on the scene PG so it runs at most once per file.
 - `_handlers.py`: keep `load_post` for the one-shot migrator; `save_pre` and `deferred_hydrate` timer can likely be deleted once the mirror is gone (revalidate during the rewrite).
 - Drive-from-Bone operator: target the CP path for animatable fields so the driver `data_path` is `pose.bones["X"]["proscenio_frame"]`-style rather than the nested PG path. Reduces driver fragility on linking / append.
@@ -224,6 +256,12 @@ Currently the rule "scene must work without the plugin" is enforced by review. A
 ### Annotate `: Variant` on JSON-boundary lookups in Godot builders
 
 Three lookups currently bind without an explicit type: `polygon_builder.gd:114`, `skeleton_builder.gd:36`, `sprite_frame_builder.gd:74` (each of the shape `var x = dict.get("key", null)`). Conventions explicitly allow bare `Dictionary` at the decode boundary, but the `var x = ...` form trips the "Never `var x = 0`" reading on hover. **Why deferred**: cosmetic, no runtime impact, the surrounding code immediately tests the value for null. **Trigger to revisit**: when refactoring the builders to typed collections, or when a reader confuses these for missing type annotations.
+
+### Sprite2D region_filter_clip for packed sprite_frame
+
+`sprite_frame_builder.gd` sets `region_enabled` + `region_rect` for a sprite_frame packed into an atlas but does not set `region_filter_clip_enabled`. Godot recommends enabling it for atlas usage so a frame does not sample neighbouring atlas pixels at the region edge under linear filtering. The packer's padding mitigates the outer-block edge and nearest filtering sidesteps it entirely, so this is a quality guard, not a correctness fix. Set `region_filter_clip_enabled = true` whenever `region_enabled` is set.
+
+**Trigger:** a packed sprite under linear filtering shows a one-pixel seam from an adjacent atlas region.
 
 ## Photoshop and Krita
 
@@ -319,6 +357,12 @@ A single-version `test-blender` job ships in [`.github/workflows/ci.yml`](../.gi
 
 The current `test-godot` job pins Godot 4.6.2-stable. Add Godot 4.3 and 4.5 to the matrix once those releases settle. Same for the `test-blender` matrix.
 
+### End-to-end mixed-feature fixture
+
+Existing fixtures isolate single features (`blink_eyes` = sprite_frame, `shared_atlas` = sliced atlas, `slot_cycle` = slots). There is no generated golden exercising a realistic rig with many features at once: a skinned `polygon` body, a `sprite_frame` mouth, a slot swapping several attachments (mixed `polygon` + `sprite_frame`), a packed atlas, Drive-from-Bone, and an animation - carried from a `.psd` through Blender to a Godot `.scn`. Add such a fixture and run it through the full generated pipeline (Photoshop manifest -> Blender import -> `.proscenio` -> Godot `.scn`) as a CI golden, so cross-feature interactions are covered - especially atlas pack + sprite_frame + slots stacked in one character, the exact combination this backlog round surfaced as untested.
+
+**Trigger:** a feature combination that each isolated fixture passes still breaks when stacked in one character.
+
 ## Repo and packaging
 
 ### LICENSE full GPL-3.0 body
@@ -333,13 +377,13 @@ The current `test-godot` job pins Godot 4.6.2-stable. Add Godot 4.3 and 4.5 to t
 
 The dev junction setup for the Blender addon is a manual `New-Item -ItemType Junction`. A `scripts/install-dev.ps1` would automate it. Same for copying the dummy fixture into `apps/godot/test_dummy/`.
 
-### Release workflow Photoshop job stale (`.jsx` -> UXP `dist/`)
+### Release workflow Photoshop job stale (`.jsx` → UXP `dist/`)
 
 `.github/workflows/release.yml` line 39 still runs `cp apps/photoshop/proscenio_export.jsx "dist/proscenio-photoshop-${version}.jsx"`. The legacy JSX exporter is gone; the plugin is now a UXP bundle that webpack emits into `apps/photoshop/dist/` (`index.html`, `index.js`, `manifest.json`, `icons/`). A `photoshop-v*` tag would fail at this step. **Why deferred**: no release has been cut yet on the UXP branch; current development uses `pnpm uxp:load` from the dev folder. **Trigger to revisit**: before cutting the first `photoshop-v*` tag. Replace the `cp` with `(cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-${version}.ccx" .)` (or `.zip` if `.ccx` packaging is out of scope), and adjust the release artifact pattern in the same job.
 
 ## Typed-models migration follow-ups
 
-The typed-models codegen migration is complete: pydantic is the source of truth, the writer builders construct model instances (`PolygonSprite()` / `Skeleton()` / `Animation()`), both manifest readers parse through the typed models (Blender `psd_manifest.py` -> `PsdManifest`, Photoshop `manifest-reader.ts` -> `parseManifest`), no `as unknown` casts remain in the typed surface, and the strictness flags all landed (`exactOptionalPropertyTypes`, ESLint `strictTypeChecked`, the mypy `disallow_any_*` trio). Committed-match tests reproduce the JSON Schema, TypeScript, and GDScript artifacts from the models and fail on drift (`tests/codegen/test_schema_roundtrip.py`, `test_ts_emit.py`, `test_godot_emit.py`); the docs emitter is the one artifact left ungated (see below). Only optional tooling / docs follow-ups remain.
+The typed-models codegen migration is complete: pydantic is the source of truth, the writer builders construct model instances (`PolygonSprite()` / `Skeleton()` / `Animation()`), both manifest readers parse through the typed models (Blender `psd_manifest.py` → `PsdManifest`, Photoshop `manifest-reader.ts` → `parseManifest`), no `as unknown` casts remain in the typed surface, and the strictness flags all landed (`exactOptionalPropertyTypes`, ESLint `strictTypeChecked`, the mypy `disallow_any_*` trio). Committed-match tests reproduce the JSON Schema, TypeScript, and GDScript artifacts from the models and fail on drift (`tests/codegen/test_schema_roundtrip.py`, `test_ts_emit.py`, `test_godot_emit.py`); the docs emitter is the one artifact left ungated (see below). Only optional tooling / docs follow-ups remain.
 
 ### bpy stubs via fake-bpy-module / bpy-stubgen
 
@@ -359,7 +403,7 @@ Three small items deferred from the quick-armature TODO at ship time. None are b
 
 - **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
 - **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.
-- **Add the ClassVar mutation rule to `.ai/conventions.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in BUGS_FOUND.md; promoting it to the conventions doc is low-priority because the bug is rare enough.
+- **Add the ClassVar mutation rule to `.ai/conventions/code.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in BUGS_FOUND.md; promoting it to the conventions doc is low-priority because the bug is rare enough.
 
 ## Architecture revisits
 
@@ -385,4 +429,4 @@ These items intentionally violate or expand on a current hard rule. They are **n
 - Mono-only audience cut would be **documented openly** as the price of the feature; this is acceptable for Firebound users (already on mono) but acknowledged as a regression for general OSS reach.
 - Anything moved to native must remain **import-time only** unless the spec explicitly relaxes the runtime side. Generated `.scn` keeps using built-in nodes.
 
-**See also:** [`.ai/skills/architecture.md`](../.ai/skills/architecture.md), [`.ai/conventions.md`](../.ai/conventions.md), the language-decision discussion in this backlog's revision history.
+**See also:** [`.ai/skills/architecture.md`](../.ai/skills/architecture.md), [`.ai/README.md`](../.ai/README.md), the language-decision discussion in this backlog's revision history.

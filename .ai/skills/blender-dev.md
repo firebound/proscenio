@@ -24,7 +24,7 @@ apps/blender/
 ├── properties/               PropertyGroup classes + handlers
 ├── operators/                bpy.types.Operator subclasses, grouped by concern
 ├── panels/                   bpy.types.Panel subclasses, one file per concern
-├── importers/photoshop/      PSD manifest -> Blender meshes
+├── importers/photoshop/      PSD manifest → Blender meshes
 ├── exporters/godot/writer/   .proscenio writer (package, one file per emission concern)
 └── tests/                    pytest suite + headless run_tests.py
 ```
@@ -33,12 +33,12 @@ The addon ID is `proscenio` (set in the manifest). The on-disk directory `apps/b
 
 ### Where to add new code
 
-- Pure-Python helper (math, parsing, dataclass walks) -> `core/<name>.py`.
-- Helper that calls `bpy.data` / `bpy.ops` / `bpy.context` -> `core/bpy_helpers/<name>.py`.
-- New operator -> `operators/<concern>.py` (or a sub-package when the concern grows multi-file). Each submodule owns its `_classes` tuple + `register()` / `unregister()`.
-- New panel -> `panels/<concern>.py`.
-- New validator -> add a function under `core/validation/<scope>.py` and re-export from the package `__init__.py`.
-- Custom Property literals -> add a constant to `core/cp_keys.py` and import the constant; never spell the key inline.
+- Pure-Python helper (math, parsing, dataclass walks) → `core/<name>.py`.
+- Helper that calls `bpy.data` / `bpy.ops` / `bpy.context` → `core/bpy_helpers/<name>.py`.
+- New operator → `operators/<concern>.py` (or a sub-package when the concern grows multi-file). Each submodule owns its `_classes` tuple + `register()` / `unregister()`.
+- New panel → `panels/<concern>.py`.
+- New validator → add a function under `core/validation/<scope>.py` and re-export from the package `__init__.py`.
+- Custom Property literals → add a constant to `core/cp_keys.py` and import the constant; never spell the key inline.
 
 When a single file grows past roughly 300 LOC, ask whether it has absorbed multiple concerns. If yes, split it.
 
@@ -151,7 +151,11 @@ Reference implementation: `apps/blender/operators/quick_armature.py` (`_emit_cho
 
 ## Pure-Python image processing
 
-The addon refuses third-party Python deps at runtime (no OpenCV, no numpy, no Pillow). COA Tools 2's `cv2` requirement is its single biggest adoption blocker - corp / ISP firewalls block PyPI, version mismatches break ABI on manual cv2 copies, see [Aodaruma/coa_tools2#94](https://github.com/Aodaruma/coa_tools2/issues/94) + [#107](https://github.com/Aodaruma/coa_tools2/issues/107). Proscenio implements alpha-channel image processing in plain Python loops at the scales the addon targets (sprites downscaled to <=256x256 before tracing).
+The addon keeps **image processing** free of native dependencies - no OpenCV, no numpy, no Pillow. The rule is selective, not blanket: it does bundle wheels where they are load-bearing (pydantic + pydantic-core power the typed models, see [`apps/blender/wheels/README.md`](../../apps/blender/wheels/README.md)). The line is drawn at heavy native deps that a plain loop can replace.
+
+Why no image libs: each is a native wheel, so bundling means one wheel per (platform, Python ABI) - the same matrix `pydantic-core` already pays (5 platforms x 2 ABIs), but multiplied by far heavier payloads (OpenCV wheels run tens of MB each, versus ~2 MB for `pydantic-core`). For a job this small that cost is absurd, and every native wheel shipped is a class of wrong-ABI / missing-platform install failures. COA Tools 2's `cv2` requirement is its single biggest adoption blocker - corp / ISP firewalls block PyPI, version mismatches break ABI on manual cv2 copies, see [Aodaruma/coa_tools2#94](https://github.com/Aodaruma/coa_tools2/issues/94) + [#107](https://github.com/Aodaruma/coa_tools2/issues/107).
+
+Proscenio implements alpha-channel image processing in plain Python loops at the scales the addon targets (sprites downscaled to <=256x256 before tracing), where a loop is fast enough that a native dep buys nothing.
 
 Pattern when an operator needs image processing:
 

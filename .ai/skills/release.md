@@ -39,7 +39,7 @@ Target distribution: GitHub Releases (no Adobe Exchange marketplace). The plugin
 ```sh
 cd apps/photoshop
 pnpm install
-pnpm run build       # webpack -> apps/photoshop/dist/
+pnpm run build       # webpack → apps/photoshop/dist/
 (cd dist && zip -r ../../../dist/proscenio-photoshop-${version}.ccx .)
 ```
 

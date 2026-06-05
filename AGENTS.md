@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Three apps bridge Photoshop → Blender → Godot 4 for 2D cutout animation:
+Four apps live under `apps/`. Three bridge Photoshop → Blender → Godot 4 for 2D cutout animation; the fourth is the documentation site:
 
 - `apps/photoshop/` - UXP plugin (TypeScript + React). Slices PSD layers and emits a manifest JSON.
 - `apps/blender/` - Blender 4.2+ addon (Python). Imports the manifest, hosts rig + animation, exports `.proscenio`.
 - `apps/godot/` - Godot 4.6 editor plugin (GDScript). Imports `.proscenio` into a native scene (`.scn`).
+- `apps/docs/` - Docusaurus site (TypeScript). Publishes the guides and the schema reference; not part of the runtime pipeline.
 
-For LLM agents and human contributors: detailed guidance lives under `.ai/skills/`. Load the skill that matches your task before touching code. Repository-wide conventions (branches, commits, code review) live in `.ai/conventions.md` - read those first.
+For LLM agents and human contributors: [`.ai/README.md`](.ai/README.md) indexes everything - task-scoped skills under `.ai/skills/` and repo-wide conventions under `.ai/conventions/` (git, layout, code, docs). Load the file that matches your task before touching code.
 
 ## Hard rules
 
@@ -20,12 +21,13 @@ For LLM agents and human contributors: detailed guidance lives under `.ai/skills
 ## Repository layout
 
 ```text
-apps/<photoshop|blender|godot>/   per-app source
+apps/<photoshop|blender|godot>/   per-app pipeline source
+apps/docs/                        Docusaurus site (serves docs/ + schema reference)
 packages/                         shared building blocks (models, codegen, validator, fixtures)
 packages/models/schemas/          cross-component JSON schemas (generated from the pydantic models)
 specs/                            planning artifacts (decisions.md, backlog.md)
 examples/                         end-to-end fixtures
-docs/                             user-facing docs
+docs/                             user-facing docs (content root for apps/docs)
 .ai/                              skills + conventions for agents and contributors
 .github/workflows/                CI + release
 ```

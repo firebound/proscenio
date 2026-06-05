@@ -1,8 +1,8 @@
 # simple_psd fixture (the photoshop importer)
 
-Smallest end-to-end exercise of the **Photoshop -> Blender importer**:
+Smallest end-to-end exercise of the **Photoshop → Blender importer**:
 one polygon layer + one sprite_frame group of 4 frames driven by a v1
-PSD manifest. Use this fixture when debugging the manifest -> stamper
+PSD manifest. Use this fixture when debugging the manifest → stamper
 -> writer path without the noise of the full doll rig.
 
 ## Directory layout

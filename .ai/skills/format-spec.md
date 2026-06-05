@@ -61,7 +61,7 @@ The Godot importer trusts the exporter - it does not re-flip. If you write a non
 
 The `atlas` field is an optional path to a single packed texture. The Blender addon ships an in-tool **atlas packer** that emits the packed atlas + per-sprite `texture_region` rectangles directly from the rigged scene. Sliced-atlas authoring + Unpack support let the artist round-trip a packed atlas back to source images, edit, and repack. External packers (TexturePacker, Free Texture Packer, etc.) remain compatible - the writer reads whatever `texture_region` the user supplies.
 
-Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred spec tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md).
+Multi-atlas per character is not supported in v1; multi-atlas characters split into multiple `.proscenio` files. Multi-atlas via an `atlas_pages[]` array is a deferred spec tracked in [`docs/01-project/04-deferred.md`](../../docs/01-project/04-deferred.md).
 
 ## Skinning weights
 
@@ -82,10 +82,10 @@ Sprites with the field absent or empty stay rigid-attached (a child of the `Bone
 
 The format above defines the **wire shape**; the weight-paint-automesh authoring work defines the **authoring loop** that produces it. The Blender addon ships a Skinning subpanel that lets the artist:
 
-1. **Automesh from Sprite** - PNG alpha trace -> annulus mesh with bone-aware interior density. Pure-Python contour walker (no OpenCV).
+1. **Automesh from Sprite** - PNG alpha trace → annulus mesh with bone-aware interior density. Pure-Python contour walker.
 2. **Bind to Picker Armature** - one click; default mode is BONE_HEAT (Blender native) with 4 Proscenio fallbacks (PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). Bind populates a `proscenio_weight_sidecar` JSON on the mesh tagged `provenance="auto_seed"`.
 3. **Edit Weights modal** - one-click entry into 2D-safe Weight Paint with GPU provenance overlay (cyan=reprojected, white=user_paint, gray=auto_seed). Per-stroke diff flips touched verts' provenance to `user_paint`. ESC hard-exits + restores brush + bone visibility + mode + selection.
-4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot -> regen -> reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen.
+4. **Automesh regen preserves weights** - when `preserve_on_regen` is ON (default), changing mesh resolution / contour density / bone radius triggers a snapshot → regen → reproject sequence. Reproject does barycentric interp over 3 nearest UV anchors; donor `user_paint` propagates so manual paint marks survive regen.
 5. **Restore Weight Snapshot** - one-click revert to the last saved sidecar; topology mismatch aborts with a hint to re-run automesh with preserve ON.
 
 The writer (`proscenio_writer`) reads the final vertex groups and emits the `weights` array - it does not care which authoring path produced them.
@@ -126,4 +126,4 @@ Per-key `interp` field: `linear` or `constant`. Default `linear` if omitted.
 - Position / scale tracks: `INTERPOLATION_CUBIC`.
 - `sprite_frame` and `slot_attachment` tracks: `INTERPOLATION_NEAREST` (hard cuts).
 
-This means per-key `interp` is currently ignored for transform tracks - the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred spec tracked in [`docs/DEFERRED.md`](../../docs/DEFERRED.md). True Bezier preservation (in/out tangent handles per key) is also deferred - it requires schema fields the v1 shape does not model.
+This means per-key `interp` is currently ignored for transform tracks - the track-level cubic spline always wins. Per-key interpolation mixing (linear / constant / cubic on different keys of the same track) is a deferred spec tracked in [`docs/01-project/04-deferred.md`](../../docs/01-project/04-deferred.md). True Bezier preservation (in/out tangent handles per key) is also deferred - it requires schema fields the v1 shape does not model.

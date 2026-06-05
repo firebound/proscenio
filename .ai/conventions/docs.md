@@ -1,0 +1,136 @@
+# Documentation style
+
+All documentation, code comments, docstrings, commit messages, PR descriptions, and prose under `specs/` follow a small set of positive rules. The goal is text that reads like a human wrote it for another human. Part of the [agent and contributor reference](../README.md).
+
+## English with technical terms
+
+Prose is English. Technical terms keep their canonical spelling (`Skeleton2D`, `bmesh`, `bone_collections`, `format_version`, `EditorImportPlugin`). Identifiers in code blocks and config snippets are quoted verbatim; do not translate or paraphrase them.
+
+## UI element references
+
+Inline references to a tool's UI use a fixed decorator so a reader tells chrome from clickable controls at a glance. The set is intentionally small and renders the same on the docs site and on GitHub:
+
+- **Panel / subpanel / tab**: bold - the **Active Sprite** subpanel, the **Proscenio** tab.
+- **Button / menu item / field / property / enum value**: inline code - click `Bind to Picker Armature`, set `hframes`, pick `Polygon`.
+- **Menu path**: inline code joined with `>` - `Skeleton > Quick Armature`, `Export > Validate`.
+- **Keyboard key or chord**: the `<kbd>` element - <kbd>N</kbd>, <kbd>Ctrl+P</kbd>, <kbd>Shift</kbd> + <kbd>LMB</kbd> drag.
+- **Application modes and named views** stay plain prose: Edit Mode, Pose Mode, Front Orthographic.
+
+`<kbd>` renders as a keycap on the docs site (styled in `apps/docs/src/css/custom.css`) and as a key on GitHub; bold and inline code render identically on both. Avoid custom MDX components or `class`-styled spans for UI chrome - they degrade or vanish when the same Markdown is read on GitHub.
+
+Bold beyond panels is ordinary emphasis - the lead line of an admonition, or a word or two mid-prose. It never marks a step action label; those take italics (see Procedure steps).
+
+## Procedure steps
+
+A numbered how-to step leads with an italic imperative label and a colon, then the detail. Bold is reserved for panels (see UI element references), so the action label takes italics to stay visually distinct from the UI chrome it mentions:
+
+```markdown
+1. *Set the picker armature*: in the **Skeleton** subpanel, pick your armature as the active armature.
+2. *Bind*: in the **Skinning** subpanel, click `Bind to Picker Armature`.
+```
+
+The italic label is the action a reader scans for; the detail is how. Keep one label style across a guide - do not mix `*Label*:` with `**Label**:` or bare sentences.
+
+## Reference features by name
+
+Sections, links, and prose name the feature being discussed:
+
+```markdown
+## Pen tool: draw contour from alpha boundary
+Trigger via LMB drag in the interior-edit stage. Release happens
+on tablet pressure zero or window deactivate.
+
+See the weight-paint-automesh spec.
+```
+
+The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Decision identifiers `D1`-`D16` stay (concise, locked, scoped to their owning spec). Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name.
+
+## Spec references in `decisions.md` and `backlog.md` are name-only
+
+The two long-lived index files - `specs/decisions.md` and `specs/backlog.md` - **never** hardlink to a spec folder. Reasons:
+
+- The locked rationale already lives in `decisions.md` itself for shipped work, or in `backlog.md` for pending work. A reader following the link would land in a `STUDY.md` that mostly re-states what the index already carries.
+- STUDY files are scheduled for periodic pruning once their decisions are mirrored back into `decisions.md`. A link that worked yesterday may target a deleted file tomorrow.
+- The feature name is searchable; `git log -p -- specs/<NNN>-<slug>/` recovers the full history when someone genuinely needs the planning archeology.
+
+Reference shape inside those two files:
+
+```markdown
+**Authoring side resolved by the weight-paint-automesh spec first cut** - ...
+The typed-models codegen D7 deferred the docs site to a separate chore.
+```
+
+Everywhere else (CONTRIBUTING.md, agent skill pages, prose under a still-active spec) the linked form remains fine while the target file exists:
+
+```markdown
+See [the weight-paint-automesh spec](../specs/NNN-weight-paint-automesh/STUDY.md).
+```
+
+## Scenarios get descriptive titles
+
+Manual test scenarios, design walk-throughs, and worked examples lead with a one-line title that describes the user-visible outcome:
+
+```markdown
+### Scenario: pen tool draws contour from alpha boundary
+1. Open the fixture in Blender.
+2. Select `hand`.
+3. Skinning panel > Automesh from sprite > Automesh (modal).
+```
+
+Scenarios are numbered within a section when ordering matters. The title carries the meaning; the number is only an ordinal.
+
+## Bug reports lead with the symptom
+
+`tests/BUGS_FOUND.md` and inline bug notes start with a one-line description of what the user sees, then context:
+
+```markdown
+### Polygon at world origin instead of slot location
+Writer reads `matrix_world` while the source mesh has
+`hide_viewport=True`, so the world matrix is stale.
+```
+
+## Enum values describe the state
+
+GDScript / Python / TypeScript enums use names that read aloud:
+
+```python
+class AuthoringStage(StrEnum):
+    OUTLINE = "outline"
+    EDIT_INTERIOR_POINTS = "edit_interior_points"
+    PREVIEW_FILL = "preview_fill"
+    APPLY = "apply"
+```
+
+The token shape (`SCREAMING_SNAKE`, `PascalCase`) follows the language convention; the words inside describe the state.
+
+## Commit subjects are imperative English
+
+Each commit subject reads as one sentence telling the repo what to do:
+
+```text
+feat(blender): add toggle-pen gesture to interior edit stage
+fix(godot): flip Y on bone transform tracks
+docs(specs): document weight-sidecar reproject decisions
+```
+
+PR titles follow the same shape. Subjects do not contain ticket numbers, dates, or internal task IDs. The body carries motivation when it is not obvious from the diff.
+
+## Periodic audit
+
+The pre-commit hooks reject the most common drift markers (see [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) "drift markers" section). Run a broader sweep against the whole tree on demand - useful before a release or after a long agent-driven session. Commands assume `ripgrep`; substitute `grep -rEIn ... --include=...` if `rg` is not available.
+
+```sh
+# Drift markers across docs + code.
+rg -nIH '\bSPEC \d{3}\b|\bWave \d+\.\d+|\bAS-AM\d+' -g '!node_modules' -g '!dist' -g '!__pycache__'
+
+# Substitution artifacts (left by earlier rewrite passes).
+rg -nIH '\bthe the \b|this spec spec\b' -g '!node_modules' -g '!dist'
+
+# LLM filler phrases.
+rg -nIH '\b(obviously|Let'\''s|Note that|It'\''s important to|Keep in mind)\b' -g '*.md' -g '*.py' -g '*.gd' -g '*.ts' -g '*.tsx'
+
+# Em-dash (project uses hyphen-minus).
+rg -nIH '—' -g '!node_modules' -g '!dist'
+```
+
+A clean sweep returns no output. A noisy sweep means the drift list grew - either fix the hits or extend the allowlist in the pre-commit hook with a stated reason.

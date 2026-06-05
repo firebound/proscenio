@@ -7,7 +7,7 @@ Artist re-enters Blender to rig the doll. The pipeline forks here into **two par
 | `doll_ps_tagged.blend` | `../02_photoshop_setup/export/doll_tagged.photoshop_exported.json` | **Parity sandbox** for the photoshop tag system v1 tags. Geometry is intentionally deformed (scale 2.5 on arm.R, custom origins, blend-stack duplicates of chest / eyes) so every tag exercises its semantics end-to-end. Not used for rigging - the figure looks broken on purpose. |
 | `doll_rigged.blend` | re-export of `../01_photoshop_base/doll_ps_base.psd` (clean, no artist tags) | **Rigging target**. Built from a fresh re-export of the untagged baseline PSD via the Proscenio Exporter, then hand-rigged on top. This is what step 04 (`../04_godot_import/`) consumes. |
 
-The split exists because tagging and rigging answer different questions. Step 02 answers "does every tag in the taxonomy round-trip Blender -> PS -> Blender?" - the deformations are the signal. Step 03's rigged path answers "can the artist work the pipeline end-to-end on a real character?" - the deformations would just be noise.
+The split exists because tagging and rigging answer different questions. Step 02 answers "does every tag in the taxonomy round-trip Blender → PS → Blender?" - the deformations are the signal. Step 03's rigged path answers "can the artist work the pipeline end-to-end on a real character?" - the deformations would just be noise.
 
 ## Contents
 
@@ -23,7 +23,7 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 1. Open Blender (clean scene).
 2. Enable the **Proscenio** addon.
-3. `File > Import > Proscenio Photoshop manifest...` -> pick `../02_photoshop_setup/export/doll_tagged.photoshop_exported.json`.
+3. `File > Import > Proscenio Photoshop manifest...` → pick `../02_photoshop_setup/export/doll_tagged.photoshop_exported.json`.
 4. The importer stamps 24 textured planes + 1 stub armature, populates collections `body` / `eyes` / `teste`, applies origins / blend modes / scale per tag.
 5. Save as `doll_ps_tagged.blend`. **Do not rig this file** - it is the parity oracle, not the production figure.
 
@@ -33,9 +33,9 @@ The split exists because tagging and rigging answer different questions. Step 02
 2. Open the **Proscenio Exporter** panel; output folder = `../01_photoshop_base/export/`.
 3. Click **Export manifest + PNGs**. This emits a the photoshop tag system v2 manifest with no artist tags - identical body layout to the step 00 Blender manifest modulo the documented PS round-trip drift (waist 1 px shorter, AA edge bleed).
 4. In Blender (clean scene), enable the Proscenio addon.
-5. `File > Import > Proscenio Photoshop manifest...` -> pick `../01_photoshop_base/export/doll_ps_base.photoshop_exported.json`.
+5. `File > Import > Proscenio Photoshop manifest...` → pick `../01_photoshop_base/export/doll_ps_base.photoshop_exported.json`.
 6. Author the rig on top:
-   - Add an `Armature` named `doll.rig` with the humanoid bone chain (`root` -> pelvis split, spine column, arms, neck/head, face attachments).
+   - Add an `Armature` named `doll.rig` with the humanoid bone chain (`root` → pelvis split, spine column, arms, neck/head, face attachments).
    - Parent every imported plane to `doll.rig` (Armature deform, **with empty groups**).
    - Weight-paint each plane against the appropriate bone(s). Spine-region meshes (`chest`, `belly`, `waist`) take multi-bone weights; arm / leg meshes are single-bone.
    - Author actions: `idle` (30f, loop), `wave` (30f), `walk` (30f, loop). Push each to the NLA.
@@ -45,12 +45,12 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 The Blender importer preserves the photoshop tag system v2 semantics that step 02 baked into the manifest:
 
-- `[folder:NAME]` -> Blender collection hierarchy.
-- `[polygon]` -> textured plane mesh.
-- `[spritesheet]` -> driven sprite_frame setup (eyes, brow, mouth swaps - see `examples/generated/blink_eyes/` for the driver pattern this rig will eventually adopt).
-- `[mesh]` -> editable polygon plane (so the artist can sculpt the silhouette if needed).
-- `[origin]` / `[origin:x,y]` -> pivot point of the plane (consumed before rigging; rigger never needs to set it manually).
-- `[blend:multiply|screen|additive]` -> material blend mode on the plane.
+- `[folder:NAME]` → Blender collection hierarchy.
+- `[polygon]` → textured plane mesh.
+- `[spritesheet]` → driven sprite_frame setup (eyes, brow, mouth swaps - see `examples/generated/blink_eyes/` for the driver pattern this rig will eventually adopt).
+- `[mesh]` → editable polygon plane (so the artist can sculpt the silhouette if needed).
+- `[origin]` / `[origin:x,y]` → pivot point of the plane (consumed before rigging; rigger never needs to set it manually).
+- `[blend:multiply|screen|additive]` → material blend mode on the plane.
 
 ## Verification
 

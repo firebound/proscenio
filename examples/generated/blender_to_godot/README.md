@@ -1,6 +1,6 @@
 # blender_to_godot fixtures
 
-End-to-end inputs + goldens for the **Blender -> Godot** half of the Proscenio pipeline. Each fixture starts from a `.blend` and produces a `.proscenio` scene file (plus a Godot wrapper `.tscn`) that downstream consumers diff against.
+End-to-end inputs + goldens for the **Blender → Godot** half of the Proscenio pipeline. Each fixture starts from a `.blend` and produces a `.proscenio` scene file (plus a Godot wrapper `.tscn`) that downstream consumers diff against.
 
 The existing procedural fixtures under `examples/generated/<name>/` (atlas_pack, blink_eyes, mouth_drive, shared_atlas, simple_psd, slot_cycle, slot_swap) all belong to this direction. They predate the categorization and stay at the flat top level for now; this bucket exists so new `blender_to_godot` fixtures can land beside the existing ones without disturbing the doc / script ripple chain.
 

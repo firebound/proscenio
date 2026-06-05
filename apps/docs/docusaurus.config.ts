@@ -2,6 +2,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+import remarkGithubAdmonitionsToDirectives from 'remark-github-admonitions-to-directives';
+
 import repoLinks from './src/remark/repo-links.mjs';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
@@ -66,9 +68,13 @@ const config: Config = {
           path: '../../docs',
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
-          // Run before Docusaurus's own .md link resolver so escaping links are
-          // already github.com URLs by the time it checks for broken links.
-          beforeDefaultRemarkPlugins: [repoLinks],
+          // Run before Docusaurus's own remark pipeline:
+          // - repoLinks rewrites repo-source links to github.com URLs before the
+          //   broken-link resolver checks them.
+          // - github-admonitions converts GitHub `> [!NOTE]` alert blockquotes
+          //   into Docusaurus `:::note` directives so the same syntax renders
+          //   styled on both GitHub and the docs site.
+          beforeDefaultRemarkPlugins: [repoLinks, remarkGithubAdmonitionsToDirectives],
           editUrl:
             'https://github.com/Space-Wizard-Studios/firebound-proscenio/tree/main/docs/',
         },
@@ -117,9 +123,9 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {label: 'Walkthrough', to: '/WALKTHROUGH'},
-            {label: 'Architecture', to: '/ARCHITECTURE'},
-            {label: 'Features', to: '/FEATURES'},
+            {label: 'Walkthrough', to: '/guides/basic'},
+            {label: 'Architecture', to: '/project/architecture'},
+            {label: 'Features', to: '/project/features'},
           ],
         },
         {

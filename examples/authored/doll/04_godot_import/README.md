@@ -2,7 +2,7 @@
 
 Final pipeline step. The rigged `.blend` from step 03 (`../03_blender_setup/doll_rigged.blend`) is exported as a Proscenio scene and consumed by Godot.
 
-> **Status: WIP.** The Proscenio Blender -> Godot exporter is partially wired (see the authoring panel / the reimport-merge work). The wrapper scripts in this folder (`Doll.gd`, `Doll.tscn`) are the **target shape** for what the Godot side looks like once step 03 lands and the exporter ships end-to-end. They currently reference `doll.proscenio` (the legacy direct-from-blender path) and will be retargeted at the step 03 output as soon as that path stabilises.
+> **Status: WIP.** The Proscenio Blender → Godot exporter is partially wired (see the authoring panel / the reimport-merge work). The wrapper scripts in this folder (`Doll.gd`, `Doll.tscn`) are the **target shape** for what the Godot side looks like once step 03 lands and the exporter ships end-to-end. They currently reference `doll.proscenio` (the legacy direct-from-blender path) and will be retargeted at the step 03 output as soon as that path stabilises.
 
 ## Contents
 
@@ -19,8 +19,8 @@ There is nothing to regenerate in this folder - the files are authored once and 
 
 1. Open `../03_blender_setup/doll_rigged.blend` in Blender.
 2. Enable the **Proscenio** addon.
-3. `File > Export > Proscenio scene...` -> targets the Godot project's `res://examples/doll/`.
-4. In Godot, let the importer regenerate `doll.proscenio` -> `doll.scn`.
+3. `File > Export > Proscenio scene...` → targets the Godot project's `res://examples/doll/`.
+4. In Godot, let the importer regenerate `doll.proscenio` → `doll.scn`.
 
 ## Verification (vs step 03)
 

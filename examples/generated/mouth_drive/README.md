@@ -14,7 +14,7 @@ match the typical 2D cutout authoring layout:
     camera axis, which reads as "rotation in the picture") is wired
     via a pre-installed Scripted driver to `mouth.proscenio.frame`.
 - 1 action `mouth_drive_anim` keyframing `mouth_drive` Y rotation
-  -pi/2 -> +pi/2 -> 0 over 24 frames, cycling the sprite through
+  -pi/2 → +pi/2 → 0 over 24 frames, cycling the sprite through
   all 4 mouth shapes via the driver. `mouth_pos` exists structurally
   (the sprite is parented to it) but currently stays at rest - see
   tests/BUGS_FOUND.md for the writer-side issue that drops part of

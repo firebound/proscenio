@@ -88,5 +88,13 @@
     // `[-pi, pi]`) parse as shortcut reference links with no definition; the
     // project uses inline links, so reference-link validation only ever fires
     // false positives.
-    "markdown.validate.referenceLinks.enabled": "ignore"
+    "markdown.validate.referenceLinks.enabled": "ignore",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "hide-files.files": []
 }

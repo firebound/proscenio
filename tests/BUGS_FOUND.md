@@ -34,7 +34,7 @@ blender.exe: view3d_main_region_draw
 
 **Severity:** low - intermitente, não reproduzido na re-tentativa, fora do nosso código. Mantido watch caso vire recorrente.
 
-**Trigger pra escalar:** se reproduzir 2x+ em sessões diferentes -> file Blender bug report com este stack trace.
+**Trigger pra escalar:** se reproduzir 2x+ em sessões diferentes → file Blender bug report com este stack trace.
 
 ### bpy.props annotations falham em Operator com PEP 563 + ClassVar referenciando tipo TYPE_CHECKING-only
 
@@ -46,7 +46,7 @@ blender.exe: view3d_main_region_draw
 2. ClassVar annotation referenciando tipo só importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
 3. Blender 5.1's `register_class` chama `typing.get_type_hints(cls)` que tenta evaluar TODAS as annotation strings contra module globals
 
-`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix só existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk -> nenhuma `_PropertyDeferred` promove pra RNA -> `self.<prop>` quebra.
+`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix só existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk → nenhuma `_PropertyDeferred` promove pra RNA → `self.<prop>` quebra.
 
 Confirmado via headless `--background --python` instrumentando `get_type_hints`. Após remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registração volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagógica + consistência.
 
@@ -56,7 +56,7 @@ Confirmado via headless `--background --python` instrumentando `get_type_hints`.
 
 **Fix aplicado em the quick-armature first cut (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
 
-**Lesson learned para [`.ai/conventions.md`](../.ai/conventions.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` só existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug é silent + difícil de debugar (annotation walk falha sem erro visível; só `self.<prop>` raises AttributeError tarde).
+**Lesson learned para [`.ai/conventions/code.md`](../.ai/conventions/code.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` só existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug é silent + difícil de debugar (annotation walk falha sem erro visível; só `self.<prop>` raises AttributeError tarde).
 
 **Severity (revisado):** medium - bug é raro (precisa o combo específico) mas custa horas pra debugar quando aparece.
 
@@ -143,7 +143,7 @@ Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y 
 
 **Two-pronged fix:**
 
-1. Validator deve preferir o que o writer vai emitir. Writer usa `read_field` (PG -> CP fallback) ou `read_bool_flag`. Validator deve usar a mesma função pra ler valores -- fonte de verdade unificada.
+1. Validator deve preferir o que o writer vai emitir. Writer usa `read_field` (PG → CP fallback) ou `read_bool_flag`. Validator deve usar a mesma função pra ler valores -- fonte de verdade unificada.
 2. Documentar (no help / panel hint) que "editar Custom Properties direto não atualiza UI" -- workflow esperado é via panels, CP é fallback.
 
 **Severity:** medium -- workflow CP-first é nicho mas existe; usuário fazendo isso vai exportar valor inválido sem aviso.
@@ -186,7 +186,7 @@ empty.location = seed.matrix_world.to_translation()  # agora consistente
 1. `apps/blender/properties/object_props.py:220-227` (`slot_default`), `:239-247` (`is_slot`), `:230-237` (`is_outliner_favorite`) - nenhum desses 3 fields tem `update=on_any_update` no IntProperty/StringProperty/BoolProperty. Os outros 11 fields têm.
 2. `apps/blender/core/mirror.py:24-36` (`OBJECT_MIRROR_MAP`) - mapping não inclui entries pros 3 fields acima. Mesmo se update callback disparasse, `mirror_all_fields` não saberia mirror eles.
 
-Resultado: PG e CP divergem assim que usuário toca esses fields. Headless writer (sem addon) lê CP stale -> slot_default errado, is_slot errado.
+Resultado: PG e CP divergem assim que usuário toca esses fields. Headless writer (sem addon) lê CP stale → slot_default errado, is_slot errado.
 
 **Fix proposto:**
 
@@ -260,9 +260,9 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Repro:** Click "Drive from Bone" em sprite mesh. Olha no Drivers Editor o fcurve do driver. Tem keyframes em ~(0.667, 0.667), (1.0, 1.0), (1.333, 1.333) com Bezier interpolation + Constant extrapolation.
 
-**Causa:** quando o operator chama `sprite.driver_add(data_path)`, Blender cria fcurve com 3 default keyframes pra IntProperty (provavelmente seed da geometry padrão). Esses keyframes mapeiam driver expression output -> final value. Constant extrapolation clamps qualquer valor fora de [0.667, 1.333] -> int(1.333)=1. Frame fixo em 1 não importa quanto o driver expression calcule.
+**Causa:** quando o operator chama `sprite.driver_add(data_path)`, Blender cria fcurve com 3 default keyframes pra IntProperty (provavelmente seed da geometry padrão). Esses keyframes mapeiam driver expression output → final value. Constant extrapolation clamps qualquer valor fora de [0.667, 1.333] → int(1.333)=1. Frame fixo em 1 não importa quanto o driver expression calcule.
 
-**Fix proposto:** após `driver_add`, deletar os keyframes default do fcurve OU adicionar fcurve modifier "Generator" linear (`y = 1*x + 0`) explicitamente. Garante mapping 1:1 driver-output -> property-value.
+**Fix proposto:** após `driver_add`, deletar os keyframes default do fcurve OU adicionar fcurve modifier "Generator" linear (`y = 1*x + 0`) explicitamente. Garante mapping 1:1 driver-output → property-value.
 
 **Arquivo:** `apps/blender/operators/driver.py:31-40` (`_ensure_single_driver`).
 
@@ -272,9 +272,9 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Repro:** abrir `examples/generated/mouth_drive/mouth_drive.blend` e tentar usar Drive from Bone pra controlar mouth via bone rotation Z em pose mode.
 
-**Causa:** o fixture `packages/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` -> `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
+**Causa:** o fixture `packages/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` → `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
 
-**Fix proposto:** orientar o bone horizontalmente (`head=(0,0,0)` -> `tail=(0.5,0,0)`) ou ao longo de world Y (`tail=(0,0.5,0)`). Aí bone-Y = world Y, rotação Z em pose mode = rotação local Z do bone, e LOCAL_SPACE pega a rotação corretamente. Alinha com convenção 2D cutout (bones no plano XY mundo).
+**Fix proposto:** orientar o bone horizontalmente (`head=(0,0,0)` → `tail=(0.5,0,0)`) ou ao longo de world Y (`tail=(0,0.5,0)`). Aí bone-Y = world Y, rotação Z em pose mode = rotação local Z do bone, e LOCAL_SPACE pega a rotação corretamente. Alinha com convenção 2D cutout (bones no plano XY mundo).
 
 **Arquivo:** `packages/fixtures/mouth_drive/build_blend.py:81-83`.
 
@@ -288,9 +288,9 @@ Local Space retorna rotação relativa à orientação local do bone. Pra bones 
 
 **Fix:** trocar 3 paths nos `.tscn` afetados:
 
-- `examples/generated/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` -> `res://blink_eyes/godot/BlinkEyes.gd`
-- `examples/authored/doll/04_godot_import/Doll.tscn`: `res://doll/Doll.gd` -> `res://doll/godot/Doll.gd` (historical; the restructure moved this file to `04_godot_import/` and updates path conventions accordingly)
-- `examples/generated/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` -> `res://shared_atlas/godot/SharedAtlas.gd`
+- `examples/generated/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` → `res://blink_eyes/godot/BlinkEyes.gd`
+- `examples/authored/doll/04_godot_import/Doll.tscn`: `res://doll/Doll.gd` → `res://doll/godot/Doll.gd` (historical; the restructure moved this file to `04_godot_import/` and updates path conventions accordingly)
+- `examples/generated/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` → `res://shared_atlas/godot/SharedAtlas.gd`
 
 `mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.
 
@@ -323,7 +323,7 @@ testes manuais nessas fixtures.
 
 **Fix proposto:**
 
-- Substituir `bpy.ops.uv.smart_project` por reprojeção manual: detectar plano do mesh (X, Y ou Z aligned), mapear UVs naive (face vertices em world space -> UV [0..1] baseado em bounding box no plano detectado), respeitando o flip-U-pra-Front-Ortho que `build_blend.py` faz.
+- Substituir `bpy.ops.uv.smart_project` por reprojeção manual: detectar plano do mesh (X, Y ou Z aligned), mapear UVs naive (face vertices em world space → UV [0..1] baseado em bounding box no plano detectado), respeitando o flip-U-pra-Front-Ortho que `build_blend.py` faz.
 - Alternativa: `bpy.ops.uv.unwrap` (cube/cylinder/sphere projection explícita) em vez de smart_project, com config determinística.
 - Mínimo: documentar limitação no help topic do Reproject UV ("re-roda Smart UV Project, pode mudar orientação de UVs autoradas manualmente").
 
@@ -358,7 +358,7 @@ Headless inspect:
 
 ### Writer reads `rotation_euler[2]` (Z) but bones keyframe `rotation_euler[1]` (Y)
 
-**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis - camera-axis rotation in Front Ortho, per `packages/fixtures/README.md` convention). Run the writer -> inspect emitted bone_transform track.
+**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis - camera-axis rotation in Front Ortho, per `packages/fixtures/README.md` convention). Run the writer → inspect emitted bone_transform track.
 
 **Sintoma:** swing track in the .proscenio has 3 keyframes with only `{"time": ...}` - no `position`/`rotation`/`scale` data. Godot imports an empty track and the arm doesn't animate.
 
@@ -410,7 +410,7 @@ if combined and combined not in obj.name.lower():
 
 **Repro:** doll_workbench.blend > Pose Mode > deselect all (`Alt+A`) > Proscenio > subpanel Skeleton > click row `upper_arm.L` no UIList de bones.
 
-**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela MANUAL_TESTING.md item 1.8.2: click row -> seleciona bone correspondente em pose mode.
+**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela MANUAL_TESTING.md item 1.8.2: click row → seleciona bone correspondente em pose mode.
 
 **Causa:** `apps/blender/properties/scene_props.py:54` define `active_bone_index` como `IntProperty` puro, sem `update=` callback. `apps/blender/panels/skeleton.py:73-80` usa `template_list` apontando pra esse PG, que só armazena o índice; não há operator no row draw nem update hook que sincronize com `armature.data.bones.active` ou `armature.pose.bones[...].bone.select`.
 
@@ -478,7 +478,7 @@ if combined and combined not in obj.name.lower():
 
 **Repro:** atlas_pack_workbench.blend > Object Mode > Pack Atlas > Apply Packed Atlas (OK, viewport correto) > **Apply Packed Atlas** denovo.
 
-**Sintoma:** UVs encolhem dentro do slot do atlas. Cada Apply remapeia as UVs como se elas estivessem em "source image space" (0..1 do PNG original), mas após primeiro Apply elas já estão em atlas space (ex: 0..0.125 pra sprite 32px em atlas 256px). Segundo Apply trata 0..0.125 como source-image 0..1 e re-empacota dentro do já-pequeno slot. Repetir N vezes -> UVs convergem pra ponto único no canto do slot.
+**Sintoma:** UVs encolhem dentro do slot do atlas. Cada Apply remapeia as UVs como se elas estivessem em "source image space" (0..1 do PNG original), mas após primeiro Apply elas já estão em atlas space (ex: 0..0.125 pra sprite 32px em atlas 256px). Segundo Apply trata 0..0.125 como source-image 0..1 e re-empacota dentro do já-pequeno slot. Repetir N vezes → UVs convergem pra ponto único no canto do slot.
 
 **Causa:** `apply.py:148-173` (`_rewrite_uvs`):
 
@@ -556,7 +556,7 @@ Mesmo bug aplica ao shared material - se `Proscenio.PackedAtlas` for renomeado, 
 
 **Sintoma:** bone criado fica horizontal (head.Z == tail.Z == 0), independente de pra onde o mouse vai no eixo Z visualizado. Drag vertical no Front Ortho resulta em bone horizontal - aparenta colapsar Z=0 silenciosamente.
 
-**Causa:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51` (`mouse_event_to_z0_point`) projeta ray do mouse no plano **Z=0** (XY plane, "ground plane"). Em Front Ortho o `view_vec.z ≈ 0` (câmera olha ao longo de Y) -> linha 39 cai no fallback -> linha 41 chama `region_2d_to_location_3d(..., Vector((0,0,0)))` -> linha 43 retorna `(x, y, 0.0)` forçando Z=0.
+**Causa:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51` (`mouse_event_to_z0_point`) projeta ray do mouse no plano **Z=0** (XY plane, "ground plane"). Em Front Ortho o `view_vec.z ≈ 0` (câmera olha ao longo de Y) → linha 39 cai no fallback → linha 41 chama `region_2d_to_location_3d(..., Vector((0,0,0)))` → linha 43 retorna `(x, y, 0.0)` forçando Z=0.
 
 Proscenio é workflow XZ (Spine / 2D cutout convention - bones no plano Y=0 visíveis em Front Ortho). Helper foi escrito assumindo top-down (Z=0 plane), incompatível com a convention principal do addon.
 
@@ -564,7 +564,7 @@ Proscenio é workflow XZ (Spine / 2D cutout convention - bones no plano Y=0 vis�
 
 - Renomear helper pra `mouse_event_to_plane_point(plane_axis)` ou similar; deixar caller especificar plano.
 - Em `quick_armature.py:70` + `:79`, passar `plane_axis="Y"` pra projetar em Y=0 (XZ plane) - combina com Front Ortho.
-- Considerar detectar a view atual automaticamente: Top Ortho -> Z=0, Front Ortho -> Y=0, Right Ortho -> X=0. Mas complica UX (bone muda de plano se user gira camera). Simpler: hardcode Y=0 pra Proscenio uso.
+- Considerar detectar a view atual automaticamente: Top Ortho → Z=0, Front Ortho → Y=0, Right Ortho → X=0. Mas complica UX (bone muda de plano se user gira camera). Simpler: hardcode Y=0 pra Proscenio uso.
 
 **Arquivo:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51`, `apps/blender/operators/quick_armature.py:70,79`.
 
@@ -600,7 +600,7 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 1. Blender escreve `00_blender_base/doll_base.photoshop_manifest.json` com `pixels_per_unit = 1000.0` (PPU do `render_layers.py`).
 2. Proscenio Exporter panel (Import manifest as PSD) lê manifest, popula `01_photoshop_base/doll_ps_base.psd` (não persiste PPU em metadado).
-3. Re-exportar `02_photoshop_setup/doll_tagged.psd` -> `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` com `pixels_per_unit = 100`.
+3. Re-exportar `02_photoshop_setup/doll_tagged.psd` → `02_photoshop_setup/export/doll_tagged.photoshop_exported.json` com `pixels_per_unit = 100`.
 
 Diff esperado byte-equal contra a (1) falha só nesse campo (+ paths esperados por design).
 

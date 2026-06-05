@@ -42,7 +42,7 @@ Each subfolder owns its own `README.md` documenting **what it consumes**, **what
 [03_blender_setup/]       doll_rigged.blend   (gitignored; regenerable)
         |   (Proscenio Blender importer + manual rig/weights/actions)
         |
-        |   (Proscenio Blender exporter -> Godot project)
+        |   (Proscenio Blender exporter → Godot project)
         v
 [04_godot_import/]        Doll.tscn + Doll.gd  (the reimport-merge work wrapper)
 ```
@@ -63,7 +63,7 @@ See each step's own README for inputs/outputs/verification.
 
 ## Skeleton
 
-The armature lives inside `03_blender_setup/doll_rigged.blend` as `doll.rig` - open the `.blend` in Blender to read the exact bone names and parenting. The hierarchy is a simplified humanoid: `root` -> pelvic split + per-side leg chain (thigh / shin / foot), plus a 4-segment spine column ending at `neck -> head` with the usual face attachments (brow, ear, eye, lip). Arms branch off the upper spine (shoulder -> arm -> forearm -> hand). The `.blend` is the source of truth - this README does not duplicate the bone list because it would drift the moment the rig is tweaked.
+The armature lives inside `03_blender_setup/doll_rigged.blend` as `doll.rig` - open the `.blend` in Blender to read the exact bone names and parenting. The hierarchy is a simplified humanoid: `root` → pelvic split + per-side leg chain (thigh / shin / foot), plus a 4-segment spine column ending at `neck → head` with the usual face attachments (brow, ear, eye, lip). Arms branch off the upper spine (shoulder → arm → forearm → hand). The `.blend` is the source of truth - this README does not duplicate the bone list because it would drift the moment the rig is tweaked.
 
 ## Sprites (highlights)
 

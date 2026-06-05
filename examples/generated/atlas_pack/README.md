@@ -59,7 +59,7 @@ See the Atlas section of [`tests/MANUAL_TESTING.md`](../../tests/MANUAL_TESTING.
 Quick smoke (high level):
 
 1. Open `atlas_pack.blend` in Blender.
-2. N-panel > Proscenio > Atlas > **Pack Atlas**. Output: `atlas_pack.atlas.png` (single PNG with 9 sub-images) + `atlas_pack.atlas.json` (sprite -> (x,y,w,h) map).
+2. N-panel > Proscenio > Atlas > **Pack Atlas**. Output: `atlas_pack.atlas.png` (single PNG with 9 sub-images) + `atlas_pack.atlas.json` (sprite → (x,y,w,h) map).
 3. **Apply Packed Atlas**. UVs rewritten; sprite materials swapped to `Proscenio.PackedAtlas` (or kept per-sprite if `material_isolated=True`).
 4. Scrub viewport. Each sprite still shows its digit on its color - proof Apply did not scramble UVs.
 5. **Unpack**. UVs back to original 0..1; original materials restored.

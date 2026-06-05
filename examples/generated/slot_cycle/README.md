@@ -34,10 +34,10 @@ The Empty is **object-parented** (not bone-parented) to the armature - bone-pare
 `cycle` - 24 frames keyframing `obj["proscenio_slot_index"]` per second:
 
 ```text
-1  -> 0 (red)
-8  -> 1 (green)
-16 -> 2 (blue)
-24 -> 0 (red, loop)
+1  → 0 (red)
+8  → 1 (green)
+16 → 2 (blue)
+24 → 0 (red, loop)
 ```
 
 The writer reads each fcurve key, maps the integer index to the slot's `attachments[]` list, and emits a `slot_attachment` track with constant interpolation. The Godot importer expands that track to N visibility tracks at runtime (one `:visible` per attachment).
@@ -67,4 +67,4 @@ blender --background examples/generated/slot_cycle/slot_cycle.blend \
 - Importer regression on `Node2D` slot anchor placement (under bone or skeleton root).
 - Importer regression on attachment routing (sprite under slot Node2D, not under bone).
 - Default-attachment visibility (red visible at scene load, green + blue hidden).
-- Animation track expansion (slot_attachment -> N visibility tracks, NEAREST interp).
+- Animation track expansion (slot_attachment → N visibility tracks, NEAREST interp).

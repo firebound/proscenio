@@ -6,27 +6,7 @@ extends RefCounted
 # discriminator-filters its own kind so importer.gd can call both blindly.
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
-const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
-
-
-static func _resolve_sprite_texture(
-	per_sprite_path: String,
-	sprite_name: String,
-	fallback_atlas: Texture2D,
-	source_dir: String,
-) -> Texture2D:
-	# Mirror of polygon_builder._resolve_sprite_texture - see that file for
-	# the resolution order rationale (per-sprite `texture` field ->
-	# `<sprite.name>.png` next to source -> fallback atlas).
-	if per_sprite_path != "" and source_dir != "":
-		var path := source_dir.path_join(per_sprite_path)
-		if ResourceLoader.exists(path):
-			return ResourceLoader.load(path, "Texture2D") as Texture2D
-	if source_dir != "":
-		var by_name := source_dir.path_join("%s.png" % sprite_name)
-		if ResourceLoader.exists(by_name):
-			return ResourceLoader.load(by_name, "Texture2D") as Texture2D
-	return fallback_atlas
+const SpriteAttachUtil := preload("res://addons/proscenio/builders/sprite_attach_util.gd")
 
 
 static func attach_sprites(
@@ -56,7 +36,7 @@ static func _build_sprite_frame(
 	var sprite := Sprite2D.new()
 	sprite.name = sprite_res.name
 
-	var sprite_tex := _resolve_sprite_texture(
+	var sprite_tex := SpriteAttachUtil.resolve_sprite_texture(
 		sprite_res.texture, sprite_res.name, atlas, source_dir
 	)
 	if sprite_tex != null:
@@ -83,23 +63,13 @@ static func _build_sprite_frame(
 		)
 
 	var bone_name := NodeNameUtil.sanitize(sprite_res.bone)
-	# Slot routing: sprite_frame attachments compose with
-	# polygon attachments under the same slot Node2D. Default-attachment
-	# starts visible, others start hidden - the slot_attachment track
-	# (animation_builder.gd) flips visibility per key at runtime.
-	# ``sprite.name`` is post-sanitize (Godot strips ``.`` etc); slot_map
-	# keys are sanitized in slot_builder for consistency.
+	# Slot routing (shared with polygon_builder via sprite_attach_util):
+	# sprite_frame attachments compose with polygon attachments under the same
+	# slot Node2D; default-attachment starts visible, others hidden until the
+	# slot_attachment track (animation_builder.gd) flips them at runtime.
 	var sanitized_name := String(sprite.name)
-	var slot_info: SlotBuilder.SlotInfo = slot_map.get(sanitized_name, null)
-	var parent: Node
-	if slot_info != null:
-		parent = slot_info.node
-		sprite.visible = sanitized_name == slot_info.default
-	elif bone_name != "":
-		parent = skeleton
-		var found := skeleton.find_child(bone_name, true, false)
-		if found != null:
-			parent = found
-	else:
-		parent = skeleton
-	parent.add_child(sprite)
+	var routing := SpriteAttachUtil.resolve_sprite_parent(
+		skeleton, sanitized_name, bone_name, slot_map, true
+	)
+	sprite.visible = routing.visible
+	routing.node.add_child(sprite)

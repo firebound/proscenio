@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
+const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
 
 
 static func populate(
@@ -40,7 +40,7 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: Proscen
 	# Sanitize so ``find_child`` matches the Godot-shaped node name (Node.name
 	# replaces ``.`` etc with ``_`` on assignment); the .proscenio document
 	# carries Blender-shaped names with dots intact.
-	var target := SlotBuilder.sanitize(track_res.target)
+	var target := NodeNameUtil.sanitize(track_res.target)
 	var keys: Array[ProscenioKey] = track_res.keys
 
 	if keys.is_empty():
@@ -117,9 +117,10 @@ static func _add_value_track_if_present(
 
 	var idx := anim.add_track(Animation.TYPE_VALUE)
 	anim.track_set_path(idx, NodePath("%s:%s" % [base_path, property]))
-	# Cubic spline interpolation gives smooth motion between keys without
-	# needing per-key Bezier handles in the .proscenio format. Rotation uses
-	# the *_ANGLE variant so wrap-around at +/-pi is handled correctly.
+	# Default LINEAR; transform channels (position / scale / rotation) upgrade
+	# to cubic for smooth motion between keys without per-key Bezier handles in
+	# the .proscenio format. Rotation uses the *_ANGLE variant so wrap-around at
+	# +/-pi is handled correctly.
 	var interp := Animation.INTERPOLATION_LINEAR
 	match property:
 		"rotation":
@@ -140,8 +141,7 @@ static func _add_slot_attachment_tracks(
 	# Slot attachment animation = N visibility tracks, one per attachment
 	# child of the slot Node2D. At each key time, exactly one attachment is
 	# visible (the one named in `key.attachment`); the rest go hidden. Uses
-	# NEAREST interpolation - attachment swaps are hard cuts, not blends
-	#.
+	# NEAREST interpolation - attachment swaps are hard cuts, not blends.
 	var slot_path := str(character_root.get_path_to(slot_node))
 	for child in slot_node.get_children():
 		if not (child is CanvasItem):
@@ -155,7 +155,7 @@ static func _add_slot_attachment_tracks(
 			# Normalise the keyed attachment name through the same sanitiser
 			# slot_builder uses so dotted Blender names (`face.angry`) match
 			# the Godot-shaped child name (`face_angry`).
-			var attachment_name := SlotBuilder.sanitize(key.attachment)
+			var attachment_name := NodeNameUtil.sanitize(key.attachment)
 			anim.track_insert_key(idx, key.time, child.name == attachment_name)
 
 

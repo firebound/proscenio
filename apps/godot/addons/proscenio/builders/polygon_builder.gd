@@ -2,31 +2,7 @@
 extends RefCounted
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
-const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
-
-
-static func _resolve_sprite_texture(
-	per_sprite_path: String,
-	sprite_name: String,
-	fallback_atlas: Texture2D,
-	source_dir: String,
-) -> Texture2D:
-	# Per-sprite texture resolution order:
-	# 1. sprite.texture field (writer emits it when the mesh has an Image
-	#    Texture on its material) - load <source_dir>/<filename>.
-	# 2. <sprite.name>.png next to the .proscenio - filename-by-convention
-	#    fallback for fixtures (doll) whose materials carry flat colors but
-	#    whose body parts ship as separate PNGs alongside the document.
-	# 3. fallback_atlas - the scene-wide single-image case.
-	if per_sprite_path != "" and source_dir != "":
-		var path := source_dir.path_join(per_sprite_path)
-		if ResourceLoader.exists(path):
-			return ResourceLoader.load(path, "Texture2D") as Texture2D
-	if source_dir != "":
-		var by_name := source_dir.path_join("%s.png" % sprite_name)
-		if ResourceLoader.exists(by_name):
-			return ResourceLoader.load(by_name, "Texture2D") as Texture2D
-	return fallback_atlas
+const SpriteAttachUtil := preload("res://addons/proscenio/builders/sprite_attach_util.gd")
 
 
 static func _apply_skinning(
@@ -87,7 +63,9 @@ static func _build_polygon(
 		pts.append(Vector2(p[0], p[1]))
 	poly.polygon = pts
 
-	var sprite_tex := _resolve_sprite_texture(sprite.texture, sprite.name, atlas, source_dir)
+	var sprite_tex := SpriteAttachUtil.resolve_sprite_texture(
+		sprite.texture, sprite.name, atlas, source_dir
+	)
 
 	var uvs := PackedVector2Array()
 	# .proscenio stores UVs normalized [0, 1] - engine-agnostic. Godot's
@@ -108,27 +86,16 @@ static func _build_polygon(
 	var is_skinned: bool = weights != null and not weights.is_empty()
 
 	var bone_name := NodeNameUtil.sanitize(sprite.bone)
-	# Slot routing: sprites whose name appears in a slot's
-	# attachments[] reparent under the slot Node2D and inherit visibility
-	# from the slot's default. Otherwise: skinned polygons live under the
-	# skeleton (per-vertex weights drive deformation), rigid polygons stay
-	# parented to the matching Bone2D so the bone transform carries them.
-	# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set);
-	# slot_map keys are sanitized in slot_builder for consistency.
+	# Slot routing (shared with sprite_frame_builder via sprite_attach_util):
+	# slot attachment wins; otherwise rigid polygons parent to their Bone2D,
+	# while skinned polygons stay under the skeleton (weights drive deform).
+	# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set).
 	var sanitized_name := String(poly.name)
-	var slot_info: SlotBuilder.SlotInfo = slot_map.get(sanitized_name, null)
-	var parent: Node
-	if slot_info != null:
-		parent = slot_info.node
-		poly.visible = sanitized_name == slot_info.default
-	elif not is_skinned and bone_name != "":
-		parent = skeleton
-		var found := skeleton.find_child(bone_name, true, false)
-		if found != null:
-			parent = found
-	else:
-		parent = skeleton
-	parent.add_child(poly)
+	var routing := SpriteAttachUtil.resolve_sprite_parent(
+		skeleton, sanitized_name, bone_name, slot_map, not is_skinned
+	)
+	poly.visible = routing.visible
+	routing.node.add_child(poly)
 
 	if is_skinned:
 		_apply_skinning(poly, skeleton, weights)

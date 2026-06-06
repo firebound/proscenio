@@ -26,13 +26,6 @@ class SlotInfo:
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
 
 
-# Re-export of the shared sanitiser so existing callers
-# (``SlotBuilder.sanitize(...)``) keep compiling. See
-# ``node_name_util.gd`` for the dot/slash/colon/at replacement rules.
-static func sanitize(name: String) -> String:
-	return NodeNameUtil.sanitize(name)
-
-
 static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) -> Dictionary:
 	# Returns `{sanitized_attachment_name: SlotInfo}`. Sprite builders look up
 	# by their sprite's sanitized name (matching what Godot stored in
@@ -46,7 +39,7 @@ static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) ->
 		if info == null:
 			continue
 		for attachment_name: String in slot_res.attachments:
-			slot_map[sanitize(attachment_name)] = info
+			slot_map[NodeNameUtil.sanitize(attachment_name)] = info
 	return slot_map
 
 
@@ -56,9 +49,9 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 		return null
 
 	var node := Node2D.new()
-	node.name = sanitize(slot_res.name)
+	node.name = NodeNameUtil.sanitize(slot_res.name)
 
-	var bone_name := sanitize(slot_res.bone)
+	var bone_name := NodeNameUtil.sanitize(slot_res.bone)
 	var parent: Node = skeleton
 	if bone_name != "":
 		var bone := skeleton.find_child(bone_name, true, false)
@@ -78,5 +71,5 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 
 	var info := SlotInfo.new()
 	info.node = node
-	info.default = sanitize(slot_res.default)
+	info.default = NodeNameUtil.sanitize(slot_res.default)
 	return info

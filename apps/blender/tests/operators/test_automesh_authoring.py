@@ -34,7 +34,7 @@ def test_active_stages_simple_drops_inner_loops(automesh_fixture):
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
     )
-    from proscenio.operators.automesh_authoring import (
+    from proscenio.operators.automesh.automesh_authoring import (
         _stages_for_mode,  # type: ignore[import-not-found]
     )
 
@@ -54,7 +54,7 @@ def test_stage_label_numbering_tracks_active_len(automesh_fixture):
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
     )
-    from proscenio.operators.automesh_authoring import (
+    from proscenio.operators.automesh.automesh_authoring import (
         _stage_label,  # type: ignore[import-not-found]
     )
 

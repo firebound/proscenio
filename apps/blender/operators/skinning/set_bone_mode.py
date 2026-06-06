@@ -13,7 +13,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, StringProperty
 
-from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
+from ...core.skinning.bone_modes import (  # type: ignore[import-not-found]
     read_bone_modes,
     write_bone_modes,
 )

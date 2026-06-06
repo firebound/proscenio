@@ -13,18 +13,18 @@ from typing import ClassVar, Literal, cast
 
 import bpy
 
-from ..core._shared.report import (  # type: ignore[import-not-found]
+from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
     report_warn,
 )
-from ..core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
     refresh_overlay,
     register_overlay,
     unregister_overlay,
 )
-from ..core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
     apply_mesh,
     compute_all_steiners,
     compute_inner_loops_for_stage,
@@ -36,19 +36,19 @@ from ..core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[imp
     write_user_outer_strokes,
     write_user_strokes,
 )
-from ..core.bpy_helpers.automesh.authoring_session import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.automesh.authoring_session import (  # type: ignore[import-not-found]
     AuthoringSession,
 )
-from ..core.bpy_helpers.automesh.authoring_session import (
+from ...core.bpy_helpers.automesh.authoring_session import (
     capture as capture_session,
 )
-from ..core.bpy_helpers.automesh.authoring_session import (
+from ...core.bpy_helpers.automesh.authoring_session import (
     restore as restore_session,
 )
-from ..core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
     collect_bone_segments,
 )
-from ..core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
     Point2D,
     StageOutput,
@@ -395,7 +395,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         output.outer is WORLD XZ per compute_outer convention, so no coordinate
         conversion is needed before calling point_in_polygon.
         """
-        from ..core.automesh import point_in_polygon  # type: ignore[import-not-found]
+        from ...core.automesh import point_in_polygon  # type: ignore[import-not-found]
 
         if not self._output.outer:
             return False
@@ -739,7 +739,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 self._persist_and_redraw(context)
             return {"RUNNING_MODAL"}
         if len(pts) >= 2:
-            from ..core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+            from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
                 subdivide_polyline,
             )
 
@@ -912,7 +912,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Smooth, resample, and append a free-draw stroke (chaikin + arc-length
         resample by interior_spacing). Subdivisions do not apply here - free-draw
         is already dense ( subdivisions are pen-segment-only)."""
-        from ..core.automesh.stroke_geometry import (
+        from ...core.automesh.stroke_geometry import (
             chaikin_smooth,
             resample_polyline,
         )

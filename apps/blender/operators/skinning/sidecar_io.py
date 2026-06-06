@@ -9,7 +9,7 @@ import bpy
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
-from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_export_sidecar(bpy.types.Operator, ExportHelper):
@@ -74,7 +74,7 @@ class PROSCENIO_OT_import_sidecar(bpy.types.Operator, ImportHelper):
             self.report({"WARNING"}, f"Failed to read sidecar: {exc}")
             return {"CANCELLED"}
         # Validate structure via the authoritative schema parser.
-        from ..core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
+        from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
             from_json as _from_json,
         )
 

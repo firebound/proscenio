@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import bpy
 
-from ..core.skinning.brush_curve_presets import (  # type: ignore[import-not-found]
+from ...core.skinning.brush_curve_presets import (  # type: ignore[import-not-found]
     PRESET_LABELS,
     PRESETS,
 )

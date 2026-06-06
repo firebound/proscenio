@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import FloatProperty
 
-from ..core.skinning.weight_transfer import (  # type: ignore[import-not-found]
+from ...core.skinning.weight_transfer import (  # type: ignore[import-not-found]
     transfer_weights_by_nearest,
 )
 

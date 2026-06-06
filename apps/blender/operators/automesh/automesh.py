@@ -28,12 +28,12 @@ from bpy.props import (
     IntProperty,
 )
 
-from ..core._shared.report import (  # type: ignore[import-not-found]
+from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
     report_warn,
 )
-from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     _STAGE_BY_INDEX,
     AutomeshBuildParams,
     AutomeshOverrides,
@@ -41,13 +41,13 @@ from ..core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
     clear_debug_objects,
     collect_bone_segments,
 )
-from ..core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     maybe_post_regen_reproject,
     maybe_pre_regen_snapshot,
 )
 
 if TYPE_CHECKING:
-    from ..core.automesh import BoneSegment2D
+    from ...core.automesh import BoneSegment2D
 
 
 def _find_tex_image(material: bpy.types.Material | None) -> bpy.types.Image | None:

@@ -12,18 +12,20 @@ from __future__ import annotations
 import contextlib
 from typing import Protocol, runtime_checkable
 
+from . import cp_keys
+
 OBJECT_PROPS: tuple[tuple[str, str], ...] = (
-    ("proscenio_type", "sprite_type"),
-    ("proscenio_hframes", "hframes"),
-    ("proscenio_vframes", "vframes"),
-    ("proscenio_frame", "frame"),
-    ("proscenio_centered", "centered"),
-    ("proscenio_region_mode", "region_mode"),
-    ("proscenio_region_x", "region_x"),
-    ("proscenio_region_y", "region_y"),
-    ("proscenio_region_w", "region_w"),
-    ("proscenio_region_h", "region_h"),
-    ("proscenio_material_isolated", "material_isolated"),
+    (cp_keys.PROSCENIO_TYPE, "sprite_type"),
+    (cp_keys.PROSCENIO_HFRAMES, "hframes"),
+    (cp_keys.PROSCENIO_VFRAMES, "vframes"),
+    (cp_keys.PROSCENIO_FRAME, "frame"),
+    (cp_keys.PROSCENIO_CENTERED, "centered"),
+    (cp_keys.PROSCENIO_REGION_MODE, "region_mode"),
+    (cp_keys.PROSCENIO_REGION_X, "region_x"),
+    (cp_keys.PROSCENIO_REGION_Y, "region_y"),
+    (cp_keys.PROSCENIO_REGION_W, "region_w"),
+    (cp_keys.PROSCENIO_REGION_H, "region_h"),
+    (cp_keys.PROSCENIO_MATERIAL_ISOLATED, "material_isolated"),
 )
 
 

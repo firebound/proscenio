@@ -79,6 +79,13 @@ The deliberate decisions and studies made while building the MVP, one section pe
 - **Refactor into packages without behavior change.** Monolithic modules (writer, panels, operators, validation) split into focused subpackages. No format change, no user-facing change. Behavior tests carry the proof.
 - **Per-package import discipline.** `core/` stays bpy-free at module top; `core/bpy_helpers/` is the bpy-bound boundary. Panels reach operators only via `bl_idname` strings, never via direct class imports.
 
+### Blender system organization (spec 016)
+
+- **Layer-first hybrid, not vertical slices.** The addon stays layer-first at the top (`core/`, `operators/`, `panels/`, `properties/`, `exporters/`, `importers/`): Blender registration is type-ordered (properties -> operators -> panels) and the `core/` versus `core/bpy_helpers/` pure-vs-bpy split is the test boundary. Systems are feature subpackages WITHIN each layer, never a per-system top level. Revisit trigger: registration stops being type-ordered, or the addon splits into independently-registered sub-addons.
+- **`_shared/` tier for cross-cutting infrastructure.** Modules owned by no single system (cp_keys, report, props_access, pg_cp_fallback, feature_status, hydrate, geometry / region / viewport math, the bpy compat shims) live in `core/_shared/` (pure) and `core/bpy_helpers/_shared/` (bpy-bound); the leading underscore sorts the tier above the system folders.
+- **Custom Property keys live in one module.** Every CP key literal sits in `core/_shared/cp_keys.py` and call sites import the constant; the weight-sidecar, automesh-stroke, and photoshop-import keys that had drifted into local `_KEY` constants are pulled back in.
+- **Behavior-preserving, proven by the full gate set.** No schema or `format_version` change; ruff + mypy + the repo-root pytest suite + the Blender fixture and operator suites + a whole-addon import sweep all stay green. See [`016-blender-app-system-organization/STUDY.md`](016-blender-app-system-organization/STUDY.md).
+
 ### Photoshop UXP migration
 
 - **UXP is the only Photoshop entry point.** The legacy JSX exporter and importer were retired once the doll roundtrip oracle confirmed pixel-byte parity vs the captured JSX baseline.

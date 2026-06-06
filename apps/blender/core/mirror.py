@@ -24,6 +24,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
+from ._shared import cp_keys
+
 
 def _as_str(v: object) -> str:
     return str(v)
@@ -52,20 +54,20 @@ def _as_bool(v: object) -> bool:
 Caster = Callable[[object], object]
 
 OBJECT_MIRROR_MAP: tuple[tuple[str, str, Caster], ...] = (
-    ("proscenio_type", "sprite_type", _as_str),
-    ("proscenio_hframes", "hframes", _as_int),
-    ("proscenio_vframes", "vframes", _as_int),
-    ("proscenio_frame", "frame", _as_int),
-    ("proscenio_centered", "centered", _as_bool),
-    ("proscenio_region_mode", "region_mode", _as_str),
-    ("proscenio_region_x", "region_x", _as_float),
-    ("proscenio_region_y", "region_y", _as_float),
-    ("proscenio_region_w", "region_w", _as_float),
-    ("proscenio_region_h", "region_h", _as_float),
-    ("proscenio_material_isolated", "material_isolated", _as_bool),
-    ("proscenio_is_slot", "is_slot", _as_bool),
-    ("proscenio_slot_default", "slot_default", _as_str),
-    ("proscenio_outliner_favorite", "is_outliner_favorite", _as_bool),
+    (cp_keys.PROSCENIO_TYPE, "sprite_type", _as_str),
+    (cp_keys.PROSCENIO_HFRAMES, "hframes", _as_int),
+    (cp_keys.PROSCENIO_VFRAMES, "vframes", _as_int),
+    (cp_keys.PROSCENIO_FRAME, "frame", _as_int),
+    (cp_keys.PROSCENIO_CENTERED, "centered", _as_bool),
+    (cp_keys.PROSCENIO_REGION_MODE, "region_mode", _as_str),
+    (cp_keys.PROSCENIO_REGION_X, "region_x", _as_float),
+    (cp_keys.PROSCENIO_REGION_Y, "region_y", _as_float),
+    (cp_keys.PROSCENIO_REGION_W, "region_w", _as_float),
+    (cp_keys.PROSCENIO_REGION_H, "region_h", _as_float),
+    (cp_keys.PROSCENIO_MATERIAL_ISOLATED, "material_isolated", _as_bool),
+    (cp_keys.PROSCENIO_IS_SLOT, "is_slot", _as_bool),
+    (cp_keys.PROSCENIO_SLOT_DEFAULT, "slot_default", _as_str),
+    (cp_keys.PROSCENIO_OUTLINER_FAVORITE, "is_outliner_favorite", _as_bool),
 )
 
 

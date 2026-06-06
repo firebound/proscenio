@@ -91,6 +91,16 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 ## Blender addon
 
+### Spec 016 follow-up: god-module splits + low-risk companions
+
+Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). Three items were deferred because they touch modal / atlas-pack code with no headless coverage, so they need a focused session with the Blender editor open for manual smoke testing.
+
+- **Split the two operator god-modules.** `operators/automesh/automesh_authoring.py` (~1412 LOC) and `operators/armature/quick_armature.py` (~1246 LOC) still mix the modal operator with status-bar / chord drawing, GPU preview overlays, and screen-to-plane projection. Extract the draw helpers into sibling `_overlay.py` and `_status_bar.py` modules and the projection plus view-pose math into `core/_shared` or `core/bpy_helpers/_shared`. A missed name in a moved draw function surfaces only when the modal runs, so this needs manual modal verification beyond the headless gates.
+- **Route import_photoshop reports through `core.report`.** `operators/import_photoshop.py` calls raw `self.report` with an inline `"Proscenio: "` string instead of the shared report helper. Low; it shifts user-facing message text on an untested operator.
+- **Relocate `scene_has_pre_pack_snapshot`.** `panels/atlas.py` imports it from `operators/atlas_pack/_paths.py`, crossing the `panels -> operators` boundary. Move it to `core/bpy_helpers/atlas/` so the panel imports from core. Untested atlas-pack path.
+
+**Trigger:** a focused session that can manually smoke-test the Quick Armature and Automesh authoring modals in the Blender editor.
+
 ### General rig orientation detection
 
 Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users author on XY (Y up). Future work: detect the dominant plane from the armature's bone axes or expose an export option.

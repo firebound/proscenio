@@ -13,7 +13,7 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
-from ..core._shared.report import report_warn  # type: ignore[import-not-found]
+from ...core._shared.report import report_warn  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_set_active_armature(bpy.types.Operator):

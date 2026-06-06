@@ -12,9 +12,9 @@ import type { UxpFolder } from "uxp";
 
 import type { ExportPreview } from "../../api/export-flow";
 import type { ManifestEntry } from "../../lib/manifest";
-import { elementsEqual } from "../../util/arrays";
-import { Accordion } from "../common/Accordion";
-import { KeyValueRow } from "../common/KeyValueRow";
+import { entryMatchesPath } from "../../lib/entry-match";
+import { Accordion } from "../../components/Accordion";
+import { KeyValueRow } from "../../components/KeyValueRow";
 
 interface Props {
     preview: ExportPreview | null;
@@ -77,8 +77,7 @@ function findMatchingEntry(
     for (let i = 0; i < refs.length; i++) {
         const ref = refs[i];
         if (ref === undefined) continue;
-        if (elementsEqual(ref.layerPath, activeLayerPath)) return i;
-        if (ref.framePaths?.some((p) => elementsEqual(p, activeLayerPath))) return i;
+        if (entryMatchesPath(ref, activeLayerPath)) return i;
     }
     return null;
 }

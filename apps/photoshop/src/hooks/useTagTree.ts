@@ -17,12 +17,11 @@
 // not torn down by polling.
 
 import React from "react";
-import { app } from "photoshop";
 
-import { adaptDocument } from "../api/adapt-document";
+import { readActiveLayerTree } from "../api/active-document";
 import { buildTagTreeReusing, type TagTreeNode } from "../lib/tag-tree";
 import { renameLayer, type RenameResult } from "../api/layer-rename";
-import { elementsEqual } from "../util/arrays";
+import { elementsEqual } from "../utils/arrays";
 
 const ACTIVE_POLL_MS = 1500;
 const IDLE_POLL_MS = 4000;
@@ -118,8 +117,7 @@ export function useTagTree(version: number): UseTagTree {
 }
 
 function readTree(prev: TagTreeNode[]): { tree: TagTreeNode[]; noDocument: boolean } {
-    const doc = app.activeDocument;
-    if (doc === null) return { tree: [], noDocument: true };
-    const adapted = adaptDocument(doc);
+    const adapted = readActiveLayerTree();
+    if (adapted === null) return { tree: [], noDocument: true };
     return { tree: buildTagTreeReusing(adapted.layers, prev), noDocument: false };
 }

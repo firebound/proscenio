@@ -11,12 +11,12 @@ import React from "react";
 import { entrypoints } from "uxp";
 
 import "./styles.css";
-import { PanelController } from "./controllers/PanelController";
+import { PanelController } from "./entry";
 import { ProscenioDebugPanel } from "./panels/ProscenioDebugPanel";
 import { ProscenioExporter } from "./panels/ProscenioExporter";
 import { ProscenioTagsPanel } from "./panels/ProscenioTagsPanel";
 import { ProscenioValidatePanel } from "./panels/ProscenioValidatePanel";
-import { log } from "./util/log";
+import { log } from "./utils/log";
 
 const exporterController = new PanelController(() => <ProscenioExporter />, {
     id: "proscenioExporter",

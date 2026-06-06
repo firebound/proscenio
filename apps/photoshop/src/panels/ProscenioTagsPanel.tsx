@@ -15,7 +15,7 @@ import { useExportPreview } from "../hooks/useExportPreview";
 import { useFilenameTemplate } from "../hooks/useFilenameTemplate";
 import { useFolderCache } from "../hooks/useFolderCache";
 import { useTagTree } from "../hooks/useTagTree";
-import { collapseKey } from "../util/collapseKey";
+import { collapseKey } from "../utils/collapse-key";
 import { DocSection } from "./sections/DocSection";
 import { RevealOutputSection } from "./sections/RevealOutputSection";
 import { TagsSection } from "./sections/TagsSection";

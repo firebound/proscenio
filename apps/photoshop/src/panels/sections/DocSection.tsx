@@ -1,8 +1,8 @@
 import React from "react";
 
 import type { DocSnapshot } from "../../hooks/useDocSnapshot";
-import { Accordion } from "../common/Accordion";
-import { KeyValueRow } from "../common/KeyValueRow";
+import { Accordion } from "../../components/Accordion";
+import { KeyValueRow } from "../../components/KeyValueRow";
 
 interface Props {
     doc: DocSnapshot | null;

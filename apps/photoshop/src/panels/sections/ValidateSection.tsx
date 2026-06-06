@@ -9,8 +9,8 @@ import React from "react";
 
 import type { ExportPreview } from "../../api/export-flow";
 import type { PlanWarning, SkippedLayer } from "../../lib/planner";
-import { selectLayerByPath } from "../../api/ps-selection";
-import { Accordion } from "../common/Accordion";
+import { useLayerSelection } from "../../hooks/useLayerSelection";
+import { Accordion } from "../../components/Accordion";
 
 interface Props {
     preview: ExportPreview | null;
@@ -84,9 +84,10 @@ const SubGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ titl
 );
 
 const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
+    const select = useLayerSelection();
     const onClick = React.useCallback(() => {
-        void selectLayerByPath(warning.layerPath);
-    }, [warning.layerPath]);
+        select(warning.layerPath);
+    }, [select, warning.layerPath]);
     return (
         <ValidateRow severity="warn" onActivate={onClick}>
             <span className="validate-code">{warning.code}</span>
@@ -98,9 +99,10 @@ const WarningRow: React.FC<{ warning: PlanWarning }> = ({ warning }) => {
 };
 
 const SkippedRow: React.FC<{ skipped: SkippedLayer }> = ({ skipped }) => {
+    const select = useLayerSelection();
     const onClick = React.useCallback(() => {
-        void selectLayerByPath(skipped.layerPath);
-    }, [skipped.layerPath]);
+        select(skipped.layerPath);
+    }, [select, skipped.layerPath]);
     return (
         <ValidateRow severity="skipped" onActivate={onClick}>
             <span className="validate-code">{skipped.reason}</span>

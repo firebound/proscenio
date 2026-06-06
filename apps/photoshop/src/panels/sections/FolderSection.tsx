@@ -1,7 +1,7 @@
 import React from "react";
 import type { UxpFolder } from "uxp";
 
-import { Accordion } from "../common/Accordion";
+import { Accordion } from "../../components/Accordion";
 
 interface Props {
     folder: UxpFolder | null;

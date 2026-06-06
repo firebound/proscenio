@@ -2,19 +2,15 @@
 // React state. Refreshes on demand (the panel exposes a button)
 // because UXP does not auto-rerender on PS document changes.
 //
-// The photoshop UXP migration stopped here intentionally. Subscribing to PS notification
-// events (`action.addNotificationListener` for `select`, `open`,
-// `close`, ...) is parked for the photoshop tag system when the tag inspector needs
-// the live tree to drive its UI.
+// The read funnels through `api/active-document`; live PS-event
+// driven refresh is handled separately by `useDocumentChanges`, which
+// bumps a version other hooks watch.
 
 import React from "react";
-import { app } from "photoshop";
 
-export interface DocSnapshot {
-    name: string;
-    width: number;
-    height: number;
-}
+import { readDocSnapshot, type DocSnapshot } from "../api/active-document";
+
+export type { DocSnapshot };
 
 export interface UseDocSnapshot {
     doc: DocSnapshot | null;
@@ -25,13 +21,13 @@ export function useDocSnapshot(): UseDocSnapshot {
     const [doc, setDoc] = React.useState<DocSnapshot | null>(null);
 
     const refresh = React.useCallback((): Promise<void> => {
-        setDoc(readActiveDocument());
+        setDoc(readDocSnapshot());
         return Promise.resolve();
     }, []);
 
     React.useEffect(() => {
         let cancelled = false;
-        void Promise.resolve(readActiveDocument()).then((snap) => {
+        void Promise.resolve(readDocSnapshot()).then((snap) => {
             if (!cancelled) setDoc(snap);
         });
         return () => {
@@ -40,10 +36,4 @@ export function useDocSnapshot(): UseDocSnapshot {
     }, []);
 
     return { doc, refresh };
-}
-
-function readActiveDocument(): DocSnapshot | null {
-    const d = app.activeDocument;
-    if (d === null) return null;
-    return { name: d.name, width: d.width, height: d.height };
 }

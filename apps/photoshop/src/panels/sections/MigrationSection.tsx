@@ -2,8 +2,8 @@ import React from "react";
 
 import type { UnderscoreMigrationCandidate } from "../../lib/legacy-migration";
 import type { MigrationPreview, MigrationResult } from "../../api/legacy-migration";
-import { selectLayerByPath } from "../../api/ps-selection";
-import { Accordion } from "../common/Accordion";
+import { useLayerSelection } from "../../hooks/useLayerSelection";
+import { Accordion } from "../../components/Accordion";
 
 interface Props {
     preview: MigrationPreview;
@@ -45,15 +45,16 @@ export const MigrationSection: React.FC<Props> = ({ preview, busy, lastResult, o
 };
 
 const CandidateRow: React.FC<{ candidate: UnderscoreMigrationCandidate }> = ({ candidate }) => {
+    const select = useLayerSelection();
     const onClick = React.useCallback(() => {
-        void selectLayerByPath(candidate.layerPath);
-    }, [candidate.layerPath]);
+        select(candidate.layerPath);
+    }, [select, candidate.layerPath]);
     const onKey = React.useCallback((e: React.KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            void selectLayerByPath(candidate.layerPath);
+            select(candidate.layerPath);
         }
-    }, [candidate.layerPath]);
+    }, [select, candidate.layerPath]);
 
     return (
         <div

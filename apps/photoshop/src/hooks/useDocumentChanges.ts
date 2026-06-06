@@ -13,14 +13,16 @@
 //
 // PS fires `set` aggressively (one per attribute mutation); a 150ms
 // debounce keeps the downstream effects from thrashing while the user
-// drags a value slider or types a layer name.
+// drags a value slider or types a layer name. The UXP subscription
+// boundary lives in `api/ps-notifications`; this hook owns only the
+// debounce + version state.
 
 import React from "react";
-import { action } from "photoshop";
 
-import { log } from "../util/log";
+import { subscribeToEvents, type NotificationEvent } from "../api/ps-notifications";
+import { log } from "../utils/log";
 
-const WATCHED_EVENTS = [
+const WATCHED_EVENTS: NotificationEvent[] = [
     { event: "select" },
     { event: "make" },
     { event: "delete" },
@@ -31,30 +33,11 @@ const WATCHED_EVENTS = [
 
 const DEBOUNCE_MS = 150;
 
-interface ListenerHandle { remove(): void }
-
-function isHandle(value: unknown): value is ListenerHandle {
-    return (
-        typeof value === "object"
-        && value !== null
-        && typeof (value as { remove?: unknown }).remove === "function"
-    );
-}
-
-function isPromiseLike<T>(value: unknown): value is Promise<T> {
-    return (
-        typeof value === "object"
-        && value !== null
-        && typeof (value as { then?: unknown }).then === "function"
-    );
-}
-
 export function useDocumentChanges(): number {
     const [version, setVersion] = React.useState(0);
 
     React.useEffect(() => {
         let cancelled = false;
-        let listenerHandle: { remove(): void } | null = null;
         let pending: ReturnType<typeof setTimeout> | null = null;
 
         const fire = (): void => {
@@ -63,47 +46,18 @@ export function useDocumentChanges(): number {
             log.debug("useDocumentChanges", "version bump");
             setVersion((v) => v + 1);
         };
-        const bump = (event?: { event: string }): void => {
+        const bump = (event?: NotificationEvent): void => {
             log.trace("useDocumentChanges", "event", event?.event);
             if (pending !== null) clearTimeout(pending);
             pending = setTimeout(fire, DEBOUNCE_MS);
         };
 
-        // UXP changed `addNotificationListener` over time. Older PS /
-        // UXP builds return `void` (no teardown handle), the next
-        // generation returns the handle synchronously, recent builds
-        // return `Promise<handle>`. Probe the shape at runtime so the
-        // hook works across versions without forcing a host bump.
-        const adopt = (handle: unknown): void => {
-            if (!isHandle(handle)) return;
-            if (cancelled) handle.remove();
-            else listenerHandle = handle;
-        };
-        try {
-            // `addNotificationListener` is typed as a union of three
-            // possible return shapes; the union is wider than what any
-            // single Photoshop build returns, so the runtime probe
-            // (`isPromiseLike` / `isHandle`) is what actually picks the
-            // shape. The union covers `void`, so the variable can
-            // legitimately be undefined at type-narrow time.
-            const result = action.addNotificationListener(WATCHED_EVENTS, bump);
-            if (isPromiseLike<unknown>(result)) {
-                result.then(adopt).catch((err: unknown) => {
-                    log.warn("useDocumentChanges", "subscription rejected", err);
-                });
-            } else if (isHandle(result)) {
-                listenerHandle = result;
-            } else {
-                log.debug("useDocumentChanges", "subscribed (no teardown handle)");
-            }
-        } catch (err) {
-            log.warn("useDocumentChanges", "addNotificationListener threw", err);
-        }
+        const unsubscribe = subscribeToEvents(WATCHED_EVENTS, bump);
 
         return () => {
             cancelled = true;
             if (pending !== null) clearTimeout(pending);
-            if (listenerHandle !== null) listenerHandle.remove();
+            unsubscribe();
         };
     }, []);
 

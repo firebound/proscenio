@@ -5,7 +5,7 @@
 import { app } from "photoshop";
 import type { PsUnitNumber } from "photoshop";
 
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 export interface SelectionCenter {
     x: number;

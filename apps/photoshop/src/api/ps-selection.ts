@@ -12,7 +12,7 @@ import { action, app, core } from "photoshop";
 import type { PsDocument, PsLayer } from "photoshop";
 
 import { findLayerByPath } from "./_layer-find";
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 const MAX_DEPTH = 64;
 

@@ -25,10 +25,11 @@ import {
     type SkippedLayer,
 } from "../lib/planner";
 import type { Manifest } from "../lib/manifest";
+import { entryMatchesPath } from "../lib/entry-match";
 import { validateManifest } from "./manifest-validator";
 import { writeManifest } from "./manifest-writer";
 import { runWrites, type PngWriteResult } from "./png-writer";
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 export interface ExportFlowResult {
     kind: "ok" | "validation-failed" | "no-document" | "failed";
@@ -232,16 +233,7 @@ function writeBelongsToEntry(
     // the user-selected layer is not the first hit.
     for (const ref of plan.entryRefs) {
         if (ref.name !== entryName) continue;
-        if (samePath(ref.layerPath, write.layerPath)) return true;
-        if (ref.framePaths?.some((p) => samePath(p, write.layerPath))) return true;
+        if (entryMatchesPath(ref, write.layerPath)) return true;
     }
     return false;
-}
-
-function samePath(a: readonly string[], b: readonly string[]): boolean {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
 }

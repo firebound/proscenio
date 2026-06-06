@@ -4,9 +4,9 @@
 import React from "react";
 
 import type { TagTreeNode } from "../../lib/tag-tree";
-import { elementsEqual } from "../../util/arrays";
-import { collapseKey } from "../../util/collapseKey";
-import { Accordion } from "../common/Accordion";
+import { elementsEqual } from "../../utils/arrays";
+import { collapseKey } from "../../utils/collapse-key";
+import { Accordion } from "../../components/Accordion";
 import { TagRow } from "./tags/Row";
 
 interface Props {
@@ -135,5 +135,3 @@ const TagNodeBranch: React.FC<BranchProps> = ({
         </>
     );
 };
-
-export { writeLayerName } from "../../lib/tag-writer";

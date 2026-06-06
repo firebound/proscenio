@@ -8,7 +8,7 @@
 
 import { type PsDocument, type PsLayer } from "photoshop";
 
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 export function findLayerByPath(
     doc: PsDocument,

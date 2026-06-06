@@ -356,6 +356,16 @@ The Photoshop UXP migration captured a byte-equal JSX baseline against `doll.psd
 
 The new categorization buckets at `examples/generated/{psd_to_blender,blender_to_godot}/` accept new fixtures directly. The pre-existing flat fixtures (`atlas_pack/`, `blink_eyes/`, `mouth_drive/`, `shared_atlas/`, `simple_psd/`, `slot_cycle/`, `slot_swap/`) stay where they are because moving them ripples through every spec TODO, the `packages/fixtures/` index, and several wrapper-scene paths. **Why deferred**: refactor cost > current confusion cost. **Trigger to revisit**: the next time one of those fixtures needs editing for an unrelated reason; piggyback the move onto the same commit.
 
+### Tags advanced-fields form cannot clear a set tag
+
+**What:** in the Tags panel's advanced-fields expander, clearing a previously-set field (emptying `[folder:...]`, `[path:...]`, `[scale:...]`, `[origin:...]`, `[name:...]`, or un-checking the origin marker) does not remove the tag. The value stays on the layer name. Setting and changing values works; only clearing is broken.
+
+**Why:** `lib/tag-form.ts` `computeChanges` signals a cleared field by returning `undefined` from the `diff*` helper, but `applyDiff` then does `delete changes[key]` instead of writing the key. `applyTagChanges` (`lib/tag-writer.ts`) clears a tag only when the key is *present* with value `undefined`; an absent key is a no-op. The `delete` was an `exactOptionalPropertyTypes` workaround (assigning `undefined` to an optional field is a type error) that silently dropped the clear signal. Pre-existing; surfaced during the web-app-layout extraction of this logic out of `Details.tsx` (it was moved verbatim, not introduced).
+
+**Scope sketch:** carry cleared keys explicitly - e.g. `computeChanges` returns `{ set: Partial<TagBag>; clear: (keyof TagBag)[] }`, or the changes object uses a branded "clear" marker - so the rename path passes `undefined` through to `applyTagChanges` for each cleared field. Extend `tag-form.test.ts` with the clear cases (currently it asserts only the set / unchanged / validation paths, deliberately not locking in the broken clear behaviour).
+
+**Trigger:** an artist sets a folder / scale / origin via the advanced fields, empties it, applies, and the tag is still on the layer.
+
 ## Tests and CI
 
 ### Blender headless test - multi-version matrix

@@ -18,7 +18,7 @@ import {
     planUnderscoreMigration,
     type UnderscoreMigrationCandidate,
 } from "../lib/legacy-migration";
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 export interface MigrationPreview {
     candidates: UnderscoreMigrationCandidate[];

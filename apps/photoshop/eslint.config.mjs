@@ -27,13 +27,14 @@ export default tseslint.config(
             // linting anyway.
             "eslint.config.mjs",
             "webpack.config.js",
-            // Adobe React UXP starter adapter. Carries `@ts-nocheck`
-            // because the Symbol-keyed private fields + untyped Component
-            // contract are what `entrypoints.setup({ panels: ... })`
-            // requires; rewriting to typed JS surfaces "No value
-            // specified for panel key" at runtime (see commit 985e915).
-            // Vendored verbatim; never edit by hand.
-            "src/controllers/PanelController.tsx",
+            // Adobe React UXP starter adapter (the plugin entry shim).
+            // Carries `@ts-nocheck` because the Symbol-keyed private
+            // fields + untyped Component contract are what
+            // `entrypoints.setup({ panels: ... })` requires; rewriting
+            // to typed JS surfaces "No value specified for panel key" at
+            // runtime (see commit 985e915). Vendored verbatim; never
+            // edit by hand.
+            "src/entry.ts",
             // Generated codegen output; tsc gates the shapes already.
             "src/schema_bindings/**",
         ],

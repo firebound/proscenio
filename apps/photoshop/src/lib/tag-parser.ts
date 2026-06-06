@@ -45,6 +45,43 @@ export interface ParsedName {
     tags: TagBag;
 }
 
+// --- Shared tag-value validators -------------------------------------
+// Exported so the Tags advanced-fields form (`lib/tag-form`) validates
+// typed input against the exact rules the bracket-tag parser enforces,
+// with no second copy of the regex / separator checks drifting out of
+// sync. Both the parser's `consume*` helpers below and the form's diff
+// helpers call these.
+
+/** `[scale:N]` value -> positive finite number, or `null` when invalid.
+ *  `Number.parseFloat` would accept "1abc" as 1, so a strict numeric
+ *  pattern (digits + optional fractional part) gates the cast. */
+export function parseScaleValue(value: string): number | null {
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return null;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+}
+
+/** `[path:NAME]` filename-stem rule: non-empty, no path separators, not
+ *  a parent-dir segment. Rejecting `/`, `\`, `.` and `..` stops a tag
+ *  from escaping the output folder via `[path:../foo]` or carving
+ *  unintended subdirectories (`[folder:name]` owns subfolders). */
+export function isValidPathValue(value: string): boolean {
+    return (
+        value.length > 0
+        && !value.includes("/")
+        && !value.includes("\\")
+        && value !== "."
+        && value !== ".."
+    );
+}
+
+/** `[name:pre*suf]` group macro: non-empty and contains the `*`
+ *  wildcard that substitutes the original child name. */
+export function isValidNamePattern(value: string): boolean {
+    return value.length > 0 && value.includes("*");
+}
+
 // `[keyword]` or `[keyword:value]`. Keyword must start with a letter
 // (so plain `[123]` does not collide with the parser). Value accepts
 // any character except a closing bracket; whitespace is trimmed in
@@ -92,23 +129,11 @@ function consumeToken(body: string, tags: TagBag): boolean {
         case "blend":
             return consumeBlend(value, tags);
         case "path":
-            // Reject anything with path separators or parent-dir
-            // segments so a malicious / careless tag cannot escape
-            // the chosen output folder via `[path:../foo]` or carve
-            // unintended subdirectories via `[path:a/b]` (the
-            // dedicated `[folder:name]` tag owns subfolders).
-            if (
-                value.length === 0
-                || value.includes("/")
-                || value.includes("\\")
-                || value === ".."
-                || value === "."
-            ) return false;
+            if (!isValidPathValue(value)) return false;
             tags.path = value;
             return true;
         case "name":
-            // `[name:pre*suf]` group pattern macro. Reject when missing the `*`.
-            if (value.length === 0 || !value.includes("*")) return false;
+            if (!isValidNamePattern(value)) return false;
             tags.namePattern = value;
             return true;
         default:
@@ -130,13 +155,8 @@ function consumeOrigin(value: string, tags: TagBag): boolean {
 }
 
 function consumeScale(value: string, tags: TagBag): boolean {
-    // `Number.parseFloat` stops at the first non-numeric character, so
-    // `"1abc"` would silently parse as `1`. Pre-validate against a
-    // strict numeric pattern (digits + optional fractional part) so
-    // tag-only strings reach `Number()` and trailing garbage rejects.
-    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return false;
-    const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) return false;
+    const n = parseScaleValue(value);
+    if (n === null) return false;
     tags.scale = n;
     return true;
 }

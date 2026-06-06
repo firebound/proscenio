@@ -2,8 +2,8 @@ import React from "react";
 
 import type { ExportFlowResult } from "../../api/export-flow";
 import type { ExportOptions } from "../../lib/planner";
-import { Accordion } from "../common/Accordion";
-import { KeyValueRow } from "../common/KeyValueRow";
+import { Accordion } from "../../components/Accordion";
+import { KeyValueRow } from "../../components/KeyValueRow";
 
 interface Props {
     opts: ExportOptions;

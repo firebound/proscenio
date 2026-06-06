@@ -16,10 +16,10 @@ import {
     type SingleLayerExportResult,
 } from "../../api/export-flow";
 import type { ExportOptions } from "../../lib/planner";
-import { elementsEqual } from "../../util/arrays";
-import { log } from "../../util/log";
-import { Accordion } from "../common/Accordion";
-import { KeyValueRow } from "../common/KeyValueRow";
+import { entryMatchesPath } from "../../lib/entry-match";
+import { log } from "../../utils/log";
+import { Accordion } from "../../components/Accordion";
+import { KeyValueRow } from "../../components/KeyValueRow";
 
 interface Props {
     preview: ExportPreview | null;
@@ -90,10 +90,7 @@ function findMatchedEntry(
     const refs = preview.entryRefs;
     if (refs === undefined) return null;
     for (const ref of refs) {
-        if (elementsEqual(ref.layerPath, activeLayerPath)) return { name: ref.name, kind: ref.kind };
-        if (ref.framePaths?.some((p) => elementsEqual(p, activeLayerPath))) {
-            return { name: ref.name, kind: ref.kind };
-        }
+        if (entryMatchesPath(ref, activeLayerPath)) return { name: ref.name, kind: ref.kind };
     }
     return null;
 }

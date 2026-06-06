@@ -1,7 +1,7 @@
 import React from "react";
 
 import type { ImportFlowResult } from "../../api/import-flow";
-import { Accordion } from "../common/Accordion";
+import { Accordion } from "../../components/Accordion";
 
 interface Props {
     busy: boolean;

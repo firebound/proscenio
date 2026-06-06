@@ -86,6 +86,13 @@ The deliberate decisions and studies made while building the MVP, one section pe
 - **Custom Property keys live in one module.** Every CP key literal sits in `core/_shared/cp_keys.py` and call sites import the constant; the weight-sidecar, automesh-stroke, and photoshop-import keys that had drifted into local `_KEY` constants are pulled back in.
 - **Behavior-preserving, proven by the full gate set.** No schema or `format_version` change; ruff + mypy + the repo-root pytest suite + the Blender fixture and operator suites + a whole-addon import sweep all stay green. See [`016-blender-app-system-organization/STUDY.md`](016-blender-app-system-organization/STUDY.md).
 
+### Photoshop web-app layout (spec 018)
+
+- **Layer-based layout borrowed from a conventional web app.** UXP has no canonical plugin architecture, so the plugin organizes by role: `panels/` (screens) and `components/` (reusable leaf UI) render, `hooks/` own state, `lib/` is pure logic, `api/` is the single Photoshop boundary, `utils/` are leaf helpers. Layered direction `panels -> hooks -> api + lib`. Chosen over a feature-folder (vertical-slice) split because the panel count is small and the pure-vs-boundary seam is the axis that actually needs enforcing. Revisit trigger: the plugin grows enough independent features that cross-layer churn per feature outweighs the boundary clarity.
+- **`lib/` is UXP-free; `api/` is the only boundary.** Pure logic never imports a UXP module; hooks and panels reach the live document through `api/` (`active-document`, `ps-notifications`, `ps-selection`, ...), never `import { app } from "photoshop"` directly. This is what makes `lib/` unit-testable without a Photoshop host.
+- **One `@ts-nocheck` exception: `src/entry.ts`.** The Adobe React UXP starter `PanelController` (Symbol-keyed private fields, untyped Component contract) is the only shape `entrypoints.setup({ panels })` parses reliably; it is vendored verbatim and excluded from the typed gate and ESLint.
+- **Behavior-preserving, proven by the Photoshop gate.** No schema or `format_version` change; `tsc --noEmit` + ESLint + vitest all stay green. See [`018-photoshop-web-app-layout/STUDY.md`](018-photoshop-web-app-layout/STUDY.md).
+
 ### Photoshop UXP migration
 
 - **UXP is the only Photoshop entry point.** The legacy JSX exporter and importer were retired once the doll roundtrip oracle confirmed pixel-byte parity vs the captured JSX baseline.

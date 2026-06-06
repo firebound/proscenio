@@ -7,7 +7,7 @@ import React from "react";
 
 import { previewExport, type ExportPreview } from "../api/export-flow";
 import type { ExportOptions } from "../lib/planner";
-import { log } from "../util/log";
+import { log } from "../utils/log";
 
 export interface UseExportPreview {
     preview: ExportPreview | null;

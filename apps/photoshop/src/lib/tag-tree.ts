@@ -11,7 +11,7 @@
 
 import type { Layer } from "./layer";
 import { parseLayerName, type TagBag } from "./tag-parser";
-import { elementsEqual } from "../util/arrays";
+import { elementsEqual } from "../utils/arrays";
 
 export interface TagTreeNode {
     /** Names from the document root down to this node, inclusive. */

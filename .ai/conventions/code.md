@@ -53,7 +53,7 @@ GDScript 2.0 has full static typing. The plugin is 100% typed.
 
 - `strict` TypeScript with `noImplicitAny`, `noImplicitReturns`, `noFallthroughCasesInSwitch`. No `any` outside narrow adapter boundaries.
 - React function components with hooks. No class components. One hook per file under a `useXxx` name.
-- Keep the panel a thin composition: components render, hooks own state, domain modules stay pure (no UXP API imports), io / adapters touch the Photoshop API. Layered direction: panels -> hooks / controllers -> domain + io -> adapters.
+- Keep the panel a thin composition: panels and components render, hooks own state, `lib/` modules stay pure (no UXP API imports), `api/` is the single Photoshop-boundary tier (document/layer reads, notifications, batchPlay, file writes). Layered direction: `panels -> hooks -> api + lib` (components are leaf UI, utils are leaf helpers). Purity rule: nothing in `lib/` may import a UXP module; a hook or panel that needs the live document goes through `api/`, never `import { app } from "photoshop"` directly. The `@ts-nocheck` host shim is `src/entry.ts` (the only file exempt from the typed gate).
 - Validate cross-process payloads (manifest JSON) at the boundary with a schema-driven runtime check (ajv against the manifest schema). Treat schema mismatch as a hard fail.
 - Prefer discriminated unions over loose `string` tags for closed sets (`kind: "polygon" | "sprite_frame" | "mesh"`).
 

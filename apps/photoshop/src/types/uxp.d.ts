@@ -27,8 +27,8 @@ declare module "uxp" {
 
     /** XMP metadata bindings exposed by PS 25 / CC 2024 and later.
      *  Older Photoshop builds ship a UXP module without the `xmp`
-     *  member; consumers should call `isXmpAvailable()` from
-     *  `src/api/xmp.ts` rather than dereferencing the field directly. */
+     *  member; consumers (see `src/api/xmp.ts`) must guard on
+     *  `xmp === undefined` before dereferencing the field. */
     export const xmp: XmpModule | undefined;
 
     export interface XmpModule {

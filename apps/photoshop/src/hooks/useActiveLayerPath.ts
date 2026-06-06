@@ -12,8 +12,8 @@
 import React from "react";
 
 import { readActiveLayerPath } from "../api/ps-selection";
-import { elementsEqual } from "../util/arrays";
-import { log } from "../util/log";
+import { elementsEqual } from "../utils/arrays";
+import { log } from "../utils/log";
 
 const POLL_MS = 300;
 

@@ -18,6 +18,10 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
+from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
+    region_event_to_xz,
+    region_event_to_xz_offset,
+)
 from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
     refresh_overlay,
@@ -50,11 +54,11 @@ from ...core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-fou
 )
 from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
-    Point2D,
     StageOutput,
     StageParams,
     Stroke,
 )
+from ._status_bar import emit_authoring_chord_layout
 
 _TIMER_INTERVAL = 0.1
 # Cursor tooltip background colors (passed to the overlay via _tooltip_color_ref).
@@ -89,8 +93,8 @@ _DIGIT_KEYS = {
 }
 _PEN_SUBDIV_MAX = 20  # wheel can exceed the single-digit set; cap to keep CDT sane
 # Short stage titles; per-stage gesture chords render separately in the
-# statusbar via _emit_authoring_chord_layout, so these stay terse. The
-# "N/M" prefix is derived per active mode by _stage_label, so
+# statusbar via _status_bar.emit_authoring_chord_layout, so these stay
+# terse. The "N/M" prefix is derived per active mode by _stage_label, so
 # these are base names only.
 _STAGE_BASE_NAMES = {
     AuthoringStage.OUTER: "Outer contour",
@@ -346,7 +350,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> None:
         """Hit-test: remove outer stroke if any vert is within pick radius of mouse."""
-        mouse_world = _region_to_world_xz(context, event)
+        mouse_world = region_event_to_xz(context, event)
         if mouse_world is None:
             return
         pick_d2 = self._pick_radius_sq(context, event, mouse_world)
@@ -367,7 +371,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
         Falls back to the interior spacing when the offset point cannot be
         projected (e.g. cursor off the picture plane)."""
-        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        near_world = region_event_to_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
         if near_world is None:
             spacing = self._resolve_interior_spacing(context)
             return spacing * spacing
@@ -406,7 +410,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
         Used to warn that a Stage 4 fold/cut gesture would be clipped. A
         failed projection counts as not-outside (no false warning)."""
-        world_pt = _region_to_world_xz(context, event)
+        world_pt = region_event_to_xz(context, event)
         if world_pt is None:
             return False
         return not self._point_inside_outer(world_pt)
@@ -510,7 +514,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 return {"RUNNING_MODAL"}
             # Track click-vs-drag; commit decided on release.
             self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
-            world_pt = _region_to_world_xz(context, event)
+            world_pt = region_event_to_xz(context, event)
             self._stroke_raw_points.clear()
             if world_pt:
                 self._stroke_raw_points.append(world_pt)
@@ -543,7 +547,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _draw_lmb_press(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self._stroke_start_screen = (event.mouse_region_x, event.mouse_region_y)
-        world_pt = _region_to_world_xz(context, event)
+        world_pt = region_event_to_xz(context, event)
         self._stroke_raw_points.clear()
         if world_pt:
             self._stroke_raw_points.append(world_pt)
@@ -657,8 +661,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
           near-duplicate;
         - otherwise -> (axis-locked world point, False).
         """
-        mouse = _region_to_world_xz(context, event)
-        near = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        mouse = region_event_to_xz(context, event)
+        near = region_event_to_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
         if mouse is None or near is None:
             return self._apply_axis_lock(world_pt), False
         pick_d2 = (near[0] - mouse[0]) ** 2 + (near[1] - mouse[1]) ** 2
@@ -869,7 +873,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._tooltip_text_ref[0] = text
             self._tooltip_color_ref[0] = _TOOLTIP_BG_WARN if warn else _TOOLTIP_BG_NORMAL
             self._delete_hover_points.clear()
-            cursor = _region_to_world_xz(context, event)
+            cursor = region_event_to_xz(context, event)
             self._live_preview["cursor"] = (
                 self._apply_axis_lock(cursor) if (cursor and self._pen_active) else cursor
             )
@@ -1178,10 +1182,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         The pick radius is a screen-space pixel distance (_STROKE_PICK_RADIUS_PX)
         converted to world units at the cursor so picking feels consistent at
         any zoom level."""
-        mouse_world = _region_to_world_xz(context, event)
+        mouse_world = region_event_to_xz(context, event)
         if mouse_world is None:
             return None
-        near_world = _region_to_world_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
+        near_world = region_event_to_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
         if near_world is None:
             return None
         pick_d2 = (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
@@ -1295,88 +1299,12 @@ def _resolve_picker(context: bpy.types.Context) -> bpy.types.Object | None:
     return picker
 
 
-def _region_to_world_xz(context: bpy.types.Context, event: bpy.types.Event) -> Point2D | None:
-    """Project region pixel coords to Y=0 XZ plane (Proscenio convention)."""
-    from bpy_extras import view3d_utils  # local: bpy_extras not always available at module load
-
-    region = context.region
-    rv3d = context.region_data
-    if region is None or rv3d is None:
-        return None
-    coord = (event.mouse_region_x, event.mouse_region_y)
-    origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
-    direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
-    if abs(direction.y) < 1e-9:
-        return None
-    t = -origin.y / direction.y
-    hit = origin + direction * t
-    return (hit.x, hit.z)
-
-
-def _region_to_world_xz_offset(
-    context: bpy.types.Context, event: bpy.types.Event, dx: int = 0, dy: int = 0
-) -> Point2D | None:
-    """Project an offset pixel position to Y=0 XZ plane.
-
-    Used to convert a screen-space pixel radius into a world-space distance
-    for pick hit-testing without assuming a fixed world-space threshold.
-    """
-    from bpy_extras import view3d_utils  # local: bpy_extras not always available at module load
-
-    region = context.region
-    rv3d = context.region_data
-    if region is None or rv3d is None:
-        return None
-    coord = (event.mouse_region_x + dx, event.mouse_region_y + dy)
-    origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
-    direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
-    if abs(direction.y) < 1e-9:
-        return None
-    t = -origin.y / direction.y
-    if t < 0:
-        return None
-    hit = origin + direction * t
-    return (hit.x, hit.z)
-
-
-def _chord(layout: bpy.types.UILayout, *parts: tuple[str, str]) -> None:
-    """Emit one aligned chord row. Each part is (icon, text); an empty
-    icon prints text only, an empty text prints the icon only. Mirrors
-    quick_armature._emit_chord_layout so the hint matches Blender's own
-    modal status bars (knife / loop cut)."""
-    row = layout.row(align=True)
-    for icon, text in parts:
-        row.label(text=text, icon=icon or "NONE")
-
-
-def _emit_authoring_chord_layout(
-    layout: bpy.types.UILayout, stage: AuthoringStage, mode: str
-) -> None:
-    """Render per-stage gesture chords with native EVENT_*/MOUSE_* icons."""
-    _chord(layout, ("MOD_REMESH", f"Automesh: {_stage_label(stage, mode)}"))
-    if stage in {AuthoringStage.EDIT_OUTLINE, AuthoringStage.EDIT_INTERIOR_POINTS}:
-        #  toggle pen: tap a modifier to enter draw mode (no holding).
-        verb = "extend" if stage == AuthoringStage.EDIT_OUTLINE else "fold"
-        if stage == AuthoringStage.EDIT_INTERIOR_POINTS:
-            _chord(layout, ("MOUSE_LMB", "point"))
-        _chord(layout, ("EVENT_SHIFT", "tap"), ("", f"{verb}-pen"))
-        _chord(layout, ("EVENT_CTRL", "tap"), ("", "cut-pen"))
-        _chord(layout, ("MOUSE_LMB", "vert / drag=draw"))
-        _chord(layout, ("EVENT_X", "/"), ("EVENT_Z", "axis lock"))
-        _chord(layout, ("MOUSE_MMB", "/ 0-9 = subdiv"))
-        _chord(layout, ("MOUSE_RMB", "/"), ("EVENT_RETURN", "finish"))
-        _chord(layout, ("EVENT_ALT", "+"), ("MOUSE_LMB", "delete"))
-        _chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "undo"))
-    _chord(layout, ("EVENT_RETURN", "next"))
-    _chord(layout, ("EVENT_BACKSPACE", "back"))
-    _chord(layout, ("EVENT_ESC", "cancel"))
-
-
 def _draw_statusbar_authoring(self: bpy.types.Header, _context: bpy.types.Context) -> None:
-    _emit_authoring_chord_layout(
+    cls = PROSCENIO_OT_automesh_authoring
+    emit_authoring_chord_layout(
         self.layout,
-        PROSCENIO_OT_automesh_authoring._current_stage,
-        PROSCENIO_OT_automesh_authoring._current_interior_mode,
+        _stage_label(cls._current_stage, cls._current_interior_mode),
+        cls._current_stage,
     )
     self.layout.separator_spacer()
 

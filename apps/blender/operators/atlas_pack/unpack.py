@@ -9,7 +9,10 @@ import bpy
 
 from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
-from ._paths import pre_pack_snapshot_for, scene_has_pre_pack_snapshot, swap_image_in_materials
+from ...core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
+    scene_has_pre_pack_snapshot,
+)
+from ._paths import pre_pack_snapshot_for, swap_image_in_materials
 
 
 class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):

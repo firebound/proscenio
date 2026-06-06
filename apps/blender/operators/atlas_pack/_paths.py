@@ -58,11 +58,6 @@ def pre_pack_snapshot_for(obj: bpy.types.Object) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def scene_has_pre_pack_snapshot(scene: bpy.types.Scene) -> bool:
-    """True when at least one mesh in ``scene`` carries a pre-pack snapshot."""
-    return any(PROSCENIO_PRE_PACK in obj for obj in scene.objects if obj.type == "MESH")
-
-
 def packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:
     """Return ``(atlas_png_path, manifest_json_path)`` next to the .blend."""
     blend = Path(blend_path) if blend_path else Path("untitled.blend")

@@ -14,6 +14,12 @@ AxisLock: TypeAlias = Literal["X", "Z"] | None
 
 DEFAULT_NAME_PREFIX = "qbone"
 
+# Minimum head->tail world distance for a bone to be created. A release
+# closer than this to the press point is rejected as a stray click
+# ("bone too short, skipped"); the live preview also uses it to decide
+# whether to surface the snapped-away press marker.
+BONE_TOO_SHORT_TOLERANCE = 1e-4
+
 
 PressMode = Literal["connected", "unparented", "disconnected"]
 

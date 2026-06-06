@@ -7,7 +7,7 @@ from typing import ClassVar
 
 import bpy
 
-from ..operators.atlas_pack._paths import (  # type: ignore[import-not-found]
+from ..core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
     scene_has_pre_pack_snapshot,
 )
 from ._helpers import draw_subpanel_header

@@ -91,15 +91,15 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 ## Blender addon
 
-### Spec 016 follow-up: god-module splits + low-risk companions
+### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
 
-Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). Three items were deferred because they touch modal / atlas-pack code with no headless coverage, so they need a focused session with the Blender editor open for manual smoke testing.
+Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). The three deferred items shipped as the 016 follow-up, behavior-preserving and proven by the headless gate set (ruff + mypy + `uv run pytest tests/` + the Blender fixture and operator suites):
 
-- **Split the two operator god-modules.** `operators/automesh/automesh_authoring.py` (~1412 LOC) and `operators/armature/quick_armature.py` (~1246 LOC) still mix the modal operator with status-bar / chord drawing, GPU preview overlays, and screen-to-plane projection. Extract the draw helpers into sibling `_overlay.py` and `_status_bar.py` modules and the projection plus view-pose math into `core/_shared` or `core/bpy_helpers/_shared`. A missed name in a moved draw function surfaces only when the modal runs, so this needs manual modal verification beyond the headless gates.
-- **Route import_photoshop reports through `core.report`.** `operators/import_photoshop.py` calls raw `self.report` with an inline `"Proscenio: "` string instead of the shared report helper. Low; it shifts user-facing message text on an untested operator.
-- **Relocate `scene_has_pre_pack_snapshot`.** `panels/atlas.py` imports it from `operators/atlas_pack/_paths.py`, crossing the `panels -> operators` boundary. Move it to `core/bpy_helpers/atlas/` so the panel imports from core. Untested atlas-pack path.
+- **Operator god-modules split (done).** `automesh_authoring` projection moved to `core/bpy_helpers/_shared/viewport_math` and its status-bar chords to a sibling `_status_bar.py`. `quick_armature` view-pose / region math moved to `viewport_math`, its chord cheatsheet to `_status_bar.py`, and its GPU preview draw to `_overlay.py`; the bone-length tolerance moved to `core/armature/quick_armature_math`. Registered draw / header callbacks stay in the operators (they bind live class state). The dead `_build_status_bar_text` was dropped.
+- **import_photoshop reports through `core.report` (done).** Replaced raw `self.report` + inline `"Proscenio: "` with `report_info` / `report_error`.
+- **`scene_has_pre_pack_snapshot` relocated (done).** Now in `core/bpy_helpers/atlas/snapshot.py`; the atlas panel imports it from core instead of reaching into `operators/atlas_pack`.
 
-**Trigger:** a focused session that can manually smoke-test the Quick Armature and Automesh authoring modals in the Blender editor.
+**Verified:** the moved modal draw / status-bar callbacks run only during the live modal, which the headless gates do not exercise, so this was confirmed by an in-editor smoke test of both the Quick Armature and Automesh Authoring modals (preview overlay, axis-lock guideline, status-bar chords, outside-canvas tooltip) - all intact at runtime.
 
 ### General rig orientation detection
 

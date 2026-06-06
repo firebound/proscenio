@@ -15,6 +15,7 @@ import bpy
 from bpy.props import EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
+from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
 from ..core.psd import psd_manifest  # type: ignore[import-not-found]
 from ..importers.photoshop import import_manifest  # type: ignore[import-not-found]
 
@@ -68,7 +69,7 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
     def execute(self, context: bpy.types.Context) -> set[str]:
         path = Path(self.filepath)
         if not path.exists():
-            self.report({"ERROR"}, f"Manifest not found: {path}")
+            report_error(self, f"Manifest not found: {path}")
             return {"CANCELLED"}
         try:
             result = import_manifest(
@@ -77,21 +78,21 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
                 root_bone_name=self.root_bone_name or "root",
             )
         except psd_manifest.ManifestError as exc:
-            self.report({"ERROR"}, f"Manifest invalid: {exc}")
+            report_error(self, f"Manifest invalid: {exc}")
             return {"CANCELLED"}
         except Exception as exc:
             # Surface anything to the user - operator must not crash the UI.
-            self.report({"ERROR"}, f"Import failed: {exc}")
+            report_error(self, f"Import failed: {exc}")
             return {"CANCELLED"}
         msg = (
-            f"Proscenio: stamped {len(result.meshes)} mesh(es)"
+            f"stamped {len(result.meshes)} mesh(es)"
             f" (armature: {result.armature.name if result.armature else '<none>'})"
         )
         if result.skipped:
             msg += f"; skipped {len(result.skipped)}"
         if result.spritesheets:
             msg += f"; composed {len(result.spritesheets)} spritesheet(s)"
-        self.report({"INFO"}, msg)
+        report_info(self, msg)
         return {"FINISHED"}
 
 

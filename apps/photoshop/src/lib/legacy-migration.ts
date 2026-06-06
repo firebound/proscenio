@@ -13,7 +13,7 @@
 //   - empty name after stripping (`_` alone) becomes `[ignore]`.
 //
 // Pure module; the matching UXP applier lives in
-// `src/io/legacy-migration.ts`.
+// `src/api/legacy-migration.ts`.
 
 import type { Layer } from "./layer";
 

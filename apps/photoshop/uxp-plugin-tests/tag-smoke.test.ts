@@ -18,9 +18,9 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildExportPlan, buildManifest } from "../src/domain/planner";
-import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import type { PolygonEntry, SpriteFrameEntry } from "../src/domain/manifest";
+import { buildExportPlan, buildManifest } from "../src/lib/planner";
+import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
+import type { PolygonEntry, SpriteFrameEntry } from "../src/lib/manifest";
 
 const GOLDEN_PATH = resolve(
     __dirname,

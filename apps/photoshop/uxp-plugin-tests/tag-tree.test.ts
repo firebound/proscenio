@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import { buildTagTreeReusing, type TagTreeNode } from "../src/domain/tag-tree";
+import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
+import { buildTagTreeReusing, type TagTreeNode } from "../src/lib/tag-tree";
 
 function art(name: string, visible = true): ArtLayer {
     return { kind: "art", name, visible, bounds: { x: 0, y: 0, w: 10, h: 10 } };

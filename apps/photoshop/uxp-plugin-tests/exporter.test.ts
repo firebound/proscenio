@@ -12,9 +12,9 @@ import {
     buildManifest,
     indicesAreContiguousFromZero,
     sanitize,
-} from "../src/domain/planner";
-import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import type { PolygonEntry, SpriteFrameEntry } from "../src/domain/manifest";
+} from "../src/lib/planner";
+import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
+import type { PolygonEntry, SpriteFrameEntry } from "../src/lib/manifest";
 
 const DEFAULT_BOUNDS = { x: 0, y: 0, w: 10, h: 10 };
 

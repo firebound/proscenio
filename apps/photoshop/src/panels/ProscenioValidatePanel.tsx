@@ -6,7 +6,7 @@
 
 import React from "react";
 
-import type { ExportOptions } from "../domain/planner";
+import type { ExportOptions } from "../lib/planner";
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
 import { useDocumentChanges } from "../hooks/useDocumentChanges";
 import { useExportPreview } from "../hooks/useExportPreview";

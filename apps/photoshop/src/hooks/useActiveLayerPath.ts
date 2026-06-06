@@ -11,7 +11,7 @@
 
 import React from "react";
 
-import { readActiveLayerPath } from "../io/ps-selection";
+import { readActiveLayerPath } from "../api/ps-selection";
 import { elementsEqual } from "../util/arrays";
 import { log } from "../util/log";
 

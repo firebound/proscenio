@@ -3,7 +3,7 @@
 
 import React from "react";
 
-import type { TagTreeNode } from "../../domain/tag-tree";
+import type { TagTreeNode } from "../../lib/tag-tree";
 import { elementsEqual } from "../../util/arrays";
 import { collapseKey } from "../../util/collapseKey";
 import { Accordion } from "../common/Accordion";
@@ -136,4 +136,4 @@ const TagNodeBranch: React.FC<BranchProps> = ({
     );
 };
 
-export { writeLayerName } from "../../domain/tag-writer";
+export { writeLayerName } from "../../lib/tag-writer";

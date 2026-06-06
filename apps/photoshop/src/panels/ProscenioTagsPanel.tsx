@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import type { ExportOptions } from "../domain/planner";
+import type { ExportOptions } from "../lib/planner";
 import { useActiveLayerPath } from "../hooks/useActiveLayerPath";
 import { useDocSnapshot } from "../hooks/useDocSnapshot";
 import { useDocumentChanges } from "../hooks/useDocumentChanges";

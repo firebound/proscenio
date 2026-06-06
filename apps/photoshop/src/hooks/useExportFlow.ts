@@ -1,12 +1,12 @@
 // Owns the Export side of the panel: the toggles, the busy flag and
 // the last-run result. The actual orchestration lives in
-// `controllers/export-flow.ts`; this hook is the React glue.
+// `api/export-flow.ts`; this hook is the React glue.
 
 import React from "react";
 import type { UxpFolder } from "uxp";
 
-import { runExport, type ExportFlowResult } from "../controllers/export-flow";
-import type { ExportOptions } from "../domain/planner";
+import { runExport, type ExportFlowResult } from "../api/export-flow";
+import type { ExportOptions } from "../lib/planner";
 
 const DEFAULT_OPTS: ExportOptions = {
     skipHidden: true,

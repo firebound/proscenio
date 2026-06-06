@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseLayerName } from "../src/domain/tag-parser";
+import { parseLayerName } from "../src/lib/tag-parser";
 
 describe("parseLayerName - basics", () => {
     it("returns the raw name when no tags are present", () => {

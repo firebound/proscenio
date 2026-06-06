@@ -13,7 +13,7 @@
 import { app, constants, type PsDocument, type PsLayer } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
-import type { PngWrite } from "../domain/planner";
+import type { PngWrite } from "../lib/planner";
 
 export interface PngWriteResult {
     outputPath: string;

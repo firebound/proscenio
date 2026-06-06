@@ -28,7 +28,7 @@ declare module "uxp" {
     /** XMP metadata bindings exposed by PS 25 / CC 2024 and later.
      *  Older Photoshop builds ship a UXP module without the `xmp`
      *  member; consumers should call `isXmpAvailable()` from
-     *  `src/io/xmp.ts` rather than dereferencing the field directly. */
+     *  `src/api/xmp.ts` rather than dereferencing the field directly. */
     export const xmp: XmpModule | undefined;
 
     export interface XmpModule {
@@ -213,7 +213,7 @@ declare module "photoshop" {
         readonly parent?: PsLayer | PsDocument;
         /** XMP packet stamped onto the layer. PS 25 / CC 2024 exposes
          *  it as a string directly; some host builds nest it under
-         *  `metadata.xmp`. See `src/io/xmp.ts` for the read / write
+         *  `metadata.xmp`. See `src/api/xmp.ts` for the read / write
          *  contract. */
         xmpMetadata?: string;
         readonly metadata?: { xmp?: string };

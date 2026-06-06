@@ -1,7 +1,7 @@
 // Photoshop -> exporter Layer adapter.
 //
-// The pure planner (`src/domain/planner.ts`) consumes the
-// runtime-agnostic `Layer` shape from `src/domain/layer.ts`. This
+// The pure planner (`src/lib/planner.ts`) consumes the
+// runtime-agnostic `Layer` shape from `src/lib/layer.ts`. This
 // module bridges the live Photoshop document into that shape so the
 // planner can run identically against synthetic test data and a real
 // PSD. Nothing in here touches the file system or schedules an
@@ -15,8 +15,8 @@
 
 import { type PsDocument, type PsGuide, type PsLayer, type PsBounds } from "photoshop";
 
-import type { DocumentInfo } from "../domain/planner";
-import type { Layer, LayerBounds } from "../domain/layer";
+import type { DocumentInfo } from "../lib/planner";
+import type { Layer, LayerBounds } from "../lib/layer";
 
 export interface AdaptedDocument {
     info: DocumentInfo;

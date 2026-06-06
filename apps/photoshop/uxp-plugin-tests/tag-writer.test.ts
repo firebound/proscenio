@@ -3,13 +3,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseLayerName, type TagBag } from "../src/domain/tag-parser";
+import { parseLayerName, type TagBag } from "../src/lib/tag-parser";
 import {
     setBlendTag,
     setKindTag,
     toggleTag,
     writeLayerName,
-} from "../src/domain/tag-writer";
+} from "../src/lib/tag-writer";
 
 function roundtrip(displayName: string, tags: TagBag): TagBag {
     const written = writeLayerName(displayName, tags);

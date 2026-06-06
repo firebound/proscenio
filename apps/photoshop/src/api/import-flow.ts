@@ -14,8 +14,8 @@ import { app, constants, core } from "photoshop";
 import type { PsDocument } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
-import { moveLayerIntoGroup, placePngAt } from "../io/png-placer";
-import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../domain/manifest";
+import { moveLayerIntoGroup, placePngAt } from "./png-placer";
+import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../lib/manifest";
 
 export interface ImportFlowResult {
     kind: "ok" | "failed";

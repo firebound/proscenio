@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { ImportFlowResult } from "../../controllers/import-flow";
+import type { ImportFlowResult } from "../../api/import-flow";
 import { Accordion } from "../common/Accordion";
 
 interface Props {

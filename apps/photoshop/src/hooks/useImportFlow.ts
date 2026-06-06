@@ -1,11 +1,11 @@
 // Owns the Import side of the panel: picking a manifest, surfacing
 // ajv validation errors, running the orchestrator. UI glue around
-// `io/manifest-reader` and `controllers/import-flow`.
+// `io/manifest-reader` and `api/import-flow`.
 
 import React from "react";
 
-import { runImport, type ImportFlowResult } from "../controllers/import-flow";
-import { readManifestFromPicker } from "../io/manifest-reader";
+import { runImport, type ImportFlowResult } from "../api/import-flow";
+import { readManifestFromPicker } from "../api/manifest-reader";
 
 export interface UseImportFlow {
     busy: boolean;

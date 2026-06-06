@@ -12,7 +12,7 @@ import { app, core } from "photoshop";
 
 import { findLayerByPath } from "./_layer-find";
 import { writeLayerTagsToXmp } from "./xmp";
-import { parseLayerName } from "../domain/tag-parser";
+import { parseLayerName } from "../lib/tag-parser";
 import { log } from "../util/log";
 
 export interface RenameResult {

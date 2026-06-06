@@ -10,7 +10,7 @@ import {
     previewUnderscoreMigration,
     type MigrationPreview,
     type MigrationResult,
-} from "../io/legacy-migration";
+} from "../api/legacy-migration";
 
 export interface UseMigration {
     preview: MigrationPreview;

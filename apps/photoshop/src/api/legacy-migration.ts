@@ -13,11 +13,11 @@
 import { app, core } from "photoshop";
 
 import { findLayerByPath } from "./_layer-find";
-import { adaptDocument } from "../adapters/photoshop-layer";
+import { adaptDocument } from "../api/adapt-document";
 import {
     planUnderscoreMigration,
     type UnderscoreMigrationCandidate,
-} from "../domain/legacy-migration";
+} from "../lib/legacy-migration";
 import { log } from "../util/log";
 
 export interface MigrationPreview {

@@ -4,16 +4,16 @@
 
 import React from "react";
 
-import type { BlendMode } from "../../../domain/manifest";
-import type { TagBag } from "../../../domain/tag-parser";
-import type { TagTreeNode } from "../../../domain/tag-tree";
+import type { BlendMode } from "../../../lib/manifest";
+import type { TagBag } from "../../../lib/tag-parser";
+import type { TagTreeNode } from "../../../lib/tag-tree";
 import {
     applyTagChanges,
     setBlendTag,
     setKindTag,
     toggleTag,
-} from "../../../domain/tag-writer";
-import { selectLayerByPath } from "../../../io/ps-selection";
+} from "../../../lib/tag-writer";
+import { selectLayerByPath } from "../../../api/ps-selection";
 import { log } from "../../../util/log";
 import { BadgeStrip, hasBadge } from "./Badges";
 import { TagDetails } from "./Details";

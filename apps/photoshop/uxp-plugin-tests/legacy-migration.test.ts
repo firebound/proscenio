@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { ArtLayer, Layer, LayerSet } from "../src/domain/layer";
-import { planUnderscoreMigration } from "../src/domain/legacy-migration";
+import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
+import { planUnderscoreMigration } from "../src/lib/legacy-migration";
 
 function art(name: string): ArtLayer {
     return { kind: "art", name, visible: true, bounds: { x: 0, y: 0, w: 10, h: 10 } };

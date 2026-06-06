@@ -5,8 +5,8 @@
 
 import React from "react";
 
-import { previewExport, type ExportPreview } from "../controllers/export-flow";
-import type { ExportOptions } from "../domain/planner";
+import { previewExport, type ExportPreview } from "../api/export-flow";
+import type { ExportOptions } from "../lib/planner";
 import { log } from "../util/log";
 
 export interface UseExportPreview {

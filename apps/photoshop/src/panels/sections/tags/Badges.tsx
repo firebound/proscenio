@@ -5,7 +5,7 @@
 
 import React from "react";
 
-import type { TagBag } from "../../../domain/tag-parser";
+import type { TagBag } from "../../../lib/tag-parser";
 
 export function hasBadge(tags: TagBag): boolean {
     return (

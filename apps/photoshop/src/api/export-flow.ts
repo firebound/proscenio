@@ -8,14 +8,14 @@
 // modal opens; an invalid manifest never reaches disk and surfaces in
 // the panel as a list of strings.
 //
-// Folder management lives in `src/io/folder-storage.ts`; this module
+// Folder management lives in `src/api/folder-storage.ts`; this module
 // only consumes a pre-resolved `UxpFolder` so the panel can show /
 // reset the active folder independently of an export run.
 
 import { app, core } from "photoshop";
 import type { UxpFolder } from "uxp";
 
-import { adaptDocument } from "../adapters/photoshop-layer";
+import { adaptDocument } from "./adapt-document";
 import {
     buildExportPlan,
     type EntryRef,
@@ -23,11 +23,11 @@ import {
     type ExportPlan,
     type PlanWarning,
     type SkippedLayer,
-} from "../domain/planner";
-import type { Manifest } from "../domain/manifest";
-import { validateManifest } from "../io/manifest-validator";
-import { writeManifest } from "../io/manifest-writer";
-import { runWrites, type PngWriteResult } from "../io/png-writer";
+} from "../lib/planner";
+import type { Manifest } from "../lib/manifest";
+import { validateManifest } from "./manifest-validator";
+import { writeManifest } from "./manifest-writer";
+import { runWrites, type PngWriteResult } from "./png-writer";
 import { log } from "../util/log";
 
 export interface ExportFlowResult {

@@ -5,7 +5,7 @@
 import React from "react";
 import type { UxpFolder } from "uxp";
 
-import { clearRememberedFolder, pickFolder, restoreFolder } from "../io/folder-storage";
+import { clearRememberedFolder, pickFolder, restoreFolder } from "../api/folder-storage";
 
 export interface UseFolderCache {
     folder: UxpFolder | null;

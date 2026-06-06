@@ -19,9 +19,9 @@
 import React from "react";
 import { app } from "photoshop";
 
-import { adaptDocument } from "../adapters/photoshop-layer";
-import { buildTagTreeReusing, type TagTreeNode } from "../domain/tag-tree";
-import { renameLayer, type RenameResult } from "../io/layer-rename";
+import { adaptDocument } from "../api/adapt-document";
+import { buildTagTreeReusing, type TagTreeNode } from "../lib/tag-tree";
+import { renameLayer, type RenameResult } from "../api/layer-rename";
 import { elementsEqual } from "../util/arrays";
 
 const ACTIVE_POLL_MS = 1500;

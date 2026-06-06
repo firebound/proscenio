@@ -4,10 +4,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildManifest } from "../src/domain/planner";
-import { validateManifest } from "../src/io/manifest-validator";
-import type { Layer } from "../src/domain/layer";
-import type { Manifest } from "../src/domain/manifest";
+import { buildManifest } from "../src/lib/planner";
+import { validateManifest } from "../src/api/manifest-validator";
+import type { Layer } from "../src/lib/layer";
+import type { Manifest } from "../src/lib/manifest";
 
 const doc = { name: "fixture.psd", width: 256, height: 256 };
 const fullOpts = { skipHidden: true };

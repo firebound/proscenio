@@ -10,7 +10,7 @@ import React from "react";
 
 import { readDocSnapshot, type DocSnapshot } from "../api/active-document";
 
-export type { DocSnapshot };
+export type { DocSnapshot } from "../api/active-document";
 
 export interface UseDocSnapshot {
     doc: DocSnapshot | null;

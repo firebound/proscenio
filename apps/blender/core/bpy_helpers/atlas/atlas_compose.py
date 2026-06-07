@@ -111,10 +111,10 @@ def write_manifest(
 ) -> None:
     """Persist the pack result + source slice metadata as JSON.
 
-    ``format_version`` 2 adds ``source_w/h`` and ``slice_x/y/w/h`` per
-    placement so ``apply_packed_atlas`` can rewrite UVs (polygon) and
-    ``texture_region`` (sprite_frame) correctly when the source was a
-    shared atlas (slice_px != full image).
+    ``format_version`` 1 carries ``source_w/h`` and ``slice_x/y/w/h`` per
+    placement (when the source image is known) so ``apply_packed_atlas``
+    can rewrite UVs (mesh) and ``texture_region`` (sprite) correctly when
+    the source was a shared atlas (slice_px != full image).
     """
     by_name = {src.obj_name: src for src in sources}
     placements_payload: dict[str, Any] = {}
@@ -135,7 +135,7 @@ def write_manifest(
             )
         placements_payload[name] = entry
     payload: dict[str, Any] = {
-        "format_version": 2,
+        "format_version": 1,
         "atlas_w": packed.atlas_w,
         "atlas_h": packed.atlas_h,
         "padding": padding,

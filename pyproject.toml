@@ -22,3 +22,8 @@ exclude = []
 # /usr/src; absolute host paths (E:\...) or per-source-root relative paths
 # would not match there and coverage would import as 0%.
 relative_files = true
+# Parallel data files so the pure-pytest run and the in-Blender runs
+# (apps/blender/tests/run_coverage.py) each write a separate .coverage.*
+# that `coverage combine` merges into one report. relative_files keeps the
+# paths aligned across the two interpreters.
+parallel = true

@@ -1,9 +1,22 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
+// Resolve the UXP host mocks so api modules that import { app, ... } from
+// "photoshop" / "uxp" load under plain vitest - the real modules are host
+// globals that only exist inside Photoshop.
+const mock = (name: string): string =>
+  fileURLToPath(new URL(`./uxp-plugin-tests/__mocks__/${name}`, import.meta.url));
+
 // Test discovery stays on Vitest defaults (**/*.test.ts[x]); this config
-// only adds coverage so the Sonar scan has an lcov report to import.
+// adds the host-mock aliases and coverage so the Sonar scan has an lcov
+// report to import.
 export default defineConfig({
   test: {
+    alias: {
+      photoshop: mock("photoshop.ts"),
+      uxp: mock("uxp.ts"),
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

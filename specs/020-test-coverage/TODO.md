@@ -15,8 +15,8 @@ Locked from the [study](STUDY.md). Target: **70% overall + 80% new-code** covera
 
 ## Phase 0 - hygiene + policy (cheap, do first)
 
-- [ ] D1: add to `sonar.coverage.exclusions`: `packages/fixtures/**`, `**/__main__.py`, `packages/validator/src/**/addon_loader.py`, `packages/validator/src/**/_types.py` (only if confirmed not unit-testable).
-- [ ] D4: set New Code Period to reference branch `main` (`/api/new_code_periods/set?project=proscenio&type=REFERENCE_BRANCH&value=main`). Verify SonarQube 26.x Community supports reference-branch new-code on the main branch; fall back to a 30-day window if not.
+- [x] D1: `packages/fixtures/**` and `**/__main__.py` added to `sonar.coverage.exclusions` (e385f83). The `addon_loader.py` / `_types.py` calls are deferred to Phase 1 - decide there whether they are unit-testable or should be excluded.
+- [x] D4: New Code Period set. REFERENCE_BRANCH is not honored for `main` on Community Edition (single-branch: `set` returns 200 but `show` keeps `PREVIOUS_VERSION`, and main-vs-main is degenerate). Applied the documented fallback on the local instance: `set?project=proscenio&branch=main&type=NUMBER_OF_DAYS&value=30` (note the `branch=main` param - a project-level set without it silently no-ops). REFERENCE_BRANCH=main stays the intent for the production SonarQube once it has multi-branch analysis.
 - [ ] Re-scan: confirm `new_violations=0` (S3776 fixed in 382cf93) and the denominator drops the ~500 phantom lines.
 
 ## Phase 1 - pure-Python gaps (highest value per effort)

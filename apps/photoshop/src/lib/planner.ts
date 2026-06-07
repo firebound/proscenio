@@ -298,6 +298,78 @@ function inheritWithPivot(parent: InheritedTags, child: TagBag, pickPivot: boole
     return pickPivot ? { ...next, pickPivot: true } : next;
 }
 
+function handleOriginMarker(
+    childPath: string[],
+    displayName: string,
+    inherited: InheritedTags,
+    ctx: WalkContext,
+): void {
+    if (inherited.pickPivot !== true) {
+        ctx.warnings.push({
+            layerPath: childPath,
+            name: displayName,
+            code: "origin-outside-container",
+            message: "[origin] marker dropped: parent is not a [spritesheet] or [merge] group, so no entry consumes the pivot",
+        });
+    }
+    ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
+}
+
+function walkLayer(
+    parsed: ParsedLayer,
+    prefix: string,
+    layerPath: string[],
+    inherited: InheritedTags,
+    ctx: WalkContext,
+): void {
+    const childPath = [...layerPath, parsed.raw.name];
+    const displayName = fallbackName(parsed.displayName, parsed.raw);
+    emitTagConflicts(parsed, childPath, displayName, ctx);
+    if (parsed.tags.ignore === true) {
+        ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
+        return;
+    }
+    if (ctx.settings.skipHidden && !parsed.raw.visible) {
+        ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "hidden" });
+        return;
+    }
+    if (parsed.raw.kind === "set") {
+        handleGroup(parsed, prefix, childPath, inherited, ctx);
+        return;
+    }
+    if (parsed.tags.originMarker === true) {
+        handleOriginMarker(childPath, displayName, inherited, ctx);
+        return;
+    }
+    const buildArgs: PolygonEntryArgs = {
+        source: parsed,
+        name: joinName(prefix, displayName),
+        layerPath: childPath,
+        zOrder: ctx.zCounter.value,
+        inherited: inherit(inherited, parsed.tags),
+        settings: ctx.settings,
+        warnRef: { layerPath: childPath, name: displayName },
+        ctx,
+    };
+    // A single layer tagged `[sprite]` becomes a one-frame sprite
+    // (Sprite2D); everything else is a mesh (Polygon2D).
+    const entry = parsed.tags.kind === "sprite"
+        ? buildSpriteFromLayer(buildArgs)
+        : buildPolygonEntry(buildArgs);
+    if (entry === null) {
+        ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
+        ctx.warnings.push({
+            layerPath: childPath,
+            name: displayName,
+            code: "empty-bounds",
+            message: "Layer has empty bounds (no visible pixels). Skipped from export.",
+        });
+        return;
+    }
+    ctx.out.push(entry);
+    ctx.zCounter.value += 1;
+}
+
 function walkLayers(
     children: ParsedLayer[],
     prefix: string,
@@ -306,60 +378,7 @@ function walkLayers(
     ctx: WalkContext,
 ): void {
     for (const parsed of children) {
-        const childPath = [...layerPath, parsed.raw.name];
-        const displayName = fallbackName(parsed.displayName, parsed.raw);
-        emitTagConflicts(parsed, childPath, displayName, ctx);
-        if (parsed.tags.ignore === true) {
-            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "ignore-tag" });
-            continue;
-        }
-        if (ctx.settings.skipHidden && !parsed.raw.visible) {
-            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "hidden" });
-            continue;
-        }
-        if (parsed.raw.kind === "set") {
-            handleGroup(parsed, prefix, childPath, inherited, ctx);
-            continue;
-        }
-        if (parsed.tags.originMarker === true) {
-            if (inherited.pickPivot !== true) {
-                ctx.warnings.push({
-                    layerPath: childPath,
-                    name: displayName,
-                    code: "origin-outside-container",
-                    message: "[origin] marker dropped: parent is not a [spritesheet] or [merge] group, so no entry consumes the pivot",
-                });
-            }
-            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
-            continue;
-        }
-        const buildArgs: PolygonEntryArgs = {
-            source: parsed,
-            name: joinName(prefix, displayName),
-            layerPath: childPath,
-            zOrder: ctx.zCounter.value,
-            inherited: inherit(inherited, parsed.tags),
-            settings: ctx.settings,
-            warnRef: { layerPath: childPath, name: displayName },
-            ctx,
-        };
-        // A single layer tagged `[sprite]` becomes a one-frame sprite
-        // (Sprite2D); everything else is a mesh (Polygon2D).
-        const entry = parsed.tags.kind === "sprite"
-            ? buildSpriteFromLayer(buildArgs)
-            : buildPolygonEntry(buildArgs);
-        if (entry === null) {
-            ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
-            ctx.warnings.push({
-                layerPath: childPath,
-                name: displayName,
-                code: "empty-bounds",
-                message: "Layer has empty bounds (no visible pixels). Skipped from export.",
-            });
-            continue;
-        }
-        ctx.out.push(entry);
-        ctx.zCounter.value += 1;
+        walkLayer(parsed, prefix, layerPath, inherited, ctx);
     }
 }
 

@@ -12,6 +12,13 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
+# Coverage reports (generated locally before a Sonar scan; transient, not source)
+.coverage
+coverage.xml
+htmlcov/
+**/coverage/
+*.lcov
+
 # Blender
 *.blend1
 *.blend2

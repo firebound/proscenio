@@ -15,3 +15,10 @@ members = [
     "packages/validator",
 ]
 exclude = []
+
+[tool.coverage.run]
+# Store repo-root-relative file paths in coverage.xml so the report resolves
+# against sonar.projectBaseDir. The Docker Sonar scan mounts the repo at
+# /usr/src; absolute host paths (E:\...) or per-source-root relative paths
+# would not match there and coverage would import as 0%.
+relative_files = true

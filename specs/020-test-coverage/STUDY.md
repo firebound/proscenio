@@ -1,5 +1,7 @@
 # Test coverage strategy
 
+> **Shipped** (PR #95, squash `5b0bed4`): Sonar gate GREEN - overall coverage 36.0% -> 88.8%, new-code 58.7% -> 90.9%, 0 smells / bugs / vulnerabilities / violations. Execution status, the as-shipped decisions, and the final exclusion policy live in [TODO.md](TODO.md). The analysis below is the original pre-work study, kept as the historical record (its "Current measured state" and "Decisions pending" reflect the starting point, not the outcome).
+
 ## Problem
 
 The Sonar quality gate fails on `new_coverage` (58.7% < 80%), and overall coverage sits at 36.0%. The bare number is misleading: large parts of the codebase are either not code-under-test (fixture generators), tested-but-uninstrumented (bpy-bound code exercised only inside Blender), or invisible to Sonar entirely (GDScript). Before chasing a percentage we need to know which lines *should* count, which are *already tested but not measured*, and which need *new tests*. This study maps that and proposes the levers in priority order.

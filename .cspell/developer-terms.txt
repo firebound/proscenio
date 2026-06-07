@@ -339,3 +339,7 @@ tolist
 tris
 hotspots
 sitecustomize
+anim
+monkeypatch
+monkeypatching
+unstub

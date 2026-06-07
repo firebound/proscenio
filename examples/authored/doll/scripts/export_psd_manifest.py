@@ -37,9 +37,9 @@ Conventions
   to camera = frontmost = z_order 0). Ties broken by mesh name.
 - Skipped: meshes whose bounding box is empty (or whose name is in
   ``SKIP_MESHES``, mirroring ``examples/authored/doll/scripts/render_layers.py``).
-- Sprite_frame: not emitted by this generator. The doll's eye meshes are single
-  polygon quads; if a future authored ``.blend`` carries hframed eyes
-  the script will need extending.
+- Sprite kind: not emitted by this generator. The doll's eye layers are single
+  mesh quads; if a future authored ``.blend`` carries hframed (spritesheet)
+  eyes the script will need extending.
 """
 
 from __future__ import annotations
@@ -190,7 +190,7 @@ def _layer_entry(
     w = (bb_max.x - bb_min.x) * PIXELS_PER_UNIT
     h = (bb_max.z - bb_min.z) * PIXELS_PER_UNIT
     return {
-        "kind": "polygon",
+        "kind": "mesh",
         "name": name,
         "path": f"render_layers/{name}.png",
         "position": [int(round(x)), int(round(y))],

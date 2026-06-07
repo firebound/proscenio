@@ -43,26 +43,26 @@ describe("validateManifest", () => {
         expect(errors.join(" ")).toMatch(/format_version/);
     });
 
-    it("rejects a polygon layer missing required fields", () => {
+    it("rejects a mesh layer missing required fields", () => {
         const bad = {
-            format_version: 2,
+            format_version: 1,
             doc: "x.psd",
             size: [10, 10],
             pixels_per_unit: 100,
-            layers: [{ kind: "polygon", name: "torso" }],
+            layers: [{ kind: "mesh", name: "torso" }],
         } as unknown as Manifest;
         expect(validateManifest(bad).length).toBeGreaterThan(0);
     });
 
-    it("rejects a sprite_frame with fewer than 2 frames", () => {
-        const bad: Manifest = {
-            format_version: 2,
+    it("accepts a sprite with a single frame", () => {
+        const ok: Manifest = {
+            format_version: 1,
             doc: "x.psd",
             size: [10, 10],
             pixels_per_unit: 100,
             layers: [
                 {
-                    kind: "sprite_frame",
+                    kind: "sprite",
                     name: "blink",
                     position: [0, 0],
                     size: [10, 10],
@@ -71,8 +71,6 @@ describe("validateManifest", () => {
                 },
             ],
         };
-        const errors = validateManifest(bad);
-        expect(errors.length).toBeGreaterThan(0);
-        expect(errors.join(" ")).toMatch(/frames/);
+        expect(validateManifest(ok)).toEqual([]);
     });
 });

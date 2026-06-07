@@ -159,12 +159,11 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         value={node.tags.kind ?? ""}
                         disabled={busy}
                         onChange={onKindChange}
-                        title="Kind override - polygon (static quad), mesh (rigged), spritesheet (frames)"
+                        title="Kind override - mesh (Polygon2D), sprite (Sprite2D)"
                     >
                         <option key="auto" value="">auto</option>
-                        <option key="polygon" value="polygon">poly</option>
                         <option key="mesh" value="mesh">mesh</option>
-                        {node.isGroup && <option key="sprite_frame" value="sprite_frame">sprt</option>}
+                        <option key="sprite" value="sprite">sprite</option>
                     </select>
                     <select
                         key="blend"
@@ -278,9 +277,8 @@ function mergeTitleFor(isGroup: boolean, active: boolean): string {
 }
 
 function parseKind(value: string): TagBag["kind"] | undefined {
-    if (value === "polygon") return "polygon";
     if (value === "mesh") return "mesh";
-    if (value === "sprite_frame") return "sprite_frame";
+    if (value === "sprite") return "sprite";
     return undefined;
 }
 

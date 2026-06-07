@@ -9,7 +9,7 @@ from typing import Literal, NotRequired, TypedDict
 
 import bpy
 from mathutils import Vector
-from proscenio_models import PolygonSprite, SpriteFrameSprite, Weight
+from proscenio_models import MeshElement, SpriteElement, Weight
 
 from ....core._shared import region as region_core
 from ....core._shared.pg_cp_fallback import read_field
@@ -28,7 +28,7 @@ _WEIGHT_EPS = 1e-9
 
 
 class _PolygonKwargs(TypedDict):
-    """Constructor kwargs for ``PolygonSprite``.
+    """Constructor kwargs for ``MeshElement``.
 
     ``texture`` / ``weights`` are ``NotRequired`` so they are passed
     only when present; with ``model_dump_json(exclude_unset=True)`` an
@@ -47,10 +47,10 @@ class _PolygonKwargs(TypedDict):
 
 
 class _SpriteFrameKwargs(TypedDict):
-    """Constructor kwargs for ``SpriteFrameSprite``; ``texture_region`` is
+    """Constructor kwargs for ``SpriteElement``; ``texture_region`` is
     omitted in auto mode (the legacy writer only set it for manual regions)."""
 
-    type: Literal["sprite_frame"]
+    type: Literal["sprite"]
     name: str
     bone: str
     hframes: int
@@ -64,21 +64,21 @@ def build_sprite(
     obj: bpy.types.Object,
     world_godot: dict[str, BoneWorld],
     ppu: float,
-) -> PolygonSprite | SpriteFrameSprite:
-    """Build a sprite entry. The sprite kind is read from
-    ``Object.proscenio.sprite_type`` (PropertyGroup), falling back to the
+) -> MeshElement | SpriteElement:
+    """Build an element entry. The kind is read from
+    ``Object.proscenio.element_type`` (PropertyGroup), falling back to the
     legacy ``proscenio_type`` Custom Property when the PropertyGroup is
-    unavailable (default ``"polygon"``).
+    unavailable (default ``"mesh"``).
     """
-    sprite_type: str = str(
-        read_field(obj, pg_field="sprite_type", cp_key="proscenio_type", default="polygon")
+    element_type: str = str(
+        read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
     )
-    if sprite_type == "sprite_frame":
+    if element_type == "sprite":
         return build_sprite_frame(obj)
-    if sprite_type != "polygon":
+    if element_type != "mesh":
         raise RuntimeError(
-            f"Proscenio: object {obj.name!r} has unknown proscenio_type "
-            f"{sprite_type!r}; expected 'polygon' or 'sprite_frame'."
+            f"Proscenio: object {obj.name!r} has unknown element_type "
+            f"{element_type!r}; expected 'mesh' or 'sprite'."
         )
 
     mesh = expect_mesh(obj)
@@ -138,7 +138,7 @@ def build_sprite(
         poly_kwargs["texture"] = texture
     if weights:
         poly_kwargs["weights"] = weights
-    return PolygonSprite(**poly_kwargs)
+    return MeshElement(**poly_kwargs)
 
 
 def _iter_tex_images(obj: bpy.types.Object) -> Iterator[bpy.types.Image]:
@@ -185,8 +185,8 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     return None
 
 
-def build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameSprite:
-    """Emit a ``sprite_frame`` sprite entry."""
+def build_sprite_frame(obj: bpy.types.Object) -> SpriteElement:
+    """Emit a ``sprite`` element entry (Sprite2D)."""
     hframes = int(read_field(obj, pg_field="hframes", cp_key="proscenio_hframes", default=1))
     vframes = int(read_field(obj, pg_field="vframes", cp_key="proscenio_vframes", default=1))
     if hframes < 1 or vframes < 1:
@@ -196,7 +196,7 @@ def build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameSprite:
         )
 
     sf_kwargs: _SpriteFrameKwargs = {
-        "type": "sprite_frame",
+        "type": "sprite",
         "name": obj.name,
         "bone": resolve_sprite_bone(obj),
         "hframes": hframes,
@@ -209,7 +209,7 @@ def build_sprite_frame(obj: bpy.types.Object) -> SpriteFrameSprite:
     manual_region = region_core.manual_region_or_none(obj)
     if manual_region is not None:
         sf_kwargs["texture_region"] = manual_region
-    return SpriteFrameSprite(**sf_kwargs)
+    return SpriteElement(**sf_kwargs)
 
 
 def resolve_sprite_bone(obj: bpy.types.Object) -> str:

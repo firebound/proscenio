@@ -1,17 +1,15 @@
-"""Pydantic models for the PSD manifest v2 format.
+"""Pydantic models for the PSD manifest format.
 
 Output of the Proscenio Photoshop UXP exporter, input of the Proscenio
-Blender importer. v2 introduces the tag-driven taxonomy from the
-photoshop tag system (anchor, per-entry origin, blend_mode, subfolder,
-the ``kind: "mesh"`` polygon variant).
+Blender importer. Carries the tag-driven taxonomy from the photoshop
+tag system (anchor, per-entry origin, blend_mode, subfolder) over two
+element kinds: ``mesh`` (-> Polygon2D) and ``sprite`` (-> Sprite2D).
 
 Same encoding choices as ``proscenio.py``: ``UintPair`` typed as
 ``list[int]`` with constrained length so the emitted JSON Schema uses
 ``items`` + ``minItems`` / ``maxItems`` instead of pydantic's default
-``prefixItems``. ``Layer`` is a discriminated union on ``kind``;
-polygon and mesh share a class because they only differ at the
-discriminator level, mirroring the schema's ``enum: ["polygon",
-"mesh"]`` on a single object.
+``prefixItems``. ``Layer`` is a discriminated union on ``kind`` with
+one class per kind.
 """
 
 from __future__ import annotations
@@ -44,14 +42,14 @@ class FrameEntry(_Strict):
     )
 
 
-class PolygonLayer(_Strict):
-    """Single PNG, single quad mesh.
+class MeshLayer(_Strict):
+    """Single PNG, deformable cutout element (-> Polygon2D).
 
-    ``kind: "mesh"`` is a polygon superset flagged as a deformable mesh
-    source; renders as polygon when no rig is bound.
+    Tagged ``[mesh]`` / ``[poly]`` in Photoshop. Renders as a static
+    quad until a rig binds vertex weights.
     """
 
-    kind: Literal["polygon", "mesh"]
+    kind: Literal["mesh"]
     name: str = Field(min_length=1)
     path: str = Field(
         min_length=1,
@@ -89,13 +87,15 @@ class PolygonLayer(_Strict):
     )
 
 
-class SpriteFrameLayer(_Strict):
-    """N frames, single quad mesh, animated via ``proscenio.frame``.
+class SpriteLayer(_Strict):
+    """Rigid sprite element (-> Sprite2D), one or more frames.
 
-    Authored as a LayerSet tagged ``[spritesheet]``.
+    A single layer tagged ``[sprite]`` yields one frame (a static
+    sprite); a LayerSet tagged ``[spritesheet]`` yields N frames the
+    importer composes into a grid, animated via ``proscenio.frame``.
     """
 
-    kind: Literal["sprite_frame"]
+    kind: Literal["sprite"]
     name: str = Field(min_length=1)
     position: UintPair = Field(
         description="PSD top-left bbox of the largest frame.",
@@ -106,17 +106,17 @@ class SpriteFrameLayer(_Strict):
         ),
     )
     z_order: int = Field(ge=0)
-    frames: list[FrameEntry] = Field(min_length=2)
+    frames: list[FrameEntry] = Field(min_length=1)
     origin: UintPair | None = Field(
         default=None,
-        description="Optional pivot in PSD pixels (see polygon_layer.origin).",
+        description="Optional pivot in PSD pixels (see MeshLayer.origin).",
     )
     blend_mode: BlendMode | None = None
     subfolder: str | None = Field(default=None, min_length=1)
 
 
 def _layer_discriminator(payload: Any) -> str | None:
-    """Route polygon and mesh kinds to the same class; sprite_frame to its own.
+    """Route the ``mesh`` and ``sprite`` kinds to their classes.
 
     Returns ``None`` for unexpected ``kind`` values so pydantic raises
     a ``union_tag_not_found`` ValidationError rather than dispatching
@@ -127,24 +127,22 @@ def _layer_discriminator(payload: Any) -> str | None:
         kind = payload.get("kind")
     else:
         kind = getattr(payload, "kind", None)
-    if kind == "sprite_frame":
-        return "sprite_frame"
-    if kind in {"polygon", "mesh"}:
-        return "polygon_or_mesh"
+    if kind in {"mesh", "sprite"}:
+        return str(kind)
     return None
 
 
 Layer = Annotated[
     Union[
-        Annotated[PolygonLayer, Tag("polygon_or_mesh")],
-        Annotated[SpriteFrameLayer, Tag("sprite_frame")],
+        Annotated[MeshLayer, Tag("mesh")],
+        Annotated[SpriteLayer, Tag("sprite")],
     ],
     Discriminator(_layer_discriminator),
 ]
 
 
 class PsdManifest(_Strict):
-    """Root of a PSD manifest v2 document."""
+    """Root of a PSD manifest v1 document."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -157,13 +155,8 @@ class PsdManifest(_Strict):
         title="Proscenio PSD manifest",
     )
 
-    format_version: Literal[2] = Field(
-        description=(
-            "Bump on any breaking change to the shape of this document. "
-            "v2 introduces the tag-driven taxonomy in the photoshop tag "
-            "system (anchor, per-entry origin, blend_mode, subfolder, "
-            'kind: "mesh").'
-        ),
+    format_version: Literal[1] = Field(
+        description="Bump on any breaking change to the shape of this document.",
     )
     doc: str = Field(
         min_length=1,
@@ -186,7 +179,7 @@ class PsdManifest(_Strict):
     )
     layers: list[Layer] = Field(
         description=(
-            "Z-ordered top-to-bottom. Each entry is a single mesh in "
+            "Z-ordered top-to-bottom. Each entry is a single element in "
             "Blender after import."
         ),
     )

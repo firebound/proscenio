@@ -241,9 +241,9 @@
       "title": "Key",
       "type": "object"
     },
-    "PolygonSprite": {
+    "MeshElement": {
       "additionalProperties": false,
-      "description": "Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.\n\nDefault sprite kind when ``type`` is omitted (backwards-compatible\nwith v1 documents).\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
+      "description": "Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.\n\nDefault element kind when ``type`` is omitted.\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
       "properties": {
         "bone": {
           "anyOf": [
@@ -284,7 +284,7 @@
             }
           ],
           "default": null,
-          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each sprite picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.",
+          "description": "Optional per-element texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each element picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.",
           "title": "Texture"
         },
         "texture_region": {
@@ -298,9 +298,9 @@
           "type": "array"
         },
         "type": {
-          "const": "polygon",
-          "default": "polygon",
-          "description": "Discriminator. Optional; absence means `polygon`.",
+          "const": "mesh",
+          "default": "mesh",
+          "description": "Discriminator. Optional; absence means `mesh`.",
           "title": "Type",
           "type": "string"
         },
@@ -338,7 +338,7 @@
         "polygon",
         "uv"
       ],
-      "title": "PolygonSprite",
+      "title": "MeshElement",
       "type": "object"
     },
     "Skeleton": {
@@ -405,9 +405,9 @@
       "title": "Slot",
       "type": "object"
     },
-    "SpriteFrameSprite": {
+    "SpriteElement": {
       "additionalProperties": false,
-      "description": "Spritesheet sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present).\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
+      "description": "Rigid sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present). A\nsingle-frame sprite (``hframes`` = ``vframes`` = 1) is the static\ncase.\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
       "properties": {
         "bone": {
           "title": "Bone",
@@ -458,7 +458,7 @@
             }
           ],
           "default": null,
-          "description": "Optional per-sprite texture filename, resolved relative to the .proscenio document. Mirrors the polygon-sprite field. Importers fall back to the top-level `atlas` field when absent.",
+          "description": "Optional per-element texture filename, resolved relative to the .proscenio document. Mirrors the mesh-element field. Importers fall back to the top-level `atlas` field when absent.",
           "title": "Texture"
         },
         "texture_region": {
@@ -481,7 +481,7 @@
           "title": "Texture Region"
         },
         "type": {
-          "const": "sprite_frame",
+          "const": "sprite",
           "description": "Discriminator. Required and constant.",
           "title": "Type",
           "type": "string"
@@ -499,7 +499,7 @@
         "hframes",
         "vframes"
       ],
-      "title": "SpriteFrameSprite",
+      "title": "SpriteElement",
       "type": "object"
     },
     "Track": {
@@ -592,6 +592,20 @@
       "default": null,
       "title": "Atlas"
     },
+    "elements": {
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/MeshElement"
+          },
+          {
+            "$ref": "#/$defs/SpriteElement"
+          }
+        ]
+      },
+      "title": "Elements",
+      "type": "array"
+    },
     "format_version": {
       "const": 1,
       "description": "Bump on any breaking change to the shape of this document.",
@@ -625,20 +639,6 @@
       ],
       "default": null,
       "title": "Slots"
-    },
-    "sprites": {
-      "items": {
-        "oneOf": [
-          {
-            "$ref": "#/$defs/PolygonSprite"
-          },
-          {
-            "$ref": "#/$defs/SpriteFrameSprite"
-          }
-        ]
-      },
-      "title": "Sprites",
-      "type": "array"
     }
   },
   "required": [
@@ -646,7 +646,7 @@
     "name",
     "pixels_per_unit",
     "skeleton",
-    "sprites"
+    "elements"
   ],
   "title": "Proscenio character",
   "type": "object"

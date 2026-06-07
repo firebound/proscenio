@@ -81,14 +81,14 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
 # (optionally) a help topic + (optionally) a panel-side render.
 FEATURE_STATUS: dict[str, FeatureStatus] = {
     # Subpanel headers
-    "active_sprite": FeatureStatus.GODOT_READY,
+    "active_element": FeatureStatus.GODOT_READY,
     "skeleton": FeatureStatus.GODOT_READY,
     "animation": FeatureStatus.GODOT_READY,
     "atlas": FeatureStatus.GODOT_READY,
     "validation": FeatureStatus.GODOT_READY,
     "export": FeatureStatus.GODOT_READY,
     # Operators / sub-features
-    "sprite_type": FeatureStatus.GODOT_READY,
+    "element_type": FeatureStatus.GODOT_READY,
     "sprite_frame_metadata": FeatureStatus.GODOT_READY,
     "texture_region": FeatureStatus.GODOT_READY,
     "snap_region_to_uv": FeatureStatus.BLENDER_ONLY,

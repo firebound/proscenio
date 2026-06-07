@@ -1,5 +1,5 @@
 {
-  "format_version": 2,
+  "format_version": 1,
   "doc": "doll_tagged.psd",
   "size": [
     837,
@@ -12,7 +12,7 @@
   ],
   "layers": [
     {
-      "kind": "sprite_frame",
+      "kind": "sprite",
       "name": "brow_states",
       "position": [
         346,
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eyes__eye.L scrn",
       "path": "images/eyes/eyes__eye_L_scrn.png",
       "position": [
@@ -55,7 +55,7 @@
       "subfolder": "eyes"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eyes__eye.L",
       "path": "images/eyes/eyes__eye_L.png",
       "position": [
@@ -70,7 +70,7 @@
       "subfolder": "eyes"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eyes__eye.R add",
       "path": "images/eyes/eyes__eye_R_add.png",
       "position": [
@@ -86,7 +86,7 @@
       "subfolder": "eyes"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eyes__eye.R",
       "path": "images/eyes/eyes__eye_R.png",
       "position": [
@@ -101,7 +101,7 @@
       "subfolder": "eyes"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "arm.R",
       "path": "images/teste/test.png",
       "position": [
@@ -120,7 +120,7 @@
       "subfolder": "teste"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "ear.L",
       "path": "images/ear_L.png",
       "position": [
@@ -134,7 +134,7 @@
       "z_order": 6
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "belly",
       "path": "images/body/belly.png",
       "position": [
@@ -184,7 +184,7 @@
       "subfolder": "body"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "ear.R",
       "path": "images/ear_R.png",
       "position": [
@@ -198,7 +198,7 @@
       "z_order": 10
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "waist",
       "path": "images/waist.png",
       "position": [
@@ -212,7 +212,7 @@
       "z_order": 11
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "head",
       "path": "images/head.png",
       "position": [
@@ -226,7 +226,7 @@
       "z_order": 12
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "thigh.R",
       "path": "images/thigh_R.png",
       "position": [
@@ -240,7 +240,7 @@
       "z_order": 13
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "thigh.L",
       "path": "images/thigh_L.png",
       "position": [
@@ -254,7 +254,7 @@
       "z_order": 14
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "shin.R",
       "path": "images/shin_R.png",
       "position": [
@@ -268,7 +268,7 @@
       "z_order": 15
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "shin.L",
       "path": "images/shin_L.png",
       "position": [
@@ -282,7 +282,7 @@
       "z_order": 16
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "foot.R",
       "path": "images/foot_R.png",
       "position": [
@@ -296,7 +296,7 @@
       "z_order": 17
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "foot.L",
       "path": "images/foot_L.png",
       "position": [
@@ -310,7 +310,7 @@
       "z_order": 18
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "forearm.L",
       "path": "images/forearm_L.png",
       "position": [
@@ -324,7 +324,7 @@
       "z_order": 19
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "forearm.R",
       "path": "images/forearm_R.png",
       "position": [
@@ -338,7 +338,7 @@
       "z_order": 20
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "hands__hand.L",
       "path": "images/hands__hand_L.png",
       "position": [
@@ -352,7 +352,7 @@
       "z_order": 21
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "hands__hand.R",
       "path": "images/hands__hand_R.png",
       "position": [
@@ -366,7 +366,7 @@
       "z_order": 22
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "arm.L",
       "path": "images/arm_L.png",
       "position": [

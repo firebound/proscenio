@@ -123,20 +123,20 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         see_also=(),
     ),
-    "active_sprite": HelpTopic(
-        title="Active Sprite",
-        summary="Per-sprite Proscenio settings - drives writer behavior + Godot node choice.",
+    "active_element": HelpTopic(
+        title="Active Element",
+        summary="Per-element Proscenio settings - drives writer behavior + Godot node choice.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Surfaces every per-mesh field the writer reads when emitting a Sprite",
+                "Surfaces every per-mesh field the writer reads when emitting an element",
                 "entry into the .proscenio. Shown only when the active object is a MESH.",
             ),
             _section(
-                "Sprite type",
-                "Polygon      -> Polygon2D (cutout, deformable mesh, weight paint).",
-                "Sprite Frame -> Sprite2D (spritesheet, hframes x vframes grid + frame index).",
-                "Pick by use case - Polygon for deformable cutout, Sprite Frame",
+                "Element type",
+                "Mesh   -> Polygon2D (cutout, deformable, weight paint).",
+                "Sprite -> Sprite2D (spritesheet, hframes x vframes grid + frame index).",
+                "Pick by use case - Mesh for deformable cutout, Sprite",
                 "for grid-cycled animations.",
             ),
             _section(
@@ -428,7 +428,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_HOW,
                 "1. Select a sprite_frame mesh.",
-                "2. Click 'Setup Preview' in the Active Sprite panel.",
+                "2. Click 'Setup Preview' in the Active Element panel.",
                 "3. Z-key cycles to Material Preview mode - the active cell",
                 "   shows on the quad, updating live as 'frame' animates.",
                 "4. 'Remove Preview' un-wires the slicer + drops the drivers,",

@@ -121,7 +121,7 @@ The writer turns Blender vertex groups into the `weights` array on a `polygon`-t
 4. Vertices left at zero total weight fall back to the sprite's resolved bone. A mesh with vertex groups but **no** matching bones raises `RuntimeError` at export - fix the names or remove the groups.
 5. Vertex groups whose names do not match any bone are dropped with a console warning per group.
 
-A sprite without any vertex groups stays rigid-attached (parent of `Bone2D`). `sprite_frame` sprites ignore weights entirely.
+A mesh without any vertex groups stays rigid-attached (parent of `Bone2D`). `sprite` elements ignore weights entirely.
 
 ### Edit Weights modal pattern
 

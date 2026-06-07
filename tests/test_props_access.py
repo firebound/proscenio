@@ -36,7 +36,7 @@ def test_scene_props_none_when_scene_missing() -> None:
 
 
 def test_object_props_returns_pg() -> None:
-    pg = SimpleNamespace(sprite_type="polygon")
+    pg = SimpleNamespace(element_type="mesh")
     obj = SimpleNamespace(proscenio=pg)
     assert object_props(obj) is pg
 

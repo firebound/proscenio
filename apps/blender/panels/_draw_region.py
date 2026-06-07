@@ -1,6 +1,6 @@
 """Texture region authoring box (the authoring panel).
 
-Shared between the sprite_frame and polygon body draws - both need
+Shared between the sprite and mesh body draws - both need
 the auto / manual mode toggle and the four region floats. Pulled into
 its own helper module by the code-modularity work.
 """
@@ -14,7 +14,7 @@ def draw_box(
     layout: bpy.types.UILayout,
     props: bpy.types.AnyType,
     *,
-    sprite_type: str,
+    element_type: str,
 ) -> None:
     """Render the texture_region authoring box."""
     box = layout.box()
@@ -27,12 +27,12 @@ def draw_box(
         row = box.row(align=True)
         row.prop(props, "region_w")
         row.prop(props, "region_h")
-        if sprite_type == "polygon":
+        if element_type == "mesh":
             box.operator("proscenio.snap_region_to_uv", text="Snap to UV bounds", icon="UV")
     else:
         hint = (
             "computed from UV bounds at export"
-            if sprite_type == "polygon"
+            if element_type == "mesh"
             else "omitted at export - full atlas used"
         )
         box.label(text=hint, icon="INFO")

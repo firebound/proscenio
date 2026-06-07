@@ -15,19 +15,17 @@
 //   verbatim.
 //
 // The translation from artist-friendly tag name to manifest field
-// happens here at parse time. `[spritesheet]` becomes
-// `kind: "sprite_frame"`; the manifest never sees the tag name.
+// happens here at parse time. `[sprite]` / `[spritesheet]` become
+// `kind: "sprite"`; the manifest never sees the tag name.
 
 import type { BlendMode } from "./manifest";
-
-export type PolygonKind = "polygon" | "mesh";
 
 export interface TagBag {
     ignore?: true;
     merge?: true;
     folder?: string;
-    /** Explicit kind override. `[polygon]` / `[sprite]` -> polygon; `[mesh]` -> mesh; `[spritesheet]` -> sprite_frame. */
-    kind?: PolygonKind | "sprite_frame";
+    /** Explicit kind override. `[mesh]` / `[poly]` / `[polygon]` -> mesh; `[sprite]` / `[spritesheet]` -> sprite. */
+    kind?: "mesh" | "sprite";
     /** Mark this layer as the group's origin marker (no PNG emitted). */
     originMarker?: true;
     /** Explicit pivot in PSD pixels (set by `[origin:x,y]`). */
@@ -112,15 +110,14 @@ function consumeToken(body: string, tags: TagBag): boolean {
             if (value.length === 0) return false;
             tags.folder = value;
             return true;
-        case "polygon":
-        case "sprite":
-            tags.kind = "polygon";
-            return true;
         case "mesh":
+        case "poly":
+        case "polygon":
             tags.kind = "mesh";
             return true;
+        case "sprite":
         case "spritesheet":
-            tags.kind = "sprite_frame";
+            tags.kind = "sprite";
             return true;
         case "origin":
             return consumeOrigin(value, tags);

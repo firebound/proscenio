@@ -75,12 +75,10 @@ function segmentFor(key: typeof TAG_ORDER[number], tags: TagBag): string | null 
 
 function kindSegment(kind: NonNullable<TagBag["kind"]>): string {
     switch (kind) {
-        case "polygon":
-            return "[polygon]";
         case "mesh":
             return "[mesh]";
-        case "sprite_frame":
-            return "[spritesheet]";
+        case "sprite":
+            return "[sprite]";
     }
 }
 
@@ -117,7 +115,7 @@ export function toggleTag(
     return writeLayerName(displayName, next);
 }
 
-/** Convenience to set / clear the polygon kind override. */
+/** Convenience to set / clear the element kind override. */
 export function setKindTag(
     displayName: string,
     tags: TagBag,

@@ -18,14 +18,14 @@ export type Anchor = [number, number] | null;
  */
 export type Doc = string;
 /**
- * Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in the photoshop tag system (anchor, per-entry origin, blend_mode, subfolder, kind: "mesh").
+ * Bump on any breaking change to the shape of this document.
  */
-export type FormatVersion = 2;
+export type FormatVersion = 1;
 /**
  * Layer blend mode emitted from the PSD; importer maps to material blend mode.
  */
 export type BlendMode = ("normal" | "multiply" | "screen" | "additive") | null;
-export type Kind = "polygon" | "mesh";
+export type Kind = "mesh";
 export type Name = string;
 /**
  * Optional pivot in PSD pixels. Set by the [origin:x,y] tag or by an [origin] marker layer inside the group. Importer uses this as the mesh's Object.location when present; falls back to bbox center otherwise.
@@ -59,9 +59,9 @@ export type Subfolder = string | null;
 export type ZOrder = number;
 export type BlendMode1 = ("normal" | "multiply" | "screen" | "additive") | null;
 /**
- * @minItems 2
+ * @minItems 1
  */
-export type Frames = [FrameEntry, FrameEntry, ...FrameEntry[]];
+export type Frames = [FrameEntry, ...FrameEntry[]];
 /**
  * Frame index, 0-based, contiguous, ordered.
  */
@@ -70,10 +70,10 @@ export type Index = number;
  * Path to the frame PNG, relative to the manifest file.
  */
 export type Path1 = string;
-export type Kind1 = "sprite_frame";
+export type Kind1 = "sprite";
 export type Name1 = string;
 /**
- * Optional pivot in PSD pixels (see polygon_layer.origin).
+ * Optional pivot in PSD pixels (see MeshLayer.origin).
  */
 export type Origin1 = [number, number] | null;
 /**
@@ -93,9 +93,9 @@ export type Size1 = [number, number];
 export type Subfolder1 = string | null;
 export type ZOrder1 = number;
 /**
- * Z-ordered top-to-bottom. Each entry is a single mesh in Blender after import.
+ * Z-ordered top-to-bottom. Each entry is a single element in Blender after import.
  */
-export type Layers = (PolygonLayer | SpriteFrameLayer)[];
+export type Layers = (MeshLayer | SpriteLayer)[];
 /**
  * Importer divides PSD pixels by this when stamping mesh size and position.
  */
@@ -109,7 +109,7 @@ export type PixelsPerUnit = number;
 export type Size2 = [number, number];
 
 /**
- * Root of a PSD manifest v2 document.
+ * Root of a PSD manifest v1 document.
  */
 export interface ProscenioPSDManifest {
   anchor?: Anchor;
@@ -120,12 +120,12 @@ export interface ProscenioPSDManifest {
   size: Size2;
 }
 /**
- * Single PNG, single quad mesh.
+ * Single PNG, deformable cutout element (-> Polygon2D).
  *
- * ``kind: "mesh"`` is a polygon superset flagged as a deformable mesh
- * source; renders as polygon when no rig is bound.
+ * Tagged ``[mesh]`` / ``[poly]`` in Photoshop. Renders as a static
+ * quad until a rig binds vertex weights.
  */
-export interface PolygonLayer {
+export interface MeshLayer {
   blend_mode?: BlendMode;
   kind: Kind;
   name: Name;
@@ -137,11 +137,13 @@ export interface PolygonLayer {
   z_order: ZOrder;
 }
 /**
- * N frames, single quad mesh, animated via ``proscenio.frame``.
+ * Rigid sprite element (-> Sprite2D), one or more frames.
  *
- * Authored as a LayerSet tagged ``[spritesheet]``.
+ * A single layer tagged ``[sprite]`` yields one frame (a static
+ * sprite); a LayerSet tagged ``[spritesheet]`` yields N frames the
+ * importer composes into a grid, animated via ``proscenio.frame``.
  */
-export interface SpriteFrameLayer {
+export interface SpriteLayer {
   blend_mode?: BlendMode1;
   frames: Frames;
   kind: Kind1;

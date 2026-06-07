@@ -10,7 +10,7 @@ extends RefCounted
 # downstream lookup that hands a JSON-shaped name to ``find_child`` or
 # a dict whose keys are ``Node.name`` values misses every dotted entry.
 #
-# All builders - skeleton, polygon, sprite_frame, slot - funnel
+# All builders - skeleton, mesh, sprite, slot - funnel
 # names through ``sanitize`` before lookup so the JSON-shaped string
 # (``upper_arm.L``) and the Godot-shaped node name (``upper_arm_L``)
 # converge on the same key.

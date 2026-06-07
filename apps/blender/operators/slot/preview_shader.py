@@ -26,7 +26,7 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
         if obj is None or obj.type != "MESH":
             return False
         props = getattr(obj, "proscenio", None)
-        if props is None or str(getattr(props, "sprite_type", "")) != "sprite_frame":
+        if props is None or str(getattr(props, "element_type", "")) != "sprite":
             return False
         mesh = obj.data
         materials = getattr(mesh, "materials", None) or []

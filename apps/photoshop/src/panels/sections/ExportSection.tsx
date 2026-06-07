@@ -107,10 +107,10 @@ export const ExportSection: React.FC<Props> = ({
             </Accordion>
             <Accordion
                 title="Filename templates"
-                hint={"Tokens: {name} and {kind} for polygons; {name} and {index} for frames. The images/ prefix and any [folder:...] subfolder are added automatically."}
+                hint={"Tokens: {name} and {kind} for meshes; {name} and {index} for frames. The images/ prefix and any [folder:...] subfolder are added automatically."}
                 defaultOpen={false}
             >
-                <KeyValueRow label="polygon">
+                <KeyValueRow label="mesh">
                     <sp-textfield
                         value={polygonTemplate}
                         placeholder={polygonDefault}

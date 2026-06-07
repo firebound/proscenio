@@ -3,13 +3,13 @@
 # `python -m proscenio_codegen godot`.
 
 @tool
-class_name ProscenioPolygonLayer extends ProscenioLayer
+class_name ProscenioMeshLayer extends ProscenioLayer
 
 # Names of fields actually set during `from_dict`. Lets consumers
 # distinguish 'field set to default' from 'field absent in source'
 # without re-parsing the JSON dictionary.
 @export var _set_fields: PackedStringArray = PackedStringArray()
-@export var kind: String = "polygon"
+@export var kind: String = "mesh"
 @export var name: String = ""
 @export var path: String = ""
 @export var position: PackedInt32Array = PackedInt32Array()
@@ -20,8 +20,8 @@ class_name ProscenioPolygonLayer extends ProscenioLayer
 @export var subfolder: String = ""
 
 
-static func from_dict(data: Dictionary) -> ProscenioPolygonLayer:
-	var res := ProscenioPolygonLayer.new()
+static func from_dict(data: Dictionary) -> ProscenioMeshLayer:
+	var res := ProscenioMeshLayer.new()
 	if data.has("kind") and data["kind"] != null:
 		res.kind = String(data["kind"])
 		res._set_fields.append("kind")

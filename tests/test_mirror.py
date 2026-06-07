@@ -1,8 +1,8 @@
 """Unit tests for the mirror-all-fields semantics.
 
 The bug: per-field update callbacks only fired when the user touched that
-specific field. Defaults never triggered a callback → Custom Property
-mirror was partial → Reload Scripts restored only what had been touched.
+specific field. Defaults never triggered a callback -> Custom Property
+mirror was partial -> Reload Scripts restored only what had been touched.
 
 The fix: every update callback delegates to ``mirror_all_fields`` so the
 CP set is always a complete snapshot of the PropertyGroup. These tests
@@ -50,7 +50,7 @@ class _ObjectMock:
 
 def _full_props() -> SimpleNamespace:
     return SimpleNamespace(
-        sprite_type="sprite_frame",
+        element_type="sprite",
         hframes=4,
         vframes=2,
         frame=1,
@@ -66,7 +66,7 @@ def _full_props() -> SimpleNamespace:
 def test_mirror_all_writes_every_field() -> None:
     obj = _ObjectMock(proscenio=_full_props())
     mirror_all_fields(obj.proscenio, obj)
-    assert obj["proscenio_type"] == "sprite_frame"
+    assert obj["proscenio_type"] == "sprite"
     assert obj["proscenio_hframes"] == 4
     assert obj["proscenio_vframes"] == 2
     assert obj["proscenio_frame"] == 1
@@ -79,10 +79,10 @@ def test_mirror_all_writes_every_field() -> None:
 
 
 def test_mirror_all_skips_missing_attributes() -> None:
-    """A PropertyGroup that only has sprite_type still mirrors that one field."""
-    obj = _ObjectMock(proscenio=SimpleNamespace(sprite_type="polygon"))
+    """A PropertyGroup that only has element_type still mirrors that one field."""
+    obj = _ObjectMock(proscenio=SimpleNamespace(element_type="mesh"))
     mirror_all_fields(obj.proscenio, obj)
-    assert obj["proscenio_type"] == "polygon"
+    assert obj["proscenio_type"] == "mesh"
     # Missing fields not written:
     assert "proscenio_hframes" not in obj
     assert "proscenio_region_x" not in obj
@@ -94,9 +94,9 @@ def test_mirror_all_swallows_caster_errors() -> None:
     props.hframes = None  # type: ignore[assignment]  - bogus on purpose
     obj = _ObjectMock(proscenio=props)
     mirror_all_fields(props, obj)
-    assert "proscenio_hframes" not in obj  # caster raised → skipped
+    assert "proscenio_hframes" not in obj  # caster raised -> skipped
     # Other fields still mirrored:
-    assert obj["proscenio_type"] == "sprite_frame"
+    assert obj["proscenio_type"] == "sprite"
     assert obj["proscenio_region_x"] == pytest.approx(0.1)
 
 
@@ -108,7 +108,7 @@ def test_hydrate_round_trip_with_region_fields() -> None:
 
     # Now simulate Reload Scripts: PG resets to defaults, hydrate from CPs.
     fresh = SimpleNamespace(
-        sprite_type="polygon",
+        element_type="mesh",
         hframes=1,
         vframes=1,
         frame=0,
@@ -122,7 +122,7 @@ def test_hydrate_round_trip_with_region_fields() -> None:
     obj.proscenio = fresh
     hydrate_object(obj)
 
-    assert fresh.sprite_type == src.sprite_type
+    assert fresh.element_type == src.element_type
     assert fresh.hframes == src.hframes
     assert fresh.region_mode == src.region_mode
     assert fresh.region_x == pytest.approx(src.region_x)

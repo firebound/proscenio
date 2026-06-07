@@ -3,13 +3,13 @@
 # `python -m proscenio_codegen godot`.
 
 @tool
-class_name ProscenioSpriteFrameLayer extends ProscenioLayer
+class_name ProscenioSpriteLayer extends ProscenioLayer
 
 # Names of fields actually set during `from_dict`. Lets consumers
 # distinguish 'field set to default' from 'field absent in source'
 # without re-parsing the JSON dictionary.
 @export var _set_fields: PackedStringArray = PackedStringArray()
-@export var kind: String = "sprite_frame"
+@export var kind: String = "sprite"
 @export var name: String = ""
 @export var position: PackedInt32Array = PackedInt32Array()
 @export var size: PackedInt32Array = PackedInt32Array()
@@ -20,8 +20,8 @@ class_name ProscenioSpriteFrameLayer extends ProscenioLayer
 @export var subfolder: String = ""
 
 
-static func from_dict(data: Dictionary) -> ProscenioSpriteFrameLayer:
-	var res := ProscenioSpriteFrameLayer.new()
+static func from_dict(data: Dictionary) -> ProscenioSpriteLayer:
+	var res := ProscenioSpriteLayer.new()
 	if data.has("kind") and data["kind"] != null:
 		res.kind = String(data["kind"])
 		res._set_fields.append("kind")
@@ -38,7 +38,7 @@ static func from_dict(data: Dictionary) -> ProscenioSpriteFrameLayer:
 		res.z_order = int(data["z_order"])
 		res._set_fields.append("z_order")
 	if data.has("frames") and data["frames"] != null:
-		res.frames = ProscenioParseHelpers._parse_array(ProscenioFrameEntry, data["frames"])
+		res.frames.assign(ProscenioParseHelpers._parse_array(ProscenioFrameEntry, data["frames"]))
 		res._set_fields.append("frames")
 	if data.has("origin") and data["origin"] != null:
 		res.origin = PackedInt32Array(data["origin"])

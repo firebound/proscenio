@@ -13,7 +13,7 @@ fields. The fix is to mirror **every** field on **any** update.
 
 Map covers the full Object-side schema:
 
-- sprite_type, hframes, vframes, frame, centered (the authoring panel)
+- element_type, hframes, vframes, frame, centered (the authoring panel)
 - region_mode, region_x/y/w/h (the authoring panel.1.c.1)
 - is_slot, slot_default
 - is_outliner_favorite (the outliner subpanel)
@@ -54,7 +54,7 @@ def _as_bool(v: object) -> bool:
 Caster = Callable[[object], object]
 
 OBJECT_MIRROR_MAP: tuple[tuple[str, str, Caster], ...] = (
-    (cp_keys.PROSCENIO_TYPE, "sprite_type", _as_str),
+    (cp_keys.PROSCENIO_TYPE, "element_type", _as_str),
     (cp_keys.PROSCENIO_HFRAMES, "hframes", _as_int),
     (cp_keys.PROSCENIO_VFRAMES, "vframes", _as_int),
     (cp_keys.PROSCENIO_FRAME, "frame", _as_int),

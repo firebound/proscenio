@@ -27,7 +27,7 @@ def test_pipeline_overview_is_present() -> None:
 
 
 def test_topic_for_returns_known_topic() -> None:
-    topic = topic_for("active_sprite")
+    topic = topic_for("active_element")
     assert isinstance(topic, HelpTopic)
     assert topic.title
 
@@ -53,7 +53,7 @@ def test_panel_topic_ids_present() -> None:
     panel_topic_ids = [
         "status_legend",
         "pipeline_overview",
-        "active_sprite",
+        "active_element",
         "skeleton",
         "animation",
         "atlas",
@@ -84,7 +84,7 @@ def test_see_also_references_exist_on_disk() -> None:
 def test_known_topic_ids_returns_registration_order() -> None:
     ids = known_topic_ids()
     assert ids[0] == "status_legend"  # first registered, first in dict
-    assert "active_sprite" in ids
+    assert "active_element" in ids
 
 
 def test_no_duplicate_topic_ids() -> None:

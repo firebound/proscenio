@@ -23,9 +23,9 @@
       "title": "FrameEntry",
       "type": "object"
     },
-    "PolygonLayer": {
+    "MeshLayer": {
       "additionalProperties": false,
-      "description": "Single PNG, single quad mesh.\n\n``kind: \"mesh\"`` is a polygon superset flagged as a deformable mesh\nsource; renders as polygon when no rig is bound.",
+      "description": "Single PNG, deformable cutout element (-> Polygon2D).\n\nTagged ``[mesh]`` / ``[poly]`` in Photoshop. Renders as a static\nquad until a rig binds vertex weights.",
       "properties": {
         "blend_mode": {
           "anyOf": [
@@ -47,10 +47,7 @@
           "title": "Blend Mode"
         },
         "kind": {
-          "enum": [
-            "polygon",
-            "mesh"
-          ],
+          "const": "mesh",
           "title": "Kind",
           "type": "string"
         },
@@ -135,12 +132,12 @@
         "size",
         "z_order"
       ],
-      "title": "PolygonLayer",
+      "title": "MeshLayer",
       "type": "object"
     },
-    "SpriteFrameLayer": {
+    "SpriteLayer": {
       "additionalProperties": false,
-      "description": "N frames, single quad mesh, animated via ``proscenio.frame``.\n\nAuthored as a LayerSet tagged ``[spritesheet]``.",
+      "description": "Rigid sprite element (-> Sprite2D), one or more frames.\n\nA single layer tagged ``[sprite]`` yields one frame (a static\nsprite); a LayerSet tagged ``[spritesheet]`` yields N frames the\nimporter composes into a grid, animated via ``proscenio.frame``.",
       "properties": {
         "blend_mode": {
           "anyOf": [
@@ -164,12 +161,12 @@
           "items": {
             "$ref": "#/$defs/FrameEntry"
           },
-          "minItems": 2,
+          "minItems": 1,
           "title": "Frames",
           "type": "array"
         },
         "kind": {
-          "const": "sprite_frame",
+          "const": "sprite",
           "title": "Kind",
           "type": "string"
         },
@@ -194,7 +191,7 @@
             }
           ],
           "default": null,
-          "description": "Optional pivot in PSD pixels (see polygon_layer.origin).",
+          "description": "Optional pivot in PSD pixels (see MeshLayer.origin).",
           "title": "Origin"
         },
         "position": {
@@ -246,13 +243,13 @@
         "z_order",
         "frames"
       ],
-      "title": "SpriteFrameLayer",
+      "title": "SpriteLayer",
       "type": "object"
     }
   },
   "$id": "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json",
   "additionalProperties": false,
-  "description": "Root of a PSD manifest v2 document.",
+  "description": "Root of a PSD manifest v1 document.",
   "properties": {
     "anchor": {
       "anyOf": [
@@ -280,20 +277,20 @@
       "type": "string"
     },
     "format_version": {
-      "const": 2,
-      "description": "Bump on any breaking change to the shape of this document. v2 introduces the tag-driven taxonomy in the photoshop tag system (anchor, per-entry origin, blend_mode, subfolder, kind: \"mesh\").",
+      "const": 1,
+      "description": "Bump on any breaking change to the shape of this document.",
       "title": "Format Version",
       "type": "integer"
     },
     "layers": {
-      "description": "Z-ordered top-to-bottom. Each entry is a single mesh in Blender after import.",
+      "description": "Z-ordered top-to-bottom. Each entry is a single element in Blender after import.",
       "items": {
         "oneOf": [
           {
-            "$ref": "#/$defs/PolygonLayer"
+            "$ref": "#/$defs/MeshLayer"
           },
           {
-            "$ref": "#/$defs/SpriteFrameLayer"
+            "$ref": "#/$defs/SpriteLayer"
           }
         ]
       },

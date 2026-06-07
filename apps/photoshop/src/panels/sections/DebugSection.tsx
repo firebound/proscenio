@@ -87,11 +87,11 @@ function isEntrySelected(
 
 const EntryRow: React.FC<{ entry: ManifestEntry; selected: boolean }> = ({ entry, selected }) => {
     const className = selected ? "entry-row selected" : "entry-row";
-    if (entry.kind === "sprite_frame") {
+    if (entry.kind === "sprite") {
         const sf = entry;
         return (
             <div className={className}>
-                <span className="entry-kind">sprite_frame</span>
+                <span className="entry-kind">sprite</span>
                 <span className="entry-name">{sf.name}</span>
                 <span className="entry-meta">{sf.frames.length} frames{badges(sf)}</span>
             </div>

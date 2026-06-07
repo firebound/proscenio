@@ -1,4 +1,4 @@
-"""PSD manifest v2 reader (the photoshop importer).
+"""PSD manifest reader (the photoshop importer).
 
 Reads the JSON document emitted by the Photoshop UXP plugin and
 returns typed pydantic records. Pure Python - no bpy, no Pillow.
@@ -8,20 +8,19 @@ Usage::
     from blender_addon.core import psd_manifest
     loaded = psd_manifest.load(Path("firebound/firebound.json"))
     for layer in loaded.manifest.layers:
-        if layer.kind in ("polygon", "mesh"):
-            stamp_polygon(layer, loaded)
+        if layer.kind == "mesh":
+            stamp_mesh(layer, loaded)
         else:
-            stamp_sprite_frame(layer, loaded)
+            stamp_sprite(layer, loaded)
 
 The data shape is defined by ``proscenio_models.PsdManifest`` (the
 ``packages/models/`` pydantic source of truth). The JSON Schema artifact
 at ``packages/models/schemas/psd_manifest.schema.json`` is regenerated
 from that model.
 
-v1 manifests (pre-the photoshop tag system, JSX-era exporter) are no
-longer supported. v1 has been retired with the JSX exporter; the
-``format_version`` field is now constrained to ``2`` at the pydantic
-layer, and v1 documents fail validation at parse time.
+The ``format_version`` field is constrained to ``1`` at the pydantic
+layer; documents declaring any other version fail validation at parse
+time.
 """
 
 from __future__ import annotations
@@ -34,13 +33,13 @@ from proscenio_models import (
     BlendMode,
     FrameEntry,
     Layer,
-    PolygonLayer,
+    MeshLayer,
     PsdManifest,
-    SpriteFrameLayer,
+    SpriteLayer,
 )
 from pydantic import ValidationError
 
-MANIFEST_FORMAT_VERSION = 2
+MANIFEST_FORMAT_VERSION = 1
 
 # Re-exported for callers that still import these names through this module.
 __all__ = [
@@ -51,9 +50,9 @@ __all__ = [
     "Layer",
     "LoadedManifest",
     "ManifestError",
-    "PolygonLayer",
+    "MeshLayer",
     "PsdManifest",
-    "SpriteFrameLayer",
+    "SpriteLayer",
     "load",
     "parse",
     "resolve_path",

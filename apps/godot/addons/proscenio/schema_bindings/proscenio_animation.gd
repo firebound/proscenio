@@ -27,6 +27,6 @@ static func from_dict(data: Dictionary) -> ProscenioAnimation:
 		res.loop = bool(data["loop"])
 		res._set_fields.append("loop")
 	if data.has("tracks") and data["tracks"] != null:
-		res.tracks = ProscenioParseHelpers._parse_array(ProscenioTrack, data["tracks"])
+		res.tracks.assign(ProscenioParseHelpers._parse_array(ProscenioTrack, data["tracks"]))
 		res._set_fields.append("tracks")
 	return res

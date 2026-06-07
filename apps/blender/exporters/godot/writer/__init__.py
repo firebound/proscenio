@@ -48,7 +48,7 @@ from proscenio_models import (
     Slot,
 )
 from proscenio_models import (
-    Sprite as SpriteModel,
+    Element as ElementModel,
 )
 
 from .animations import build_animations
@@ -73,7 +73,7 @@ class _DocumentKwargs(TypedDict):
     name: str
     pixels_per_unit: float
     skeleton: Skeleton
-    sprites: list[SpriteModel]
+    elements: list[ElementModel]
     slots: NotRequired[list[Slot]]
     atlas: NotRequired[str]
     animations: NotRequired[list[Animation]]
@@ -106,7 +106,7 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     # `obj.matrix_world` returns an identity / stale value for hidden slot
     # attachments. Un-hide every sprite, force a depsgraph update so each
     # `matrix_world` reflects the parent chain, build the entries, then
-    # restore the original hide state. See tests/BUGS_FOUND.md.
+    # restore the original hide state. See specs/backlog-bugs-found.md.
     hidden_state: dict[bpy.types.Object, bool] = {}
     for obj in sprite_objs:
         if obj.hide_viewport:
@@ -140,7 +140,7 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
         "name": doc_name(),
         "pixels_per_unit": pixels_per_unit,
         "skeleton": skeleton,
-        "sprites": sprites_out,
+        "elements": sprites_out,
     }
     if slots:
         kwargs["slots"] = slots

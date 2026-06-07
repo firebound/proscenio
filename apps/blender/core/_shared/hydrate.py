@@ -15,7 +15,7 @@ from typing import Protocol, runtime_checkable
 from . import cp_keys
 
 OBJECT_PROPS: tuple[tuple[str, str], ...] = (
-    (cp_keys.PROSCENIO_TYPE, "sprite_type"),
+    (cp_keys.PROSCENIO_TYPE, "element_type"),
     (cp_keys.PROSCENIO_HFRAMES, "hframes"),
     (cp_keys.PROSCENIO_VFRAMES, "vframes"),
     (cp_keys.PROSCENIO_FRAME, "frame"),

@@ -4,7 +4,7 @@ extends SceneTree
 # Headless smoke test for the Proscenio builders.
 #
 # Bypasses EditorImportPlugin._import (which requires an editor session) and
-# exercises the SkeletonBuilder / PolygonBuilder / SpriteFrameBuilder /
+# exercises the SkeletonBuilder / MeshBuilder / SpriteBuilder /
 # AnimationBuilder pipeline directly against parsed .proscenio documents.
 # Validates the no-GDExtension rule by importing under a fixture-only project
 # that has the addon disabled.
@@ -15,8 +15,8 @@ extends SceneTree
 
 const SkeletonBuilder := preload("res://addons/proscenio/builders/skeleton_builder.gd")
 const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
-const PolygonBuilder := preload("res://addons/proscenio/builders/polygon_builder.gd")
-const SpriteFrameBuilder := preload("res://addons/proscenio/builders/sprite_frame_builder.gd")
+const MeshBuilder := preload("res://addons/proscenio/builders/mesh_builder.gd")
+const SpriteBuilder := preload("res://addons/proscenio/builders/sprite_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
 
 # Schema bindings live inside the addon. When the addon is disabled
@@ -174,7 +174,7 @@ func _run_slot_checks() -> void:
 		_assert_eq(slot_node.get_parent(), head_bone, "slots: parented under head bone")
 		_assert_true(slot_node is Node2D, "slots: anchor is Node2D")
 
-	# All three attachments (2 polygons + 1 sprite_frame) live under the slot.
+	# All three attachments (2 meshes + 1 sprite) live under the slot.
 	# Names land sanitized: ``face.neutral`` -> ``face_neutral`` etc.
 	var attachments: Array = []
 	if slot_node != null:
@@ -202,7 +202,7 @@ func _run_slot_checks() -> void:
 	_assert_true(angry != null and not (angry as CanvasItem).visible, "slots: non-default hidden")
 	_assert_true(glow != null and not (glow as CanvasItem).visible, "slots: glow hidden by default")
 
-	# Kind agnosticism: polygon + sprite_frame attachments coexist.
+	# Kind agnosticism: mesh + sprite attachments coexist.
 	_assert_true(neutral is Polygon2D, "slots: face_neutral kind = Polygon2D")
 	_assert_true(angry is Polygon2D, "slots: face_angry kind = Polygon2D")
 	_assert_true(glow is Sprite2D, "slots: face_glow_cycle kind = Sprite2D")
@@ -237,14 +237,14 @@ func _build_character(data: Dictionary) -> Node2D:
 
 	var skeleton := SkeletonBuilder.build(document.skeleton)
 	character.add_child(skeleton)
-	# Slots build BEFORE sprites so the sprite builders can route attachment
+	# Slots build BEFORE elements so the element builders can route attachment
 	# children under the slot Node2D parent. Mirrors the
 	# order in importer.gd._import.
 	var slot_map := SlotBuilder.build(skeleton, document.slots)
 	# Both builders discriminator-filter their own kind - calling both is
 	# the same dispatch flow used in importer.gd._import.
-	PolygonBuilder.attach_sprites(skeleton, document.sprites, null, slot_map)
-	SpriteFrameBuilder.attach_sprites(skeleton, document.sprites, null, slot_map)
+	MeshBuilder.attach_elements(skeleton, document.elements, null, slot_map)
+	SpriteBuilder.attach_elements(skeleton, document.elements, null, slot_map)
 
 	var player := AnimationPlayer.new()
 	player.name = "AnimationPlayer"
@@ -335,7 +335,14 @@ func _fail(msg: String) -> void:
 
 
 func _finish() -> void:
-	if _failures.is_empty():
+	# Zero passes means a build errored out before any assertion ran (e.g.
+	# from_dict throwing). The engine prints those as SCRIPT ERRORs that do
+	# not land in `_failures`, so guard on the pass count too - otherwise an
+	# all-errors run reports "PASS: 0 assertions" and exits 0 (false green).
+	if _passes == 0:
+		printerr("FAIL: 0 assertions ran - a build errored before any check")
+		quit(1)
+	elif _failures.is_empty():
 		print("PASS: %d assertions" % _passes)
 		quit(0)
 	else:

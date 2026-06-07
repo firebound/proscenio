@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildExportPlan, buildManifest } from "../src/lib/planner";
 import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
-import type { PolygonEntry, SpriteFrameEntry } from "../src/lib/manifest";
+import type { MeshEntry, SpriteEntry } from "../src/lib/manifest";
 
 const GOLDEN_PATH = resolve(
     __dirname,
@@ -101,39 +101,39 @@ const OPTS = { skipHidden: true };
 describe("tag_smoke - per-tag assertions", () => {
     const m = buildManifest(DOC, buildSmokeTree(), OPTS);
 
-    it("emits format_version 2", () => {
-        expect(m.format_version).toBe(2);
+    it("emits format_version 1", () => {
+        expect(m.format_version).toBe(1);
     });
 
     it("[ignore] excludes the layer from the manifest", () => {
         expect(m.layers.find((L) => L.name === "ignored_layer")).toBeUndefined();
     });
 
-    it("[merge] flattens descendants into one polygon entry", () => {
+    it("[merge] flattens descendants into one mesh entry", () => {
         const hair = m.layers.find((L) => L.name === "hair");
-        expect(hair?.kind).toBe("polygon");
+        expect(hair?.kind).toBe("mesh");
     });
 
     it("nested [merge] inside [merge] collapses into a single entry", () => {
         const outer = m.layers.filter((L) => L.name === "outer");
         expect(outer).toHaveLength(1);
-        expect(outer[0]?.kind).toBe("polygon");
+        expect(outer[0]?.kind).toBe("mesh");
         // The inner [merge] group should NOT surface its own entry.
         expect(m.layers.find((L) => L.name === "inner")).toBeUndefined();
     });
 
     it("[folder:NAME] cascades subfolder onto descendants + joins the name", () => {
         // joinName prefixes the parent group name; subfolder reflects the tag value.
-        const torso = m.layers.find((L) => L.name === "body__torso") as PolygonEntry | undefined;
+        const torso = m.layers.find((L) => L.name === "body__torso") as MeshEntry | undefined;
         expect(torso?.subfolder).toBe("body");
-        const arm = m.layers.find((L) => L.name === "teste__arm") as PolygonEntry | undefined;
+        const arm = m.layers.find((L) => L.name === "teste__arm") as MeshEntry | undefined;
         expect(arm?.subfolder).toBe("teste");
     });
 
-    it("[mesh] sets kind to mesh, [polygon] explicit stays polygon", () => {
+    it("[mesh] and [polygon] both map to the mesh kind", () => {
         expect(m.layers.find((L) => L.name === "body__chest")?.kind).toBe("mesh");
         expect(m.layers.find((L) => L.name === "body__chest_mult")?.kind).toBe("mesh");
-        expect(m.layers.find((L) => L.name === "body__torso")?.kind).toBe("polygon");
+        expect(m.layers.find((L) => L.name === "body__torso")?.kind).toBe("mesh");
     });
 
     it("[blend:*] sets blend_mode on the right entries", () => {
@@ -143,24 +143,24 @@ describe("tag_smoke - per-tag assertions", () => {
     });
 
     it("[origin:X,Y] writes the origin field", () => {
-        const arm = m.layers.find((L) => L.name === "teste__arm") as PolygonEntry | undefined;
+        const arm = m.layers.find((L) => L.name === "teste__arm") as MeshEntry | undefined;
         expect(arm?.origin).toEqual([10, 20]);
     });
 
     it("[scale:N] multiplies bbox dimensions", () => {
-        const arm = m.layers.find((L) => L.name === "teste__arm") as PolygonEntry | undefined;
+        const arm = m.layers.find((L) => L.name === "teste__arm") as MeshEntry | undefined;
         // Source bbox was 12x20 at scale 2.0 -> 24x40.
         expect(arm?.size).toEqual([24, 40]);
     });
 
     it("[path:NAME] overrides the filename leaf", () => {
-        const arm = m.layers.find((L) => L.name === "teste__arm") as PolygonEntry | undefined;
+        const arm = m.layers.find((L) => L.name === "teste__arm") as MeshEntry | undefined;
         expect(arm?.path).toBe("images/teste/weapon.png");
     });
 
-    it("[spritesheet] emits one sprite_frame entry with frames + marker origin", () => {
-        const eyes = m.layers.find((L) => L.name === "eyes") as SpriteFrameEntry | undefined;
-        expect(eyes?.kind).toBe("sprite_frame");
+    it("[spritesheet] emits one sprite entry with frames + marker origin", () => {
+        const eyes = m.layers.find((L) => L.name === "eyes") as SpriteEntry | undefined;
+        expect(eyes?.kind).toBe("sprite");
         expect(eyes?.frames.map((f) => f.index)).toEqual([0, 1]);
         // pivot marker centre = (99 + 2/2, 32 + 2/2) = (100, 33).
         expect(eyes?.origin).toEqual([100, 33]);

@@ -329,6 +329,8 @@ iterdir
 isdir
 isupper
 issubset
+issubclass
+isclass
 itertools
 rebalances
 rmtree

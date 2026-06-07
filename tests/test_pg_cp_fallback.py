@@ -34,38 +34,38 @@ class FakeObj:
 
 
 def test_read_field_pg_wins_over_cp() -> None:
-    pg = SimpleNamespace(sprite_type="sprite_frame")
-    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "polygon"})
+    pg = SimpleNamespace(element_type="sprite")
+    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "mesh"})
     value = read_field(
-        obj, pg_field="sprite_type", cp_key="proscenio_type", default="polygon"
+        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
     )
-    assert value == "sprite_frame"
+    assert value == "sprite"
 
 
 def test_read_field_cp_fallback_when_pg_missing() -> None:
-    obj = FakeObj(proscenio=None, cps={"proscenio_type": "sprite_frame"})
+    obj = FakeObj(proscenio=None, cps={"proscenio_type": "sprite"})
     value = read_field(
-        obj, pg_field="sprite_type", cp_key="proscenio_type", default="polygon"
+        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
     )
-    assert value == "sprite_frame"
+    assert value == "sprite"
 
 
 def test_read_field_default_when_neither_present() -> None:
     obj = FakeObj()
     value = read_field(
-        obj, pg_field="sprite_type", cp_key="proscenio_type", default="polygon"
+        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
     )
-    assert value == "polygon"
+    assert value == "mesh"
 
 
 def test_read_field_default_when_pg_field_is_none() -> None:
-    pg = SimpleNamespace()  # no sprite_type attribute
-    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "sprite_frame"})
+    pg = SimpleNamespace()  # no element_type attribute
+    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "sprite"})
     # PG missing the field falls through to CP.
     value = read_field(
-        obj, pg_field="sprite_type", cp_key="proscenio_type", default="polygon"
+        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
     )
-    assert value == "sprite_frame"
+    assert value == "sprite"
 
 
 def test_read_bool_flag_pg_true() -> None:

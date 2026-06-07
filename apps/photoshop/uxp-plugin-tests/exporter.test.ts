@@ -1,7 +1,7 @@
 // Unit tests for the photoshop tag system (manifest v2) planner. Pure logic, no PS runtime.
 // The planner reads the bracket-tag parser and emits the v2 manifest
 // shape; tests cover the legacy auto-detection paths that survive
-// (visible polygons, digit-named sprite_frame groups) plus the new
+// (visible polygons, digit-named sprite groups) plus the new
 // tag-driven semantics (ignore, kind override, folder/path, scale,
 // blend, origin).
 
@@ -14,7 +14,7 @@ import {
     sanitize,
 } from "../src/lib/planner";
 import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
-import type { PolygonEntry, SpriteFrameEntry } from "../src/lib/manifest";
+import type { MeshEntry, SpriteEntry } from "../src/lib/manifest";
 
 const DEFAULT_BOUNDS = { x: 0, y: 0, w: 10, h: 10 };
 
@@ -55,16 +55,16 @@ describe("sanitize", () => {
 });
 
 describe("buildManifest - baseline (no tags)", () => {
-    it("emits format_version 2 with polygons in scene order", () => {
+    it("emits format_version 1 with meshes in scene order", () => {
         const layers: Layer[] = [
             art("torso", { x: 10, y: 20, w: 100, h: 200 }),
             art("head", { x: 40, y: 0, w: 80, h: 80 }),
         ];
         const m = buildManifest(doc, layers, opts);
-        expect(m.format_version).toBe(2);
+        expect(m.format_version).toBe(1);
         expect(m.layers).toHaveLength(2);
         expect(m.layers[0]).toMatchObject({
-            kind: "polygon",
+            kind: "mesh",
             name: "torso",
             path: "images/torso.png",
             z_order: 0,
@@ -79,7 +79,7 @@ describe("buildManifest - baseline (no tags)", () => {
         expect(m.layers[0].name).toBe("keep");
     });
 
-    it("auto-detects digit-named sprite_frame groups", () => {
+    it("auto-detects digit-named sprite groups", () => {
         const layers: Layer[] = [
             set("blink", [
                 art("0", { x: 0, y: 0, w: 32, h: 32 }),
@@ -89,7 +89,7 @@ describe("buildManifest - baseline (no tags)", () => {
         ];
         const m = buildManifest(doc, layers, opts);
         const sf = m.layers.filter(
-            (e): e is SpriteFrameEntry => e.kind === "sprite_frame",
+            (e): e is SpriteEntry => e.kind === "sprite",
         );
         expect(sf).toHaveLength(1);
         expect(sf[0].name).toBe("blink");
@@ -104,7 +104,7 @@ describe("buildManifest - baseline (no tags)", () => {
             art("walk_1"),
         ];
         const m = buildManifest(doc, layers, opts);
-        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
+        expect(m.layers.every((e) => e.kind === "mesh")).toBe(true);
         expect(m.layers.map((e) => e.name)).toEqual(["walk_0", "walk_1"]);
     });
 
@@ -138,21 +138,21 @@ describe("bracket tags", () => {
         ];
         const m = buildManifest(doc, layers, opts);
         expect(m.layers).toHaveLength(1);
-        expect(m.layers[0].kind).toBe("sprite_frame");
+        expect(m.layers[0].kind).toBe("sprite");
         expect(m.layers[0].name).toBe("blink");
     });
 
-    it("[mesh] overrides kind on a polygon entry", () => {
+    it("[mesh] tag sets kind to mesh", () => {
         const layers: Layer[] = [art("torso [mesh]")];
         const m = buildManifest(doc, layers, opts);
-        expect((m.layers[0] as PolygonEntry).kind).toBe("mesh");
+        expect((m.layers[0] as MeshEntry).kind).toBe("mesh");
         expect(m.layers[0].name).toBe("torso");
     });
 
     it("[folder:name] writes subfolder and rewrites path", () => {
         const layers: Layer[] = [art("torso [folder:body]")];
         const m = buildManifest(doc, layers, opts);
-        const entry = m.layers[0] as PolygonEntry;
+        const entry = m.layers[0] as MeshEntry;
         expect(entry.subfolder).toBe("body");
         expect(entry.path).toBe("images/body/torso.png");
     });
@@ -160,13 +160,13 @@ describe("bracket tags", () => {
     it("[path:name] overrides the filename", () => {
         const layers: Layer[] = [art("torso [path:custom]")];
         const m = buildManifest(doc, layers, opts);
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/custom.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/custom.png");
     });
 
     it("[folder:x] + [path:y] compose", () => {
         const layers: Layer[] = [art("torso [folder:body] [path:t]")];
         const m = buildManifest(doc, layers, opts);
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/body/t.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/body/t.png");
     });
 
     it("[scale:n] rescales bounds in the emitted entry", () => {
@@ -181,7 +181,7 @@ describe("bracket tags", () => {
     it("[blend:multiply] writes blend_mode", () => {
         const layers: Layer[] = [art("ink [blend:multiply]")];
         const m = buildManifest(doc, layers, opts);
-        expect((m.layers[0] as PolygonEntry).blend_mode).toBe("multiply");
+        expect((m.layers[0] as MeshEntry).blend_mode).toBe("multiply");
     });
 
     it("[origin:x,y] writes the origin field", () => {
@@ -190,7 +190,7 @@ describe("bracket tags", () => {
         expect(m.layers[0].origin).toEqual([50, 75]);
     });
 
-    it("[origin] marker layer inside a sprite_frame group sets the group origin", () => {
+    it("[origin] marker layer inside a sprite group sets the group origin", () => {
         const layers: Layer[] = [
             set("blink", [
                 art("0", { x: 0, y: 0, w: 16, h: 16 }),
@@ -199,8 +199,8 @@ describe("bracket tags", () => {
             ]),
         ];
         const m = buildManifest(doc, layers, opts);
-        const sf = m.layers[0] as SpriteFrameEntry;
-        expect(sf.kind).toBe("sprite_frame");
+        const sf = m.layers[0] as SpriteEntry;
+        expect(sf.kind).toBe("sprite");
         // marker center: x + w/2 = 12, y + h/2 = 22
         expect(sf.origin).toEqual([12, 22]);
         // marker itself does NOT count as a frame
@@ -209,7 +209,7 @@ describe("bracket tags", () => {
 
     it("group named only with a tag passes through without polluting child names", () => {
         // User names a top-level group literally `[spritesheet]` but
-        // the children are not numeric. buildSpriteFrameEntry returns
+        // the children are not numeric. buildSpriteEntry returns
         // null; the fall-through must NOT prefix children with the
         // empty display name (would collide with manifest schema).
         const layers: Layer[] = [
@@ -241,8 +241,8 @@ describe("bracket tags", () => {
         ];
         const m = buildManifest(doc, layers, opts);
         expect(m.layers).toHaveLength(2);
-        const e0 = m.layers[0] as PolygonEntry;
-        const e1 = m.layers[1] as PolygonEntry;
+        const e0 = m.layers[0] as MeshEntry;
+        const e1 = m.layers[1] as MeshEntry;
         expect(e0.subfolder).toBe("eyes");
         expect(e0.path).toBe("images/eyes/eye_L.png");
         expect(e1.subfolder).toBe("eyes");
@@ -254,8 +254,8 @@ describe("bracket tags", () => {
             set("[folder:eyes]", [art("eye.L [folder:special]"), art("eye.R")]),
         ];
         const m = buildManifest(doc, layers, opts);
-        const eL = m.layers.find((e) => e.name === "eye.L") as PolygonEntry;
-        const eR = m.layers.find((e) => e.name === "eye.R") as PolygonEntry;
+        const eL = m.layers.find((e) => e.name === "eye.L") as MeshEntry;
+        const eR = m.layers.find((e) => e.name === "eye.R") as MeshEntry;
         expect(eL.subfolder).toBe("special");
         expect(eR.subfolder).toBe("eyes");
     });
@@ -265,13 +265,13 @@ describe("bracket tags", () => {
             set("[blend:multiply]", [art("a"), art("b [blend:screen]")]),
         ];
         const m = buildManifest(doc, layers, opts);
-        const a = m.layers.find((e) => e.name === "a") as PolygonEntry;
-        const b = m.layers.find((e) => e.name === "b") as PolygonEntry;
+        const a = m.layers.find((e) => e.name === "a") as MeshEntry;
+        const b = m.layers.find((e) => e.name === "b") as MeshEntry;
         expect(a.blend_mode).toBe("multiply");
         expect(b.blend_mode).toBe("screen");
     });
 
-    it("[merge] group emits a single polygon entry with merge flag on the PngWrite", () => {
+    it("[merge] group emits a single mesh entry with merge flag on the PngWrite", () => {
         const layers: Layer[] = [
             set("hair [merge]", [
                 art("strand_back", { x: 10, y: 20, w: 50, h: 60 }),
@@ -280,8 +280,8 @@ describe("bracket tags", () => {
         ];
         const plan = buildExportPlan(doc, layers, opts);
         expect(plan.manifest.layers).toHaveLength(1);
-        const entry = plan.manifest.layers[0] as PolygonEntry;
-        expect(entry.kind).toBe("polygon");
+        const entry = plan.manifest.layers[0] as MeshEntry;
+        expect(entry.kind).toBe("mesh");
         expect(entry.name).toBe("hair");
         // Bounds = union of children: x 10..60, y 20..80 -> w 50, h 60
         expect(entry.size).toEqual([50, 60]);
@@ -306,8 +306,8 @@ describe("bracket tags", () => {
         ];
         const plan = buildExportPlan(doc, layers, opts);
         expect(plan.manifest.layers).toHaveLength(1);
-        const sf = plan.manifest.layers[0] as SpriteFrameEntry;
-        expect(sf.kind).toBe("sprite_frame");
+        const sf = plan.manifest.layers[0] as SpriteEntry;
+        expect(sf.kind).toBe("sprite");
         expect(sf.name).toBe("brow_states");
         expect(sf.frames.map((f) => f.index)).toEqual([0, 1]);
         // Both writes carry the merge flag and point at the merge groups.
@@ -317,7 +317,7 @@ describe("bracket tags", () => {
         expect(plan.writes[1].merge).toBe(true);
     });
 
-    it("non-merge group inside [spritesheet] disqualifies the sprite_frame and falls through", () => {
+    it("non-merge group inside [spritesheet] disqualifies the sprite and falls through", () => {
         const layers: Layer[] = [
             set("blink [spritesheet]", [
                 set("0", [art("a"), art("b")]),
@@ -325,11 +325,11 @@ describe("bracket tags", () => {
             ]),
         ];
         const m = buildManifest(doc, layers, opts);
-        // No sprite_frame; each inner art layer comes out as polygon.
-        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
+        // No sprite; each inner art layer comes out as polygon.
+        expect(m.layers.every((e) => e.kind === "mesh")).toBe(true);
     });
 
-    it("skipHidden false includes hidden frames in a sprite_frame group", () => {
+    it("skipHidden false includes hidden frames in a sprite group", () => {
         const layers: Layer[] = [
             set("blink", [
                 art("0", { x: 0, y: 0, w: 16, h: 16 }),
@@ -339,11 +339,11 @@ describe("bracket tags", () => {
         ];
         const m = buildManifest(doc, layers, { skipHidden: false });
         expect(m.layers).toHaveLength(1);
-        expect(m.layers[0].kind).toBe("sprite_frame");
-        expect((m.layers[0] as SpriteFrameEntry).frames.map((f) => f.index)).toEqual([0, 1, 2]);
+        expect(m.layers[0].kind).toBe("sprite");
+        expect((m.layers[0] as SpriteEntry).frames.map((f) => f.index)).toEqual([0, 1, 2]);
     });
 
-    it("skipHidden true drops a hidden frame and disqualifies the sprite_frame (gap detected)", () => {
+    it("skipHidden true drops a hidden frame and disqualifies the sprite (gap detected)", () => {
         const layers: Layer[] = [
             set("blink", [
                 art("0", { x: 0, y: 0, w: 16, h: 16 }),
@@ -352,11 +352,11 @@ describe("bracket tags", () => {
             ]),
         ];
         const m = buildManifest(doc, layers, opts);
-        // sprite_frame falls through because [0, 2] is not contiguous.
-        expect(m.layers.every((e) => e.kind === "polygon")).toBe(true);
+        // sprite falls through because [0, 2] is not contiguous.
+        expect(m.layers.every((e) => e.kind === "mesh")).toBe(true);
     });
 
-    it("[ignore] inside a sprite_frame group does NOT count toward the frame contiguity check", () => {
+    it("[ignore] inside a sprite group does NOT count toward the frame contiguity check", () => {
         const layers: Layer[] = [
             set("blink", [
                 art("0", { x: 0, y: 0, w: 16, h: 16 }),
@@ -366,7 +366,7 @@ describe("bracket tags", () => {
         ];
         const m = buildManifest(doc, layers, opts);
         expect(m.layers).toHaveLength(1);
-        expect(m.layers[0].kind).toBe("sprite_frame");
+        expect(m.layers[0].kind).toBe("sprite");
     });
 });
 
@@ -393,8 +393,8 @@ describe("origin marker inside [merge] group", () => {
             ]),
         ];
         const m = buildManifest(doc, layers, opts);
-        const entry = m.layers[0] as PolygonEntry;
-        expect(entry.kind).toBe("polygon");
+        const entry = m.layers[0] as MeshEntry;
+        expect(entry.kind).toBe("mesh");
         expect(entry.origin).toEqual([12, 22]); // marker center
     });
 
@@ -466,7 +466,7 @@ describe("buildExportPlan writes", () => {
         });
     });
 
-    it("emits one PngWrite per frame for a sprite_frame group", () => {
+    it("emits one PngWrite per frame for a sprite group", () => {
         const layers: Layer[] = [
             set("blink", [art("0"), art("1"), art("2")]),
         ];
@@ -481,13 +481,13 @@ describe("buildExportPlan writes", () => {
 });
 
 describe("filename templates", () => {
-    it("applies polygonTemplate to polygon entry paths", () => {
+    it("applies polygonTemplate to mesh entry paths", () => {
         const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
         const m = buildManifest(doc, layers, {
             ...opts,
             polygonTemplate: "{kind}/{name}.png",
         });
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/polygon/torso.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/mesh/torso.png");
     });
 
     it("applies polygonTemplate when [folder:...] is set", () => {
@@ -496,7 +496,7 @@ describe("filename templates", () => {
             ...opts,
             polygonTemplate: "{name}-img.png",
         });
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/eyes/eye-img.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/eyes/eye-img.png");
     });
 
     it("applies polygonTemplate to [mesh] groups via {kind}", () => {
@@ -508,10 +508,10 @@ describe("filename templates", () => {
             polygonTemplate: "{name}.{kind}.png",
         });
         expect(m.layers[0].kind).toBe("mesh");
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/body.mesh.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/body.mesh.png");
     });
 
-    it("applies framesTemplate to sprite_frame paths", () => {
+    it("applies framesTemplate to sprite paths", () => {
         const layers: Layer[] = [
             set("blink", [art("0"), art("1"), art("2")]),
         ];
@@ -519,7 +519,7 @@ describe("filename templates", () => {
             ...opts,
             framesTemplate: "frames/{name}_{index}.png",
         });
-        const sf = m.layers[0] as SpriteFrameEntry;
+        const sf = m.layers[0] as SpriteEntry;
         expect(sf.frames[0].path).toBe("images/frames/blink_0.png");
         expect(sf.frames[2].path).toBe("images/frames/blink_2.png");
     });
@@ -530,7 +530,7 @@ describe("filename templates", () => {
             ...opts,
             polygonTemplate: "{name}.{nonexistent}.png",
         });
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/a.{nonexistent}.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/a.{nonexistent}.png");
     });
 
     it("uses default templates when none provided", () => {
@@ -539,8 +539,8 @@ describe("filename templates", () => {
             set("blink", [art("0"), art("1")]),
         ];
         const m = buildManifest(doc, layers, opts);
-        expect((m.layers[0] as PolygonEntry).path).toBe("images/torso.png");
-        expect((m.layers[1] as SpriteFrameEntry).frames[0].path).toBe("images/blink/0.png");
+        expect((m.layers[0] as MeshEntry).path).toBe("images/torso.png");
+        expect((m.layers[1] as SpriteEntry).frames[0].path).toBe("images/blink/0.png");
     });
 
     it("threads template paths into writes", () => {
@@ -549,7 +549,7 @@ describe("filename templates", () => {
             ...opts,
             polygonTemplate: "{kind}/{name}.png",
         });
-        expect(plan.writes[0].outputPath).toBe("images/polygon/torso.png");
+        expect(plan.writes[0].outputPath).toBe("images/mesh/torso.png");
     });
 });
 
@@ -562,12 +562,12 @@ describe("entryRefs", () => {
         expect(plan.entryRefs).toHaveLength(1);
         expect(plan.entryRefs[0]).toEqual({
             name: "body__torso",
-            kind: "polygon",
+            kind: "mesh",
             layerPath: ["body", "torso"],
         });
     });
 
-    it("maps sprite_frame to the group + per-frame layer paths", () => {
+    it("maps sprite to the group + per-frame layer paths", () => {
         const layers: Layer[] = [
             set("blink", [art("0"), art("1"), art("2")]),
         ];
@@ -575,7 +575,7 @@ describe("entryRefs", () => {
         expect(plan.entryRefs).toHaveLength(1);
         expect(plan.entryRefs[0]).toEqual({
             name: "blink",
-            kind: "sprite_frame",
+            kind: "sprite",
             layerPath: ["blink"],
             framePaths: [["blink", "0"], ["blink", "1"], ["blink", "2"]],
         });

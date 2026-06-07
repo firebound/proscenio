@@ -5,7 +5,9 @@ Locks the behaviour CodeRabbit flagged on PR #74:
 - `UintPair` rejects negative integers (the name implies unsigned).
 - Unknown `kind` values surface as a ValidationError rather than
   silently routing to a non-existent variant.
-- Both polygon and mesh kinds route to the same `PolygonLayer` class.
+- The two kinds route to their own classes: `mesh` -> `MeshLayer`,
+  `sprite` -> `SpriteLayer`.
+- A `sprite` layer accepts a single frame (the static case).
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from pydantic import ValidationError
 
 def _doc_with_layer(layer_payload: dict[str, object]) -> dict[str, object]:
     return {
-        "format_version": 2,
+        "format_version": 1,
         "doc": "smoke.psd",
         "size": [100, 100],
         "pixels_per_unit": 100,
@@ -25,24 +27,7 @@ def _doc_with_layer(layer_payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def test_polygon_layer_parses() -> None:
-    doc = PsdManifest.model_validate(
-        _doc_with_layer(
-            {
-                "kind": "polygon",
-                "name": "arm",
-                "path": "arm.png",
-                "position": [0, 0],
-                "size": [10, 10],
-                "z_order": 0,
-            }
-        )
-    )
-    assert doc.layers[0].kind == "polygon"  # type: ignore[union-attr]
-
-
-def test_mesh_layer_routes_to_polygon_class() -> None:
-    """``kind: "mesh"`` shares the PolygonLayer class with ``kind: "polygon"``."""
+def test_mesh_layer_parses() -> None:
     doc = PsdManifest.model_validate(
         _doc_with_layer(
             {
@@ -58,11 +43,11 @@ def test_mesh_layer_routes_to_polygon_class() -> None:
     assert doc.layers[0].kind == "mesh"  # type: ignore[union-attr]
 
 
-def test_sprite_frame_layer_parses() -> None:
+def test_sprite_layer_parses() -> None:
     doc = PsdManifest.model_validate(
         _doc_with_layer(
             {
-                "kind": "sprite_frame",
+                "kind": "sprite",
                 "name": "blink",
                 "position": [0, 0],
                 "size": [10, 10],
@@ -74,7 +59,24 @@ def test_sprite_frame_layer_parses() -> None:
             }
         )
     )
-    assert doc.layers[0].kind == "sprite_frame"  # type: ignore[union-attr]
+    assert doc.layers[0].kind == "sprite"  # type: ignore[union-attr]
+
+
+def test_single_frame_sprite_layer_parses() -> None:
+    """A `[sprite]` layer yields one frame (the static sprite case)."""
+    doc = PsdManifest.model_validate(
+        _doc_with_layer(
+            {
+                "kind": "sprite",
+                "name": "static",
+                "position": [0, 0],
+                "size": [10, 10],
+                "z_order": 0,
+                "frames": [{"index": 0, "path": "static.png"}],
+            }
+        )
+    )
+    assert len(doc.layers[0].frames) == 1  # type: ignore[union-attr]
 
 
 def test_unknown_kind_rejected() -> None:
@@ -95,7 +97,7 @@ def test_unknown_kind_rejected() -> None:
 def test_negative_uint_pair_rejected_on_anchor() -> None:
     """UintPair items must be non-negative."""
     payload = {
-        "format_version": 2,
+        "format_version": 1,
         "doc": "smoke.psd",
         "size": [100, 100],
         "pixels_per_unit": 100,
@@ -110,7 +112,7 @@ def test_negative_uint_pair_rejected_on_layer_position() -> None:
     """Negative position coordinates fail validation."""
     payload = _doc_with_layer(
         {
-            "kind": "polygon",
+            "kind": "mesh",
             "name": "x",
             "path": "x.png",
             "position": [0, -5],

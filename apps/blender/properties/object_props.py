@@ -1,7 +1,7 @@
 """Per-Object Proscenio PropertyGroup.
 
-Holds every typed setting that lives on a mesh / Empty: sprite type,
-sprite-frame metadata, texture region, slot flags, driver picker.
+Holds every typed setting that lives on a mesh / Empty: element type,
+frame metadata, texture region, slot flags, driver picker.
 
 The EnumProperty items tuples live here too - they are used by exactly
 one PropertyGroup, so colocation keeps the Enum value <-> label mapping
@@ -23,12 +23,12 @@ from bpy.types import PropertyGroup
 
 from ._dynamic_items import driver_bone_items, is_armature, on_any_update
 
-SPRITE_TYPE_ITEMS = (
-    ("polygon", "Polygon", "Cutout-style sprite - Polygon2D vertices + UV (default)", 0),
+ELEMENT_TYPE_ITEMS = (
+    ("mesh", "Mesh", "Deformable cutout - Polygon2D vertices + UV (default)", 0),
     (
-        "sprite_frame",
-        "Sprite Frame",
-        "Spritesheet sprite - Sprite2D with hframes x vframes grid",
+        "sprite",
+        "Sprite",
+        "Rigid quad - Sprite2D with hframes x vframes grid (1x1 = static)",
         1,
     ),
 )
@@ -69,16 +69,16 @@ DRIVER_SOURCE_AXIS_ITEMS = (
 class ProscenioObjectProps(PropertyGroup):
     """Per-Object Proscenio settings - one PropertyGroup per mesh."""
 
-    sprite_type: EnumProperty(  # type: ignore[valid-type]
-        name="Sprite type",
-        description="Rendering path for this sprite - see the spritesheet sprite2d work",
-        items=SPRITE_TYPE_ITEMS,
-        default="polygon",
+    element_type: EnumProperty(  # type: ignore[valid-type]
+        name="Element type",
+        description="Rendering path - Mesh maps to Polygon2D, Sprite maps to Sprite2D",
+        items=ELEMENT_TYPE_ITEMS,
+        default="mesh",
         update=on_any_update,
     )
     hframes: IntProperty(  # type: ignore[valid-type]
         name="Horizontal frames",
-        description="Spritesheet column count (sprite_frame only)",
+        description="Spritesheet column count (sprite only)",
         default=1,
         min=1,
         soft_max=64,
@@ -86,7 +86,7 @@ class ProscenioObjectProps(PropertyGroup):
     )
     vframes: IntProperty(  # type: ignore[valid-type]
         name="Vertical frames",
-        description="Spritesheet row count (sprite_frame only)",
+        description="Spritesheet row count (sprite only)",
         default=1,
         min=1,
         soft_max=64,
@@ -95,8 +95,7 @@ class ProscenioObjectProps(PropertyGroup):
     frame: IntProperty(  # type: ignore[valid-type]
         name="Initial frame",
         description=(
-            "Frame index shown at rest pose (sprite_frame only). "
-            "Animation tracks override at runtime."
+            "Frame index shown at rest pose (sprite only). Animation tracks override at runtime."
         ),
         default=0,
         min=0,

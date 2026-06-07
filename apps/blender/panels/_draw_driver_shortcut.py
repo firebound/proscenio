@@ -1,11 +1,11 @@
 """Driver-shortcut box (the Drive-from-Bone shortcut).
 
-Surfaces the bone-to-sprite driver picker on the Active Sprite panel:
+Surfaces the bone-to-element driver picker on the Active Element panel:
 target field, source armature, source bone, source axis, expression,
 plus the operator that materializes the actual driver. Has its own
 help/status badges via the in-panel help system dispatch table.
 
-Pulled out of ``panels/active_sprite.py`` by the code-modularity work.
+Pulled out of ``panels/active_element.py`` by the code-modularity work.
 """
 
 from __future__ import annotations

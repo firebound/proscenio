@@ -3,13 +3,14 @@
 // Drives the layer walk through the bracket-tag parser:
 //
 // - `[ignore]` removes a layer / group from the export.
-// - `[spritesheet]` marks a group as a sprite_frame source explicitly;
+// - `[spritesheet]` marks a group as a multi-frame sprite source;
 //   auto-detection still triggers for groups whose children are all
 //   pure digits (`0`, `1`, ...).
-// - `[polygon]` / `[sprite]` / `[mesh]` override `kind` on the entry.
+// - `[sprite]` on a single layer makes a one-frame sprite (Sprite2D);
+//   `[mesh]` / `[poly]` / `[polygon]` make a mesh (Polygon2D, default).
 // - `[folder:name]` and `[path:name]` rewrite the on-disk PNG path.
 // - `[scale:n]` rescales the bounds before they reach the manifest.
-// - `[blend:mode]` writes the v2 `blend_mode` field.
+// - `[blend:mode]` writes the `blend_mode` field.
 // - `[origin:x,y]` sets an explicit pivot in PSD pixels.
 //
 // The legacy v1 paths are gone (no `_` prefix skip, no flat
@@ -25,8 +26,8 @@ import {
     type FrameEntry,
     type Manifest,
     type ManifestEntry,
-    type PolygonEntry,
-    type SpriteFrameEntry,
+    type MeshEntry,
+    type SpriteEntry,
 } from "./manifest";
 import { parseLayerName, type TagBag } from "./tag-parser";
 
@@ -83,11 +84,11 @@ export interface ExportPlan {
 
 export interface EntryRef {
     name: string;
-    kind: "polygon" | "mesh" | "sprite_frame";
-    /** Polygon / mesh: the source layer (or [merge] group).
-     *  sprite_frame: the group layer that hosts the frames. */
+    kind: "mesh" | "sprite";
+    /** Mesh: the source layer (or [merge] group).
+     *  Sprite: the source layer, or the group that hosts the frames. */
     layerPath: string[];
-    /** Per-frame source layer chains. Present only on sprite_frame. */
+    /** Per-frame source layer chains. Present only on sprite. */
     framePaths?: string[][];
 }
 
@@ -156,10 +157,10 @@ export function buildExportPlan(
 }
 
 function toEntryRef(entry: PlannedEntry): EntryRef {
-    if (entry.kind === "sprite_frame") {
+    if (entry.kind === "sprite") {
         return {
             name: entry.name,
-            kind: "sprite_frame",
+            kind: "sprite",
             layerPath: entry._groupLayerPath,
             framePaths: entry._frameSources.map((s) => s.layerPath),
         };
@@ -201,8 +202,8 @@ function emitTagConflicts(
 ): void {
     const t = parsed.tags;
     const conflicts: string[] = [];
-    if (t.merge === true && t.kind === "sprite_frame") {
-        conflicts.push("[merge] and [spritesheet] are mutually exclusive");
+    if (t.merge === true && t.kind === "sprite") {
+        conflicts.push("[merge] and [sprite]/[spritesheet] are mutually exclusive");
     }
     if (t.originMarker === true && t.origin !== undefined) {
         conflicts.push("[origin] marker and [origin:x,y] cannot both be set");
@@ -233,7 +234,7 @@ function detectDuplicatePaths(ctx: WalkContext): void {
         else set.add(entry);
     };
     for (const entry of ctx.out) {
-        if (entry.kind === "sprite_frame") {
+        if (entry.kind === "sprite") {
             for (const frame of entry.frames) recordPath(entry, frame.path);
             continue;
         }
@@ -242,7 +243,7 @@ function detectDuplicatePaths(ctx: WalkContext): void {
     for (const [path, entrySet] of byPath) {
         if (entrySet.size < 2) continue;
         for (const entry of entrySet) {
-            const layerPath = entry.kind === "sprite_frame"
+            const layerPath = entry.kind === "sprite"
                 ? entry._frameSources[0]?.layerPath ?? []
                 : entry._source.layerPath;
             ctx.warnings.push({
@@ -259,12 +260,12 @@ interface PngWriteSource {
     layerPath: string[];
     merge: boolean;
 }
-type PlannedPolygon = PolygonEntry & { _source: PngWriteSource };
-type PlannedSpriteFrame = SpriteFrameEntry & {
+type PlannedMesh = MeshEntry & { _source: PngWriteSource };
+type PlannedSprite = SpriteEntry & {
     _frameSources: PngWriteSource[];
     _groupLayerPath: string[];
 };
-type PlannedEntry = PlannedPolygon | PlannedSpriteFrame;
+type PlannedEntry = PlannedMesh | PlannedSprite;
 
 function parseChildren(children: Layer[]): ParsedLayer[] {
     return children.map((raw) => {
@@ -332,7 +333,7 @@ function walkLayers(
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "origin-marker" });
             continue;
         }
-        const entry = buildPolygonEntry({
+        const buildArgs: PolygonEntryArgs = {
             source: parsed,
             name: joinName(prefix, displayName),
             layerPath: childPath,
@@ -341,7 +342,12 @@ function walkLayers(
             settings: ctx.settings,
             warnRef: { layerPath: childPath, name: displayName },
             ctx,
-        });
+        };
+        // A single layer tagged `[sprite]` becomes a one-frame sprite
+        // (Sprite2D); everything else is a mesh (Polygon2D).
+        const entry = parsed.tags.kind === "sprite"
+            ? buildSpriteFromLayer(buildArgs)
+            : buildPolygonEntry(buildArgs);
         if (entry === null) {
             ctx.skipped.push({ layerPath: childPath, name: displayName, reason: "empty-bounds" });
             ctx.warnings.push({
@@ -367,11 +373,11 @@ function handleGroup(
     const group = parsed.raw as LayerSet;
     const parsedChildren = parseChildren(group.layers);
     const tagKind = parsed.tags.kind;
-    const explicitSpriteFrame = tagKind === "sprite_frame";
+    const explicitSprite = tagKind === "sprite";
     const groupInherited = inherit(inherited, parsed.tags);
 
     if (
-        explicitSpriteFrame
+        explicitSprite
         || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.settings.skipHidden))
     ) {
         const entry = buildSpriteFrameEntry(
@@ -388,7 +394,7 @@ function handleGroup(
             ctx.zCounter.value += 1;
             return;
         }
-        if (explicitSpriteFrame) {
+        if (explicitSprite) {
             // Tagged `[spritesheet]` but no contiguous-from-zero frames
             // landed (mixed kinds, gaps, all bounds-empty). Surface so
             // the artist can fix the children before re-export.
@@ -421,7 +427,7 @@ function handleGroup(
     // Pass `pickPivot` down for sprite_frame / merge groups so an
     // `[origin]` marker inside them does not raise the
     // origin-outside-container warning.
-    const containerHasPivot = explicitSpriteFrame
+    const containerHasPivot = explicitSprite
         || (tagKind === undefined && autoDetectSpriteFrame(parsedChildren, ctx.settings.skipHidden))
         || parsed.tags.merge === true;
     const nestedInherited = containerHasPivot
@@ -460,7 +466,7 @@ function buildSpriteFrameEntry(
     zOrder: number,
     inherited: InheritedTags,
     settings: PlannerSettings,
-): PlannedSpriteFrame | null {
+): PlannedSprite | null {
     const meshName = joinName(prefix, fallbackName(group.displayName, group.raw));
     const folder = group.tags.folder ?? inherited.folder;
     const blend = group.tags.blend ?? inherited.blend;
@@ -497,7 +503,7 @@ function buildSpriteFrameEntry(
 
     const originFromMarker = pickOriginMarker(children);
     return {
-        kind: "sprite_frame",
+        kind: "sprite",
         name: meshName,
         position: [Math.round(maxBounds.x), Math.round(maxBounds.y)],
         size: [Math.round(maxBounds.w), Math.round(maxBounds.h)],
@@ -599,7 +605,7 @@ interface PolygonEntryArgs {
     ctx?: WalkContext;
 }
 
-function buildPolygonEntry(args: PolygonEntryArgs): PlannedPolygon | null {
+function buildPolygonEntry(args: PolygonEntryArgs): PlannedMesh | null {
     const { source, name, layerPath, zOrder, inherited, settings, warnRef, ctx } = args;
     const bounds = scaledBounds(effectiveBounds(source), source.tags.scale);
     if (bounds === null) return null;
@@ -619,7 +625,7 @@ function buildPolygonEntry(args: PolygonEntryArgs): PlannedPolygon | null {
     const folder = inherited.folder;
     const blend = inherited.blend;
     const safeName = source.tags.path ?? sanitize(name);
-    const kind: "polygon" | "mesh" = source.tags.kind === "mesh" ? "mesh" : "polygon";
+    const kind = "mesh" as const;
     const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
     const path = `${folderPrefix}/${applyTemplate(settings.polygonTemplate, { name: safeName, kind })}`;
     // For `[merge]` groups, an inner `[origin]` marker layer provides
@@ -641,6 +647,33 @@ function buildPolygonEntry(args: PolygonEntryArgs): PlannedPolygon | null {
             layerPath,
             merge: source.tags.merge === true,
         },
+    };
+}
+
+// A single layer tagged `[sprite]` -> a one-frame sprite (Sprite2D).
+// The layer's own PNG is frame 0; the frame path uses the frames
+// template so it sits next to multi-frame spritesheet output.
+function buildSpriteFromLayer(args: PolygonEntryArgs): PlannedSprite | null {
+    const { source, name, layerPath, zOrder, inherited, settings } = args;
+    const bounds = scaledBounds(effectiveBounds(source), source.tags.scale);
+    if (bounds === null) return null;
+    const folder = inherited.folder;
+    const blend = inherited.blend;
+    const safeName = source.tags.path ?? sanitize(name);
+    const folderPrefix = folder === undefined ? "images" : `images/${sanitize(folder)}`;
+    const framePath = `${folderPrefix}/${applyTemplate(settings.framesTemplate, { name: safeName, index: 0 })}`;
+    return {
+        kind: "sprite",
+        name,
+        position: [Math.round(bounds.x), Math.round(bounds.y)],
+        size: [Math.round(bounds.w), Math.round(bounds.h)],
+        z_order: zOrder,
+        frames: [{ index: 0, path: framePath }],
+        ...optionalOrigin(source.tags.origin),
+        ...optionalBlend(blend),
+        ...(folder === undefined ? {} : { subfolder: folder }),
+        _frameSources: [{ layerPath, merge: source.tags.merge === true }],
+        _groupLayerPath: layerPath,
     };
 }
 
@@ -693,9 +726,9 @@ function fallbackName(displayName: string, raw: Layer): string {
 }
 
 function toManifestEntry(entry: PlannedEntry): ManifestEntry {
-    if (entry.kind === "sprite_frame") {
+    if (entry.kind === "sprite") {
         return {
-            kind: "sprite_frame",
+            kind: "sprite",
             name: entry.name,
             position: entry.position,
             size: entry.size,
@@ -720,7 +753,7 @@ function toManifestEntry(entry: PlannedEntry): ManifestEntry {
 }
 
 function toWrites(entry: PlannedEntry): PngWrite[] {
-    if (entry.kind === "sprite_frame") {
+    if (entry.kind === "sprite") {
         return entry.frames.map((frame, i) => {
             const source = entry._frameSources[i];
             if (source === undefined) {

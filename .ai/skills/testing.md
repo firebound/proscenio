@@ -47,7 +47,7 @@ gdlint apps/godot/addons/proscenio/
 
 Manual until CI runners ship both Blender and Godot:
 
-1. Open one of the `examples/generated/` fixtures in Blender (`blink_eyes/blink_eyes.blend` for the `sprite_frame` path, `shared_atlas/shared_atlas.blend` for the atlas path, `slot_swap/slot_swap.blend` for the slot path, or `examples/authored/doll/00_blender_base/doll_base.blend` for the comprehensive showcase).
+1. Open one of the `examples/generated/` fixtures in Blender (`blink_eyes/blink_eyes.blend` for the `sprite` path, `shared_atlas/shared_atlas.blend` for the atlas path, `slot_swap/slot_swap.blend` for the slot path, or `examples/authored/doll/00_blender_base/doll_base.blend` for the comprehensive showcase).
 2. Run the Proscenio export operator.
 3. Drop the resulting `.proscenio` (and texture files) into `apps/godot/`.
 4. Open the generated scene in Godot, hit Play, verify the animation runs.

@@ -34,9 +34,9 @@
       }
     ]
   },
-  "sprites": [
+  "elements": [
     {
-      "type": "sprite_frame",
+      "type": "sprite",
       "name": "mouth",
       "bone": "mouth_pos",
       "hframes": 4,

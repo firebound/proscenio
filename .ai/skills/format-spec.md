@@ -16,36 +16,40 @@ JSON file with extension `.proscenio`. Source of truth: [`packages/models/schema
 | `pixels_per_unit` | number | yes | Blender unit ↔ Godot pixel ratio (e.g. 100) |
 | `atlas` | string | no | path to packed atlas texture |
 | `skeleton` | object | yes | bone hierarchy |
-| `sprites` | array | yes | mesh + texture data |
-| `slots` | array | no | sprite swap groups |
+| `elements` | array | yes | mesh + sprite render data |
+| `slots` | array | no | element swap groups |
 | `animations` | array | no | track data |
 
-## Sprite kinds (`type` discriminator)
+## Element kinds (`type` discriminator)
 
-Each entry in `sprites` is one of two shapes, distinguished by a `type` field:
+Each entry in `elements` is one of two shapes, distinguished by a `type` field:
 
 | `type` | Renders as | Required fields | Use when |
 | --- | --- | --- | --- |
-| `polygon` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style mesh, deformable, eligible for skinning weights |
-| `sprite_frame` | `Sprite2D` | `type`, `name`, `bone`, `hframes`, `vframes` | frame-by-frame animation (pixel art, particles, effects) |
+| `mesh` (default) | `Polygon2D` | `name`, `texture_region`, `polygon`, `uv` | cutout-style deformable mesh, eligible for skinning weights |
+| `sprite` | `Sprite2D` | `type`, `name`, `bone`, `hframes`, `vframes` | rigid quad; one frame is static, an `hframes` × `vframes` grid animates (pixel art, particles, effects) |
 
-`type` is **optional** on `polygon` sprites - absence means `polygon`, keeping every v1 fixture valid without edits. On `sprite_frame` sprites it is required and constant.
+`type` is **optional** on `mesh` elements - absence means `mesh`. On `sprite` elements it is required and constant.
 
-A sprite of `type: "sprite_frame"` carries an optional `texture_region` (the sub-rectangle of the atlas where the spritesheet lives) plus the frame grid (`hframes` × `vframes`), the initial `frame` index (row-major), and the standard `Sprite2D` knobs `offset` and `centered`. Animations advance the frame via a `sprite_frame` track on the matching sprite.
+A `sprite` element carries an optional `texture_region` (the sub-rectangle of the atlas where the spritesheet lives) plus the frame grid (`hframes` × `vframes`), the initial `frame` index (row-major), and the standard `Sprite2D` knobs `offset` and `centered`. One frame is a static sprite; more than one is a spritesheet whose frame an animation advances via a `sprite_frame` track.
 
 A single `.proscenio` may freely mix both kinds - a cutout body with a spritesheet face, for example.
 
-> **Note - the name `sprite_frame` shows up in three places**, do not confuse them:
+> **Note - `sprite_frame` is now only an animation track type.** The element
+> kind that becomes a `Sprite2D` is `sprite` (the discriminator here in
+> `.proscenio` and the PSD manifest layer `kind`). The remaining `sprite_frame`
+> is the **animation track type** (`type: "sprite_frame"` inside a track) that
+> animates the `:frame` property of a `Sprite2D` over time (see "Track types"
+> below). A `[sprite]` Photoshop layer makes a one-frame sprite; a
+> `[spritesheet]` group makes a multi-frame one.
 >
-> 1. **Sprite discriminator** here in `.proscenio` (`type: "sprite_frame"`) → Godot `Sprite2D` with `hframes`/`vframes`/`frame`.
-> 2. **PSD manifest layer kind** (`kind: "sprite_frame"`) → a Photoshop `LayerSet` tagged `[spritesheet]`; the Blender importer consumes it and the Blender writer can re-emit it as a `.proscenio` sprite of `type: "sprite_frame"`.
-> 3. **Animation track type** (`type: "sprite_frame"` inside an animation track) → animates the `:frame` property of an existing `Sprite2D` over time (see "Track types" below).
->
-> The shape is different in each context. The `.proscenio` schema is still `format_version=1`; the photoshop tag system taxonomy that introduced `kind: "mesh"`, `anchor`, per-entry `origin`, `blend_mode`, and `subfolder` lives on the **PSD manifest** side and bumped that schema to v2 - not this one.
+> Both the `.proscenio` schema and the PSD manifest schema are
+> `format_version=1` (the manifest collapsed from its pre-rename v2; pre-launch
+> the version freezes at launch rather than climbing - see [`specs/decisions.md`](../../specs/decisions.md)).
 
 ## UV coordinates
 
-UVs in `.proscenio` (under `polygon` sprites) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite_frame` sprites have no `uv` field - Godot derives the UV automatically from `frame` × `hframes`/`vframes`.
+UVs in `.proscenio` (under `mesh` elements) are **normalized to `[0, 1]`** of the atlas image, regardless of atlas resolution. The format stays engine-agnostic. Engine-specific importers convert to whatever convention the target uses (e.g. Godot's `Polygon2D` wants UVs in atlas pixel space, so the importer multiplies by atlas size). `sprite` elements have no `uv` field - Godot derives the UV automatically from `frame` × `hframes`/`vframes`.
 
 ## Coordinate system
 
@@ -65,7 +69,7 @@ Multi-atlas per character is not supported in v1; multi-atlas characters split i
 
 ## Skinning weights
 
-The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinning - `Polygon2D.skeleton` resolves to the character's `Skeleton2D` and each bone receives a per-vertex weight array. Shape:
+The `weights` array on a `mesh`-typed element drives Godot `Polygon2D` skinning - `Polygon2D.skeleton` resolves to the character's `Skeleton2D` and each bone receives a per-vertex weight array. Shape:
 
 ```json
 "weights": [
@@ -76,7 +80,7 @@ The `weights` array on a `polygon`-typed sprite drives Godot `Polygon2D` skinnin
 
 `values` is indexed by the sprite's vertex order - `values[i]` is the weight that bone applies to vertex `i`. Per-vertex sums are normalized by the writer to `1.0`; vertices with zero total weight fall back to the sprite's resolved bone (the same one rigid-attach would have used; see the skinning-weights entry in [`specs/decisions.md`](../../specs/decisions.md#skinning-weights-export)).
 
-Sprites with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - backwards-compatible with v1 documents and the workflow for sprites that do not need deformation. `sprite_frame` sprites ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
+Meshes with the field absent or empty stay rigid-attached (a child of the `Bone2D`, riding its transform) - the workflow for elements that do not need deformation. `sprite` elements ignore `weights` entirely; Godot's `Sprite2D` has no skinning concept.
 
 ### Authoring story
 
@@ -114,7 +118,7 @@ The Godot importer rejects unknown future versions with a clear error message an
 | Track type | Targets | Per-key data |
 | --- | --- | --- |
 | `bone_transform` | `Bone2D` | `position`, `rotation`, `scale` |
-| `sprite_frame` | `Sprite2D` (sprite of `type: "sprite_frame"`) | `frame` (spritesheet index) - importer wires this to a value track at `:frame` with `INTERPOLATION_NEAREST` |
+| `sprite_frame` | `Sprite2D` (a `sprite` element) | `frame` (spritesheet index) - importer wires this to a value track at `:frame` with `INTERPOLATION_NEAREST` |
 | `slot_attachment` | slot | `attachment` (sprite name) |
 | `visibility` | any | `visible` (bool) |
 

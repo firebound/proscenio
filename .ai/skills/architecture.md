@@ -19,8 +19,8 @@ Photoshop ──UXP plugin──▶ layer PNGs + manifest JSON (psd_manifest.sch
                                   ▼ EditorImportPlugin
                                Godot .scn  (Node2D root
                                             └─ Skeleton2D + Bone2D[]
-                                               ├─ Polygon2D[]  (type: polygon)
-                                               ├─ Sprite2D[]   (type: sprite_frame)
+                                               ├─ Polygon2D[]  (type: mesh)
+                                               ├─ Sprite2D[]   (type: sprite)
                                                └─ Node2D[]     (slot containers)
                                             └─ AnimationPlayer + AnimationLibrary)
 ```

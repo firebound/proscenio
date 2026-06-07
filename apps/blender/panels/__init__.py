@@ -8,7 +8,7 @@ users can fold individually. Subpanels poll on the active selection
 Submodules per concern:
 
 - _helpers.py        - cross-cutting (header drawer, mode predicates)
-- active_sprite.py   - PROSCENIO_PT_active_sprite + 9 helpers
+- active_element.py  - PROSCENIO_PT_active_element + helpers
 - active_slot.py     - PROSCENIO_PT_active_slot + attachment helpers
 - skeleton.py        - PROSCENIO_PT_skeleton + UL_bones
 - skinning.py        - PROSCENIO_PT_skinning
@@ -26,8 +26,8 @@ from __future__ import annotations
 import bpy
 
 from . import (
+    active_element,
     active_slot,
-    active_sprite,
     animation,
     atlas,
     diagnostics,
@@ -65,7 +65,7 @@ _main_classes: tuple[type, ...] = (PROSCENIO_PT_main,)
 def register() -> None:
     for cls in _main_classes:
         bpy.utils.register_class(cls)
-    active_sprite.register()
+    active_element.register()
     active_slot.register()
     skeleton.register()
     skinning.register()
@@ -89,6 +89,6 @@ def unregister() -> None:
     skinning.unregister()
     skeleton.unregister()
     active_slot.unregister()
-    active_sprite.unregister()
+    active_element.unregister()
     for cls in reversed(_main_classes):
         bpy.utils.unregister_class(cls)

@@ -70,6 +70,13 @@ class _ResolvedType:
     """Format string with one placeholder ``{value}`` that wraps the raw
     Dictionary lookup so the parsed value matches ``gd_type``."""
 
+    needs_assign: bool = False
+    """When True, emit ``res.field.assign(<parsed>)`` instead of
+    ``res.field = <parsed>``. The object and union array parsers return an
+    untyped ``Array``; assigning that straight into a typed ``Array[T]``
+    property is rejected at runtime, so the typed array is filled via
+    ``Array.assign`` which copies element-wise with conversion."""
+
 
 def _is_vec_like(args: tuple[Any, ...]) -> bool:
     """A ``list[float]`` annotation (used by Vec2, Rect, list[Vec2] items)."""
@@ -119,12 +126,12 @@ def _union_dispatcher_name(item: Any) -> str | None:
     # The dispatcher names are paired with the models module's
     # discriminated unions. Keep this small lookup local so each emit
     # run doesn't import every model module at the top of this file.
-    from proscenio_models.proscenio import PolygonSprite, SpriteFrameSprite
-    from proscenio_models.psd_manifest import PolygonLayer, SpriteFrameLayer
+    from proscenio_models.proscenio import MeshElement, SpriteElement
+    from proscenio_models.psd_manifest import MeshLayer, SpriteLayer
 
-    if variant_models == {PolygonSprite, SpriteFrameSprite}:
-        return "ProscenioSprite"
-    if variant_models == {PolygonLayer, SpriteFrameLayer}:
+    if variant_models == {MeshElement, SpriteElement}:
+        return "ProscenioElement"
+    if variant_models == {MeshLayer, SpriteLayer}:
         return "ProscenioLayer"
     return None
 
@@ -152,6 +159,7 @@ def _resolve_list_type(item: Any) -> _ResolvedType:
             f"Array[{dispatcher}]",
             f"[] as Array[{dispatcher}]",
             f"ProscenioParseHelpers._parse_dispatched({dispatcher}, {{value}})",
+            needs_assign=True,
         )
     if isinstance(item, type) and issubclass(item, BaseModel):
         class_name = _resource_class_name(item)
@@ -159,6 +167,7 @@ def _resolve_list_type(item: Any) -> _ResolvedType:
             f"Array[{class_name}]",
             f"[] as Array[{class_name}]",
             f"ProscenioParseHelpers._parse_array({class_name}, {{value}})",
+            needs_assign=True,
         )
 
     raise NotImplementedError(f"godot_emit cannot map list[{item!r}]")
@@ -283,17 +292,17 @@ def _python_default(field: FieldInfo) -> Any:
 def _variant_dispatcher(model: type[BaseModel]) -> str | None:
     """The dispatcher class a variant should extend, or None if none.
 
-    Lets ``Array[ProscenioSprite]`` actually hold ``PolygonSprite`` and
-    ``SpriteFrameSprite`` instances via runtime polymorphism. Without
+    Lets ``Array[ProscenioElement]`` actually hold ``MeshElement`` and
+    ``SpriteElement`` instances via runtime polymorphism. Without
     the inheritance, GDScript's typed-array runtime check refuses any
     instance whose class is not the exact element type.
     """
-    from proscenio_models.proscenio import PolygonSprite, SpriteFrameSprite
-    from proscenio_models.psd_manifest import PolygonLayer, SpriteFrameLayer
+    from proscenio_models.proscenio import MeshElement, SpriteElement
+    from proscenio_models.psd_manifest import MeshLayer, SpriteLayer
 
-    if model in (PolygonSprite, SpriteFrameSprite):
-        return "ProscenioSprite"
-    if model in (PolygonLayer, SpriteFrameLayer):
+    if model in (MeshElement, SpriteElement):
+        return "ProscenioElement"
+    if model in (MeshLayer, SpriteLayer):
         return "ProscenioLayer"
     return None
 
@@ -333,6 +342,15 @@ def _emit_model(model: type[BaseModel]) -> str:
         field_decls.append(f"@export var {name}: {resolved.gd_type} = {default}")
 
         wrapped = resolved.parse_expr_template.format(value=f'data["{name}"]')
+        # Typed-array properties (Array[T]) cannot take the untyped Array the
+        # object/union parsers return via plain ``=``; fill them with
+        # ``Array.assign`` instead. Scalars and the already-typed vec2 array
+        # parser keep direct assignment.
+        assignment = (
+            f"res.{name}.assign({wrapped})"
+            if resolved.needs_assign
+            else f"res.{name} = {wrapped}"
+        )
         # Guard against JSON nulls: pydantic Optional fields decode as None
         # in dicts, which would break String(null) / Vector2(null) parsers.
         # The default declared on the property covers the missing case.
@@ -341,7 +359,7 @@ def _emit_model(model: type[BaseModel]) -> str:
         # default" apart from "absent from the source document".
         parsers.append(
             f'\tif data.has("{name}") and data["{name}"] != null:\n'
-            f"\t\tres.{name} = {wrapped}\n"
+            f"\t\t{assignment}\n"
             f'\t\tres._set_fields.append("{name}")\n'
         )
 
@@ -370,7 +388,7 @@ def _emit_union_dispatcher(
         "",
         "# Discriminated union dispatcher. Inspect the input dictionary's",
         f"# `{discriminator_field}` key and delegate to the matching variant",
-        "# class. Used by the importer when building child sprites/layers from",
+        "# class. Used by the importer when building child elements/layers from",
         "# the parsed JSON document.",
         "",
     ]
@@ -384,8 +402,8 @@ def _emit_union_dispatcher(
 
     lines.append(f"static func from_dict(data: Dictionary) -> {base_name}:")
     if discriminator_field == "type":
-        # Sprite discriminator: the polygon variant allows the field to be
-        # absent (v1 backwards compatibility). Default to the polygon tag.
+        # Element discriminator: the mesh variant allows the field to be
+        # absent (type omitted). Default to the mesh tag.
         default_tag = next(
             (
                 t
@@ -482,29 +500,28 @@ def emit_godot_resources(target_dir: Path = GODOT_BINDINGS_DIR) -> list[Path]:
         write_atomic(target, text)
         written.append(target)
 
-    # Discriminated union dispatchers (Sprite, Layer). The unions themselves
+    # Discriminated union dispatchers (Element, Layer). The unions themselves
     # are not BaseModel classes - they are Annotated[Union[...], Discriminator]
     # aliases - so they do not surface through _collect_models(); emit them
     # explicitly with the variants the models module exposes.
-    from proscenio_models.proscenio import PolygonSprite, SpriteFrameSprite
-    from proscenio_models.psd_manifest import PolygonLayer, SpriteFrameLayer
+    from proscenio_models.proscenio import MeshElement, SpriteElement
+    from proscenio_models.psd_manifest import MeshLayer, SpriteLayer
 
-    sprite_dispatcher = _emit_union_dispatcher(
-        "ProscenioSprite",
+    element_dispatcher = _emit_union_dispatcher(
+        "ProscenioElement",
         "type",
-        {"polygon": PolygonSprite, "sprite_frame": SpriteFrameSprite},
+        {"mesh": MeshElement, "sprite": SpriteElement},
     )
-    sprite_target = target_dir / "proscenio_sprite.gd"
-    write_atomic(sprite_target, sprite_dispatcher)
-    written.append(sprite_target)
+    element_target = target_dir / "proscenio_element.gd"
+    write_atomic(element_target, element_dispatcher)
+    written.append(element_target)
 
     layer_dispatcher = _emit_union_dispatcher(
         "ProscenioLayer",
         "kind",
         {
-            "polygon": PolygonLayer,
-            "mesh": PolygonLayer,
-            "sprite_frame": SpriteFrameLayer,
+            "mesh": MeshLayer,
+            "sprite": SpriteLayer,
         },
     )
     layer_target = target_dir / "proscenio_layer.gd"

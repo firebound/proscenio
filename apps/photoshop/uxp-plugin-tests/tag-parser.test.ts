@@ -43,20 +43,24 @@ describe("parseLayerName - basics", () => {
 });
 
 describe("parseLayerName - kind overrides", () => {
-    it("[polygon] sets kind polygon", () => {
-        expect(parseLayerName("x [polygon]").tags.kind).toBe("polygon");
-    });
-
-    it("[sprite] is an alias for polygon", () => {
-        expect(parseLayerName("x [sprite]").tags.kind).toBe("polygon");
-    });
-
     it("[mesh] sets kind mesh", () => {
         expect(parseLayerName("x [mesh]").tags.kind).toBe("mesh");
     });
 
-    it("[spritesheet] translates to sprite_frame kind", () => {
-        expect(parseLayerName("x [spritesheet]").tags.kind).toBe("sprite_frame");
+    it("[poly] is an alias for mesh", () => {
+        expect(parseLayerName("x [poly]").tags.kind).toBe("mesh");
+    });
+
+    it("[polygon] is an alias for mesh", () => {
+        expect(parseLayerName("x [polygon]").tags.kind).toBe("mesh");
+    });
+
+    it("[sprite] sets kind sprite (Sprite2D)", () => {
+        expect(parseLayerName("x [sprite]").tags.kind).toBe("sprite");
+    });
+
+    it("[spritesheet] is an alias for sprite", () => {
+        expect(parseLayerName("x [spritesheet]").tags.kind).toBe("sprite");
     });
 });
 

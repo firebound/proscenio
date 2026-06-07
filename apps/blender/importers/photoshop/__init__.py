@@ -1,8 +1,8 @@
 """Photoshop manifest importer (the photoshop importer).
 
-Orchestrator. Reads a PSD manifest v1 (parser lives in
+Orchestrator. Reads a PSD manifest (parser lives in
 ``core.psd_manifest``), iterates layers, dispatches each entry to the
-appropriate stamper (polygon vs sprite_frame), and parents every
+appropriate stamper (mesh vs sprite), and parents every
 stamped mesh to a stub ``root`` bone in a fresh armature.
 
 Public entry point::
@@ -26,7 +26,7 @@ import bpy
 from ...core._shared.cp_keys import PROSCENIO_IMPORT_ORIGIN
 from ...core.psd import psd_manifest
 from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
-from .planes import stamp_polygon, stamp_sprite_frame
+from .planes import stamp_mesh, stamp_sprite
 
 
 @dataclass
@@ -45,7 +45,7 @@ def import_manifest(
     placement: Literal["centered", "landed"] = "landed",
     root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
 ) -> ImportResult:
-    """Read ``manifest_path`` (PSD manifest v1) and stamp the scene.
+    """Read ``manifest_path`` (PSD manifest) and stamp the scene.
 
     ``placement`` chooses where the figure sits relative to the world:
 
@@ -72,19 +72,19 @@ def import_manifest(
     )
     result = ImportResult(armature=armature_obj)
     for layer in manifest.layers:
-        if layer.kind == "polygon" or layer.kind == "mesh":
-            obj = stamp_polygon(layer, manifest, armature_obj)
+        if layer.kind == "mesh":
+            obj = stamp_mesh(layer, manifest, armature_obj)
             if obj is not None:
                 result.meshes.append(obj)
             else:
-                result.skipped.append(f"polygon:{layer.name}")
-        elif layer.kind == "sprite_frame":
-            stamped = stamp_sprite_frame(layer, manifest, armature_obj)
+                result.skipped.append(f"mesh:{layer.name}")
+        elif layer.kind == "sprite":
+            stamped = stamp_sprite(layer, manifest, armature_obj)
             if stamped is not None:
                 result.meshes.append(stamped.mesh_obj)
                 result.spritesheets.append(stamped.spritesheet_path)
             else:
-                result.skipped.append(f"sprite_frame:{layer.name}")
+                result.skipped.append(f"sprite:{layer.name}")
     if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result

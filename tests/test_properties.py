@@ -49,7 +49,7 @@ class _ObjectMock:
 
 def _empty_props() -> SimpleNamespace:
     return SimpleNamespace(
-        sprite_type="polygon",
+        element_type="mesh",
         hframes=1,
         vframes=1,
         frame=0,
@@ -58,25 +58,25 @@ def _empty_props() -> SimpleNamespace:
 
 
 def test_hydrate_skips_object_without_proscenio() -> None:
-    obj = _ObjectMock(custom_props={"proscenio_type": "sprite_frame"}, proscenio=None)
+    obj = _ObjectMock(custom_props={"proscenio_type": "sprite"}, proscenio=None)
     hydrate_object(obj)  # must not raise - silent skip
 
 
-def test_hydrate_copies_sprite_type_when_present() -> None:
+def test_hydrate_copies_element_type_when_present() -> None:
     props = _empty_props()
     obj = _ObjectMock(
-        custom_props={"proscenio_type": "sprite_frame"},
+        custom_props={"proscenio_type": "sprite"},
         proscenio=props,
     )
     hydrate_object(obj)
-    assert props.sprite_type == "sprite_frame"
+    assert props.element_type == "sprite"
 
 
-def test_hydrate_copies_full_sprite_frame_metadata() -> None:
+def test_hydrate_copies_full_sprite_metadata() -> None:
     props = _empty_props()
     obj = _ObjectMock(
         custom_props={
-            "proscenio_type": "sprite_frame",
+            "proscenio_type": "sprite",
             "proscenio_hframes": 4,
             "proscenio_vframes": 2,
             "proscenio_frame": 3,
@@ -85,7 +85,7 @@ def test_hydrate_copies_full_sprite_frame_metadata() -> None:
         proscenio=props,
     )
     hydrate_object(obj)
-    assert props.sprite_type == "sprite_frame"
+    assert props.element_type == "sprite"
     assert props.hframes == 4
     assert props.vframes == 2
     assert props.frame == 3
@@ -97,7 +97,7 @@ def test_hydrate_leaves_defaults_when_custom_props_absent() -> None:
     obj = _ObjectMock(custom_props={}, proscenio=props)
     hydrate_object(obj)
     # Untouched - every field still equals the default.
-    assert props.sprite_type == "polygon"
+    assert props.element_type == "mesh"
     assert props.hframes == 1
     assert props.vframes == 1
     assert props.frame == 0
@@ -113,7 +113,7 @@ def test_hydrate_partial_overrides() -> None:
     hydrate_object(obj)
     assert props.hframes == 8
     # Fields the user did not author stay at default.
-    assert props.sprite_type == "polygon"
+    assert props.element_type == "mesh"
     assert props.vframes == 1
 
 
@@ -123,7 +123,7 @@ def test_hydrate_swallows_type_errors() -> None:
     class _StrictProps:
         """Mocks the Blender PropertyGroup's strict typed setattr."""
 
-        sprite_type = "polygon"
+        element_type = "mesh"
         hframes = 1
 
         def __setattr__(self, name: str, value: Any) -> None:
@@ -134,12 +134,12 @@ def test_hydrate_swallows_type_errors() -> None:
     props = _StrictProps()
     obj = _ObjectMock(
         custom_props={
-            "proscenio_type": "sprite_frame",
+            "proscenio_type": "sprite",
             "proscenio_hframes": "not-an-int",  # bogus on purpose
         },
         proscenio=props,
     )
     hydrate_object(obj)
-    # sprite_type still applied; hframes left at the default.
-    assert props.sprite_type == "sprite_frame"
+    # element_type still applied; hframes left at the default.
+    assert props.element_type == "sprite"
     assert props.hframes == 1

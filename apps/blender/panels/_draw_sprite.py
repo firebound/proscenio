@@ -4,7 +4,7 @@ Renders the sprite-frame metadata block: hframes / vframes / frame /
 centered, the atlas+region readout, the preview-shader setup buttons,
 and the shared region authoring box.
 
-Pulled out of ``panels/active_sprite.py`` by the code-modularity work so
+Pulled out of ``panels/active_element.py`` by the code-modularity work so
 that file becomes a thin dispatcher over per-mode draw modules.
 """
 
@@ -37,7 +37,7 @@ def draw_body(
     box.prop(props, "centered")
     _draw_readout(box, obj, props)
     _draw_preview_shader_buttons(box, obj)
-    _draw_region.draw_box(layout, props, sprite_type="sprite_frame")
+    _draw_region.draw_box(layout, props, element_type="sprite")
     if context.mode == "PAINT_WEIGHT":
         _draw_weight_paint_disabled_hint(layout)
 

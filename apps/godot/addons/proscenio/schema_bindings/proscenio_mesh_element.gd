@@ -3,26 +3,24 @@
 # `python -m proscenio_codegen godot`.
 
 @tool
-class_name ProscenioSpriteFrameSprite extends ProscenioSprite
+class_name ProscenioMeshElement extends ProscenioElement
 
 # Names of fields actually set during `from_dict`. Lets consumers
 # distinguish 'field set to default' from 'field absent in source'
 # without re-parsing the JSON dictionary.
 @export var _set_fields: PackedStringArray = PackedStringArray()
-@export var type: String = "sprite_frame"
+@export var type: String = "mesh"
 @export var name: String = ""
 @export var bone: String = ""
-@export var hframes: int = 0
-@export var vframes: int = 0
-@export var frame: int = 0
-@export var centered: bool = false
 @export var texture_region: PackedFloat32Array = PackedFloat32Array()
+@export var polygon: Array[PackedFloat32Array] = [] as Array[PackedFloat32Array]
+@export var uv: Array[PackedFloat32Array] = [] as Array[PackedFloat32Array]
 @export var texture: String = ""
-@export var offset: PackedFloat32Array = PackedFloat32Array([0.0, 0.0])
+@export var weights: Array[ProscenioWeight] = [] as Array[ProscenioWeight]
 
 
-static func from_dict(data: Dictionary) -> ProscenioSpriteFrameSprite:
-	var res := ProscenioSpriteFrameSprite.new()
+static func from_dict(data: Dictionary) -> ProscenioMeshElement:
+	var res := ProscenioMeshElement.new()
 	if data.has("type") and data["type"] != null:
 		res.type = String(data["type"])
 		res._set_fields.append("type")
@@ -32,25 +30,19 @@ static func from_dict(data: Dictionary) -> ProscenioSpriteFrameSprite:
 	if data.has("bone") and data["bone"] != null:
 		res.bone = String(data["bone"])
 		res._set_fields.append("bone")
-	if data.has("hframes") and data["hframes"] != null:
-		res.hframes = int(data["hframes"])
-		res._set_fields.append("hframes")
-	if data.has("vframes") and data["vframes"] != null:
-		res.vframes = int(data["vframes"])
-		res._set_fields.append("vframes")
-	if data.has("frame") and data["frame"] != null:
-		res.frame = int(data["frame"])
-		res._set_fields.append("frame")
-	if data.has("centered") and data["centered"] != null:
-		res.centered = bool(data["centered"])
-		res._set_fields.append("centered")
 	if data.has("texture_region") and data["texture_region"] != null:
 		res.texture_region = PackedFloat32Array(data["texture_region"])
 		res._set_fields.append("texture_region")
+	if data.has("polygon") and data["polygon"] != null:
+		res.polygon = ProscenioParseHelpers._parse_vec2_array(data["polygon"])
+		res._set_fields.append("polygon")
+	if data.has("uv") and data["uv"] != null:
+		res.uv = ProscenioParseHelpers._parse_vec2_array(data["uv"])
+		res._set_fields.append("uv")
 	if data.has("texture") and data["texture"] != null:
 		res.texture = String(data["texture"])
 		res._set_fields.append("texture")
-	if data.has("offset") and data["offset"] != null:
-		res.offset = PackedFloat32Array(data["offset"])
-		res._set_fields.append("offset")
+	if data.has("weights") and data["weights"] != null:
+		res.weights.assign(ProscenioParseHelpers._parse_array(ProscenioWeight, data["weights"]))
+		res._set_fields.append("weights")
 	return res

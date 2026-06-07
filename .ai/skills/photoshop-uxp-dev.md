@@ -36,7 +36,7 @@ Layer direction: `panels` → `hooks` / `controllers` → `domain` + `io` → `a
 
 The plugin emits a manifest JSON conforming to `packages/models/schemas/psd_manifest.schema.json` alongside per-layer PNGs. The manifest is the only contract with the Blender importer - any new field must land in the schema first, then in the writer and the consumer in the same PR.
 
-Key fields on each entry: `kind` (`polygon` | `mesh` | `sprite_frame`), `name`, `path`, `position`, `size`, `z_order`, and optional `origin`, `blend_mode`, `subfolder`. Document-level optionals: `anchor` (set from PSD guides).
+Key fields on each entry: `kind` (`mesh` | `sprite`), `name`, `path`, `position`, `size`, `z_order`, and optional `origin`, `blend_mode`, `subfolder`. Document-level optionals: `anchor` (set from PSD guides).
 
 ## Bracket-tag taxonomy
 

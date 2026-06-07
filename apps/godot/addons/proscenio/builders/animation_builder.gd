@@ -71,7 +71,7 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: Proscen
 					(
 						(
 							"Proscenio: sprite '%s' is %s, not Sprite2D - sprite_frame "
-							+ "tracks only target sprites of type 'sprite_frame'."
+							+ "tracks only target sprite elements (Sprite2D)."
 						)
 						% [target, sprite.get_class()]
 					)

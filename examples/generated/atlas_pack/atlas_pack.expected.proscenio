@@ -20,7 +20,7 @@
       }
     ]
   },
-  "sprites": [
+  "elements": [
     {
       "name": "sprite_1",
       "bone": "root",

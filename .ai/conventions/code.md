@@ -45,7 +45,7 @@ GDScript 2.0 has full static typing. The plugin is 100% typed.
 ### Python (Blender addon, scripts)
 
 - Full type hints on every function signature.
-- `from __future__ import annotations` at the top of new files - with one carve-out: any class registered via `bpy.utils.register_class` (Operator, PropertyGroup, Panel, Header, etc.) that **declares `bpy.props.*Property` annotations and references TYPE_CHECKING-only types in sibling `ClassVar` annotations** must drop PEP 563 from that file. Blender 5.x calls `typing.get_type_hints(cls)` at register time and a single `NameError` from a TYPE_CHECKING-imported name aborts the whole annotation walk silently, so no bpy.props ever promotes to RNA. Import the referenced types at module top (not under `TYPE_CHECKING`) and document the constraint in the module docstring. See `apps/blender/operators/quick_armature.py` for the reference setup and `tests/BUGS_FOUND.md` post-mortem for the long-form rationale.
+- `from __future__ import annotations` at the top of new files - with one carve-out: any class registered via `bpy.utils.register_class` (Operator, PropertyGroup, Panel, Header, etc.) that **declares `bpy.props.*Property` annotations and references TYPE_CHECKING-only types in sibling `ClassVar` annotations** must drop PEP 563 from that file. Blender 5.x calls `typing.get_type_hints(cls)` at register time and a single `NameError` from a TYPE_CHECKING-imported name aborts the whole annotation walk silently, so no bpy.props ever promotes to RNA. Import the referenced types at module top (not under `TYPE_CHECKING`) and document the constraint in the module docstring. See `apps/blender/operators/quick_armature.py` for the reference setup and `specs/backlog-bugs-found.md` post-mortem for the long-form rationale.
 - Strict static analysis is part of CI; warnings fail the build. `Any` is allowed only at the `bpy` boundary, documented inline.
 - Prefer `@dataclass` / `TypedDict` over loose dicts when shape is known. Use `Literal[...]` over raw strings for closed value sets (track type, interpolation, severity, ...).
 
@@ -55,7 +55,7 @@ GDScript 2.0 has full static typing. The plugin is 100% typed.
 - React function components with hooks. No class components. One hook per file under a `useXxx` name.
 - Keep the panel a thin composition: panels and components render, hooks own state, `lib/` modules stay pure (no UXP API imports), `api/` is the single Photoshop-boundary tier (document/layer reads, notifications, batchPlay, file writes). Layered direction: `panels -> hooks -> api + lib` (components are leaf UI, utils are leaf helpers). Purity rule: nothing in `lib/` may import a UXP module; a hook or panel that needs the live document goes through `api/`, never `import { app } from "photoshop"` directly. The `@ts-nocheck` host shim is `src/entry.ts` (the only file exempt from the typed gate).
 - Validate cross-process payloads (manifest JSON) at the boundary with a schema-driven runtime check (ajv against the manifest schema). Treat schema mismatch as a hard fail.
-- Prefer discriminated unions over loose `string` tags for closed sets (`kind: "polygon" | "sprite_frame" | "mesh"`).
+- Prefer discriminated unions over loose `string` tags for closed sets (`kind: "mesh" | "sprite"`).
 
 ## Validation gates
 

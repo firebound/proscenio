@@ -34,7 +34,7 @@ def test_badge_fields_are_non_empty() -> None:
 
 
 def test_known_features_resolve_to_expected_status() -> None:
-    assert status_for("active_sprite") == FeatureStatus.GODOT_READY
+    assert status_for("active_element") == FeatureStatus.GODOT_READY
     assert status_for("drive_from_bone") == FeatureStatus.BLENDER_ONLY
     assert status_for("toggle_ik") == FeatureStatus.BLENDER_ONLY
     assert status_for("slot_system") == FeatureStatus.GODOT_READY
@@ -47,7 +47,7 @@ def test_unknown_feature_falls_back_to_blender_only() -> None:
 
 
 def test_badge_for_returns_renderable_metadata() -> None:
-    badge = badge_for("active_sprite")
+    badge = badge_for("active_element")
     assert badge.icon == "CHECKMARK"
     assert badge.short_label == "godot-ready"
 
@@ -55,7 +55,7 @@ def test_badge_for_returns_renderable_metadata() -> None:
 def test_panel_subpanel_ids_all_have_status() -> None:
     """Every subpanel-header feature id the panel module touches must exist."""
     panel_subpanel_ids = [
-        "active_sprite",
+        "active_element",
         "skeleton",
         "animation",
         "atlas",

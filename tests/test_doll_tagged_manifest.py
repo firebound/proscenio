@@ -46,8 +46,8 @@ def manifest(manifest_raw: object) -> psd_manifest.PsdManifest:
     return psd_manifest.parse(manifest_raw)
 
 
-def test_format_version_is_v2(manifest: psd_manifest.PsdManifest) -> None:
-    assert manifest.format_version == 2
+def test_format_version_is_v1(manifest: psd_manifest.PsdManifest) -> None:
+    assert manifest.format_version == 1
 
 
 def test_canvas_size_matches_doll_psd(manifest: psd_manifest.PsdManifest) -> None:
@@ -68,7 +68,7 @@ def test_anchor_is_set_from_guides(manifest: psd_manifest.PsdManifest) -> None:
 
 
 def test_entry_count_matches_oracle(manifest: psd_manifest.PsdManifest) -> None:
-    # 22 baseline layers + 4 blend-stack duplicates + 1 sprite_frame
+    # 22 baseline layers + 4 blend-stack duplicates + 1 sprite
     # (brow_states absorbs the nested merge frames into a single entry)
     # - head 2 + Camada 1 skipped during export.
     # See 02_photoshop_setup/README.md::Tags exercised for the breakdown.
@@ -77,10 +77,10 @@ def test_entry_count_matches_oracle(manifest: psd_manifest.PsdManifest) -> None:
 
 def test_kind_distribution(manifest: psd_manifest.PsdManifest) -> None:
     kinds = [L.kind for L in manifest.layers]
-    assert kinds.count("mesh") == 2  # chest + chest mult
-    assert kinds.count("sprite_frame") == 1  # brow_states
-    # Rest are polygon (default kind).
-    assert kinds.count("polygon") == len(manifest.layers) - 3
+    assert kinds.count("sprite") == 1  # brow_states
+    # Everything else collapses to mesh (the Polygon2D kind); the old
+    # polygon + deformable-mesh hints both land on `mesh` now.
+    assert kinds.count("mesh") == len(manifest.layers) - 1
 
 
 def test_blend_modes_round_tripped(manifest: psd_manifest.PsdManifest) -> None:
@@ -107,9 +107,9 @@ def test_origins_from_explicit_and_marker(
     # Explicit [origin:X,Y]
     assert by_name["arm.R"].origin == [10, 20]
     assert by_name["belly"].origin == [532, 333]
-    # Sprite_frame origin from the [origin] marker inside the spritesheet group
+    # Sprite origin from the [origin] marker inside the spritesheet group
     brow_states = by_name["brow_states"]
-    assert brow_states.kind == "sprite_frame"
+    assert brow_states.kind == "sprite"
     assert brow_states.origin is not None
 
 
@@ -118,7 +118,7 @@ def test_path_tag_overrides_filename(manifest: psd_manifest.PsdManifest) -> None
     # arm.R carries [path:test] - the leaf filename becomes `test.png`,
     # not `arm_R.png`.
     arm = by_name["arm.R"]
-    assert isinstance(arm, psd_manifest.PolygonLayer)
+    assert isinstance(arm, psd_manifest.MeshLayer)
     assert arm.path.endswith("/test.png")
 
 
@@ -133,10 +133,10 @@ def test_scale_tag_applied_to_size(manifest: psd_manifest.PsdManifest) -> None:
     assert arm.size[1] in (634, 635)
 
 
-def test_sprite_frame_has_frames(manifest: psd_manifest.PsdManifest) -> None:
+def test_sprite_has_frames(manifest: psd_manifest.PsdManifest) -> None:
     by_name = {L.name: L for L in manifest.layers}
     brow_states = by_name["brow_states"]
-    assert isinstance(brow_states, psd_manifest.SpriteFrameLayer)
+    assert isinstance(brow_states, psd_manifest.SpriteLayer)
     # Nested `1.1 [merge]` inside `1 [merge]` collapses into the parent
     # frame; only `0` and `1` survive as top-level numeric children.
     assert len(brow_states.frames) == 2

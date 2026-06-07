@@ -26,29 +26,11 @@ export type Target = string;
 export type Type = "bone_transform" | "sprite_frame" | "slot_attachment" | "visibility";
 export type Tracks = Track[];
 export type Atlas = string | null;
-/**
- * Bump on any breaking change to the shape of this document.
- */
-export type FormatVersion = 1;
+export type Bone = string | null;
 export type Name1 = string;
-export type PixelsPerUnit = number;
-export type Length1 = number | null;
-export type Name2 = string;
-export type Parent = string | null;
-export type Position1 = [number, number] | null;
-export type Rotation1 = number | null;
-export type Scale1 = [number, number] | null;
-export type Bones = Bone[];
-export type Slots = Slot[] | null;
-export type Attachments = string[];
-export type Bone1 = string | null;
-export type Default = string | null;
-export type Name3 = string;
-export type Bone2 = string | null;
-export type Name4 = string;
 export type Polygon = [number, number][];
 /**
- * Optional per-sprite texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each sprite picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.
+ * Optional per-element texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each element picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.
  */
 export type Texture = string | null;
 /**
@@ -59,28 +41,28 @@ export type Texture = string | null;
  */
 export type TextureRegion = [number, number, number, number];
 /**
- * Discriminator. Optional; absence means `polygon`.
+ * Discriminator. Optional; absence means `mesh`.
  */
-export type Type1 = "polygon";
+export type Type1 = "mesh";
 export type Uv = [number, number][];
 export type Weights = Weight[] | null;
-export type Bone3 = string;
+export type Bone1 = string;
 export type Values = number[];
-export type Bone4 = string;
+export type Bone2 = string;
 export type Centered = boolean;
 /**
  * Initial frame index (row-major). Animation tracks override at runtime.
  */
 export type Frame1 = number;
 export type Hframes = number;
-export type Name5 = string;
+export type Name2 = string;
 /**
  * @minItems 2
  * @maxItems 2
  */
 export type Offset = [number, number];
 /**
- * Optional per-sprite texture filename, resolved relative to the .proscenio document. Mirrors the polygon-sprite field. Importers fall back to the top-level `atlas` field when absent.
+ * Optional per-element texture filename, resolved relative to the .proscenio document. Mirrors the mesh-element field. Importers fall back to the top-level `atlas` field when absent.
  */
 export type Texture1 = string | null;
 /**
@@ -90,9 +72,27 @@ export type TextureRegion1 = [number, number, number, number] | null;
 /**
  * Discriminator. Required and constant.
  */
-export type Type2 = "sprite_frame";
+export type Type2 = "sprite";
 export type Vframes = number;
-export type Sprites = (PolygonSprite | SpriteFrameSprite)[];
+export type Elements = (MeshElement | SpriteElement)[];
+/**
+ * Bump on any breaking change to the shape of this document.
+ */
+export type FormatVersion = 1;
+export type Name3 = string;
+export type PixelsPerUnit = number;
+export type Length1 = number | null;
+export type Name4 = string;
+export type Parent = string | null;
+export type Position1 = [number, number] | null;
+export type Rotation1 = number | null;
+export type Scale1 = [number, number] | null;
+export type Bones = Bone3[];
+export type Slots = Slot[] | null;
+export type Attachments = string[];
+export type Bone4 = string | null;
+export type Default = string | null;
+export type Name5 = string;
 
 /**
  * Root of a .proscenio v1 document.
@@ -103,12 +103,12 @@ export type Sprites = (PolygonSprite | SpriteFrameSprite)[];
 export interface ProscenioCharacter {
   animations?: Animations;
   atlas?: Atlas;
+  elements: Elements;
   format_version: FormatVersion;
-  name: Name1;
+  name: Name3;
   pixels_per_unit: PixelsPerUnit;
   skeleton: Skeleton;
   slots?: Slots;
-  sprites: Sprites;
 }
 export interface Animation {
   length: Length;
@@ -131,36 +131,18 @@ export interface Key {
   time: Time;
   visible?: Visible;
 }
-export interface Skeleton {
-  bones: Bones;
-}
-export interface Bone {
-  length?: Length1;
-  name: Name2;
-  parent?: Parent;
-  position?: Position1;
-  rotation?: Rotation1;
-  scale?: Scale1;
-}
-export interface Slot {
-  attachments: Attachments;
-  bone?: Bone1;
-  default?: Default;
-  name: Name3;
-}
 /**
- * Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.
+ * Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.
  *
- * Default sprite kind when ``type`` is omitted (backwards-compatible
- * with v1 documents).
+ * Default element kind when ``type`` is omitted.
  *
  * Field declaration order mirrors the writer's dict insertion order
  * so ``model_dump_json(exclude_unset=True)`` reproduces the golden
  * fixtures byte-for-byte once the writer migrates.
  */
-export interface PolygonSprite {
-  bone?: Bone2;
-  name: Name4;
+export interface MeshElement {
+  bone?: Bone;
+  name: Name1;
   polygon: Polygon;
   texture?: Texture;
   texture_region: TextureRegion;
@@ -169,28 +151,47 @@ export interface PolygonSprite {
   weights?: Weights;
 }
 export interface Weight {
-  bone: Bone3;
+  bone: Bone1;
   values: Values;
 }
 /**
- * Spritesheet sprite rendered as a Godot Sprite2D.
+ * Rigid sprite rendered as a Godot Sprite2D.
  *
  * ``frame`` indexes into an ``hframes`` x ``vframes`` grid carved
- * out of the atlas (or out of ``texture_region`` when present).
+ * out of the atlas (or out of ``texture_region`` when present). A
+ * single-frame sprite (``hframes`` = ``vframes`` = 1) is the static
+ * case.
  *
  * Field declaration order mirrors the writer's dict insertion order
  * so ``model_dump_json(exclude_unset=True)`` reproduces the golden
  * fixtures byte-for-byte once the writer migrates.
  */
-export interface SpriteFrameSprite {
-  bone: Bone4;
+export interface SpriteElement {
+  bone: Bone2;
   centered?: Centered;
   frame?: Frame1;
   hframes: Hframes;
-  name: Name5;
+  name: Name2;
   offset?: Offset;
   texture?: Texture1;
   texture_region?: TextureRegion1;
   type: Type2;
   vframes: Vframes;
+}
+export interface Skeleton {
+  bones: Bones;
+}
+export interface Bone3 {
+  length?: Length1;
+  name: Name4;
+  parent?: Parent;
+  position?: Position1;
+  rotation?: Rotation1;
+  scale?: Scale1;
+}
+export interface Slot {
+  attachments: Attachments;
+  bone?: Bone4;
+  default?: Default;
+  name: Name5;
 }

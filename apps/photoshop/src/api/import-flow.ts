@@ -15,7 +15,7 @@ import type { PsDocument } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import { moveLayerIntoGroup, placePngAt } from "./png-placer";
-import type { Manifest, ManifestEntry, PolygonEntry, SpriteFrameEntry } from "../lib/manifest";
+import type { Manifest, ManifestEntry, MeshEntry, SpriteEntry } from "../lib/manifest";
 
 export interface ImportFlowResult {
     kind: "ok" | "failed";
@@ -83,21 +83,21 @@ async function stampEntry(
     folder: UxpFolder,
     warnings: string[],
 ): Promise<boolean> {
-    if (entry.kind === "sprite_frame") {
-        return stampSpriteFrame(doc, entry, folder, warnings);
+    if (entry.kind === "sprite") {
+        return stampSprite(doc, entry, folder, warnings);
     }
-    return stampPolygon(doc, entry, folder, warnings);
+    return stampMesh(doc, entry, folder, warnings);
 }
 
-async function stampPolygon(
+async function stampMesh(
     doc: PsDocument,
-    entry: PolygonEntry,
+    entry: MeshEntry,
     folder: UxpFolder,
     warnings: string[],
 ): Promise<boolean> {
     const pngFile = await resolveRelativeFile(folder, entry.path);
     if (pngFile === null) {
-        warnings.push(`polygon ${entry.name}: missing PNG at ${entry.path}`);
+        warnings.push(`mesh ${entry.name}: missing PNG at ${entry.path}`);
         return false;
     }
     const result = await placePngAt(
@@ -110,21 +110,21 @@ async function stampPolygon(
     );
     if (result.warning !== undefined) warnings.push(result.warning);
     if (result.layer === null) {
-        warnings.push(`polygon ${entry.name}: placement failed`);
+        warnings.push(`mesh ${entry.name}: placement failed`);
         return false;
     }
     result.layer.name = entry.name;
     return true;
 }
 
-async function stampSpriteFrame(
+async function stampSprite(
     doc: PsDocument,
-    entry: SpriteFrameEntry,
+    entry: SpriteEntry,
     folder: UxpFolder,
     warnings: string[],
 ): Promise<boolean> {
-    if (entry.frames.length < 2) {
-        warnings.push(`sprite_frame ${entry.name}: needs at least 2 frames; skipped`);
+    if (entry.frames.length < 1) {
+        warnings.push(`sprite ${entry.name}: needs at least 1 frame; skipped`);
         return false;
     }
     const group = await doc.createLayerGroup({ name: entry.name });
@@ -132,7 +132,7 @@ async function stampSpriteFrame(
     for (const frame of entry.frames) {
         const pngFile = await resolveRelativeFile(folder, frame.path);
         if (pngFile === null) {
-            warnings.push(`sprite_frame ${entry.name} frame ${frame.index}: missing PNG at ${frame.path}`);
+            warnings.push(`sprite ${entry.name} frame ${frame.index}: missing PNG at ${frame.path}`);
             continue;
         }
         const result = await placePngAt(
@@ -151,7 +151,7 @@ async function stampSpriteFrame(
     }
     if (placed === 0) {
         await group.delete();
-        warnings.push(`sprite_frame ${entry.name}: zero frames placed; group removed`);
+        warnings.push(`sprite ${entry.name}: zero frames placed; group removed`);
         return false;
     }
     return true;

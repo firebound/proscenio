@@ -164,9 +164,9 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     ) -> bool:
         """Apply the packed atlas to a single sprite mesh."""
         props = getattr(obj, "proscenio", None)
-        sprite_type = str(getattr(props, "sprite_type", "polygon")) if props else "polygon"
+        element_type = str(getattr(props, "element_type", "mesh")) if props else "mesh"
         rewrote = self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
-        if sprite_type == "sprite_frame" and props is not None:
+        if element_type == "sprite" and props is not None:
             self._apply_sprite_frame(props, placement, atlas_w, atlas_h)
             return True
         return rewrote

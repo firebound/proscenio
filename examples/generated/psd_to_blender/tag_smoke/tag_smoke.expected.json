@@ -1,5 +1,5 @@
 {
-  "format_version": 2,
+  "format_version": 1,
   "doc": "tag_smoke.psd",
   "size": [
     256,
@@ -8,7 +8,7 @@
   "pixels_per_unit": 100,
   "layers": [
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "hair",
       "path": "images/hair.png",
       "position": [
@@ -22,7 +22,7 @@
       "z_order": 0
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "outer",
       "path": "images/outer.png",
       "position": [
@@ -36,7 +36,7 @@
       "z_order": 1
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "body__torso",
       "path": "images/body/body__torso.png",
       "position": [
@@ -82,7 +82,7 @@
       "subfolder": "body"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "teste__arm",
       "path": "images/teste/weapon.png",
       "position": [
@@ -101,7 +101,7 @@
       "subfolder": "teste"
     },
     {
-      "kind": "sprite_frame",
+      "kind": "sprite",
       "name": "eyes",
       "position": [
         90,
@@ -128,7 +128,7 @@
       ]
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eye_L_scrn",
       "path": "images/eye_L_scrn.png",
       "position": [
@@ -143,7 +143,7 @@
       "blend_mode": "screen"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "eye_R_add",
       "path": "images/eye_R_add.png",
       "position": [
@@ -158,7 +158,7 @@
       "blend_mode": "additive"
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "hands__hand_L",
       "path": "images/hands__hand_L.png",
       "position": [
@@ -172,7 +172,7 @@
       "z_order": 9
     },
     {
-      "kind": "polygon",
+      "kind": "mesh",
       "name": "hands__hand_R",
       "path": "images/hands__hand_R.png",
       "position": [

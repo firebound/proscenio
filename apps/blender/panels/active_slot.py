@@ -11,15 +11,15 @@ from ._helpers import draw_subpanel_header
 
 
 def _attachment_kind_for(mesh_obj: bpy.types.Object) -> str:
-    """Read the kind ("polygon" / "sprite_frame") of a slot attachment mesh."""
+    """Read the kind ("mesh" / "sprite") of a slot attachment mesh."""
     props = getattr(mesh_obj, "proscenio", None)
     if props is None:
-        return "polygon"
-    return str(getattr(props, "sprite_type", "polygon"))
+        return "mesh"
+    return str(getattr(props, "element_type", "mesh"))
 
 
 def _attachment_icon_for(kind: str) -> str:
-    return "MESH_DATA" if kind == "polygon" else "IMAGE_DATA"
+    return "MESH_DATA" if kind == "mesh" else "IMAGE_DATA"
 
 
 class PROSCENIO_PT_active_slot(bpy.types.Panel):

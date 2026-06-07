@@ -1,8 +1,8 @@
 @tool
 extends RefCounted
 
-# Shared sprite-attachment helpers for polygon_builder.gd and
-# sprite_frame_builder.gd: per-sprite texture resolution and slot / bone parent
+# Shared sprite-attachment helpers for mesh_builder.gd and
+# sprite_builder.gd: per-element texture resolution and slot / bone parent
 # routing. Both builders carried verbatim copies of these before the extraction.
 
 const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")

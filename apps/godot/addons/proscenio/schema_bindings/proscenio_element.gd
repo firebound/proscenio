@@ -3,19 +3,19 @@
 # `python -m proscenio_codegen godot`.
 
 @tool
-class_name ProscenioLayer extends Resource
+class_name ProscenioElement extends Resource
 
 # Discriminated union dispatcher. Inspect the input dictionary's
-# `kind` key and delegate to the matching variant
+# `type` key and delegate to the matching variant
 # class. Used by the importer when building child elements/layers from
 # the parsed JSON document.
 
 
-static func from_dict(data: Dictionary) -> ProscenioLayer:
-	var tag: String = String(data.get("kind", ""))
+static func from_dict(data: Dictionary) -> ProscenioElement:
+	var tag: String = String(data.get("type", "mesh"))
 	if tag == "mesh":
-		return ProscenioMeshLayer.from_dict(data)
+		return ProscenioMeshElement.from_dict(data)
 	if tag == "sprite":
-		return ProscenioSpriteLayer.from_dict(data)
-	push_error("unknown ProscenioLayer tag: " + tag)
+		return ProscenioSpriteElement.from_dict(data)
+	push_error("unknown ProscenioElement tag: " + tag)
 	return null

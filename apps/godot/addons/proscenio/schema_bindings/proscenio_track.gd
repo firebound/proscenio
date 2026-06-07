@@ -23,6 +23,6 @@ static func from_dict(data: Dictionary) -> ProscenioTrack:
 		res.target = String(data["target"])
 		res._set_fields.append("target")
 	if data.has("keys") and data["keys"] != null:
-		res.keys = ProscenioParseHelpers._parse_array(ProscenioKey, data["keys"])
+		res.keys.assign(ProscenioParseHelpers._parse_array(ProscenioKey, data["keys"]))
 		res._set_fields.append("keys")
 	return res

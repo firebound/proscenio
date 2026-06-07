@@ -38,14 +38,14 @@ export const RevealOutputSection: React.FC<Props> = ({ preview, activeLayerPath,
         );
     }
 
-    const polygon = entry.kind === "sprite_frame" ? null : entry;
+    const mesh = entry.kind === "sprite" ? null : entry;
     const pngPaths = collectPaths(entry);
     const folderPath = folder?.nativePath ?? null;
 
     return (
-        <Accordion title="Selected entry" badge={entry.kind === "sprite_frame" ? "sf" : entry.kind}>
+        <Accordion title="Selected entry" badge={entry.kind === "sprite" ? "spr" : entry.kind}>
             <KeyValueRow label="name" value={entry.name} mono />
-            {polygon !== null && <KeyValueRow label="manifest" value={polygon.path} mono />}
+            {mesh !== null && <KeyValueRow label="manifest" value={mesh.path} mono />}
             <KeyValueRow label="position" value={`${entry.position[0]}, ${entry.position[1]} px`} mono />
             <KeyValueRow label="size" value={`${entry.size[0]} x ${entry.size[1]} px`} mono />
             {entry.origin != null && (
@@ -53,7 +53,7 @@ export const RevealOutputSection: React.FC<Props> = ({ preview, activeLayerPath,
             )}
             {entry.blend_mode != null && <KeyValueRow label="blend" value={entry.blend_mode} />}
             {entry.subfolder != null && <KeyValueRow label="subfolder" value={entry.subfolder} mono />}
-            {entry.kind === "sprite_frame" && (
+            {entry.kind === "sprite" && (
                 <KeyValueRow label="frames" value={String(entry.frames.length)} />
             )}
             <div className="reveal-paths">
@@ -83,6 +83,6 @@ function findMatchingEntry(
 }
 
 function collectPaths(entry: ManifestEntry): string[] {
-    if (entry.kind === "sprite_frame") return entry.frames.map((f) => f.path);
+    if (entry.kind === "sprite") return entry.frames.map((f) => f.path);
     return [entry.path];
 }

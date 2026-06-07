@@ -10,8 +10,8 @@ Prose is English. Technical terms keep their canonical spelling (`Skeleton2D`, `
 
 Inline references to a tool's UI use a fixed decorator so a reader tells chrome from clickable controls at a glance. The set is intentionally small and renders the same on the docs site and on GitHub:
 
-- **Panel / subpanel / tab**: bold - the **Active Sprite** subpanel, the **Proscenio** tab.
-- **Button / menu item / field / property / enum value**: inline code - click `Bind to Picker Armature`, set `hframes`, pick `Polygon`.
+- **Panel / subpanel / tab**: bold - the **Active Element** subpanel, the **Proscenio** tab.
+- **Button / menu item / field / property / enum value**: inline code - click `Bind to Picker Armature`, set `hframes`, pick `Mesh`.
 - **Menu path**: inline code joined with `>` - `Skeleton > Quick Armature`, `Export > Validate`.
 - **Keyboard key or chord**: the `<kbd>` element - <kbd>N</kbd>, <kbd>Ctrl+P</kbd>, <kbd>Shift</kbd> + <kbd>LMB</kbd> drag.
 - **Application modes and named views** stay plain prose: Edit Mode, Pose Mode, Front Orthographic.
@@ -81,7 +81,7 @@ Scenarios are numbered within a section when ordering matters. The title carries
 
 ## Bug reports lead with the symptom
 
-`tests/BUGS_FOUND.md` and inline bug notes start with a one-line description of what the user sees, then context:
+`specs/backlog-bugs-found.md` and inline bug notes start with a one-line description of what the user sees, then context:
 
 ```markdown
 ### Polygon at world origin instead of slot location

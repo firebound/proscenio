@@ -1,12 +1,11 @@
-"""Unit tests for the PSD manifest v2 reader.
+"""Unit tests for the PSD manifest reader.
 
 Pure Python; no Blender. Covers the pydantic-driven parser that ships
 in Blender's bundled Python (the dedicated CI ``validate-schema`` job
 covers strict JSON Schema enforcement separately).
 
-v1 manifests (pre-the photoshop tag system, JSX-era exporter) are no
-longer supported - v1 was retired with the JSX exporter and the pydantic
-model now constrains ``format_version`` to ``2``.
+The pydantic model constrains ``format_version`` to ``1``; documents
+declaring any other version are rejected up front.
 
 Run from the repo root::
 
@@ -28,21 +27,21 @@ from core.psd import psd_manifest  # noqa: E402
 from core.psd.psd_manifest import (  # noqa: E402
     LoadedManifest,
     ManifestError,
-    PolygonLayer,
+    MeshLayer,
     PsdManifest,
-    SpriteFrameLayer,
+    SpriteLayer,
 )
 
 
 def _valid_doc() -> dict[str, object]:
     return {
-        "format_version": 2,
+        "format_version": 1,
         "doc": "doll.psd",
         "size": [1024, 1024],
         "pixels_per_unit": 100,
         "layers": [
             {
-                "kind": "polygon",
+                "kind": "mesh",
                 "name": "torso",
                 "path": "doll/images/torso.png",
                 "position": [120, 340],
@@ -50,7 +49,7 @@ def _valid_doc() -> dict[str, object]:
                 "z_order": 0,
             },
             {
-                "kind": "sprite_frame",
+                "kind": "sprite",
                 "name": "eye",
                 "position": [350, 200],
                 "size": [32, 32],
@@ -67,24 +66,24 @@ def _valid_doc() -> dict[str, object]:
 def test_parse_returns_pydantic_manifest_with_typed_layers() -> None:
     manifest = psd_manifest.parse(_valid_doc())
     assert isinstance(manifest, PsdManifest)
-    assert manifest.format_version == 2
+    assert manifest.format_version == 1
     assert manifest.doc == "doll.psd"
     assert manifest.size == [1024, 1024]
     assert manifest.pixels_per_unit == pytest.approx(100.0)
     assert len(manifest.layers) == 2
 
-    polygon, sprite_frame = manifest.layers
-    assert isinstance(polygon, PolygonLayer)
-    assert polygon.name == "torso"
-    assert polygon.position == [120, 340]
-    assert polygon.size == [180, 240]
-    assert polygon.z_order == 0
+    mesh, sprite = manifest.layers
+    assert isinstance(mesh, MeshLayer)
+    assert mesh.name == "torso"
+    assert mesh.position == [120, 340]
+    assert mesh.size == [180, 240]
+    assert mesh.z_order == 0
 
-    assert isinstance(sprite_frame, SpriteFrameLayer)
-    assert sprite_frame.name == "eye"
-    assert len(sprite_frame.frames) == 2
-    assert sprite_frame.frames[0].index == 0
-    assert sprite_frame.frames[0].path == "doll/images/eye/0.png"
+    assert isinstance(sprite, SpriteLayer)
+    assert sprite.name == "eye"
+    assert len(sprite.frames) == 2
+    assert sprite.frames[0].index == 0
+    assert sprite.frames[0].path == "doll/images/eye/0.png"
 
 
 def test_load_reads_from_disk_and_carries_source_path(tmp_path: Path) -> None:
@@ -124,16 +123,16 @@ def test_reject_unsupported_format_version() -> None:
         psd_manifest.parse(doc)
 
 
-def test_reject_legacy_v1_format_version() -> None:
-    """v1 manifests are retired with the JSX exporter; pydantic constrains
-    ``format_version`` to ``2`` and rejects v1 documents up front."""
+def test_reject_legacy_v2_format_version() -> None:
+    """The pre-rename v2 manifest is retired; pydantic constrains
+    ``format_version`` to ``1`` and rejects v2 documents up front."""
     doc = _valid_doc()
-    doc["format_version"] = 1
+    doc["format_version"] = 2
     with pytest.raises(ManifestError, match="format_version"):
         psd_manifest.parse(doc)
 
 
-def test_v2_accepts_anchor_and_per_layer_options() -> None:
+def test_accepts_anchor_and_per_layer_options() -> None:
     doc = _valid_doc()
     doc["anchor"] = [512, 768]
     layers = doc["layers"]
@@ -143,18 +142,17 @@ def test_v2_accepts_anchor_and_per_layer_options() -> None:
     first["origin"] = [200, 400]
     first["blend_mode"] = "multiply"
     first["subfolder"] = "body/torso"
-    first["kind"] = "mesh"
     manifest = psd_manifest.parse(doc)
     assert manifest.anchor == [512, 768]
-    polygon = manifest.layers[0]
-    assert isinstance(polygon, PolygonLayer)
-    assert polygon.kind == "mesh"
-    assert polygon.origin == [200, 400]
-    assert polygon.blend_mode == "multiply"
-    assert polygon.subfolder == "body/torso"
+    mesh = manifest.layers[0]
+    assert isinstance(mesh, MeshLayer)
+    assert mesh.kind == "mesh"
+    assert mesh.origin == [200, 400]
+    assert mesh.blend_mode == "multiply"
+    assert mesh.subfolder == "body/torso"
 
 
-def test_v2_rejects_invalid_blend_mode() -> None:
+def test_rejects_invalid_blend_mode() -> None:
     doc = _valid_doc()
     layers = doc["layers"]
     assert isinstance(layers, list)
@@ -190,26 +188,29 @@ def test_reject_unknown_layer_kind() -> None:
         psd_manifest.parse(doc)
 
 
-def test_reject_polygon_with_extra_field() -> None:
+def test_reject_mesh_with_extra_field() -> None:
     doc = _valid_doc()
     layers = doc["layers"]
     assert isinstance(layers, list)
     first = layers[0]
     assert isinstance(first, dict)
-    first["frames"] = []  # frames is illegal on polygon
+    first["frames"] = []  # frames is illegal on mesh
     with pytest.raises(ManifestError):
         psd_manifest.parse(doc)
 
 
-def test_reject_sprite_frame_with_one_frame() -> None:
+def test_accepts_single_frame_sprite() -> None:
+    """A `[sprite]` layer yields one frame (the static sprite case)."""
     doc = _valid_doc()
     layers = doc["layers"]
     assert isinstance(layers, list)
     second = layers[1]
     assert isinstance(second, dict)
     second["frames"] = [{"index": 0, "path": "x.png"}]
-    with pytest.raises(ManifestError, match="frames"):
-        psd_manifest.parse(doc)
+    manifest = psd_manifest.parse(doc)
+    sprite = manifest.layers[1]
+    assert isinstance(sprite, SpriteLayer)
+    assert len(sprite.frames) == 1
 
 
 def test_reject_negative_z_order() -> None:

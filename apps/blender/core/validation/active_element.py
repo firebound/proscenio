@@ -1,8 +1,8 @@
-"""Active-sprite validation: cheap structural checks for inline panel feedback."""
+"""Active-element validation: cheap structural checks for inline panel feedback."""
 
 from __future__ import annotations
 
-from ._shared import read_int, read_sprite_type
+from ._shared import read_element_type, read_int
 from .issue import Issue
 
 
@@ -10,7 +10,7 @@ def _name_of(obj: object) -> str:
     return str(getattr(obj, "name", ""))
 
 
-def validate_active_sprite(obj: object) -> list[Issue]:
+def validate_active_element(obj: object) -> list[Issue]:
     """Return per-active-object issues. Cheap - runs every panel redraw.
 
     ``obj`` is a ``bpy.types.Object``; typed loosely to keep the
@@ -20,18 +20,18 @@ def validate_active_sprite(obj: object) -> list[Issue]:
         return []
 
     issues: list[Issue] = []
-    sprite_type = read_sprite_type(obj)
+    element_type = read_element_type(obj)
     name = _name_of(obj)
 
-    if sprite_type == "sprite_frame":
-        issues.extend(_validate_sprite_frame_fields(obj, name))
-    elif sprite_type == "polygon":
-        issues.extend(_validate_polygon_mesh(obj, name))
+    if element_type == "sprite":
+        issues.extend(_validate_sprite_fields(obj, name))
+    elif element_type == "mesh":
+        issues.extend(_validate_mesh(obj, name))
     else:
         issues.append(
             Issue(
                 "error",
-                f"unknown sprite type {sprite_type!r} (expected 'polygon' or 'sprite_frame')",
+                f"unknown element type {element_type!r} (expected 'mesh' or 'sprite')",
                 name,
             )
         )
@@ -39,20 +39,20 @@ def validate_active_sprite(obj: object) -> list[Issue]:
     return issues
 
 
-def _validate_sprite_frame_fields(obj: object, name: str) -> list[Issue]:
+def _validate_sprite_fields(obj: object, name: str) -> list[Issue]:
     issues: list[Issue] = []
     hframes = read_int(obj, "hframes", "proscenio_hframes", 0)
     vframes = read_int(obj, "vframes", "proscenio_vframes", 0)
     if hframes < 1:
-        issues.append(Issue("error", "sprite_frame needs hframes >= 1", name))
+        issues.append(Issue("error", "sprite needs hframes >= 1", name))
     if vframes < 1:
-        issues.append(Issue("error", "sprite_frame needs vframes >= 1", name))
+        issues.append(Issue("error", "sprite needs vframes >= 1", name))
     return issues
 
 
-def _validate_polygon_mesh(obj: object, name: str) -> list[Issue]:
+def _validate_mesh(obj: object, name: str) -> list[Issue]:
     mesh = getattr(obj, "data", None)
     polygons = getattr(mesh, "polygons", None) if mesh is not None else None
     if not polygons:
-        return [Issue("warning", "polygon sprite mesh has no polygons", name)]
+        return [Issue("warning", "mesh element has no polygons", name)]
     return []

@@ -20,7 +20,7 @@
       }
     ]
   },
-  "sprites": [
+  "elements": [
     {
       "name": "arm",
       "bone": "arm",

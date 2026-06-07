@@ -30,8 +30,8 @@ describe("writeLayerName", () => {
         expect(out).toBe("body [ignore] [merge] [mesh]");
     });
 
-    it("emits [spritesheet] for sprite_frame kind", () => {
-        expect(writeLayerName("blink", { kind: "sprite_frame" })).toBe("blink [spritesheet]");
+    it("emits [sprite] for sprite kind", () => {
+        expect(writeLayerName("blink", { kind: "sprite" })).toBe("blink [sprite]");
     });
 
     it("formats folder + path + blend + scale", () => {
@@ -62,7 +62,7 @@ describe("writeLayerName round-trips through parseLayerName", () => {
     const cases: { name: string; tags: TagBag }[] = [
         { name: "ignored", tags: { ignore: true } },
         { name: "body", tags: { merge: true, kind: "mesh" } },
-        { name: "blink", tags: { kind: "sprite_frame" } },
+        { name: "blink", tags: { kind: "sprite" } },
         { name: "eye", tags: { folder: "eyes", blend: "multiply", scale: 2 } },
         { name: "pivot", tags: { origin: [10, 20] } },
         { name: "head", tags: { originMarker: true } },

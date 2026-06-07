@@ -1,33 +1,31 @@
 @tool
 extends RefCounted
 
-# Attaches Sprite2D-backed sprites declared as `type: "sprite_frame"` in the
-# .proscenio document. Companion of polygon_builder.gd - each builder
+# Attaches Sprite2D-backed sprite elements (`type: "sprite"`) in the
+# .proscenio document. Companion of mesh_builder.gd - each builder
 # discriminator-filters its own kind so importer.gd can call both blindly.
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
 const SpriteAttachUtil := preload("res://addons/proscenio/builders/sprite_attach_util.gd")
 
 
-static func attach_sprites(
+static func attach_elements(
 	skeleton: Skeleton2D,
-	sprites: Array[ProscenioSprite],
+	elements: Array[ProscenioElement],
 	atlas: Texture2D,
 	slot_map: Dictionary = {},
 	source_dir: String = "",
 ) -> void:
-	if sprites == null:
+	if elements == null:
 		return
-	for sprite_res: ProscenioSprite in sprites:
-		if not (sprite_res is ProscenioSpriteFrameSprite):
+	for element: ProscenioElement in elements:
+		if not (element is ProscenioSpriteElement):
 			continue
-		_build_sprite_frame(
-			sprite_res as ProscenioSpriteFrameSprite, skeleton, atlas, slot_map, source_dir
-		)
+		_build_sprite(element as ProscenioSpriteElement, skeleton, atlas, slot_map, source_dir)
 
 
-static func _build_sprite_frame(
-	sprite_res: ProscenioSpriteFrameSprite,
+static func _build_sprite(
+	sprite_res: ProscenioSpriteElement,
 	skeleton: Skeleton2D,
 	atlas: Texture2D,
 	slot_map: Dictionary,
@@ -63,8 +61,8 @@ static func _build_sprite_frame(
 		)
 
 	var bone_name := NodeNameUtil.sanitize(sprite_res.bone)
-	# Slot routing (shared with polygon_builder via sprite_attach_util):
-	# sprite_frame attachments compose with polygon attachments under the same
+	# Slot routing (shared with mesh_builder via sprite_attach_util):
+	# sprite attachments compose with mesh attachments under the same
 	# slot Node2D; default-attachment starts visible, others hidden until the
 	# slot_attachment track (animation_builder.gd) flips them at runtime.
 	var sanitized_name := String(sprite.name)

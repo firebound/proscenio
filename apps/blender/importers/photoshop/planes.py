@@ -68,19 +68,19 @@ _BLEND_METHOD_BY_MODE: dict[str, str] = {
 
 
 @dataclass(frozen=True)
-class StampedSpriteFrame:
-    """Result of stamping one sprite_frame layer."""
+class StampedSprite:
+    """Result of stamping one sprite layer."""
 
     mesh_obj: bpy.types.Object
     spritesheet_path: Path
 
 
-def stamp_polygon(
-    layer: psd_manifest.PolygonLayer,
+def stamp_mesh(
+    layer: psd_manifest.MeshLayer,
     manifest: psd_manifest.LoadedManifest,
     armature_obj: bpy.types.Object,
 ) -> bpy.types.Object | None:
-    """Stamp a single-PNG polygon layer. Returns the mesh object."""
+    """Stamp a single-PNG mesh layer. Returns the mesh object."""
     image_path = psd_manifest.resolve_path(manifest, layer.path)
     if not image_path.exists():
         print(f"[psd_import] missing PNG for {layer.name}: {image_path}")
@@ -102,16 +102,16 @@ def stamp_polygon(
     _tag_origin(obj, layer.name)
     _tag_kind(obj, layer.kind)
     _tag_blend_mode(obj, layer.blend_mode)
-    _tag_sprite_type(obj, "polygon")
+    _tag_element_type(obj, "mesh")
     return obj
 
 
-def stamp_sprite_frame(
-    layer: psd_manifest.SpriteFrameLayer,
+def stamp_sprite(
+    layer: psd_manifest.SpriteLayer,
     manifest: psd_manifest.LoadedManifest,
     armature_obj: bpy.types.Object,
-) -> StampedSpriteFrame | None:
-    """Stamp a sprite_frame layer: compose spritesheet, build single mesh."""
+) -> StampedSprite | None:
+    """Stamp a sprite layer: compose spritesheet, build single mesh."""
     frame_paths = [psd_manifest.resolve_path(manifest, frame.path) for frame in layer.frames]
     missing = [p for p in frame_paths if not p.exists()]
     if missing:
@@ -141,10 +141,10 @@ def stamp_sprite_frame(
     _parent_to_root(obj, armature_obj)
     _link_to_subfolder(obj, layer.subfolder)
     _tag_origin(obj, layer.name)
-    _tag_kind(obj, "sprite_frame")
+    _tag_kind(obj, "sprite")
     _tag_blend_mode(obj, layer.blend_mode)
-    _tag_sprite_type(obj, "sprite_frame", hframes=sheet.hframes, vframes=sheet.vframes)
-    return StampedSpriteFrame(mesh_obj=obj, spritesheet_path=sheet_path)
+    _tag_element_type(obj, "sprite", hframes=sheet.hframes, vframes=sheet.vframes)
+    return StampedSprite(mesh_obj=obj, spritesheet_path=sheet_path)
 
 
 @dataclass(frozen=True)
@@ -176,7 +176,7 @@ def _layer_placement(
     it. Without an anchor the importer falls back to canvas-centered
     placement (legacy behaviour for fixtures authored before the photoshop tag system).
 
-    Known drift (photoshop-tag-system investigation, tests/BUGS_FOUND.md):
+    Known drift (photoshop-tag-system investigation, specs/backlog-bugs-found.md):
     on the Blender -> legacy JSX export -> Blender round-trip, the JSX
     exporter captures the alpha-aware bbox of each Workbench-rendered PNG which
     bleeds 1 px on every edge from anti-aliasing. The manifest's
@@ -409,23 +409,23 @@ def _tag_blend_mode(obj: bpy.types.Object, blend_mode: str | None) -> None:
     obj[PROSCENIO_BLEND_MODE] = blend_mode
 
 
-def _tag_sprite_type(
+def _tag_element_type(
     obj: bpy.types.Object,
-    sprite_type: str,
+    element_type: str,
     hframes: int = 1,
     vframes: int = 1,
 ) -> None:
-    """Tag the mesh's sprite type via PropertyGroup if present, custom-prop fallback."""
+    """Tag the mesh's element type via PropertyGroup if present, custom-prop fallback."""
     if hasattr(obj, "proscenio"):
-        obj.proscenio.sprite_type = sprite_type
+        obj.proscenio.element_type = element_type
         obj.proscenio.hframes = hframes
         obj.proscenio.vframes = vframes
-        if sprite_type == "sprite_frame":
+        if element_type == "sprite":
             obj.proscenio.frame = 0
             obj.proscenio.centered = True
-    obj["proscenio_type"] = sprite_type
+    obj["proscenio_type"] = element_type
     obj["proscenio_hframes"] = hframes
     obj["proscenio_vframes"] = vframes
-    if sprite_type == "sprite_frame":
+    if element_type == "sprite":
         obj["proscenio_frame"] = 0
         obj["proscenio_centered"] = True

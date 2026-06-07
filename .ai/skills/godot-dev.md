@@ -22,8 +22,8 @@ apps/godot/
 │   ├── reimporter.gd      reimport orchestration
 │   └── builders/          one file per concern
 │       ├── skeleton_builder.gd
-│       ├── polygon_builder.gd
-│       ├── sprite_frame_builder.gd
+│       ├── mesh_builder.gd
+│       ├── sprite_builder.gd
 │       ├── slot_builder.gd
 │       └── animation_builder.gd
 └── tests/                 GUT
@@ -38,22 +38,22 @@ apps/godot/
    - `Node2D` root.
    - `Skeleton2D` with the `Bone2D` hierarchy.
    - `Node2D` slot anchors under their bone, with attachments parented under them.
-   - `Polygon2D` for sprites of `type: "polygon"`.
-   - `Sprite2D` for sprites of `type: "sprite_frame"`.
+   - `Polygon2D` for `type: "mesh"` elements.
+   - `Sprite2D` for `type: "sprite"` elements.
    - `AnimationPlayer` with a default `AnimationLibrary`.
 5. The root is packed via `PackedScene` and saved with `ResourceSaver`.
 
 ## Choosing the rendering path
 
-The `.proscenio` schema uses a `type` discriminator per sprite. Pick by use case:
+The `.proscenio` schema uses a `type` discriminator per element. Pick by use case:
 
 | Use case | Pick | Why |
 | --- | --- | --- |
-| Cutout-style character with deformable mesh | `polygon` | `Polygon2D` carries vertices + UV; with a `weights` array the importer wires `Polygon2D.skeleton` and the mesh deforms with the rig |
-| Frame-by-frame pixel art animation | `sprite_frame` | `Sprite2D` with `hframes` / `vframes` / `frame` is the native idiom |
-| Particles, hit flashes, sparkles | `sprite_frame` | cheapest; no per-vertex geometry |
-| Sprite that only translates / rotates, no deformation | either | `sprite_frame` is lighter when no skinning is planned |
-| Static atlas region | `polygon` quad | explicit UV; no fake 1x1 frame grid |
+| Cutout-style character with deformable mesh | `mesh` | `Polygon2D` carries vertices + UV; with a `weights` array the importer wires `Polygon2D.skeleton` and the mesh deforms with the rig |
+| Frame-by-frame pixel art animation | `sprite` | `Sprite2D` with `hframes` / `vframes` / `frame` is the native idiom |
+| Particles, hit flashes, sparkles | `sprite` | cheapest; no per-vertex geometry |
+| Sprite that only translates / rotates, no deformation | either | `sprite` is lighter when no skinning is planned |
+| Static atlas region | `mesh` quad | explicit UV; no fake 1x1 frame grid |
 
 Mixing both kinds inside the same character is supported - a cutout body with a spritesheet face is idiomatic.
 
@@ -81,7 +81,7 @@ Renaming a Blender bone invalidates wrapper `NodePath`s referencing the old name
 
 ## Slots
 
-A slot is a sprite-swap group: one named anchor with N alternate attachments, exactly one visible at a time. Use it for hard texture swaps where `sprite_frame` indices or a driver are the wrong primitive (forearm front/back, equipment swap, expression swap).
+A slot is an element-swap group: one named anchor with N alternate attachments, exactly one visible at a time. Use it for hard texture swaps where sprite frame indices or a driver are the wrong primitive (forearm front/back, equipment swap, expression swap).
 
 **Schema sketch** (see `format-spec.md` for the full shape):
 

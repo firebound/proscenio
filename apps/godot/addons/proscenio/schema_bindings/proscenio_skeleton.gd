@@ -15,6 +15,6 @@ class_name ProscenioSkeleton extends Resource
 static func from_dict(data: Dictionary) -> ProscenioSkeleton:
 	var res := ProscenioSkeleton.new()
 	if data.has("bones") and data["bones"] != null:
-		res.bones = ProscenioParseHelpers._parse_array(ProscenioBone, data["bones"])
+		res.bones.assign(ProscenioParseHelpers._parse_array(ProscenioBone, data["bones"]))
 		res._set_fields.append("bones")
 	return res

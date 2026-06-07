@@ -31,25 +31,28 @@ static func _apply_skinning(
 		poly.add_bone(poly.get_path_to(bone_node), packed)
 
 
-static func attach_sprites(
+static func attach_elements(
 	skeleton: Skeleton2D,
-	sprites: Array[ProscenioSprite],
+	elements: Array[ProscenioElement],
 	atlas: Texture2D,
 	slot_map: Dictionary = {},
 	source_dir: String = "",
 ) -> void:
-	if sprites == null:
+	if elements == null:
 		return
-	for sprite_res: ProscenioSprite in sprites:
-		# Discriminator dispatch: this builder only handles polygon sprites.
-		# Default to ProscenioPolygonSprite when `type` is absent (v1 backwards-compat).
-		if not (sprite_res is ProscenioPolygonSprite):
+	for element: ProscenioElement in elements:
+		# Discriminator dispatch: this builder handles only ProscenioMeshElement.
+		# The "type absent -> mesh" default is applied upstream by
+		# ProscenioElement.from_dict (data.get("type", "mesh")), so a tag-less
+		# element has already parsed as ProscenioMeshElement by the time it
+		# reaches here - change the default there, not in this filter.
+		if not (element is ProscenioMeshElement):
 			continue
-		_build_polygon(sprite_res as ProscenioPolygonSprite, skeleton, atlas, slot_map, source_dir)
+		_build_mesh(element as ProscenioMeshElement, skeleton, atlas, slot_map, source_dir)
 
 
-static func _build_polygon(
-	sprite: ProscenioPolygonSprite,
+static func _build_mesh(
+	sprite: ProscenioMeshElement,
 	skeleton: Skeleton2D,
 	atlas: Texture2D,
 	slot_map: Dictionary,
@@ -86,9 +89,9 @@ static func _build_polygon(
 	var is_skinned: bool = weights != null and not weights.is_empty()
 
 	var bone_name := NodeNameUtil.sanitize(sprite.bone)
-	# Slot routing (shared with sprite_frame_builder via sprite_attach_util):
-	# slot attachment wins; otherwise rigid polygons parent to their Bone2D,
-	# while skinned polygons stay under the skeleton (weights drive deform).
+	# Slot routing (shared with sprite_builder via sprite_attach_util):
+	# slot attachment wins; otherwise rigid meshes parent to their Bone2D,
+	# while skinned meshes stay under the skeleton (weights drive deform).
 	# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set).
 	var sanitized_name := String(poly.name)
 	var routing := SpriteAttachUtil.resolve_sprite_parent(

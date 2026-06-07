@@ -19,9 +19,9 @@ Encoding choices:
   ``additionalProperties: false`` clause on every object in the
   schema; pydantic's default ``"ignore"`` would silently drop unknown
   fields.
-- ``Sprite`` is a discriminated union on the ``type`` literal. The
-  polygon variant defaults to ``"polygon"`` so pre-discriminator v1
-  documents (``type`` absent) round-trip cleanly.
+- ``Element`` is a discriminated union on the ``type`` literal. The
+  mesh variant defaults to ``"mesh"`` so documents that omit ``type``
+  round-trip cleanly.
 - Field declaration order in each class matches the historical writer
   dict insertion order so ``model_dump_json(exclude_unset=True)``
   reproduces the goldens byte-for-byte.
@@ -70,20 +70,19 @@ class Weight(_Strict):
     values: list[Annotated[float, Field(ge=0, le=1)]]
 
 
-class PolygonSprite(_Strict):
-    """Cutout-style sprite rendered as a Godot Polygon2D - vertices + UV.
+class MeshElement(_Strict):
+    """Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.
 
-    Default sprite kind when ``type`` is omitted (backwards-compatible
-    with v1 documents).
+    Default element kind when ``type`` is omitted.
 
     Field declaration order mirrors the writer's dict insertion order
     so ``model_dump_json(exclude_unset=True)`` reproduces the golden
     fixtures byte-for-byte once the writer migrates.
     """
 
-    type: Literal["polygon"] = Field(
-        default="polygon",
-        description="Discriminator. Optional; absence means `polygon`.",
+    type: Literal["mesh"] = Field(
+        default="mesh",
+        description="Discriminator. Optional; absence means `mesh`.",
     )
     name: str = Field(min_length=1)
     bone: str | None = None
@@ -93,9 +92,9 @@ class PolygonSprite(_Strict):
     texture: str | None = Field(
         default=None,
         description=(
-            "Optional per-sprite texture filename, resolved relative to "
+            "Optional per-element texture filename, resolved relative to "
             "the .proscenio document. Multi-PNG fixtures use this so each "
-            "sprite picks its own image instead of slicing a shared "
+            "element picks its own image instead of slicing a shared "
             "atlas. Importers fall back to the top-level `atlas` field "
             "when absent."
         ),
@@ -103,7 +102,7 @@ class PolygonSprite(_Strict):
     weights: list[Weight] | None = None
 
     @model_validator(mode="after")
-    def _polygon_uv_lengths_match(self) -> PolygonSprite:
+    def _polygon_uv_lengths_match(self) -> MeshElement:
         """Every polygon vertex needs its own UV coordinate.
 
         The schema-level constraint does not exist (JSON Schema cannot
@@ -117,18 +116,20 @@ class PolygonSprite(_Strict):
         return self
 
 
-class SpriteFrameSprite(_Strict):
-    """Spritesheet sprite rendered as a Godot Sprite2D.
+class SpriteElement(_Strict):
+    """Rigid sprite rendered as a Godot Sprite2D.
 
     ``frame`` indexes into an ``hframes`` x ``vframes`` grid carved
-    out of the atlas (or out of ``texture_region`` when present).
+    out of the atlas (or out of ``texture_region`` when present). A
+    single-frame sprite (``hframes`` = ``vframes`` = 1) is the static
+    case.
 
     Field declaration order mirrors the writer's dict insertion order
     so ``model_dump_json(exclude_unset=True)`` reproduces the golden
     fixtures byte-for-byte once the writer migrates.
     """
 
-    type: Literal["sprite_frame"] = Field(
+    type: Literal["sprite"] = Field(
         description="Discriminator. Required and constant.",
     )
     name: str = Field(min_length=1)
@@ -153,8 +154,8 @@ class SpriteFrameSprite(_Strict):
     texture: str | None = Field(
         default=None,
         description=(
-            "Optional per-sprite texture filename, resolved relative to "
-            "the .proscenio document. Mirrors the polygon-sprite field. "
+            "Optional per-element texture filename, resolved relative to "
+            "the .proscenio document. Mirrors the mesh-element field. "
             "Importers fall back to the top-level `atlas` field when "
             "absent."
         ),
@@ -162,7 +163,7 @@ class SpriteFrameSprite(_Strict):
     offset: Vec2 = Field(default=[0.0, 0.0])
 
     @model_validator(mode="after")
-    def _frame_within_grid(self) -> SpriteFrameSprite:
+    def _frame_within_grid(self) -> SpriteElement:
         """``frame`` indexes a row-major ``hframes`` x ``vframes`` grid.
 
         The schema-level ``minimum: 0`` only catches negatives; the
@@ -179,35 +180,35 @@ class SpriteFrameSprite(_Strict):
         return self
 
 
-def _sprite_discriminator(payload: Any) -> str | None:
-    """Return the discriminator tag for a Sprite payload.
+def _element_discriminator(payload: Any) -> str | None:
+    """Return the discriminator tag for an Element payload.
 
-    ``type`` is optional on the polygon variant (v1 backwards
-    compatibility) and required on the sprite_frame variant. Pydantic's
-    field-string discriminator extracts the tag before defaults run, so
-    a missing ``type`` would fail union resolution. A callable
-    discriminator runs against the raw input, lets us default to
-    ``"polygon"``, and rejects unknown tags up front.
+    ``type`` is optional on the mesh variant (absence means mesh) and
+    required on the sprite variant. Pydantic's field-string
+    discriminator extracts the tag before defaults run, so a missing
+    ``type`` would fail union resolution. A callable discriminator runs
+    against the raw input, lets us default to ``"mesh"``, and rejects
+    unknown tags up front.
 
     Returns ``None`` for unexpected ``type`` values so pydantic raises
     a ``union_tag_not_found`` ValidationError rather than dispatching
     to a non-existent variant.
     """
     if isinstance(payload, dict):
-        tag = payload.get("type", "polygon")
+        tag = payload.get("type", "mesh")
     else:
-        tag = getattr(payload, "type", "polygon")
-    if tag not in {"polygon", "sprite_frame"}:
+        tag = getattr(payload, "type", "mesh")
+    if tag not in {"mesh", "sprite"}:
         return None
     return str(tag)
 
 
-Sprite = Annotated[
+Element = Annotated[
     Union[
-        Annotated[PolygonSprite, Tag("polygon")],
-        Annotated[SpriteFrameSprite, Tag("sprite_frame")],
+        Annotated[MeshElement, Tag("mesh")],
+        Annotated[SpriteElement, Tag("sprite")],
     ],
-    Discriminator(_sprite_discriminator),
+    Discriminator(_element_discriminator),
 ]
 
 
@@ -264,7 +265,7 @@ class ProscenioDocument(_Strict):
 
     # Field declaration order matches the writer's dict insertion order so
     # `model_dump_json()` round-trips against the existing golden fixtures.
-    # Domain order (skeleton -> sprites -> slots -> atlas -> animations)
+    # Domain order (skeleton -> elements -> slots -> atlas -> animations)
     # is also a natural read for a `.proscenio` file: bones before what
     # rides them, group memberships, then the texture and the timelines.
     format_version: Literal[1] = Field(
@@ -273,7 +274,7 @@ class ProscenioDocument(_Strict):
     name: str = Field(min_length=1)
     pixels_per_unit: float = Field(gt=0)
     skeleton: Skeleton
-    sprites: list[Sprite]
+    elements: list[Element]
     slots: list[Slot] | None = None
     atlas: str | None = None
     animations: list[Animation] | None = None

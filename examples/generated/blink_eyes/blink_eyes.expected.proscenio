@@ -20,9 +20,9 @@
       }
     ]
   },
-  "sprites": [
+  "elements": [
     {
-      "type": "sprite_frame",
+      "type": "sprite",
       "name": "eye",
       "bone": "head",
       "hframes": 4,

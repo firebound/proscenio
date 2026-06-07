@@ -20,7 +20,7 @@
       }
     ]
   },
-  "sprites": [
+  "elements": [
     {
       "name": "blue_square",
       "bone": "root",

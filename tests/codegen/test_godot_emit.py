@@ -34,19 +34,19 @@ def test_godot_emitter_writes_one_file_per_model(tmp_path: Path) -> None:
         "proscenio_bone.gd",
         "proscenio_skeleton.gd",
         "proscenio_weight.gd",
-        "proscenio_polygon_sprite.gd",
-        "proscenio_sprite_frame_sprite.gd",
+        "proscenio_mesh_element.gd",
+        "proscenio_sprite_element.gd",
         "proscenio_slot.gd",
         "proscenio_key.gd",
         "proscenio_track.gd",
         "proscenio_animation.gd",
         "proscenio_document.gd",
-        "proscenio_polygon_layer.gd",
-        "proscenio_sprite_frame_layer.gd",
+        "proscenio_mesh_layer.gd",
+        "proscenio_sprite_layer.gd",
         "proscenio_frame_entry.gd",
         "proscenio_psd_manifest.gd",
     }
-    expected_dispatchers = {"proscenio_sprite.gd", "proscenio_layer.gd"}
+    expected_dispatchers = {"proscenio_element.gd", "proscenio_layer.gd"}
     expected_helpers = {"proscenio_parse_helpers.gd"}
 
     missing = (expected_models | expected_dispatchers | expected_helpers) - names

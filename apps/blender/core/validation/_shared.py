@@ -1,4 +1,4 @@
-"""Validation helpers shared between active_sprite, active_slot, export."""
+"""Validation helpers shared between active_element, active_slot, export."""
 
 from __future__ import annotations
 
@@ -19,14 +19,14 @@ class _CPLookup(Protocol):
     def get(self, key: str, default: object | None = None) -> object: ...
 
 
-def read_sprite_type(obj: object) -> str:
-    """PG-first / CP fallback read of the sprite type. Default ``"polygon"``."""
+def read_element_type(obj: object) -> str:
+    """PG-first / CP fallback read of the element type. Default ``"mesh"``."""
     props = getattr(obj, "proscenio", None)
-    if props is not None and hasattr(props, "sprite_type"):
-        return str(props.sprite_type)
+    if props is not None and hasattr(props, "element_type"):
+        return str(props.element_type)
     if isinstance(obj, _CPLookup):
-        return str(obj.get("proscenio_type", "polygon"))
-    return "polygon"
+        return str(obj.get("proscenio_type", "mesh"))
+    return "mesh"
 
 
 def read_int(obj: object, prop_name: str, custom_key: str, default: int) -> int:

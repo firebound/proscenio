@@ -6,8 +6,8 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 from ._shared import abspath_or_none, armature_bone_names
+from .active_element import validate_active_element
 from .active_slot import validate_active_slot
-from .active_sprite import validate_active_sprite
 from .issue import Issue
 
 
@@ -35,9 +35,9 @@ def validate_export(scene: object) -> list[Issue]:
     for obj in scene_objects:
         if getattr(obj, "type", None) != "MESH":
             continue
-        for active_issue in validate_active_sprite(obj):
+        for active_issue in validate_active_element(obj):
             issues.append(active_issue)
-        issues.extend(_validate_sprite_against_armature(obj, available_bones))
+        issues.extend(_validate_element_against_armature(obj, available_bones))
 
     issues.extend(_validate_slots(scene_objects))
     issues.extend(_validate_atlas_files(scene_objects))
@@ -63,7 +63,7 @@ def _validate_slots(scene_objects: Sequence[object]) -> list[Issue]:
     return issues
 
 
-def _validate_sprite_against_armature(obj: object, bones: set[str]) -> list[Issue]:
+def _validate_element_against_armature(obj: object, bones: set[str]) -> list[Issue]:
     issues: list[Issue] = []
 
     parent_bone = getattr(obj, "parent_bone", "")
@@ -76,7 +76,7 @@ def _validate_sprite_against_armature(obj: object, bones: set[str]) -> list[Issu
         issues.append(
             Issue(
                 "warning",
-                "sprite has no parent bone and no vertex groups matching armature bones - "
+                "element has no parent bone and no vertex groups matching armature bones - "
                 "writer will fall back to empty bone field",
                 name,
             )
@@ -86,7 +86,7 @@ def _validate_sprite_against_armature(obj: object, bones: set[str]) -> list[Issu
         issues.append(
             Issue(
                 "error",
-                "sprite has vertex groups but none resolve to bones - "
+                "element has vertex groups but none resolve to bones - "
                 "writer will raise RuntimeError at export",
                 name,
             )

@@ -1,10 +1,10 @@
-"""Polygon body + weight paint draws (the authoring panel + the weight-paint inline controls).
+"""Mesh body + weight paint draws (the authoring panel + the weight-paint inline controls).
 
-Polygon mode block: poly count, vertex group count, reproject UV
+Mesh mode block: poly count, vertex group count, reproject UV
 button, isolated material toggle, shared region box. Plus the inline
 weight-paint brush mirror used when the user is in PAINT_WEIGHT mode.
 
-Pulled out of ``panels/active_sprite.py`` by the code-modularity work.
+Pulled out of ``panels/active_element.py`` by the code-modularity work.
 """
 
 from __future__ import annotations
@@ -19,16 +19,16 @@ def draw_body(
     obj: bpy.types.Object,
     props: bpy.types.AnyType,
 ) -> None:
-    """Polygon body block."""
+    """Mesh body block."""
     mesh = obj.data
     vg_count = len(getattr(obj, "vertex_groups", []) or [])
     poly_count = len(getattr(mesh, "polygons", []) or [])
     box = layout.box()
-    box.label(text="Polygon", icon="MESH_DATA")
+    box.label(text="Mesh", icon="MESH_DATA")
     box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
     box.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
     box.prop(props, "material_isolated")
-    _draw_region.draw_box(layout, props, sprite_type="polygon")
+    _draw_region.draw_box(layout, props, element_type="mesh")
 
 
 def draw_weight_paint(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:

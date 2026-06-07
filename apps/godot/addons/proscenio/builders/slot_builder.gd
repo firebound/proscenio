@@ -6,8 +6,8 @@ extends RefCounted
 # A slot in the .proscenio document is a `{name, bone, default,
 # attachments[]}` record. Each slot becomes a `Node2D` child of the
 # matching `Bone2D` (or of the `Skeleton2D` root when `bone` is empty).
-# The sprite builders - polygon_builder.gd / sprite_frame_builder.gd
-# - consult the slot map this module returns and route any sprite
+# The element builders - mesh_builder.gd / sprite_builder.gd
+# - consult the slot map this module returns and route any element
 # whose name appears in some `attachments[]` under the slot Node2D
 # instead of the bone-or-skeleton fallback.
 #

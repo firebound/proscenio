@@ -337,3 +337,5 @@ rmtree
 subdirs
 tolist
 tris
+hotspots
+sitecustomize

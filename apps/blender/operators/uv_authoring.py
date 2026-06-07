@@ -15,7 +15,7 @@ from ..core._shared.report import report_info, report_warn  # type: ignore[impor
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
     """Re-unwrap the active mesh's UVs against its first image-textured material.
 
-    Known limitation (tests/BUGS_FOUND.md): bpy.ops.uv.smart_project picks
+    Known limitation (specs/backlog-bugs-found.md): bpy.ops.uv.smart_project picks
     a projection from face normals. For quads in the XZ picture plane the
     normal points -Y; the operator can rotate/mirror the result relative
     to whatever the build_blend.py author hand-tuned. Use only on meshes

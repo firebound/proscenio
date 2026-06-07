@@ -1,7 +1,7 @@
 # UI feedback (defer)
 
 Coisas que **funcionam** mas poderiam melhorar - UX polish, copy, layout,
-defaults. Não são bugs (não vão para `[!]` no MANUAL_TESTING.md), são
+defaults. Não são bugs (não vão para `[!]` no backlog-manual-testing.md), são
 melhorias de qualidade. Eventualmente viram issues / spec próprio.
 
 Formato livre. Quando tiver massa crítica de itens, agrupa por área e
@@ -44,7 +44,7 @@ promove pro backlog.
 - **Path A vs Path B unclear:** "Create Slot" no Skeleton panel parece o mesmo botão pros 2 fluxos, mas comportamento depende do contexto (modo + seleção). Usuário não sabe qual modo usar pra qual resultado. Sugestões:
   - Disable button + tooltip "select a bone in pose mode OR meshes in object mode" quando contexto inválido.
   - Hint inline antes do botão: "Pose Mode + bone selected: BONE-parented slot. Object Mode + N meshes: OBJECT slot wrapping selection".
-- **Mesh repositioning quando vira attachment de slot novo é confuso.** Path B reparenteia meshes sem feedback visual ("ué, por que minha espada pulou pra outro canto da cena?"). Idealmente o operator deve preservar world position SEMPRE (bug em BUGS_FOUND.md), e o panel deve mostrar transform delta se inevitável.
+- **Mesh repositioning quando vira attachment de slot novo é confuso.** Path B reparenteia meshes sem feedback visual ("ué, por que minha espada pulou pra outro canto da cena?"). Idealmente o operator deve preservar world position SEMPRE (bug em backlog-bugs-found.md), e o panel deve mostrar transform delta se inevitável.
 - **Slot vinculado a quê?** Quando slot é criado sem bone (Path B sem seed parented a bone), Empty fica solto na cena - usuário não sabe que precisa parentear depois. Active Slot panel mostra "bone: (unparented)" mas nem todos vão entender o significado. Sugestão: warning amarelo no panel "slot has no parent - attachments will not follow any bone" + botão "Parent to Bone..." para fix rápido.
 
 ## Skeleton panel
@@ -77,7 +77,7 @@ promove pro backlog.
 - **Falta de feedback visual sobre estado modal.** Status bar mostra hint texto, mas viewport não dá pista de que o modal tá ativo. Sugestões: highlight do viewport border, ou overlay text in-viewport tipo "Quick Armature: drag to draw | Shift = chain | Esc = exit".
 - **Falta atalhos pra connect/disconnect parent.** Hoje só tem `Shift` pra parent ao último bone (sem connect). Faltam: Ctrl+Shift pra parent connected (extends naturally); modifier pra escolher um parent específico (não só o último); operador "unparent" sem sair do modal.
 - **Saída do modal não óbvia.** Esc / right-click funcionam mas user que não viu o status bar fica preso. Sugestões: (a) botão "Confirm" / "Cancel" floating na viewport. (b) header bar com mensagem destacada. (c) ESC sempre mostra confirm dialog "Discard / Keep" pra evitar perda acidental.
-- **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (BUGS_FOUND.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
+- **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (backlog-bugs-found.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
 - **(quick-armature first-cut polish) Preview line cortada visualmente quando cursor passa por baixo de panel/header/toolbar.** Apos fix do region overlay filter (operator nao processa eventos sob N-panel/header/toolbar), preview line continua sendo desenhada matematicamente cheia ate cursor real - mas Blender pinta panels POR CIMA do GPU draw handler, mascarando trechos da linha. Visualmente parece "corte". Tradeoff aceito: clicks em panel area nao criam bones (correto). Polish proposto:
   - **A. Clamp visual no boundary do canvas-livre.** No MOUSEMOVE, se cursor entra zona de overlay, projeta `_cursor_world` pra borda mais proxima do retangulo canvas-menos-overlays. Linha para visualmente na borda do panel em vez de sumir sob ele.
   - **B. Indicacao por cor.** Linha muda pra cinza/vermelho `(0.6, 0.6, 0.6, 0.7)` quando cursor sobre overlay zone. Sinaliza "click aqui = no-op" sem precisar matematica de clamp.
@@ -119,7 +119,7 @@ promove pro backlog.
   - Sem indicador per-objeto "este sprite está packed em `<atlas X>`" no Active Sprite panel.
   - Sem lista global de atlases ativos na cena (quantos atlases foram packed? qual cada sprite usa?).
   - **Sugestão:** novo subpanel ou sub-box "Packed atlases" no Atlas panel, listando: `<atlas_name>: N sprite(s) - Pack date / Apply state`. Filtrar por seleção quando relevante. Per-sprite no Active Sprite: mostrar badge `packed in: <atlas_name>` quando objeto tem snapshot.
-- **Material identity é por nome (string), não por pointer.** Documentar limitação no Atlas panel UI (ou no help popup): "Renaming materials between Apply and Unpack will silently break restoration. Use Unpack first, then rename." Idealmente Proscenio expõe rename op próprio que atualiza snapshot junto, mas é overkill - documentação na UI já reduz pegadinha. Bug em BUGS_FOUND.md detalha o fix técnico.
+- **Material identity é por nome (string), não por pointer.** Documentar limitação no Atlas panel UI (ou no help popup): "Renaming materials between Apply and Unpack will silently break restoration. Use Unpack first, then rename." Idealmente Proscenio expõe rename op próprio que atualiza snapshot junto, mas é overkill - documentação na UI já reduz pegadinha. Bug em backlog-bugs-found.md detalha o fix técnico.
 - **MaxRects-BSSF heurística é greedy, não global-optimal.** Pro fixture atlas_pack (9 sprites 32x32, padding=2), o packer escolheu layout 7+2 colunas (footprint ~74x252) ao invés de 3x3 grid ótimo (108x108). Não afeta atlas size final (sempre 256 por start_size minimum), só density visual. Improvement possível: tentar múltiplas heurísticas (BSSF + BLSF + AreaFit) e escolher menor resultado. Prioridade baixa.
 - **Atlas não shrinka pra fit tight; start_size 256 hardcoded.** `apps/blender/core/atlas_packer.py:82` - `size = max(start_size, ...)`. Independente de quantos sprites tem, atlas mínimo é 256x256. Pra fixtures pequenas, atlas tem 80%+ de waste. Sugestão: expor `start_size` como Scene PG (default 256, configurável). Ou modo "shrink to fit" - pós-pack, recalcula bounding box dos placements e gera atlas no tamanho exato. Trade-off: pior pra reuso de atlas entre runs (size flutua) mas melhor pra storage.
 

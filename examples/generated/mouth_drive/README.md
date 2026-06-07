@@ -17,7 +17,7 @@ match the typical 2D cutout authoring layout:
   -pi/2 → +pi/2 → 0 over 24 frames, cycling the sprite through
   all 4 mouth shapes via the driver. `mouth_pos` exists structurally
   (the sprite is parented to it) but currently stays at rest - see
-  tests/BUGS_FOUND.md for the writer-side issue that drops part of
+  specs/backlog-bugs-found.md for the writer-side issue that drops part of
   the pose-location vector for non-vertical bones.
 
 The driver mirrors what the **Drive from Bone** panel operator

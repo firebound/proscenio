@@ -1,10 +1,10 @@
 # Bugs found during manual testing
 
 Bugs reproducíveis encontrados durante manual smoke / feature tests
-(MANUAL_TESTING.md). Cada item cita reproducer + suspeita + arquivo
+(backlog-manual-testing.md). Cada item cita reproducer + suspeita + arquivo
 afetado. Vira PR fix ou issue dedicada.
 
-Distinto de UI_FEEDBACK.md (que cobre polish, não comportamento).
+Distinto de backlog-ui-feedback.md (que cobre polish, não comportamento).
 
 ---
 
@@ -410,7 +410,7 @@ if combined and combined not in obj.name.lower():
 
 **Repro:** doll_workbench.blend > Pose Mode > deselect all (`Alt+A`) > Proscenio > subpanel Skeleton > click row `upper_arm.L` no UIList de bones.
 
-**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela MANUAL_TESTING.md item 1.8.2: click row → seleciona bone correspondente em pose mode.
+**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela backlog-manual-testing.md item 1.8.2: click row → seleciona bone correspondente em pose mode.
 
 **Causa:** `apps/blender/properties/scene_props.py:54` define `active_bone_index` como `IntProperty` puro, sem `update=` callback. `apps/blender/panels/skeleton.py:73-80` usa `template_list` apontando pra esse PG, que só armazena o índice; não há operator no row draw nem update hook que sincronize com `armature.data.bones.active` ou `armature.pose.bones[...].bone.select`.
 
@@ -568,7 +568,7 @@ Proscenio é workflow XZ (Spine / 2D cutout convention - bones no plano Y=0 vis�
 
 **Arquivo:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51`, `apps/blender/operators/quick_armature.py:70,79`.
 
-**Severity:** high - inviabiliza o operator pro workflow primário do addon. Bones quick-rigged não funcionam em Front Ortho (a vista padrão de 2D cutout). Combinado com falta de preview (UI_FEEDBACK), torna Quick Armature inusável hoje.
+**Severity:** high - inviabiliza o operator pro workflow primário do addon. Bones quick-rigged não funcionam em Front Ortho (a vista padrão de 2D cutout). Combinado com falta de preview (backlog-ui-feedback), torna Quick Armature inusável hoje.
 
 ### Save Pose to Library: `Unexpected library type` sem orientação ao usuário
 
@@ -588,7 +588,7 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 **Arquivo:** `apps/blender/operators/pose_library.py:23-73` (PROSCENIO_OT_save_pose_asset).
 
-**Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do MANUAL_TESTING.
+**Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do backlog-manual-testing.
 
 ---
 

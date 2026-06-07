@@ -236,7 +236,7 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
     the position-vs-driver split structurally (sprite is parented to it),
     but it stays at rest - the writer's pose-location channel currently
     drops the Z component for bones whose Y axis is not aligned with
-    world Z (see tests/BUGS_FOUND.md), so a translation here would not
+    world Z (see specs/backlog-bugs-found.md), so a translation here would not
     round-trip into the .proscenio golden. Once that writer fix lands,
     keyframes on ``mouth_pos`` can be added back.
     """

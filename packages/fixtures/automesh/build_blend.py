@@ -25,7 +25,7 @@ Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
   trivially testable - select blob / lshape / ring + run automesh
   + verify uniform interior density falls back gracefully).
 
-The fixture exists to feed ``tests/MANUAL_TESTING.md`` section
+The fixture exists to feed ``specs/backlog-manual-testing.md`` section
 1.15 (T1-T16) end-to-end. Regenerate by re-running ``draw_layers.py``
 then this script when the smoke checklist needs an updated baseline.
 

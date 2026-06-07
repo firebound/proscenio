@@ -7,7 +7,7 @@ PEP 563 leaves the values as strings and the check fails silently,
 so ``bpy.props.*Property`` annotations never promote to RNA properties.
 Same constraint applies to every other ``bpy.types.Operator`` /
 ``PropertyGroup`` / ``Panel`` subclass in the addon
-post-mortem in ``tests/BUGS_FOUND.md``.
+post-mortem in ``specs/backlog-bugs-found.md``.
 """
 
 import contextlib
@@ -374,7 +374,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # Proscenio's 2D-cutout convention authors bones in the XZ
         # picture plane (Y=0). The legacy Y=Z-up projection put bones in
         # the ground plane, which collapses in Front Ortho - see
-        # tests/BUGS_FOUND.md.
+        # specs/backlog-bugs-found.md.
         cls = type(self)
         if event.value == "PRESS":
             raw_press_point = mouse_event_to_plane_point(context, event, plane_axis="Y")

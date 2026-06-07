@@ -2,7 +2,7 @@
 
 Items that are not in any active spec. Each entry promotes into a numbered spec under `specs/` when work begins. Order within a section is rough priority.
 
-Forward-compatibility items gated on a future Blender release live in a dedicated [`blender-6-backlog.md`](blender-6-backlog.md).
+Forward-compatibility items gated on a future Blender release live in a dedicated [`backlog-blender-6.md`](backlog-blender-6.md). Cross-cutting type-safety and lint-enforcement gaps (strict gates configured but not run, trees exempted from type checking) live in [`backlog-code-quality.md`](backlog-code-quality.md).
 
 ## Format and schema
 
@@ -332,11 +332,11 @@ The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does 
 
 #### Waist height drifts -1 px on the PS round-trip
 
-`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a future Photoshop-roundtrip cycle fixes the underlying off-by-one in the JSX-era PSD reader.
+`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`backlog-bugs-found.md`](backlog-bugs-found.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a future Photoshop-roundtrip cycle fixes the underlying off-by-one in the JSX-era PSD reader.
 
 #### `pixels_per_unit` not round-tripped (defaults to 100 on re-export)
 
-The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`tests/BUGS_FOUND.md`](../tests/BUGS_FOUND.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: a future Photoshop-roundtrip cycle plumbs PPU through XMP so the round-trip is lossless.
+The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`backlog-bugs-found.md`](backlog-bugs-found.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: a future Photoshop-roundtrip cycle plumbs PPU through XMP so the round-trip is lossless.
 
 ### photoshop tag system follow-ups deferred from the photoshop tag system work
 
@@ -426,7 +426,7 @@ Three small items deferred from the quick-armature TODO at ship time. None are b
 
 - **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
 - **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.
-- **Add the ClassVar mutation rule to `.ai/conventions/code.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in BUGS_FOUND.md; promoting it to the conventions doc is low-priority because the bug is rare enough.
+- **Add the ClassVar mutation rule to `.ai/conventions/code.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in [`backlog-bugs-found.md`](backlog-bugs-found.md); promoting it to the conventions doc is low-priority because the bug is rare enough.
 
 ## Architecture revisits
 

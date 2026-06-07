@@ -72,7 +72,10 @@ repos:
       rev: v8.17.1
       hooks:
           - id: cspell
-            args: [--no-progress, --no-summary]
+            # --no-must-find-files: a commit that touches only cspell-ignored
+            # paths (uv.lock, pnpm-lock.yaml, *.uid, generated bindings) leaves
+            # cspell zero files to check; without this it exits 1 on "no files".
+            args: [--no-progress, --no-summary, --no-must-find-files]
 
     # Drift markers - reject the most common LLM-style artifacts that
     # leak into docs and code over time. Tighten the list when a new

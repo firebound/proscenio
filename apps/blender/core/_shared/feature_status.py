@@ -120,6 +120,30 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     # hovering "why is X not here" cases).
     "ik_constraint_export": FeatureStatus.OUT_OF_SCOPE,
     "shape_key_animation": FeatureStatus.OUT_OF_SCOPE,
+    # Panel + subpanel header ids introduced by the panel restructure.
+    # Weight bind / transfer export weights -> godot-ready; the automesh,
+    # edit, snapshot, sidecar, and debug rows are blender-side authoring.
+    "element": FeatureStatus.GODOT_READY,
+    "active_mesh": FeatureStatus.GODOT_READY,
+    "active_sprite": FeatureStatus.GODOT_READY,
+    "armature": FeatureStatus.GODOT_READY,
+    "pose_mode": FeatureStatus.BLENDER_ONLY,
+    "mesh_generation": FeatureStatus.BLENDER_ONLY,
+    "automesh_alpha": FeatureStatus.BLENDER_ONLY,
+    "automesh_interactive": FeatureStatus.BLENDER_ONLY,
+    "debug_pipeline": FeatureStatus.BLENDER_ONLY,
+    "weight_paint": FeatureStatus.GODOT_READY,
+    "bind": FeatureStatus.GODOT_READY,
+    "edit_weights": FeatureStatus.BLENDER_ONLY,
+    "snapshot": FeatureStatus.BLENDER_ONLY,
+    "sidecar_io": FeatureStatus.BLENDER_ONLY,
+    "weight_transfer": FeatureStatus.GODOT_READY,
+    "pipeline": FeatureStatus.GODOT_READY,
+    "import": FeatureStatus.BLENDER_ONLY,
+    "active_slot": FeatureStatus.GODOT_READY,
+    "helpers": FeatureStatus.BLENDER_ONLY,
+    "help": FeatureStatus.BLENDER_ONLY,
+    "diagnostics": FeatureStatus.BLENDER_ONLY,
 }
 
 

@@ -2,7 +2,7 @@
 
 Owns the bmesh inspection (vert / face / triangle / UV / degenerate
 counts), the active-material image lookup, and the per-sprite run
-loop that drives ``bpy.ops.proscenio.automesh_from_sprite`` against
+loop that drives ``bpy.ops.proscenio.automesh_from_alpha`` against
 the fixture + collects metrics.
 """
 
@@ -156,7 +156,7 @@ def run_validation(sprites: list[str], args: argparse.Namespace) -> ValidationRe
         bpy.context.view_layer.objects.active = sprite_obj
         sprite_obj.select_set(True)
         try:
-            op_result = bpy.ops.proscenio.automesh_from_sprite(
+            op_result = bpy.ops.proscenio.automesh_from_alpha(
                 margin_pixels=args.margin_pixels,
                 alpha_threshold=args.alpha_threshold,
                 debug_stage="off",

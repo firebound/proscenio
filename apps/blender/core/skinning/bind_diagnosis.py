@@ -31,7 +31,7 @@ _NORMAL_FLIP_EPS = 0.0
 Proscenio convention: sprites face the camera in Blender's Front Ortho
 view (numpad 1, camera at -Y looking toward +Y). A sprite "facing the
 camera" therefore has its face normal in the -Y direction (Y < 0).
-Verified against ``automesh_from_sprite`` output: 100% of generated
+Verified against ``automesh_from_alpha`` output: 100% of generated
 faces land at Y == -1.0 post-CDT + recalc_face_normals."""
 
 

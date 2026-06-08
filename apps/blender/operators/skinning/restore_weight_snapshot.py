@@ -79,7 +79,7 @@ class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
         if current_hash != sidecar.mesh_topology_hash:
             report_error(
                 self,
-                "topology changed since last snapshot - run Automesh from Sprite "
+                "topology changed since last snapshot - run Automesh from Alpha "
                 "with preserve_on_regen ON to re-establish the snapshot",
             )
             return {"CANCELLED"}

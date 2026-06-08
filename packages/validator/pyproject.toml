@@ -1,7 +1,7 @@
 [project]
 name = "proscenio-validator"
 version = "0.1.0"
-description = "Headless automesh validator. Drives bpy.ops.proscenio.automesh_from_sprite per fixture sprite and reports invariants, per-pixel coverage, and hole bleed."
+description = "Headless automesh validator. Drives bpy.ops.proscenio.automesh_from_alpha per fixture sprite and reports invariants, per-pixel coverage, and hole bleed."
 # `requires-python` floor is >=3.11 for packaging / tooling compatibility
 # (uv resolution, editable install in the dev venv). The validator's actual
 # runtime is Blender 5.x's embedded CPython 3.13: it runs via

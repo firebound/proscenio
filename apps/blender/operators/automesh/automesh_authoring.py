@@ -2,7 +2,7 @@
 
 5-stage modal that previews each pipeline stage with a GPU overlay
 so the artist iterates on the mesh shape before any geometry commits.
-Coexists with the one-shot automesh_from_sprite operator.
+Coexists with the one-shot automesh_from_alpha operator.
 """
 
 from __future__ import annotations
@@ -1264,7 +1264,7 @@ def _snapshot_params(context: bpy.types.Context) -> StageParams:
 
 
 def _resolve_image(obj: bpy.types.Object | None) -> bpy.types.Image | None:
-    """Reuse the same lookup automesh_from_sprite uses."""
+    """Reuse the same lookup automesh_from_alpha uses."""
     if obj is None or obj.data is None:
         return None
     active_material = getattr(obj, "active_material", None)

@@ -142,7 +142,7 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_main"
+    bl_order = 1
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:

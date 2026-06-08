@@ -6,6 +6,8 @@ from typing import ClassVar
 
 import bpy
 
+from ._helpers import draw_subpanel_header
+
 _OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
     ("proscenio.validate_export", "Validate"),
     ("proscenio.export_godot", "Export Proscenio (.proscenio)"),
@@ -35,8 +37,11 @@ class PROSCENIO_PT_help(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_main"
+    bl_order = 12
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, "help", "pipeline_overview")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

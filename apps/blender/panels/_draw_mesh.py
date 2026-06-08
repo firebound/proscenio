@@ -11,24 +11,19 @@ from __future__ import annotations
 
 import bpy
 
-from . import _draw_region
-
 
 def draw_body(
     layout: bpy.types.UILayout,
     obj: bpy.types.Object,
     props: bpy.types.AnyType,
 ) -> None:
-    """Mesh body block."""
+    """Mesh body block - drawn inside the Active Mesh subpanel."""
     mesh = obj.data
     vg_count = len(getattr(obj, "vertex_groups", []) or [])
     poly_count = len(getattr(mesh, "polygons", []) or [])
-    box = layout.box()
-    box.label(text="Mesh", icon="MESH_DATA")
-    box.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
-    box.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
-    box.prop(props, "material_isolated")
-    _draw_region.draw_box(layout, props, element_type="mesh")
+    layout.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
+    layout.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
+    layout.prop(props, "material_isolated")
 
 
 def draw_weight_paint(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:

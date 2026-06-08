@@ -510,6 +510,81 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         see_also=("examples/generated/simple_psd",),
     ),
+    "mesh_generation": HelpTopic(
+        title="Mesh Generation",
+        summary="Turn a sprite's alpha into a deformable cutout mesh.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Traces the active image's alpha contour into an annulus mesh you",
+                "can weight-paint and deform. Interior Mode (on the panel header)",
+                "picks SIMPLE (sparse, Spine-like) or DENSE (uniform + bone-aware fill).",
+            ),
+            _section(
+                "Automesh from Alpha",
+                "One-shot trace using the panel defaults. Re-runs preserve the",
+                "UV-pinned base quad via the proscenio_base_sprite vertex group.",
+            ),
+            _section(
+                "Automesh Interactive / Debug Pipeline",
+                "Interactive is a modal preview that lets you cut / extend / fold",
+                "the silhouette before the geometry commits. Debug Pipeline emits",
+                "per-stage wireframe companions for inspecting the trace.",
+            ),
+            _section(
+                "Where it fits",
+                "Authoring only - the generated geometry exports as a Polygon2D, but",
+                "the trace tool itself never reaches the .proscenio.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "weight_paint": HelpTopic(
+        title="Weight Paint",
+        summary="Bind a cutout mesh to the rig and refine its bone weights.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Mesh-only panel. Bind the active mesh to the picked armature, then",
+                "refine the per-bone weights. Bind + the resulting weights export to",
+                "the Polygon2D; the edit / snapshot / sidecar tools are blender-side.",
+            ),
+            _section(
+                "Bind",
+                "Binds to the armature picked in the Skeleton panel. Per-bone",
+                "Soft / Hard rows override the default falloff for individual bones.",
+            ),
+            _section(
+                "Edit Weights / Snapshot / Sidecar IO",
+                "Edit Weights enters a modal weight-paint session with brush presets.",
+                "Snapshot tracks paint provenance + restores the last saved weights.",
+                "Sidecar IO exports / imports the weight JSON.",
+            ),
+            _section(
+                "Weight Transfer",
+                "Copies weights from the active mesh to the other selected meshes",
+                "- handy for symmetric or split cutouts.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "helpers": HelpTopic(
+        title="Helpers",
+        summary="Viewport authoring aids that are not part of the export pipeline.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Convenience tools that set up the Blender viewport for 2D cutout",
+                "work. None of them touch the .proscenio export.",
+            ),
+            _section(
+                "Preview Camera",
+                "Drops an orthographic front camera framed the way the Godot",
+                "importer expects, so what you see matches the runtime framing.",
+            ),
+        ),
+        see_also=(),
+    ),
 }
 
 

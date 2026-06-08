@@ -12,34 +12,19 @@ from __future__ import annotations
 
 import bpy
 
-from . import _draw_region
-from ._helpers import draw_subbox_header
-
 
 def draw_body(
     layout: bpy.types.UILayout,
-    context: bpy.types.Context,
     obj: bpy.types.Object,
     props: bpy.types.AnyType,
 ) -> None:
-    """Sprite-frame body block."""
-    box = layout.box()
-    draw_subbox_header(
-        box,
-        title="Sprite frame",
-        title_icon="IMAGE_DATA",
-        feature_id="sprite_frame_preview",
-        help_topic="sprite_frame_preview",
-    )
-    box.prop(props, "hframes")
-    box.prop(props, "vframes")
-    box.prop(props, "frame")
-    box.prop(props, "centered")
-    _draw_readout(box, obj, props)
-    _draw_preview_shader_buttons(box, obj)
-    _draw_region.draw_box(layout, props, element_type="sprite")
-    if context.mode == "PAINT_WEIGHT":
-        _draw_weight_paint_disabled_hint(layout)
+    """Sprite-frame body block - drawn inside the Active Sprite subpanel."""
+    layout.prop(props, "hframes")
+    layout.prop(props, "vframes")
+    layout.prop(props, "frame")
+    layout.prop(props, "centered")
+    _draw_readout(layout, obj, props)
+    _draw_preview_shader_buttons(layout, obj)
 
 
 def _draw_readout(
@@ -66,13 +51,6 @@ def _draw_readout(
     fw = rw_px // hf
     fh = rh_px // vf
     box.label(text=f"frame: {fw}x{fh} px ({hf}x{vf} grid)")
-
-
-def _draw_weight_paint_disabled_hint(layout: bpy.types.UILayout) -> None:
-    """Show why weight paint controls are not surfaced for sprite_frame meshes."""
-    box = layout.box()
-    box.label(text="weight paint not applicable to sprite_frame", icon="INFO")
-    box.label(text="(Sprite2D is not deformed by bones)")
 
 
 def _discover_atlas_size_for(obj: bpy.types.Object) -> tuple[int, int] | None:

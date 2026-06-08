@@ -85,8 +85,8 @@ def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
     assert not hasattr(authoring_overlay, "_STROKE_VERT_COLOR_CUT_REMOVE")
 
 
-def test_automesh_from_sprite_operator_honors_interior_mode(automesh_fixture):
-    """: the standalone Automesh-from-Sprite operator (not just the
+def test_automesh_from_alpha_operator_honors_interior_mode(automesh_fixture):
+    """: the standalone Automesh-from-Alpha operator (not just the
     authoring modal) must honor interior_mode - SIMPLE yields fewer verts
     than DENSE on the same sprite."""
     obj = _activate("hand")
@@ -100,9 +100,9 @@ def test_automesh_from_sprite_operator_honors_interior_mode(automesh_fixture):
         "preserve_base_quad": False,
         "debug_stage": "off",
     }
-    bpy.ops.proscenio.automesh_from_sprite(interior_mode="DENSE", **common)
+    bpy.ops.proscenio.automesh_from_alpha(interior_mode="DENSE", **common)
     dense_verts = len(obj.data.vertices)
-    bpy.ops.proscenio.automesh_from_sprite(interior_mode="SIMPLE", **common)
+    bpy.ops.proscenio.automesh_from_alpha(interior_mode="SIMPLE", **common)
     simple_verts = len(obj.data.vertices)
     assert simple_verts < dense_verts
 

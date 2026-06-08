@@ -277,7 +277,7 @@ class ProscenioSkinningProps(PropertyGroup):
     preserve_on_regen: BoolProperty(  # type: ignore[valid-type]
         name="Preserve weights on regen",
         description=(
-            "When ON (default), running Automesh from Sprite on an already-"
+            "When ON (default), running Automesh from Alpha on an already-"
             "bound mesh snapshots the current weights, regenerates the mesh, "
             "then reprojects the weights onto the new topology via UV anchors. "
             "OFF lets automesh wipe weights (legacy behavior) - useful when "

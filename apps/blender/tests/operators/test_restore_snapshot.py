@@ -51,7 +51,7 @@ def test_restore_with_stale_topology_aborts(automesh_fixture):
     bpy.ops.proscenio.bind_mesh_to_armature()
     # Turn off preserve so regen does NOT update the snapshot hash.
     bpy.context.scene.proscenio.skinning.preserve_on_regen = False
-    bpy.ops.proscenio.automesh_from_sprite(resolution=0.5)
+    bpy.ops.proscenio.automesh_from_alpha(resolution=0.5)
     # The stored sidecar still points to the OLD topology hash.
     with pytest.raises(RuntimeError, match="topology changed"):
         bpy.ops.proscenio.restore_weight_snapshot()

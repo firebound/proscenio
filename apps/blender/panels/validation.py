@@ -15,7 +15,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_main"
+    bl_order = 9
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "validation", "validation")
@@ -26,6 +26,9 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
         if scene_props is None:
             layout.label(text="proscenio scene props not registered", icon="ERROR")
             return
+
+        layout.operator("proscenio.validate_export", text="Validate", icon="CHECKMARK")
+        layout.separator()
 
         if not scene_props.validation_ran:
             layout.label(text="run Validate to see issues", icon="INFO")

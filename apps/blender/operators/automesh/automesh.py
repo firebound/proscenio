@@ -94,11 +94,11 @@ def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     return float(scene_props.pixels_per_unit) or 100.0
 
 
-class PROSCENIO_OT_automesh_from_sprite(bpy.types.Operator):
+class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
     """Generate a deformable annulus mesh from the active sprite's alpha."""
 
-    bl_idname = "proscenio.automesh_from_sprite"
-    bl_label = "Proscenio: Automesh from Sprite"
+    bl_idname = "proscenio.automesh_from_alpha"
+    bl_label = "Proscenio: Automesh from Alpha"
     bl_description = (
         "Build a deformable annulus mesh from the active sprite's image "
         "alpha channel. Pure-Python contour walker (no OpenCV dependency) "
@@ -387,7 +387,7 @@ class PROSCENIO_OT_clear_automesh_debug(bpy.types.Operator):
 
 
 _classes: tuple[type, ...] = (
-    PROSCENIO_OT_automesh_from_sprite,
+    PROSCENIO_OT_automesh_from_alpha,
     PROSCENIO_OT_clear_automesh_debug,
 )
 

@@ -4,6 +4,22 @@ See [STUDY.md](STUDY.md) for the problem, the locked decisions D1-D12, and the t
 
 Conventions this plan holds to ([`.ai/conventions/code.md`](../../.ai/conventions/code.md)): one panel module per tool; `panels/__init__.py` orchestrates registration only; panels call operators by `bl_idname` string, never import operator classes; `core/_shared/feature_status` is the single source for badges; new panel files keep `from __future__ import annotations` (panels declare no problematic `bpy.props` ClassVars, so the PEP 563 carve-out does not apply). Use `git mv` for renames so history follows.
 
+## Status - shipped on `feat/spec-022-blender-ui-restructure`
+
+All five phases landed. Each commit passed ruff + ruff-format + mypy + `uv run pytest tests/` (613) + the in-Blender register / poll / debug-gate smoke + the operator suite (50) + the fixture suite (7/7).
+
+- Phase 1 flatten root + footer - `4f6f720`
+- Phase 2 Element / Skeleton / Mesh Generation / Pipeline - `d7e512e`, `03d9c98`, `00bb539`, `810349c`
+- Phase 3 operator relocations (Slots list + `proscenio.select_slot`, Validate -> Validation, Preview Camera -> Helpers) - `ad55d09`
+- Phase 4 Weight Paint split - `701f85b`
+- Phase 5 warn-not-hide / header convention / `debug_mode` preference - `eef8de7`, `a553016`, `d2231a5`
+
+Pending (outside this spec's code):
+
+- In-editor visual smoke at the workstation - headless cannot render panels. Confirm the sibling-panel tree, the accordions, the warn-not-hide hints, the per-header badge + `?`, and the `debug_mode` preference showing / hiding Diagnostics + the Debug Pipeline subpanel.
+- Docs + [`../backlog-manual-testing.md`](../backlog-manual-testing.md) still read "Skinning panel" / "Automesh from Sprite"; they need a holistic pass once the new UI is reviewed (the operator + panel are renamed in code).
+- Rich per-subpanel help text, external doc links, the custom Godot icon, and i18n isolation remain spec 023; `debug_mode` is the only preference (spec 024 expands it).
+
 ## Gate set (every phase)
 
 - [ ] `uvx ruff check apps/blender/`

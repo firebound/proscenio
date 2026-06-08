@@ -37,7 +37,7 @@ def test_native_ctrlp_bind_then_automesh_regen_preserves_weights(automesh_fixtur
         for vert in list(obj.data.vertices)[:3]:
             obj.vertex_groups[bone.name].add([vert.index], 1.0, "REPLACE")
     # Run automesh regen - should reproject via on-the-fly sidecar.
-    bpy.ops.proscenio.automesh_from_sprite(resolution=0.25)
+    bpy.ops.proscenio.automesh_from_alpha(resolution=0.25)
     # After regen, vertex_groups must still have weights (NOT empty).
     total_assigned = 0
     for vert in obj.data.vertices:

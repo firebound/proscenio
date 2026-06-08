@@ -1,4 +1,13 @@
-"""Skeleton subpanel + bone UIList."""
+"""Skeleton panel + bone UIList + accordion subpanels.
+
+The Skeleton panel hosts the isolated project-wide Active Armature
+selector and the armature-presence messaging. The body splits into
+subpanels: Armature (the bone hierarchy), Pose Mode (pose-only
+authoring ops), and Quick Armature (the modal rig draw + its defaults).
+The status badge + help button on each subpanel header land with the
+header-convention pass (a later phase). Create Slot lives here until
+the Slots panel claims it (the operator-relocation phase).
+"""
 
 from __future__ import annotations
 
@@ -9,8 +18,14 @@ import bpy
 from ._helpers import _POSE_FRIENDLY_MODES, draw_subpanel_header
 
 
+def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
+    """Return the scene's picked Active Armature object, or None."""
+    scene_props = getattr(context.scene, "proscenio", None)
+    return scene_props.active_armature if scene_props is not None else None
+
+
 class PROSCENIO_UL_bones(bpy.types.UIList):
-    """List view for ``Armature.bones`` - Skeleton subpanel uses this."""
+    """List view for ``Armature.bones`` - the Armature subpanel uses this."""
 
     bl_idname = "PROSCENIO_UL_bones"
 
@@ -31,28 +46,36 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
             (o for o in bpy.data.objects if o.type == "ARMATURE" and o.data is data),
             None,
         )
+        depth = 0
+        parent = item.parent
+        while parent is not None:
+            depth += 1
+            parent = parent.parent
         op = row.operator(
             "proscenio.select_bone_by_name",
-            text=item.name,
+            text=("  " * depth) + item.name,
             icon="BONE_DATA",
             emboss=False,
         )
         op.armature_name = armature_obj.name if armature_obj is not None else ""
         op.bone_name = item.name
-        parent_name = item.parent.name if item.parent is not None else "-"
-        row.label(text=f"parent: {parent_name}")
-        row.label(text=f"len {item.length:.2f}")
+        flags = []
+        if getattr(item, "use_connect", False):
+            flags.append("connected")
+        if getattr(item, "use_relative_parent", False):
+            flags.append("relative")
+        row.label(text=", ".join(flags))
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
-    """Skeleton summary - bone count + presence checks."""
+    """Skeleton - the project-wide armature selector + presence checks."""
 
     bl_label = "Skeleton"
     bl_idname = "PROSCENIO_PT_skeleton"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_main"
+    bl_order = 4
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -64,42 +87,28 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
         scene_props = getattr(context.scene, "proscenio", None)
-        # Active-armature picker is always visible. Initial fill on
-        # `.blend` open / addon enable happens through the load_post +
-        # deferred_hydrate handlers (see properties/_handlers.py:
-        # auto_populate_active_armature). The picker is otherwise
-        # user-driven: clearing it via the "x" intentionally tells
-        # Proscenio "no explicit target - fall back to QuickRig on
-        # the next skeleton op". Writes during ``draw`` are forbidden
-        # by Blender (`Writing to ID classes in this context is not
-        # allowed`), so we never mutate the pointer here.
+        armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
+        # The picker is the single project-wide armature source. Writes
+        # during ``draw`` are forbidden by Blender, so the initial fill
+        # happens through the load_post / deferred_hydrate handlers; here
+        # it is purely surfaced + user-driven (clearing it via the "x"
+        # tells Proscenio to fall back to QuickRig on the next op).
         if scene_props is not None:
             row = layout.row(align=True)
             row.label(text="", icon="ARMATURE_DATA")
             row.prop(scene_props, "active_armature", text="")
+        explicit_target = _explicit_target(context)
         if not armatures:
             row = layout.row()
-            row.alert = True
-            row.label(text="no Armature in scene", icon="ERROR")
-            return
-        explicit_target = scene_props.active_armature if scene_props is not None else None
-        if explicit_target is not None:
-            bones = getattr(explicit_target.data, "bones", [])
-            layout.label(text=f"Armature '{explicit_target.name}' - {len(bones)} bone(s)")
-        elif armatures:
+            row.label(text="no Armature in scene - use Quick Armature below", icon="INFO")
+        elif explicit_target is None:
             box = layout.box()
-            row = box.row()
-            row.label(
-                text=("no rig picked - skeleton ops will create a new Proscenio.QuickRig"),
+            box.label(
+                text="no rig picked - skeleton ops will create a new Proscenio.QuickRig",
                 icon="INFO",
             )
             box.label(text="Use existing instead:")
-            # Stack one button per row so long armature names stay
-            # readable - the previous horizontal row truncated every
-            # name down to "atlas_pack.arm..." once two or more
-            # armatures were in the scene.
             buttons = box.column(align=True)
             for arm in armatures:
                 op = buttons.operator(
@@ -108,59 +117,113 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
                     icon="ARMATURE_DATA",
                 )
                 op.armature_name = arm.name
-        if explicit_target is not None and bones and scene_props is not None:
-            layout.template_list(
-                "PROSCENIO_UL_bones",
-                "",
-                explicit_target.data,
-                "bones",
-                scene_props,
-                "active_bone_index",
-                rows=min(max(len(bones), 3), 8),
-            )
-        if context.mode == "POSE":
-            layout.separator()
-            layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
-            layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
-            layout.operator(
-                "proscenio.save_pose_asset",
-                text="Save Pose to Library",
-                icon="ASSET_MANAGER",
-            )
-        layout.separator()
-        layout.operator("proscenio.quick_armature", text="Quick Armature", icon="GREASEPENCIL")
-        _draw_quick_armature_defaults(layout, context)
-        layout.operator("proscenio.create_slot", text="Create Slot", icon="LINK_BLEND")
 
 
-def _draw_quick_armature_defaults(
-    layout: bpy.types.UILayout,
-    context: bpy.types.Context,
-) -> None:
-    """Inline sub-box exposing the Quick Armature defaults.
+class PROSCENIO_PT_armature(bpy.types.Panel):
+    """Armature subpanel - the bone hierarchy of the picked armature."""
 
-    Settings live on ``scene.proscenio.quick_armature`` so they ride
-    with the .blend file and let one-off documents ship their own
-    preferred prefix / snap / chord vocabulary without touching the
-    user's global preferences.
+    bl_label = "Armature"
+    bl_idname = "PROSCENIO_PT_armature"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 0
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        target = _explicit_target(context)
+        return target is not None and bool(getattr(target.data, "bones", None))
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, "armature", "skeleton")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        target = _explicit_target(context)
+        scene_props = getattr(context.scene, "proscenio", None)
+        if target is None or scene_props is None:
+            return
+        bones = getattr(target.data, "bones", [])
+        layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
+        layout.template_list(
+            "PROSCENIO_UL_bones",
+            "",
+            target.data,
+            "bones",
+            scene_props,
+            "active_bone_index",
+            rows=min(max(len(bones), 3), 8),
+        )
+
+
+class PROSCENIO_PT_pose_mode(bpy.types.Panel):
+    """Pose Mode subpanel - pose-only authoring shortcuts."""
+
+    bl_label = "Pose Mode"
+    bl_idname = "PROSCENIO_PT_pose_mode"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 1
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, "pose_mode", "skeleton")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        if context.mode != "POSE":
+            layout.label(text="enter Pose mode to bake / save poses", icon="INFO")
+            return
+        layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
+        layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
+        layout.operator(
+            "proscenio.save_pose_asset",
+            text="Save Pose to Library",
+            icon="ASSET_MANAGER",
+        )
+
+
+class PROSCENIO_PT_quick_armature(bpy.types.Panel):
+    """Quick Armature subpanel - the modal rig draw + its defaults.
+
+    Always reachable, even with no armature in the scene, so the
+    operator that creates a rig is never gated behind one already
+    existing.
     """
-    scene_props = getattr(context.scene, "proscenio", None)
-    if scene_props is None:
-        return
-    qa_props = getattr(scene_props, "quick_armature", None)
-    if qa_props is None:
-        return
-    box = layout.box()
-    box.label(text="Quick Armature defaults", icon="SETTINGS")
-    box.prop(qa_props, "lock_to_front_ortho")
-    box.prop(qa_props, "default_chain")
-    box.prop(qa_props, "name_prefix")
-    box.prop(qa_props, "snap_increment")
+
+    bl_label = "Quick Armature"
+    bl_idname = "PROSCENIO_PT_quick_armature"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 2
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header_preset(self, _context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, "quick_armature", "quick_armature")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        layout.operator("proscenio.quick_armature", text="Quick Armature", icon="GREASEPENCIL")
+        scene_props = getattr(context.scene, "proscenio", None)
+        qa_props = getattr(scene_props, "quick_armature", None) if scene_props is not None else None
+        if qa_props is None:
+            return
+        layout.prop(qa_props, "lock_to_front_ortho")
+        layout.prop(qa_props, "default_chain")
+        layout.prop(qa_props, "name_prefix")
+        layout.prop(qa_props, "snap_increment")
 
 
 _classes: tuple[type, ...] = (
     PROSCENIO_UL_bones,
     PROSCENIO_PT_skeleton,
+    PROSCENIO_PT_armature,
+    PROSCENIO_PT_pose_mode,
+    PROSCENIO_PT_quick_armature,
 )
 
 

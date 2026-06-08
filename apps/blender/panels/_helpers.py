@@ -11,10 +11,21 @@ import bpy
 
 from ..core._shared.feature_status import badge_for, status_for  # type: ignore[import-not-found]
 
-_OBJECT_FRIENDLY_MODES = {"OBJECT", "EDIT_MESH", "PAINT_WEIGHT", "PAINT_VERTEX"}
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
 _STATUS_OP_IDNAME = "proscenio.status_info"
+
+
+def _scene_skinning(context: bpy.types.Context) -> bpy.types.PropertyGroup | None:
+    """Return ``scene.proscenio.skinning`` defaults group, or None."""
+    scene_props = getattr(context.scene, "proscenio", None)
+    return getattr(scene_props, "skinning", None) if scene_props is not None else None
+
+
+def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
+    """Return the scene-picked Active Armature, or None."""
+    scene_props = getattr(context.scene, "proscenio", None)
+    return getattr(scene_props, "active_armature", None) if scene_props is not None else None
 
 
 def draw_subpanel_header(

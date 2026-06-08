@@ -94,5 +94,15 @@ trippable
 visualisers
 Vite
 vitest
+alongs
+FEITO
+iface
+mgmt
+msgctxt
+MUDOU
+OBSOLETO
+pgettext
+VERIFICAR
 workbench
+worklist
 wrappable

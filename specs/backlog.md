@@ -99,6 +99,14 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** lands with the Weight Paint panel in the UI restructure (spec 022); until then sprites are bound via bone-parenting as today.
 
+### Panel helper consolidation (cross-module dupes)
+
+**What:** the spec 022 restructure split the sidebar into 13 panel modules, and small private context accessors recur across them. `_scene_skinning` + `_active_armature` were duplicated in `mesh_generation.py` and `weight_paint.py` (consolidated into `panels/_helpers.py` during the PR #96 review); similar one-liners still live module-local elsewhere (`_active_mesh_props`, `_explicit_target`, `_scene_props`, the per-module `_is_*` predicates). Sweep `panels/` for accessors that are genuinely identical across modules and lift them into `_helpers.py`; leave module-specific ones where they are.
+
+**Why:** CodeRabbit flagged the `_scene_skinning` / `_active_armature` pair on PR #96. Duplicated accessors drift when one copy changes and the other does not, and `panels/_helpers.py` already exists as the home for cross-cutting panel helpers (header drawer, mode predicates, scene accessors).
+
+**Trigger:** low priority - fold in when next touching the panel modules, or when a third copy of any accessor appears.
+
 ### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
 
 Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). The three deferred items shipped as the 016 follow-up, behavior-preserving and proven by the headless gate set (ruff + mypy + `uv run pytest tests/` + the Blender fixture and operator suites):

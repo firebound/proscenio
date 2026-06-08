@@ -91,6 +91,14 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 ## Blender addon
 
+### Sprite rigid single-bone bind (Weight Paint is mesh-only)
+
+**What:** a `sprite` element (Sprite2D) is rigid - it attaches to a single bone, not deformed by a weight map. The reorganized Weight Paint panel (the `apps/blender` UI restructure, opened by the spec 021 audit) polls `element_type == "mesh"`; a sprite instead gets a one-bone rigid bind control (effective weight 1 on its `parent_bone`).
+
+**Why:** weight paint on a Sprite2D is meaningless; surfacing the weight workflow on sprites invites the user to author weights the exporter ignores. Isolating the rigid-bind path keeps the sprite contract honest and the Weight Paint panel mesh-only.
+
+**Trigger:** lands with the Weight Paint panel in the UI restructure (spec 022); until then sprites are bound via bone-parenting as today.
+
 ### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
 
 Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). The three deferred items shipped as the 016 follow-up, behavior-preserving and proven by the headless gate set (ruff + mypy + `uv run pytest tests/` + the Blender fixture and operator suites):

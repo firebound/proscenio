@@ -2,6 +2,14 @@
 
 Status: **in progress - reconciliation pass first (D1 locked)**. This spec is the discovery step of the `apps/blender` UI/UX review that spec 019 opened. It designs nothing on its own: it reconciles the standing UX feedback against the shipped code, assesses every tool's current state, and sorts the findings into actionable buckets that become their own numbered specs.
 
+## Status - reviewed 2026-06-09
+
+Kept open: the discovery method is only partly run. Delivered and carried downstream - [`INVENTORY.md`](INVENTORY.md) and [`DESIGN-NOTES.md`](DESIGN-NOTES.md) drove spec 022 (IA restructure), spec 023 (help / docs / i18n), and spec 024 (preferences); the sprite-rigid-bind and atlas findings live in [`../backlog.md`](../backlog.md). Still open inside this spec:
+
+- **Phase A reconciliation** - only "Cross-panel / general" tagged; ~15 areas remain under "Pending Phase A" in [`RECONCILE.md`](RECONCILE.md), much of it now overtaken by spec 022 shipping.
+- **Phase B per-tool audit** - never produced; no per-tool sheets exist.
+- **Buckets B + C** - cross-app per-asset PPU (Bucket B), and per-tool feature gaps (Bucket C: bone-collections management, richer bone-hierarchy editing) never spawned their own spec.
+
 ## Problem
 
 The addon's sidebar grew tool by tool across many specs (authoring panel, slots, quick-armature, weight-paint-automesh, ...). It has never had a single holistic UX pass, and the standing feedback can no longer be trusted as a worklist.

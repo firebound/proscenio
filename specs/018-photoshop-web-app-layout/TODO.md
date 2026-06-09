@@ -4,6 +4,10 @@ See [STUDY.md](STUDY.md) for the evaluation and decisions D1-D9 (re-layout to `a
 
 Each phase is one PR, behavior-preserving, proven by the Photoshop gate: `tsc --noEmit` + `vitest` + ESLint. Phases 1-2 are folder renames (touch every import but mechanical); 3-4 carry the absorbed cleanups; 5 records the change. Order matters: `lib/` and `api/` exist before the hooks and UI rewire against them.
 
+## Status - verified 2026-06-09
+
+Re-layout shipped and the gate is green (`tsc --noEmit` + `eslint src` + `vitest run`, 226 pass). One Phase 2 item is ticked but was not actually done: png-writer keeps a local `resolveLayer` instead of calling the shared `findLayerByPath`, so the non-Array UXP robustness fix reaches only three of the four layer-walk sites. Tracked in [`../backlog.md`](../backlog.md) "Spec 018 follow-up: png-writer should call the shared findLayerByPath". Everything else verified done: `lib/` + `api/` + `components/` + `utils/` + the entry shim, hooks purity (no direct `"photoshop"` import), the `xmp.ts` dead-API prune, the manifest v2 comment, and the `code.md` + `decisions.md` records.
+
 ## Decision lock-in
 
 - [x] D1 - pure logic -> `lib/`.
@@ -27,7 +31,7 @@ Each phase is one PR, behavior-preserving, proven by the Photoshop gate: `tsc --
 
 - [x] Move `io/*` into `api/`; update imports.
 - [x] Move `adapters/photoshop-layer.ts` -> `api/adapt-document.ts`; move `controllers/export-flow.ts` + `import-flow.ts` -> `api/`; update imports.
-- [x] Replace `api/png-writer.ts` `resolveLayer` with the shared `findLayerByPath` (also fixes the non-Array UXP-collection robustness gap).
+- [ ] Replace `api/png-writer.ts` `resolveLayer` with the shared `findLayerByPath` (also fixes the non-Array UXP-collection robustness gap). NOT done - see Status; tracked in `../backlog.md`.
 - [x] Delete the now-empty `adapters/` and `controllers/` folders (the entry shim moves in phase 4).
 - [x] Gate green.
 

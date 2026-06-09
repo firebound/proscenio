@@ -145,6 +145,50 @@ Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `op
 
 **Verified:** the moved modal draw / status-bar callbacks run only during the live modal, which the headless gates do not exercise, so this was confirmed by an in-editor smoke test of both the Quick Armature and Automesh Authoring modals (preview overlay, axis-lock guideline, status-bar chords, outside-canvas tooltip) - all intact at runtime.
 
+### Spec 019 follow-up: stale element-vocab residuals
+
+Spec 019 renamed the element vocabulary end-to-end (`sprite_type` -> `element_type` with `mesh` / `sprite` kinds; `sprites[]` -> `elements[]`; the Godot builders and bindings; the Photoshop tag parser). The wire rename shipped and is proven by the importer smoke test. These source-only residuals were missed:
+
+- **Fixture builders still set the deleted `sprite_type` (bug if run).** `packages/fixtures/{atlas_pack,automesh,blink_eyes,mouth_drive,shared_atlas,slot_swap}/build_blend.py` assign `obj.proscenio.sprite_type = "polygon" / "sprite_frame"`. The PropertyGroup field is now `element_type` with values `mesh` / `sprite`, so re-running any of these builders raises `AttributeError`. Fix: `sprite_type` -> `element_type`, `polygon` -> `mesh`, `sprite_frame` -> `sprite` across the six files, then re-run them to refresh the `.blend` fixtures.
+- **`core/sprite_frame/` not renamed to `core/sprite/`.** The Phase 1 line to `git mv core/sprite_frame/ -> core/sprite/` and `core/bpy_helpers/sprite_frame/ -> core/bpy_helpers/sprite/` (modules `sprite_frame_math` / `sprite_frame_shader`) was not done. Internal-only, no wire or behavior impact.
+- **Stale `sprites[]` comments.** `core/slot/slot_emit.py:98` and `exporters/godot/writer/slots.py:22` describe the emitted array as `sprites[]`; the writer emits `elements[]` (`writer/__init__.py:143`).
+- **Validator internal naming.** `packages/validator` keeps `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the renamed wire field, so nothing breaks; the validator was not a Phase 1-4 target.
+
+**Trigger:** the fixture-builder fix matters the next time a `.blend` fixture is regenerated from source; the rest is cosmetic cleanup.
+
+### Spec 021 follow-up: discovery buckets B + C (no spec yet)
+
+The spec 021 UI/UX audit stays open as the discovery home; its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind and atlas findings were filed elsewhere in this backlog. Two buckets never spawned their own spec - surfaced here as the actionable worklist:
+
+- **Bucket B - per-asset pixels-per-unit (cross-app).** PPU is a single global value today (one export field, default 100). The audit flagged an end-to-end per-asset PPU so different elements can carry different Blender-world-to-pixel ratios. Spans Blender (a per-element field), the schema (`.proscenio` shape), and the Godot importer. Schema-level, post-launch - a `format_version` concern.
+- **Bucket C - per-tool feature gaps.** Bone-collections management inside Proscenio (create / assign / toggle Blender bone collections from the Skeleton panel), and richer bone-hierarchy editing (the read-only connected / relative-parent readout shipped in spec 022; the editing did not). Both are feature work, not IA.
+
+### Spec 022 follow-up: in-editor smoke + guide-doc rename sweep
+
+Spec 022 shipped and verified the 13-panel restructure (2026-06-09: panels renamed, `feature_status` bands updated, the stale `skinning` fallback gone, operator suite green at 50, addon registers headless). It also renamed the operator `proscenio.automesh_from_sprite` -> `automesh_from_alpha` and the Skinning panel -> Mesh Generation. Two deferrals outlive the spec:
+
+- **In-editor visual smoke (workstation).** Headless cannot render panels. At a GUI Blender, confirm the sibling-panel tree (nothing nested under the version line), the accordion subpanels collapsing independently, the warn-not-hide hints, the per-header badge + `?`, and the `debug_mode` preference showing / hiding Diagnostics + the Debug Pipeline subpanel. A layout regression found here is a new bug.
+- **Guide-doc rename sweep.** `docs/00-guides/00-basic/02-blender.md` and `docs/00-guides/01-advanced/02-blender.md` still say "Automesh from Sprite" / "Skinning panel"; `backlog-manual-testing.md` references the old names too (a historical log, lower priority). The same two guide pages also carry pre-Element-rename vocabulary - fold this into the spec 019 guide-doc residual for one holistic pass.
+
+**Trigger:** the visual smoke at the next workstation session; the docs sweep follows the review (or sooner - the renames are known).
+
+### Spec 024 follow-up: docs-URL preference (D3) + overrides (D4 - none)
+
+Spec 024 shipped the full preferences surface (2026-06-09: the `errors / info / debug` `log_level` enum gated once in `core/_shared/report`, the `debug` tier now backed by real per-item traces - importer planes, automesh counters, validation issues - so it is not inert; the `debug_mode` bool; all under a Developer box in `addon_prefs.py`). Two locked decisions defer the rest by design:
+
+- **Docs-URL as a preference (D3).** The docs base is the constant `_DOCS_BASE` in `core/help_topics.py`. Promote it to a preference only if a real need surfaces (a self-hosted docs mirror, a version switch).
+- **Per-project overrides (D4) - decided NONE.** The scene PropertyGroup already covers per-`.blend` state; preferences stay user-global. Recorded so it is not re-litigated.
+
+**Trigger:** the docs-URL pref lands when a second docs target appears.
+
+### Spec 023 follow-up: i18n tables, see-also URLs, docs depth
+
+Spec 023 shipped and verified the help / docs / i18n layer (2026-06-09: per-subpanel help topics, the `doc_url` + "Open online docs" button, the Godot badge icon via `bpy.utils.previews`, the `bpy.app.translations` isolation mechanism in `core/i18n.py`, and the `docs/02-blender-addon/` reference section). Three deferrals outlive the spec, all by-design:
+
+- **Per-locale translation tables (STUDY non-goal).** The mechanism is wired - English msgids are the source and `bpy.app.translations` auto-translates registered strings - but `TRANSLATIONS` is empty ("translate as we go"). Populate by appending `(locale, {(msgctxt, msgid): msgstr})` rows; no call-site changes.
+- **Migrate inline see-also refs to online URLs.** The `specs/` / `examples/` see-also entries render as plain labels because they do not resolve in an installed (zipped) extension; the working clickable link is the per-topic `doc_url` / "Open online docs" button. Convert the local refs to online URLs once the matching pages exist.
+- **Expand the addon reference pages.** `docs/02-blender-addon/` is a first cut (one brief page per panel mirroring the `?` help); add screenshots and deeper per-tool detail as the panels settle.
+
 ### General rig orientation detection
 
 Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users author on XY (Y up). Future work: detect the dominant plane from the armature's bone axes or expose an export option.
@@ -322,6 +366,16 @@ Three lookups currently bind without an explicit type: `polygon_builder.gd:114`,
 
 ## Photoshop and Krita
 
+### Spec 018 follow-up: png-writer should call the shared findLayerByPath
+
+**What:** [`apps/photoshop/src/api/png-writer.ts`](../apps/photoshop/src/api/png-writer.ts) keeps a local `resolveLayer` that walks `doc.layers` / `layer.layers` with a bare `Array.find`. The shared [`api/_layer-find.ts`](../apps/photoshop/src/api/_layer-find.ts) `findLayerByPath` - already used by `layer-rename`, `legacy-migration`, and `ps-selection` - wraps the walk in `toArray()` plus NFC name matching precisely because UXP layer collections are not always real Arrays. The spec 018 TODO ticked "replace png-writer `resolveLayer` with the shared `findLayerByPath`", but the code still carries the local copy.
+
+**Why it matters:** a non-Array UXP layer collection makes the local `Array.find` throw or miss, so an export can silently skip a layer or fail; the duplication also leaves the NFC / robustness fixes protecting only three of the four layer-walk call sites. The gate stays green because the vitest fixtures back layers with real Arrays, so the gap is latent.
+
+**Scope sketch:** import `findLayerByPath` from `./_layer-find`, swap the `resolveLayer(sourceDoc, write.layerPath)` call, delete the local function. `tsc --noEmit` + `eslint src` + `vitest run` should stay green. Same walk as the "Stable layer identity in `PngWrite.layerPath`" item below.
+
+**Trigger to revisit:** before relying on a png export against a deeply nested or programmatically built PS document, or the first wrong-PNG / missing-layer export report.
+
 ### JSX exporter port from `coa_tools2`
 
 Port `coa_tools2/Photoshop/coa_export.jsx` forward into `apps/photoshop/proscenio_export.jsx`. Adapt output JSON to the format documented in `.ai/skills/photoshop-jsx-dev.md`.
@@ -411,6 +465,16 @@ The new categorization buckets at `examples/generated/{psd_to_blender,blender_to
 **Trigger:** an artist sets a folder / scale / origin via the advanced fields, empties it, applies, and the tag is still on the layer.
 
 ## Tests and CI
+
+### Spec 020 follow-up: coverage deferrals
+
+Spec 020 lifted coverage 36% -> 88.8% (Sonar gate green at merge, PR #95) and shipped the test suites, the UXP host mock, the in-Blender `coverage.py` instrumentation (`apps/blender/tests/run_coverage.py`), and the exclusion policy (recipe in the `sonar-project.properties` header). Three follow-ups were deferred by design:
+
+- **Wire `run_coverage.py` + combine into CI.** Today Sonar runs only on the local Docker instance, so the two-interpreter combine is a documented local pre-scan step. Wire it into the `test-blender` job, and set `REFERENCE_BRANCH=main` for new-code, once Sonar moves into CI (Community Edition ignores `REFERENCE_BRANCH` on a single-branch project, so `NUMBER_OF_DAYS=30` stands in locally).
+- **Drop the bpy-bound coverage exclusions when in-Blender unit coverage is comprehensive.** `operators/`, `panels/`, `properties/`, `core/bpy_helpers/` stay excluded because the headless suites are scenario integration tests (measured 23-29%), not units; dropping the exclusions would add ~6900 lines at ~25% and tank the number. The instrumentation makes them measurable; the value is not there until real unit coverage exists.
+- **Edge-polish ~8 pure modules at 89-93%.** One to six uncovered edge lines each; diminishing returns, not chased.
+
+Related enforcement gaps (ESLint not in CI, `packages/{models,codegen}` without a mypy gate, the bpy-bound mypy `ignore_errors` override) live in [`backlog-code-quality.md`](backlog-code-quality.md).
 
 ### Blender headless test - multi-version matrix
 

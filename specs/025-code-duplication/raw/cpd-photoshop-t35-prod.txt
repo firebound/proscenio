@@ -1,0 +1,35 @@
+Found a 9 line (69 tokens) duplication in the following files:
+  Starting at line 459 of /src/apps/photoshop/src/lib/planner.ts
+  Starting at line 540 of /src/apps/photoshop/src/lib/planner.ts
+
+Found a 12 line (67 tokens) duplication in the following files:
+  Starting at line 101 of /src/apps/photoshop/src/api/import-flow.ts
+  Starting at line 136 of /src/apps/photoshop/src/api/import-flow.ts
+
+Found a 6 line (64 tokens) duplication in the following files:
+  Starting at line 755 of /src/apps/photoshop/src/lib/planner.ts
+  Starting at line 767 of /src/apps/photoshop/src/lib/planner.ts
+
+Found a 7 line (61 tokens) duplication in the following files:
+  Starting at line 64 of /src/apps/photoshop/src/api/export-flow.ts
+  Starting at line 108 of /src/apps/photoshop/src/api/export-flow.ts
+
+Found a 7 line (49 tokens) duplication in the following files:
+  Starting at line 108 of /src/apps/photoshop/src/api/export-flow.ts
+  Starting at line 189 of /src/apps/photoshop/src/api/export-flow.ts
+
+Found a 4 line (49 tokens) duplication in the following files:
+  Starting at line 658 of /src/apps/photoshop/src/lib/planner.ts
+  Starting at line 686 of /src/apps/photoshop/src/lib/planner.ts
+
+Found a 6 line (43 tokens) duplication in the following files:
+  Starting at line 64 of /src/apps/photoshop/src/api/export-flow.ts
+  Starting at line 189 of /src/apps/photoshop/src/api/export-flow.ts
+
+Found a 4 line (36 tokens) duplication in the following files:
+  Starting at line 162 of /src/apps/photoshop/src/api/import-flow.ts
+  Starting at line 95 of /src/apps/photoshop/src/api/png-writer.ts
+
+Found a 5 line (35 tokens) duplication in the following files:
+  Starting at line 140 of /src/apps/photoshop/src/api/export-flow.ts
+  Starting at line 209 of /src/apps/photoshop/src/api/export-flow.ts

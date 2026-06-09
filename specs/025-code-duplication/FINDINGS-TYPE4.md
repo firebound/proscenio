@@ -1,0 +1,136 @@
+# Semantic / type-4 duplication audit - apps/blender
+
+Deep pass beyond token copy-paste. Goal: find logic that performs the same operation through different syntax, so a future refactor never has to change identical reasoning in more than one place. This is not an architecture review; the only concern is divergence risk from duplicated logic.
+
+> **Note.** This file has two layers. The original pass (D1-D15, below) ran `ast_scan.py` (exact skeleton + call-overlap >=0.6 + name collisions) plus a hand read of the files those signals flagged. A later, deeper pass added `ast_scan2.py` (k-gram near-skeleton similarity, lowered call-overlap, data-schema comparison) and a hand read of the whole `core/` tree plus exporters/importers and a large operator/panel sample. The deeper pass found families the first pass missed; they are recorded in the **Deep-pass findings (N-series)** section near the end. Where an N-finding subsumes an earlier D-finding it says so. Read the N-series for the fuller picture; the D-series remains as the first-pass record.
+
+## Method
+
+Token tools (PMD CPD) only catch matching text. To reach type-4 (same operation, different control flow) the pass works on the AST instead, via `tools/ast_scan.py`. For every function in `apps/blender` it records three signals:
+
+- **Structural skeleton.** The AST node-type sequence with identifier and constant values abstracted away. Identical skeletons are type-1/2/3 clones (renames, reordered locals, swapped literals) even when the source text differs.
+- **Call multiset.** The dotted call targets the function invokes (`bpy.data...`, helper names). High overlap with a *different* skeleton is the type-4 signal: two functions reaching for the same APIs in a different shape are usually doing the same job.
+- **Cross-file name collision.** The same function name defined in two or more files - a classic tell that an operation was reimplemented rather than shared.
+
+Every flagged cluster was then read by hand to separate real duplication from coincidental rhyme.
+
+## Coverage
+
+- 983 functions scanned (902 production, 81 test). Inventory: `raw/ast-inventory.json`.
+- 30 identical-skeleton groups, 50 call-overlap pairs (>=0.6), 14 cross-file name collisions. Full machine output: `raw/ast-report.txt`.
+- Every group, pair, and collision in those three lists was read and classified below. Nothing was left unjudged.
+
+## Confirmed duplications
+
+Ranked by drift risk (how likely the copies are to silently disagree after an edit). File links point at one representative copy; the table lists the rest.
+
+### High - verbatim logic in 2+ places, will drift
+
+- **D1. `_resolve_image` + `_find_tex_image`.** Whole functions copy-pasted between [operators/automesh/automesh.py:53](../../../apps/blender/operators/automesh/automesh.py#L53) and [operators/automesh/automesh_authoring.py:1266](../../../apps/blender/operators/automesh/automesh_authoring.py#L1266). The authoring copy's docstring even says "Reuse the same lookup automesh_from_alpha uses" - but it copied the body instead of importing it. Fix: import the pair from one module, or move both to a shared `automesh` helper.
+- **D2. `_restore_selection`.** Byte-for-byte identical (deselect all, reselect prior names, restore active) in [core/bpy_helpers/automesh/authoring_session.py:46](../../../apps/blender/core/bpy_helpers/automesh/authoring_session.py#L46) and [core/bpy_helpers/skinning/modal_session.py:80](../../../apps/blender/core/bpy_helpers/skinning/modal_session.py#L80), with a third hand-rolled variant over class attributes in [operators/armature/quick_armature.py](../../../apps/blender/operators/armature/quick_armature.py). Fix: one helper taking `(context, prior_selected_names, prior_active)`.
+- **D3. `_resolve_pixels_per_unit`.** Identical (`getattr proscenio` then `float(...) or 100.0`) in [operators/automesh/automesh.py:89](../../../apps/blender/operators/automesh/automesh.py#L89) and [core/bpy_helpers/automesh/authoring_pipeline.py:515](../../../apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py#L515). Fix: single helper.
+- **D4. `_image_filename` (Godot writer).** Near-identical filepath-or-synthesised-name logic in [exporters/godot/writer/scene_discovery.py:45](../../../apps/blender/exporters/godot/writer/scene_discovery.py#L45) and [exporters/godot/writer/sprites.py:160](../../../apps/blender/exporters/godot/writer/sprites.py#L160). Self-acknowledged ("Mirrors sprites._image_filename"). Only difference: sprites returns `None` on empty name, scene_discovery returns `""`. Fix: one helper, reconcile the empty-name return.
+
+### High - type-4, same intent with already-divergent logic
+
+- **D5. `read_field` vs `_read_field`.** Two implementations of "PropertyGroup-first, Custom Property fallback" that cite each other in their docstrings but use different mechanisms: [core/_shared/pg_cp_fallback.py:37](../../../apps/blender/core/_shared/pg_cp_fallback.py#L37) reads via `.get(key, default)` and tests `value is not None`; [core/_shared/region.py:34](../../../apps/blender/core/_shared/region.py#L34) reads via `__contains__`/`__getitem__` and tests `hasattr`. They have already drifted in their null/presence semantics. This is the clearest type-4 risk in the codebase: same output intended, different reasoning, divergence in flight. Fix needs a decision (which Protocol and which presence rule wins) before merging, not a blind dedup.
+
+### Medium - shared block inside otherwise-distinct functions
+
+- **D6. GPU shader-draw tail.** The `blend_set("ALPHA")` / `line_width_set` / `bind` / `uniform_float("color")` / `batch.draw` / reset sequence repeats across roughly 8-10 sites: [core/bpy_helpers/_shared/modal_overlay.py:43](../../../apps/blender/core/bpy_helpers/_shared/modal_overlay.py#L43) (`draw_line_3d`, `draw_dashed_line_3d`, `draw_circle_3d`), [core/bpy_helpers/automesh/authoring_overlay.py](../../../apps/blender/core/bpy_helpers/automesh/authoring_overlay.py) (`_draw_polyline`, `_draw_polylines`, `_draw_edges`, `_draw_points`, `_draw_user_strokes`, `_draw_delete_hover`, `_draw_live_preview`), and [core/bpy_helpers/skinning/weight_overlay.py:76](../../../apps/blender/core/bpy_helpers/skinning/weight_overlay.py#L76) (`_draw_color_groups`). Fix: one `_draw_batch(prim_type, verts, color, line_width)` primitive. Biggest single cluster.
+- **D7. base_sprite vert deletion.** [core/bpy_helpers/automesh/base_sprite.py:51](../../../apps/blender/core/bpy_helpers/automesh/base_sprite.py#L51) `delete_non_base_geometry` and `:73` `remove_base_sprite_verts` share the entire bmesh open / deform-layer / `bmesh.ops.delete` / write-back scaffold; only the membership predicate is inverted. Fix: one `_delete_verts_by_membership(obj, group_index, *, keep_members: bool)`.
+- **D8. debug companion edge loops.** [core/bpy_helpers/automesh/debug.py:106](../../../apps/blender/core/bpy_helpers/automesh/debug.py#L106) `emit_contour_debug` and `:149` `emit_bridges_debug` share the verts-build plus outer/inner cyclic edge-loop construction verbatim; bridges is a superset. Fix: extract `_contour_loop_verts_edges(outer, inner)`.
+- **D9. PSD stamp tail.** [importers/photoshop/planes.py:78](../../../apps/blender/importers/photoshop/planes.py#L78) `stamp_mesh` and `:109` `stamp_sprite` share the place-and-tag tail (`_layer_placement` -> `_ensure_mesh` -> `_set_world_position` -> `_attach_material` -> `_parent_to_root` -> `_link_to_subfolder` -> `_tag_*`), ~10 calls. Fix: `_place_and_tag(...)` taking the kind-specific bits as params.
+- **D10. Stroke decode/encode.** [core/bpy_helpers/automesh/authoring_pipeline.py:152](../../../apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py#L152) `read_user_strokes` / `read_user_outer_strokes` share the get-payload / json-or-list / `_parse_strokes` block; `write_user_strokes` / `write_user_outer_strokes` are a verbatim `json.dumps` pair. Fix: `_decode_strokes` / `_encode_strokes`.
+- **D11. Statusbar toggle.** [operators/automesh/automesh_authoring.py:1237](../../../apps/blender/operators/automesh/automesh_authoring.py#L1237) and [operators/skinning/edit_weights.py:146](../../../apps/blender/operators/skinning/edit_weights.py#L146) both gate a class flag and prepend/remove a STATUSBAR draw callback. Fix: a small mixin or `(append, remove)` helper pair parameterised by the draw fn + flag.
+- **D12. export / re-export spine.** [operators/export_flow.py:103](../../../apps/blender/operators/export_flow.py#L103) and `:134` share gate-on-validation -> run-writer -> report-error-or-info. Fix: `_gate_run_report(self, scene, filepath, ppu)`.
+
+### Low - real but trivial
+
+- **D13. `_name_of`.** One-liner `str(getattr(obj, "name", ""))` defined in three validation files ([active_element.py:9](../../../apps/blender/core/validation/active_element.py#L9), active_slot.py:10, export.py). Fix: move to `core/validation/_shared.py`.
+- **D14. Armature poll callback.** `bool(obj.type == "ARMATURE")` as `is_armature` in [properties/_dynamic_items.py:29](../../../apps/blender/properties/_dynamic_items.py#L29) and `_is_armature` in [properties/scene_props.py:25](../../../apps/blender/properties/scene_props.py#L25). Fix: share one.
+- **D15. `_bpy_compat` accessor families.** [core/bpy_helpers/_shared/_bpy_compat.py](../../../apps/blender/core/bpy_helpers/_shared/_bpy_compat.py) has families of near-identical one-line wrappers (`iter_objects` / `iter_bones` / ... 8x; `expect_mesh` / `expect_armature`; `node_output_by_name` / `node_input_by_name`). These are a deliberate thin compatibility surface; deduping into a generic would cost readability for little gain. Listed for completeness; recommend leaving as-is unless the file grows.
+
+## Evaluated and rejected (not duplication)
+
+Recorded so the audit is provably exhaustive - these tripped a signal but are legitimately distinct:
+
+- **`mirror.py` `_as_int` / `_as_float` / `_as_bool`.** Structures rhyme but the coercion rules genuinely differ (int specially excludes bool; the accepted-type guards diverge). A generic caster would hide meaningful per-type logic.
+- **`draw_body` in `_draw_mesh.py` vs `_draw_sprite.py`.** Same name and signature, fully different bodies. This is intentional polymorphic dispatch (`active_element.py` selects a per-mode `draw_body`), not a clone.
+- **Operator `poll` guards and `register` / `unregister` (40x each).** Blender requires per-class declarations; the repetition is framework idiom, not dedupable logic. They inflate the token-tool counts but carry no drift risk.
+- **`contour.py` `extract_outer_contour` vs `extract_contours`.** Share the binarize / dilate / trace pipeline but one returns a single outer loop and the other the full set; the differing post-processing is the point.
+
+## Recommended order
+
+D1-D5 first (verbatim or actively-drifting logic, highest risk, mostly mechanical except D5 which needs a semantics decision). D6 next (largest cluster, one clean primitive collapses ~10 sites). D7-D12 as opportunistic cleanups when touching those modules. D13-D14 trivial. D15 leave.
+
+## Deep-pass findings (N-series)
+
+From `ast_scan2.py` (near-skeleton k-gram similarity, lowered call-overlap, schema comparison) plus a full hand read of `core/`, exporters, importers and a large operator/panel sample. These are the families the first pass under-counted or missed. The two biggest (N1, N2) are the highest-value findings of the whole audit: a canonical helper exists, but many call sites bypass it and reimplement the logic inline, so the truth lives in 8-10 places.
+
+### High - large fan-out, canonical helper bypassed
+
+- **N1. "Find the texture image on a material" - ~10 reimplementations.** The loop `for node in material.node_tree.nodes: if node.type == "TEX_IMAGE" and node.image ...` is hand-written across at least: [operators/automesh/automesh.py:53](../../../apps/blender/operators/automesh/automesh.py#L53) `_find_tex_image`, [operators/automesh/automesh_authoring.py:1283](../../../apps/blender/operators/automesh/automesh_authoring.py#L1283) `_find_tex_image` (the D1 copy), [core/bpy_helpers/atlas/atlas_collect.py:98](../../../apps/blender/core/bpy_helpers/atlas/atlas_collect.py#L98) `_find_first_image`, [panels/_draw_sprite.py:67](../../../apps/blender/panels/_draw_sprite.py#L67) `_first_tex_image_size`, [core/validation/export.py:125](../../../apps/blender/core/validation/export.py#L125) `_texture_image_filepath` + `_iter_object_atlas_filepaths`, [exporters/godot/writer/sprites.py:144](../../../apps/blender/exporters/godot/writer/sprites.py#L144) `_iter_tex_images`, [operators/atlas_pack/_paths.py:14](../../../apps/blender/operators/atlas_pack/_paths.py#L14) `first_texture_image_name` + `swap_image_in_materials`, and the godot writers via `_bpy_compat.iter_shader_nodes`. A canonical `iter_shader_nodes` exists in [core/bpy_helpers/_shared/_bpy_compat.py](../../../apps/blender/core/bpy_helpers/_shared/_bpy_compat.py) but most sites ignore it. Each variant differs slightly (returns image / name / size / filepath, or sets it). This is the single largest drift surface in the addon: change the node-finding convention (node groups, multiple images, a different node type) and ~10 places must change in lockstep. Subsumes D1. Fix: one `iter_material_images(obj)` everything funnels through.
+- **N2. PropertyGroup-first / Custom-Property-fallback read - reimplemented despite two canonical helpers.** [core/_shared/pg_cp_fallback.py](../../../apps/blender/core/_shared/pg_cp_fallback.py) already provides `read_field` and `read_bool_flag`, yet the same "PG first, CP fallback, else default" logic is hand-rolled in [core/_shared/region.py:34](../../../apps/blender/core/_shared/region.py#L34) `_read_field`, [core/validation/_shared.py:22](../../../apps/blender/core/validation/_shared.py#L22) `read_element_type` + `read_int`, and [exporters/godot/writer/slots.py:56](../../../apps/blender/exporters/godot/writer/slots.py#L56) `read_slot_default`. The hand-rolled copies have already drifted in their presence semantics (some test `value is not None`, some `hasattr`, some truthiness). Compounding it, the duck-typed `_CPLookup`/`_CPCarrier`/`_CPWriter` Protocol that backs these reads is defined five times: region.py, [core/_shared/hydrate.py:32](../../../apps/blender/core/_shared/hydrate.py#L32), validation/_shared.py, pg_cp_fallback.py, and [core/mirror.py:74](../../../apps/blender/core/mirror.py#L74). Subsumes and enlarges D5. Highest type-4 drift risk after N1; consolidation needs one decision on the presence rule, then every site routes through the one helper + one Protocol.
+- **N3. `point_in_polygon` - two ray-cast implementations.** [core/automesh/density.py:69](../../../apps/blender/core/automesh/density.py#L69) `point_in_polygon` (boundary-excluding, the canonical one - `cdt.py` imports it) and [core/automesh/outer_splice.py:29](../../../apps/blender/core/automesh/outer_splice.py#L29) `_point_in_polygon` (classic `j = n-1` form, no boundary check) compute the same predicate with different code. They will disagree on points sitting exactly on an edge. Fix: outer_splice imports the canonical one (both are pure modules).
+
+### Medium - same operation, divergent or partly-shared bodies
+
+- **N4. Deform-bone world projection.** [core/bpy_helpers/skinning/bind_apply.py:82](../../../apps/blender/core/bpy_helpers/skinning/bind_apply.py#L82) `_bone_segments_xz` (2D XZ) and [core/bpy_helpers/skinning/diagnose_collect.py:40](../../../apps/blender/core/bpy_helpers/skinning/diagnose_collect.py#L40) `_collect_bone_segments_world` (3D) are the same loop (`for bone in armature.data.bones if bone.use_deform: matrix_world @ head/tail`), differing only in tuple arity. The same `for ... if bone.use_deform` world-transform loop also appears in bind_apply's `_adaptive_max_distance` and `_collect_envelope_radii`, and in `sidecar_io.snapshot_sidecar` - 6+ sites. Fix: one `deform_bone_world_segments(armature)` (3D) with XZ derived by dropping Y.
+- **N5. Viewport ray-plane projection.** [core/bpy_helpers/_shared/viewport_math.py:79](../../../apps/blender/core/bpy_helpers/_shared/viewport_math.py#L79) `region_event_to_xz` and `:104` `region_event_to_xz_offset` are near-verbatim (the offset version only adds the `dx/dy` coord shift and a `t < 0` guard); `mouse_event_to_plane_point` is the general form of both. Fix: one function, offset defaulting to 0, with the behind-camera guard.
+- **N6. Cyclic loop-edge construction.** `[(start+i, start+(i+1)%count) ...]` is a clean helper in [core/bpy_helpers/automesh/cdt.py:64](../../../apps/blender/core/bpy_helpers/automesh/cdt.py#L64) `_cyclic_loop_edges` but is reimplemented inline in [core/automesh/geometry.py:279](../../../apps/blender/core/automesh/geometry.py#L279) `build_annulus_edge_pairs` and twice in [core/bpy_helpers/automesh/debug.py](../../../apps/blender/core/bpy_helpers/automesh/debug.py). Extends D8. Fix: promote `_cyclic_loop_edges` to the shared geometry helper and call it from all three.
+- **N7. JSON Custom-Property codec.** The "read `obj.get(KEY)`, `json.loads`-or-`list`, `except` return default" idiom recurs in [core/skinning/bone_modes.py:24](../../../apps/blender/core/skinning/bone_modes.py#L24), authoring_pipeline strokes (D10), [operators/atlas_pack/_paths.py:49](../../../apps/blender/operators/atlas_pack/_paths.py#L49) `pre_pack_snapshot_for`, and [core/bpy_helpers/skinning/weight_overlay.py:50](../../../apps/blender/core/bpy_helpers/skinning/weight_overlay.py#L50) `_read_provenance_entries` - the last reads the sidecar JSON inline instead of using the canonical `sidecar_schema.from_json`. Extends D10. Fix: a small `read_json_cp(obj, key, default)` / `write_json_cp`, and route sidecar reads through `from_json`.
+- **N8. `scene.proscenio` sub-accessor bypassed.** [core/_shared/props_access.py:29](../../../apps/blender/core/_shared/props_access.py#L29) `scene_props` is the canonical guarded accessor, but the same `getattr(scene, "proscenio", None)` then sub-attr is reimplemented in [panels/_helpers.py:26](../../../apps/blender/panels/_helpers.py#L26) `_scene_skinning` + `_active_armature`, [core/armature/skeleton_target.py:25](../../../apps/blender/core/armature/skeleton_target.py#L25) `resolve_skeleton_target`, `automesh_authoring._resolve_picker`, and `properties/_dynamic_items.is_armature`. The "resolve the active-armature picker with a `type == ARMATURE` guard" variant is itself duplicated (`skeleton_target` vs `_resolve_picker`). Fix: route through `scene_props` / `object_props`; add one `active_armature(context)` helper.
+- **N9. Two arc-length resamplers.** [core/automesh/geometry.py:88](../../../apps/blender/core/automesh/geometry.py#L88) `arc_length_resample` (closed contour, target count) and [core/automesh/stroke_geometry.py:68](../../../apps/blender/core/automesh/stroke_geometry.py#L68) `resample_polyline` (open polyline, spacing) walk segments emitting evenly-spaced points by the same method. The open/closed split is real, so this is a justified divergence worth a shared inner helper rather than a forced merge.
+- **N10. Select-by-name operator body.** `bpy.data.objects.get(name)` then validate then `select_only` or `report_warn` recurs across [operators/selection.py](../../../apps/blender/operators/selection.py) (two ops) and [operators/slot/select.py:34](../../../apps/blender/operators/slot/select.py#L34). Fix: a shared `select_named_or_warn(...)`.
+- **N11. Status-bar chord renderers.** [operators/automesh/_status_bar.py:18](../../../apps/blender/operators/automesh/_status_bar.py#L18) has a `chord(layout, *parts)` helper; [operators/armature/_status_bar.py:21](../../../apps/blender/operators/armature/_status_bar.py#L21) inlines the same `row = layout.row(align=True); row.label(...)` rows. Their docstrings cross-reference each other. Fix: share the `chord` helper.
+- **N12. Duplicate `Issue` schema.** [core/validation/issue.py](../../../apps/blender/core/validation/issue.py) `Issue` (dataclass: severity, message, obj_name) and `properties/validation_issue.py` `ProscenioValidationIssue` (PropertyGroup, same three fields) encode the same record twice. Adding a field means editing both.
+
+### Low - real but trivial (deep pass)
+
+- **N13. Nearest-vertex linear scan** duplicated: `outer_splice._nearest_outer_vert_index` vs `stroke_geometry.snap_endpoint` (the latter adds a max-distance cap).
+- **N14. `cp_key -> field` mapping table** duplicated: `hydrate.OBJECT_PROPS` (11 rows) is a subset of `mirror.OBJECT_MIRROR_MAP` (14 rows). A new field must be added to both.
+- **N15. `Point2D = tuple[float, float]`** alias re-declared in ~5 pure modules (geometry, stroke_geometry, cut_geometry, outer_splice, density, planar_proximity). Could live once in `geometry_2d`.
+- **N16. Zero-weight-matrix init** `{name: [0.0]*len(verts) for _, _, name in bones}` repeated 4x in `skinning_modes.py`.
+
+### Evaluated and rejected in the deep pass (not duplication)
+
+- `contour._dilate_once` / `_erode_once` - already share their loop via `_apply_morphology(single_pass)`; this is clean strategy-pattern factoring, not a clone.
+- `bind_diagnosis` five checks - each genuinely distinct; the common "compute, else return None, else return Finding" is a result shape, not shared logic.
+- `PoseDelta` / `BoneRestLocal` / `_KeyKwargs` (godot writer) - share the field names position/rotation/scale but mean different things (per-key delta vs rest pose vs constructor kwargs). Coincidental naming.
+- `draw_box` (`_draw_region` vs `_draw_driver_shortcut`) and `draw_body` (`_draw_mesh` vs `_draw_sprite`) - same name, different bodies: intentional per-mode dispatch convention.
+- The `math.hypot` distance-loop "family" the call-overlap signal flagged (perimeter_length / edge_index_start_distance / diagnose_overlapping_verts) - same idiom, different purposes; not shared logic.
+- `_bpy_compat` `iter_*` / `expect_*` / `node_*_by_name` families - a deliberate thin compatibility surface; deduping into generics would cost readability.
+
+### Additional families surfaced in the full core sweep
+
+Found while hand-reading the remaining `core/` and bpy_helpers modules after the N1-N16 list was written.
+
+- **N17. Two numpy image compositors.** [core/bpy_helpers/atlas/atlas_compose.py:24](../../../apps/blender/core/bpy_helpers/atlas/atlas_compose.py#L24) `compose_atlas` and [core/bpy_helpers/psd/psd_spritesheet.py:40](../../../apps/blender/core/bpy_helpers/psd/psd_spritesheet.py#L40) `compose_spritesheet` share the whole "snapshot source pixels -> `np.zeros` canvas -> paste loop -> `pixels.foreach_set` -> save PNG -> remove temp image" machinery. Different domains (atlas pack vs frame strip) but the bpy-image-via-numpy compositor is duplicated. Medium.
+- **N18. Tag-VIEW_3D-redraw.** "Walk windows/areas, `area.tag_redraw()` for VIEW_3D" recurs in [properties/_handlers.py:114](../../../apps/blender/properties/_handlers.py#L114) `_tag_view3d_areas_redraw`, `automesh_authoring._tag_redraw_view3d` (adds STATUSBAR), and inline in quick_armature. Low-medium.
+- **N19. "Is this a slot Empty" predicate.** `obj.type == "EMPTY" and getattr(obj.proscenio, "is_slot")` is canonical in [exporters/godot/writer/slots.py:43](../../../apps/blender/exporters/godot/writer/slots.py#L43) `is_slot_empty` (uses `read_bool_flag`) but reimplemented inline in `panels/outliner.py`, `core/validation/active_slot.py` `_is_active_slot`, and `core/validation/export.py` `_validate_slots`. Low-medium. Same theme as N8 (a canonical accessor exists but is bypassed).
+- **Strengthens N4:** the deform-bone world-segment projector has a third explicit copy - [core/bpy_helpers/automesh/bridge.py:297](../../../apps/blender/core/bpy_helpers/automesh/bridge.py#L297) `collect_bone_segments`.
+- **Strengthens N8:** `scene.proscenio.skinning` is fetched by both `panels/_helpers._scene_skinning` and [core/bpy_helpers/skinning/automesh_hook.py:169](../../../apps/blender/core/bpy_helpers/skinning/automesh_hook.py#L169) `_get_skinning_props` (duplicate functions); `properties/_handlers.py` and `panels/outliner.py` add more inline `getattr(scene/obj, "proscenio", None)` sites.
+- **Strengthens N13:** the nearest-vertex linear scan is also in [core/skinning/weight_transfer.py:18](../../../apps/blender/core/skinning/weight_transfer.py#L18) `transfer_weights_by_nearest` and `weight_reproject._knn_3` - four sites total.
+- **Minor: read vertex-group weights** (`for elem in vert.groups: if elem.group == idx ...`) recurs in `stroke_diff._read_group_weights`, `copy_weights._read_vert_weights`, `automesh_hook._has_any_weight`, `bind_apply._count_orphans`, `sidecar_io.snapshot_sidecar` - five readers of per-vert group weights.
+
+### Final families from the full operator/panel sweep
+
+After hand-reading the remaining operators and panels (the boilerplate tail), a handful of smaller real families turned up. All low-to-medium; mostly UI or operator-scaffold logic.
+
+- **N20. UV-remap-to-slot reimplemented.** `core/uv_bounds.py` `remap_uv_into_slot` is the pure, tested helper, but `operators/atlas_pack/apply.py` `_rewrite_uvs` reimplements the exact same `(slot.x + (src_px - slice.x)) / atlas_w` remap inline. Medium - canonical pure helper bypassed.
+- **N21. UV-bounds bbox.** "Walk polys/loops, min/max the UVs into a bbox" recurs in `core/_shared/region.py` `compute_region_from_uvs`, `core/uv_bounds.py` `uv_bbox_to_pixels`, `operators/uv_authoring.py` `snap_region_to_uv` (inline), and `core/bpy_helpers/atlas/atlas_collect.py` `_collect_mesh_uvs`.
+- **N22. Reparent-into-empty-preserving-world.** The `world = mesh.matrix_world.copy(); mesh.parent = empty; mesh.parent_type = "OBJECT"; mesh.matrix_parent_inverse = empty.matrix_world.inverted(); mesh.matrix_world = world` block is verbatim in `operators/slot/create.py` and `operators/slot/attachment.py`.
+- **N23. invoke()-prefills-props-from-PG.** The "read scene/object PG fields into `self.*`, then call `self.execute`" invoke pattern recurs in `operators/automesh/automesh.py`, `operators/skinning/bind_mesh.py`, `operators/driver.py`.
+- **N24. Selection save/restore (inline).** Beyond the `_restore_selection` helper (D2), the full "snapshot selection+active+mode, do work, restore in finally" is hand-inlined in `operators/uv_authoring.py` `reproject_sprite_uv`, `core/bpy_helpers/skinning/bind_apply.py` `_apply_bone_heat`, and quick_armature - same dance, no shared helper.
+- **N25. Picker-readout UI block.** The "ARMATURE_DATA icon + `Picker: {name}` / `(none - set in Skeleton panel)`" row is duplicated in `panels/mesh_generation.py` and `panels/weight_paint.py`.
+- **N26. Issue-list render.** The "loop issues, `row.alert = severity==error`, icon, select-issue operator" render block recurs in `panels/validation.py` and `panels/element.py`.
+
+None of these change the headline: **N1 (find-texture-image) and N2 (PG/CP read) remain the two highest-value targets by a wide margin** - both are canonical-helper-exists-but-bypassed, fan-out 8-10 sites.
+
+## Reproduce
+
+```bash
+python specs/025-code-duplication/tools/ast_scan.py  --json specs/025-code-duplication/raw/ast-inventory.json > specs/025-code-duplication/raw/ast-report.txt
+python specs/025-code-duplication/tools/ast_scan2.py > specs/025-code-duplication/raw/ast-report-v2.txt
+```

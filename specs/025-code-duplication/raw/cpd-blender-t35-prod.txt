@@ -1,0 +1,411 @@
+Found a 11 line (137 tokens) duplication in the following files:
+  Starting at line 119 of /src/apps/blender/core/bpy_helpers/automesh/debug.py
+  Starting at line 163 of /src/apps/blender/core/bpy_helpers/automesh/debug.py
+
+Found a 10 line (111 tokens) duplication in the following files:
+  Starting at line 227 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 336 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+
+Found a 12 line (99 tokens) duplication in the following files:
+  Starting at line 46 of /src/apps/blender/core/bpy_helpers/automesh/authoring_session.py
+  Starting at line 80 of /src/apps/blender/core/bpy_helpers/skinning/modal_session.py
+
+Found a 8 line (71 tokens) duplication in the following files:
+  Starting at line 374 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 45 of /src/apps/blender/operators/skinning/set_bone_mode.py
+
+Found a 9 line (71 tokens) duplication in the following files:
+  Starting at line 46 of /src/apps/blender/operators/pose_library.py
+  Starting at line 135 of /src/apps/blender/operators/pose_library.py
+
+Found a 16 line (64 tokens) duplication in the following files:
+  Starting at line 74 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 1268 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 13 line (63 tokens) duplication in the following files:
+  Starting at line 370 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 418 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+
+Found a 8 line (63 tokens) duplication in the following files:
+  Starting at line 29 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 75 of /src/apps/blender/operators/slot/preview_shader.py
+
+Found a 8 line (63 tokens) duplication in the following files:
+  Starting at line 128 of /src/apps/blender/panels/element.py
+  Starting at line 152 of /src/apps/blender/panels/element.py
+
+Found a 12 line (61 tokens) duplication in the following files:
+  Starting at line 88 of /src/apps/blender/importers/photoshop/planes.py
+  Starting at line 129 of /src/apps/blender/importers/photoshop/planes.py
+
+Found a 8 line (60 tokens) duplication in the following files:
+  Starting at line 92 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 115 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 138 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 161 of /src/apps/blender/panels/weight_paint.py
+
+Found a 11 line (59 tokens) duplication in the following files:
+  Starting at line 117 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+  Starting at line 143 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+
+Found a 13 line (58 tokens) duplication in the following files:
+  Starting at line 288 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 103 of /src/apps/blender/operators/skinning/edit_weights.py
+
+Found a 10 line (58 tokens) duplication in the following files:
+  Starting at line 17 of /src/apps/blender/panels/animation.py
+  Starting at line 47 of /src/apps/blender/panels/outliner.py
+
+Found a 8 line (56 tokens) duplication in the following files:
+  Starting at line 43 of /src/apps/blender/operators/skinning/set_bone_mode.py
+  Starting at line 60 of /src/apps/blender/operators/skinning/sidecar_io.py
+
+Found a 6 line (55 tokens) duplication in the following files:
+  Starting at line 374 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 62 of /src/apps/blender/operators/skinning/sidecar_io.py
+
+Found a 11 line (54 tokens) duplication in the following files:
+  Starting at line 56 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+  Starting at line 117 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+  Starting at line 143 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+
+Found a 5 line (54 tokens) duplication in the following files:
+  Starting at line 110 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 232 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 341 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+
+Found a 9 line (52 tokens) duplication in the following files:
+  Starting at line 21 of /src/apps/blender/operators/selection.py
+  Starting at line 46 of /src/apps/blender/operators/selection.py
+
+Found a 9 line (50 tokens) duplication in the following files:
+  Starting at line 58 of /src/apps/blender/core/bpy_helpers/automesh/base_sprite.py
+  Starting at line 82 of /src/apps/blender/core/bpy_helpers/automesh/base_sprite.py
+
+Found a 10 line (50 tokens) duplication in the following files:
+  Starting at line 75 of /src/apps/blender/panels/element.py
+  Starting at line 99 of /src/apps/blender/panels/element.py
+
+Found a 9 line (48 tokens) duplication in the following files:
+  Starting at line 55 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 1284 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 12 line (48 tokens) duplication in the following files:
+  Starting at line 13 of /src/apps/blender/operators/skinning/edit_weights.py
+  Starting at line 11 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+
+Found a 6 line (47 tokens) duplication in the following files:
+  Starting at line 94 of /src/apps/blender/core/bpy_helpers/_shared/viewport_math.py
+  Starting at line 120 of /src/apps/blender/core/bpy_helpers/_shared/viewport_math.py
+
+Found a 11 line (47 tokens) duplication in the following files:
+  Starting at line 56 of /src/apps/blender/operators/armature/authoring_camera.py
+  Starting at line 59 of /src/apps/blender/operators/armature/authoring_ik.py
+  Starting at line 55 of /src/apps/blender/operators/armature/skeleton_target.py
+  Starting at line 254 of /src/apps/blender/operators/atlas_pack/apply.py
+  Starting at line 89 of /src/apps/blender/operators/atlas_pack/pack.py
+  Starting at line 133 of /src/apps/blender/operators/atlas_pack/unpack.py
+  Starting at line 391 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 1330 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 230 of /src/apps/blender/operators/driver.py
+  Starting at line 154 of /src/apps/blender/operators/export_flow.py
+  Starting at line 118 of /src/apps/blender/operators/help_dispatch.py
+  Starting at line 99 of /src/apps/blender/operators/import_photoshop.py
+  Starting at line 159 of /src/apps/blender/operators/pose_library.py
+  Starting at line 217 of /src/apps/blender/operators/selection.py
+  Starting at line 215 of /src/apps/blender/operators/skinning/bind_mesh.py
+  Starting at line 52 of /src/apps/blender/operators/skinning/brush_preset.py
+  Starting at line 100 of /src/apps/blender/operators/skinning/copy_weights_to_selected.py
+  Starting at line 246 of /src/apps/blender/operators/skinning/edit_weights.py
+  Starting at line 94 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+  Starting at line 60 of /src/apps/blender/operators/skinning/set_bone_mode.py
+  Starting at line 93 of /src/apps/blender/operators/skinning/sidecar_io.py
+  Starting at line 86 of /src/apps/blender/operators/slot/attachment.py
+  Starting at line 111 of /src/apps/blender/operators/slot/create.py
+  Starting at line 100 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 44 of /src/apps/blender/operators/slot/select.py
+  Starting at line 145 of /src/apps/blender/operators/uv_authoring.py
+  Starting at line 73 of /src/apps/blender/panels/animation.py
+  Starting at line 86 of /src/apps/blender/panels/atlas.py
+  Starting at line 36 of /src/apps/blender/panels/diagnostics.py
+  Starting at line 170 of /src/apps/blender/panels/element.py
+  Starting at line 55 of /src/apps/blender/panels/help.py
+  Starting at line 40 of /src/apps/blender/panels/helpers.py
+  Starting at line 232 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 173 of /src/apps/blender/panels/outliner.py
+  Starting at line 100 of /src/apps/blender/panels/pipeline.py
+  Starting at line 226 of /src/apps/blender/panels/skeleton.py
+  Starting at line 160 of /src/apps/blender/panels/slots.py
+  Starting at line 58 of /src/apps/blender/panels/validation.py
+  Starting at line 360 of /src/apps/blender/panels/weight_paint.py
+
+Found a 6 line (47 tokens) duplication in the following files:
+  Starting at line 21 of /src/apps/blender/operators/slot/attachment.py
+  Starting at line 61 of /src/apps/blender/operators/slot/attachment.py
+
+Found a 6 line (47 tokens) duplication in the following files:
+  Starting at line 74 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 97 of /src/apps/blender/panels/mesh_generation.py
+
+Found a 6 line (47 tokens) duplication in the following files:
+  Starting at line 69 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 94 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 117 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 140 of /src/apps/blender/panels/weight_paint.py
+  Starting at line 163 of /src/apps/blender/panels/weight_paint.py
+
+Found a 7 line (46 tokens) duplication in the following files:
+  Starting at line 87 of /src/apps/blender/core/bpy_helpers/skinning/bind_apply.py
+  Starting at line 45 of /src/apps/blender/core/bpy_helpers/skinning/diagnose_collect.py
+
+Found a 5 line (46 tokens) duplication in the following files:
+  Starting at line 226 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 379 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 49 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+
+Found a 7 line (46 tokens) duplication in the following files:
+  Starting at line 149 of /src/apps/blender/panels/outliner.py
+  Starting at line 21 of /src/apps/blender/panels/validation.py
+
+Found a 8 line (45 tokens) duplication in the following files:
+  Starting at line 81 of /src/apps/blender/core/automesh/geometry.py
+  Starting at line 168 of /src/apps/blender/core/automesh/geometry.py
+
+Found a 6 line (45 tokens) duplication in the following files:
+  Starting at line 169 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+  Starting at line 193 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+
+Found a 2 line (45 tokens) duplication in the following files:
+  Starting at line 58 of /src/apps/blender/core/skinning/skinning_modes.py
+  Starting at line 108 of /src/apps/blender/core/skinning/skinning_modes.py
+
+Found a 4 line (45 tokens) duplication in the following files:
+  Starting at line 507 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 539 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 4 line (44 tokens) duplication in the following files:
+  Starting at line 357 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 1192 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 6 line (44 tokens) duplication in the following files:
+  Starting at line 516 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 549 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 7 line (44 tokens) duplication in the following files:
+  Starting at line 1239 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 148 of /src/apps/blender/operators/skinning/edit_weights.py
+
+Found a 6 line (43 tokens) duplication in the following files:
+  Starting at line 129 of /src/apps/blender/core/automesh/contour.py
+  Starting at line 141 of /src/apps/blender/core/automesh/contour.py
+
+Found a 5 line (43 tokens) duplication in the following files:
+  Starting at line 53 of /src/apps/blender/operators/selection.py
+  Starting at line 198 of /src/apps/blender/operators/selection.py
+
+Found a 9 line (43 tokens) duplication in the following files:
+  Starting at line 21 of /src/apps/blender/operators/skinning/sidecar_io.py
+  Starting at line 57 of /src/apps/blender/operators/skinning/sidecar_io.py
+
+Found a 5 line (43 tokens) duplication in the following files:
+  Starting at line 63 of /src/apps/blender/panels/element.py
+  Starting at line 151 of /src/apps/blender/panels/slots.py
+
+Found a 6 line (42 tokens) duplication in the following files:
+  Starting at line 276 of /src/apps/blender/core/automesh/geometry.py
+  Starting at line 122 of /src/apps/blender/core/bpy_helpers/automesh/debug.py
+  Starting at line 166 of /src/apps/blender/core/bpy_helpers/automesh/debug.py
+
+Found a 2 line (42 tokens) duplication in the following files:
+  Starting at line 87 of /src/apps/blender/core/skinning/skinning_modes.py
+  Starting at line 109 of /src/apps/blender/core/skinning/skinning_modes.py
+
+Found a 7 line (41 tokens) duplication in the following files:
+  Starting at line 125 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+  Starting at line 181 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+
+Found a 11 line (40 tokens) duplication in the following files:
+  Starting at line 256 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 207 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 4 line (40 tokens) duplication in the following files:
+  Starting at line 206 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 102 of /src/apps/blender/operators/skinning/bind_mesh.py
+
+Found a 6 line (40 tokens) duplication in the following files:
+  Starting at line 31 of /src/apps/blender/operators/selection.py
+  Starting at line 55 of /src/apps/blender/operators/selection.py
+
+Found a 3 line (39 tokens) duplication in the following files:
+  Starting at line 151 of /src/apps/blender/exporters/godot/writer/animations.py
+  Starting at line 37 of /src/apps/blender/exporters/godot/writer/slot_animations.py
+
+Found a 4 line (39 tokens) duplication in the following files:
+  Starting at line 176 of /src/apps/blender/operators/skinning/bind_mesh.py
+  Starting at line 170 of /src/apps/blender/operators/skinning/edit_weights.py
+
+Found a 5 line (39 tokens) duplication in the following files:
+  Starting at line 40 of /src/apps/blender/panels/element.py
+  Starting at line 202 of /src/apps/blender/panels/skeleton.py
+
+Found a 9 line (38 tokens) duplication in the following files:
+  Starting at line 374 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 396 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 422 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+
+Found a 9 line (38 tokens) duplication in the following files:
+  Starting at line 443 of /src/apps/blender/core/bpy_helpers/automesh/authoring_overlay.py
+  Starting at line 84 of /src/apps/blender/core/bpy_helpers/skinning/weight_overlay.py
+
+Found a 9 line (38 tokens) duplication in the following files:
+  Starting at line 198 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 42 of /src/apps/blender/operators/skinning/set_bone_mode.py
+
+Found a 6 line (38 tokens) duplication in the following files:
+  Starting at line 177 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 42 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+  Starting at line 43 of /src/apps/blender/operators/uv_authoring.py
+  Starting at line 93 of /src/apps/blender/operators/uv_authoring.py
+
+Found a 4 line (38 tokens) duplication in the following files:
+  Starting at line 278 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 1061 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 10 line (38 tokens) duplication in the following files:
+  Starting at line 10 of /src/apps/blender/panels/_draw_mesh.py
+  Starting at line 11 of /src/apps/blender/panels/_draw_sprite.py
+
+Found a 5 line (37 tokens) duplication in the following files:
+  Starting at line 102 of /src/apps/blender/core/bpy_helpers/atlas/atlas_collect.py
+  Starting at line 71 of /src/apps/blender/operators/atlas_pack/_paths.py
+
+Found a 5 line (37 tokens) duplication in the following files:
+  Starting at line 158 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+  Starting at line 184 of /src/apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py
+
+Found a 4 line (37 tokens) duplication in the following files:
+  Starting at line 311 of /src/apps/blender/importers/photoshop/planes.py
+  Starting at line 197 of /src/apps/blender/operators/atlas_pack/apply.py
+
+Found a 5 line (37 tokens) duplication in the following files:
+  Starting at line 646 of /src/apps/blender/operators/armature/quick_armature.py
+  Starting at line 665 of /src/apps/blender/operators/armature/quick_armature.py
+
+Found a 8 line (37 tokens) duplication in the following files:
+  Starting at line 199 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 60 of /src/apps/blender/operators/skinning/sidecar_io.py
+
+Found a 5 line (37 tokens) duplication in the following files:
+  Starting at line 177 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 58 of /src/apps/blender/operators/skinning/edit_weights.py
+  Starting at line 42 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+  Starting at line 23 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 72 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 43 of /src/apps/blender/operators/uv_authoring.py
+  Starting at line 93 of /src/apps/blender/operators/uv_authoring.py
+
+Found a 3 line (37 tokens) duplication in the following files:
+  Starting at line 176 of /src/apps/blender/operators/skinning/bind_mesh.py
+  Starting at line 63 of /src/apps/blender/operators/skinning/edit_weights.py
+  Starting at line 170 of /src/apps/blender/operators/skinning/edit_weights.py
+
+Found a 5 line (37 tokens) duplication in the following files:
+  Starting at line 95 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 118 of /src/apps/blender/panels/mesh_generation.py
+
+Found a 4 line (36 tokens) duplication in the following files:
+  Starting at line 43 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+  Starting at line 66 of /src/apps/blender/core/bpy_helpers/_shared/modal_overlay.py
+
+Found a 7 line (36 tokens) duplication in the following files:
+  Starting at line 43 of /src/apps/blender/core/bpy_helpers/_shared/viewport_math.py
+  Starting at line 88 of /src/apps/blender/core/bpy_helpers/_shared/viewport_math.py
+
+Found a 3 line (36 tokens) duplication in the following files:
+  Starting at line 75 of /src/apps/blender/core/bpy_helpers/automesh/cdt.py
+  Starting at line 143 of /src/apps/blender/core/bpy_helpers/automesh/cdt.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 201 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 374 of /src/apps/blender/operators/automesh/automesh.py
+
+Found a 3 line (36 tokens) duplication in the following files:
+  Starting at line 226 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 50 of /src/apps/blender/operators/skinning/set_bone_mode.py
+
+Found a 7 line (36 tokens) duplication in the following files:
+  Starting at line 226 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 184 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 4 line (36 tokens) duplication in the following files:
+  Starting at line 507 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 567 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 21 of /src/apps/blender/panels/animation.py
+  Starting at line 36 of /src/apps/blender/panels/skeleton.py
+
+Found a 4 line (36 tokens) duplication in the following files:
+  Starting at line 48 of /src/apps/blender/panels/animation.py
+  Starting at line 25 of /src/apps/blender/panels/atlas.py
+  Starting at line 41 of /src/apps/blender/panels/element.py
+  Starting at line 41 of /src/apps/blender/panels/help.py
+  Starting at line 27 of /src/apps/blender/panels/helpers.py
+  Starting at line 41 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 146 of /src/apps/blender/panels/outliner.py
+  Starting at line 203 of /src/apps/blender/panels/skeleton.py
+  Starting at line 51 of /src/apps/blender/panels/slots.py
+  Starting at line 39 of /src/apps/blender/panels/weight_paint.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 127 of /src/apps/blender/panels/element.py
+  Starting at line 94 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 91 of /src/apps/blender/panels/weight_paint.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 151 of /src/apps/blender/panels/element.py
+  Starting at line 117 of /src/apps/blender/panels/mesh_generation.py
+  Starting at line 114 of /src/apps/blender/panels/weight_paint.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 51 of /src/apps/blender/panels/outliner.py
+  Starting at line 36 of /src/apps/blender/panels/skeleton.py
+
+Found a 6 line (36 tokens) duplication in the following files:
+  Starting at line 78 of /src/apps/blender/panels/skeleton.py
+  Starting at line 160 of /src/apps/blender/panels/weight_paint.py
+
+Found a 4 line (35 tokens) duplication in the following files:
+  Starting at line 103 of /src/apps/blender/core/bpy_helpers/atlas/atlas_collect.py
+  Starting at line 73 of /src/apps/blender/panels/atlas.py
+
+Found a 5 line (35 tokens) duplication in the following files:
+  Starting at line 37 of /src/apps/blender/operators/atlas_pack/apply.py
+  Starting at line 28 of /src/apps/blender/operators/atlas_pack/unpack.py
+  Starting at line 371 of /src/apps/blender/operators/automesh/automesh.py
+  Starting at line 132 of /src/apps/blender/operators/pose_library.py
+  Starting at line 39 of /src/apps/blender/operators/skinning/restore_weight_snapshot.py
+  Starting at line 20 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 69 of /src/apps/blender/operators/slot/preview_shader.py
+  Starting at line 90 of /src/apps/blender/operators/uv_authoring.py
+
+Found a 7 line (35 tokens) duplication in the following files:
+  Starting at line 625 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 648 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 8 line (35 tokens) duplication in the following files:
+  Starting at line 1002 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 1039 of /src/apps/blender/operators/automesh/automesh_authoring.py
+
+Found a 6 line (35 tokens) duplication in the following files:
+  Starting at line 1234 of /src/apps/blender/operators/automesh/automesh_authoring.py
+  Starting at line 143 of /src/apps/blender/operators/skinning/edit_weights.py
+
+Found a 7 line (35 tokens) duplication in the following files:
+  Starting at line 43 of /src/apps/blender/operators/pose_library.py
+  Starting at line 29 of /src/apps/blender/operators/skinning/copy_weights_to_selected.py
+
+Found a 5 line (35 tokens) duplication in the following files:
+  Starting at line 149 of /src/apps/blender/panels/outliner.py
+  Starting at line 86 of /src/apps/blender/panels/skeleton.py
+  Starting at line 21 of /src/apps/blender/panels/validation.py

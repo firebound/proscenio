@@ -11,7 +11,8 @@
     "specs/backlog-bugs-found.md",
     "specs/backlog-manual-testing.md",
     "specs/backlog-ui-feedback.md",
-    "specs/021-blender-ui-audit/ia-mockup.html"
+    "specs/021-blender-ui-audit/ia-mockup.html",
+    "specs/025-code-duplication/raw/**"
   ],
   "dictionaries": [
     "developer-terms",

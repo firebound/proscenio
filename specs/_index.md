@@ -31,10 +31,10 @@ git show <commit>:specs/NNN-slug/STUDY.md
 | 015 | monorepo-packages | Repo restructure into an apps/ + packages/ split | pruned |
 | 016 | blender-app-system-organization | Layer-first reorg: `_shared/` infra tier, per-system subpackages, god-module splits | pruned |
 | 017 | app-cleanups | Localized Godot + docs cleanups (builder dedup, dead assets); the two apps that passed the audit | pruned |
-| 018 | [photoshop-web-app-layout](018-photoshop-web-app-layout/) | Re-layout the Photoshop src into api/lib/hooks/components/panels/utils (web-app shape) | active |
-| 019 | [naming-consistency](019-naming-consistency/) | The `Element` vocabulary: mesh to Polygon2D, sprite to Sprite2D, full wire rename | active |
+| 018 | photoshop-web-app-layout | Re-layout the Photoshop src into api/lib/hooks/components/panels/utils (web-app shape) | pruned |
+| 019 | naming-consistency | The `Element` vocabulary: mesh to Polygon2D, sprite to Sprite2D, full wire rename | pruned |
 | 020 | test-coverage | Coverage lift 36% to 88.8%, Sonar gate green; host mocks + in-Blender instrumentation | pruned |
-| 021 | [blender-ui-audit](021-blender-ui-audit/) | Reconcile UX feedback against code, per-tool audit, bucket findings into specs (discovery) | active |
+| 021 | blender-ui-audit | Reconcile UX feedback against code, per-tool audit, bucket findings into specs (discovery) | pruned |
 | 022 | blender-ui-restructure | 13-panel sibling tree: flatten the root, accordion subpanels, warn-not-hide, debug_mode | pruned |
 | 023 | blender-help-docs-i18n | Per-subpanel help, online doc links, Godot badge icon, i18n mechanism | pruned |
 | 024 | blender-addon-preferences | Addon preferences: log level (errors/info/debug), debug_mode, Developer group | pruned |

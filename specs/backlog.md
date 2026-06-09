@@ -145,20 +145,15 @@ Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `op
 
 **Verified:** the moved modal draw / status-bar callbacks run only during the live modal, which the headless gates do not exercise, so this was confirmed by an in-editor smoke test of both the Quick Armature and Automesh Authoring modals (preview overlay, axis-lock guideline, status-bar chords, outside-canvas tooltip) - all intact at runtime.
 
-### Spec 019 follow-up: stale element-vocab residuals
+### Validator internal naming (sprites vs elements)
 
-Spec 019 renamed the element vocabulary end-to-end (`sprite_type` -> `element_type` with `mesh` / `sprite` kinds; `sprites[]` -> `elements[]`; the Godot builders and bindings; the Photoshop tag parser). The wire rename shipped and is proven by the importer smoke test. These source-only residuals were missed:
+The element-vocabulary rename (the former spec 019) renamed the wire end-to-end and swept the Blender / Photoshop / Godot / fixtures internals, but `packages/validator` was outside its Phase 1-4 scope and never touched. It still uses the pre-rename internal names `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the wire field, so nothing breaks. Rename to `report.elements` / `ElementPayload` (and the `test_validator_report.py` import) the next time the validator is touched. Low priority, cosmetic.
 
-- **Fixture builders - shipped in #100 (source fixed; `.blend` not regenerated).** `packages/fixtures/{atlas_pack,automesh,blink_eyes,mouth_drive,shared_atlas,slot_swap}/build_blend.py` assign `obj.proscenio.sprite_type = "polygon" / "sprite_frame"`. The PropertyGroup field is now `element_type` with values `mesh` / `sprite`, so re-running any of these builders raises `AttributeError`. Fix: `sprite_type` -> `element_type`, `polygon` -> `mesh`, `sprite_frame` -> `sprite` across the six files, then re-run them to refresh the `.blend` fixtures.
-- **`core/sprite_frame/` not renamed to `core/sprite/`.** The Phase 1 line to `git mv core/sprite_frame/ -> core/sprite/` and `core/bpy_helpers/sprite_frame/ -> core/bpy_helpers/sprite/` (modules `sprite_frame_math` / `sprite_frame_shader`) was not done. Internal-only, no wire or behavior impact.
-- **Stale `sprites[]` comments - shipped in #100.** `core/slot/slot_emit.py:98` and `exporters/godot/writer/slots.py:22` describe the emitted array as `sprites[]`; the writer emits `elements[]` (`writer/__init__.py:143`).
-- **Validator internal naming.** `packages/validator` keeps `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the renamed wire field, so nothing breaks; the validator was not a Phase 1-4 target.
+### Spec 021 follow-up: unfinished discovery + buckets B/C
 
-**Trigger:** the fixture-builder fix matters the next time a `.blend` fixture is regenerated from source; the rest is cosmetic cleanup.
+The spec 021 UI/UX audit is pruned. Its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind + atlas findings were filed elsewhere in this backlog - that purpose is served. Three threads outlived it:
 
-### Spec 021 follow-up: discovery buckets B + C (no spec yet)
-
-The spec 021 UI/UX audit stays open as the discovery home; its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind and atlas findings were filed elsewhere in this backlog. Two buckets never spawned their own spec - surfaced here as the actionable worklist:
+- **Phase A / B discovery (never finished).** The reconciliation against `backlog-ui-feedback.md` was only partly run (~15 areas pending, much now overtaken by spec 022 shipping); the hands-on per-tool audit (GOOD / BAD / MISSING, needs the maintainer in a GUI Blender) never ran. Resume only if a fresh holistic UX pass is wanted.
 
 - **Bucket B - per-asset pixels-per-unit (cross-app).** PPU is a single global value today (one export field, default 100). The audit flagged an end-to-end per-asset PPU so different elements can carry different Blender-world-to-pixel ratios. Spans Blender (a per-element field), the schema (`.proscenio` shape), and the Godot importer. Schema-level, post-launch - a `format_version` concern.
 - **Bucket C - per-tool feature gaps.** Bone-collections management inside Proscenio (create / assign / toggle Blender bone collections from the Skeleton panel), and richer bone-hierarchy editing (the read-only connected / relative-parent readout shipped in spec 022; the editing did not). Both are feature work, not IA.

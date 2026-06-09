@@ -590,6 +590,74 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 **Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do backlog-manual-testing.
 
+### Automesh Interactive (modal): ferramentas extend / cut quebradas
+
+**Repro:** `examples/generated/automesh/automesh.blend` > select sprite plane > Mesh Generation > Automesh Interactive > Automesh (modal) > avança até o Stage 2 (extend / cut) > usa as ferramentas de extend e de cut.
+
+**Sintoma:** as ferramentas não fazem nada OU geram muitos artefatos indesejados na malha (revisão manual 08-jun-2026). Stage 4 (interior points add / shift+click delete) parece funcionar; o problema é o Stage 2 extend / cut.
+
+**Suspeita:** `apps/blender/operators/automesh/automesh_authoring.py` - o dispatch do pen tool no Stage 2 (EXTEND / CUT) ou a splice do outer contour. Os scenarios T1 / T6 de `backlog-manual-testing.md` 1.23 / 1.25 (Stage 2 extend / cut, cut overlay vermelho, snap / merge / loop) nunca foram validados em sessão - estão `[ ]`. Precisa repro com console aberto pra capturar traceback / inspecionar a malha resultante.
+
+**Arquivo:** `apps/blender/operators/automesh/automesh_authoring.py` (Stage 2 EXTEND / CUT) + `core/bpy_helpers/automesh` (splice / triangulação).
+
+**Severity:** medium-high - inviabiliza o autoring interativo de silhueta (o ponto principal do modal). Confirmar causa exata antes de fix.
+
+### Edit Weights: brush curve presets disparam erro
+
+**Repro:** Weight Paint > Edit Weights > entra em Weight Paint mode (bound mesh) > clica num dos presets de "Brush curve preset" (Hard Edge / Soft Falloff / Crease / Smooth Blend).
+
+**Sintoma:** dá erro ao clicar (revisão manual 08-jun-2026). Texto exato do erro / traceback ainda não capturado.
+
+**Suspeita:** `apps/blender/operators/skinning/brush_preset.py:31-49` (`execute`) - a manipulação de `brush.curve.curves[0].points` (remove até 2, set `.location` dos 2 primeiros, `points.new(x, y)` pro resto, `brush.curve.update()`). Candidatos: (a) `points.new(x, y)` com x colidindo / fora de ordem após o set de `.location`; (b) reordenação automática do CurveMap deslocando índices entre o set e o new; (c) API de curva do brush de weight paint mudou no Blender 5.1. Menos provável: o WARNING "Active brush has no curve mapping" (guard já existente) sendo percebido como erro.
+
+**Fix proposto:** capturar o traceback exato no console primeiro. Provável fix robusto: limpar todos os pontos exceto os 2 mínimos, inserir os novos em ordem crescente de x via `points.new`, e só então setar `.location` dos 2 fixos, com `brush.curve.update()` ao final; ou reconstruir o mapping inteiro num bloco try/except que reporta WARNING em vez de propagar RuntimeError.
+
+**Arquivo:** `apps/blender/operators/skinning/brush_preset.py:31-49`.
+
+**Severity:** medium - o preset é QoL (poupa ida ao editor de curva); quebrado, o user cai no fluxo manual. Precisa traceback exato.
+
+### Create Slot por seleção de mesh: Empty em posição aparentemente aleatória quando origin da mesh não foi aplicada
+
+**Repro:** Object Mode > seleciona mesh(es) cuja origin NÃO foi aplicada (origin no (0,0,0), geometria offsetada) > Slots > Create Slot.
+
+**Sintoma:** o slot Empty aparece numa posição que parece aleatória / longe da geometria visível (revisão manual 08-jun-2026, criando slots por seleção de mesh).
+
+**Suspeita:** mesma família do bug "Create Slot Path B: novo Empty fica em posição errada quando seed já tem parent", mas com trigger distinto. `apps/blender/operators/slot/create.py` posiciona o Empty a partir da translation do objeto seed (`seed.matrix_world.to_translation()` / `seed.location`); quando a origin não está aplicada, a translation não coincide com o centro visível da geometria, então o Empty cai na origin do objeto (longe dos vertices).
+
+**Fix proposto:** posicionar o Empty no centro do bounding box da geometria selecionada (média dos `matrix_world @ v.co`) em vez da object translation, OU avisar / oferecer "apply origin" quando a origin diverge do centro da geometria. Confirmar no operator atual qual referência de posição é usada.
+
+**Arquivo:** `apps/blender/operators/slot/create.py`.
+
+**Severity:** medium - Create Slot por seleção de mesh é fluxo novo e útil; posicionamento confuso prejudica a primeira impressão. Workaround: aplicar origin (Object > Set Origin) antes de criar o slot.
+
+### Per-bone Soft/Hard overrides são inertes no modo BONE_HEAT (o default)
+
+**Repro:** Weight Paint > Bind > Mode = "Bone Heat (Blender native)" (default) > seta alguns bones pra Soft / Hard na box "Per-bone Soft/Hard overrides" > Bind to Picker Armature.
+
+**Sintoma:** os overrides por-bone não têm efeito nenhum. Os pesos saem 100% do bone heat nativo do Blender, ignorando Soft / Hard.
+
+**Causa:** `apps/blender/core/bpy_helpers/skinning/bind_apply.py:225` - `apply_bind` retorna cedo via `_apply_bone_heat` quando `mode == "BONE_HEAT"`, ANTES de `_apply_bone_mode_overrides` (linha 249, alcançado só pelos modos planar PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY). `_apply_bone_heat` delega pro `bpy.ops.object.parent_set(ARMATURE_AUTO)` e nunca lê `proscenio_bone_modes`. Como BONE_HEAT é o default e a box de overrides aparece sempre, o usuário seta Soft / Hard achando que muda algo.
+
+**Fix proposto:** (a) esconder / desabilitar a box de overrides quando Mode == BONE_HEAT, com hint "overrides só valem nos modos planar"; ou (b) aplicar os overrides como pós-passe mesmo depois do bone heat (recomputar as colunas dos bones override via planar e splicar - mais trabalho). Mínimo: avisar na UI que overrides não valem no bone heat.
+
+**Arquivo:** `apps/blender/core/bpy_helpers/skinning/bind_apply.py:225,249`; `apps/blender/panels/weight_paint.py` `_draw_bind` (gating da box).
+
+**Severity:** medium - affordance proeminente que não faz nada no modo default; confunde e mina a confiança na feature.
+
+### Weight Transfer: sem warning quando targets ficam fora do alcance (cobertura zero silenciosa)
+
+**Repro:** Weight Paint > Weight Transfer > active mesh (source) + selecionar target mesh afastado (> max_distance, default 0.5 world units) > Copy Weights to Selected.
+
+**Sintoma:** targets fora do raio recebem dict vazio (zero peso) silenciosamente. INFO bar reporta "Copied weights to N vert(s)" mas não avisa que M targets / verts ficaram sem nada.
+
+**Causa:** `apps/blender/core/skinning/weight_transfer.py:45` - vert além de `max_distance` recebe `{}`; `apps/blender/operators/skinning/copy_weights_to_selected.py` `_apply_to_target` conta só os aplicados, não reporta os zerados. Sem warning de cobertura baixa nem de mesh inteiramente fora do alcance.
+
+**Fix proposto:** reportar por-target a cobertura (`X/Y verts receberam peso`); WARNING quando a cobertura for 0 ou muito baixa ("target '<name>' fora do alcance - aumente Max Distance ou aproxime as malhas"). Surfacar `max_distance` no painel (hoje só F9).
+
+**Arquivo:** `apps/blender/operators/skinning/copy_weights_to_selected.py:40-52`.
+
+**Severity:** low-medium - não crash, mas o transfer "falha" sem avisar; usuário acha que copiou e a malha fica sem deformar.
+
 ---
 
 ## apps/photoshop

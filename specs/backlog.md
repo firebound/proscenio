@@ -89,6 +89,16 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** an artist tints or sets a blend mode on a sprite in Blender / Photoshop and finds it flat / normal in Godot, or a scene needs explicit cross-bone draw layering the array order cannot express.
 
+### Sprite pivot / Sprite2D.offset from the Blender origin
+
+**What:** a `sprite` element (`SpriteElement`) exports only `type / name / bone / hframes / vframes / frame / centered / texture_region` (`writer/sprites.py` `build_sprite_frame`). It does NOT export the quad geometry or any pivot / offset. Unlike a `mesh` element - whose vertices bake in world position, so the Blender origin is honored implicitly - a sprite's authored Blender origin is discarded: positioning comes from the bone attachment, and the only pivot control that ships is the boolean `centered` (Godot `Sprite2D.centered`), which either centers the texture on the node origin or puts its top-left there. Godot's `Sprite2D` also exposes a free `offset: Vector2` that is never used.
+
+**Why:** an artist who sets a deliberate pivot on a sprite quad in Blender (moving the object origin) expects that pivot to reach Godot; today it silently does not - only the centered / top-left toggle does. Deriving `Sprite2D.offset` from the Blender origin relative to the quad bounds would round-trip the authored pivot. Explains the `centered`-vs-origin confusion logged in `backlog-ui-feedback.md`; offset / pivot can ride the same schema bump as the Sprite appearance fields entry above.
+
+**Scope sketch:** add an optional `offset: [x, y]` (or `pivot`) to `SpriteElement`; the writer computes it from the quad's origin-vs-bounds; the importer stamps `Sprite2D.offset` and respects `centered`. Keep it optional + defaulted so existing v1 goldens round-trip unchanged.
+
+**Trigger:** an artist sets a sprite pivot in Blender and finds the Godot Sprite2D ignores it (only centered / top-left honored).
+
 ## Blender addon
 
 ### Sprite rigid single-bone bind (Weight Paint is mesh-only)
@@ -106,6 +116,24 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 **Why:** CodeRabbit flagged the `_scene_skinning` / `_active_armature` pair on PR #96. Duplicated accessors drift when one copy changes and the other does not, and `panels/_helpers.py` already exists as the home for cross-cutting panel helpers (header drawer, mode predicates, scene accessors).
 
 **Trigger:** low priority - fold in when next touching the panel modules, or when a third copy of any accessor appears.
+
+### Element-type gating: mesh-only tools warn on sprite + sprite stays a quad
+
+**What:** the Mesh Generation panel + the `automesh_from_alpha` operator poll only on `obj.type == "MESH"` (`panels/mesh_generation.py` `_active_is_mesh`, `operators/automesh/automesh.py` `poll`), so they show and run on a `sprite` element too - a sprite is a quad MESH in Blender. Automesh-ing a sprite turns its quad into a deformable annulus with no warning, silently breaking the sprite_frame slicing contract. The Weight Paint panel already gates correctly on `element_type == "mesh"` (`panels/weight_paint.py` `_is_mesh_element`); Mesh Generation does not. Conversely there is no validation that a `sprite` element stays an exact quad (the hframes/vframes grid assumes it).
+
+**Why:** the element-type split (`sprite` = Sprite2D, rigid + sprite_frame grid; `mesh` = Polygon2D, deformable) is a contract. Mesh-only tools (automesh, weight paint, bind) are meaningless on a sprite and should warn or disable; a sprite that stops being a quad breaks slicing downstream. The only thing exclusive to a sprite that a Polygon2D cannot do is the sprite_frame spritesheet grid; everything else (bone deform) is mesh-only.
+
+**Scope sketch:** make Mesh Generation gate on `_is_mesh_element` like Weight Paint (warn-not-hide), or have `automesh_from_alpha` report a warning when `element_type == "sprite"`. Add a validation check that a `sprite` element's mesh is a single quad (4 verts, 1 face) and warn otherwise. Pairs with the sprite rigid single-bone bind entry above.
+
+**Trigger:** a user selects a sprite element and the Automesh from Alpha button runs without warning, or a re-meshed sprite exports a garbled sprite_frame grid.
+
+### Drive slot attachment from a bone (slot analog of Drive-from-Bone)
+
+**What:** the Element panel has Drive from Bone (a bone rotation / translation drives a sprite property via a driver + expression). There is no equivalent for slots: driving which attachment is active (the slot's visible child) from a bone. Today a slot swap animates via keyframed attachment visibility (`slot_attachment` tracks), but there is no driver-based "this bone angle selects this attachment" authoring path.
+
+**Why:** the ergonomics that make Drive-from-Bone useful for sprite_frame (a controller bone picks the frame) apply to slots (a controller bone picks the attachment - hand-pose selector swapping open / fist / point meshes, head turns). Needs a driver target on the slot's active-attachment state plus a panel UX mirroring Drive-from-Bone (range mapping rather than a raw expression - see the Drive-from-Bone UX rework in `backlog-ui-feedback.md`).
+
+**Trigger:** a rig wants a bone to select among slot attachments (hand poses, head turns) without hand-keyframing visibility.
 
 ### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
 

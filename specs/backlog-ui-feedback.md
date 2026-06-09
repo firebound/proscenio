@@ -36,6 +36,8 @@ promove pro backlog.
   - Pin / sticky panel mode - usuário marca `Active Sprite: locked to <obj>` e o painel para de seguir active object.
   - Side-by-side debug HUD: pequeno overlay no viewport com `frame: 2` / `region_x: 0.45` enquanto bone rotaciona.
 
+- **`Centered` vs origin do PS - clarificar / documentar.** `centered` (`object_props.py:104`, `name="Centered"`, "Whether the Sprite2D's offset centers on its origin") só existe pro element_type `sprite`, NÃO pro `mesh`: Polygon2D não tem conceito de "centered" (os vertices carregam a posição). Confunde porque a origem do objeto vem do `[origin]` do PS - `centered` (pivot do Sprite2D no Godot) e origin (pivot do objeto vindo do PS) são coisas separadas. Documentar a distinção no help do Active Sprite e considerar se `centered` deveria ser derivado da origin importada em vez de toggle manual. (A questão "sprite que não é quad / travar ferramentas mesh-only" virou entrada em backlog.md "Element-type gating".)
+
 ## Active Slot panel
 
 - **Falta overview de todos os slots na cena.** Active Slot só mostra UM slot por vez (o ativo na seleção). Pra ver "quais slots existem? quem é parent de quem? onde estão?", usuário precisa caçar os Empties no outliner um por um. Sugestões:
@@ -46,6 +48,28 @@ promove pro backlog.
   - Hint inline antes do botão: "Pose Mode + bone selected: BONE-parented slot. Object Mode + N meshes: OBJECT slot wrapping selection".
 - **Mesh repositioning quando vira attachment de slot novo é confuso.** Path B reparenteia meshes sem feedback visual ("ué, por que minha espada pulou pra outro canto da cena?"). Idealmente o operator deve preservar world position SEMPRE (bug em backlog-bugs-found.md), e o panel deve mostrar transform delta se inevitável.
 - **Slot vinculado a quê?** Quando slot é criado sem bone (Path B sem seed parented a bone), Empty fica solto na cena - usuário não sabe que precisa parentear depois. Active Slot panel mostra "bone: (unparented)" mas nem todos vão entender o significado. Sugestão: warning amarelo no panel "slot has no parent - attachments will not follow any bone" + botão "Parent to Bone..." para fix rápido.
+
+## Slots panel (lista de slots do projeto)
+
+- **Lista de slots fora do padrão das outras listas.** O painel Slots (spec 022) lista cada slot Empty via `col.row()` + botão por linha (`panels/slots.py:62-74`), enquanto Outliner e Skeleton usam `template_list` (UIList nativo com filtro / scroll / multi-seleção). Padronizar a lista de slots pro mesmo UIList deixa a UI consistente. (A queixa antiga "Falta overview de todos os slots na cena" já foi atendida por este painel - ele lista todos os slots; o que falta agora é o widget bater com o resto.)
+- **Animar qual slot está ativo - UX implícita.** Dá pra animar a troca de attachment hoje: o slot system emite tracks `slot_attachment` (visibility toggle por attachment), e a action `swing` do slot_swap faz exatamente isso flipando club / sword. Mas não há botão "keyframe active attachment" - o autor precisa saber keyframar visibility / `slot_default` na mão. Considerar um affordance de autoring pra keyframar a troca de slot direto do painel. (Driver de slot a partir de bone virou entrada própria em backlog.md.)
+
+## Mesh Generation panel (spec 022)
+
+- **"Mesh resolution" é um nome deceptivo.** O field (`scene_props.py:84`, `name="Mesh resolution"`) é um fator de downscale 0..1 da imagem pro contour walker: valor MENOR = imagem menor processada porém MAIS vertices na malha final (a própria description já diz "Lower values produce more vertices"). "Resolution" sugere o oposto (número maior = mais resolução). Renomear pra refletir a relação invertida (ex: "Detail", "Coarseness", "Downscale factor") ou inverter a escala pra "maior = mais denso". Default atual 0.25; user sugere 0.5.
+- **`Density follows bones` pode vir OFF por padrão.** `automesh_density_under_bones` (`scene_props.py:175`) + o operator default ON. O caso comum não precisa de densidade extra sob bones; ligar sob demanda. Trocar default pra OFF.
+- **`Interior spacing` isolado dos outros valores.** O layout (`mesh_generation.py:_draw_automesh_alpha`) separa: resolution / alpha / margin / contour, [sep], preserve_base_quad, [sep], (dense) interior_spacing / density / bone_radius / bone_factor. User quer `interior_spacing` agrupado junto dos primeiros valores numéricos, não isolado no bloco dense.
+- **"Preserve weights on regen" fica escondido longe de onde age.** O toggle vive em Weight Paint > Snapshot, mas afeta o Automesh (regen de malha aqui no Mesh Generation) E a geração de pesos. Rodar Automesh from Alpha / Interactive sem ver esse estado é obtuso - o usuário não sabe se o regen vai preservar ou apagar a pintura. Surfacar o estado nos pontos de interesse: readout no subpanel Automesh ("Weights: preserved on regen" / warn "Weights: NOT preserved - regen vai apagar a pintura") e idealmente espelhar o próprio toggle ali. No Bind, deixar claro que o snapshot é o que alimenta o preserve.
+
+## Weight Paint panel (spec 022)
+
+- **Automesh Interactive: "modal" não diz nada pro usuário.** O subpanel mostra label "Multi-stage modal preview" + botão "Automesh (modal)" (`mesh_generation.py:175,187`). "modal" é jargão de implementação do Blender, irrelevante pro autor. Trocar por copy orientada à ação (ex: "Automesh (interactive)" / "Edit step-by-step").
+- **Bind não mostra qual armature é o alvo.** O painel-pai Weight Paint mostra "Picker: <name>", mas o subpanel Bind (e a box "Per-bone Soft/Hard overrides", que lista wrist / palm / fingertip) não repete o nome - fácil de perder quando o foco é o subpanel. Mostrar o armature alvo no header do Bind ou da box de overrides.
+- **Edit Weights herda o display de weight paint padrão do Blender (ruim pra malha plana).** Em malhas / polígonos planos 2D, o override de cor full-mesh do weight paint nativo (gradiente azul->vermelho cobrindo tudo) esconde a textura e dificulta enxergar o que se pinta (imagem 1 do user). Alternativas: (a) trazer a textura por cima / lado a lado da pintura de peso; (b) achar modo nativo do Blender que exiba melhor em malha plana; (c) se nada nativo servir, referência = weight paint do Spine: mantém a textura visível + mostra os vertices com peso como círculos coloridos. Candidato a spec própria (display de weight paint 2D).
+- **Per-bone Soft/Hard: vários problemas.** (a) Não dá pra LIMPAR um override de volta pro default - `operators/skinning/set_bone_mode.py` só seta SOFT ou HARD, sem opção "(default)"; uma vez clicado, fica preso num dos dois. (b) Os overrides são INERTES no modo BONE_HEAT, que é o default - ver bug em backlog-bugs-found.md; só valem em PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY. (c) "Soft/Hard" traduz mal o que acontece: SOFT = família proximity-falloff, HARD = família single-nearest, e o override só flipa o bone entre essas 2 famílias (não expõe os 5 algoritmos de bind). Renomear pra algo claro (ex: "Blend / Rigid" ou "Falloff / Nearest") + tooltip explicando. (d) O botão "Bind to Picker Armature" vem ANTES da box de overrides; ordem lógica = Mode -> overrides por-bone -> Bind (a ação que consome tudo). Mover o botão pro fim.
+- **Sidecar IO: Import não aplica nos pesos vivos.** `operators/skinning/sidecar_io.py` `import_sidecar` só grava o CP `proscenio_weight_sidecar`; pra empurrar pros vertex groups vivos precisa rodar "Reset to Last Saved Weights" depois (e isso aborta se a topologia mudou - hash check). O fluxo Import -> Reset não é óbvio. Documentar / encadear, ou fazer o Import já aplicar quando a topologia bate.
+- **"Snapshot" e "Sidecar IO" não parecem relacionados (e "sidecar" é jargão interno).** São a mesma coisa: Sidecar IO é o Export / Import do snapshot pra arquivo. Unificar sob "snapshot" (user prefere): renomear o subpanel "Sidecar IO" pra "Snapshot Export/Import" (ou fundir os 2 botões dentro do subpanel Snapshot) + trocar os labels dos operators ("Export / Import Weight Sidecar" -> "Export / Import Snapshot"). "sidecar" fica só interno (CP key, schema), nunca user-facing.
+- **Weight Transfer: `max_distance` só no F9.** O raio de busca (default 0.5 world units) é prop de redo F9, não aparece no painel - usuário não vê nem ajusta. Surfacar no subpanel Weight Transfer. (Falta de warning pra targets fora do alcance virou bug em backlog-bugs-found.md.)
 
 ## Skeleton panel
 
@@ -87,6 +111,7 @@ promove pro backlog.
 ## Outliner panel
 
 - Recursos OK no geral, ainda enxuto
+- Falta hierarquia / árvore indentada (armature > slots > attachments, meshes parented a bones) - hoje é lista plana. Mesma pegada do pedido do Skeleton panel (hierarquia indentada estilo outliner nativo).
 - Favoritos: útil, manter
 - Alinhamento dos nomes das meshes está centralizado - horrível. **Regra geral pra todas as listas: alinhar à esquerda**.
 
@@ -165,6 +190,7 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 
 ## Help / status badges
 
+- **Subpanels repetem o help topic do panel-pai (ajuda duplicada).** `draw_subpanel_header(layout, feature_id, help_topic)` recebe o topic como 2o argumento, mas todos os subpanels de uma família passam o MESMO topic do pai: Weight Paint > Bind / Edit Weights / Snapshot / Sidecar IO / Weight Transfer todos passam `"weight_paint"`; Mesh Generation > Automesh from Alpha / Interactive / Debug todos passam `"mesh_generation"`; Element > Active Mesh / Active Sprite / Texture Region passam `"active_element"`. Só existem 3 topics no `core/help_topics.py` pra essas famílias (`active_element`, `mesh_generation`, `weight_paint`); não há topic por-ferramenta. Resultado: clicar `?` em qualquer subpanel abre o mesmo popup genérico do pai em vez de explicar a ferramenta específica. **Proposta:** panel-pai = visão geral do processo da família; cada subpanel = topic próprio, pontual, focado na ferramenta (`bind`, `snapshot`, `sidecar_io`, `weight_transfer`, `edit_weights`, `automesh_alpha`, `automesh_interactive`, `active_sprite`, `active_mesh`). Escrever os topics em `help_topics.py` + passar o id certo no `draw_subpanel_header`. Casa com a spec 023 (help text / doc-links) deferida. Resolve também o gap "não entendi soft/hard / Snapshot / Sidecar IO / Weight Transfer": hoje não existe texto de ajuda por-ferramenta pra nenhuma dessas.
 - Help panel completamente inútil e ilegível como tá - substituir por botão único que abre popup
 - Versão (Pipeline v0.1.0) poderia ficar aqui no Help panel
 - Adicionar botão "GitHub" / link pro repo

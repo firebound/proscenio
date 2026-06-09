@@ -19,7 +19,7 @@ from gpu_extras.batch import batch_for_shader
 
 from ...automesh.stroke_geometry import subdivide_polyline
 from ...skinning.authoring_stages import AuthoringStage, StageOutput, Stroke
-from .._shared.modal_overlay import draw_text_panel_2d
+from .._shared.modal_overlay import draw_batch, draw_text_panel_2d
 
 _UNIFORM_COLOR_SHADER = "UNIFORM_COLOR"
 _OUTER_COLOR = (0.0, 0.8, 1.0, 0.9)
@@ -366,17 +366,7 @@ def _draw_polyline(
     if len(points) < 2:
         return
     verts = [(p[0], 0.0, p[1]) for p in points] + [(points[0][0], 0.0, points[0][1])]
-    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
-    batch = batch_for_shader(shader, "LINE_STRIP", {"pos": verts})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(line_width)
-    try:
-        shader.bind()
-        shader.uniform_float("color", color)
-        batch.draw(shader)
-    finally:
-        gpu.state.line_width_set(1.0)
-        gpu.state.blend_set("NONE")
+    draw_batch("LINE_STRIP", verts, color, line_width=line_width)
 
 
 def _draw_polylines(
@@ -414,17 +404,7 @@ def _draw_edges(
     for a, b in edges:
         verts.append((a[0], 0.0, a[1]))
         verts.append((b[0], 0.0, b[1]))
-    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
-    batch = batch_for_shader(shader, "LINES", {"pos": verts})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(line_width)
-    try:
-        shader.bind()
-        shader.uniform_float("color", color)
-        batch.draw(shader)
-    finally:
-        gpu.state.line_width_set(1.0)
-        gpu.state.blend_set("NONE")
+    draw_batch("LINES", verts, color, line_width=line_width)
 
 
 def _draw_points(
@@ -435,17 +415,7 @@ def _draw_points(
     if not points:
         return
     verts = [(p[0], 0.0, p[1]) for p in points]
-    shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
-    batch = batch_for_shader(shader, "POINTS", {"pos": verts})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.point_size_set(size)
-    try:
-        shader.bind()
-        shader.uniform_float("color", color)
-        batch.draw(shader)
-    finally:
-        gpu.state.point_size_set(1.0)
-        gpu.state.blend_set("NONE")
+    draw_batch("POINTS", verts, color, point_size=size)
 
 
 def _draw_stroke_lines(

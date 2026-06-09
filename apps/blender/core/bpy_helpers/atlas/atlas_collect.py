@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ..._shared.material_images import iter_material_images
 from ...uv_bounds import uv_bbox_to_pixels
 
 
@@ -50,7 +51,7 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
     """
     out: list[SourceImage] = []
     for obj in objects:
-        image = _find_first_image(obj)
+        image = next(iter_material_images(obj), None)
         if image is None:
             continue
         w, h = image.size
@@ -93,16 +94,3 @@ def _collect_mesh_uvs(obj: Any) -> list[tuple[float, float]]:
             u, v = active.data[li].uv
             out.append((float(u), float(v)))
     return out
-
-
-def _find_first_image(obj: Any) -> Any | None:
-    """Return the first image bound to any material on ``obj``."""
-    mesh = obj.data
-    materials = getattr(mesh, "materials", None) or []
-    for mat in materials:
-        if mat is None or not mat.use_nodes or mat.node_tree is None:
-            continue
-        for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                return node.image
-    return None

@@ -6,7 +6,7 @@ import bpy
 from proscenio_models import Slot
 
 from ....core._shared.cp_keys import PROSCENIO_IS_SLOT, PROSCENIO_SLOT_DEFAULT
-from ....core._shared.pg_cp_fallback import read_bool_flag
+from ....core._shared.pg_cp_fallback import read_bool_flag, read_field
 from ....core.bpy_helpers._shared._bpy_compat import iter_objects
 from ....core.slot.slot_emit import SlotInput, build_slots
 
@@ -55,13 +55,4 @@ def is_slot_empty(obj: bpy.types.Object) -> bool:
 
 def read_slot_default(obj: bpy.types.Object) -> str:
     """Read slot_default from PG, fall back to ``proscenio_slot_default`` CP."""
-    props = getattr(obj, "proscenio", None)
-    if props is not None:
-        value = getattr(props, "slot_default", "")
-        if value:
-            return str(value)
-    if hasattr(obj, "get"):
-        cp_value = obj.get(PROSCENIO_SLOT_DEFAULT, "")
-        if cp_value:
-            return str(cp_value)
-    return ""
+    return str(read_field(obj, pg_field="slot_default", cp_key=PROSCENIO_SLOT_DEFAULT, default=""))

@@ -68,6 +68,33 @@ def test_read_field_default_when_pg_field_is_none() -> None:
     assert value == "sprite"
 
 
+def test_read_field_pg_explicit_zero_wins_over_cp() -> None:
+    """A+A presence rule: an explicit falsy PG value (0) wins - it does NOT
+    fall through to the Custom Property the way a truthiness rule would."""
+    obj = FakeObj(proscenio=SimpleNamespace(frame=0), cps={"proscenio_frame": 5})
+    value = read_field(obj, pg_field="frame", cp_key="proscenio_frame", default=-1)
+    assert value == 0
+
+
+def test_read_field_pg_empty_string_wins_over_cp() -> None:
+    """Explicit empty-string PG value wins (is-not-None, not truthiness)."""
+    obj = FakeObj(
+        proscenio=SimpleNamespace(slot_default=""),
+        cps={"proscenio_slot_default": "open"},
+    )
+    value = read_field(
+        obj, pg_field="slot_default", cp_key="proscenio_slot_default", default="x"
+    )
+    assert value == ""
+
+
+def test_read_field_pg_none_value_falls_through_to_cp() -> None:
+    """A None PG value (not just an absent attr) falls through to the CP."""
+    obj = FakeObj(proscenio=SimpleNamespace(frame=None), cps={"proscenio_frame": 5})
+    value = read_field(obj, pg_field="frame", cp_key="proscenio_frame", default=-1)
+    assert value == 5
+
+
 def test_read_bool_flag_pg_true() -> None:
     pg = SimpleNamespace(is_slot=True)
     obj = FakeObj(proscenio=pg)

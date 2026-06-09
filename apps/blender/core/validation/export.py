@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
+from .._shared.material_images import iter_material_node_images
 from ._shared import abspath_or_none, armature_bone_names
 from .active_element import validate_active_element
 from .active_slot import validate_active_slot
@@ -107,29 +108,13 @@ def _validate_atlas_files(scene_objects: Sequence[object]) -> list[Issue]:
 
 
 def _iter_object_atlas_filepaths(obj: object, seen: set[str]) -> Iterator[str]:
-    """Yield filepaths for unique TEX_IMAGE nodes on `obj`."""
+    """Yield filepaths for unique TEX_IMAGE images on `obj`'s material slots."""
     for slot in getattr(obj, "material_slots", ()):
-        material = getattr(slot, "material", None)
-        if material is None or not getattr(material, "use_nodes", False):
-            continue
-        tree = getattr(material, "node_tree", None)
-        if tree is None:
-            continue
-        for node in tree.nodes:
-            fp_raw = _texture_image_filepath(node)
+        for image in iter_material_node_images(getattr(slot, "material", None)):
+            fp_raw = str(getattr(image, "filepath", "") or "")
             if fp_raw and fp_raw not in seen:
                 seen.add(fp_raw)
                 yield fp_raw
-
-
-def _texture_image_filepath(node: object) -> str:
-    """Return raw_filepath for a TEX_IMAGE node, or '' when absent."""
-    if getattr(node, "type", "") != "TEX_IMAGE":
-        return ""
-    image = getattr(node, "image", None)
-    if image is None:
-        return ""
-    return str(getattr(image, "filepath", "") or "")
 
 
 def _atlas_path_resolves(fp_raw: str) -> bool:

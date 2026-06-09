@@ -9,16 +9,15 @@ from typing import Any
 import bpy
 
 from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.material_images import (  # type: ignore[import-not-found]
+    iter_material_node_images,
+)
 
 
 def first_texture_image_name(mat: bpy.types.Material) -> str:
     """Return the name of the first image-textured node on ``mat`` (or '')."""
-    if not mat.use_nodes or mat.node_tree is None:
-        return ""
-    for node in mat.node_tree.nodes:
-        if node.type == "TEX_IMAGE" and node.image is not None:
-            return str(node.image.name)
-    return ""
+    image = next(iter_material_node_images(mat), None)
+    return str(image.name) if image is not None else ""
 
 
 def duplicate_active_uv_layer(obj: bpy.types.Object) -> str:

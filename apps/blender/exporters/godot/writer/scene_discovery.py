@@ -7,7 +7,8 @@ from pathlib import Path
 
 import bpy
 
-from ....core.bpy_helpers._shared._bpy_compat import iter_materials, iter_objects, iter_shader_nodes
+from ....core._shared.material_images import iter_material_node_images
+from ....core.bpy_helpers._shared._bpy_compat import iter_materials, iter_objects
 
 
 def find_armature(scene: bpy.types.Scene) -> bpy.types.Object | None:
@@ -35,11 +36,7 @@ def find_atlas_image(out_path: Path) -> str | None:
 
 def _iter_linked_images() -> Iterator[bpy.types.Image]:
     for mat in iter_materials():
-        if not mat.use_nodes or mat.node_tree is None:
-            continue
-        for node in iter_shader_nodes(mat.node_tree):
-            if isinstance(node, bpy.types.ShaderNodeTexImage) and node.image is not None:
-                yield node.image
+        yield from iter_material_node_images(mat)
 
 
 def _image_filename(image: bpy.types.Image) -> str:

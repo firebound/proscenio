@@ -10,9 +10,9 @@ PropertyGroup registration).
 from __future__ import annotations
 
 import contextlib
-from typing import Protocol, runtime_checkable
 
 from . import cp_keys
+from .pg_cp_fallback import CPCarrier
 
 OBJECT_PROPS: tuple[tuple[str, str], ...] = (
     (cp_keys.PROSCENIO_TYPE, "element_type"),
@@ -29,16 +29,9 @@ OBJECT_PROPS: tuple[tuple[str, str], ...] = (
 )
 
 
-@runtime_checkable
-class _CPLookup(Protocol):
-    """Anything that exposes ``__contains__`` + ``__getitem__`` (legacy CP).
-
-    Both ``bpy.types.Object`` and pytest ``SimpleNamespace`` mocks
-    satisfy this Protocol.
-    """
-
-    def __contains__(self, key: object) -> bool: ...
-    def __getitem__(self, key: str) -> object: ...
+# Distinct from any real Custom-Property value so an absent key is not
+# confused with a stored ``None``.
+_MISSING: object = object()
 
 
 def hydrate_object(
@@ -54,9 +47,10 @@ def hydrate_object(
     props = getattr(obj, "proscenio", None)
     if props is None:
         return
-    if not isinstance(obj, _CPLookup):
+    if not isinstance(obj, CPCarrier):
         return
     for custom_key, prop_name in mapping:
-        if custom_key in obj:
+        cp_value = obj.get(custom_key, _MISSING)
+        if cp_value is not _MISSING:
             with contextlib.suppress(TypeError, ValueError):
-                setattr(props, prop_name, obj[custom_key])
+                setattr(props, prop_name, cp_value)

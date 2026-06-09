@@ -28,6 +28,9 @@ from bpy.props import (
     IntProperty,
 )
 
+from ...core._shared.material_images import (  # type: ignore[import-not-found]
+    first_material_image,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_debug,
     report_error,
@@ -49,42 +52,6 @@ from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
     from ...core.automesh import BoneSegment2D
-
-
-def _find_tex_image(material: bpy.types.Material | None) -> bpy.types.Image | None:
-    """Return the first non-empty TEX_IMAGE node in ``material``."""
-    if material is None or not material.use_nodes or material.node_tree is None:
-        return None
-    for node in material.node_tree.nodes:
-        if node.type == "TEX_IMAGE" and node.image is not None:
-            return node.image
-    return None
-
-
-def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image | None:
-    """Find the image texture used for automesh, prioritizing the active material.
-
-    Walks the active material's node tree first because that is
-    what the user sees in the shader editor + the natural choice
-    for "this sprite's texture" on multi-material meshes (e.g.
-    layered sprites with separate albedo / glow materials). Falls
-    back to scanning every slot only when the active material has
-    no image texture. Returns ``None`` when nothing is found - the
-    operator pre-flight surfaces an actionable error in that case.
-    """
-    if obj.data is None:
-        return None
-    active_material = getattr(obj, "active_material", None)
-    image = _find_tex_image(active_material)
-    if image is not None:
-        return image
-    for material in obj.data.materials:
-        if material is active_material:
-            continue
-        image = _find_tex_image(material)
-        if image is not None:
-            return image
-    return None
 
 
 def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
@@ -283,7 +250,7 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
 
     def _preflight_image(self, obj: bpy.types.Object) -> bpy.types.Image | None:
         """Resolve + validate the sprite texture; report + return None on failure."""
-        image = _resolve_image(obj)
+        image = first_material_image(obj)
         if image is None:
             report_error(
                 self,

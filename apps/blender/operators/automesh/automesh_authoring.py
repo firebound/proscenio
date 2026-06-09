@@ -13,6 +13,9 @@ from typing import ClassVar, Literal, cast
 
 import bpy
 
+from ...core._shared.material_images import (  # type: ignore[import-not-found]
+    first_material_image,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -179,14 +182,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
-        return _resolve_image(obj) is not None
+        return first_material_image(obj) is not None
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             report_error(self, "active object must be a mesh")
             return {"CANCELLED"}
-        image = _resolve_image(obj)
+        image = first_material_image(obj)
         if image is None:
             report_error(
                 self,
@@ -949,7 +952,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if idx >= len(self._active_stages) - 1:  # already on APPLY (last stage)
             return {"PASS_THROUGH"}
         obj = context.active_object
-        image = _resolve_image(obj) if obj is not None else None
+        image = first_material_image(obj)
         if obj is None or image is None:
             return self._finish(context, cancel=True)
         params = _snapshot_params(context)
@@ -1094,7 +1097,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _recompute_current_stage(self, context: bpy.types.Context, params: StageParams) -> None:
         obj = context.active_object
-        image = _resolve_image(obj) if obj is not None else None
+        image = first_material_image(obj)
         if obj is None or image is None:
             return
         if self._stage == AuthoringStage.OUTER:
@@ -1261,32 +1264,6 @@ def _snapshot_params(context: bpy.types.Context) -> StageParams:
         cut_margin=float(skinning.authoring_cut_margin),
         interior_mode=cast(Literal["SIMPLE", "DENSE"], skinning.automesh_interior_mode),
     )
-
-
-def _resolve_image(obj: bpy.types.Object | None) -> bpy.types.Image | None:
-    """Reuse the same lookup automesh_from_alpha uses."""
-    if obj is None or obj.data is None:
-        return None
-    active_material = getattr(obj, "active_material", None)
-    image = _find_tex_image(active_material)
-    if image is not None:
-        return image
-    for material in obj.data.materials:
-        if material is active_material:
-            continue
-        image = _find_tex_image(material)
-        if image is not None:
-            return image
-    return None
-
-
-def _find_tex_image(material: bpy.types.Material | None) -> bpy.types.Image | None:
-    if material is None or not material.use_nodes or material.node_tree is None:
-        return None
-    for node in material.node_tree.nodes:
-        if node.type == "TEX_IMAGE" and node.image is not None:
-            return node.image
-    return None
 
 
 def _resolve_picker(context: bpy.types.Context) -> bpy.types.Object | None:

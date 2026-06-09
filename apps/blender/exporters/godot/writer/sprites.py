@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Literal, NotRequired, TypedDict
 
@@ -12,6 +11,7 @@ from mathutils import Vector
 from proscenio_models import MeshElement, SpriteElement, Weight
 
 from ....core._shared import region as region_core
+from ....core._shared.material_images import iter_material_images
 from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import (
     expect_mesh,
@@ -141,22 +141,6 @@ def build_element(
     return MeshElement(**poly_kwargs)
 
 
-def _iter_tex_images(obj: bpy.types.Object) -> Iterator[bpy.types.Image]:
-    """Yield every linked Image referenced by the object's materials."""
-    for mat in getattr(obj.data, "materials", None) or []:
-        if mat is None or not getattr(mat, "use_nodes", False):
-            continue
-        tree = getattr(mat, "node_tree", None)
-        if tree is None:
-            continue
-        for node in tree.nodes:
-            if node.type != "TEX_IMAGE":
-                continue
-            image = getattr(node, "image", None)
-            if image is not None:
-                yield image
-
-
 def _image_filename(image: bpy.types.Image) -> str | None:
     """Return the on-disk filename for an Image datablock, or a synthesised
     ``<name>.png`` when only the datablock name is set."""
@@ -178,7 +162,7 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     image via the top-level ``atlas`` field; ``texture`` here adds a
     finer-grained per-sprite override that the importer prefers.
     """
-    for image in _iter_tex_images(obj):
+    for image in iter_material_images(obj):
         filename = _image_filename(image)
         if filename is not None:
             return filename

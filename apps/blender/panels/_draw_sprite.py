@@ -12,6 +12,10 @@ from __future__ import annotations
 
 import bpy
 
+from ..core._shared.material_images import (  # type: ignore[import-not-found]
+    iter_material_images,
+)
+
 
 def draw_body(
     layout: bpy.types.UILayout,
@@ -54,23 +58,9 @@ def _draw_readout(
 
 
 def _discover_atlas_size_for(obj: bpy.types.Object) -> tuple[int, int] | None:
-    """Walk the active mesh's materials and return the first image's pixel size."""
-    mesh = obj.data
-    materials = getattr(mesh, "materials", None) or []
-    for mat in materials:
-        size = _first_tex_image_size(mat)
-        if size is not None:
-            return size
-    return None
-
-
-def _first_tex_image_size(mat: bpy.types.Material | None) -> tuple[int, int] | None:
-    if mat is None or not mat.use_nodes or mat.node_tree is None:
-        return None
-    for node in mat.node_tree.nodes:
-        if node.type != "TEX_IMAGE" or node.image is None:
-            continue
-        w, h = node.image.size
+    """Walk the object's materials and return the first valid image's pixel size."""
+    for image in iter_material_images(obj):
+        w, h = image.size
         if w > 0 and h > 0:
             return (int(w), int(h))
     return None

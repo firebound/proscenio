@@ -47,6 +47,9 @@ class _ObjectMock:
     def __setitem__(self, key: str, value: Any) -> None:
         self._custom[key] = value
 
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._custom.get(key, default)
+
 
 def _full_props() -> SimpleNamespace:
     return SimpleNamespace(

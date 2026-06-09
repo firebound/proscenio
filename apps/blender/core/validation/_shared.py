@@ -3,49 +3,34 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Protocol, runtime_checkable
 
+from .._shared.pg_cp_fallback import read_field
 
-@runtime_checkable
-class _CPLookup(Protocol):
-    """Anything that exposes dict-style ``__contains__`` + ``.get`` + ``__getitem__``.
-
-    Both ``bpy.types.Object`` (Custom Property access) and the
-    pytest ``SimpleNamespace`` mocks satisfy this Protocol.
-    """
-
-    def __contains__(self, key: object) -> bool: ...
-    def __getitem__(self, key: str) -> object: ...
-    def get(self, key: str, default: object | None = None) -> object: ...
+# Distinct from any real PG / CP value, so read_int can tell "nothing found"
+# apart from a legitimate 0 it must still coerce.
+_MISSING: object = object()
 
 
 def read_element_type(obj: object) -> str:
     """PG-first / CP fallback read of the element type. Default ``"mesh"``."""
-    props = getattr(obj, "proscenio", None)
-    if props is not None and hasattr(props, "element_type"):
-        return str(props.element_type)
-    if isinstance(obj, _CPLookup):
-        return str(obj.get("proscenio_type", "mesh"))
-    return "mesh"
+    return str(read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"))
 
 
 def read_int(obj: object, prop_name: str, custom_key: str, default: int) -> int:
     """PG-first / CP fallback read of an integer field.
 
-    The Custom Property fallback tolerates float-form strings (``"3.0"``)
-    and falls back to ``default`` for non-numeric values instead of
+    Routes the PG-first / CP-fallback resolution through
+    ``pg_cp_fallback.read_field`` and adds only the integer coercion: the
+    Custom Property fallback tolerates float-form strings (``"3.0"``) and
+    falls back to ``default`` for non-numeric values instead of
     propagating a ``ValueError`` - a CP can hold arbitrary user data.
     """
-    props = getattr(obj, "proscenio", None)
-    if props is not None and hasattr(props, prop_name):
-        return int(getattr(props, prop_name))
-    if isinstance(obj, _CPLookup) and custom_key in obj:
-        value = obj[custom_key]
-        if isinstance(value, int | float) and not isinstance(value, bool):
-            return int(value)
-        if isinstance(value, str):
-            with contextlib.suppress(TypeError, ValueError):
-                return int(float(value))
+    raw = read_field(obj, pg_field=prop_name, cp_key=custom_key, default=_MISSING)
+    if isinstance(raw, int | float) and not isinstance(raw, bool):
+        return int(raw)
+    if isinstance(raw, str):
+        with contextlib.suppress(TypeError, ValueError):
+            return int(float(raw))
     return default
 
 

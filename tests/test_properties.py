@@ -24,12 +24,13 @@ from core._shared.hydrate import hydrate_object  # noqa: E402  - sys.path setup 
 
 
 class _ObjectMock:
-    """Minimal ``bpy.types.Object`` substitute that supports ``in`` and ``[]``.
+    """Minimal ``bpy.types.Object`` substitute with dict-style CP access.
 
-    The hydration helper uses ``custom_key in obj`` and ``obj[custom_key]``
-    to read raw Custom Properties; both are dunder methods on the Blender
-    Object. ``proscenio`` is a sibling attribute that mimics the
-    PointerProperty target.
+    The hydration helper reads raw Custom Properties via
+    ``obj.get(key, default)`` (the dict-style accessor on the Blender
+    Object); ``in`` / ``[]`` stay for the other readers that use them.
+    ``proscenio`` is a sibling attribute that mimics the PointerProperty
+    target.
     """
 
     def __init__(
@@ -45,6 +46,9 @@ class _ObjectMock:
 
     def __getitem__(self, key: str) -> Any:
         return self._custom[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._custom.get(key, default)
 
 
 def _empty_props() -> SimpleNamespace:

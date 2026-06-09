@@ -28,7 +28,7 @@ from core._shared.region import (  # noqa: E402  - sys.path setup above
 
 
 class _ObjectMock:
-    """Minimal ``bpy.types.Object`` substitute supporting ``in`` / ``[]``."""
+    """Minimal ``bpy.types.Object`` substitute with dict-style CP access."""
 
     def __init__(
         self,
@@ -43,6 +43,9 @@ class _ObjectMock:
 
     def __getitem__(self, key: str) -> Any:
         return self._custom[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._custom.get(key, default)
 
 
 def _auto_props() -> SimpleNamespace:

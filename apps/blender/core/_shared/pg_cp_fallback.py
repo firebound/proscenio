@@ -4,10 +4,17 @@ The writer's headless path (Blender ``--background``, addon not
 registered) cannot rely on ``Object.proscenio`` because the
 PointerProperty wiring has not happened. The post-the authoring panel contract
 is: read the PropertyGroup field first (canonical source), fall back
-to the legacy Custom Property literal. Three independent
-implementations of this protocol existed in ``writer.py``
-(``_read_proscenio_field``, ``_is_slot_empty``, ``_read_slot_default``).
-This module collapses them.
+to the legacy Custom Property literal. This module is the single home
+for that contract: the writer's per-field reads, the slot flag reads,
+``core/_shared/region``, ``core/validation/_shared`` and the
+``hydrate`` migrator all route through :func:`read_field` /
+:func:`read_bool_flag` and the one :class:`CPCarrier` Protocol below,
+rather than re-deriving the PG-first / CP-fallback logic each.
+
+The presence rule is uniform: an explicit PropertyGroup value wins even
+when it equals the type default (``False`` / ``0`` / ``""``); only a
+``None`` or absent PG field falls through to the Custom Property, and
+only a ``None`` or absent CP falls through to ``default``.
 
 Pure Python. The ``obj`` parameter is typed against a Protocol that
 matches both ``bpy.types.Object`` instances and the ``SimpleNamespace``
@@ -23,12 +30,14 @@ T = TypeVar("T")
 
 
 @runtime_checkable
-class _CPCarrier(Protocol):
-    """Anything that exposes a ``.get(key, default)`` Custom Property reader.
+class CPCarrier(Protocol):
+    """The one Custom-Property read Protocol: dict-style ``.get(key, default)``.
 
     Both ``bpy.types.Object`` (CP access via dict-like ``.get``) and
     pytest's ``SimpleNamespace`` mocks with a stubbed ``get`` satisfy
-    this Protocol. Objects without ``.get`` skip the CP fallback.
+    this Protocol. Objects without ``.get`` skip the CP fallback. Shared
+    by :func:`read_field`, :func:`read_bool_flag`, and the ``hydrate``
+    migrator so the CP-access surface is declared once.
     """
 
     def get(self, key: str, default: object | None = None) -> object: ...
@@ -53,7 +62,7 @@ def read_field(obj: object, *, pg_field: str, cp_key: str, default: T) -> T:
         value = getattr(props, pg_field, None)
         if value is not None:
             return cast(T, value)
-    if isinstance(obj, _CPCarrier):
+    if isinstance(obj, CPCarrier):
         cp_value = obj.get(cp_key, None)
         if cp_value is not None:
             return cast(T, cp_value)
@@ -78,6 +87,6 @@ def read_bool_flag(obj: object, *, pg_field: str, cp_key: str) -> bool:
         pg_value = getattr(props, pg_field, _missing)
         if pg_value is not _missing and pg_value is not None:
             return bool(pg_value)
-    if isinstance(obj, _CPCarrier):
+    if isinstance(obj, CPCarrier):
         return bool(obj.get(cp_key, False))
     return False

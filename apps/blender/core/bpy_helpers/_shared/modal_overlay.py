@@ -40,6 +40,48 @@ def _shader() -> gpu.types.GPUShader:
     return gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
 
 
+def draw_batch(
+    prim_type: Literal["POINTS", "LINES", "LINE_STRIP", "LINE_LOOP", "TRIS"],
+    verts: Sequence[tuple[float, ...]],
+    color: tuple[float, float, float, float],
+    *,
+    line_width: float | None = None,
+    point_size: float | None = None,
+) -> None:
+    """Draw ``verts`` as ``prim_type`` via the UNIFORM_COLOR shader, then reset.
+
+    Collapses the ``blend_set`` / ``line_width_set`` (or ``point_size_set``) /
+    ``bind`` / ``uniform_float`` / ``draw`` / reset tail every single-batch
+    overlay draw repeats. Pass ``line_width`` for the LINE* prims, ``point_size``
+    for POINTS; the chosen knob is restored in a ``finally`` so a draw error
+    cannot leak GPU state. No-op on empty ``verts``.
+
+    This is the single-batch primitive. Overlays that set the blend state once
+    and loop several batches under a single ``bind`` (the stroke / disc /
+    inner-loop renderers) keep their own loop - collapsing those would re-cycle
+    the GPU state per batch.
+    """
+    if not verts:
+        return
+    shader = _shader()
+    batch = batch_for_shader(shader, prim_type, {"pos": verts})
+    gpu.state.blend_set("ALPHA")
+    if line_width is not None:
+        gpu.state.line_width_set(line_width)
+    if point_size is not None:
+        gpu.state.point_size_set(point_size)
+    try:
+        shader.bind()
+        shader.uniform_float("color", color)
+        batch.draw(shader)
+    finally:
+        if line_width is not None:
+            gpu.state.line_width_set(1.0)
+        if point_size is not None:
+            gpu.state.point_size_set(1.0)
+        gpu.state.blend_set("NONE")
+
+
 def draw_line_3d(
     start: tuple[float, float, float],
     end: tuple[float, float, float],
@@ -52,15 +94,7 @@ def draw_line_3d(
     is the built-in ``UNIFORM_COLOR`` so the line is unaffected by scene
     lighting.
     """
-    shader = _shader()
-    batch = batch_for_shader(shader, "LINES", {"pos": [start, end]})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(line_width)
-    shader.bind()
-    shader.uniform_float("color", color)
-    batch.draw(shader)
-    gpu.state.line_width_set(1.0)
-    gpu.state.blend_set("NONE")
+    draw_batch("LINES", [start, end], color, line_width=line_width)
 
 
 def draw_dashed_line_3d(
@@ -113,15 +147,7 @@ def draw_dashed_line_3d(
         segments += 1
     if not vertices:
         return
-    shader = _shader()
-    batch = batch_for_shader(shader, "LINES", {"pos": vertices})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(line_width)
-    shader.bind()
-    shader.uniform_float("color", color)
-    batch.draw(shader)
-    gpu.state.line_width_set(1.0)
-    gpu.state.blend_set("NONE")
+    draw_batch("LINES", vertices, color, line_width=line_width)
 
 
 def draw_circle_3d(
@@ -139,15 +165,7 @@ def draw_circle_3d(
     ``"Z"`` in the XY plane, ``"X"`` in the YZ plane.
     """
     vertices = build_circle_vertices(center, radius, plane_axis, segments)
-    shader = _shader()
-    batch = batch_for_shader(shader, "LINE_LOOP", {"pos": vertices})
-    gpu.state.blend_set("ALPHA")
-    gpu.state.line_width_set(line_width)
-    shader.bind()
-    shader.uniform_float("color", color)
-    batch.draw(shader)
-    gpu.state.line_width_set(1.0)
-    gpu.state.blend_set("NONE")
+    draw_batch("LINE_LOOP", vertices, color, line_width=line_width)
 
 
 def draw_text_panel_2d(
@@ -208,13 +226,7 @@ def draw_text_panel_2d(
         rect_x + panel_width,
         rect_y_top,
     )
-    shader = _shader()
-    batch = batch_for_shader(shader, "TRIS", {"pos": rect_vertices})
-    gpu.state.blend_set("ALPHA")
-    shader.bind()
-    shader.uniform_float("color", bg_color)
-    batch.draw(shader)
-    gpu.state.blend_set("NONE")
+    draw_batch("TRIS", rect_vertices, bg_color)
 
     blf.color(font_id, *text_color)
     text_y = rect_y_top - padding - line_height

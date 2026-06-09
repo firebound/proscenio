@@ -149,9 +149,9 @@ Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `op
 
 Spec 019 renamed the element vocabulary end-to-end (`sprite_type` -> `element_type` with `mesh` / `sprite` kinds; `sprites[]` -> `elements[]`; the Godot builders and bindings; the Photoshop tag parser). The wire rename shipped and is proven by the importer smoke test. These source-only residuals were missed:
 
-- **Fixture builders still set the deleted `sprite_type` (bug if run).** `packages/fixtures/{atlas_pack,automesh,blink_eyes,mouth_drive,shared_atlas,slot_swap}/build_blend.py` assign `obj.proscenio.sprite_type = "polygon" / "sprite_frame"`. The PropertyGroup field is now `element_type` with values `mesh` / `sprite`, so re-running any of these builders raises `AttributeError`. Fix: `sprite_type` -> `element_type`, `polygon` -> `mesh`, `sprite_frame` -> `sprite` across the six files, then re-run them to refresh the `.blend` fixtures.
+- **Fixture builders - shipped in #100 (source fixed; `.blend` not regenerated).** `packages/fixtures/{atlas_pack,automesh,blink_eyes,mouth_drive,shared_atlas,slot_swap}/build_blend.py` assign `obj.proscenio.sprite_type = "polygon" / "sprite_frame"`. The PropertyGroup field is now `element_type` with values `mesh` / `sprite`, so re-running any of these builders raises `AttributeError`. Fix: `sprite_type` -> `element_type`, `polygon` -> `mesh`, `sprite_frame` -> `sprite` across the six files, then re-run them to refresh the `.blend` fixtures.
 - **`core/sprite_frame/` not renamed to `core/sprite/`.** The Phase 1 line to `git mv core/sprite_frame/ -> core/sprite/` and `core/bpy_helpers/sprite_frame/ -> core/bpy_helpers/sprite/` (modules `sprite_frame_math` / `sprite_frame_shader`) was not done. Internal-only, no wire or behavior impact.
-- **Stale `sprites[]` comments.** `core/slot/slot_emit.py:98` and `exporters/godot/writer/slots.py:22` describe the emitted array as `sprites[]`; the writer emits `elements[]` (`writer/__init__.py:143`).
+- **Stale `sprites[]` comments - shipped in #100.** `core/slot/slot_emit.py:98` and `exporters/godot/writer/slots.py:22` describe the emitted array as `sprites[]`; the writer emits `elements[]` (`writer/__init__.py:143`).
 - **Validator internal naming.** `packages/validator` keeps `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the renamed wire field, so nothing breaks; the validator was not a Phase 1-4 target.
 
 **Trigger:** the fixture-builder fix matters the next time a `.blend` fixture is regenerated from source; the rest is cosmetic cleanup.
@@ -168,7 +168,7 @@ The spec 021 UI/UX audit stays open as the discovery home; its IA design fed spe
 Spec 022 shipped and verified the 13-panel restructure (2026-06-09: panels renamed, `feature_status` bands updated, the stale `skinning` fallback gone, operator suite green at 50, addon registers headless). It also renamed the operator `proscenio.automesh_from_sprite` -> `automesh_from_alpha` and the Skinning panel -> Mesh Generation. Two deferrals outlive the spec:
 
 - **In-editor visual smoke (workstation).** Headless cannot render panels. At a GUI Blender, confirm the sibling-panel tree (nothing nested under the version line), the accordion subpanels collapsing independently, the warn-not-hide hints, the per-header badge + `?`, and the `debug_mode` preference showing / hiding Diagnostics + the Debug Pipeline subpanel. A layout regression found here is a new bug.
-- **Guide-doc rename sweep.** `docs/00-guides/00-basic/02-blender.md` and `docs/00-guides/01-advanced/02-blender.md` still say "Automesh from Sprite" / "Skinning panel"; `backlog-manual-testing.md` references the old names too (a historical log, lower priority). The same two guide pages also carry pre-Element-rename vocabulary - fold this into the spec 019 guide-doc residual for one holistic pass.
+- **Guide-doc rename sweep.** `docs/00-guides/00-basic/02-blender.md` and `docs/00-guides/01-advanced/02-blender.md` still say "Automesh from Sprite" / "Skinning panel"; `backlog-manual-testing.md` references the old names too (a historical log, lower priority). The same two guide pages also carry pre-Element-rename vocabulary - fold this into the spec 019 guide-doc residual for one holistic pass. Verified IA map (while shipping #100): the old "Skinning" panel split into "Mesh Generation" (Automesh from Alpha / Automesh Interactive / Debug Pipeline) and "Weight Paint" (Bind / Edit Weights / Snapshot / Sidecar IO / Weight Transfer); "Active Sprite" persists as a sibling of "Active Mesh" under an "Element" parent (NOT "Active Element"). The workflow prose needs rewriting against this, not find-replace.
 
 **Trigger:** the visual smoke at the next workstation session; the docs sweep follows the review (or sooner - the renames are known).
 
@@ -366,9 +366,11 @@ Three lookups currently bind without an explicit type: `polygon_builder.gd:114`,
 
 ## Photoshop and Krita
 
-### Spec 018 follow-up: png-writer should call the shared findLayerByPath
+### Spec 018 follow-up: png-writer findLayerByPath (shipped in #100)
 
-**What:** [`apps/photoshop/src/api/png-writer.ts`](../apps/photoshop/src/api/png-writer.ts) keeps a local `resolveLayer` that walks `doc.layers` / `layer.layers` with a bare `Array.find`. The shared [`api/_layer-find.ts`](../apps/photoshop/src/api/_layer-find.ts) `findLayerByPath` - already used by `layer-rename`, `legacy-migration`, and `ps-selection` - wraps the walk in `toArray()` plus NFC name matching precisely because UXP layer collections are not always real Arrays. The spec 018 TODO ticked "replace png-writer `resolveLayer` with the shared `findLayerByPath`", but the code still carries the local copy.
+Shipped: `png-writer.ts` now calls the shared `findLayerByPath`, dropping the local `resolveLayer`; the latent non-Array UXP skip/throw and the duplicate fourth walk are closed.
+
+**What (historical):** [`apps/photoshop/src/api/png-writer.ts`](../apps/photoshop/src/api/png-writer.ts) keeps a local `resolveLayer` that walks `doc.layers` / `layer.layers` with a bare `Array.find`. The shared [`api/_layer-find.ts`](../apps/photoshop/src/api/_layer-find.ts) `findLayerByPath` - already used by `layer-rename`, `legacy-migration`, and `ps-selection` - wraps the walk in `toArray()` plus NFC name matching precisely because UXP layer collections are not always real Arrays. The spec 018 TODO ticked "replace png-writer `resolveLayer` with the shared `findLayerByPath`", but the code still carries the local copy.
 
 **Why it matters:** a non-Array UXP layer collection makes the local `Array.find` throw or miss, so an export can silently skip a layer or fail; the duplication also leaves the NFC / robustness fixes protecting only three of the four layer-walk call sites. The gate stays green because the vitest fixtures back layers with real Arrays, so the gap is latent.
 

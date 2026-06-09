@@ -15,7 +15,8 @@ from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     status_for,
 )
 from ..core.bpy_helpers.preview_icons import (  # type: ignore[import-not-found]
-    godot_ready_icon_id,
+    blender_icon_id,
+    godot_icon_id,
 )
 
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
@@ -38,8 +39,9 @@ def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
 def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
     """Draw the status-badge button.
 
-    Uses the custom Godot mark for the godot-ready band and the built-in
-    icon for every other band. The icon is wrapped in
+    Uses the custom Godot mark for the godot-ready band, the custom
+    Blender mark for the blender-only band, and the built-in icon for
+    every other band. The icon is wrapped in
     ``proscenio.status_info`` so hovering surfaces the band-specific
     tooltip (Blender does not honor custom tooltips on a plain
     ``layout.label``). A missing preview (headless / failed load) falls
@@ -47,7 +49,12 @@ def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
     """
     badge = badge_for(feature_id)
     status = status_for(feature_id)
-    icon_id = godot_ready_icon_id() if status == FeatureStatus.GODOT_READY else 0
+    if status == FeatureStatus.GODOT_READY:
+        icon_id = godot_icon_id()
+    elif status == FeatureStatus.BLENDER_ONLY:
+        icon_id = blender_icon_id()
+    else:
+        icon_id = 0
     if icon_id:
         op = layout.operator(_STATUS_OP_IDNAME, text="", icon_value=icon_id, emboss=False)
     else:

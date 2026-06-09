@@ -4,9 +4,9 @@ See [STUDY.md](STUDY.md) for the evaluation and decisions D1-D10 (umbrella `Elem
 
 Producer-to-consumer phasing: the shape change crosses all components at once, so Phase 0 (models + codegen + fixtures) merges first and the apps adopt against the regenerated bindings. Each later phase is one PR proven by that component's gate. The guard rails are static: ruff / mypy / tsc / gdlint flag every undefined name a rename leaves behind, so only the Active Element panel draw needs a Blender smoke test.
 
-## Status - verified 2026-06-09
+## Status - verified 2026-06-09 (two residuals shipping in #100)
 
-The wire rename shipped across all layers (models `MeshElement` / `SpriteElement` / `elements[]`, the `element_type` enum, the Godot bindings + builders, the Photoshop tag parser, the writer emitting `elements[]`) and is proven by the Godot importer smoke (50 assertions). Source-only residuals remain, tracked in [`../backlog.md`](../backlog.md) "Spec 019 follow-up: stale element-vocab residuals": the six `packages/fixtures/*/build_blend.py` builders still set the deleted `sprite_type` (AttributeError if run); `core/sprite_frame/` was not renamed to `core/sprite/`; the `sprites[]` comments and the validator's internal `report.sprites` naming are stale.
+The wire rename shipped across all layers (models `MeshElement` / `SpriteElement` / `elements[]`, the `element_type` enum, the Godot bindings + builders, the Photoshop tag parser, the writer emitting `elements[]`) and is proven by the Godot importer smoke (50 assertions). Of the source-only residuals tracked in [`../backlog.md`](../backlog.md) "Spec 019 follow-up": the six `packages/fixtures/*/build_blend.py` builders (the `sprite_type` AttributeError) and the stale `sprites[]` comments are fixed in #100. Two remain, both deferred: the `core/sprite_frame/` -> `core/sprite/` package rename (internal-only, gate-sensitive) and the validator's internal `report.sprites` / `SpritePayload` naming (out of the 019 Phase 1-4 scope). Kept open for the package rename.
 
 ## Decision lock-in
 

@@ -34,11 +34,18 @@ class ProscenioAddonPreferences(bpy.types.AddonPreferences):
         name="Log level",
         description=(
             "How much Proscenio operators report to the Info log. Errors only = "
-            "just failures; Info = the default running commentary"
+            "just failures; Info = the default running commentary; Debug = adds "
+            "the per-item pipeline traces"
         ),
         items=[
             ("errors", "Errors only", "Only error reports surface"),
             ("info", "Info", "Info + warnings + errors (default)"),
+            (
+                "debug",
+                "Debug",
+                "Info + the per-item pipeline traces (importer planes, "
+                "automesh counters, validation issues)",
+            ),
         ],
         default="info",
         update=_on_log_level_update,

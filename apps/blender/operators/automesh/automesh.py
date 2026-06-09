@@ -29,6 +29,7 @@ from bpy.props import (
 )
 
 from ...core._shared.report import (  # type: ignore[import-not-found]
+    report_debug,
     report_error,
     report_info,
     report_warn,
@@ -263,6 +264,10 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
             report_error(self, f"automesh failed: {exc}")
             return {"CANCELLED"}
 
+        report_debug(
+            self,
+            "automesh counters: " + ", ".join(f"{key}={counters[key]}" for key in sorted(counters)),
+        )
         self._report_build_result(counters)
         if prior_sidecar is not None and picker_armature is not None:
             sidecar_counts = maybe_post_regen_reproject(obj, picker_armature, prior_sidecar)

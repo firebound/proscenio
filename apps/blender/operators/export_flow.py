@@ -12,6 +12,7 @@ from bpy_extras.io_utils import ExportHelper
 from ..core import validation  # type: ignore[import-not-found]
 from ..core._shared.props_access import scene_props  # type: ignore[import-not-found]
 from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_debug,
     report_error,
     report_info,
     report_warn,
@@ -32,6 +33,17 @@ def _populate_validation_results(scene: bpy.types.Scene, issues: list[validation
     props.validation_ran = True
 
 
+def _report_issue_traces(operator: bpy.types.Operator, issues: list[validation.Issue]) -> None:
+    """Debug-level per-issue trace; surfaces only at the debug log level.
+
+    The Validation panel already lists every issue, but a console echo helps
+    headless / CLI export runs where there is no panel to read.
+    """
+    for issue in issues:
+        suffix = f" [{issue.obj_name}]" if issue.obj_name else ""
+        report_debug(operator, f"{issue.severity}: {issue.message}{suffix}")
+
+
 def _run_writer(filepath: str, pixels_per_unit: float) -> str | None:
     """Invoke the writer; return an error message or ``None`` on success."""
     from ..exporters.godot import writer  # type: ignore[import-not-found]
@@ -47,6 +59,7 @@ def _gate_on_validation(operator: bpy.types.Operator, scene: bpy.types.Scene) ->
     """Return False (and report) when validation finds blocking errors."""
     issues = validation.validate_export(scene)
     _populate_validation_results(scene, issues)
+    _report_issue_traces(operator, issues)
     errors = [i for i in issues if i.severity == "error"]
     if errors:
         report_error(
@@ -71,6 +84,7 @@ class PROSCENIO_OT_validate_export(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         issues = validation.validate_export(context.scene)
         _populate_validation_results(context.scene, issues)
+        _report_issue_traces(self, issues)
         errors = sum(1 for i in issues if i.severity == "error")
         warnings = sum(1 for i in issues if i.severity == "warning")
         if errors:

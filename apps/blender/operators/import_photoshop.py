@@ -15,7 +15,11 @@ import bpy
 from bpy.props import EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
-from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_debug,
+    report_error,
+    report_info,
+)
 from ..core.psd import psd_manifest  # type: ignore[import-not-found]
 from ..importers.photoshop import import_manifest  # type: ignore[import-not-found]
 
@@ -93,6 +97,10 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
         if result.spritesheets:
             msg += f"; composed {len(result.spritesheets)} spritesheet(s)"
         report_info(self, msg)
+        for obj in result.meshes:
+            report_debug(self, f"stamped '{obj.name}' at z={obj.location.z:.4f}")
+        for entry in result.skipped:
+            report_debug(self, f"skipped layer {entry}")
         return {"FINISHED"}
 
 

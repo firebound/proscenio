@@ -1,6 +1,6 @@
 # Blender addon preferences
 
-Status: **scope sketched, not started**. Successor to spec 022 (UI restructure). 022 introduces a minimal `ProscenioAddonPreferences` carrying a single `debug_mode` boolean (so the IA can debug-gate the Diagnostics panel and the Debug Pipeline subpanel). This spec grows that into the full preferences surface.
+Status: **complete - shipped 2026-06-09** (see [TODO.md](TODO.md)). Successor to spec 022 (UI restructure). 022 introduces a minimal `ProscenioAddonPreferences` carrying a single `debug_mode` boolean (so the IA can debug-gate the Diagnostics panel and the Debug Pipeline subpanel). This spec grew that into the full preferences surface: the `errors / info / debug` log level gated once in `core/_shared/report`, the `debug` tier backed by real per-item operator traces, and `debug_mode` under a Developer box. The docs-URL preference (D3) and per-project overrides (D4) stay deferred by design (backlog).
 
 Third spec of the `apps/blender` UI/UX review series (019 naming, 022 structure, 023 help/docs/i18n, 024 preferences). Order between 023 and 024 is flexible; both depend on 022.
 

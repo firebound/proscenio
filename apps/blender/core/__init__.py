@@ -26,10 +26,10 @@ Subpackages:
 - ``atlas/``        pure MaxRects packer (``atlas_packer``)
 - ``psd/``          PSD manifest reader + layer-name parsing
 - ``slot/``         pure slot[] projection (``slot_emit``)
-- ``sprite_frame/`` pure UV-cell math (``sprite_frame_math``)
+- ``spritesheet/`` pure UV-cell math (``spritesheet_math``)
 - ``automesh/`` / ``skinning/`` / ``validation/``  per-feature domain packages
 - ``bpy_helpers/``  bpy-bound helpers (``_shared/``, ``atlas/``, ``psd/``,
-                    ``automesh/``, ``skinning/``, ``sprite_frame/``)
+                    ``automesh/``, ``skinning/``, ``spritesheet/``)
 
 Adding new code: pick the subdirectory by its bpy dependency. A pure
 Python helper goes at the top level. A helper that calls

@@ -1,9 +1,9 @@
-"""Sprite-frame UV slicing math.
+"""Spritesheet UV slicing math.
 
 Pure-Python helpers that compute the UV slicing constants for a
 spritesheet cell at ``frame`` index in an ``hframes`` x ``vframes``
 grid. Bpy-free - the shader graph builder in
-``core/bpy_helpers/sprite_frame_shader.py`` consumes these values to
+``core/bpy_helpers/spritesheet/spritesheet_shader.py`` consumes these values to
 seed driver inputs, but the math itself runs without Blender.
 
 Why a separate module: the math is independent of Blender's shader

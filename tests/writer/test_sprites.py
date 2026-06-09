@@ -2,8 +2,8 @@
 
 The bpy / mathutils substitutes in conftest let the module import. These
 tests drive the bpy-free projection helpers (vertex-group weights,
-sprite_frame metadata, per-sprite texture resolution) with hand-built
-fakes. The mesh-geometry path of ``build_sprite`` needs a real matrix and
+sprite frame metadata, per-sprite texture resolution) with hand-built
+fakes. The mesh-geometry path of ``build_element`` needs a real matrix and
 stays with the in-Blender suite.
 """
 
@@ -40,10 +40,10 @@ def test_resolve_sprite_bone_empty_when_no_bone_or_groups() -> None:
     assert sprites.resolve_sprite_bone(obj) == ""
 
 
-# --- build_sprite_frame ---------------------------------------------------
+# --- build_sprite ---------------------------------------------------
 
 
-def test_build_sprite_frame_reads_grid_and_bone() -> None:
+def test_build_sprite_reads_grid_and_bone() -> None:
     obj = SimpleNamespace(
         name="face",
         parent_type="BONE",
@@ -51,7 +51,7 @@ def test_build_sprite_frame_reads_grid_and_bone() -> None:
         vertex_groups=[],
         proscenio=SimpleNamespace(hframes=2, vframes=3, frame=4, centered=False),
     )
-    sprite = sprites.build_sprite_frame(obj)
+    sprite = sprites.build_sprite(obj)
     assert sprite.type == "sprite"
     assert sprite.name == "face"
     assert sprite.bone == "head"
@@ -60,7 +60,7 @@ def test_build_sprite_frame_reads_grid_and_bone() -> None:
     assert sprite.texture_region is None  # auto mode omits the region
 
 
-def test_build_sprite_frame_rejects_zero_grid() -> None:
+def test_build_sprite_rejects_zero_grid() -> None:
     obj = SimpleNamespace(
         name="bad",
         parent_type="OBJECT",
@@ -69,10 +69,10 @@ def test_build_sprite_frame_rejects_zero_grid() -> None:
         proscenio=SimpleNamespace(hframes=0, vframes=1, frame=0, centered=True),
     )
     with pytest.raises(RuntimeError, match="hframes"):
-        sprites.build_sprite_frame(obj)
+        sprites.build_sprite(obj)
 
 
-# --- build_sprite routing -------------------------------------------------
+# --- build_element routing -------------------------------------------------
 
 
 def test_build_sprite_routes_sprite_kind() -> None:
@@ -85,7 +85,7 @@ def test_build_sprite_routes_sprite_kind() -> None:
             element_type="sprite", hframes=1, vframes=1, frame=0, centered=True
         ),
     )
-    out = sprites.build_sprite(obj, {}, ppu=100.0)
+    out = sprites.build_element(obj, {}, ppu=100.0)
     assert out.type == "sprite"
     assert out.name == "spark"
 
@@ -99,7 +99,7 @@ def test_build_sprite_rejects_unknown_kind() -> None:
         proscenio=SimpleNamespace(element_type="bogus"),
     )
     with pytest.raises(RuntimeError, match="unknown element_type"):
-        sprites.build_sprite(obj, {}, ppu=100.0)
+        sprites.build_element(obj, {}, ppu=100.0)
 
 
 # --- weights --------------------------------------------------------------

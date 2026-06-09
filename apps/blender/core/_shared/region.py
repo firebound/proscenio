@@ -74,7 +74,7 @@ def resolve_region(obj: object, uvs: list[list[float]]) -> list[float]:
 def manual_region_or_none(obj: object) -> list[float] | None:
     """Return the manual region tuple, or ``None`` when in auto mode.
 
-    Used by ``sprite_frame`` where auto mode means "omit ``texture_region``
+    Used by ``sprite`` where auto mode means "omit ``texture_region``
     entirely" (full atlas). Manual mode emits the four floats verbatim.
     """
     mode = str(_read_field(obj, "region_mode", "proscenio_region_mode", "auto"))

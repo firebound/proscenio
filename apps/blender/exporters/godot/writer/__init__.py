@@ -26,7 +26,7 @@ Module organization:
 
 - ``scene_discovery.py`` find armature, sprite meshes, atlas image
 - ``skeleton.py``        coord conversion + bone world transforms + rest-local dataclass
-- ``sprites.py``         polygon body + sprite_frame metadata + weights
+- ``sprites.py``         mesh (polygon body) + sprite (frame metadata) + weights
 - ``slots.py``           the slot system slot Empty walker
 - ``slot_animations.py`` the slot system slot_attachment track emission
 - ``animations.py``      bone_transform track emission
@@ -56,7 +56,7 @@ from .scene_discovery import doc_name, find_armature, find_atlas_image, find_spr
 from .skeleton import build_skeleton, compute_bone_world_godot
 from .slot_animations import build_slot_animations, merge_slot_animations_into
 from .slots import build_slots_for_scene
-from .sprites import build_sprite
+from .sprites import build_element
 
 
 class _DocumentKwargs(TypedDict):
@@ -118,7 +118,7 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
             view_layer = bpy.context.view_layer
             if view_layer is not None:
                 view_layer.update()
-        sprites_out = [build_sprite(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
+        sprites_out = [build_element(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
     finally:
         for obj in hidden_state:
             obj.hide_viewport = True

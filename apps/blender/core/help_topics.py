@@ -234,7 +234,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "- Missing armature when sprites carry vertex groups.",
                 "- Bone references that no longer exist on the armature.",
                 "- Atlas image files missing from disk.",
-                "- sprite_frame meshes without hframes/vframes.",
+                "- sprite meshes without hframes/vframes.",
             ),
             _section(
                 _SECTION_HOW,
@@ -396,13 +396,13 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "   value in the Action editor.",
             ),
             _section(
-                "Mixing polygon + sprite_frame attachments",
-                "Slots are kind-agnostic. A single slot can hold polygon",
-                "(weight-painted) AND sprite_frame (texture-sliced) children",
-                "freely - e.g. an eye slot with two polygon attachments",
-                "(open / closed) plus one sprite_frame attachment (4-cell glow",
+                "Mixing mesh + sprite attachments",
+                "Slots are kind-agnostic. A single slot can hold mesh",
+                "(weight-painted) AND sprite (texture-sliced) children",
+                "freely - e.g. an eye slot with two mesh attachments",
+                "(open / closed) plus one sprite attachment (4-cell glow",
                 "cycle). The Photoshop import flow that produced each child",
-                "(layer stack vs sprite_frame group) does not matter.",
+                "(layer stack vs sprite group) does not matter.",
             ),
             _section(
                 "What lands in Godot",
@@ -428,7 +428,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
             _section(
                 _SECTION_HOW,
-                "1. Select a sprite_frame mesh.",
+                "1. Select a sprite mesh.",
                 "2. Click 'Setup Preview' in the Active Element panel.",
                 "3. Z-key cycles to Material Preview mode - the active cell",
                 "   shows on the quad, updating live as 'frame' animates.",
@@ -492,8 +492,8 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_WHAT,
                 "Reads a manifest emitted by the Proscenio Photoshop UXP plugin,",
-                "stamps one polygon mesh per layer + composes spritesheet textures",
-                "for sprite_frame groups, parents everything to a stub root armature.",
+                "stamps one mesh per layer + composes spritesheet textures",
+                "for sprite groups, parents everything to a stub root armature.",
             ),
             _section(
                 _SECTION_HOW,

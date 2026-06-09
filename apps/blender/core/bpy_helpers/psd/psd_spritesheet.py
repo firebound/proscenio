@@ -1,4 +1,4 @@
-"""Spritesheet composer for sprite_frame layers (the photoshop importer).
+"""Spritesheet composer for sprite layers (the photoshop importer).
 
 Uses ``bpy.types.Image`` + ``numpy`` - both ship with Blender. Pillow
 is intentionally avoided here because it is a dev-only fixture

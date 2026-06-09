@@ -6,16 +6,16 @@ Run with::
 
 Pure Python - no Blender required. Produces:
 
-- ``examples/generated/simple_psd/pillow_layers/square.png`` (64x64 polygon layer)
+- ``examples/generated/simple_psd/pillow_layers/square.png`` (64x64 mesh layer)
 - ``examples/generated/simple_psd/pillow_layers/arrow_0.png`` ... ``arrow_3.png``
-  (32x32 each, sprite_frame rotation cycle)
+  (32x32 each, sprite rotation cycle)
 - ``examples/generated/simple_psd/pillow_layers/arrow_spritesheet.png``
   (preview only - the importer composes its own internal sheet)
 
 The accompanying ``build_blend.py`` runs in headless Blender, calls the
 addon's ``import_manifest()`` on the committed manifest, and saves
 ``simple_psd.blend``. The fixture is the smallest end-to-end exercise
-of both layer kinds (polygon + sprite_frame) defined by the photoshop importer v1.
+of both layer kinds (mesh + sprite) defined by the photoshop importer v1.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ def _draw_sprite_frame_arrows() -> None:
     """Four 90-degree rotations of an upward-pointing arrow.
 
     Frame 0 -> up, 1 -> right, 2 -> down, 3 -> left. Tests that the
-    sprite_frame importer keeps frame ordering intact through the
+    importer keeps frame ordering intact through the
     manifest -> bpy planes -> spritesheet compose path.
     """
     for idx in range(HFRAMES):

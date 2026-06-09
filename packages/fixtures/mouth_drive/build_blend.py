@@ -17,7 +17,7 @@ Loads PNGs produced by ``draw_layers.py`` and builds:
     Z axis (which equals world Z viewed from front-ortho) is wired to
     ``mouth.proscenio.frame``. Animating its Z rotation cycles through
     the 4-frame mouth spritesheet.
-- **Sprite_frame mesh** ``mouth`` referencing
+- **Sprite mesh** ``mouth`` referencing
   ``mouth_spritesheet.png`` with ``hframes=4``, ``vframes=1``.
   Parented to ``mouth_pos`` so the position bone moves it, and the
   driver bone changes which cell it shows.
@@ -77,7 +77,7 @@ def main() -> None:
         sys.exit(1)
     _wipe_blend()
     armature_obj = _build_armature()
-    sprite_obj = _build_sprite_frame_plane(armature_obj)
+    sprite_obj = _build_sprite_plane(armature_obj)
     _install_driver(sprite_obj, armature_obj)
     _build_action(armature_obj)
     _save_blend()
@@ -132,7 +132,7 @@ def _build_armature() -> bpy.types.Object:
     return arm_obj
 
 
-def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
+def _build_sprite_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
     w = FRAME_W / PIXELS_PER_UNIT
     h = FRAME_H / PIXELS_PER_UNIT
     mesh = bpy.data.meshes.new("mouth")
@@ -175,12 +175,12 @@ def _build_sprite_frame_plane(armature_obj: bpy.types.Object) -> bpy.types.Objec
     mesh.materials.append(mat)
 
     if hasattr(obj, "proscenio"):
-        obj.proscenio.sprite_type = "sprite_frame"
+        obj.proscenio.element_type = "sprite"
         obj.proscenio.hframes = HFRAMES
         obj.proscenio.vframes = VFRAMES
         obj.proscenio.frame = 0
         obj.proscenio.centered = True
-    obj["proscenio_type"] = "sprite_frame"
+    obj["proscenio_type"] = "sprite"
     obj["proscenio_hframes"] = HFRAMES
     obj["proscenio_vframes"] = VFRAMES
     obj["proscenio_frame"] = 0

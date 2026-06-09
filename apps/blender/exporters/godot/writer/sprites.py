@@ -1,4 +1,4 @@
-"""Sprite emission: polygon body + sprite_frame metadata + weights pipeline."""
+"""Element emission: mesh (polygon body) + sprite (frame metadata) + weights pipeline."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class _SpriteFrameKwargs(TypedDict):
     texture_region: NotRequired[list[float]]
 
 
-def build_sprite(
+def build_element(
     obj: bpy.types.Object,
     world_godot: dict[str, BoneWorld],
     ppu: float,
@@ -74,7 +74,7 @@ def build_sprite(
         read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
     )
     if element_type == "sprite":
-        return build_sprite_frame(obj)
+        return build_sprite(obj)
     if element_type != "mesh":
         raise RuntimeError(
             f"Proscenio: object {obj.name!r} has unknown element_type "
@@ -185,13 +185,13 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     return None
 
 
-def build_sprite_frame(obj: bpy.types.Object) -> SpriteElement:
+def build_sprite(obj: bpy.types.Object) -> SpriteElement:
     """Emit a ``sprite`` element entry (Sprite2D)."""
     hframes = int(read_field(obj, pg_field="hframes", cp_key="proscenio_hframes", default=1))
     vframes = int(read_field(obj, pg_field="vframes", cp_key="proscenio_vframes", default=1))
     if hframes < 1 or vframes < 1:
         raise RuntimeError(
-            f"Proscenio: sprite_frame object {obj.name!r} needs hframes >= 1 "
+            f"Proscenio: sprite object {obj.name!r} needs hframes >= 1 "
             f"and vframes >= 1 (got hframes={hframes}, vframes={vframes})."
         )
 

@@ -14,6 +14,7 @@ import { app, constants, type PsDocument, type PsLayer } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import type { PngWrite } from "../lib/planner";
+import { findLayerByPath } from "./_layer-find";
 
 export interface PngWriteResult {
     outputPath: string;
@@ -28,7 +29,7 @@ export async function runWrites(
 ): Promise<PngWriteResult[]> {
     const results: PngWriteResult[] = [];
     for (const write of writes) {
-        const layer = resolveLayer(sourceDoc, write.layerPath);
+        const layer = findLayerByPath(sourceDoc, write.layerPath);
         if (layer === null) {
             results.push({
                 outputPath: write.outputPath,
@@ -77,17 +78,6 @@ async function writeLayerPng(
     } finally {
         await work.closeWithoutSaving();
     }
-}
-
-function resolveLayer(doc: PsDocument, path: string[]): PsLayer | null {
-    let current: PsLayer[] = doc.layers;
-    let found: PsLayer | null = null;
-    for (const segment of path) {
-        found = current.find((l) => l.name === segment) ?? null;
-        if (found === null) return null;
-        current = found.layers ?? [];
-    }
-    return found;
 }
 
 async function ensureOutputFile(folder: UxpFolder, outputPath: string): Promise<UxpFile> {

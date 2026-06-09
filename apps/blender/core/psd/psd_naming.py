@@ -3,7 +3,7 @@
 Pure Python - no bpy, no Pillow. The Photoshop UXP plugin (and the
 retired JSX exporter before it) uses the same rules in JavaScript /
 TypeScript when classifying layer groups; this module provides the
-Python mirror so the importer can sanity-check that a sprite_frame
+Python mirror so the importer can sanity-check that a sprite
 manifest entry's children look like indexed frames before composing
 the spritesheet.
 
@@ -14,7 +14,7 @@ Locked conventions (photoshop importer):
     - ``frame_<n>``     (e.g. ``frame_0``, ``frame-1``)
     - ``<group>_<n>``   (e.g. ``eye_0``, ``eye-1``)
 
-- A layer group qualifies as a sprite_frame source iff every child
+- A layer group qualifies as a sprite source iff every child
   matches one of the patterns above with the **same** convention,
   the indices are 0-based, contiguous, and start at 0.
 

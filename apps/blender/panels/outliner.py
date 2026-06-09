@@ -16,7 +16,7 @@ def _outliner_category_rank(obj: bpy.types.Object) -> int:
 
     0 = slot Empty (top of the list, drives a slot).
     1 = slot attachment mesh (rendered indented under its slot).
-    2 = sprite mesh (Proscenio polygon / sprite_frame, parented to bone or floating).
+    2 = element mesh (Proscenio mesh / sprite, parented to bone or floating).
     3 = armature.
     9 = irrelevant for Proscenio (cameras, lights, etc.) - hidden by ``filter_items``.
     """

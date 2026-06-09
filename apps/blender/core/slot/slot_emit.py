@@ -95,7 +95,7 @@ def build_slots(slots: list[SlotInput]) -> list[Slot]:
     """Project a list of ``SlotInput`` into the writer's ``slots[]`` array.
 
     Output is sorted by slot name so the .proscenio diff stays stable
-    across re-exports (mirrors how ``sprites[]`` is emitted in writer
+    across re-exports (mirrors how ``elements[]`` is emitted in writer
     name order).
     """
     return [build_slot(slot) for slot in sorted(slots, key=lambda s: s.name)]

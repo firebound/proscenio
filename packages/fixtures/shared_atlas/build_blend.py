@@ -138,8 +138,8 @@ def _build_sprite_plane(
     mesh.materials.append(mat)
 
     if hasattr(obj, "proscenio"):
-        obj.proscenio.sprite_type = "polygon"
-    obj["proscenio_type"] = "polygon"
+        obj.proscenio.element_type = "mesh"
+    obj["proscenio_type"] = "mesh"
     return obj
 
 

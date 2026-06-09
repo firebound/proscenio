@@ -19,7 +19,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
     under plain pytest. Per the slot system, ``bone`` is the Empty's
     ``parent_bone`` when ``parent_type == "BONE"``. Attachments
     are mesh names only - the meshes themselves still emit normally
-    in ``sprites[]``.
+    in ``elements[]``.
     """
     slot_inputs: list[SlotInput] = []
     for obj in iter_objects(scene):

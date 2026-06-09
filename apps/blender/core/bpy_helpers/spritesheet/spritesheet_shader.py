@@ -1,4 +1,4 @@
-"""Sprite_frame preview shader-node group builder.
+"""Spritesheet preview shader-node group builder.
 
 Bpy graph builder: assembles the ``Proscenio.SpriteFrameSlicer`` node
 group + wires drivers from ``obj.proscenio.frame / hframes / vframes``
@@ -6,7 +6,7 @@ onto the matching shader inputs. Invoked from the slot system panel
 operator.
 
 The pure-Python cell math (``cell_size``, ``cell_offset_x``,
-``cell_offset_y``) lives in ``core.sprite_frame.sprite_frame_math`` - bpy-free and
+``cell_offset_y``) lives in ``core.spritesheet.spritesheet_math`` - bpy-free and
 exercised by pytest directly. moved it out so this module
 stays focused on the bpy node tree.
 """

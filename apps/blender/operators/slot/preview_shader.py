@@ -33,8 +33,8 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
         return any(m is not None for m in materials)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers.sprite_frame import (
-            sprite_frame_shader,  # type: ignore[import-not-found]
+        from ...core.bpy_helpers.spritesheet import (
+            spritesheet_shader,  # type: ignore[import-not-found]
         )
 
         obj = context.active_object
@@ -42,7 +42,7 @@ class PROSCENIO_OT_setup_sprite_frame_preview(bpy.types.Operator):
         if material is None:
             report_warn(self, "no material on this mesh")
             return {"CANCELLED"}
-        applied = sprite_frame_shader.apply_slicer_to_material(
+        applied = spritesheet_shader.apply_slicer_to_material(
             material,
             obj=obj,
             node_groups=bpy.data.node_groups,
@@ -79,14 +79,14 @@ class PROSCENIO_OT_remove_sprite_frame_preview(bpy.types.Operator):
         return any(m is not None for m in materials)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        from ...core.bpy_helpers.sprite_frame import sprite_frame_shader
+        from ...core.bpy_helpers.spritesheet import spritesheet_shader
 
         obj = context.active_object
         removed = 0
         for material in obj.data.materials:
             if material is None:
                 continue
-            if sprite_frame_shader.remove_slicer_from_material(material):
+            if spritesheet_shader.remove_slicer_from_material(material):
                 removed += 1
         if removed == 0:
             report_info(self, "no slicer to remove")

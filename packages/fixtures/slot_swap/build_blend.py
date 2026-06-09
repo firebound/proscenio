@@ -167,11 +167,11 @@ def _build_material(name: str, image_path: Path) -> bpy.types.Material:
 
 
 def _stamp_polygon_props(obj: bpy.types.Object) -> None:
-    """Set sprite_type=polygon on PG and CP mirrors."""
+    """Set element_type=mesh on PG and CP mirrors."""
     if hasattr(obj, "proscenio"):
-        obj.proscenio.sprite_type = "polygon"
+        obj.proscenio.element_type = "mesh"
         obj.proscenio.centered = True
-    obj["proscenio_type"] = "polygon"
+    obj["proscenio_type"] = "mesh"
     obj["proscenio_centered"] = True
 
 

@@ -9,7 +9,14 @@ from __future__ import annotations
 
 import bpy
 
-from ..core._shared.feature_status import badge_for, status_for  # type: ignore[import-not-found]
+from ..core._shared.feature_status import (  # type: ignore[import-not-found]
+    FeatureStatus,
+    badge_for,
+    status_for,
+)
+from ..core.bpy_helpers.preview_icons import (  # type: ignore[import-not-found]
+    godot_ready_icon_id,
+)
 
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
@@ -28,6 +35,26 @@ def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     return getattr(scene_props, "active_armature", None) if scene_props is not None else None
 
 
+def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
+    """Draw the status-badge button.
+
+    Uses the custom Godot mark for the godot-ready band and the built-in
+    icon for every other band. The icon is wrapped in
+    ``proscenio.status_info`` so hovering surfaces the band-specific
+    tooltip (Blender does not honor custom tooltips on a plain
+    ``layout.label``). A missing preview (headless / failed load) falls
+    back to the band's built-in icon.
+    """
+    badge = badge_for(feature_id)
+    status = status_for(feature_id)
+    icon_id = godot_ready_icon_id() if status == FeatureStatus.GODOT_READY else 0
+    if icon_id:
+        op = layout.operator(_STATUS_OP_IDNAME, text="", icon_value=icon_id, emboss=False)
+    else:
+        op = layout.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
+    op.band = status.value
+
+
 def draw_subpanel_header(
     layout: bpy.types.UILayout,
     feature_id: str,
@@ -37,14 +64,9 @@ def draw_subpanel_header(
 
     Called from ``draw_header_preset`` (NOT ``draw_header``): Blender
     renders ``draw_header_preset`` content RIGHT of the auto-drawn
-    ``bl_label``. The status icon is wrapped in ``proscenio.status_info``
-    so hovering surfaces the band-specific tooltip (Blender does not
-    honor custom tooltips on plain ``layout.label``).
+    ``bl_label``.
     """
-    badge = badge_for(feature_id)
-    status = status_for(feature_id)
-    op = layout.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
-    op.band = status.value
+    _draw_status_button(layout, feature_id)
     op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
 
@@ -59,19 +81,14 @@ def draw_subbox_header(
     """Render a sub-box title row with status + help button on the right.
 
     Sub-boxes (``layout.box()``) don't have a header_preset slot, so the
-    Proscenio status + help affordances had to be omitted - leaving help
-    topics like ``sprite_frame_preview`` orphan in the UI even though
-    they exist in ``core/help_topics.py``. This helper packs title +
-    status badge + help icon into a single row inside the box, so each
-    sub-box gets the same affordance as a top-level subpanel.
+    title + status badge + help icon are packed into a single row inside
+    the box, giving each sub-box the same affordance as a top-level
+    subpanel.
     """
-    badge = badge_for(feature_id)
-    status = status_for(feature_id)
     row = box.row(align=True)
     row.label(text=title, icon=title_icon)
     spacer = row.row()
     spacer.alignment = "RIGHT"
-    op = spacer.operator(_STATUS_OP_IDNAME, text="", icon=badge.icon, emboss=False)
-    op.band = status.value
+    _draw_status_button(spacer, feature_id)
     op = spacer.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic

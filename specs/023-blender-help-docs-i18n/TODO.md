@@ -53,9 +53,23 @@ Phase 1 + Phase 2 shipped (commit 25af912):
 
 Gates green: ruff, ruff-format, mypy (166 files), `pytest tests/` (613), Blender operator suite (50), fixture suite (7/7).
 
-Deferred (follow-up pass):
+Addon reference docs shipped on `feat/spec-023-help-docs`:
 
-- Phase 3 string-isolation module / full i18n migration - D7, "translate as we go".
-- Custom Godot badge icon (PNG + `previews` lifecycle) - D6.
-- Tooltip audit (most operators / fields already carry `bl_description`; Blender panels have no hover-tooltip slot).
-- Migrating the local-path see-also refs (`specs/`, `examples/`) to online `doc_url`s once the docs site exists - they stay plain labels until then, since they do not resolve in an installed addon.
+- New Docusaurus section "Blender addon" (sidebar + navbar) under `docs/02-blender-addon/` - an index + one page per sidebar panel, with brief per-panel / per-subpanel text mirroring the `?` help.
+- `topic_for` fills each topic's `doc_url` from a central map pointing at the matching reference page + anchor, so the "Open online docs" button now lands somewhere real. Docusaurus build is clean.
+
+Spec 023 finalized on `feat/spec-023-help-docs`:
+
+- Custom Godot badge icon (D6): the official Godot mark loads via `bpy.utils.previews` and renders for the godot-ready band, falling back to `CHECKMARK` on a missing / headless load.
+- i18n isolation (D7): `core/i18n.py` wires `bpy.app.translations` the idiomatic way - English stays inline as the msgid and Blender auto-translates registered strings, so no call-site rewrite. Per-locale tables are deferred (the STUDY non-goal), added by appending rows to `TRANSLATIONS`.
+- Tooltip / help pass verified: 41/41 operators carry a tooltip (40 `bl_description` + the dynamic status-badge `description`), properties carry descriptions, and panel headers expose a hover tooltip (the status badge) plus the `?` detail popup. Blender panels have no hover-tooltip slot, so that is the complete surface.
+- Help panel disposition (decided 2026-06-08): per-operator tooltips are satisfied in each operator's home panel - every operator carries a `bl_description` that shows on hover where the operator is a button. The Help panel stays the F3 idname cheat-sheet rather than duplicating those as runnable operator buttons (which would turn it into a launcher with an accidental-run foot-gun).
+- See-also disposition: the inline `specs/` / `examples/` see-also refs stay plain labels because they do not resolve in an installed (zipped) extension; the working clickable docs link is the per-topic `doc_url` / "Open online docs" button. Migrating those refs to online URLs is the follow-up below.
+
+With that, the 023 scope is concluded - the only open items are the explicit STUDY non-goal (per-locale translation tables) and one documented follow-up (migrating the local see-also refs to online URLs).
+
+Deferred (STUDY non-goals + follow-ups):
+
+- Per-locale translation tables - the actual `pt_BR` / other-language strings ("translate as we go").
+- Migrating the inline see-also refs (`specs/`, `examples/`) to online links - the per-topic `doc_url` now points at the new reference, but the see-also entries themselves still render as plain labels (they do not resolve in an installed addon).
+- Expanding the addon reference pages beyond the first-cut placeholders (screenshots, deeper per-tool detail) as the panels settle.

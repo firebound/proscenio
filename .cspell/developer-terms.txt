@@ -343,3 +343,8 @@ anim
 monkeypatch
 monkeypatching
 unstub
+ctxt
+msgctxt
+msgid
+msgids
+pgettext

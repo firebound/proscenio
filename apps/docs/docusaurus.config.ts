@@ -111,6 +111,12 @@ const config: Config = {
           label: 'Schema reference',
         },
         {
+          type: 'docSidebar',
+          sidebarId: 'blenderSidebar',
+          position: 'left',
+          label: 'Blender addon',
+        },
+        {
           href: 'https://github.com/Space-Wizard-Studios/firebound-proscenio',
           label: 'GitHub',
           position: 'right',

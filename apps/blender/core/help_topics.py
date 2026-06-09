@@ -26,7 +26,7 @@ per ``layout.label``. Bullet lists are emulated with leading ``- ``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 @dataclass(frozen=True)
@@ -65,7 +65,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         summary="Quick legend for the icons next to every Proscenio panel header.",
         sections=(
             _section(
-                "godot-ready (CHECKMARK)",
+                "godot-ready (Godot mark)",
                 "Exports to .proscenio + ships in the Godot importer. Edits to",
                 "fields under this panel reach the runtime scene.",
             ),
@@ -830,9 +830,59 @@ HELP_TOPICS: dict[str, HelpTopic] = {
 }
 
 
+# Base URL of the per-panel Blender addon reference (docs/02-blender-addon).
+# topic_for injects the matching page (and section anchor) as the topic's
+# doc_url so the help popup's "Open online docs" button lands on it - the URL
+# scheme lives here once instead of on every HelpTopic literal.
+_DOCS_BASE = "https://space-wizard-studios.github.io/firebound-proscenio/blender-addon/"
+
+_DOC_PATHS: dict[str, str] = {
+    "outliner": "outliner",
+    "active_element": "element",
+    "active_mesh": "element#active-mesh",
+    "active_sprite": "element#active-sprite",
+    "texture_region": "element#texture-region",
+    "drive_from_bone": "element#drive-from-bone",
+    "slot_system": "slots",
+    "active_slot": "slots#active-slot",
+    "skeleton": "skeleton",
+    "armature": "skeleton#armature",
+    "pose_mode": "skeleton#pose-mode",
+    "quick_armature": "skeleton#quick-armature",
+    "mesh_generation": "mesh-generation",
+    "automesh_alpha": "mesh-generation#automesh-from-alpha",
+    "automesh_interactive": "mesh-generation#automesh-interactive",
+    "debug_pipeline": "mesh-generation#debug-pipeline",
+    "weight_paint": "weight-paint",
+    "bind": "weight-paint#bind",
+    "edit_weights": "weight-paint#edit-weights",
+    "snapshot": "weight-paint#snapshot",
+    "sidecar_io": "weight-paint#sidecar-io",
+    "weight_transfer": "weight-paint#weight-transfer",
+    "animation": "animation",
+    "atlas": "atlas",
+    "validation": "validation",
+    "import_photoshop": "pipeline#import",
+    "export": "pipeline#export",
+    "helpers": "helpers",
+    "status_legend": "#status-badges",
+}
+
+
 def topic_for(topic_id: str) -> HelpTopic | None:
-    """Return the help topic for an id, or ``None`` for unknown ids."""
-    return HELP_TOPICS.get(topic_id)
+    """Return the help topic for an id, or ``None`` for unknown ids.
+
+    Topics listed in ``_DOC_PATHS`` get their ``doc_url`` filled from the
+    addon reference base so the popup's "Open online docs" button works
+    without repeating the URL on every literal.
+    """
+    topic = HELP_TOPICS.get(topic_id)
+    if topic is None:
+        return None
+    rel = _DOC_PATHS.get(topic_id)
+    if rel and not topic.doc_url:
+        return replace(topic, doc_url=_DOCS_BASE + rel)
+    return topic
 
 
 def known_topic_ids() -> tuple[str, ...]:

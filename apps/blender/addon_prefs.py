@@ -12,16 +12,37 @@ addon root, so its ``__package__`` is exactly that name.
 from __future__ import annotations
 
 import bpy
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, EnumProperty
+
+from .core._shared.report import set_min_level
 
 # The addon root package - the key both bl_idname and the prefs lookup use.
 ADDON_PACKAGE = __package__ or ""
+
+
+def _on_log_level_update(self: ProscenioAddonPreferences, _context: bpy.types.Context) -> None:
+    """Push the chosen verbosity into the shared report gate immediately."""
+    set_min_level(self.log_level)
 
 
 class ProscenioAddonPreferences(bpy.types.AddonPreferences):
     """Developer-surface toggle for the Proscenio addon."""
 
     bl_idname = ADDON_PACKAGE
+
+    log_level: EnumProperty(  # type: ignore[valid-type]
+        name="Log level",
+        description=(
+            "How much Proscenio operators report to the Info log. Errors only = "
+            "just failures; Info = the default running commentary"
+        ),
+        items=[
+            ("errors", "Errors only", "Only error reports surface"),
+            ("info", "Info", "Info + warnings + errors (default)"),
+        ],
+        default="info",
+        update=_on_log_level_update,
+    )
 
     debug_mode: BoolProperty(  # type: ignore[valid-type]
         name="Debug mode",
@@ -34,7 +55,10 @@ class ProscenioAddonPreferences(bpy.types.AddonPreferences):
     )
 
     def draw(self, _context: bpy.types.Context) -> None:
-        self.layout.prop(self, "debug_mode")
+        box = self.layout.box()
+        box.label(text="Developer", icon="TOOL_SETTINGS")
+        box.prop(self, "log_level")
+        box.prop(self, "debug_mode")
 
 
 def debug_mode_enabled(context: bpy.types.Context) -> bool:
@@ -64,6 +88,22 @@ def register() -> None:
         )
     for cls in _classes:
         bpy.utils.register_class(cls)
+    _sync_log_level_from_prefs()
+
+
+def _sync_log_level_from_prefs() -> None:
+    """Best-effort: push the saved log_level into the report gate at register.
+
+    The ``update`` callback covers runtime changes; this applies a value the
+    user saved in a previous session. Guarded so a headless mount (no
+    ``context.preferences``) leaves the report gate at its default.
+    """
+    prefs = bpy.context.preferences
+    if prefs is None:
+        return
+    addon = prefs.addons.get(ADDON_PACKAGE)  # type: ignore[attr-defined]
+    if addon is not None:
+        set_min_level(str(getattr(addon.preferences, "log_level", "info")))
 
 
 def unregister() -> None:

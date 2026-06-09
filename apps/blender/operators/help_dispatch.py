@@ -86,7 +86,15 @@ class PROSCENIO_OT_help(bpy.types.Operator):
             layout.separator()
             layout.label(text="See also:", icon="URL")
             for ref in topic.see_also:
-                layout.label(text="  " + ref)
+                if ref.startswith(("http://", "https://")):
+                    op = layout.operator("wm.url_open", text=ref, icon="URL")
+                    op.url = ref
+                else:
+                    layout.label(text="  " + ref)
+        if topic.doc_url:
+            layout.separator()
+            docs = layout.operator("wm.url_open", text="Open online docs", icon="HELP")
+            docs.url = topic.doc_url
 
 
 class PROSCENIO_OT_smoke_test(bpy.types.Operator):

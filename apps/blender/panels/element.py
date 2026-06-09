@@ -84,7 +84,7 @@ class PROSCENIO_PT_active_mesh(bpy.types.Panel):
         return props is not None and props.element_type == "mesh"
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "active_mesh", "active_element")
+        draw_subpanel_header(self.layout, "active_mesh", "active_mesh")
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
@@ -108,7 +108,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
         return props is not None and props.element_type == "sprite"
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "active_sprite", "active_element")
+        draw_subpanel_header(self.layout, "active_sprite", "active_sprite")
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
@@ -132,7 +132,7 @@ class PROSCENIO_PT_texture_region(bpy.types.Panel):
         return _active_mesh_props(context) is not None
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "texture_region", "active_element")
+        draw_subpanel_header(self.layout, "texture_region", "texture_region")
 
     def draw(self, context: bpy.types.Context) -> None:
         props = context.active_object.proscenio

@@ -71,7 +71,7 @@ class PROSCENIO_PT_bind(bpy.types.Panel):
         return _is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "bind", "weight_paint")
+        draw_subpanel_header(self.layout, "bind", "bind")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_bind(
@@ -96,7 +96,7 @@ class PROSCENIO_PT_edit_weights(bpy.types.Panel):
         return _is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "edit_weights", "weight_paint")
+        draw_subpanel_header(self.layout, "edit_weights", "edit_weights")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_edit_weights(self.layout, context.active_object, _active_armature(context))
@@ -119,7 +119,7 @@ class PROSCENIO_PT_snapshot(bpy.types.Panel):
         return _is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "snapshot", "weight_paint")
+        draw_subpanel_header(self.layout, "snapshot", "snapshot")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_snapshot(self.layout, _scene_skinning(context), context.active_object)
@@ -142,7 +142,7 @@ class PROSCENIO_PT_sidecar_io(bpy.types.Panel):
         return _is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "sidecar_io", "weight_paint")
+        draw_subpanel_header(self.layout, "sidecar_io", "sidecar_io")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_sidecar_io(self.layout, context.active_object)
@@ -165,7 +165,7 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
         return _is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "weight_transfer", "weight_paint")
+        draw_subpanel_header(self.layout, "weight_transfer", "weight_transfer")
 
     def draw(self, _context: bpy.types.Context) -> None:
         self.layout.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")

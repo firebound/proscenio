@@ -44,6 +44,18 @@ Successor to spec 022. STUDY: [STUDY.md](STUDY.md). This pass lands the BASICS t
 - Custom Godot badge icon (PNG + `previews` lifecycle) - D6.
 - Full label / description i18n migration + per-locale tables - D7.
 
-## Status
+## Status - shipped (basics) on `feat/spec-023-024-help-prefs`
 
-- [ ] not started
+Phase 1 + Phase 2 shipped (commit 25af912):
+
+- 14 per-subpanel help topics added; every subpanel now opens its own `?` topic instead of the parent's. The features the manual review flagged as unexplained (per-bone Soft / Hard, Snapshot, Sidecar IO, Weight Transfer) get real text.
+- `HelpTopic.doc_url` added; see-also URLs render via `wm.url_open`; an "Open online docs" button shows only when a `doc_url` is set (no dead links).
+
+Gates green: ruff, ruff-format, mypy (166 files), `pytest tests/` (613), Blender operator suite (50), fixture suite (7/7).
+
+Deferred (follow-up pass):
+
+- Phase 3 string-isolation module / full i18n migration - D7, "translate as we go".
+- Custom Godot badge icon (PNG + `previews` lifecycle) - D6.
+- Tooltip audit (most operators / fields already carry `bl_description`; Blender panels have no hover-tooltip slot).
+- Migrating the local-path see-also refs (`specs/`, `examples/`) to online `doc_url`s once the docs site exists - they stay plain labels until then, since they do not resolve in an installed addon.

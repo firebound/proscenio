@@ -76,7 +76,7 @@ class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
         return _active_is_mesh(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "automesh_alpha", "mesh_generation")
+        draw_subpanel_header(self.layout, "automesh_alpha", "automesh_alpha")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_automesh_alpha(self.layout, _scene_skinning(context))
@@ -99,7 +99,7 @@ class PROSCENIO_PT_automesh_interactive(bpy.types.Panel):
         return _active_is_mesh(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "automesh_interactive", "mesh_generation")
+        draw_subpanel_header(self.layout, "automesh_interactive", "automesh_interactive")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_automesh_interactive(self.layout, _scene_skinning(context), context.active_object)
@@ -122,7 +122,7 @@ class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
         return _active_is_mesh(context) and debug_mode_enabled(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "debug_pipeline", "mesh_generation")
+        draw_subpanel_header(self.layout, "debug_pipeline", "debug_pipeline")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_debug_pipeline(self.layout, _scene_skinning(context))

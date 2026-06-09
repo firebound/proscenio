@@ -97,7 +97,7 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         return obj is not None and _is_slot(obj)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "active_slot", "slot_system")
+        draw_subpanel_header(self.layout, "active_slot", "active_slot")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

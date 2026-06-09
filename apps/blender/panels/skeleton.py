@@ -136,7 +136,7 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         return target is not None and bool(getattr(target.data, "bones", None))
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "armature", "skeleton")
+        draw_subpanel_header(self.layout, "armature", "armature")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -169,7 +169,7 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     bl_order = 1
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "pose_mode", "skeleton")
+        draw_subpanel_header(self.layout, "pose_mode", "pose_mode")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

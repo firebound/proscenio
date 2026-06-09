@@ -48,6 +48,7 @@ class HelpTopic:
     summary: str  # one-liner shown at the top of the popup
     sections: tuple[HelpSection, ...]
     see_also: tuple[str, ...] = field(default_factory=tuple)
+    doc_url: str = ""  # full URL to the online docs page; empty hides the button
 
 
 _SECTION_WHAT = "What it does"
@@ -581,6 +582,247 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Preview Camera",
                 "Drops an orthographic front camera framed the way the Godot",
                 "importer expects, so what you see matches the runtime framing.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "active_mesh": HelpTopic(
+        title="Active Mesh",
+        summary="The Polygon2D fields of the selected mesh element.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Shown when the active element type is Mesh. The mesh exports as a",
+                "Polygon2D - a deformable cutout with UVs + bone weights. The vertices",
+                "carry their own positions, so the Blender origin is baked in at export.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "active_sprite": HelpTopic(
+        title="Active Sprite",
+        summary="The Sprite2D spritesheet fields of the selected sprite element.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Shown when the active element type is Sprite. The mesh exports as a",
+                "Sprite2D that slices a spritesheet: an hframes x vframes grid + a frame",
+                "index. The quad geometry itself is not exported - only this metadata.",
+            ),
+            _section(
+                "Fields",
+                "- hframes / vframes: the spritesheet grid (columns x rows).",
+                "- frame: the cell shown at rest pose; animation tracks override it.",
+                "- centered: Godot Sprite2D.centered - texture centered on the node",
+                "  origin (on) or top-left at the origin (off).",
+            ),
+        ),
+        see_also=(),
+    ),
+    "texture_region": HelpTopic(
+        title="Texture Region",
+        summary="Which part of the texture this element samples.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Auto reads the region from the mesh UV bounds at export. Manual reads",
+                "region_x/y/w/h verbatim - use it for atlas slicing. 'Snap to UV bounds'",
+                "fills the manual fields from the current UV layout.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "bind": HelpTopic(
+        title="Bind",
+        summary="Bind the active mesh to the picker armature's bones.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Builds the vertex weights that let the rig deform this mesh. Mode picks",
+                "the algorithm; Bone Heat (Blender native) is the default and best for",
+                "most 2D pickers. Proximity / Envelope / Single-nearest / Empty are",
+                "fallbacks exposed via F3 redo.",
+            ),
+            _section(
+                "Per-bone Soft / Hard",
+                "Override a single bone's falloff. Soft = proximity falloff: the bone",
+                "shares weight smoothly with neighbours (good for cloth, hair). Hard =",
+                "single-nearest: a crisp boundary, no bleed (good for finger joints).",
+                "A bone with no override uses the Mode's default family.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "edit_weights": HelpTopic(
+        title="Edit Weights",
+        summary="Modal weight-paint session with 2D brush-curve presets.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Enters Weight Paint on the active group with a provenance overlay",
+                "(which verts are auto-seed vs hand-painted). The brush-curve presets",
+                "(Hard Edge / Soft Falloff / Crease / Smooth Blend) shape the brush",
+                "falloff for common 2D tasks without a trip to the curve editor.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Bind the mesh first (the button is disabled until then).",
+                "2. Click Edit Weights; paint; ESC exits and restores brush state.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "snapshot": HelpTopic(
+        title="Snapshot",
+        summary="Save + restore weights so an automesh regen does not wipe paint.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "The weight snapshot stores, per vertex, a UV anchor + its weights +",
+                "where they came from (auto-seed / hand paint / reprojected). It is the",
+                "safety net that survives a mesh rebuild.",
+            ),
+            _section(
+                "Controls",
+                "- Preserve weights on regen: before an Automesh re-run, snapshot the",
+                "  weights by UV, then reproject them onto the new mesh. Off = the",
+                "  regen wipes paint.",
+                "- Reset to Last Saved Weights: revert the live weights to the last",
+                "  snapshot (undo paint back to the saved baseline).",
+                "- The N paint / M seed / K reprojected pill shows where each vert's",
+                "  weight came from.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "sidecar_io": HelpTopic(
+        title="Sidecar IO",
+        summary="Write the weight snapshot to a file, or load one back.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Export dumps the active mesh's weight snapshot to a JSON file; Import",
+                "loads one back. Use it to version-control weights in git (the .blend",
+                "is binary) or move weights between files.",
+            ),
+            _section(
+                "Caveats",
+                "Import only loads the snapshot - run 'Reset to Last Saved Weights' in",
+                "Snapshot to push it onto the live mesh, and only when the topology",
+                "matches (a hash guards it).",
+            ),
+        ),
+        see_also=(),
+    ),
+    "weight_transfer": HelpTopic(
+        title="Weight Transfer",
+        summary="Copy weights from the active mesh to the other selected meshes.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "For each vertex of every other selected mesh, copies the weights of",
+                "the nearest vertex on the active mesh (by world position). An imprint:",
+                "the meshes must overlap in space; different vertex counts are fine",
+                "(each target vert grabs its own nearest source).",
+            ),
+            _section(
+                "Caveats",
+                "Target verts beyond the Max Distance (F3 redo) get no weights. Use it",
+                "for layered or split cutouts that sit on top of a rigged base.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "automesh_alpha": HelpTopic(
+        title="Automesh from Alpha",
+        summary="One-shot trace of the sprite alpha into a deformable mesh.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Walks the image alpha contour into an annulus mesh you can weight-paint.",
+                "Re-runs preserve the UV-pinned base quad (the proscenio_base_sprite group).",
+            ),
+            _section(
+                "Key settings",
+                "- Mesh resolution: an image downscale factor. LOWER = denser mesh",
+                "  (more vertices), higher = coarser. The name reads backwards.",
+                "- Interior Mode (parent panel): Simple (sparse) or Dense (filled).",
+                "- Density follows bones (Dense only): pack more triangles near the",
+                "  picker's bones, where deformation happens.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "automesh_interactive": HelpTopic(
+        title="Automesh Interactive",
+        summary="Step through the trace, editing the silhouette before it commits.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "A modal preview of the same trace. Advance through stages to cut /",
+                "extend the outline and place interior points, then commit the mesh.",
+                "Nothing is written until you confirm the final stage.",
+            ),
+            _section(
+                _SECTION_HOW,
+                "1. Select a mesh with an image texture; click Automesh (interactive).",
+                "2. ENTER advances a stage, BACKSPACE steps back, ESC cancels.",
+                "3. The final stage builds the mesh (same result as Automesh from Alpha",
+                "   plus your edits).",
+            ),
+        ),
+        see_also=(),
+    ),
+    "debug_pipeline": HelpTopic(
+        title="Debug Pipeline",
+        summary="Emit per-stage wireframe companions for inspecting the trace.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Developer aid (shown only with debug mode on). Picks a stage of the",
+                "alpha trace (raw contours, smoothed, resampled, interior, bridges,",
+                "fill); the next Automesh run leaves a wireframe companion in the",
+                "Proscenio.Debug collection. Clear Debug Companions removes them.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "active_slot": HelpTopic(
+        title="Active Slot",
+        summary="The attachment detail of the selected slot.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Lists the slot's child meshes (its attachments), lets you mark which",
+                "one is visible at scene load (the SOLO star = default), and add the",
+                "selected mesh as a new attachment. See the Slots help for the overview.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "armature": HelpTopic(
+        title="Armature",
+        summary="Read-only bone hierarchy of the picked armature.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Lists every bone the writer would export, indented by depth, with",
+                "connected / relative flags. Click a bone to select it in the viewport.",
+                "Inspection only - it never changes the .proscenio output.",
+            ),
+        ),
+        see_also=(),
+    ),
+    "pose_mode": HelpTopic(
+        title="Pose Mode",
+        summary="Pose-only authoring shortcuts (blender-only).",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Bake Current Pose keys every bone at the playhead. Toggle IK adds /",
+                "removes a test IK constraint. Save Pose to Library stores the pose as",
+                "a Blender asset. None of these reach the .proscenio - they are",
+                "authoring conveniences.",
             ),
         ),
         see_also=(),

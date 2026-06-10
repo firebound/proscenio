@@ -135,6 +135,20 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** a rig wants a bone to select among slot attachments (hand poses, head turns) without hand-keyframing visibility.
 
+### Bone rotation-mode authoring surface (quaternion vs Euler)
+
+**What:** Blender defaults pose bones to `rotation_mode = "QUATERNION"`, but a 2D cutout rig rotates around a single screen axis (one DOF), so quaternion (4 channels) buys nothing over Euler-Y (1 readable channel) and there is no gimbal lock to avoid. The writer already collapses either input to a single screen-angle scalar (`exporters/godot/writer/animations.py` reads both `rotation_euler[1]` and `rotation_quaternion` via `_quat_to_screen_angle`), so this is an authoring-clarity surface, not an export-correctness gap. A first-timer never sees the difference and lands on opaque 4-channel quaternion fcurves; Drive-from-Bone is also easier targeting a single Euler channel, and `_quat_to_screen_angle` is exact only for a clean single-axis quaternion.
+
+**Why a choice, not a silent default:** Proscenio must not author on the user's behalf without an explicit control. If Quick Armature creates bones in Euler-Y (off Blender's standard) it has to be a visible, overridable choice, not a hidden behaviour. Switching `rotation_mode` on an *already-keyframed* bone does NOT convert the existing fcurves - the quaternion channels orphan and Euler sits at default, silently breaking the animation. So any swap affordance must guard on keyframe presence and warn.
+
+**Scope sketch:**
+
+- **Quick Armature:** a rotation-mode control (dropdown / checkbox) in the "Quick Armature defaults" sub-box + F3 redo override, defaulting to Euler-Y for the 2D workflow but always user-selectable. Pairs with the addon-preference + per-invoke-override pattern the operator already uses for the naming prefix.
+- **Skeleton panel:** a per-bone badge / hint when a selected bone uses Quaternion, with an info tooltip explaining the 2D-rig rationale. Covers imported / external rigs that Quick Armature did not create.
+- **Safe swap operator:** offer a "set rotation mode" action only when the bone carries no rotation keyframes (lossless); when keyframes exist, offer a "Convert (bake)" path instead of a raw `rotation_mode` flip, with an explicit warning. Never flip silently.
+
+**Trigger:** a first-time user keyframes a Quick-Armature bone, finds 4 unlabelled quaternion channels in the Graph Editor, and asks which one is "the rotation"; or an imported rig's quaternion bone exports a mangled angle because its quaternion was not single-axis.
+
 ### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
 
 Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). The three deferred items shipped as the 016 follow-up, behavior-preserving and proven by the headless gate set (ruff + mypy + `uv run pytest tests/` + the Blender fixture and operator suites):

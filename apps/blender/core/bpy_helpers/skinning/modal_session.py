@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import bpy
 
 from ...skinning.paint_preset_2d import PaintPresetSnapshot
+from .._shared.select import restore_selection
 from .bone_collection_visibility import BoneCollectionSnapshot
 from .bone_collection_visibility import restore as restore_bone_visibility
 from .paint_preset_bind import restore_paint_preset
@@ -73,22 +74,8 @@ def restore(context: bpy.types.Context, session: EditWeightsSession) -> None:
     if armature is not None and session.prior_bone_collections is not None:
         with contextlib.suppress(RuntimeError):
             restore_bone_visibility(armature, session.prior_bone_collections)
-    _restore_selection(context, session)
+    restore_selection(context, session.prior_selected_names, session.prior_active)
     _restore_overlay_flag(context, session.prior_overlay_flag)
-
-
-def _restore_selection(context: bpy.types.Context, session: EditWeightsSession) -> None:
-    for obj in list(context.selected_objects):
-        with contextlib.suppress(RuntimeError, ReferenceError):
-            obj.select_set(False)
-    for name in session.prior_selected_names:
-        obj = bpy.data.objects.get(name)
-        if obj is not None:
-            with contextlib.suppress(RuntimeError):
-                obj.select_set(True)
-    if session.prior_active is not None:
-        with contextlib.suppress(RuntimeError, ReferenceError):
-            context.view_layer.objects.active = session.prior_active
 
 
 def _restore_overlay_flag(context: bpy.types.Context, prior: bool) -> None:

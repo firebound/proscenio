@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from blender.core.slot import slot_emit
 from blender.exporters.godot.writer import slots
 
 
@@ -36,8 +37,12 @@ def _slot_empty(
 
 
 def test_is_slot_empty_reads_pg_flag() -> None:
-    assert slots.is_slot_empty(SimpleNamespace(proscenio=SimpleNamespace(is_slot=True))) is True
-    assert slots.is_slot_empty(SimpleNamespace(proscenio=SimpleNamespace(is_slot=False))) is False
+    yes = SimpleNamespace(type="EMPTY", proscenio=SimpleNamespace(is_slot=True))
+    no = SimpleNamespace(type="EMPTY", proscenio=SimpleNamespace(is_slot=False))
+    not_empty = SimpleNamespace(type="MESH", proscenio=SimpleNamespace(is_slot=True))
+    assert slot_emit.is_slot_empty(yes) is True
+    assert slot_emit.is_slot_empty(no) is False
+    assert slot_emit.is_slot_empty(not_empty) is False
 
 
 def test_read_slot_default_from_pg() -> None:

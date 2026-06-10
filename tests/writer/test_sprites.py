@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from blender.exporters.godot.writer import sprites
+from blender.exporters.godot.writer import scene_discovery, sprites
 
 
 def _vgroup(index: int, name: str) -> SimpleNamespace:
@@ -180,7 +180,7 @@ def test_build_sprite_weights_uses_fallback_for_zero_weight_vertex() -> None:
     ],
 )
 def test_image_filename(image: SimpleNamespace, expected: str | None) -> None:
-    assert sprites._image_filename(image) == expected
+    assert scene_discovery.image_filename(image) == expected
 
 
 def test_per_sprite_texture_reads_first_image_node() -> None:

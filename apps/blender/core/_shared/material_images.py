@@ -30,14 +30,19 @@ if TYPE_CHECKING:
 def iter_material_node_images(material: bpy.types.Material | None) -> Iterator[bpy.types.Image]:
     """Yield every linked TEX_IMAGE image in one material's node tree.
 
-    Empty when ``material`` is None, has no node tree, or carries no image
-    texture node with an image bound. The walk reads ``node_tree`` directly
-    rather than gating on ``Material.use_nodes``: that flag is deprecated
-    (slated for removal in Blender 6.0, where every material is node-based),
-    so gating on it would silently zero image discovery once it is gone -
-    and it already raises a DeprecationWarning on every read.
+    Empty when ``material`` is None, is not node-based, has no node tree, or
+    carries no image texture node with an image bound.
+
+    The ``use_nodes`` guard reads ``getattr(material, "use_nodes", True)``: on
+    Blender 5.1 a material can hold a populated ``node_tree`` while
+    ``use_nodes`` is False (the tree is inactive and must be skipped), so the
+    guard is meaningful; ``Material.use_nodes`` is deprecated and removed in
+    Blender 6.0, where the ``getattr`` default of True keeps discovery
+    working. This is the version-robust form prescribed in
+    ``backlog-blender-6`` - dropping the guard outright would regress 5.1 by
+    reading textures off inactive node trees.
     """
-    if material is None:
+    if material is None or not getattr(material, "use_nodes", True):
         return
     tree = getattr(material, "node_tree", None)
     if tree is None:

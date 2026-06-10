@@ -366,3 +366,4 @@ characterised
 pmdcode
 msys
 pathconv
+contextmanager

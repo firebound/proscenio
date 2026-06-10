@@ -5,10 +5,10 @@ from __future__ import annotations
 import bpy
 from proscenio_models import Slot
 
-from ....core._shared.cp_keys import PROSCENIO_IS_SLOT, PROSCENIO_SLOT_DEFAULT
-from ....core._shared.pg_cp_fallback import read_bool_flag, read_field
+from ....core._shared.cp_keys import PROSCENIO_SLOT_DEFAULT
+from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import iter_objects
-from ....core.slot.slot_emit import SlotInput, build_slots
+from ....core.slot.slot_emit import SlotInput, build_slots, is_slot_empty
 
 
 def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
@@ -23,8 +23,6 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
     """
     slot_inputs: list[SlotInput] = []
     for obj in iter_objects(scene):
-        if obj.type != "EMPTY":
-            continue
         if not is_slot_empty(obj):
             continue
         bone = obj.parent_bone if obj.parent_type == "BONE" else ""
@@ -38,19 +36,6 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
             )
         )
     return build_slots(slot_inputs)
-
-
-def is_slot_empty(obj: bpy.types.Object) -> bool:
-    """True when ``obj`` is a slot-flagged Empty.
-
-    Reads PropertyGroup first (canonical post-the authoring panel), Custom Property
-    ``proscenio_is_slot`` as legacy fallback. The fallback matters in
-    headless contexts where the addon's PropertyGroup is not registered
-    - CI runs Blender without the addon enabled. Delegates to
-    ``read_bool_flag`` so an explicit ``is_slot=False`` on the PG
-    suppresses a stale CP-True (PG-first contract).
-    """
-    return bool(read_bool_flag(obj, pg_field="is_slot", cp_key=PROSCENIO_IS_SLOT))
 
 
 def read_slot_default(obj: bpy.types.Object) -> str:

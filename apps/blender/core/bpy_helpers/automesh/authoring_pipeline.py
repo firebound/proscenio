@@ -22,6 +22,9 @@ from ..._shared.cp_keys import (
 from ..._shared.cp_keys import (
     PROSCENIO_USER_STROKES as _USER_STROKES_KEY,
 )
+from ..._shared.geometry_2d import Point2D
+from ..._shared.json_cp import read_json_list_cp
+from ..._shared.props_access import resolve_pixels_per_unit
 from ...automesh import (
     BoneSegment2D,
     arc_length_resample,
@@ -32,7 +35,7 @@ from ...automesh import (
     point_in_polygon,
     to_float_contour,
 )
-from ...skinning.authoring_stages import Point2D, StageOutput, StageParams, Stroke
+from ...skinning.authoring_stages import StageOutput, StageParams, Stroke
 from .bridge import (
     _EXTRA_INDEX_SENTINEL,
     AutomeshBuildParams,
@@ -72,7 +75,7 @@ def compute_outer(
     outer_dilate = max(1, round(params.margin_pixels * params.resolution))
     alpha_grid = read_alpha_grid(image, params.resolution)
     pixel_contour = extract_outer_contour(alpha_grid, params.alpha_threshold, outer_dilate)
-    world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
+    world_scale = 1.0 / resolve_pixels_per_unit(bpy.context)
     source_width, source_height = image.size[0], image.size[1]
     local = pixel_contour_to_world(
         to_float_contour(pixel_contour),
@@ -96,7 +99,7 @@ def compute_inner_loops_for_stage(
     """
     if params.inner_loop_count <= 0:
         return []
-    pixels_per_unit = _resolve_pixels_per_unit(bpy.context)
+    pixels_per_unit = resolve_pixels_per_unit(bpy.context)
     spacing_px = max(1, int(params.inner_loop_spacing * pixels_per_unit * params.resolution))
     alpha_grid = read_alpha_grid(image, params.resolution)
     base_mask = binarize(alpha_grid, params.alpha_threshold)
@@ -122,15 +125,7 @@ def compute_inner_loops_for_stage(
 
 def read_user_steiners(obj: bpy.types.Object) -> list[Point2D]:
     """Read obj['proscenio_user_steiners']; empty list when absent or corrupt."""
-    payload = obj.get(_EDIT_INTERIOR_POINTS_KEY)
-    if payload is None:
-        return []
-    try:
-        data = json.loads(payload) if isinstance(payload, str) else list(payload)
-    except (ValueError, TypeError):
-        return []
-    if not isinstance(data, list):
-        return []
+    data = read_json_list_cp(obj, _EDIT_INTERIOR_POINTS_KEY)
     points: list[Point2D] = []
     for item in data:
         if not (isinstance(item, list | tuple) and len(item) == 2):
@@ -153,22 +148,25 @@ def read_user_strokes(obj: bpy.types.Object) -> list[Stroke]:
     """Read obj['proscenio_user_strokes']; backward compat with legacy
     proscenio_user_steiners flat list (treated as kind='point' strokes).
     """
-    payload = obj.get(_USER_STROKES_KEY)
-    if payload is not None:
-        try:
-            data = json.loads(payload) if isinstance(payload, str) else list(payload)
-        except (ValueError, TypeError):
-            return []
-        return _parse_strokes(data)
+    if _USER_STROKES_KEY in obj:
+        # Present payload routes through the shared codec (corrupt -> []);
+        # only a genuinely absent key falls back to the legacy steiners.
+        return _parse_strokes(read_json_list_cp(obj, _USER_STROKES_KEY))
     # Legacy fallback: flat list of points -> wrap each as kind='point'
     legacy_points = read_user_steiners(obj)
     return [{"kind": "point", "points": [p]} for p in legacy_points]
 
 
-def write_user_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
-    obj[_USER_STROKES_KEY] = json.dumps(
+def _encode_strokes(strokes: list[Stroke]) -> str:
+    """Serialise strokes to the canonical JSON CP payload: a JSON list of
+    ``{"kind", "points": [[x, y], ...]}`` objects."""
+    return json.dumps(
         [{"kind": s["kind"], "points": [[p[0], p[1]] for p in s["points"]]} for s in strokes]
     )
+
+
+def write_user_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
+    obj[_USER_STROKES_KEY] = _encode_strokes(strokes)
 
 
 def read_user_outer_strokes(obj: bpy.types.Object) -> list[Stroke]:
@@ -178,21 +176,12 @@ def read_user_outer_strokes(obj: bpy.types.Object) -> list[Stroke]:
     helper is scaffolded here so the persistence key is registered and
     round-trip tests can verify it before capture is wired.
     """
-    payload = obj.get(_EDIT_OUTLINE_STROKES_KEY)
-    if payload is None:
-        return []
-    try:
-        data = json.loads(payload) if isinstance(payload, str) else list(payload)
-    except (ValueError, TypeError):
-        return []
-    return _parse_strokes(data)
+    return _parse_strokes(read_json_list_cp(obj, _EDIT_OUTLINE_STROKES_KEY))
 
 
 def write_user_outer_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
     """Persist Stage 2 (EDIT_OUTLINE) strokes as JSON string."""
-    obj[_EDIT_OUTLINE_STROKES_KEY] = json.dumps(
-        [{"kind": s["kind"], "points": [[p[0], p[1]] for p in s["points"]]} for s in strokes]
-    )
+    obj[_EDIT_OUTLINE_STROKES_KEY] = _encode_strokes(strokes)
 
 
 def _parse_stroke_points(raw_pts: list[object]) -> list[tuple[float, float]]:
@@ -407,7 +396,7 @@ def _build_authoring_mesh(
     (which wraps it with the weight-sidecar reproject) and the SIMPLE
     triangulation preview (which runs it on a throwaway obj copy). Does NOT
     touch the weight sidecar, so it is safe to call without an armature."""
-    world_scale = 1.0 / _resolve_pixels_per_unit(bpy.context)
+    world_scale = 1.0 / resolve_pixels_per_unit(bpy.context)
     outer_world_raw = compute_outer(obj, image, params)
 
     outer_extends, outer_cuts = _split_outer_strokes(output.user_outer_strokes)
@@ -510,13 +499,6 @@ def compute_triangulation_preview(
             bpy.data.objects.remove(temp_obj, do_unlink=True)
         if temp_mesh is not None:
             bpy.data.meshes.remove(temp_mesh, do_unlink=True)
-
-
-def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
-    scene_props = getattr(context.scene, "proscenio", None)
-    if scene_props is None:
-        return 100.0
-    return float(scene_props.pixels_per_unit) or 100.0
 
 
 def _world_to_local_xz(obj: bpy.types.Object, world_pt: Point2D) -> Point2D:

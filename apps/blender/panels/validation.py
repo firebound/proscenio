@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import bpy
 
-from ._helpers import draw_subpanel_header
+from ._helpers import draw_issue_row, draw_subpanel_header
 
 
 class PROSCENIO_PT_validation(bpy.types.Panel):
@@ -40,19 +40,7 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
             return
 
         for issue in issues:
-            row = layout.row(align=True)
-            row.alert = issue.severity == "error"
-            icon = "ERROR" if issue.severity == "error" else "INFO"
-            if issue.obj_name:
-                op = row.operator(
-                    "proscenio.select_issue_object",
-                    text=f"[{issue.obj_name}] {issue.message}",
-                    icon=icon,
-                    emboss=False,
-                )
-                op.obj_name = issue.obj_name
-            else:
-                row.label(text=issue.message, icon=icon)
+            draw_issue_row(layout, issue)
 
 
 _classes: tuple[type, ...] = (PROSCENIO_PT_validation,)

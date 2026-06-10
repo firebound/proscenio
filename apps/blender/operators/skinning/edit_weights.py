@@ -17,6 +17,7 @@ import bpy
 from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
     PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
 )
+from ...core._shared.props_access import active_armature  # type: ignore[import-not-found]
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -35,6 +36,7 @@ from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
 from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     from_json,
 )
+from .._status_bar import append_statusbar_draw, remove_statusbar_draw
 
 
 class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
@@ -60,9 +62,7 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
-        scene_props = getattr(context.scene, "proscenio", None)
-        armature = getattr(scene_props, "active_armature", None) if scene_props else None
-        if armature is None or armature.type != "ARMATURE":
+        if active_armature(context) is None:
             return False
         return obj.get(_SIDECAR_KEY) is not None
 
@@ -144,15 +144,10 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         return {"CANCELLED" if cancel else "FINISHED"}
 
     def _append_statusbar(self) -> None:
-        if not type(self)._statusbar_appended:
-            bpy.types.STATUSBAR_HT_header.prepend(_draw_statusbar_edit_weights)
-            type(self)._statusbar_appended = True
+        append_statusbar_draw(type(self), _draw_statusbar_edit_weights)
 
     def _remove_statusbar(self) -> None:
-        if type(self)._statusbar_appended:
-            with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_edit_weights)
-            type(self)._statusbar_appended = False
+        remove_statusbar_draw(type(self), _draw_statusbar_edit_weights)
 
 
 def _validate_invoke_preconditions(
@@ -168,8 +163,8 @@ def _validate_invoke_preconditions(
         report_error(operator, "active object must be a mesh")
         return None
     scene_props = getattr(context.scene, "proscenio", None)
-    armature = getattr(scene_props, "active_armature", None) if scene_props else None
-    if armature is None or armature.type != "ARMATURE":
+    armature = active_armature(context)
+    if armature is None:
         report_error(operator, "no picker armature - pick one in Skeleton panel first")
         return None
     payload = obj.get(_SIDECAR_KEY)

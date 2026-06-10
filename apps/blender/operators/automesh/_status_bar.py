@@ -13,16 +13,7 @@ from __future__ import annotations
 import bpy
 
 from ...core.skinning.authoring_stages import AuthoringStage  # type: ignore[import-not-found]
-
-
-def chord(layout: bpy.types.UILayout, *parts: tuple[str, str]) -> None:
-    """Emit one aligned chord row. Each part is ``(icon, text)``; an empty
-    icon prints text only, an empty text prints the icon only. Mirrors
-    ``quick_armature`` so the hint matches Blender's own modal status
-    bars (knife / loop cut)."""
-    row = layout.row(align=True)
-    for icon, text in parts:
-        row.label(text=text, icon=icon or "NONE")
+from .._status_bar import chord
 
 
 def emit_authoring_chord_layout(

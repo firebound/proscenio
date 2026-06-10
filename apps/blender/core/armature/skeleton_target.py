@@ -16,7 +16,9 @@ sees in the panel == what the operator targets.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+
+from .._shared.props_access import active_armature
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import bpy
@@ -36,16 +38,4 @@ def resolve_skeleton_target(
     suite drive this with ``SimpleNamespace`` mocks; runtime callers
     pass real ``bpy.types.Object`` instances.
     """
-    scene = getattr(context, "scene", None)
-    if scene is None:
-        return None
-    proscenio = getattr(scene, "proscenio", None)
-    if proscenio is None:
-        return None
-    explicit = getattr(proscenio, "active_armature", None)
-    if explicit is None:
-        return None
-    explicit_type = getattr(explicit, "type", None)
-    if explicit_type != "ARMATURE":
-        return None
-    return cast("bpy.types.Object", explicit)
+    return active_armature(context)

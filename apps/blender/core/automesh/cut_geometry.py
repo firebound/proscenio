@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
-Point2D = tuple[float, float]
+from .._shared.geometry_2d import Point2D
 
 _DEGENERATE_EPSILON = 1e-9
 

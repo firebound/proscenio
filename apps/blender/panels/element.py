@@ -18,7 +18,7 @@ import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
 from . import _draw_driver_shortcut, _draw_mesh, _draw_region, _draw_sprite
-from ._helpers import draw_subpanel_header
+from ._helpers import draw_issue_row, draw_subpanel_header
 
 
 def _active_mesh_props(context: bpy.types.Context) -> bpy.types.AnyType | None:
@@ -61,10 +61,7 @@ class PROSCENIO_PT_element(bpy.types.Panel):
             return
         layout.prop(props, "element_type")
         for issue in validation.validate_active_element(obj):
-            row = layout.row()
-            icon = "ERROR" if issue.severity == "error" else "INFO"
-            row.alert = issue.severity == "error"
-            row.label(text=issue.message, icon=icon)
+            draw_issue_row(layout, issue)
 
 
 class PROSCENIO_PT_active_mesh(bpy.types.Panel):

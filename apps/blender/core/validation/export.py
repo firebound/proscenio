@@ -6,14 +6,11 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 from .._shared.material_images import iter_material_node_images
-from ._shared import abspath_or_none, armature_bone_names
+from ..slot.slot_emit import is_slot_empty
+from ._shared import abspath_or_none, armature_bone_names, name_of
 from .active_element import validate_active_element
 from .active_slot import validate_active_slot
 from .issue import Issue
-
-
-def _name_of(obj: object) -> str:
-    return str(getattr(obj, "name", ""))
 
 
 def validate_export(scene: object) -> list[Issue]:
@@ -51,12 +48,9 @@ def _validate_slots(scene_objects: Sequence[object]) -> list[Issue]:
     seen: set[str] = set()
     issues: list[Issue] = []
     for obj in scene_objects:
-        if getattr(obj, "type", None) != "EMPTY":
+        if not is_slot_empty(obj):
             continue
-        props = getattr(obj, "proscenio", None)
-        if props is None or not bool(getattr(props, "is_slot", False)):
-            continue
-        name = _name_of(obj)
+        name = name_of(obj)
         if name in seen:
             issues.append(Issue("error", f"duplicate slot name '{name}'", name))
         seen.add(name)
@@ -71,7 +65,7 @@ def _validate_element_against_armature(obj: object, bones: set[str]) -> list[Iss
     has_parent_bone = bool(parent_bone) and parent_bone in bones
     vertex_groups = getattr(obj, "vertex_groups", ())
     matching_groups = [vg for vg in vertex_groups if str(vg.name) in bones]
-    name = _name_of(obj)
+    name = name_of(obj)
 
     if not has_parent_bone and not matching_groups:
         issues.append(
@@ -126,5 +120,5 @@ def _atlas_missing_issue(obj: object, fp_raw: str) -> Issue:
     return Issue(
         "warning",
         f"atlas image {fp_raw!r} not found on disk - Godot will warn at import",
-        _name_of(obj),
+        name_of(obj),
     )

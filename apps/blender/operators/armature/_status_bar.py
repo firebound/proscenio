@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 import bpy
 
+from .._status_bar import chord
+
 if TYPE_CHECKING:
     from .quick_armature import PROSCENIO_OT_quick_armature
 
@@ -24,9 +26,9 @@ def emit_chord_layout(
 ) -> None:
     """Shared chord rendering for the STATUSBAR + 3D viewport headers.
 
-    Uses Blender's native ``EVENT_*`` / ``MOUSE_*`` icons via
-    ``layout.label(icon=...)`` so the hint visually matches Blender's own
-    modal status bar (knife tool, loop cut, etc).
+    Uses Blender's native ``EVENT_*`` / ``MOUSE_*`` icons via the shared
+    ``chord`` primitive so the hint visually matches Blender's own modal
+    status bar (knife tool, loop cut, etc).
     """
     if cls._default_chain:
         connect_label = "connected"
@@ -35,42 +37,11 @@ def emit_chord_layout(
         connect_label = "unparented"
         unparented_label = "connected"
 
-    row = layout.row(align=True)
-    row.label(text="", icon="MOUSE_LMB_DRAG")
-    row.label(text=connect_label)
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_SHIFT")
-    row.label(text="+")
-    row.label(text="", icon="MOUSE_LMB_DRAG")
-    row.label(text=unparented_label)
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_ALT")
-    row.label(text="+")
-    row.label(text="", icon="MOUSE_LMB_DRAG")
-    row.label(text="disconnected")
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_X")
-    row.label(text="/")
-    row.label(text="", icon="EVENT_Z")
-    row.label(text="axis lock")
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_CTRL")
-    row.label(text="grid snap")
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_CTRL")
-    row.label(text="+")
-    row.label(text="", icon="EVENT_Z")
-    row.label(text="undo")
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_RETURN")
-    row.label(text="confirm")
-
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_ESC")
-    row.label(text="exit")
+    chord(layout, ("MOUSE_LMB_DRAG", ""), ("", connect_label))
+    chord(layout, ("EVENT_SHIFT", ""), ("", "+"), ("MOUSE_LMB_DRAG", ""), ("", unparented_label))
+    chord(layout, ("EVENT_ALT", ""), ("", "+"), ("MOUSE_LMB_DRAG", ""), ("", "disconnected"))
+    chord(layout, ("EVENT_X", ""), ("", "/"), ("EVENT_Z", ""), ("", "axis lock"))
+    chord(layout, ("EVENT_CTRL", ""), ("", "grid snap"))
+    chord(layout, ("EVENT_CTRL", ""), ("", "+"), ("EVENT_Z", ""), ("", "undo"))
+    chord(layout, ("EVENT_RETURN", ""), ("", "confirm"))
+    chord(layout, ("EVENT_ESC", ""), ("", "exit"))

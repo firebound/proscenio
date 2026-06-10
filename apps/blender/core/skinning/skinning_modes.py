@@ -15,8 +15,9 @@ from __future__ import annotations
 
 from typing import Literal
 
+from .._shared.geometry_2d import Point2D
 from ..automesh.density import distance_to_segment
-from .planar_proximity import BoneSegmentNamed2D, Point2D, compute_proximity_weights
+from .planar_proximity import BoneSegmentNamed2D, compute_proximity_weights
 
 BindMode = Literal["BONE_HEAT", "PROXIMITY", "ENVELOPE", "SINGLE_NEAREST", "EMPTY"]
 
@@ -39,7 +40,7 @@ def bind_weights_for_mode(
     if mode == "BONE_HEAT":
         return None
     if mode == "EMPTY":
-        return _empty(vert_positions_xz, bone_segments)
+        return _zero_weight_matrix(vert_positions_xz, bone_segments)
     if mode == "SINGLE_NEAREST":
         return _single_nearest(vert_positions_xz, bone_segments)
     if mode == "ENVELOPE":
@@ -49,14 +50,18 @@ def bind_weights_for_mode(
     raise ValueError(f"unknown BindMode: {mode!r}")
 
 
-def _empty(verts: list[Point2D], bones: list[BoneSegmentNamed2D]) -> dict[str, list[float]]:
+def _zero_weight_matrix(
+    verts: list[Point2D], bones: list[BoneSegmentNamed2D]
+) -> dict[str, list[float]]:
+    """Per-bone list of ``len(verts)`` zeros: the base every bind mode fills in,
+    and the whole output of the EMPTY mode."""
     return {name: [0.0] * len(verts) for _, _, name in bones}
 
 
 def _single_nearest(
     verts: list[Point2D], bones: list[BoneSegmentNamed2D]
 ) -> dict[str, list[float]]:
-    out: dict[str, list[float]] = {name: [0.0] * len(verts) for _, _, name in bones}
+    out = _zero_weight_matrix(verts, bones)
     if not bones:
         return out
     for vert_idx, vert in enumerate(verts):
@@ -84,7 +89,7 @@ def _envelope(
     rebalances at deform time and the user sees unpredictable weight
     redistribution.
     """
-    out: dict[str, list[float]] = {name: [0.0] * len(verts) for _, _, name in bones}
+    out = _zero_weight_matrix(verts, bones)
     for vert_idx, vert in enumerate(verts):
         hits: list[str] = []
         for head, tail, name in bones:
@@ -106,7 +111,7 @@ def _proximity(
     falloff_power: float,
     max_distance: float | None,
 ) -> dict[str, list[float]]:
-    out: dict[str, list[float]] = {name: [0.0] * len(verts) for _, _, name in bones}
+    out = _zero_weight_matrix(verts, bones)
     for vert_idx, vert in enumerate(verts):
         per_bone = compute_proximity_weights(vert, bones, falloff_power, max_distance)
         for name, weight in per_bone.items():

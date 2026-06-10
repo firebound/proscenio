@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from pathlib import Path
 from typing import Literal, NotRequired, TypedDict
 
 import bpy
@@ -22,6 +21,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     vertex_at,
     vertex_group_at,
 )
+from .scene_discovery import image_filename
 from .skeleton import BoneWorld, world_to_godot_xy
 
 _WEIGHT_EPS = 1e-9
@@ -141,18 +141,6 @@ def build_element(
     return MeshElement(**poly_kwargs)
 
 
-def _image_filename(image: bpy.types.Image) -> str | None:
-    """Return the on-disk filename for an Image datablock, or a synthesised
-    ``<name>.png`` when only the datablock name is set."""
-    fp = str(getattr(image, "filepath", "") or "")
-    if fp:
-        return Path(bpy.path.abspath(fp)).name
-    name = str(getattr(image, "name", ""))
-    if not name:
-        return None
-    return name if name.lower().endswith(".png") else f"{name}.png"
-
-
 def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     """Return the filename of the first Image Texture on this object's material.
 
@@ -163,7 +151,7 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     finer-grained per-sprite override that the importer prefers.
     """
     for image in iter_material_images(obj):
-        filename = _image_filename(image)
+        filename = image_filename(image)
         if filename is not None:
             return filename
     return None

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import bpy
 
 from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.json_cp import read_json_dict_cp  # type: ignore[import-not-found]
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     iter_material_node_images,
 )
@@ -47,14 +47,7 @@ def duplicate_active_uv_layer(obj: bpy.types.Object) -> str:
 
 def pre_pack_snapshot_for(obj: bpy.types.Object) -> dict[str, Any] | None:
     """Read the pre-pack snapshot stored as a Custom Property, or ``None``."""
-    raw = obj.get(PROSCENIO_PRE_PACK)
-    if not raw:
-        return None
-    try:
-        data = json.loads(str(raw))
-    except json.JSONDecodeError:
-        return None
-    return data if isinstance(data, dict) else None
+    return read_json_dict_cp(obj, PROSCENIO_PRE_PACK) or None
 
 
 def packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:

@@ -11,7 +11,6 @@ Per-vert disc rendered as POINTS primitive with point_size.
 from __future__ import annotations
 
 import contextlib
-import json
 from typing import Literal
 
 import bpy
@@ -19,6 +18,7 @@ import gpu
 from gpu_extras.batch import batch_for_shader
 
 from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
+from ..._shared.json_cp import read_json_dict_cp
 
 OverlayMode = Literal["weight", "provenance"]
 
@@ -56,13 +56,7 @@ def _read_provenance_entries(obj: bpy.types.Object, mode: OverlayMode) -> list[o
     """
     if obj is None or obj.data is None:
         return None
-    payload = obj.get(_SIDECAR_KEY)
-    if payload is None:
-        return None
-    try:
-        data = json.loads(payload)
-    except (ValueError, TypeError):
-        return None
+    data = read_json_dict_cp(obj, _SIDECAR_KEY)
     entries = data.get("entries") or []
     if not entries:
         return None
@@ -74,7 +68,12 @@ def _read_provenance_entries(obj: bpy.types.Object, mode: OverlayMode) -> list[o
 
 
 def _draw_color_groups(color_groups: _PointColorGroups) -> None:
-    """Render each color's world points as discs via the uniform shader."""
+    """Render each color's world points as discs via the uniform shader.
+
+    Multi-batch under one bind (one POINTS batch per color): kept distinct
+    from ``modal_overlay.draw_batch``, which is single-batch - collapsing
+    here would re-cycle the blend / point-size state per color.
+    """
     shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
     gpu.state.blend_set("ALPHA")
     gpu.state.point_size_set(_DISC_SIZE)

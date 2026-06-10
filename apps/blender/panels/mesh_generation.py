@@ -20,7 +20,12 @@ from typing import ClassVar
 import bpy
 
 from ..addon_prefs import debug_mode_enabled
-from ._helpers import _active_armature, _scene_skinning, draw_subpanel_header
+from ._helpers import (
+    _active_armature,
+    _scene_skinning,
+    draw_picker_readout,
+    draw_subpanel_header,
+)
 
 
 def _active_is_mesh(context: bpy.types.Context) -> bool:
@@ -49,13 +54,7 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
             layout.label(text="select a mesh to generate or edit", icon="INFO")
             return
         skinning_props = _scene_skinning(context)
-        picker = _active_armature(context)
-        picker_row = layout.row(align=True)
-        picker_row.label(text="", icon="ARMATURE_DATA")
-        if picker is not None:
-            picker_row.label(text=f"Picker: {picker.name}")
-        else:
-            picker_row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
+        draw_picker_readout(layout, _active_armature(context))
         if skinning_props is not None:
             layout.prop(skinning_props, "automesh_interior_mode")
 

@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from ._shared import read_element_type, read_int
+from ._shared import name_of, read_element_type, read_int
 from .issue import Issue
-
-
-def _name_of(obj: object) -> str:
-    return str(getattr(obj, "name", ""))
 
 
 def validate_active_element(obj: object) -> list[Issue]:
@@ -21,7 +17,7 @@ def validate_active_element(obj: object) -> list[Issue]:
 
     issues: list[Issue] = []
     element_type = read_element_type(obj)
-    name = _name_of(obj)
+    name = name_of(obj)
 
     if element_type == "sprite":
         issues.extend(_validate_sprite_fields(obj, name))

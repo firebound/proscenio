@@ -327,6 +327,7 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 - `core/hydrate.py` becomes a one-shot migrator: on `load_post`, hydrate any `.blend` that still has legacy CPs in the PG-canonical group into the PG, then *delete* those CPs so the field has a single source of truth post-migration. Gate behind a `format_version` check on the scene PG so it runs at most once per file.
 - `_handlers.py`: keep `load_post` for the one-shot migrator; `save_pre` and `deferred_hydrate` timer can likely be deleted once the mirror is gone (revalidate during the rewrite).
 - Drive-from-Bone operator: target the CP path for animatable fields so the driver `data_path` is `pose.bones["X"]["proscenio_frame"]`-style rather than the nested PG path. Reduces driver fragility on linking / append.
+- Collapses the duplicate field-mapping tables (code-duplication spec finding N14): today `core/hydrate.py` `OBJECT_PROPS` (11 rows) is a hand-maintained subset of `core/mirror.py` `OBJECT_MIRROR_MAP` (14 rows), so adding a field means editing both in lockstep. After the split each field has a single canonical home and the two tables fold into the per-intent mapping, removing the lockstep hazard. The dedup pass deferred N14 here rather than force-merge the tables, since this redesign reshapes them anyway (merging now would just be re-undone).
 
 **Trigger to revisit:** before 1.0.0 release. Block on this landing so the public surface ships with the final storage contract; post-1.0 schema or storage migrations cost real users.
 

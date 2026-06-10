@@ -29,7 +29,9 @@ def find_sprite_meshes(scene: bpy.types.Scene) -> list[bpy.types.Object]:
 def find_atlas_image(out_path: Path) -> str | None:
     """Atlas filename: linked images first, sibling ``atlas.png`` fallback."""
     for image in _iter_linked_images():
-        return _image_filename(image)
+        name = image_filename(image)
+        if name is not None:
+            return name
     sibling = out_path.parent / "atlas.png"
     return sibling.name if sibling.exists() else None
 
@@ -39,18 +41,22 @@ def _iter_linked_images() -> Iterator[bpy.types.Image]:
         yield from iter_material_node_images(mat)
 
 
-def _image_filename(image: bpy.types.Image) -> str:
-    fp = image.filepath
+def image_filename(image: bpy.types.Image) -> str | None:
+    """On-disk filename for an Image datablock, or a synthesised ``<name>.png``
+    when it has only a datablock name; ``None`` when it has neither.
+
+    Append ``.png`` only when the name lacks it, so an image already named
+    ``atlas.png`` does not become ``atlas.png.png``; the ``.png`` suffix check
+    (not ``Path.suffix``) avoids mistaking Blender's numeric duplicate suffix
+    (``Image.001``) for an extension - the writer only emits PNG. The single
+    home for both the per-sprite ``texture`` filename and the atlas filename.
+    """
+    fp = str(getattr(image, "filepath", "") or "")
     if fp:
         return Path(bpy.path.abspath(fp)).name
-    # Datablock-only image (never saved to disk): synthesise a filename
-    # from the name. Append ".png" only when the name has no extension,
-    # so an image already called "atlas.png" does not become "atlas.png.png".
-    # Append ".png" unless the name already ends in it. Checking only the
-    # ".png" suffix (not Path.suffix) avoids mistaking Blender's numeric
-    # duplicate suffixes (Image.001) for a file extension - the writer
-    # only emits PNG atlases. Mirrors sprites._image_filename.
-    name = image.name
+    name = str(getattr(image, "name", ""))
+    if not name:
+        return None
     return name if name.lower().endswith(".png") else f"{name}.png"
 
 

@@ -9,7 +9,10 @@ from bpy.props import StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.report import report_warn  # type: ignore[import-not-found]
-from ..core.bpy_helpers._shared.select import select_only  # type: ignore[import-not-found]
+from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
+    select_named_or_warn,
+    select_only,
+)
 
 
 class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
@@ -29,11 +32,8 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
         if not self.obj_name:
             report_warn(self, "issue has no object name")
             return {"CANCELLED"}
-        obj = bpy.data.objects.get(self.obj_name)
-        if obj is None:
-            report_warn(self, f"object '{self.obj_name}' not found")
+        if select_named_or_warn(self, context, self.obj_name) is None:
             return {"CANCELLED"}
-        select_only(context, obj)
         return {"FINISHED"}
 
 
@@ -53,11 +53,8 @@ class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         if not self.obj_name:
             return {"CANCELLED"}
-        obj = bpy.data.objects.get(self.obj_name)
-        if obj is None:
-            report_warn(self, f"object '{self.obj_name}' not found")
+        if select_named_or_warn(self, context, self.obj_name) is None:
             return {"CANCELLED"}
-        select_only(context, obj)
         _sync_active_index(context, "active_outliner_index", bpy.data.objects, self.obj_name)
         return {"FINISHED"}
 

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Literal, TypedDict
 
-Point2D = tuple[float, float]
+from .._shared.geometry_2d import Point2D
 
 
 class AuthoringStage(IntEnum):

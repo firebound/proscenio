@@ -11,6 +11,11 @@ from .._shared.pg_cp_fallback import read_field
 _MISSING: object = object()
 
 
+def name_of(obj: object) -> str:
+    """Object name, or empty string when absent (duck-typed, bpy-free)."""
+    return str(getattr(obj, "name", ""))
+
+
 def read_element_type(obj: object) -> str:
     """PG-first / CP fallback read of the element type. Default ``"mesh"``."""
     return str(read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"))

@@ -15,7 +15,12 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
-from ._helpers import _active_armature, _scene_skinning, draw_subpanel_header
+from ._helpers import (
+    _active_armature,
+    _scene_skinning,
+    draw_picker_readout,
+    draw_subpanel_header,
+)
 
 
 def _is_mesh_element(context: bpy.types.Context) -> bool:
@@ -46,13 +51,7 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
         if not _is_mesh_element(context):
             layout.label(text="select a mesh element (Weight Paint is mesh-only)", icon="INFO")
             return
-        picker = _active_armature(context)
-        row = layout.row(align=True)
-        row.label(text="", icon="ARMATURE_DATA")
-        if picker is not None:
-            row.label(text=f"Picker: {picker.name}")
-        else:
-            row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
+        draw_picker_readout(layout, _active_armature(context))
 
 
 class PROSCENIO_PT_bind(bpy.types.Panel):

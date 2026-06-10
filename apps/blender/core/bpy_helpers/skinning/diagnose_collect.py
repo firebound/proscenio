@@ -22,6 +22,7 @@ from ...skinning.bind_diagnosis import (
     diagnose_overlapping_verts,
     diagnose_scale,
 )
+from ._helpers import deform_bone_world_segments
 
 if TYPE_CHECKING:
     from ...skinning.bind_diagnosis import BBox, BoneSegment3D, Vec3
@@ -41,15 +42,7 @@ def _collect_bone_segments_world(
     armature: bpy.types.Object,
 ) -> list[BoneSegment3D]:
     """3D world-space ((head, tail, name)) for every deform bone."""
-    matrix_world = armature.matrix_world
-    segments: list[BoneSegment3D] = []
-    for bone in armature.data.bones:
-        if not bone.use_deform:
-            continue
-        head = matrix_world @ bone.head_local
-        tail = matrix_world @ bone.tail_local
-        segments.append(((head.x, head.y, head.z), (tail.x, tail.y, tail.z), bone.name))
-    return segments
+    return deform_bone_world_segments(armature)
 
 
 def _mesh_world_bbox(obj: bpy.types.Object) -> BBox:

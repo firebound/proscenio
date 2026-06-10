@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.slot.slot_emit import is_slot_empty
 from ._helpers import draw_subpanel_header
 
 _OUTLINER_RANK_HIDDEN = 9
@@ -20,20 +21,12 @@ def _outliner_category_rank(obj: bpy.types.Object) -> int:
     3 = armature.
     9 = irrelevant for Proscenio (cameras, lights, etc.) - hidden by ``filter_items``.
     """
-    obj_props = getattr(obj, "proscenio", None)
-    if obj.type == "EMPTY" and obj_props is not None and bool(getattr(obj_props, "is_slot", False)):
+    if is_slot_empty(obj):
         return 0
     if obj.type == "ARMATURE":
         return 3
     if obj.type == "MESH":
-        parent = obj.parent
-        parent_props = getattr(parent, "proscenio", None) if parent is not None else None
-        if (
-            parent is not None
-            and parent.type == "EMPTY"
-            and parent_props is not None
-            and bool(getattr(parent_props, "is_slot", False))
-        ):
+        if is_slot_empty(obj.parent):
             return 1
         return 2
     return _OUTLINER_RANK_HIDDEN

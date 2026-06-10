@@ -9,7 +9,14 @@ import bpy
 from bpy.props import FloatProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
+from ..core._shared.region import compute_region_from_uvs  # type: ignore[import-not-found]
 from ..core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
+from ..core.bpy_helpers._shared.mesh_uvs import (  # type: ignore[import-not-found]
+    collect_mesh_loop_uvs,
+)
+from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
+    preserve_selection,
+)
 
 
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
@@ -52,28 +59,23 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
         prior_mode = context.mode
-        prior_active = context.view_layer.objects.active
-        prior_selection = [o for o in context.scene.objects if o.select_get()]
 
-        try:
-            for other in context.scene.objects:
-                other.select_set(False)
-            obj.select_set(True)
-            context.view_layer.objects.active = obj
-            if prior_mode != "EDIT_MESH":
-                bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.uv.smart_project(angle_limit=self.angle_limit)
-        finally:
-            if prior_mode != "EDIT_MESH":
-                with contextlib.suppress(RuntimeError):
-                    bpy.ops.object.mode_set(mode="OBJECT")
-            for other in context.scene.objects:
-                other.select_set(False)
-            for o in prior_selection:
-                o.select_set(True)
-            if prior_active is not None:
-                context.view_layer.objects.active = prior_active
+        # preserve_selection hands back the user's selection + active object;
+        # the inner finally is only for the Edit-Mode toggle this op makes.
+        with preserve_selection(context):
+            try:
+                for other in context.scene.objects:
+                    other.select_set(False)
+                obj.select_set(True)
+                context.view_layer.objects.active = obj
+                if prior_mode != "EDIT_MESH":
+                    bpy.ops.object.mode_set(mode="EDIT")
+                bpy.ops.mesh.select_all(action="SELECT")
+                bpy.ops.uv.smart_project(angle_limit=self.angle_limit)
+            finally:
+                if prior_mode != "EDIT_MESH":
+                    with contextlib.suppress(RuntimeError):
+                        bpy.ops.object.mode_set(mode="OBJECT")
 
         report_info(self, f"reprojected UVs on '{obj.name}'")
         return {"FINISHED"}
@@ -113,24 +115,17 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
             report_warn(self, f"'{obj.name}' has no UV layer or no polygons")
             return {"CANCELLED"}
 
-        xs: list[float] = []
-        ys: list[float] = []
-        for poly in mesh.polygons:
-            for li in poly.loop_indices:
-                u = uv_layer.data[li].uv
-                xs.append(float(u.x))
-                ys.append(1.0 - float(u.y))
-
-        if not xs:
+        # Flip v into Godot/region space, then reuse the exact auto-mode
+        # bounds computation so Snap seeds manual mode with the value the
+        # writer would emit (rounded to 6dp), not a divergent inline copy.
+        uvs_godot = [[u, 1.0 - v] for u, v in collect_mesh_loop_uvs(mesh)]
+        if not uvs_godot:
             report_warn(self, f"'{obj.name}' has no UV data")
             return {"CANCELLED"}
 
-        x_min, x_max = min(xs), max(xs)
-        y_min, y_max = min(ys), max(ys)
-        props.region_x = x_min
-        props.region_y = y_min
-        props.region_w = x_max - x_min
-        props.region_h = y_max - y_min
+        props.region_x, props.region_y, props.region_w, props.region_h = compute_region_from_uvs(
+            uvs_godot
+        )
         report_info(
             self,
             f"snapped region to UV bounds "

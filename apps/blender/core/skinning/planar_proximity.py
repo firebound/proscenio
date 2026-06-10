@@ -10,9 +10,9 @@ Zero bpy import. Reuses ``distance_to_segment`` from
 
 from __future__ import annotations
 
+from .._shared.geometry_2d import Point2D
 from ..automesh.density import distance_to_segment
 
-Point2D = tuple[float, float]
 BoneSegmentNamed2D = tuple[Point2D, Point2D, str]
 """((head_xz, tail_xz, bone_name)) - extends BoneSegment2D with the
 group-name the bpy caller wants on the output dict."""

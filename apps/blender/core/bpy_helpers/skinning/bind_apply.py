@@ -10,7 +10,6 @@ weights succeed, builds a populated ``WeightSidecar`` via
 
 from __future__ import annotations
 
-import contextlib
 from typing import Any
 
 import bpy
@@ -25,7 +24,8 @@ from ...skinning.bone_modes import BoneMode, bone_mode_for
 from ...skinning.planar_proximity import BoneSegmentNamed2D
 from ...skinning.sidecar_schema import to_json
 from ...skinning.skinning_modes import BindMode, bind_weights_for_mode
-from ._helpers import wipe_non_base_groups
+from .._shared.select import preserve_selection
+from ._helpers import deform_bone_world_segments, iter_deform_bones, wipe_non_base_groups
 from .sidecar_io import snapshot_sidecar
 
 _ENVELOPE_DEFAULT_RADIUS = 1.0
@@ -83,15 +83,10 @@ def _bone_segments_xz(
     armature: bpy.types.Object,
 ) -> list[BoneSegmentNamed2D]:
     """Project deform bones to XZ world-space (matches sprite plane)."""
-    matrix_world = armature.matrix_world
-    segments: list[BoneSegmentNamed2D] = []
-    for bone in armature.data.bones:
-        if not bone.use_deform:
-            continue
-        head = matrix_world @ bone.head_local
-        tail = matrix_world @ bone.tail_local
-        segments.append(((head.x, head.z), (tail.x, tail.z), bone.name))
-    return segments
+    return [
+        ((head[0], head[2]), (tail[0], tail[2]), name)
+        for head, tail, name in deform_bone_world_segments(armature)
+    ]
 
 
 def _adaptive_max_distance(armature: bpy.types.Object) -> float:
@@ -101,18 +96,13 @@ def _adaptive_max_distance(armature: bpy.types.Object) -> float:
     far from the mesh and would inflate the extent past anything useful
     to a proximity bind.
     """
-    matrix_world = armature.matrix_world
-    deform_bones = [b for b in armature.data.bones if b.use_deform]
-    if not deform_bones:
+    segments = deform_bone_world_segments(armature)
+    if not segments:
         return 1.0
-    xs: list[float] = []
-    ys: list[float] = []
-    zs: list[float] = []
-    for bone in deform_bones:
-        for point in (matrix_world @ bone.head_local, matrix_world @ bone.tail_local):
-            xs.append(point.x)
-            ys.append(point.y)
-            zs.append(point.z)
+    points = [p for head, tail, _ in segments for p in (head, tail)]
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    zs = [p[2] for p in points]
     extent = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs))
     return _ADAPTIVE_MAX_FACTOR * extent if extent > 0.0 else 1.0
 
@@ -126,9 +116,7 @@ def _collect_envelope_radii(armature: bpy.types.Object) -> dict[str, float]:
     Custom Property editor.
     """
     radii: dict[str, float] = {}
-    for bone in armature.data.bones:
-        if not bone.use_deform:
-            continue
+    for bone in iter_deform_bones(armature):
         radii[bone.name] = float(bone.get(_ENVELOPE_RADIUS_KEY, _ENVELOPE_DEFAULT_RADIUS))
     return radii
 
@@ -278,27 +266,17 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
         del obj[_SIDECAR_KEY]
     groups_wiped = wipe_non_base_groups(obj)
 
-    deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
-    prior_active = bpy.context.view_layer.objects.active
-    prior_selected = list(bpy.context.selected_objects)
-    try:
-        for other in prior_selected:
+    deform_bone_names = [b.name for b in iter_deform_bones(armature)]
+    with preserve_selection(bpy.context):
+        # parent_set commandeers the selection (obj + armature selected,
+        # armature active) and leaves it that way; preserve_selection hands
+        # the user's pre-bind selection back on exit, success or failure.
+        for other in list(bpy.context.selected_objects):
             other.select_set(False)
         obj.select_set(True)
         armature.select_set(True)
         bpy.context.view_layer.objects.active = armature
         bpy.ops.object.parent_set(type="ARMATURE_AUTO")
-    finally:
-        # Restore the full selection state, not just the active object.
-        # parent_set leaves obj + armature selected; user's pre-bind
-        # selection should survive an in-or-out success/failure.
-        obj.select_set(False)
-        armature.select_set(False)
-        for prior in prior_selected:
-            # ReferenceError = object was removed mid-operation; skip silently.
-            with contextlib.suppress(ReferenceError):
-                prior.select_set(True)
-        bpy.context.view_layer.objects.active = prior_active
 
     sidecar = snapshot_sidecar(obj, armature, provenance="auto_seed")
     obj[_SIDECAR_KEY] = to_json(sidecar)

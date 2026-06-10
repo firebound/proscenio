@@ -4,6 +4,7 @@ Public surface: weight computation, mode dispatcher, diagnoses,
 sidecar schema. Zero bpy import - testable without Blender.
 """
 
+from .._shared.geometry_2d import Point2D
 from .bind_diagnosis import (
     BindDiagnosis,
     DiagnosisKind,
@@ -16,7 +17,6 @@ from .bind_diagnosis import (
 )
 from .planar_proximity import (
     BoneSegmentNamed2D,
-    Point2D,
     compute_proximity_weights,
 )
 from .sidecar_schema import (

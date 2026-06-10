@@ -7,8 +7,10 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
-from ...core._shared.report import report_warn  # type: ignore[import-not-found]
-from ...core.bpy_helpers._shared.select import select_only  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
+    select_named_or_warn,
+)
+from ...core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_select_slot(bpy.types.Operator):
@@ -32,13 +34,14 @@ class PROSCENIO_OT_select_slot(bpy.types.Operator):
     )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        obj = bpy.data.objects.get(self.slot_name)
-        props = getattr(obj, "proscenio", None) if obj is not None else None
-        if obj is None or obj.type != "EMPTY" or not getattr(props, "is_slot", False):
-            report_warn(self, f"slot '{self.slot_name}' not found")
-            return {"CANCELLED"}
-        select_only(context, obj)
-        return {"FINISHED"}
+        obj = select_named_or_warn(
+            self,
+            context,
+            self.slot_name,
+            not_found_message=f"slot '{self.slot_name}' not found",
+            predicate=is_slot_empty,
+        )
+        return {"CANCELLED"} if obj is None else {"FINISHED"}
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_select_slot,)

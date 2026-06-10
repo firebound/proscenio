@@ -13,6 +13,7 @@ from __future__ import annotations
 import bpy
 
 from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
+from ..._shared.props_access import scene_skinning
 from ...skinning.sidecar_schema import (
     SIDECAR_VERSION,
     SidecarEntry,
@@ -168,6 +169,4 @@ def maybe_post_regen_reproject(
 
 def _get_skinning_props() -> bpy.types.PropertyGroup | None:
     """Scene-scoped Proscenio skinning PG. None when scene / addon not registered."""
-    scene = bpy.context.scene
-    scene_props = getattr(scene, "proscenio", None) if scene else None
-    return getattr(scene_props, "skinning", None) if scene_props else None
+    return scene_skinning(bpy.context)

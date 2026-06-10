@@ -38,4 +38,4 @@ git show <commit>:specs/NNN-slug/STUDY.md
 | 022 | blender-ui-restructure | 13-panel sibling tree: flatten the root, accordion subpanels, warn-not-hide, debug_mode | pruned |
 | 023 | blender-help-docs-i18n | Per-subpanel help, online doc links, Godot badge icon, i18n mechanism | pruned |
 | 024 | blender-addon-preferences | Addon preferences: log level (errors/info/debug), debug_mode, Developer group | pruned |
-| 025 | [code-duplication](025-code-duplication/) | PMD CPD duplication scan (type-2 / type-3 clones Sonar misses); triaged, no refactor | active |
+| 025 | code-duplication | Type-2/3/4 clone audit (AST + k-gram, beyond Sonar's line scan); ~30 single-source helpers extracted across two PRs, justified divergences (N9/N12/N14/D6) kept | pruned |

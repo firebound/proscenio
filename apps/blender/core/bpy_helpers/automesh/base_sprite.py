@@ -55,19 +55,7 @@ def delete_non_base_geometry(obj: Object, group_index: int) -> None:
     everything automesh generated is wiped. Goes through bmesh because
     plain ``mesh.vertices`` does not support per-vertex removal cleanly.
     """
-    mesh = obj.data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bm.verts.ensure_lookup_table()
-    deform_layer = bm.verts.layers.deform.verify()
-    to_remove = [
-        vert
-        for vert in bm.verts
-        if group_index not in vert[deform_layer] or vert[deform_layer].get(group_index, 0.0) <= 0.0
-    ]
-    bmesh.ops.delete(bm, geom=to_remove, context="VERTS")
-    bm.to_mesh(mesh)
-    bm.free()
+    _delete_verts_by_membership(obj, group_index, keep_members=True)
 
 
 def remove_base_sprite_verts(obj: Object, group_index: int) -> None:
@@ -79,6 +67,25 @@ def remove_base_sprite_verts(obj: Object, group_index: int) -> None:
     weight customization on the original quad that they want to
     keep around for manual stitching.
     """
+    _delete_verts_by_membership(obj, group_index, keep_members=False)
+
+
+def _is_base_member(deform_vert: bmesh.types.BMDeformVert, group_index: int) -> bool:
+    """True when the vert belongs to the base group: the group index is
+    present on it with a positive weight."""
+    return group_index in deform_vert and deform_vert.get(group_index, 0.0) > 0.0
+
+
+def _delete_verts_by_membership(obj: Object, group_index: int, *, keep_members: bool) -> None:
+    """Open ``obj`` as a bmesh and delete verts by base-group membership.
+
+    ``keep_members=True`` deletes every vert NOT in the group (the regen
+    wipe that preserves the base quad); ``keep_members=False`` deletes the
+    group members themselves (dropping the base corners after a build).
+    Both former copies shared this whole bmesh open / deform-layer /
+    delete / write-back scaffold and differed only by the inverted
+    predicate.
+    """
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -87,7 +94,7 @@ def remove_base_sprite_verts(obj: Object, group_index: int) -> None:
     to_remove = [
         vert
         for vert in bm.verts
-        if group_index in vert[deform_layer] and vert[deform_layer].get(group_index, 0.0) > 0.0
+        if _is_base_member(vert[deform_layer], group_index) != keep_members
     ]
     if to_remove:
         bmesh.ops.delete(bm, geom=to_remove, context="VERTS")

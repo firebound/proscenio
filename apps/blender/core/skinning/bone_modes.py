@@ -11,9 +11,10 @@ to dispatch SOFT (proximity falloff) vs HARD (single-nearest) per bone.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from .._shared.cp_keys import PROSCENIO_BONE_MODES as _KEY
+from .._shared.json_cp import read_json_dict_cp
 
 if TYPE_CHECKING:
     import bpy
@@ -26,14 +27,11 @@ def read_bone_modes(obj: bpy.types.Object) -> dict[str, BoneMode]:
 
     Returns an empty dict when the property is absent or unparseable.
     """
-    raw = obj.get(_KEY)
-    if raw is None:
-        return {}
-    try:
-        data = json.loads(raw) if isinstance(raw, str) else dict(raw)
-    except (ValueError, TypeError):
-        return {}
-    return {k: v for k, v in data.items() if v in ("SOFT", "HARD")}
+    data = read_json_dict_cp(obj, _KEY)
+    return cast(
+        "dict[str, BoneMode]",
+        {k: v for k, v in data.items() if v in ("SOFT", "HARD")},
+    )
 
 
 def write_bone_modes(obj: bpy.types.Object, modes: dict[str, BoneMode]) -> None:

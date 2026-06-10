@@ -17,6 +17,7 @@ import bmesh
 import mathutils
 
 from ...automesh import point_in_polygon
+from ...automesh.geometry import cyclic_loop_edges
 
 
 def delete_faces_inside_holes(
@@ -61,16 +62,6 @@ def delete_faces_inside_holes(
     return len(to_remove)
 
 
-def _cyclic_loop_edges(start_index: int, count: int) -> list[tuple[int, int]]:
-    """Build the N edges that close a closed loop of ``count`` verts.
-
-    Verts are assumed to be laid out contiguously in some flat coord
-    array starting at ``start_index``. Cyclic = last edge wraps to
-    the start.
-    """
-    return [(start_index + i, start_index + (i + 1) % count) for i in range(count)]
-
-
 def _build_cdt_inputs(
     outer_world: list[tuple[float, float]],
     inner_world: list[tuple[float, float]],
@@ -93,15 +84,15 @@ def _build_cdt_inputs(
     all_coords: list[tuple[float, float]] = (
         list(outer_world) + list(inner_world) + list(interior_points)
     )
-    edges_constraint = _cyclic_loop_edges(0, outer_count)
+    edges_constraint = cyclic_loop_edges(0, outer_count)
     if inner_count >= 3:
-        edges_constraint.extend(_cyclic_loop_edges(outer_count, inner_count))
+        edges_constraint.extend(cyclic_loop_edges(outer_count, inner_count))
     hole_offset = len(all_coords)
     for hole in holes:
         if len(hole) < 3:
             continue
         all_coords.extend(hole)
-        edges_constraint.extend(_cyclic_loop_edges(hole_offset, len(hole)))
+        edges_constraint.extend(cyclic_loop_edges(hole_offset, len(hole)))
         hole_offset += len(hole)
     if extra_edges:
         edges_constraint.extend(extra_edges)

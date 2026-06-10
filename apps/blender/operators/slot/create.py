@@ -8,6 +8,9 @@ import bpy
 from bpy.props import StringProperty
 
 from ...core._shared.report import report_info  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-found]
+    parent_keep_world,
+)
 from ...core.bpy_helpers._shared.select import select_only  # type: ignore[import-not-found]
 
 
@@ -85,11 +88,7 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
             empty.proscenio.is_slot = True
 
         for mesh_obj in selected_meshes:
-            world_matrix = mesh_obj.matrix_world.copy()
-            mesh_obj.parent = empty
-            mesh_obj.parent_type = "OBJECT"
-            mesh_obj.matrix_parent_inverse = empty.matrix_world.inverted()
-            mesh_obj.matrix_world = world_matrix
+            parent_keep_world(mesh_obj, empty)
 
         select_only(context, empty)
 

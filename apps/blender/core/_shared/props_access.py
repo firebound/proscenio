@@ -20,7 +20,7 @@ or by reaching for the helpers in ``core/pg_cp_fallback.py``.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     import bpy
@@ -49,3 +49,42 @@ def object_props(obj: bpy.types.Object | None) -> object | None:
     if obj is None:
         return None
     return getattr(obj, "proscenio", None)
+
+
+def scene_skinning(context: bpy.types.Context) -> object | None:
+    """Return ``context.scene.proscenio.skinning`` or None when unavailable.
+
+    Routes through :func:`scene_props` so the ``context.scene`` / ``proscenio``
+    None-guards live in one place; callers read the typed skinning fields they
+    expect via subsequent ``getattr``.
+    """
+    props = scene_props(context)
+    return getattr(props, "skinning", None) if props is not None else None
+
+
+def active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
+    """Return the Skeleton-panel picker armature, or None.
+
+    Reads ``scene.proscenio.active_armature`` and returns it only when it is an
+    ``ARMATURE`` object: an unset picker, an unregistered PropertyGroup, or a
+    non-armature pointer all yield None. The single source of truth for "which
+    armature do skeleton / skinning operations target".
+    """
+    props = scene_props(context)
+    picker = getattr(props, "active_armature", None) if props is not None else None
+    if picker is None or getattr(picker, "type", None) != "ARMATURE":
+        return None
+    return cast("bpy.types.Object", picker)
+
+
+def resolve_pixels_per_unit(context: bpy.types.Context) -> float:
+    """Scene pixels-per-unit, defaulting to 100.0 when unset or unregistered.
+
+    Routes through :func:`scene_props` so the ``context.scene`` /
+    ``proscenio`` None-guards live in one place. The ``or 100.0`` also
+    maps a stored 0 to the default (a zero scale is never valid).
+    """
+    props = scene_props(context)
+    if props is None:
+        return 100.0
+    return float(getattr(props, "pixels_per_unit", 0.0)) or 100.0

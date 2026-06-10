@@ -23,39 +23,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-Point2D = tuple[float, float]
-
-
-def _point_in_polygon(point: Point2D, polygon: Sequence[Point2D]) -> bool:
-    """Ray-casting point-in-polygon test."""
-    if len(polygon) < 3:
-        return False
-    x, y = point
-    inside = False
-    n = len(polygon)
-    j = n - 1
-    for i in range(n):
-        xi, yi = polygon[i]
-        xj, yj = polygon[j]
-        if (yi > y) != (yj > y):
-            slope = (xj - xi) * (y - yi) / (yj - yi) + xi
-            if x < slope:
-                inside = not inside
-        j = i
-    return inside
+from .._shared.geometry_2d import Point2D
+from .._shared.nearest import nearest_index
+from .density import point_in_polygon
 
 
 def _nearest_outer_vert_index(query: Point2D, outer: Sequence[Point2D]) -> int:
     """Index of the closest outer vert (linear scan; outer is typically <256 verts)."""
-    qx, qy = query
-    best_idx = 0
-    best_d2 = float("inf")
-    for i, (vx, vy) in enumerate(outer):
-        d2 = (vx - qx) ** 2 + (vy - qy) ** 2
-        if d2 < best_d2:
-            best_d2 = d2
-            best_idx = i
-    return best_idx
+    return nearest_index(query, outer)
 
 
 def _extract_outside_run(
@@ -159,7 +134,7 @@ def splice_extend_stroke(
     if len(stroke) < 2 or len(outer) < 3:
         return None
 
-    inside_mask = [_point_in_polygon(p, outer) for p in stroke]
+    inside_mask = [point_in_polygon(p, outer) for p in stroke]
 
     if all(inside_mask):
         return None  # not an extend stroke

@@ -20,7 +20,7 @@ from ...skinning.sidecar_schema import (
     WeightSidecar,
     compute_topology_hash,
 )
-from ._helpers import wipe_non_base_groups
+from ._helpers import iter_deform_bones, wipe_non_base_groups
 
 
 def snapshot_sidecar(
@@ -39,7 +39,7 @@ def snapshot_sidecar(
     gets the topology_hash + bone names for the stub).
     """
     mesh = obj.data
-    deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
+    deform_bone_names = [b.name for b in iter_deform_bones(armature)]
     topology_hash = compute_topology_hash(
         len(mesh.vertices),
         [list(p.vertices) for p in mesh.polygons],

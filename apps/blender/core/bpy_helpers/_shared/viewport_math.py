@@ -76,40 +76,20 @@ def _fallback_point(
     return (out[0], out[1], out[2])
 
 
-def region_event_to_xz(
-    context: bpy.types.Context, event: bpy.types.Event
+def _region_event_to_xz_at(
+    context: bpy.types.Context,
+    event: bpy.types.Event,
+    dx: int,
+    dy: int,
+    *,
+    guard_behind: bool,
 ) -> tuple[float, float] | None:
-    """Project a mouse event onto the Y=0 XZ plane, returning ``(x, z)``.
+    """Project a (possibly offset) mouse event onto the Y=0 XZ plane.
 
-    Unlike :func:`mouse_event_to_plane_point`, this returns ``None`` (no
-    region_2d_to_location_3d fallback) when the view direction is parallel
-    to the plane - the automesh authoring modal treats that as "no pick".
-    """
-    from bpy_extras import view3d_utils
-
-    region = context.region
-    rv3d = context.region_data
-    if region is None or rv3d is None:
-        return None
-    coord = (event.mouse_region_x, event.mouse_region_y)
-    origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
-    direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
-    if abs(direction.y) < 1e-9:
-        return None
-    t = -origin.y / direction.y
-    hit = origin + direction * t
-    return (hit.x, hit.z)
-
-
-def region_event_to_xz_offset(
-    context: bpy.types.Context, event: bpy.types.Event, dx: int = 0, dy: int = 0
-) -> tuple[float, float] | None:
-    """Project an offset pixel position onto the Y=0 XZ plane.
-
-    Converts a screen-space pixel radius into a world-space distance for
-    pick hit-testing without assuming a fixed world threshold. Returns
-    ``None`` on a parallel view or when the intersection lies behind the
-    camera (``t < 0``).
+    ``None`` when there is no 3D viewport or the view direction is parallel
+    to the plane. With ``guard_behind`` set, an intersection behind the
+    camera (``t < 0``) also returns ``None``; otherwise the extrapolated
+    point is returned.
     """
     from bpy_extras import view3d_utils
 
@@ -123,10 +103,37 @@ def region_event_to_xz_offset(
     if abs(direction.y) < 1e-9:
         return None
     t = -origin.y / direction.y
-    if t < 0:
+    if guard_behind and t < 0:
         return None
     hit = origin + direction * t
     return (hit.x, hit.z)
+
+
+def region_event_to_xz(
+    context: bpy.types.Context, event: bpy.types.Event
+) -> tuple[float, float] | None:
+    """Project a mouse event onto the Y=0 XZ plane, returning ``(x, z)``.
+
+    Unlike :func:`mouse_event_to_plane_point`, this returns ``None`` (no
+    region_2d_to_location_3d fallback) when the view direction is parallel
+    to the plane - the automesh authoring modal treats that as "no pick".
+    A behind-camera intersection is left unguarded here (the lenient main
+    pick path).
+    """
+    return _region_event_to_xz_at(context, event, 0, 0, guard_behind=False)
+
+
+def region_event_to_xz_offset(
+    context: bpy.types.Context, event: bpy.types.Event, dx: int = 0, dy: int = 0
+) -> tuple[float, float] | None:
+    """Project an offset pixel position onto the Y=0 XZ plane.
+
+    Converts a screen-space pixel radius into a world-space distance for
+    pick hit-testing without assuming a fixed world threshold. Returns
+    ``None`` on a parallel view or when the intersection lies behind the
+    camera (``t < 0``).
+    """
+    return _region_event_to_xz_at(context, event, dx, dy, guard_behind=True)
 
 
 def point_in_region_rect(x: int, y: int, region: bpy.types.Region) -> bool:

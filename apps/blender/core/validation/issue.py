@@ -14,6 +14,13 @@ class Issue:
 
     ``obj_name`` is optional and lets a future "select offending object"
     UX click straight to the source.
+
+    The RNA-storage mirror of this record is
+    ``properties.validation_issue.ProscenioValidationIssue`` - a separate
+    PropertyGroup because the scene CollectionProperty + UIList need a bpy
+    type, while this dataclass stays bpy-free for the pure validation core
+    and its tests. ``operators.export_flow._populate_validation_results``
+    copies the fields across, so a new field lands in all three places.
     """
 
     severity: Severity

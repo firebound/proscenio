@@ -17,6 +17,10 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, FloatProperty
 
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
+    active_armature,
+    scene_skinning,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -91,8 +95,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene_props = getattr(context.scene, "proscenio", None)
-        if scene_props is None or getattr(scene_props, "active_armature", None) is None:
+        if active_armature(context) is None:
             return False
         # Allow when active is MESH or any selected object is MESH
         return any(o.type == "MESH" for o in context.selected_objects) or (
@@ -100,8 +103,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
-        scene_props = getattr(context.scene, "proscenio", None)
-        skinning = getattr(scene_props, "skinning", None) if scene_props else None
+        skinning = scene_skinning(context)
         if skinning is not None:
             self.bind_init_mode = str(skinning.bind_init_mode)
             self.falloff_power = float(skinning.bind_falloff_power)
@@ -173,9 +175,8 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
         return {str(k): int(v) for k, v in counters.items()}
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        scene_props = getattr(context.scene, "proscenio", None)
-        armature = getattr(scene_props, "active_armature", None) if scene_props else None
-        if armature is None or armature.type != "ARMATURE":
+        armature = active_armature(context)
+        if armature is None:
             report_error(self, "no picker armature set - pick one in Skeleton panel first")
             return {"CANCELLED"}
         if not any(b.use_deform for b in armature.data.bones):

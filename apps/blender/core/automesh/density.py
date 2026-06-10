@@ -22,8 +22,10 @@ plane convention, parallel to the quick-armature axis lock contract).
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 
-Point2D = tuple[float, float]
+from .._shared.geometry_2d import Point2D
+
 BoneSegment2D = tuple[Point2D, Point2D]
 
 
@@ -66,7 +68,7 @@ def _point_on_segment(
     return (px - closest_x) ** 2 + (py - closest_y) ** 2 < _BOUNDARY_EPSILON_SQ
 
 
-def point_in_polygon(point: Point2D, polygon: list[Point2D]) -> bool:
+def point_in_polygon(point: Point2D, polygon: Sequence[Point2D]) -> bool:
     """Even-odd-rule point-in-polygon test for closed simple contours.
 
     Returns ``True`` when the point lies strictly inside the closed

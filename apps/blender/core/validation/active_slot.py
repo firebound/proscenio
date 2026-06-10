@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from ..slot.slot_emit import is_slot_empty
+from ._shared import name_of
 from .issue import Issue
-
-
-def _name_of(obj: object) -> str:
-    return str(getattr(obj, "name", ""))
 
 
 def validate_active_slot(obj: object) -> list[Issue]:
@@ -23,7 +21,7 @@ def validate_active_slot(obj: object) -> list[Issue]:
         return []
     children_attr: Iterable[object] = getattr(obj, "children", ())
     children = [c for c in children_attr if getattr(c, "type", None) == "MESH"]
-    name = _name_of(obj)
+    name = name_of(obj)
     if not children:
         return [Issue("error", f"slot '{name}' has no MESH children", name)]
 
@@ -35,10 +33,7 @@ def validate_active_slot(obj: object) -> list[Issue]:
 
 
 def _is_active_slot(obj: object) -> bool:
-    if obj is None or getattr(obj, "type", None) != "EMPTY":
-        return False
-    props = getattr(obj, "proscenio", None)
-    return props is not None and bool(getattr(props, "is_slot", False))
+    return is_slot_empty(obj)
 
 
 def _check_slot_default(obj: object, children: list[object], obj_name: str) -> list[Issue]:
@@ -46,7 +41,7 @@ def _check_slot_default(obj: object, children: list[object], obj_name: str) -> l
     slot_default = str(getattr(props, "slot_default", "")) if props is not None else ""
     if not slot_default:
         return []
-    child_names = {_name_of(c) for c in children}
+    child_names = {name_of(c) for c in children}
     if slot_default in child_names:
         return []
     return [
@@ -72,7 +67,7 @@ def _check_slot_child_bones(obj: object, children: list[object], obj_name: str) 
     for child in children:
         child_bone = _slot_bone_of(child)
         if child_bone and child_bone != slot_bone:
-            child_name = _name_of(child)
+            child_name = name_of(child)
             issues.append(
                 Issue(
                     "warning",
@@ -89,7 +84,7 @@ def _check_slot_child_transform_keys(children: list[object]) -> list[Issue]:
     issues: list[Issue] = []
     for child in children:
         if _has_bone_transform_keys(child):
-            child_name = _name_of(child)
+            child_name = name_of(child)
             issues.append(
                 Issue(
                     "warning",

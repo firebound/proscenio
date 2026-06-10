@@ -75,16 +75,26 @@ class StampedSprite:
     spritesheet_path: Path
 
 
-def stamp_mesh(
-    layer: psd_manifest.MeshLayer,
+def _place_and_tag(
+    layer: psd_manifest.MeshLayer | psd_manifest.SpriteLayer,
     manifest: psd_manifest.LoadedManifest,
     armature_obj: bpy.types.Object,
-) -> bpy.types.Object | None:
-    """Stamp a single-PNG mesh layer. Returns the mesh object."""
-    image_path = psd_manifest.resolve_path(manifest, layer.path)
-    if not image_path.exists():
-        print(f"[psd_import] missing PNG for {layer.name}: {image_path}")
-        return None
+    image_path: Path,
+    *,
+    kind: str,
+    element_type: str,
+    hframes: int = 1,
+    vframes: int = 1,
+) -> bpy.types.Object:
+    """Place + tag a stamped layer object (the shared mesh / sprite tail).
+
+    Computes the layer placement, builds the quad mesh, sets its world
+    position, attaches the ``image_path`` material, parents it under the
+    PSD root + subfolder, then stamps the origin / kind / blend-mode /
+    element-type tags. Callers pass the kind-specific bits: the resolved
+    image (single PNG vs composed spritesheet), the ``kind`` +
+    ``element_type`` tag values, and the sprite frame counts.
+    """
     placement = _layer_placement(
         layer.position,
         layer.size,
@@ -100,10 +110,25 @@ def stamp_mesh(
     _parent_to_root(obj, armature_obj)
     _link_to_subfolder(obj, layer.subfolder)
     _tag_origin(obj, layer.name)
-    _tag_kind(obj, layer.kind)
+    _tag_kind(obj, kind)
     _tag_blend_mode(obj, layer.blend_mode)
-    _tag_element_type(obj, "mesh")
+    _tag_element_type(obj, element_type, hframes=hframes, vframes=vframes)
     return obj
+
+
+def stamp_mesh(
+    layer: psd_manifest.MeshLayer,
+    manifest: psd_manifest.LoadedManifest,
+    armature_obj: bpy.types.Object,
+) -> bpy.types.Object | None:
+    """Stamp a single-PNG mesh layer. Returns the mesh object."""
+    image_path = psd_manifest.resolve_path(manifest, layer.path)
+    if not image_path.exists():
+        print(f"[psd_import] missing PNG for {layer.name}: {image_path}")
+        return None
+    return _place_and_tag(
+        layer, manifest, armature_obj, image_path, kind=layer.kind, element_type="mesh"
+    )
 
 
 def stamp_sprite(
@@ -124,26 +149,18 @@ def stamp_sprite(
 
     # Mesh is sized to the manifest-declared bbox of the largest frame.
     # The spritesheet image's tile_size matches that bbox in pixels (the
-    # composer pads smaller frames in-place), so the displayed-frame
-    # quad has the right world dimensions.
-    placement = _layer_placement(
-        layer.position,
-        layer.size,
-        manifest.size,
-        manifest.pixels_per_unit,
-        layer.z_order,
-        layer.origin,
-        manifest.anchor,
+    # composer pads smaller frames in-place), so the displayed-frame quad
+    # has the right world dimensions.
+    obj = _place_and_tag(
+        layer,
+        manifest,
+        armature_obj,
+        sheet_path,
+        kind="sprite",
+        element_type="sprite",
+        hframes=sheet.hframes,
+        vframes=sheet.vframes,
     )
-    obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
-    _set_world_position(obj, placement.location)
-    _attach_material(obj, sheet_path, blend_mode=layer.blend_mode)
-    _parent_to_root(obj, armature_obj)
-    _link_to_subfolder(obj, layer.subfolder)
-    _tag_origin(obj, layer.name)
-    _tag_kind(obj, "sprite")
-    _tag_blend_mode(obj, layer.blend_mode)
-    _tag_element_type(obj, "sprite", hframes=sheet.hframes, vframes=sheet.vframes)
     return StampedSprite(mesh_obj=obj, spritesheet_path=sheet_path)
 
 

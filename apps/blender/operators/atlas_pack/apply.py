@@ -13,6 +13,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
+from ...core.uv_bounds import remap_uv_into_slot  # type: ignore[import-not-found]
 from ._paths import (
     duplicate_active_uv_layer,
     first_texture_image_name,
@@ -220,15 +221,16 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         slice_rect = placement.slice  # type: ignore[attr-defined]
         src_w = placement.source_w  # type: ignore[attr-defined]
         src_h = placement.source_h  # type: ignore[attr-defined]
-        slot_y_bu = atlas_h - slot.y - slot.h
+        # The packer emits top-down slot Y; remap_uv_into_slot expects the
+        # slot rect bottom-up, so convert once here before the loop.
+        slot_px = (slot.x, atlas_h - slot.y - slot.h, slot.w, slot.h)
+        slice_px = (slice_rect.x, slice_rect.y, slice_rect.w, slice_rect.h)
         for poly in mesh.polygons:
             for li in poly.loop_indices:
                 u, v = uv_layer.data[li].uv
-                src_px_x = u * src_w
-                src_px_y = v * src_h
-                new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
-                new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
-                uv_layer.data[li].uv = (new_u, new_v)
+                uv_layer.data[li].uv = remap_uv_into_slot(
+                    u, v, slice_px, src_w, src_h, slot_px, atlas_w, atlas_h
+                )
         return True
 
     def _relink_material(

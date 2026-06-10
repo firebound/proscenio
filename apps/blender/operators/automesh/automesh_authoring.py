@@ -7,7 +7,6 @@ Coexists with the one-shot automesh_from_alpha operator.
 
 from __future__ import annotations
 
-import contextlib
 import traceback
 from typing import ClassVar, Literal, cast
 
@@ -16,11 +15,15 @@ import bpy
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
 )
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
     report_warn,
 )
+from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     region_event_to_xz,
     region_event_to_xz_offset,
@@ -61,6 +64,7 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     StageParams,
     Stroke,
 )
+from .._status_bar import append_statusbar_draw, remove_statusbar_draw
 from ._status_bar import emit_authoring_chord_layout
 
 _TIMER_INTERVAL = 0.1
@@ -1238,15 +1242,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return {"CANCELLED" if cancel else "FINISHED"}
 
     def _append_statusbar(self) -> None:
-        if not type(self)._statusbar_appended:
-            bpy.types.STATUSBAR_HT_header.prepend(_draw_statusbar_authoring)
-            type(self)._statusbar_appended = True
+        append_statusbar_draw(type(self), _draw_statusbar_authoring)
 
     def _remove_statusbar(self) -> None:
-        if type(self)._statusbar_appended:
-            with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_authoring)
-            type(self)._statusbar_appended = False
+        remove_statusbar_draw(type(self), _draw_statusbar_authoring)
 
 
 def _snapshot_params(context: bpy.types.Context) -> StageParams:
@@ -1267,13 +1266,7 @@ def _snapshot_params(context: bpy.types.Context) -> StageParams:
 
 
 def _resolve_picker(context: bpy.types.Context) -> bpy.types.Object | None:
-    scene_props = getattr(context.scene, "proscenio", None)
-    if scene_props is None:
-        return None
-    picker = getattr(scene_props, "active_armature", None)
-    if picker is None or picker.type != "ARMATURE":
-        return None
-    return picker
+    return active_armature(context)
 
 
 def _draw_statusbar_authoring(self: bpy.types.Header, _context: bpy.types.Context) -> None:
@@ -1293,15 +1286,7 @@ def _tag_redraw_view3d(context: bpy.types.Context) -> None:
     may have been invoked from one but the user may be looking at another.
     The statusbar reads class-level stage state, so a stage advance/retreat
     must repaint it explicitly (it otherwise only refreshes on mouse move)."""
-    wm = context.window_manager
-    if wm is None:
-        return
-    for window in wm.windows:
-        if window.screen is None:
-            continue
-        for area in window.screen.areas:
-            if area.type in {"VIEW_3D", "STATUSBAR"}:
-                area.tag_redraw()
+    tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_automesh_authoring,)

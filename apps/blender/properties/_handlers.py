@@ -18,6 +18,7 @@ from __future__ import annotations
 import bpy
 
 from ..core._shared.hydrate import hydrate_object  # type: ignore[import-not-found]
+from ..core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 
 
@@ -112,13 +113,7 @@ def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph)
 
 
 def _tag_view3d_areas_redraw() -> None:
-    window_manager = getattr(bpy.context, "window_manager", None)
-    if window_manager is None:
-        return
-    for window in window_manager.windows:
-        for area in window.screen.areas:
-            if area.type == "VIEW_3D":
-                area.tag_redraw()
+    tag_redraw_areas(getattr(bpy.context, "window_manager", None), {"VIEW_3D"})
 
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]

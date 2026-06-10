@@ -14,6 +14,7 @@ sub-package nesting beyond ``contour`` / ``geometry`` / ``density``.
 
 from __future__ import annotations
 
+from .._shared.geometry_2d import Point2D
 from .contour import (
     HOLE_SAFETY_DILATE_CELLS,
     AlphaGrid,
@@ -33,7 +34,6 @@ from .contour import (
 )
 from .density import (
     BoneSegment2D,
-    Point2D,
     bounding_box,
     filter_points_too_close_to_boundary,
     interior_points_for_annulus,

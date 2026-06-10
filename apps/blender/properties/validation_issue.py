@@ -11,7 +11,15 @@ from bpy.types import PropertyGroup
 
 
 class ProscenioValidationIssue(PropertyGroup):
-    """A single validation finding stored on the scene for the panel to render."""
+    """A single validation finding stored on the scene for the panel to render.
+
+    RNA-storage mirror of the bpy-free ``core.validation.Issue`` dataclass
+    (same three fields). They stay separate classes because this one must
+    subclass ``PropertyGroup`` for CollectionProperty storage while Issue
+    stays bpy-free for the pure core + tests;
+    ``operators.export_flow._populate_validation_results`` copies one into
+    the other, so a new field has to land in all three.
+    """
 
     severity: StringProperty(  # type: ignore[valid-type]
         name="Severity",

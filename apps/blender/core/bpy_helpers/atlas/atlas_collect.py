@@ -19,6 +19,7 @@ from typing import Any
 
 from ..._shared.material_images import iter_material_images
 from ...uv_bounds import uv_bbox_to_pixels
+from .._shared.mesh_uvs import collect_mesh_loop_uvs
 
 
 @dataclass(frozen=True)
@@ -74,23 +75,7 @@ def collect_source_images(objects: list[Any]) -> list[SourceImage]:
 def _collect_mesh_uvs(obj: Any) -> list[tuple[float, float]]:
     """Flatten the active UV layer's loop coords into ``[(u, v), ...]``.
 
-    Defensive against partially-initialized meshes - Blender 5.x can
-    have a UV layer marker whose ``.data`` collection is empty (seen
-    after the apply operator on certain shared-material objects), which
-    previously crashed with ``IndexError`` on the second Pack Atlas run.
+    Thin object-level wrapper over the shared ``collect_mesh_loop_uvs``
+    mesh walk (which carries the Blender-5.x empty/short ``.data`` guard).
     """
-    mesh = obj.data
-    uv_layer = getattr(mesh, "uv_layers", None)
-    if uv_layer is None:
-        return []
-    active = uv_layer.active
-    if active is None or len(active.data) == 0:
-        return []
-    out: list[tuple[float, float]] = []
-    for poly in mesh.polygons:
-        for li in poly.loop_indices:
-            if li >= len(active.data):
-                continue
-            u, v = active.data[li].uv
-            out.append((float(u), float(v)))
-    return out
+    return collect_mesh_loop_uvs(obj.data)

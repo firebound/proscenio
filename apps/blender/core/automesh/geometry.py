@@ -275,13 +275,10 @@ def build_annulus_edge_pairs(
     if 0 < inner_count < 3:
         raise ValueError(f"inner_count must be 0 or >= 3, got {inner_count}")
 
-    edges: list[tuple[int, int]] = []
-    for index in range(outer_count):
-        edges.append((index, (index + 1) % outer_count))
+    edges: list[tuple[int, int]] = cyclic_loop_edges(0, outer_count)
     if inner_count >= 3:
         offset = outer_count
-        for index in range(inner_count):
-            edges.append((offset + index, offset + (index + 1) % inner_count))
+        edges.extend(cyclic_loop_edges(offset, inner_count))
         # Radial bridges (annulus strip topology) when outer and
         # inner counts match. Without these, triangle_fill produces
         # spiky fan triangles between the two loops because the
@@ -289,8 +286,27 @@ def build_annulus_edge_pairs(
         # alignment to. With them, the annulus triangulates as N
         # quads (= 2N triangles) with predictable proportions.
         if outer_count == inner_count:
-            normalized_offset = bridge_offset % outer_count
-            for index in range(outer_count):
-                inner_index = (index + normalized_offset) % inner_count
-                edges.append((index, offset + inner_index))
+            edges.extend(radial_bridge_edges(outer_count, offset, bridge_offset))
     return edges
+
+
+def cyclic_loop_edges(start_index: int, count: int) -> list[tuple[int, int]]:
+    """The ``count`` edges that close a loop of ``count`` verts laid out
+    contiguously from ``start_index``; the last edge wraps to the start."""
+    return [(start_index + i, start_index + (i + 1) % count) for i in range(count)]
+
+
+def radial_bridge_edges(count: int, inner_offset: int, bridge_offset: int) -> list[tuple[int, int]]:
+    """Radial bridge edges for a matched-count annulus.
+
+    Connects outer vert ``i`` to inner vert
+    ``inner_offset + (i + bridge_offset) % count`` for each ``i`` in
+    ``range(count)``, aligning the two rings radially instead of letting
+    the bridges cross the annulus diagonally. Empty when ``count <= 0``
+    (also guards the ``% count`` against a zero divisor). Shared by
+    :func:`build_annulus_edge_pairs` and the bridges debug companion.
+    """
+    if count <= 0:
+        return []
+    normalized = bridge_offset % count
+    return [(index, inner_offset + (index + normalized) % count) for index in range(count)]

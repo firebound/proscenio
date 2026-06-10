@@ -70,6 +70,30 @@ def _gate_on_validation(operator: bpy.types.Operator, scene: bpy.types.Scene) ->
     return True
 
 
+def _gate_and_write(
+    operator: bpy.types.Operator,
+    scene: bpy.types.Scene,
+    filepath: str,
+    pixels_per_unit: float,
+    *,
+    fail_verb: str,
+) -> bool:
+    """Shared export spine: gate on validation, then run the writer.
+
+    Returns False (after reporting) when validation blocks or the writer
+    fails, True on success. ``fail_verb`` tunes the error message
+    ("export" / "re-export"); the caller owns the success report and any
+    sticky-path bookkeeping, since those differ between the two operators.
+    """
+    if not _gate_on_validation(operator, scene):
+        return False
+    error = _run_writer(filepath, pixels_per_unit)
+    if error is not None:
+        report_error(operator, f"{fail_verb} failed: {error}")
+        return False
+    return True
+
+
 class PROSCENIO_OT_validate_export(bpy.types.Operator):
     """Run the full export-time validation pass and surface issues in the panel."""
 
@@ -115,12 +139,9 @@ class PROSCENIO_OT_export_godot(bpy.types.Operator, ExportHelper):
     )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        if not _gate_on_validation(self, context.scene):
-            return {"CANCELLED"}
-
-        error = _run_writer(self.filepath, self.pixels_per_unit)
-        if error is not None:
-            report_error(self, f"export failed: {error}")
+        if not _gate_and_write(
+            self, context.scene, self.filepath, self.pixels_per_unit, fail_verb="export"
+        ):
             return {"CANCELLED"}
 
         path = Path(self.filepath)
@@ -149,12 +170,9 @@ class PROSCENIO_OT_reexport_godot(bpy.types.Operator):
         props = context.scene.proscenio
         filepath = bpy.path.abspath(props.last_export_path)
 
-        if not _gate_on_validation(self, context.scene):
-            return {"CANCELLED"}
-
-        error = _run_writer(filepath, props.pixels_per_unit)
-        if error is not None:
-            report_error(self, f"re-export failed: {error}")
+        if not _gate_and_write(
+            self, context.scene, filepath, props.pixels_per_unit, fail_verb="re-export"
+        ):
             return {"CANCELLED"}
 
         report_info(self, f"re-exported -> {Path(filepath).name}")

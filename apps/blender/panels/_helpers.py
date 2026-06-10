@@ -7,6 +7,8 @@ constants for the help / status operators.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import bpy
 
 from ..core._shared.feature_status import (  # type: ignore[import-not-found]
@@ -14,10 +16,17 @@ from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     badge_for,
     status_for,
 )
+from ..core._shared.props_access import (  # type: ignore[import-not-found]
+    active_armature,
+    scene_skinning,
+)
 from ..core.bpy_helpers.preview_icons import (  # type: ignore[import-not-found]
     blender_icon_id,
     godot_icon_id,
 )
+
+if TYPE_CHECKING:
+    from ..core.validation.issue import Issue
 
 _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
@@ -26,14 +35,12 @@ _STATUS_OP_IDNAME = "proscenio.status_info"
 
 def _scene_skinning(context: bpy.types.Context) -> bpy.types.PropertyGroup | None:
     """Return ``scene.proscenio.skinning`` defaults group, or None."""
-    scene_props = getattr(context.scene, "proscenio", None)
-    return getattr(scene_props, "skinning", None) if scene_props is not None else None
+    return scene_skinning(context)
 
 
 def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     """Return the scene-picked Active Armature, or None."""
-    scene_props = getattr(context.scene, "proscenio", None)
-    return getattr(scene_props, "active_armature", None) if scene_props is not None else None
+    return active_armature(context)
 
 
 def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
@@ -99,3 +106,45 @@ def draw_subbox_header(
     _draw_status_button(spacer, feature_id)
     op = spacer.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
+
+
+def draw_picker_readout(layout: bpy.types.UILayout, picker: bpy.types.Object | None) -> None:
+    """Draw the one-line "Picker: <armature>" readout row.
+
+    ARMATURE_DATA icon then the picker name, or an INFO-marked
+    "(none - set in Skeleton panel)" prompt when no armature is set.
+    Shared by the Mesh Generation + Weight Paint panels so the picker
+    affordance reads identically in both.
+    """
+    row = layout.row(align=True)
+    row.label(text="", icon="ARMATURE_DATA")
+    if picker is not None:
+        row.label(text=f"Picker: {picker.name}")
+    else:
+        row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
+
+
+def draw_issue_row(layout: bpy.types.UILayout, issue: Issue) -> None:
+    """Render one validation Issue as a panel row.
+
+    ERROR / INFO icon plus an alert tint by severity. When the issue names
+    an object the row is a clickable select-issue-object button
+    (``[name] message``); otherwise a plain label. Shared by the
+    Validation, Active Element and Active Slot panels so the issue row
+    reads (and behaves) identically wherever findings surface - panels
+    whose issues never set ``obj_name`` simply get the plain label.
+    """
+    row = layout.row(align=True)
+    is_error = issue.severity == "error"
+    row.alert = is_error
+    icon = "ERROR" if is_error else "INFO"
+    if issue.obj_name:
+        op = row.operator(
+            "proscenio.select_issue_object",
+            text=f"[{issue.obj_name}] {issue.message}",
+            icon=icon,
+            emboss=False,
+        )
+        op.obj_name = issue.obj_name
+    else:
+        row.label(text=issue.message, icon=icon)

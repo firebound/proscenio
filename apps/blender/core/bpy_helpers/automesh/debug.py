@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 
 import bpy
 
+from ...automesh.geometry import cyclic_loop_edges, radial_bridge_edges
+
 if TYPE_CHECKING:
     from bpy.types import Collection, Mesh, Object
 
@@ -103,6 +105,28 @@ def _new_debug_object(
     return obj
 
 
+def _contour_loop_verts_edges(
+    outer_world: list[tuple[float, float]],
+    inner_world: list[tuple[float, float]],
+) -> tuple[list[tuple[float, float, float]], list[tuple[int, int]]]:
+    """Build the shared verts + outer/inner cyclic edge loops for a contour
+    companion.
+
+    Verts are the outer ring (indices ``0..N-1``) then the inner ring
+    (``N..N+M-1``), each lifted to ``(x, 0, y)``. Edges close the outer
+    loop always and the inner loop when it has >= 2 verts.
+    emit_bridges_debug appends its radial bridges on top of this base.
+    """
+    outer_count = len(outer_world)
+    inner_count = len(inner_world)
+    verts: list[tuple[float, float, float]] = [(x, 0.0, y) for (x, y) in outer_world]
+    verts.extend((x, 0.0, y) for (x, y) in inner_world)
+    edges: list[tuple[int, int]] = cyclic_loop_edges(0, outer_count)
+    if inner_count >= 2:
+        edges.extend(cyclic_loop_edges(outer_count, inner_count))
+    return verts, edges
+
+
 def emit_contour_debug(
     sprite_obj: Object,
     stage: str,
@@ -116,17 +140,7 @@ def emit_contour_debug(
     closed line strips in the viewport. No faces so the sprite
     behind stays visible.
     """
-    outer_count = len(outer_world)
-    inner_count = len(inner_world)
-    verts: list[tuple[float, float, float]] = [(x, 0.0, y) for (x, y) in outer_world]
-    verts.extend((x, 0.0, y) for (x, y) in inner_world)
-    edges: list[tuple[int, int]] = []
-    for index in range(outer_count):
-        edges.append((index, (index + 1) % outer_count))
-    if inner_count >= 2:
-        offset = outer_count
-        for index in range(inner_count):
-            edges.append((offset + index, offset + (index + 1) % inner_count))
+    verts, edges = _contour_loop_verts_edges(outer_world, inner_world)
     return _new_debug_object(sprite_obj, stage, verts, edges)
 
 
@@ -160,24 +174,9 @@ def emit_bridges_debug(
     the annulus diagonally here, ``find_best_inner_rotation``
     failed and the downstream triangle_fill never had a chance.
     """
+    verts, edges = _contour_loop_verts_edges(outer_world, inner_world)
     outer_count = len(outer_world)
-    inner_count = len(inner_world)
-    verts: list[tuple[float, float, float]] = [(x, 0.0, y) for (x, y) in outer_world]
-    verts.extend((x, 0.0, y) for (x, y) in inner_world)
-    edges: list[tuple[int, int]] = []
-    # Outer cyclic.
-    for index in range(outer_count):
-        edges.append((index, (index + 1) % outer_count))
-    # Inner cyclic.
-    if inner_count >= 2:
-        offset = outer_count
-        for index in range(inner_count):
-            edges.append((offset + index, offset + (index + 1) % inner_count))
     # Bridges - only when counts match (mirrors build_annulus_edge_pairs).
-    if outer_count > 0 and outer_count == inner_count:
-        offset = outer_count
-        normalized = bridge_offset % outer_count
-        for index in range(outer_count):
-            inner_index = (index + normalized) % inner_count
-            edges.append((index, offset + inner_index))
+    if outer_count == len(inner_world):
+        edges.extend(radial_bridge_edges(outer_count, outer_count, bridge_offset))
     return _new_debug_object(sprite_obj, stage, verts, edges)

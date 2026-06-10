@@ -26,6 +26,8 @@ from pathlib import Path
 import bpy
 import numpy as np
 
+from .._shared.image_canvas import save_rgba_canvas_as_png
+
 
 @dataclass(frozen=True)
 class SpritesheetResult:
@@ -79,25 +81,16 @@ def compose_spritesheet(
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         sheet_name = f"{output_path.stem}_compose_tmp"
-        sheet_img = bpy.data.images.new(
-            sheet_name,
-            width=max_w * hframes,
-            height=max_h,
-            alpha=True,
-        )
+        sheet_img = save_rgba_canvas_as_png(sheet_name, canvas, output_path)
         try:
-            sheet_img.pixels.foreach_set(canvas.flatten())
-            sheet_img.filepath_raw = str(output_path)
-            sheet_img.file_format = "PNG"
-            sheet_img.save()
+            return SpritesheetResult(
+                path=output_path,
+                tile_size=(max_w, max_h),
+                hframes=hframes,
+                vframes=1,
+            )
         finally:
             bpy.data.images.remove(sheet_img)
-        return SpritesheetResult(
-            path=output_path,
-            tile_size=(max_w, max_h),
-            hframes=hframes,
-            vframes=1,
-        )
     finally:
         for img in images:
             bpy.data.images.remove(img)

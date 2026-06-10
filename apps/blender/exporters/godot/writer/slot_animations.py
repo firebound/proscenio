@@ -7,8 +7,8 @@ from proscenio_models import Animation, Key, Track
 
 from ....core._shared.cp_keys import PROSCENIO_SLOT_INDEX
 from ....core.bpy_helpers._shared._bpy_compat import iter_keyframe_points, iter_objects
+from ....core.slot.slot_emit import is_slot_empty
 from .animations import action_fcurves
-from .slots import is_slot_empty
 
 
 def build_slot_animations(scene: bpy.types.Scene) -> list[Animation]:

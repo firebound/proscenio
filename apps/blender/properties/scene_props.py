@@ -19,12 +19,8 @@ from bpy.props import (
 from bpy.types import Object as _Object
 from bpy.types import PropertyGroup
 
+from ._dynamic_items import is_armature
 from .validation_issue import ProscenioValidationIssue
-
-
-def _is_armature(_self: PropertyGroup, obj: _Object) -> bool:
-    """PointerProperty poll: only Armature objects qualify as targets."""
-    return bool(obj.type == "ARMATURE")
 
 
 class ProscenioQuickArmatureProps(PropertyGroup):
@@ -486,5 +482,5 @@ class ProscenioSceneProps(PropertyGroup):
             "Proscenio.QuickRig fallback)."
         ),
         type=_Object,
-        poll=_is_armature,
+        poll=is_armature,
     )

@@ -6,6 +6,14 @@ dots as POINTS batches.
 
 POST_PIXEL handler (_draw_tooltip) renders intent text near the mouse
 cursor in Stage 2 (EDIT_OUTLINE) and Stage 4 (EDIT_INTERIOR_POINTS).
+
+Single-batch draws (_draw_polyline, _draw_edges, _draw_points) route
+through ``modal_overlay.draw_batch``. The multi-batch renderers
+(_draw_polylines, _draw_user_strokes, _draw_live_preview,
+_draw_delete_hover) deliberately keep their own bind-loop: each draws
+several batches under one ``blend_set`` with per-batch point-size /
+line-width, so collapsing them into per-batch ``draw_batch`` calls would
+re-cycle the GPU state on every batch (see draw_batch's docstring).
 """
 
 from __future__ import annotations

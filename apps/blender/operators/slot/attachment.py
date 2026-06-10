@@ -8,6 +8,9 @@ import bpy
 from bpy.props import StringProperty
 
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-found]
+    parent_keep_world,
+)
 
 
 class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
@@ -35,11 +38,7 @@ class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
             report_warn(self, "no MESH objects selected")
             return {"CANCELLED"}
         for mesh in meshes:
-            world = mesh.matrix_world.copy()
-            mesh.parent = empty
-            mesh.parent_type = "OBJECT"
-            mesh.matrix_parent_inverse = empty.matrix_world.inverted()
-            mesh.matrix_world = world
+            parent_keep_world(mesh, empty)
         report_info(self, f"added {len(meshes)} attachment(s) to slot '{empty.name}'")
         return {"FINISHED"}
 

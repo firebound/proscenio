@@ -28,6 +28,23 @@ from typing import NotRequired, TypedDict
 
 from proscenio_models import Slot
 
+from .._shared.cp_keys import PROSCENIO_IS_SLOT
+from .._shared.pg_cp_fallback import read_bool_flag
+
+
+def is_slot_empty(obj: object) -> bool:
+    """True when ``obj`` is a slot-flagged Empty.
+
+    ``type == "EMPTY"`` plus the ``is_slot`` flag, read PropertyGroup-first
+    with the legacy ``proscenio_is_slot`` Custom Property as fallback - so the
+    headless writer (PG unregistered) and the duck-typed validation mocks
+    resolve it the same way the panels do. ``None`` / non-Empty objects are
+    False, so callers can drop the explicit type pre-check.
+    """
+    if getattr(obj, "type", None) != "EMPTY":
+        return False
+    return bool(read_bool_flag(obj, pg_field="is_slot", cp_key=PROSCENIO_IS_SLOT))
+
 
 class _SlotKwargs(TypedDict):
     """Constructor kwargs for ``Slot``.

@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from .._shared.nearest import nearest_index
+
 Point3D = tuple[float, float, float]
 
 
@@ -30,17 +32,8 @@ def transfer_weights_by_nearest(
         )
     if not source_positions:
         return [{} for _ in target_positions]
-    d2_cap = max_distance * max_distance
     out: list[dict[str, float]] = []
-    for tx, ty, tz in target_positions:
-        best_idx = -1
-        best_d2 = float("inf")
-        for i, (sx, sy, sz) in enumerate(source_positions):
-            d2 = (sx - tx) ** 2 + (sy - ty) ** 2 + (sz - tz) ** 2
-            if d2 > d2_cap:
-                continue
-            if d2 < best_d2:
-                best_d2 = d2
-                best_idx = i
+    for target in target_positions:
+        best_idx = nearest_index(target, source_positions, max_distance)
         out.append(dict(source_weights[best_idx]) if best_idx >= 0 else {})
     return out

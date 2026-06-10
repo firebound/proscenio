@@ -17,7 +17,8 @@ import itertools
 import math
 from collections.abc import Sequence
 
-Point2D = tuple[float, float]
+from .._shared.geometry_2d import Point2D
+from .._shared.nearest import nearest_index
 
 
 def subdivide_polyline(points: Sequence[Point2D], n: int) -> list[Point2D]:
@@ -120,17 +121,5 @@ def snap_endpoint(
     """
     if max_dist < 0:
         raise ValueError(f"max_dist must be >= 0, got {max_dist}")
-    if not candidates:
-        return None
-    qx, qy = point
-    cap_d2 = max_dist * max_dist
-    best_idx = -1
-    best_d2 = float("inf")
-    for i, (cx, cy) in enumerate(candidates):
-        d2 = (cx - qx) * (cx - qx) + (cy - qy) * (cy - qy)
-        if d2 > cap_d2:
-            continue
-        if d2 < best_d2:
-            best_d2 = d2
-            best_idx = i
-    return best_idx if best_idx >= 0 else None
+    idx = nearest_index(point, candidates, max_dist)
+    return idx if idx >= 0 else None

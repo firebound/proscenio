@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from ...atlas.atlas_packer import PackResult, Rect
+from .._shared.image_canvas import save_rgba_canvas_as_png
 from .atlas_collect import SourceImage
 
 
@@ -70,12 +71,6 @@ def compose_atlas(
     name = out_path.stem
     if name in bpy.data.images:
         bpy.data.images.remove(bpy.data.images[name])
-    atlas_img = bpy.data.images.new(
-        name=name,
-        width=packed.atlas_w,
-        height=packed.atlas_h,
-        alpha=True,
-    )
 
     canvas: np.ndarray = np.zeros((packed.atlas_h, packed.atlas_w, 4), dtype=np.float32)
 
@@ -95,12 +90,7 @@ def compose_atlas(
         slot_y_bu = packed.atlas_h - rect.y - rect.h
         canvas[slot_y_bu : slot_y_bu + h, rect.x : rect.x + w] = sliced[:h, :w]
 
-    atlas_img.pixels.foreach_set(canvas.flatten().tolist())
-
-    atlas_img.filepath_raw = str(out_path)
-    atlas_img.file_format = "PNG"
-    atlas_img.save()
-    return atlas_img
+    return save_rgba_canvas_as_png(name, canvas, out_path)
 
 
 def write_manifest(

@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 
 import bpy
 
+from .._shared.select import restore_selection
+
 
 @dataclass(frozen=True)
 class AuthoringSession:
@@ -40,18 +42,4 @@ def restore(context: bpy.types.Context, session: AuthoringSession) -> None:
         with contextlib.suppress(RuntimeError):
             context.view_layer.objects.active = obj
             bpy.ops.object.mode_set(mode=session.prior_mode)
-    _restore_selection(context, session)
-
-
-def _restore_selection(context: bpy.types.Context, session: AuthoringSession) -> None:
-    for obj in list(context.selected_objects):
-        with contextlib.suppress(RuntimeError, ReferenceError):
-            obj.select_set(False)
-    for name in session.prior_selected_names:
-        obj = bpy.data.objects.get(name)
-        if obj is not None:
-            with contextlib.suppress(RuntimeError):
-                obj.select_set(True)
-    if session.prior_active is not None:
-        with contextlib.suppress(RuntimeError, ReferenceError):
-            context.view_layer.objects.active = session.prior_active
+    restore_selection(context, session.prior_selected_names, session.prior_active)

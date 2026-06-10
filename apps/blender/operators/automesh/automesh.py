@@ -31,6 +31,11 @@ from bpy.props import (
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
 )
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
+    active_armature,
+    resolve_pixels_per_unit,
+    scene_skinning,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_debug,
     report_error,
@@ -52,14 +57,6 @@ from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
     from ...core.automesh import BoneSegment2D
-
-
-def _resolve_pixels_per_unit(context: bpy.types.Context) -> float:
-    """Read the scene's pixels-per-unit, fall back to 100 when unset."""
-    scene_props = getattr(context.scene, "proscenio", None)
-    if scene_props is None:
-        return 100.0
-    return float(scene_props.pixels_per_unit) or 100.0
 
 
 class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
@@ -174,21 +171,19 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         # Pull defaults from the scene PG so F3 redo + button click
         # both reflect the user's panel settings.
-        scene_props = getattr(context.scene, "proscenio", None)
-        if scene_props is not None:
-            skinning = getattr(scene_props, "skinning", None)
-            if skinning is not None:
-                self.resolution = float(skinning.automesh_resolution)
-                self.alpha_threshold = int(skinning.automesh_alpha_threshold)
-                self.margin_pixels = int(skinning.automesh_margin_pixels)
-                self.contour_vertices = int(skinning.automesh_contour_vertices)
-                self.interior_mode = str(skinning.automesh_interior_mode)
-                self.interior_spacing = float(skinning.automesh_interior_spacing)
-                self.density_under_bones = bool(skinning.automesh_density_under_bones)
-                self.bone_radius = float(skinning.automesh_bone_radius)
-                self.bone_factor = int(skinning.automesh_bone_factor)
-                self.preserve_base_quad = bool(skinning.preserve_base_quad)
-                self.debug_stage = str(skinning.debug_stage)
+        skinning = scene_skinning(context)
+        if skinning is not None:
+            self.resolution = float(skinning.automesh_resolution)
+            self.alpha_threshold = int(skinning.automesh_alpha_threshold)
+            self.margin_pixels = int(skinning.automesh_margin_pixels)
+            self.contour_vertices = int(skinning.automesh_contour_vertices)
+            self.interior_mode = str(skinning.automesh_interior_mode)
+            self.interior_spacing = float(skinning.automesh_interior_spacing)
+            self.density_under_bones = bool(skinning.automesh_density_under_bones)
+            self.bone_radius = float(skinning.automesh_bone_radius)
+            self.bone_factor = int(skinning.automesh_bone_factor)
+            self.preserve_base_quad = bool(skinning.preserve_base_quad)
+            self.debug_stage = str(skinning.debug_stage)
         return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -202,10 +197,9 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
             return {"CANCELLED"}
 
         bone_segments = self._resolve_bone_segments(context)
-        world_scale = 1.0 / _resolve_pixels_per_unit(context)
+        world_scale = 1.0 / resolve_pixels_per_unit(context)
 
-        scene_props = getattr(context.scene, "proscenio", None)
-        picker_armature = getattr(scene_props, "active_armature", None) if scene_props else None
+        picker_armature = active_armature(context)
         prior_sidecar = maybe_pre_regen_snapshot(obj, picker_armature)
 
         try:
@@ -281,9 +275,8 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         """
         if not (self.density_under_bones and self.interior_mode == "DENSE"):
             return None
-        scene_props = getattr(context.scene, "proscenio", None)
-        picker = getattr(scene_props, "active_armature", None) if scene_props else None
-        if picker is None or picker.type != "ARMATURE":
+        picker = active_armature(context)
+        if picker is None:
             report_info(
                 self,
                 "no picker armature - automesh uses uniform interior density "

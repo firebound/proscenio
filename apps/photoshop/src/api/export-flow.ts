@@ -1,16 +1,9 @@
-// Top-level export orchestrator. Wires the planner, validator,
-// manifest writer and PNG writer into one flow the panel button can
-// call.
+// Top-level export orchestrator (planner -> validator -> manifest +
+// PNG writers).
 //
-// The entire writer leg runs inside one `core.executeAsModal` so the
-// user sees a single "Proscenio export" modal banner in Photoshop
-// rather than one per layer. ajv validation runs first, before any
-// modal opens; an invalid manifest never reaches disk and surfaces in
-// the panel as a list of strings.
-//
-// Folder management lives in `src/api/folder-storage.ts`; this module
-// only consumes a pre-resolved `UxpFolder` so the panel can show /
-// reset the active folder independently of an export run.
+// ajv validation runs before any modal opens, so an invalid manifest
+// never reaches disk. The writer leg then runs inside one
+// `core.executeAsModal` so PS shows a single modal banner.
 
 import { app, core } from "photoshop";
 import type { UxpFolder } from "uxp";
@@ -120,11 +113,8 @@ export async function runExport(
     const manifestFile = manifestFileName(adapted.info.name);
 
     try {
-        // PNG writes happen first; the manifest is only persisted if
-        // every PNG landed. Otherwise the manifest on disk would point
-        // at files that do not exist, which surfaces as a broken
-        // import on the downstream side hours later. Both steps share
-        // a single executeAsModal so PS shows one modal banner.
+        // Atomicity: the manifest is persisted only if every PNG
+        // landed, else it would reference files that do not exist.
         const { pngResults, manifestWritten } = await core.executeAsModal(
             async () => {
                 const results = await runWrites(doc, folder, plan.writes);
@@ -170,10 +160,9 @@ function manifestFileName(docName: string): string {
     return `${stem}.photoshop_exported.json`;
 }
 
-/** Re-exports the PNG(s) belonging to a single manifest entry. Looks
- *  the entry up by `entryName` (manifest layer name) and only writes
- *  its PNG(s). The manifest JSON is NOT touched - this is a debugging
- *  aid for iterating on one asset without rewriting the whole bundle.
+/** Re-exports the PNG(s) belonging to a single manifest entry, looked
+ *  up by `entryName` (manifest layer name). The manifest JSON is NOT
+ *  touched.
  */
 export async function runSingleLayerExport(
     opts: ExportOptions,
@@ -227,10 +216,9 @@ function writeBelongsToEntry(
     entryName: string,
     plan: ExportPlan,
 ): boolean {
-    // `find` would pick the first ref with this name, but the planner
-    // can emit duplicate names (e.g. two layers with a `[path:test]`
-    // tag) - walking every matching ref keeps the re-export safe when
-    // the user-selected layer is not the first hit.
+    // The planner can emit duplicate names (e.g. two layers tagged
+    // `[path:test]`), so walk every matching ref rather than `find`-ing
+    // the first - the selected layer need not be the first hit.
     for (const ref of plan.entryRefs) {
         if (ref.name !== entryName) continue;
         if (entryMatchesPath(ref, write.layerPath)) return true;

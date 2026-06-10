@@ -33,6 +33,7 @@ elif
 euler
 fcurve
 fcurves
+fdopen
 gdformat
 gdlint
 gdlintrc
@@ -53,6 +54,7 @@ idempotently
 idname
 idnames
 interp
+ints
 isoceles
 jsonschema
 keyframable
@@ -65,6 +67,7 @@ mainfile
 mathutils
 mergear
 mkdocs
+mkstemp
 multicriteria
 mypy
 NEXTWAVE

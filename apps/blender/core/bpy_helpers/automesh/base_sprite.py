@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 
 BASE_SPRITE_GROUP_NAME = "proscenio_base_sprite"
 """Vertex group flagged on the original 4 quad corners so automesh
-regen knows which verts to preserve. Lifted from COA Tools 2's
-``coa_base_sprite`` pattern per the weight-paint-automesh work."""
+regen knows which verts to preserve."""
 
 
 def initialize_base_sprite_group(obj: Object) -> tuple[int, bool]:
@@ -34,8 +33,7 @@ def initialize_base_sprite_group(obj: Object) -> tuple[int, bool]:
     current verts. The previously-generated automesh geometry already
     sits in the mesh; flagging it now would promote it to "base" and
     the next ``delete_non_base_geometry`` call would skip it, causing
-    the mesh to accumulate vertices unbounded across reruns (regression
-    caught in PR #51 review).
+    the mesh to accumulate vertices unbounded across reruns.
     """
     group = obj.vertex_groups.get(BASE_SPRITE_GROUP_NAME)
     if group is not None:
@@ -82,9 +80,6 @@ def _delete_verts_by_membership(obj: Object, group_index: int, *, keep_members: 
     ``keep_members=True`` deletes every vert NOT in the group (the regen
     wipe that preserves the base quad); ``keep_members=False`` deletes the
     group members themselves (dropping the base corners after a build).
-    Both former copies shared this whole bmesh open / deform-layer /
-    delete / write-back scaffold and differed only by the inverted
-    predicate.
     """
     mesh = obj.data
     bm = bmesh.new()

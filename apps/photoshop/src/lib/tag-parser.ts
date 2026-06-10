@@ -43,11 +43,10 @@ export interface ParsedName {
     tags: TagBag;
 }
 
-// --- Shared tag-value validators -------------------------------------
-// Exported so the Tags advanced-fields form (`lib/tag-form`) validates
-// typed input against the exact rules the bracket-tag parser enforces,
-// with no second copy of the regex / separator checks drifting out of
-// sync. Both the parser's `consume*` helpers below and the form's diff
+// Shared tag-value validators. Exported so the Tags advanced-fields
+// form (`lib/tag-form`) validates typed input against the exact rules
+// the parser enforces, with no second copy of the checks to drift out
+// of sync. Both the parser's `consume*` helpers and the form's diff
 // helpers call these.
 
 /** `[scale:N]` value -> positive finite number, or `null` when invalid.

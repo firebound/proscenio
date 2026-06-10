@@ -1,4 +1,4 @@
-"""Headless: sidecar export/import round-trip (O3)."""
+"""Headless: sidecar export/import round-trip."""
 
 from __future__ import annotations
 

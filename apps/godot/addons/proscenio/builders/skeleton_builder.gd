@@ -14,17 +14,16 @@ static func build(skeleton_resource: ProscenioSkeleton) -> Skeleton2D:
 	for bone_res: ProscenioBone in skeleton_resource.bones:
 		var json_name := bone_res.name
 		var bone := Bone2D.new()
-		# Setting Node.name normalizes special chars (dots become underscores)
-		# in Godot 4 - we still key the lookup dict by the original JSON name
-		# so the parent-resolution pass below uses the unmodified string.
+		# Node.name normalizes dots to underscores; key the lookup dict by the
+		# original JSON name so parent resolution below uses the unmodified string.
 		bone.name = json_name
 		bone.position = _vec2_from_packed(bone_res.position)
 		bone.rotation = bone_res.rotation
 		bone.scale = _vec2_from_packed_or(bone_res.scale, Vector2.ONE)
 		if bone_res.length > 0.0:
 			bone.set_length(bone_res.length)
-			# Stop Skeleton2D from inferring length/angle from missing child
-			# Bone2D nodes - we already supplied authoritative values.
+			# Authoritative length supplied - stop Skeleton2D inferring it from
+			# (missing) child Bone2D nodes.
 			bone.set_autocalculate_length_and_angle(false)
 		# Capture authored pose as the rest pose so animations replace it cleanly.
 		bone.set_rest(bone.transform)

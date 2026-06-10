@@ -31,9 +31,9 @@ class AuthoringStage(IntEnum):
 
 
 class Stroke(TypedDict):
-    """Stage 3 stroke or single-Steiner placement (the weight-paint-automesh).
+    """Stage 3 stroke or single-Steiner placement.
 
-    kind="point": single Steiner from a click without drag (backward compat).
+    kind="point": single Steiner from a click without drag.
     kind="stroke": resampled polyline that becomes constraint edges + verts.
     kind="cut" on user_outer_strokes (Stage 2): perpendicular offset lens +
         post-CDT face-prune removes faces inside the lens (silhouette trim).
@@ -63,8 +63,8 @@ class StageParams:
     interior_spacing: float
     bone_radius: float
     bone_factor: int
-    cut_margin: float = 0.04  # corridor-hole gap width in world units (T-REV5)
-    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE"  #
+    cut_margin: float = 0.04  # corridor-hole gap width in world units
+    interior_mode: Literal["SIMPLE", "DENSE"] = "DENSE"
 
 
 @dataclass
@@ -75,16 +75,16 @@ class StageOutput:
     as the user advances stages without rebuilding the whole container.
     """
 
+    # world-XZ spliced outer (Stage 2 extend strokes applied) - the silhouette
+    # APPLY will build. Mutated in-place so the overlay handler sees updates
+    # without re-registration.
     outer: list[Point2D] = field(default_factory=list)
-    # : world-XZ spliced outer (Stage 2 extend strokes applied) - the
-    # silhouette APPLY will build. Mutated in-place so the overlay handler sees
-    # updates without re-registration.
     outer_preview: list[Point2D] = field(default_factory=list)
     user_outer_strokes: list[Stroke] = field(default_factory=list)  # Stage 2
     inner_loops: list[list[Point2D]] = field(default_factory=list)
     user_steiners: list[Point2D] = field(default_factory=list)
     user_strokes: list[Stroke] = field(default_factory=list)
     all_steiners: list[Point2D] = field(default_factory=list)
-    # : SIMPLE-mode triangulation preview - world-XZ edge endpoint
-    # pairs from the real CDT (the Spine "Generate" equivalent).
+    # SIMPLE-mode triangulation preview - world-XZ edge endpoint pairs from the
+    # real CDT.
     triangulation_preview: list[tuple[Point2D, Point2D]] = field(default_factory=list)

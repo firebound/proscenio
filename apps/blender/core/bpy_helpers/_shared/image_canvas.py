@@ -1,10 +1,8 @@
-"""Shared bpy image-canvas writer.
+"""Shared bpy image-canvas writer: float32 RGBA canvas -> saved PNG image.
 
 bpy-bound, but ``bpy`` is imported lazily inside the function so the
 module stays importable from the non-bpy pytest contexts that pull in the
-parent package. The two numpy compositors (atlas pack, PSD spritesheet)
-build their canvases with completely different placement math, but share
-this final "float32 RGBA canvas -> saved PNG image" step.
+parent package.
 """
 
 from __future__ import annotations

@@ -1,9 +1,5 @@
-// the photoshop tag system: Tags + Validate panel. Lists the active
-// document's layer tree with bracket-tag controls per row and shows
-// the live planner warnings / skipped layers underneath. Tag writes
-// flow through `useTagTree.rename` -> `io/layer-rename.ts` ->
-// `domain/tag-writer.ts`; the validator output comes from the same
-// `useExportPreview` the Debug panel uses.
+// Tags panel: the layer tree with bracket-tag controls plus the
+// selected entry's reveal-output detail.
 
 import React from "react";
 

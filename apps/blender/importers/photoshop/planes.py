@@ -1,4 +1,4 @@
-"""Quad mesh + material stamper for the Photoshop importer (the photoshop importer).
+"""Quad mesh + material stamper for the Photoshop importer.
 
 Coordinate conversion: PSD top-left → Blender XZ centre at the
 manifest's ``pixels_per_unit``::
@@ -191,19 +191,7 @@ def _layer_placement(
     The Spine-style ``anchor`` (when set) becomes the world origin
     (0, 0, 0): every layer's PSD pixel position is re-zeroed against
     it. Without an anchor the importer falls back to canvas-centered
-    placement (legacy behaviour for fixtures authored before the photoshop tag system).
-
-    Known drift (photoshop-tag-system investigation, specs/backlog-bugs-found.md):
-    on the Blender -> legacy JSX export -> Blender round-trip, the JSX
-    exporter captures the alpha-aware bbox of each Workbench-rendered PNG which
-    bleeds 1 px on every edge from anti-aliasing. The manifest's
-    ``size`` ends up +2 px on both axes while ``position`` stays put,
-    which shifts the computed bbox centre by +1 px (~0.17 % on a
-    1731 px doc - cosmetic). The math here is correct given the inputs;
-    fixing the drift means either trimming the AA bleed at render time
-    or anchoring the exporter to the layer's authored bounds rather
-    than the rendered pixels' bbox. Left intentional until the round-
-    trip oracle re-runs against the photoshop tag system (manifest v2) doll fixture.
+    placement.
     """
     px_x, px_y = position_px
     px_w, px_h = size_px
@@ -244,9 +232,9 @@ def _ensure_mesh(
 
     Mesh data + UVs are rewritten on every import so size changes
     propagate. ``geometry_offset`` shifts the quad in local space so
-    that an object placed at a non-bbox-centre location (e.g. the
-    the photoshop tag system ``origin`` pivot) still displays the texture at the
-    bbox-centre world position. Material gets refreshed by the caller.
+    that an object placed at a non-bbox-centre location (e.g. an explicit
+    ``origin`` pivot) still displays the texture at the bbox-centre world
+    position. Material gets refreshed by the caller.
     """
     obj = _find_existing(name)
     width, height = size
@@ -364,14 +352,10 @@ def _set_material_blend_method(mat: bpy.types.Material, blend_mode: str | None) 
 def _parent_to_root(obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
     """Parent ``obj`` to the armature object (stub armature).
 
-    Uses ``parent_type='OBJECT'`` rather than ``parent_type='BONE'``
-    because bone-parenting rotates the child so its local Y aligns
-    with the bone's direction (Blender bone-Y == bone-axis).
-    With a conventional vertical root bone (pointing +Z) that flip
-    would rotate every mesh out of the XZ world plane, leaving the
-    figure visible only in Top Ortho instead of Front Ortho.
-    Object-parenting keeps the mesh's authored XZ orientation.
-    Per-bone vertex weights for posing land in a future iteration.
+    Must use ``parent_type='OBJECT'``, not ``'BONE'``: bone-parenting
+    aligns the child's local Y to the bone axis (Blender bone-Y ==
+    bone-axis), which on a vertical root bone rotates every mesh out of
+    the XZ world plane. Object-parenting keeps the authored XZ orientation.
     """
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"

@@ -63,9 +63,7 @@ func _import(
 ) -> Error:
 	var document := _load_document(source_file)
 	if document == null:
-		# `_load_document` already pushed the diagnostic; surface a
-		# consistent error code here so the editor reimport flow stays
-		# deterministic.
+		# `_load_document` already pushed the diagnostic.
 		return ERR_INVALID_DATA
 
 	var root := Node2D.new()
@@ -76,12 +74,12 @@ func _import(
 
 	var atlas := _load_atlas(source_file, document.atlas)
 	var source_dir := source_file.get_base_dir()
-	# Slots build BEFORE sprites so the sprite builders can route attachment
-	# children under the slot Node2D parent. Empty slots
-	# leaves the map empty and sprite routing falls back to bone-parented.
+	# Slots build BEFORE elements so element builders can route attachments
+	# under the slot Node2D. No slots leaves the map empty and routing falls
+	# back to bone-parenting.
 	var slot_map := SlotBuilder.build(skeleton, document.slots)
-	# Each builder discriminator-filters its own element kind; calling both is
-	# cheap and keeps the dispatch table flat. Order does not matter.
+	# Each builder filters its own element kind; order between the two does
+	# not matter.
 	MeshBuilder.attach_elements(skeleton, document.elements, atlas, slot_map, source_dir)
 	SpriteBuilder.attach_elements(skeleton, document.elements, atlas, slot_map, source_dir)
 
@@ -106,9 +104,8 @@ func _import(
 
 
 static func _load_document(source_file: String) -> ProscenioDocument:
-	# Open the .proscenio file, parse JSON, and validate the document root
-	# against the typed model. Pushes its own error on every failure path
-	# and returns null so the caller surfaces a single error code.
+	# Pushes its own error on every failure path and returns null so the caller
+	# surfaces a single error code.
 	var file := FileAccess.open(source_file, FileAccess.READ)
 	if file == null:
 		push_error(
@@ -132,9 +129,6 @@ static func _load_document(source_file: String) -> ProscenioDocument:
 		return null
 
 	var raw: Dictionary = json.data
-	# Parse through the schema-derived Resource. Future schema additions land
-	# in the pydantic source (packages/models/) + a codegen re-run; the
-	# importer reads typed fields off the resulting Resource graph.
 	var document := ProscenioDocument.from_dict(raw)
 	if document == null:
 		push_error("Proscenio: ProscenioDocument.from_dict returned null")

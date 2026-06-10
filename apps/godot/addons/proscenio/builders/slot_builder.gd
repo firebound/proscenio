@@ -3,18 +3,11 @@ extends RefCounted
 
 # Builds slot anchor Node2D parents under the skeleton.
 #
-# A slot in the .proscenio document is a `{name, bone, default,
-# attachments[]}` record. Each slot becomes a `Node2D` child of the
-# matching `Bone2D` (or of the `Skeleton2D` root when `bone` is empty).
-# The element builders - mesh_builder.gd / sprite_builder.gd
-# - consult the slot map this module returns and route any element
-# whose name appears in some `attachments[]` under the slot Node2D
-# instead of the bone-or-skeleton fallback.
-#
-# Per-attachment visibility is set during sprite construction:
-# `sprite.visible = (sprite.name == slot.default)`. Animation track
-# flips at runtime live in `animation_builder.gd`'s `slot_attachment`
-# handler.
+# Each slot becomes a `Node2D` child of the matching `Bone2D` (or of the
+# `Skeleton2D` root when `bone` is empty). The element builders consult the
+# slot map this module returns and route any element whose name appears in
+# some `attachments[]` under the slot Node2D instead of the bone-or-skeleton
+# fallback.
 
 
 class SlotInfo:
@@ -27,10 +20,8 @@ const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd
 
 
 static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) -> Dictionary:
-	# Returns `{sanitized_attachment_name: SlotInfo}`. Sprite builders look up
-	# by their sprite's sanitized name (matching what Godot stored in
-	# ``Node.name``); absence means the sprite is not in any slot and falls
-	# back to bone-routing.
+	# Returns `{sanitized_attachment_name: SlotInfo}`, keyed to match
+	# ``Node.name``. A miss means the element is in no slot and bone-routes.
 	var slot_map: Dictionary = {}
 	if slot_resources == null:
 		return slot_map

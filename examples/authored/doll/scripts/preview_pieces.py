@@ -50,7 +50,6 @@ def main() -> None:
         row = idx // COLS
         cell_x = col * CELL_W
         cell_y = row * CELL_H
-        # Cell background (subtle so sprites pop)
         draw.rectangle(
             [(cell_x + 4, cell_y + 4), (cell_x + CELL_W - 4, cell_y + CELL_H - 8)],
             fill=CELL_BG,

@@ -27,9 +27,8 @@ export function useExportFlow(): UseExportFlow {
 
     const setOption = React.useCallback(
         <K extends keyof ExportOptions>(key: K, value: ExportOptions[K]) => {
-            // Bail out when nothing changed so consumers that push the
-            // same value back through an effect (template sync, etc.)
-            // do not loop on re-render.
+            // Bail when unchanged so consumers that push the same value
+            // back through an effect do not loop on re-render.
             setOpts((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
         },
         [],

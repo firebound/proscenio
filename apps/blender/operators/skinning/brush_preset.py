@@ -1,4 +1,4 @@
-"""Apply a named brush curve preset to the active weight-paint brush (O4)."""
+"""Apply a named brush curve preset to the active weight-paint brush."""
 
 from __future__ import annotations
 
@@ -35,13 +35,12 @@ class PROSCENIO_OT_set_brush_preset(bpy.types.Operator):
             return {"CANCELLED"}
         curve = brush.curve.curves[0]
         new_points = PRESETS[self.preset_name]
-        # Truncate existing points to 2 (the min CurveMap allows) before re-adding
+        # CurveMap keeps a minimum of 2 points: truncate to 2, update those
+        # in place, then add the rest.
         while len(curve.points) > 2:
             curve.points.remove(curve.points[-1])
-        # Set the first 2 points (positions exist; just update location)
         for i, (x, y) in enumerate(new_points[:2]):
             curve.points[i].location = (x, y)
-        # Add the rest
         for x, y in new_points[2:]:
             curve.points.new(x, y)
         brush.curve.update()

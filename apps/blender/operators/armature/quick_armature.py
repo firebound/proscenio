@@ -6,8 +6,7 @@ annotations eagerly via ``isinstance(value, _PropertyDeferred)``;
 PEP 563 leaves the values as strings and the check fails silently,
 so ``bpy.props.*Property`` annotations never promote to RNA properties.
 Same constraint applies to every other ``bpy.types.Operator`` /
-``PropertyGroup`` / ``Panel`` subclass in the addon
-post-mortem in ``specs/backlog-bugs-found.md``.
+``PropertyGroup`` / ``Panel`` subclass in the addon.
 """
 
 import contextlib
@@ -83,7 +82,7 @@ class _BoneRecord:
 
 
 class PROSCENIO_OT_quick_armature(bpy.types.Operator):
-    """Click-drag in the viewport to author bones rapidly (the Quick Armature shortcut, 012.1)."""
+    """Click-drag in the viewport to author bones rapidly."""
 
     bl_idname = "proscenio.quick_armature"
     bl_label = "Proscenio: Quick Armature"
@@ -135,7 +134,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
     _view3d_header_appended: ClassVar[bool] = False
-    # feedback-pass state: chord vocabulary, axis lock, grid snap, undo
+    # Chord vocabulary, axis lock, grid snap, undo state.
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
     _snap_increment: ClassVar[float] = 1.0
@@ -195,10 +194,9 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._axis_lock = None
         cls._session_records = []
         cls._redo_records = []
-        # Read PG defaults so the modal honours the document-level
-        # configuration without forcing each invocation through F3
-        # redo. Per-invoke override goes through the existing operator
-        # options (only ``lock_to_front_ortho`` for now).
+        # Read PG defaults so the modal honours document-level config
+        # without an F3 redo. Per-invoke override is only
+        # ``lock_to_front_ortho`` for now.
         pg = _resolve_quick_armature_props(context)
         cls._default_chain = bool(pg.default_chain) if pg is not None else True
         cls._name_prefix = _sanitize_prefix(
@@ -342,14 +340,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         _context: bpy.types.Context,
         event: bpy.types.Event,
     ) -> bool:
-        # In a modal handler, ``context.region`` stays pointed at the
-        # *invoke-time* region. When invoked from the N-panel button,
-        # that region is the UI sidebar - filtering by ``context.region``
-        # would reject every viewport click forever. Filter by the
-        # cursor's window coords against the WINDOW region rect we
-        # resolved at invoke time, then exclude any overlay regions
-        # (UI sidebar, toolbar, header, asset shelf) that Blender
-        # paints on top of the WINDOW.
+        # In a modal handler ``context.region`` stays the invoke-time
+        # region (the UI sidebar when invoked from the N-panel), so
+        # filtering by it would reject every viewport click. Filter by
+        # window coords against the resolved WINDOW rect, then exclude
+        # overlay regions Blender paints on top of the WINDOW.
         cls = type(self)
         window_region = cls._invoke_region
         area = cls._invoke_area
@@ -371,10 +366,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         context: bpy.types.Context,
         event: bpy.types.Event,
     ) -> set[str]:
-        # Proscenio's 2D-cutout convention authors bones in the XZ
-        # picture plane (Y=0). The legacy Y=Z-up projection put bones in
-        # the ground plane, which collapses in Front Ortho - see
-        # specs/backlog-bugs-found.md.
+        # Author bones in the XZ picture plane (Y=0); a Y-up projection
+        # collapses them in Front Ortho.
         cls = type(self)
         if event.value == "PRESS":
             raw_press_point = mouse_event_to_plane_point(context, event, plane_axis="Y")
@@ -456,9 +449,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         bone = armature.data.bones.get(cls._last_bone_name)
         if bone is None:
             return press_point
-        # Bone tail in world space accounts for the armature object's
-        # transform; QuickRig sits at the origin in this addon, but
-        # multiplying by ``matrix_world`` is safe regardless.
+        # ``matrix_world`` maps the local tail to world space; safe even
+        # though QuickRig sits at the origin.
         tail_world = armature.matrix_world @ bone.tail_local
         return (float(tail_world.x), float(tail_world.y), float(tail_world.z))
 
@@ -752,13 +744,9 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._cursor_warning_handle_2d = bpy.types.SpaceView3D.draw_handler_add(
             draw_cursor_warning_2d, (cls,), "WINDOW", "POST_PIXEL"
         )
-        # Two icon-rich hint surfaces, both sourced from Blender's
-        # native UILayout API so the icons match the rest of the
-        # editor: the bottom STATUSBAR (canonical modal hint home,
-        # like knife tool / loop cut) and the 3D viewport header
-        # (so the user does not have to look away from the canvas).
-        # POST_PIXEL cheatsheet was retired - the unicode-glyph
-        # approximation could never match the native icons here.
+        # Two icon-rich hint surfaces, both via Blender's native UILayout
+        # API so the icons match the editor: the bottom STATUSBAR (the
+        # canonical modal hint home) and the 3D viewport header.
         if not cls._statusbar_appended:
             # Prepend (left) so the cheatsheet sits where Blender's
             # own modal tools place their hints; right side stays for

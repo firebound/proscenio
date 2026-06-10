@@ -1,7 +1,6 @@
-"""Texture-region computation (the authoring panel.1.c.1).
+"""Texture-region computation.
 
-Pulled out of the writer so the override resolution can be tested without
-a Blender session. The two entry points cover both modes:
+The two entry points cover both modes:
 
 - :func:`compute_region_from_uvs` - auto mode. Min/max bounds across the
   Godot-space UV list (``[u, v]`` with v already flipped).

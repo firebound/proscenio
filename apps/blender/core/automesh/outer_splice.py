@@ -3,20 +3,14 @@
 Used by Stage 2 EDIT_OUTLINE to extend the auto-walker silhouette with
 artist-drawn paths. Pure module: no bpy / mathutils.
 
-Wrap-around case (exit_outer_idx < entry_outer_idx) notes
-----------------------------------------------------------
-When the stroke's departure and return points map to outer verts where
-exit < entry (i.e. the replacement arc wraps across the closed-loop seam),
-v1 takes the FORWARD arc from entry to end-of-list plus the arc from 0 to
-exit. This guarantees the outside_run is inserted at the right seam point
-while the two outer arcs it replaces are the ones between entry and exit
-going *forward* (the shorter direction is not computed; the artist's stroke
-geometry itself already picks the intended arc). A future v2 could compute
-the shorter-arc direction and always choose it.
+Wrap-around case (``exit_outer_idx < entry_outer_idx``): when the
+replacement arc wraps across the closed-loop seam, the splice takes the
+FORWARD arc from entry to end-of-list plus the arc from 0 to exit. The
+shorter direction is not computed; the artist's stroke geometry picks the
+intended arc.
 
-Limitation: fully-outside strokes return None with no side effect; callers
-are responsible for logging a WARNING so the artist knows the stroke had no
-effect.
+Fully-outside strokes return None with no side effect; callers log a
+WARNING so the artist knows the stroke had no effect.
 """
 
 from __future__ import annotations

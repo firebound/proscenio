@@ -1,16 +1,12 @@
-// the photoshop tag system tag-taxonomy parity oracle. One synthetic layer tree
-// exercises every bracket tag the planner is supposed to honour; the
-// emitted manifest is asserted tag-by-tag AND snapshot-diffed against
-// the committed golden at
-// `examples/generated/psd_to_blender/tag_smoke/tag_smoke.expected.json`.
+// Tag-taxonomy parity oracle: one synthetic layer tree exercises every
+// bracket tag the planner honours, asserted tag-by-tag AND snapshot-diffed
+// against the committed golden
+// (`examples/generated/psd_to_blender/tag_smoke/tag_smoke.expected.json`).
 //
-// Why a separate test file and not just one more `describe` in
-// `exporter.test.ts`: this is the **regression baseline** for the v1
-// taxonomy. The other suite covers individual tags in isolation;
-// `tag_smoke` answers "does the planner still emit the same thing
-// when every tag is present in the same tree at once?". The golden
-// catches drift the per-tag tests miss (ordering, anchor handling,
-// nested-merge collapse).
+// This is the regression baseline for the v1 taxonomy: where the per-tag
+// suite covers tags in isolation, tag_smoke catches whole-tree drift
+// (ordering, anchor handling, nested-merge collapse) when every tag is
+// present at once.
 //
 // Regenerate the golden with `pnpm run test -- --update tag-smoke`.
 
@@ -169,7 +165,7 @@ describe("tag_smoke - per-tag assertions", () => {
     it("[name:pre*suf] passes through (planner does not rewrite in v1)", () => {
         // The hands group is a name-template carrier; children cascade their
         // raw names via joinName (`hands__hand_L`). The literal `lh_*` rewrite
-        // is deferred to the v2 planner (see specs/backlog.md).
+        // is deferred to the v2 planner.
         const handL = m.layers.find((L) => L.name === "hands__hand_L");
         expect(handL).toBeDefined();
     });

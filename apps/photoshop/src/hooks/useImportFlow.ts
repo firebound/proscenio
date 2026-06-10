@@ -1,6 +1,6 @@
 // Owns the Import side of the panel: picking a manifest, surfacing
 // ajv validation errors, running the orchestrator. UI glue around
-// `io/manifest-reader` and `api/import-flow`.
+// `api/manifest-reader` and `api/import-flow`.
 
 import React from "react";
 

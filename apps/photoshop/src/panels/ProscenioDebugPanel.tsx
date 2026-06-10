@@ -1,13 +1,5 @@
-// Standalone debug / preview panel. Mirrors the export flow's
-// dry-run but in its own dockable / floatable window so the artist
-// can keep the live entry + skipped list visible while the main
-// exporter panel stays narrow.
-//
-// Templates are read from `useFilenameTemplate` (shared via
-// localStorage with the exporter panel), so the dry-run paths
-// always match what the exporter would write. The active PS layer
-// chain feeds reveal-output: the matching manifest row is highlighted
-// in `DebugSection`.
+// Standalone debug / preview panel: dry-run preview plus the active
+// layer's matching manifest row.
 
 import React from "react";
 

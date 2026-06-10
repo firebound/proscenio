@@ -104,3 +104,7 @@ Not bugs - just the spots that carry the most complexity, where changes deserve 
 - **The Photoshop round trip is one-directional in spirit.** The plugin can rebuild a PSD from a manifest, but that PSD-to-PSD cycle is not pixel-perfect (small pivot and pixels-per-unit drift, both tracked). That is fine in practice: the export exists to feed Blender, not to reconstruct Photoshop.
 
 - **Godot reads one format version.** The importer targets the current `.proscenio` version and does not migrate older files - intentional while the format is still settling, and revisited when a second version exists.
+
+- **The XZ picture-plane convention.** Proscenio authors and exports in the XZ plane, with Y as the depth axis, because the 2D-cutout workflow lives in Blender's Front Orthographic view where a Y-up projection collapses bones into the ground plane. Every coordinate that crosses into the export - bone transforms, mesh positions, driver axes - follows it. Code touching the writer, the drivers, automesh, or Quick Armature must hold the convention, or the Godot scene comes out mirrored or flattened.
+
+- **Field order is locked to the goldens.** The pydantic models declare their fields in the order the writer emits them, so `model_dump_json(exclude_unset=True)` reproduces the committed golden fixtures byte for byte. This is a test constraint, not part of the wire contract - a JSON consumer does not care about key order - so reordering a model's fields or inserting one mid-struct drifts the goldens and fails the committed-match tests until they are regenerated.

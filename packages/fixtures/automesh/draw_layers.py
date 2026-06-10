@@ -24,14 +24,11 @@ operator needs to handle:
                     concave support; this is the local regression
                     guard for it).
 - ``ring.png``    - donut / ring (alpha hole in the middle). Hole
-                    support smoke target (the weight-paint-automesh amendment,
-                    the hole-support amendment). Validates that
+                    support smoke target. Validates that
                     ``alpha_contour.extract_holes`` detects the
                     centered cutout, the bridge passes it as a
                     CDT constraint loop, and the post-process
                     face-prune drops triangles inside the hole.
-                    Proscenio differentiates from Spine + COA
-                    Tools 2 by lifting their "no holes" restriction.
 - ``swirl.png``   - hi-res anti-aliased S-curve stroke ring (the
                     silhouette is the curve's outline, the curve's
                     interior is a hole). Stresses both the contour

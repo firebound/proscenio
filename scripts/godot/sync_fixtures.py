@@ -18,7 +18,7 @@ canonical source under ``examples/``. No duplication on disk: edits in
    into the same dest directory so the Godot importer + Sprite2D / Polygon2D
    builders can find them via filename lookup.
 3. Link ``examples/<name>/godot/<Name>.tscn`` + ``<Name>.gd`` (the wrapper
-   scene pattern - the reimport-merge work Option A) into ``apps/godot/<name>/godot/``.
+   scene pattern) into ``apps/godot/<name>/godot/``.
 
 Link strategy:
 - Try ``os.symlink`` first (works on POSIX always; Windows needs Developer
@@ -62,9 +62,7 @@ _TEXTURE_SUBDIRS: tuple[str, ...] = (
 # authoring sandbox for the Photoshop roundtrip: materials carry flat
 # Base Color only (no Image Texture node), polygon vertices live in
 # world coordinates instead of being centred per-mesh, and the rest
-# pose was never authored for direct Godot consumption. The proper
-# Godot-target fixture is the future ``doll-from-photoshop`` derived
-# .blend tracked in the fixtures backlog.
+# pose was never authored for direct Godot consumption.
 _GODOT_SKIP: frozenset[str] = frozenset({"doll"})
 
 

@@ -42,13 +42,9 @@ def hydrate_existing_objects() -> None:
 def auto_populate_active_armature() -> None:
     """Pre-fill ``scene.proscenio.active_armature`` when unambiguous.
 
-    the quick-armature follow-up hybrid Opcao A.5: when the user opens a `.blend` whose
-    scene contains exactly one armature and the Proscenio pointer is
-    still empty, set it. The picker in the Skeleton subpanel then
-    visibly reflects the rig that every Proscenio skeleton operation
-    will target, eliminating the surprise where the picker reads
-    "empty" but Quick Armature still author bones into the only
-    armature in the scene via the auto-detect heuristic.
+    When a `.blend` opens with exactly one armature in the scene and the
+    Proscenio pointer still empty, set it, so the Skeleton picker visibly
+    reflects the rig that skeleton operations will target.
     """
     try:
         scenes = list(bpy.data.scenes)
@@ -74,20 +70,14 @@ def on_blend_load(_filepath: str) -> None:
 def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph) -> None:
     """Keep ``scene.proscenio.active_armature`` in sync with reality.
 
-    Blender nulls the PointerProperty automatically when the referenced
-    Object data block is deleted, but if the user only unlinked the
-    armature from the scene (or renamed via Outliner) the pointer can
-    end up dangling: it still resolves to an Object that is no longer
-    visible in this scene. The handler clears that case so the picker
-    visibly matches what skeleton ops can actually target, then tags
-    every VIEW_3D area for redraw so the panel updates without forcing
-    the user to mouse over it.
+    Blender nulls the PointerProperty when the referenced Object is
+    deleted, but not when the user only unlinks it from the scene (or
+    renames via Outliner): the pointer then dangles, resolving to an
+    Object no longer in this scene. The handler clears that case.
 
-    Wrapped in a broad ``Exception`` guard: depsgraph callbacks fire
-    inside Blender's draw / event loop, and a Python exception bubbling
-    out at that point can leave the C side mid-state. The handler is
-    advisory - swallowing failures here is strictly better than risking
-    a follow-up crash on the next gizmo / overlay draw.
+    Wrapped in a broad ``Exception`` guard because depsgraph callbacks
+    fire inside Blender's draw / event loop, where a bubbling Python
+    exception can leave the C side mid-state and crash the next draw.
     """
     try:
         proscenio = getattr(scene, "proscenio", None)
@@ -105,10 +95,8 @@ def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph)
         proscenio.active_armature = None
         _tag_view3d_areas_redraw()
     except Exception:  # depsgraph hook safety - swallow to protect draw cycle
-        # Last-resort safety: never let an addon-side error kill the
-        # Blender draw cycle. Diagnostic logging would land in the
-        # operator INFO bar (not visible from a depsgraph callback) so
-        # we silently swallow.
+        # No logging: the operator INFO bar is not reachable from a
+        # depsgraph callback, so there is nowhere to surface it.
         pass
 
 

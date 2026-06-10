@@ -1,8 +1,8 @@
 """Pure-pytest unit tests for the skeleton writer math.
 
 Imports resolve through the bpy / mathutils stand-ins in ``conftest``.
-These tests drive the pure transform helpers and ``build_skeleton``,
-which is pure float math once the bone hierarchy is supplied.
+These tests drive the pure transform helpers and ``build_skeleton``
+(pure float math once the bone hierarchy is supplied).
 """
 
 from __future__ import annotations

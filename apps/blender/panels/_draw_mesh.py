@@ -3,8 +3,6 @@
 Mesh mode block: poly count, vertex group count, reproject UV
 button, isolated material toggle, shared region box. Plus the inline
 weight-paint brush mirror used when the user is in PAINT_WEIGHT mode.
-
-Pulled out of ``panels/active_element.py`` by the code-modularity work.
 """
 
 from __future__ import annotations
@@ -27,7 +25,7 @@ def draw_body(
 
 
 def draw_weight_paint(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
-    """Mirror Blender's weight-paint brush controls inline (the weight-paint inline controls)."""
+    """Mirror Blender's weight-paint brush controls inline."""
     box = layout.box()
     box.label(text="Weight paint", icon="BRUSH_DATA")
     tool_settings = context.tool_settings

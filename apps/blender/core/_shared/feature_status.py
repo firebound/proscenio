@@ -5,13 +5,6 @@ every subpanel + every operator row. Pure Python - no bpy imports --
 so the dispatch table can be exercised under plain pytest, and so the
 addon UI module can read the human-facing label/icon/tooltip without
 re-deriving them per draw tick.
-
-Why this matters: Proscenio surfaces both authoring shortcuts (IK
-toggle, Pack Atlas, Drive from Bone) AND export-contract knobs (sprite
-type, texture region) in the same sidebar. Without a status badge the
-user cannot tell which knob will land in the .proscenio output and
-which is editor-only. The badge closes the gap with a 1-glyph + tooltip
-hint per row.
 """
 
 from __future__ import annotations
@@ -21,13 +14,7 @@ from enum import Enum
 
 
 class FeatureStatus(Enum):
-    """Readiness band for a Proscenio feature.
-
-    The four bands cover everything the panel exposes today and leave
-    room for spec-on-paper features (PLANNED) + opinionated
-    non-features (OUT_OF_SCOPE), so the user sees a consistent badge
-    even on rows that intentionally do nothing at export time.
-    """
+    """Readiness band for a Proscenio feature."""
 
     GODOT_READY = "godot-ready"
     BLENDER_ONLY = "blender-only"
@@ -80,14 +67,12 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
 # the help-topic table. Adding a new feature = adding a row here +
 # (optionally) a help topic + (optionally) a panel-side render.
 FEATURE_STATUS: dict[str, FeatureStatus] = {
-    # Subpanel headers
     "active_element": FeatureStatus.GODOT_READY,
     "skeleton": FeatureStatus.GODOT_READY,
     "animation": FeatureStatus.GODOT_READY,
     "atlas": FeatureStatus.GODOT_READY,
     "validation": FeatureStatus.GODOT_READY,
     "export": FeatureStatus.GODOT_READY,
-    # Operators / sub-features
     "element_type": FeatureStatus.GODOT_READY,
     "sprite_frame_metadata": FeatureStatus.GODOT_READY,
     "texture_region": FeatureStatus.GODOT_READY,
@@ -103,26 +88,16 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "apply_packed_atlas": FeatureStatus.GODOT_READY,
     "unpack_atlas": FeatureStatus.BLENDER_ONLY,
     "import_photoshop": FeatureStatus.BLENDER_ONLY,
-    # the slot system (Blender side: writer + panel + preview shader).
-    # Stays GODOT_READY because the writer emits slots[] in the .proscenio
-    # output even before the Godot importer ships - the entry
-    # is then a documented no-op on the Godot side until that work lands.
+    # GODOT_READY because the writer emits slots[] even before the Godot
+    # importer consumes them - a documented no-op on the Godot side until then.
     "slot_system": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
-    # the pose-library shim. Tiny wrapper around Blender's
-    # native poselib.create_pose_asset; pose assets live in the Asset
-    # Browser, never reach the .proscenio. Pure authoring shortcut.
+    # Pose assets live in the Asset Browser and never reach the .proscenio.
     "pose_library": FeatureStatus.BLENDER_ONLY,
-    # Future / planned - placeholder rows ready for the work that ships them.
     "uv_animation": FeatureStatus.PLANNED,
     "live_link": FeatureStatus.PLANNED,
-    # Out-of-scope sentinels (not currently rendered, but available for
-    # hovering "why is X not here" cases).
     "ik_constraint_export": FeatureStatus.OUT_OF_SCOPE,
     "shape_key_animation": FeatureStatus.OUT_OF_SCOPE,
-    # Panel + subpanel header ids introduced by the panel restructure.
-    # Weight bind / transfer export weights -> godot-ready; the automesh,
-    # edit, snapshot, sidecar, and debug rows are blender-side authoring.
     "element": FeatureStatus.GODOT_READY,
     "active_mesh": FeatureStatus.GODOT_READY,
     "active_sprite": FeatureStatus.GODOT_READY,

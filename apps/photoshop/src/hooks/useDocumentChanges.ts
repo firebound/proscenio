@@ -1,21 +1,12 @@
 // Subscribes to Photoshop notification events that mutate the layer
-// tree or selection. Exposes a monotonically-increasing version number
-// other hooks (`useDocSnapshot`, `useExportPreview`) depend on so they
-// re-run automatically when the user edits the PSD.
+// tree or selection, exposing a monotonically-increasing version
+// number other hooks watch so they re-run when the user edits the PSD.
 //
-// Events watched:
-// - `select`  active layer changed
-// - `make`    new layer / group created
-// - `delete`  layer / group removed
-// - `set`     layer property changed (rename, visibility toggle, ...)
-// - `open`    document opened (switches the active doc)
-// - `close`   document closed
-//
-// PS fires `set` aggressively (one per attribute mutation); a 150ms
-// debounce keeps the downstream effects from thrashing while the user
-// drags a value slider or types a layer name. The UXP subscription
-// boundary lives in `api/ps-notifications`; this hook owns only the
-// debounce + version state.
+// PS fires `set` aggressively (one per attribute mutation), so a 150ms
+// debounce keeps downstream effects from thrashing while the user drags
+// a value slider or types a layer name. The UXP subscription boundary
+// lives in `api/ps-notifications`; this hook owns only debounce +
+// version state.
 
 import React from "react";
 

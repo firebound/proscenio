@@ -5,13 +5,10 @@ extends Node2D
 ## Documentation-by-example wrapper for the imported [code]doll.scn[/code].
 ##
 ## The Proscenio importer regenerates [code]doll.scn[/code] from
-## [code]doll.proscenio[/code] on every reimport (the reimport-merge work Option A).
-## Scripts and extra nodes attached directly to the generated scene are
-## clobbered. Wrap the imported scene in a separate [code].tscn[/code] -
-## like this one - and customize there. The wrapper is yours; reimport
-## never touches it.
-##
-## See [code].ai/skills/godot-dev.md[/code] for the full pattern.
+## [code]doll.proscenio[/code] on every reimport, clobbering scripts and
+## extra nodes attached directly to the generated scene. Wrap the imported
+## scene in a separate [code].tscn[/code] - like this one - and customize
+## there; reimport never touches the wrapper.
 
 ## Animation library name to play on [code]_ready()[/code]. The Proscenio
 ## importer puts DCC-authored animations under the default ("") library;
@@ -38,9 +35,7 @@ func _ready() -> void:
 
 
 func _find_player() -> AnimationPlayer:
-	# Walk the instanced child looking for the AnimationPlayer the Proscenio
-	# importer ships under the character root. Surface a helpful error if
-	# the wrapper has been re-parented in unexpected ways.
+	# The importer ships the AnimationPlayer under the character root.
 	for child: Node in get_children():
 		var found: AnimationPlayer = child.find_child("AnimationPlayer", true, false)
 		if found != null:

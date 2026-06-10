@@ -1,12 +1,7 @@
-"""Unit tests for UV-bounds → source-pixel-bbox math (the atlas-packer feature).
+"""Unit tests for UV-bounds → source-pixel-bbox math.
 
-Pure Python helpers powering the sliced atlas packer. Tests cover empty
-input, full-cover UVs, partial slice, expand padding, clamp to image
-bounds, and the inverse remap used by ``apply_packed_atlas``.
-
-Run from the repo root:
-
-    pytest tests/test_uv_bounds.py
+Pure Python helpers powering the sliced atlas packer. Covers the bbox
+computation and the inverse remap used by ``apply_packed_atlas``.
 """
 
 from __future__ import annotations

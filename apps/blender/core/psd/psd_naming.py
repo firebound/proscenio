@@ -1,11 +1,9 @@
-"""PSD layer naming convention helpers (the photoshop importer).
+"""PSD layer naming convention helpers.
 
-Pure Python - no bpy, no Pillow. The Photoshop UXP plugin (and the
-retired JSX exporter before it) uses the same rules in JavaScript /
-TypeScript when classifying layer groups; this module provides the
-Python mirror so the importer can sanity-check that a sprite
-manifest entry's children look like indexed frames before composing
-the spritesheet.
+Pure Python - no bpy, no Pillow. The Photoshop UXP plugin uses the same
+rules in TypeScript when classifying layer groups; this module is the
+Python mirror so the importer can sanity-check that a sprite manifest
+entry's children look like indexed frames before composing the spritesheet.
 
 Locked conventions (photoshop importer):
 

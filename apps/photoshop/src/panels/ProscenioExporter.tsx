@@ -1,8 +1,4 @@
-// Proscenio main panel. Pure composition: each section owns its own
-// presentation, each hook owns its own state. The panel only wires
-// them together. Adding a new section (e.g. the photoshop tag system tag inspector)
-// means adding one hook + one section component, not editing this
-// file.
+// Proscenio main panel: composes the export sections and their hooks.
 
 import React from "react";
 
@@ -51,10 +47,8 @@ export const ProscenioExporter: React.FC = () => {
         ],
     );
 
-    // Push template + pixels-per-unit values into the export options
-    // so a single ExportOptions struct is what the controller sees.
-    // Depend on the stable `setOption` callback (not the wrapper
-    // object) so the effect fires only when values actually change.
+    // Depend on the stable `setOption` callback (not the wrapper object)
+    // so the effect fires only when the values change.
     const setOption = exportFlow.setOption;
     React.useEffect(() => {
         setOption("polygonTemplate", templates.polygonTemplate);
@@ -62,8 +56,6 @@ export const ProscenioExporter: React.FC = () => {
         setOption("pixelsPerUnit", ppu.pixelsPerUnit);
     }, [setOption, templates.polygonTemplate, templates.framesTemplate, ppu.pixelsPerUnit]);
 
-    // Re-read the active doc + refresh preview whenever PS fires a
-    // notification or templates change.
     React.useEffect(() => {
         void refreshDoc();
         preview.refresh(reexportOpts);

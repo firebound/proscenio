@@ -28,8 +28,8 @@ export function useMigration(version: number): UseMigration {
     const [lastResult, setLastResult] = React.useState<MigrationResult | null>(null);
 
     React.useEffect(() => {
-        // Synchronous read on every PS notification bump; the previewer
-        // is pure and idempotent.
+        // previewUnderscoreMigration is pure and idempotent, so the
+        // synchronous setState in the effect is safe.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setPreview(previewUnderscoreMigration());
     }, [version]);
@@ -41,11 +41,10 @@ export function useMigration(version: number): UseMigration {
             setLastResult(result);
             setPreview(previewUnderscoreMigration());
         } catch (err) {
-            // applyUnderscoreMigration already absorbs per-candidate
-            // failures and returns a MigrationResult; this catch fires
-            // only when the outer executeAsModal itself rejects (PS
-            // busy / locked / target lost mid-flight). Surface that
-            // through the same shape the UI already renders.
+            // applyUnderscoreMigration absorbs per-candidate failures
+            // into its MigrationResult; this catch fires only when the
+            // outer executeAsModal itself rejects (PS busy / locked /
+            // target lost). Surface it through the same shape.
             setLastResult({
                 renamed: 0,
                 failures: [{

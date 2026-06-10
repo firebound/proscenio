@@ -102,10 +102,9 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
         empty.proscenio.slot_default = ATTACHMENT_NAMES[0]
-    # Also write Custom Property fallback so headless writer (CI) detects
-    # the slot without relying on the addon's PropertyGroup being
-    # registered. Mirrors the proscenio_<field> pattern used by sprite
-    # meshes (the authoring panel PG-canonical / CP-fallback contract).
+    # Custom Property fallback so the headless writer (CI) detects the
+    # slot without the addon's PropertyGroup registered (the PG-canonical
+    # / CP-fallback contract).
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = ATTACHMENT_NAMES[0]
     return empty

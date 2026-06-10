@@ -97,7 +97,6 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
     def poll(cls, context: bpy.types.Context) -> bool:
         if active_armature(context) is None:
             return False
-        # Allow when active is MESH or any selected object is MESH
         return any(o.type == "MESH" for o in context.selected_objects) or (
             context.active_object is not None and context.active_object.type == "MESH"
         )

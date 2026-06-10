@@ -1,10 +1,7 @@
-// Reads a snapshot of the current Photoshop active document into
-// React state. Refreshes on demand (the panel exposes a button)
-// because UXP does not auto-rerender on PS document changes.
-//
-// The read funnels through `api/active-document`; live PS-event
-// driven refresh is handled separately by `useDocumentChanges`, which
-// bumps a version other hooks watch.
+// Reads a snapshot of the active Photoshop document into React state,
+// refreshed on demand because UXP does not auto-rerender on PS
+// document changes. Live PS-event-driven refresh is handled separately
+// by `useDocumentChanges`.
 
 import React from "react";
 

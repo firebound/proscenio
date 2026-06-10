@@ -1,4 +1,4 @@
-"""Headless operator tests for the bind_mesh operator (the weight-paint productivity follow-up)."""
+"""Headless operator tests for the bind_mesh operator."""
 
 from __future__ import annotations
 

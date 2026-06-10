@@ -1,0 +1,20 @@
+---
+title: Elements
+sidebar_position: 3
+---
+
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import schema from "../../../packages/models/schemas/proscenio.schema.json";
+import {withDefs} from "@site/src/schema/with-defs";
+
+# Elements
+
+The two element kinds a character carries, discriminated by `type`: a deformable `mesh` element that becomes a Polygon2D, or a `sprite` element that becomes a Sprite2D spritesheet cell.
+
+## MeshElement
+
+<JSONSchemaViewer schema={withDefs(schema, "MeshElement")} />
+
+## SpriteElement
+
+<JSONSchemaViewer schema={withDefs(schema, "SpriteElement")} />

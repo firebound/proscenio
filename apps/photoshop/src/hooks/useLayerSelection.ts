@@ -1,8 +1,7 @@
-// Click-to-select seam for the panel sections. Sections route their
-// "reveal this layer in PS" intent through here instead of importing
-// `api/ps-selection` directly, keeping the layering
-// `panels -> hooks -> api`. Fire-and-forget: selection is a UI
-// affordance, so failures are logged inside the api layer, not awaited.
+// Click-to-select seam: sections route their "reveal this layer in PS"
+// intent through here instead of importing `api/ps-selection` directly,
+// keeping the layering `panels -> hooks -> api`. Fire-and-forget -
+// failures are logged inside the api layer, not awaited.
 
 import React from "react";
 

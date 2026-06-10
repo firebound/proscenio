@@ -8,7 +8,7 @@ Interactive reference for the two wire formats, rendered live from the JSON Sche
 
 Grouped by feature rather than by datatype:
 
-- **Proscenio character** (`.proscenio`) - what the Godot importer reads: the document, skeleton, sprites, slots, and animation.
+- **Proscenio character** (`.proscenio`) - what the Godot importer reads: the document, skeleton, elements, slots, and animation.
 - **PSD manifest** - what the Blender importer reads from the Photoshop export: the manifest and its layer kinds.
 
 Pick a topic from the sidebar.

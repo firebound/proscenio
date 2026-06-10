@@ -8,14 +8,7 @@ Run with::
 Walks every ``MESH`` object in the scene and renders each to
 ``examples/authored/doll/00_blender_base/render_layers/<object_name>.png`` from a front-orthographic
 camera, with transparent background and Workbench flat shading. The
-result is a stack of 2D layers - one per mesh - that the rest of the
-pipeline (preview composite, .proscenio export) consumes the same way
-it consumed the previous Pillow-drawn PNGs.
-
-Pipeline role: the ``.blend`` is the authored source of truth for the
-fixture's visual; this script flattens it into the per-region PNG
-layers that mimic the future Photoshop-driven workflow (one layer per
-body part).
+result is a stack of 2D layers, one per mesh.
 
 Camera setup
 ------------
@@ -94,8 +87,7 @@ def _configure_render(scene: bpy.types.Scene) -> None:
     scene.display.shading.light = "FLAT"
     scene.display.shading.color_type = "MATERIAL"
     scene.display.shading.show_specular_highlight = False
-    # Disable anti-aliasing - Workbench defaults to 8x AA, which blurs
-    # pixel-art edges. "OFF" gives nearest-neighbor crisp output.
+    # Workbench defaults to 8x AA, which blurs pixel-art edges.
     scene.display.render_aa = "OFF"
 
 
@@ -103,11 +95,9 @@ def _sync_material_viewport_colors() -> None:
     """Copy each material's Principled BSDF ``Base Color`` to its viewport color.
 
     Workbench's ``MATERIAL`` color mode reads ``material.diffuse_color``
-    (the *viewport display* color), not the surface shader. Authors set
-    Base Color when they paint a material, so we mirror that into the
-    viewport slot before rendering - gives flat-shaded layers in the
-    color the artist intended without forcing them to fill in two
-    fields per material.
+    (the *viewport display* color), not the surface shader. Mirror the
+    Base Color into that slot so flat-shaded layers come out in the
+    authored color.
     """
     for mat in bpy.data.materials:
         if not mat.use_nodes or mat.node_tree is None:
@@ -130,8 +120,7 @@ def _setup_camera(scene: bpy.types.Scene) -> bpy.types.Object:
         cam_obj = bpy.data.objects.new("layer_cam", cam_data)
         scene.collection.objects.link(cam_obj)
     cam_obj.data.type = "ORTHO"
-    # Front view: camera at -Y looking toward +Y, up = +Z. Matches the
-    # Blender Numpad-1 front projection.
+    # Front view: camera at -Y looking toward +Y, up = +Z.
     cam_obj.rotation_euler = (math.pi / 2.0, 0.0, 0.0)
     scene.camera = cam_obj
     return cam_obj

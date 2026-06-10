@@ -1,4 +1,4 @@
-"""Interactive modal automesh authoring operator (the weight-paint productivity follow-up).
+"""Interactive modal automesh authoring operator.
 
 5-stage modal that previews each pipeline stage with a GPU overlay
 so the artist iterates on the mesh shape before any geometry commits.
@@ -75,7 +75,7 @@ _TOOLTIP_BG_WARN = (0.35, 0.05, 0.05, 0.85)  # red: gesture would clip/drop the 
 # it must refresh on these (not only on MOUSEMOVE) or a stationary cursor shows
 # stale intent text while Shift/Ctrl/Alt is tapped.
 _SHIFT_CTRL_KEYS = frozenset({"LEFT_SHIFT", "RIGHT_SHIFT", "LEFT_CTRL", "RIGHT_CTRL"})
-#  toggle-pen: top-row + numpad digit event types -> subdivision count.
+# Toggle-pen: top-row + numpad digit event types -> subdivision count.
 _DIGIT_KEYS = {
     "ZERO": 0,
     "ONE": 1,
@@ -111,8 +111,8 @@ _STAGE_BASE_NAMES = {
     AuthoringStage.PREVIEW_INTERIOR: "Vertex preview",
     AuthoringStage.APPLY: "Apply",
 }
-# : SIMPLE drops INNER_LOOPS and relabels PREVIEW_INTERIOR to the
-# real triangulation preview; DENSE keeps the full 6-stage pipeline.
+# SIMPLE drops INNER_LOOPS and relabels PREVIEW_INTERIOR to the real
+# triangulation preview; DENSE keeps the full 6-stage pipeline.
 _SIMPLE_STAGE_ORDER = [
     AuthoringStage.OUTER,
     AuthoringStage.EDIT_OUTLINE,
@@ -205,8 +205,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         params = _snapshot_params(context)
         self._last_params = params
         self._stage = AuthoringStage.OUTER
-        # : stage list depends on interior mode; navigation walks this
-        # ordered list by index instead of raw enum arithmetic.
+        # Stage list depends on interior mode; navigation walks this ordered
+        # list by index, not raw enum arithmetic.
         self._interior_mode: str = params.interior_mode
         self._active_stages: list[AuthoringStage] = _stages_for_mode(self._interior_mode)
         self._output = StageOutput()
@@ -259,8 +259,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "points": [],
             "cursor": None,
             "mode": "pen",
-            "axis": "",  #  active axis lock ("", "x", "z") for the guide line
-            "subdivisions": 0,  #  ghost subdivision verts to preview
+            "axis": "",  # active axis lock ("", "x", "z") for the guide line
+            "subdivisions": 0,  # ghost subdivision verts to preview
         }
 
         # Tooltip live state - single-element lists mutated in-place so the
@@ -301,8 +301,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         try:
-            # : stage handlers get first crack so a pen line in progress
-            # can intercept Enter/RMB (finish) + Esc (discard line) BEFORE modal
+            # Stage handlers get first crack so a pen line in progress can
+            # intercept Enter/RMB (finish) + Esc (discard line) BEFORE modal
             # nav. In NEUTRAL they return None for those keys, so nav runs.
             if self._stage == AuthoringStage.EDIT_OUTLINE:
                 handled = self._handle_user_outer_event(context, event)
@@ -339,7 +339,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> set[str] | None:
         """Stage 2 (EDIT_OUTLINE) -> shared toggle-pen dispatch (outer). Shift =
-        extend, Ctrl = cut, Alt+click = delete (/)."""
+        extend, Ctrl = cut, Alt+click = delete."""
         return self._handle_pen_event(context, event, "outer")
 
     def _outer_stroke_undo(self, context: bpy.types.Context) -> set[str]:
@@ -427,8 +427,6 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     ) -> set[str] | None:
         """Stage 4 (EDIT_INTERIOR_POINTS) -> shared toggle-pen dispatch (interior)."""
         return self._handle_pen_event(context, event, "interior")
-
-    # ----- Shared toggle-pen machine (Stage 2 outer + Stage 4 interior) -----
 
     def _handle_pen_event(
         self, context: bpy.types.Context, event: bpy.types.Event, stage: str
@@ -922,7 +920,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     ) -> None:
         """Smooth, resample, and append a free-draw stroke (chaikin + arc-length
         resample by interior_spacing). Subdivisions do not apply here - free-draw
-        is already dense ( subdivisions are pen-segment-only)."""
+        is already dense (subdivisions are pen-segment-only)."""
         from ...core.automesh.stroke_geometry import (
             chaikin_smooth,
             resample_polyline,
@@ -974,9 +972,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             try:
                 self._refresh_steiner_preview(context, obj, image, params)
             except ValueError as exc:
-                # A degenerate CDT (self-intersecting fold/cut, empty silhouette)
-                # used to bubble up to modal()'s except Exception and cancel the
-                # whole session. Report + stay on the previous stage instead.
+                # Report a degenerate CDT (self-intersecting fold/cut, empty
+                # silhouette) and stay on the previous stage rather than
+                # cancelling the session.
                 report_error(self, f"Preview failed: {exc}")
                 return {"PASS_THROUGH"}
         elif next_stage == AuthoringStage.APPLY:
@@ -1051,11 +1049,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return {"PASS_THROUGH"}
 
     def _apply_interior_mode_change(self, context: bpy.types.Context, mode: str) -> None:
-        """Rebuild the active stage list when the interior mode flips mid-modal
-        . If the current stage was dropped (INNER_LOOPS on flip to
-         SIMPLE), snap back to EDIT_OUTLINE and clear any in-progress pen state
-         + reload that stage's strokes so a stale Stage 4 live preview cannot
-         leak into Stage 2."""
+        """Rebuild the active stage list when the interior mode flips mid-modal.
+
+        If the current stage was dropped (INNER_LOOPS on flip to SIMPLE), snap
+        back to EDIT_OUTLINE and clear any in-progress pen state + reload that
+        stage's strokes so a stale Stage 4 live preview cannot leak into Stage 2.
+        """
         self._interior_mode = mode
         self._active_stages = _stages_for_mode(mode)
         snapped = self._stage not in self._active_stages
@@ -1107,10 +1106,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if self._stage == AuthoringStage.OUTER:
             self._output.outer = compute_outer(obj, image, params)
         elif self._stage == AuthoringStage.EDIT_OUTLINE:
-            # : a slider drag while editing the silhouette must also
-            # refresh the base outer + the spliced preview, otherwise both
-            # lag the live params and extends are authored against an
-            # outdated boundary.
+            # A slider drag while editing the silhouette must also refresh the
+            # base outer + the spliced preview, or both lag the live params and
+            # extends are authored against an outdated boundary.
             self._output.outer = compute_outer(obj, image, params)
             self._refresh_outer_preview(context)
         elif self._stage == AuthoringStage.INNER_LOOPS:
@@ -1137,10 +1135,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _stage2_overlay_kwargs(self) -> dict[str, object]:
         """Return keyword args for Stage 2 (EDIT_OUTLINE) live containers.
 
-        Passes the outer stroke list via user_outer_strokes (cut = red,
-        ) plus the shared live-preview dict so the  toggle pen
-        renders its in-progress polyline / free-draw / axis guide the same way
-        Stage 4 does. Tooltip refs carry the DRAW/NEUTRAL intent text.
+        Passes the outer stroke list via user_outer_strokes (cut = red) plus
+        the shared live-preview dict so the toggle pen renders its in-progress
+        polyline / free-draw / axis guide the same way Stage 4 does. Tooltip
+        refs carry the DRAW/NEUTRAL intent text.
         """
         return {
             "user_outer_strokes": self._user_outer_strokes,

@@ -1,18 +1,11 @@
 """Unit tests for the mirror-all-fields semantics.
 
-The bug: per-field update callbacks only fired when the user touched that
-specific field. Defaults never triggered a callback -> Custom Property
-mirror was partial -> Reload Scripts restored only what had been touched.
-
-The fix: every update callback delegates to ``mirror_all_fields`` so the
-CP set is always a complete snapshot of the PropertyGroup. These tests
-cover that snapshot semantics without a Blender session.
-
-Also covers ``hydrate_object`` against the new region_* legacy keys.
-
-Run from the repo root:
-
-    pytest tests/test_mirror.py
+Guards the bug where per-field update callbacks only fired when the user
+touched that specific field, so defaults never mirrored and Reload
+Scripts restored only what had been touched. Every callback now delegates
+to ``mirror_all_fields`` so the Custom Property set is always a complete
+snapshot of the PropertyGroup. Also covers ``hydrate_object`` against the
+region_* legacy keys.
 """
 
 from __future__ import annotations

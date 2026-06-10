@@ -100,19 +100,13 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Two bones perpendicular to the XZ picture plane, pointing
-    TOWARD the Front Ortho camera.
+    """Two bones with tail at -Y, pointing toward the Front Ortho camera
+    (which looks along world -Y); the 2D-cutout convention.
 
-    Blender's Front Orthographic view looks along world -Y, so the
-    camera sits at +Y. Bones with tail at -Y from the head point at
-    the viewer - the Spine / 2D-cutout convention - and appear as
-    small octahedral dots from the front. A pose-mode R Y rotates the
-    bone around the camera axis, the visible "rotation in the picture"
-    that animators expect; reading it back via WORLD_SPACE + ROT_Y on
-    a driver picks up the same value.
-
-    Bones are spaced apart on world X so they remain selectable
-    individually from front-ortho even though they overlap visually.
+    A pose-mode R Y rotates the bone around the camera axis (the
+    visible "rotation in the picture"); WORLD_SPACE + ROT_Y on a driver
+    reads back the same value. Bones are spaced apart on world X so they
+    stay individually selectable from front-ortho despite overlapping.
     """
     arm_data = bpy.data.armatures.new("mouth_rig")
     arm_obj = bpy.data.objects.new("mouth_rig", arm_data)
@@ -236,9 +230,9 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
     the position-vs-driver split structurally (sprite is parented to it),
     but it stays at rest - the writer's pose-location channel currently
     drops the Z component for bones whose Y axis is not aligned with
-    world Z (see specs/backlog-bugs-found.md), so a translation here would not
-    round-trip into the .proscenio golden. Once that writer fix lands,
-    keyframes on ``mouth_pos`` can be added back.
+    world Z, so a translation here would not round-trip into the
+    .proscenio golden. Once that writer fix lands, keyframes on
+    ``mouth_pos`` can be added back.
     """
     armature_obj.animation_data_create()
     action = bpy.data.actions.new(name="mouth_drive_anim")

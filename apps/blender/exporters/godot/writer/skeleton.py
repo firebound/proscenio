@@ -63,14 +63,9 @@ def compute_bone_world_godot(armature_obj: bpy.types.Object, ppu: float) -> dict
         head_godot = world_to_godot_xy(head_world_blender, ppu)
         dir_blender = tail_world_blender - head_world_blender
         angle = godot_world_angle_from_dir(dir_blender)
-        # Use `bone.length * ppu` (the armature-local rest length), NOT the
-        # head->tail distance in Godot space. The Godot projection drops the
-        # Blender Y axis (depth), so a bone pointing into the screen - the
-        # common shape for a root/control bone - projects head and tail to
-        # the same XZ point and would yield length 0. `bone.length` is the
-        # true rest length the importer expects. (Trade-off: a non-uniformly
-        # scaled armature object is not reflected here; fixtures author rigs
-        # at unit scale, and the goldens lock this value.)
+        # Use bone.length * ppu (armature-local rest length), NOT the head->tail
+        # distance in Godot space: the projection drops the depth axis, so a bone
+        # pointing into the screen would project to length 0.
         out[bone.name] = BoneWorld(
             x=head_godot.x,
             y=head_godot.y,

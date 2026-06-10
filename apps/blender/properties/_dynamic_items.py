@@ -66,11 +66,9 @@ def driver_bone_items(
 def on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
     """Mirror every field on any panel edit.
 
-    Bug fix: individual per-field callbacks left the
-    CP set partial - defaults never fired their callback, so Reload
-    Scripts restored only the field the user touched. Mirroring all 10
-    fields on every update keeps the CP snapshot complete after the
-    first interaction.
+    Must mirror all fields, not only the edited one: a field left at its
+    default never fires its own update callback, so a per-field mirror
+    would leave the Custom Property snapshot partial.
     """
     obj = context.active_object
     if obj is not None:

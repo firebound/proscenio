@@ -50,16 +50,13 @@ def draw_batch(
 ) -> None:
     """Draw ``verts`` as ``prim_type`` via the UNIFORM_COLOR shader, then reset.
 
-    Collapses the ``blend_set`` / ``line_width_set`` (or ``point_size_set``) /
-    ``bind`` / ``uniform_float`` / ``draw`` / reset tail every single-batch
-    overlay draw repeats. Pass ``line_width`` for the LINE* prims, ``point_size``
-    for POINTS; the chosen knob is restored in a ``finally`` so a draw error
-    cannot leak GPU state. No-op on empty ``verts``.
+    Pass ``line_width`` for the LINE* prims, ``point_size`` for POINTS; the
+    chosen knob is restored in a ``finally`` so a draw error cannot leak GPU
+    state. No-op on empty ``verts``.
 
     This is the single-batch primitive. Overlays that set the blend state once
-    and loop several batches under a single ``bind`` (the stroke / disc /
-    inner-loop renderers) keep their own loop - collapsing those would re-cycle
-    the GPU state per batch.
+    and loop several batches under a single ``bind`` keep their own loop -
+    collapsing those would re-cycle the GPU state per batch.
     """
     if not verts:
         return
@@ -123,12 +120,8 @@ def draw_dashed_line_3d(
     step = dash_length + gap_length
     if step <= 0.0:
         return
-    # Hard cap on dash segments so a pathological dash_length /
-    # gap_length combination (e.g. someone wires a snap_increment or
-    # bone-length-derived value that ends up sub-pixel) cannot lock
-    # the draw thread. 2_000 segments cover any sane preview line at
-    # any zoom in Proscenio's 2D-cutout workspace - beyond that we
-    # silently clamp.
+    # Hard cap on dash segments: a sub-pixel dash_length/gap_length would
+    # otherwise lock the draw thread. Beyond the cap, dashes are clamped.
     max_segments = 2_000
     if total / step > max_segments:
         step = total / max_segments

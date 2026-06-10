@@ -80,8 +80,7 @@ extra_edges indices, so it indexes extra verts from this sentinel
 < outer count). build_automesh then remaps SENTINEL + k to the true coord
 position once the auto-fill count is known (outer + inner + auto + k).
 The sentinel is far above any real vert count (meshes are < 1000 verts),
-so the two namespaces never collide. Fixes the 2-fold fan bug where
-extra_edges referenced auto-fill verts instead of the stroke verts."""
+so the two namespaces never collide."""
 
 
 def _remap_extra_edge_indices(
@@ -204,8 +203,7 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     cell (= 4 source pixels at downscale=0.25). MAX guarantees the
     silhouette expands by AT MOST 1 downsampled cell outward, acting
     as a built-in 1-pixel safety margin without the explicit margin
-    setting. Caught in PR #51 smoke as "mesh boundary cuts inside
-    the alpha" (user demand: never cut alpha).
+    setting - the silhouette never cuts inside the alpha.
 
     Y-flip on read: Blender ``image.pixels[]`` is stored bottom-up
     (OpenGL convention - ``pixels[0]`` is the visual BOTTOM-LEFT of
@@ -265,9 +263,8 @@ def pixel_contour_to_world(
 
     The centering subtracts half the sprite extent from each axis
     so pixel (0, 0) lands at mesh-local (-half_w, +half_h) - the
-    top-left corner of a centered quad - rather than (0, 0). Without
-    this the generated annulus sat in the bottom-right quadrant of
-    the textured plane (regression caught during smoke validation).
+    top-left corner of a centered quad - rather than (0, 0), keeping
+    the generated annulus centered on the textured plane.
     ``source_width`` / ``source_height`` are the original image
     dimensions (NOT the downscaled grid dimensions), matching how
     the textured plane was sized at fixture-author time.
@@ -282,12 +279,9 @@ def pixel_contour_to_world(
     half_w = source_width * world_scale / 2.0
     half_h = source_height * world_scale / 2.0
     # Place verts at the CENTER of each boundary cell, not the
-    # left-top corner. The corner convention biased margins by side:
-    # left/top got OUTWARD vert placement (margin), right/bottom got
-    # INWARD placement (CUT into alpha). User caught this as "top
-    # generous + bottom cuts" - asymmetric coverage.
-    # Centering moves the vert half-cell inward from corner so all
-    # 4 sides get symmetric ~half-cell-of-dilation margin.
+    # left-top corner: the corner convention biases margins by side
+    # (left/top outward, right/bottom cut into alpha). Centering gives
+    # all 4 sides a symmetric ~half-cell margin.
     half_cell = factor / 2.0
     return [
         (x * factor - half_w + half_cell, half_h - y * factor - half_cell) for (x, y) in contour
@@ -301,9 +295,7 @@ def collect_bone_segments(
 
     Walks ``armature_obj.data.edit_bones`` (or ``bones`` when not in
     Edit Mode) and emits ``((head_x, head_z), (tail_x, tail_z))`` for
-    each deform-flagged bone. Y components are dropped since
-    Proscenio bones live on the Y=0 picture plane per the quick-armature work
-    convention.
+    each deform-flagged bone. Y is depth (XZ picture plane) and is dropped.
 
     Head / tail are transformed by ``armature_obj.matrix_world`` so
     the segments live in the same world space as the sprite contours
@@ -372,11 +364,10 @@ _STAGE_INDEX: dict[DebugStage, int] = {
     "fill_no_interior": 6,
     "final": 7,
 }
-# Reverse map - the operator uses this to decode the integer index
-# the bridge stashes in the counters dict back into a human-readable
-# stage label for the INFO report. Looks unused from inside this
-# module (CodeQL flagged it) but is part of the bridge's public
-# surface; deleting it breaks the operator import.
+# Reverse map - the operator decodes the integer index the bridge
+# stashes in the counters dict back into a stage label for the INFO
+# report. Unused inside this module but part of the public surface;
+# deleting it breaks the operator import.
 _STAGE_BY_INDEX: dict[int, DebugStage] = {value: key for key, value in _STAGE_INDEX.items()}
 
 
@@ -424,19 +415,16 @@ def _read_alpha_and_extract_contours(
         f"[automesh] alpha_grid {grid_w}x{grid_h} cells "
         f"nonzero={nonzero} above_threshold({alpha_threshold})={above_thr}"
     )
-    # margin_pixels is expressed in SOURCE image pixels so the user's
-    # mental model matches what they author in Photoshop / Pillow.
-    # Scale by downscale_factor so margin=5 + downscale=0.25 still
-    # corresponds to ~5 source pixels and not 5 grid cells (= 20
-    # source pixels). Regression caught in PR #51 smoke.
+    # margin_pixels is expressed in SOURCE image pixels (matching the
+    # user's Photoshop / Pillow mental model). Scale by downscale_factor
+    # so margin=5 + downscale=0.25 stays ~5 source pixels, not 5 grid
+    # cells (= 20 source pixels).
     grid_margin = max(0, round(margin_pixels * downscale_factor))
     outer_pixels, inner_pixels, hole_pixels = extract_contours(
         alpha_grid, alpha_threshold, grid_margin
     )
-    # the weight-paint-automesh amendment: hole contours feed CDT as additional
-    # constraint loops so the mesh excludes alpha holes. Proscenio
-    # differentiates from Spine + COA Tools 2 here - both refuse
-    # to support holes.
+    # Hole contours feed CDT as additional constraint loops so the mesh
+    # excludes alpha holes.
     print(
         f"[automesh] contour_pair grid_margin={grid_margin} "
         f"outer_pixels={len(outer_pixels)} inner_pixels={len(inner_pixels)} "
@@ -555,10 +543,9 @@ def _compute_steiner_points(
        the inner ring when the user opted into the annulus topology
        (margin_pixels > 0); without it, points inside the ring
        would survive into CDT only to become loose verts after the
-       inner ring's hole exclusion (regression flagged in PR #52
-       review). When ``inner_world`` is empty (margin_pixels = 0,
-       default), the helper treats the whole outer interior as fair
-       game - unchanged behavior.
+       inner ring's hole exclusion. When ``inner_world`` is empty
+       (margin_pixels = 0, default), the helper treats the whole
+       outer interior as fair game.
     2. Points falling inside any detected alpha hole are dropped -
        CDT excludes the hole region, so a Steiner there would
        become a loose vertex with no incident face.
@@ -830,7 +817,7 @@ def build_automesh(
     outer_world, inner_world, holes_world = _smooth_and_resample(
         outer_world_raw, inner_world_raw, holes_world_raw, target_contour_vertices
     )
-    # : when apply_mesh has already spliced + resampled the outer contour
+    # When apply_mesh has already spliced + resampled the outer contour
     # (extend strokes), use that override directly instead of the walker output.
     # Inner contour + holes still derive from the alpha walker unchanged.
     if outer_override is not None:

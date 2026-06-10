@@ -1,4 +1,4 @@
-"""Atlas image assembly + manifest write (split out of atlas_io).
+"""Atlas image assembly + manifest write.
 
 Bpy-bound: the function lazily imports ``bpy`` + ``numpy`` so pytest
 contexts that import the parent package without Blender don't break.
@@ -6,9 +6,8 @@ contexts that import the parent package without Blender don't break.
 Idempotency contract. ``compose_atlas`` snapshots every source image's
 pixel buffer into NumPy *before* it removes the existing
 ``bpy.data.images`` entry with the same name. That detaches the
-function from the StructRNA reference, so the case where a packed
-atlas is the *source* of the next pack (true on second-pack-after-apply)
-no longer crashes mid-loop.
+function from the StructRNA reference, so a packed atlas that is the
+*source* of the next pack no longer crashes mid-loop.
 """
 
 from __future__ import annotations
@@ -30,28 +29,20 @@ def compose_atlas(
 ) -> Any:
     """Build a single bpy.types.Image holding every packed source and save it.
 
-    Pixels are RGBA float32. Padding pixels are left transparent
-    (alpha=0) in this iteration - edge-extend padding to combat
-    bilinear bleeding can be added later without changing the operator
-    surface.
+    Pixels are RGBA float32. Padding pixels are left transparent (alpha=0).
 
-    Idempotency note. The function tolerates the case where
-    ``src.image`` is the same image we are about to overwrite (true on
-    second pack runs after the first apply linked every sprite to the
-    shared packed atlas). Source pixel arrays are copied into NumPy
-    upfront - **before** the existing atlas image is removed from
-    ``bpy.data.images`` - so the mid-loop ``StructRNA of type Image
-    has been removed`` error cannot happen.
+    Tolerates the case where ``src.image`` is the same image being
+    overwritten: source pixel arrays are copied into NumPy **before** the
+    existing atlas image is removed from ``bpy.data.images``, so the
+    mid-loop ``StructRNA of type Image has been removed`` error cannot happen.
 
     Returns the new ``bpy.types.Image``.
     """
     import bpy  # local import - module must remain importable from non-bpy contexts
     import numpy as np
 
-    # Snapshot every source's pixels into NumPy *before* mutating bpy.data.images.
-    # If `src.image` is the existing atlas-with-the-same-name we are about to
-    # remove, the snapshot detaches us from the bpy reference - Blender can
-    # then free the StructRNA without us crashing later in the loop.
+    # Snapshot every source's pixels into NumPy *before* mutating bpy.data.images,
+    # so removing a same-named existing atlas cannot invalidate a source mid-loop.
     placed_sources: list[tuple[SourceImage, Rect, np.ndarray]] = []
     for src in sources:
         rect: Rect | None = packed.placements.get(src.obj_name)
@@ -62,9 +53,8 @@ def compose_atlas(
                 src.height, src.width, 4
             )
         except (ReferenceError, AttributeError):
-            # Source image was already invalidated (e.g. an earlier pack run
-            # in this session removed it). Skip - the caller's validation
-            # path should surface this as a warning.
+            # Source image already invalidated; skip - the caller's
+            # validation path surfaces this as a warning.
             continue
         placed_sources.append((src, rect, pixels))
 
@@ -74,12 +64,10 @@ def compose_atlas(
 
     canvas: np.ndarray = np.zeros((packed.atlas_h, packed.atlas_w, 4), dtype=np.float32)
 
-    # Coordinate systems. The packer is internally top-down (y=0 means top of
-    # the atlas, the bin-packing convention); ``bpy.types.Image.pixels`` is
-    # bottom-up (row 0 = bottom of the image). UV-derived ``slice_px`` is
-    # bottom-up because Blender mesh UVs use bottom-left origin. We slice the
-    # source in bottom-up space, then convert the slot's top-down y to a
-    # bottom-up canvas row before pasting.
+    # Coordinate systems: packer slots are top-down (y=0 = top); both
+    # ``bpy.types.Image.pixels`` and the UV-derived ``slice_px`` are bottom-up
+    # (row 0 = bottom). Slice in bottom-up space, then convert each slot's
+    # top-down y to a bottom-up canvas row before pasting.
     for src, rect, src_pixels in placed_sources:
         sx, sy_bu, sw, sh = src.slice_px
         sliced = src_pixels[sy_bu : sy_bu + sh, sx : sx + sw]

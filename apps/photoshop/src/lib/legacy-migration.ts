@@ -1,8 +1,6 @@
-// the photoshop tag system: the legacy `_<name>` skip convention is gone, replaced
-// by `[ignore]`. Old PSDs authored under the photoshop UXP migration routinely use the
-// underscore prefix to opt layers out of the export. This module walks
-// the adapted layer tree and produces a list of rename candidates so
-// the artist can convert in bulk from the Tags tab.
+// Migrates the legacy `_<name>` skip convention to `[ignore]`. Walks
+// the adapted layer tree and produces rename candidates so the artist
+// can convert in bulk from the Tags tab.
 //
 // Rules:
 //   - any layer name with a leading underscore is a candidate;
@@ -12,8 +10,7 @@
 //     drops the prefix; otherwise ` [ignore]` is appended;
 //   - empty name after stripping (`_` alone) becomes `[ignore]`.
 //
-// Pure module; the matching UXP applier lives in
-// `src/api/legacy-migration.ts`.
+// Pure module; the matching UXP applier lives in `src/api/`.
 
 import type { Layer } from "./layer";
 

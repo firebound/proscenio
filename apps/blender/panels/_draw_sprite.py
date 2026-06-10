@@ -3,9 +3,6 @@
 Renders the sprite-frame metadata block: hframes / vframes / frame /
 centered, the atlas+region readout, the preview-shader setup buttons,
 and the shared region authoring box.
-
-Pulled out of ``panels/active_element.py`` by the code-modularity work so
-that file becomes a thin dispatcher over per-mode draw modules.
 """
 
 from __future__ import annotations

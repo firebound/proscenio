@@ -30,7 +30,7 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image:
 
 
 def test_active_stages_simple_drops_inner_loops(automesh_fixture):
-    """: SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
+    """SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
     )
@@ -49,7 +49,7 @@ def test_active_stages_simple_drops_inner_loops(automesh_fixture):
 
 
 def test_stage_label_numbering_tracks_active_len(automesh_fixture):
-    """: statusbar N/M derives from the active mode's stage count;
+    """Statusbar N/M derives from the active mode's stage count;
     PREVIEW_INTERIOR relabels to 'Triangulation preview' in SIMPLE."""
     from proscenio.core.skinning.authoring_stages import (
         AuthoringStage,  # type: ignore[import-not-found]
@@ -67,7 +67,7 @@ def test_stage_label_numbering_tracks_active_len(automesh_fixture):
 
 
 def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
-    """: Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
+    """Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
     the orange chunk-remove color is retired."""
     from proscenio.core.bpy_helpers.automesh import (
         authoring_overlay,  # type: ignore[import-not-found]
@@ -86,7 +86,7 @@ def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
 
 
 def test_automesh_from_alpha_operator_honors_interior_mode(automesh_fixture):
-    """: the standalone Automesh-from-Alpha operator (not just the
+    """The standalone Automesh-from-Alpha operator (not just the
     authoring modal) must honor interior_mode - SIMPLE yields fewer verts
     than DENSE on the same sprite."""
     obj = _activate("hand")
@@ -197,7 +197,7 @@ def test_apply_mesh_runs_with_prior_sidecar(automesh_fixture):
 
 
 def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
-    """: SIMPLE drops the uniform interior fill, so it must yield
+    """SIMPLE drops the uniform interior fill, so it must yield
     fewer total verts than DENSE on the same fixture while still being a
     valid triangulation (>=1 face)."""
     obj = _activate("hand")
@@ -231,7 +231,7 @@ def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
 
 
 def test_triangulation_preview_returns_world_edges_without_mutating_obj(automesh_fixture):
-    """: SIMPLE preview returns world-XZ edges and must NOT mutate the
+    """SIMPLE preview returns world-XZ edges and must NOT mutate the
     source object's mesh (it runs the real build on a throwaway copy)."""
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")
@@ -300,8 +300,7 @@ def test_world_steiners_to_local_applies_inverse_matrix(automesh_fixture):
     space). build_automesh's interior_points list is MESH-LOCAL XZ. The
     helper must apply obj.matrix_world.inverted() so points land in the
     polygon-filter coordinate space; otherwise sprites at obj.location !=
-    world origin lose all user steiners to point_in_polygon rejection
-    (user-reported bug 2026-05-25).
+    world origin lose all user steiners to point_in_polygon rejection.
     """
     obj = _activate("hand")
     from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
@@ -483,7 +482,7 @@ def test_user_outer_strokes_persist_via_custom_property(automesh_fixture):
 
 def test_apply_mesh_outer_cut_stroke_carves_corridor(automesh_fixture):
     """Stage 2 cut stroke (kind='cut' on user_outer_strokes) carves a corridor
-    hole - same unified path as Stage 4 cuts (T-REV5). The corridor is routed
+    hole - same unified path as Stage 4 cuts. The corridor is routed
     through holes_world; assert the apply produces a valid mesh + co-located
     verts exist at the corridor boundary (hole loop materialized). Face count
     is NOT a strict decrease - a short edge-adjacent corridor can net up or
@@ -542,7 +541,7 @@ def test_apply_mesh_outer_cut_stroke_carves_corridor(automesh_fixture):
 
 
 def test_apply_mesh_cut_stroke_carves_clean_corridor(automesh_fixture):
-    """kind='cut' carves a corridor hole through holes_world (T-REV5).
+    """kind='cut' carves a corridor hole through holes_world.
 
     The corridor removes faces (the gap between the offset polylines) but
     CLEANLY - via the same CDT-hole path as alpha holes, so no degenerate
@@ -653,14 +652,12 @@ def test_apply_mesh_outer_extend_stroke_grows_silhouette(automesh_fixture):
 
 
 def test_apply_mesh_two_fold_lines_no_fan_hub(automesh_fixture):
-    """Two fold-lines must not create a fan-degenerate hub (2-fold bug).
+    """Two fold-lines must not create a fan-degenerate hub.
 
-    Regression for the index-aliasing bug where extra_edges referenced
-    auto-fill verts instead of the stroke verts because the index base
-    omitted the auto-fill count. The symptom was one vert acquiring an
-    abnormal edge degree (a fan hub) + long edges spanning the mesh.
-    The sentinel-namespace remap (build_automesh._remap_extra_edge_indices)
-    fixes it. This test locks the contract: no vert hub, no long edges.
+    Guards the index-aliasing bug where extra_edges referenced auto-fill
+    verts instead of stroke verts: one vert acquired an abnormal edge
+    degree (a fan hub) plus long edges spanning the mesh. Contract: no
+    vert hub, no long edges.
     """
     import math
     from collections import defaultdict

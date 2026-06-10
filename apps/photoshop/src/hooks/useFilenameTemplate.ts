@@ -29,8 +29,7 @@ function save(key: string, value: string): void {
     try {
         globalThis.localStorage.setItem(key, value);
     } catch {
-        // localStorage not available (UXP variants, tests) - keep
-        // in-memory state only.
+        // localStorage unavailable (UXP variants, tests); in-memory only.
     }
 }
 

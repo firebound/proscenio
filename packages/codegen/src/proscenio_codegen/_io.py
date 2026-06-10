@@ -48,10 +48,7 @@ def write_atomic(target: Path, payload: str) -> None:
         try:
             os.unlink(tmp_name)
         except OSError:
-            # Best-effort cleanup: if the temp file is already gone or
-            # the filesystem refuses the unlink, swallow the secondary
-            # error so the original exception (the real failure) is
-            # what propagates out of write_atomic.
+            # Swallow the cleanup error so the original failure propagates.
             pass
         raise
 

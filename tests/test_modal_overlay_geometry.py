@@ -2,10 +2,6 @@
 
 bpy-free. Exercises the vertex builders consumed by
 ``core/bpy_helpers/modal_overlay.py``.
-
-Run from the repo root:
-
-    pytest tests/test_modal_overlay_geometry.py
 """
 
 from __future__ import annotations

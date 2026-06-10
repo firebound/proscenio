@@ -1,12 +1,8 @@
-"""Unit tests for the quick-armature follow-up Quick Armature pure-math helpers.
+"""Unit tests for the Quick Armature pure-math helpers.
 
 bpy-free. Covers chord resolution, grid snap, axis lock, and naming
 primitives consumed by
 ``apps/blender/operators/quick_armature.py``.
-
-Run from the repo root:
-
-    pytest tests/test_quick_armature_math.py
 """
 
 from __future__ import annotations
@@ -57,8 +53,7 @@ class TestResolvePressMode:
         )
 
     def test_legacy_with_shift_returns_disconnected(self) -> None:
-        # the original cut shipped Shift = parent + use_connect=False; the
-        # refinement keeps that vocabulary when the user opts back in.
+        # Legacy chord: Shift = parent + use_connect=False.
         assert resolve_press_mode(shift_held=True, default_chain=False) == (True, False)
 
 

@@ -1,10 +1,8 @@
 """Operator report helpers with shared ``Proscenio:`` prefix.
 
 Every operator in the addon reports user-facing messages through
-``self.report({"INFO"|"WARNING"|"ERROR"}, "Proscenio: ...")``. The
-``Proscenio:`` prefix was duplicated across 39 call sites; small
-report helpers centralise it and let call sites focus on the actual
-message.
+``self.report({"INFO"|"WARNING"|"ERROR"}, "Proscenio: ...")``; these
+helpers centralise the prefix.
 
 Pure Python - the helpers accept anything implementing the minimal
 ``ReportTarget`` Protocol (``op.report({...}, msg)``). Real

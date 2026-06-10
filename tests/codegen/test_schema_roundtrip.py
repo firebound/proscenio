@@ -3,20 +3,15 @@
 Confirms:
 
 1. ``proscenio_codegen schemas`` produces a JSON Schema dict that is
-   stable across runs (no nondeterministic ordering, the file is
-   reproducible from the models alone).
+   stable across runs (reproducible from the models alone).
 2. Every committed ``.proscenio`` fixture under ``examples/generated/``
-   validates against the pydantic model. This is the practical gate
-   for the typed-models codegen: if the model fails to accept a real shipped fixture,
-   the model is wrong.
+   validates against the pydantic model: if the model rejects a real
+   shipped fixture, the model is wrong.
 3. ``model_dump_json(exclude_unset=True)`` reproduces each golden
-   byte-for-byte. This is the load-bearing gate for the writer
-   migration: any drift between the pydantic field order and the
-   writer's historical dict insertion order would surface here before
-   the Blender exporter regenerates a single fixture.
+   byte-for-byte, catching any drift between the pydantic field order
+   and the writer's dict insertion order.
 4. The dumped JSON Schema at ``packages/models/schemas/proscenio.schema.json``
-   is on disk and parseable - the writer-side validation chain relies
-   on it staying in lockstep with the pydantic models.
+   is on disk and parseable, staying in lockstep with the models.
 """
 
 from __future__ import annotations
@@ -51,9 +46,8 @@ def _fixture_paths() -> list[Path]:
 def test_schema_dump_is_deterministic() -> None:
     """Two calls must produce identical dicts.
 
-    Catches any model ordering nondeterminism (set / dict
-    ordering, time-of-day defaults) that would make CI staleness
-    checks flaky.
+    Catches model ordering nondeterminism (set/dict ordering, time-of-day
+    defaults) that would make CI staleness checks flaky.
     """
     a = build_proscenio_schema()
     b = build_proscenio_schema()
@@ -70,12 +64,11 @@ def test_schema_dump_has_root_metadata() -> None:
 def test_committed_schemas_match_emit(tmp_path: Path) -> None:
     """The checked-in JSON Schemas reproduce from the current pydantic models.
 
-    Staleness gate (mirrors the GDScript emitter's committed-match test):
-    a contributor who edits a model but forgets to re-run
+    Staleness gate: a contributor who edits a model but forgets to re-run
     ``python -m proscenio_codegen schemas`` leaves the committed schema out
     of sync, which leaves the TS / GDScript / docs artifacts that derive
-    from it stale. JSON Schema is the root artifact, so locking it here
-    catches model drift at the source without any external tooling.
+    from it stale. Locking the root JSON Schema catches model drift at the
+    source without external tooling.
     """
     emit_all_schemas(tmp_path)
     committed = sorted(SCHEMAS_DIR.glob("*.json"))
@@ -97,7 +90,7 @@ def test_pydantic_model_accepts_every_committed_fixture() -> None:
     )
     for fixture in fixtures:
         payload = json.loads(fixture.read_text(encoding="utf-8"))
-        # Will raise ValidationError on shape mismatch.
+        # raises ValidationError on shape mismatch (the assertion)
         ProscenioDocument.model_validate(payload)
 
 
@@ -105,10 +98,8 @@ def test_pydantic_model_accepts_every_committed_fixture() -> None:
 def test_round_trip_dump_and_validate(fixture_path: Path) -> None:
     """Every committed fixture survives parse + dump + parse.
 
-    Parses the on-disk JSON, dumps the model back to a dict via
-    ``model_dump(exclude_none=True)`` to strip defaulted-None fields
-    (the writer does not emit ``None``s today), and re-validates the
-    result. Asserts the second parse succeeds.
+    Dumps via ``model_dump(exclude_none=True)`` to strip defaulted-None
+    fields (the writer does not emit ``None``s today), then re-validates.
     """
     payload = json.loads(fixture_path.read_text(encoding="utf-8"))
     parsed = ProscenioDocument.model_validate(payload)
@@ -122,19 +113,16 @@ def test_model_dump_json_reproduces_goldens(fixture_path: Path) -> None:
     """Pydantic's ``model_dump_json(exclude_unset=True)`` must reproduce
     the goldens byte-for-byte after a parse round-trip.
 
-    The writer migration in the typed-models codegen P2 swaps the hand-rolled
-    ``json.dumps(doc, indent=2)`` for the pydantic emit path; this
-    test is the load-bearing gate that catches any field-order or
-    serialization drift between the model and the historical writer.
+    Guards against field-order or serialization drift between the model
+    and the writer's pydantic emit path.
 
-    Strip trailing whitespace before comparing because some goldens
-    were generated on Windows (CRLF) and pydantic always writes LF.
+    Normalizes line endings before comparing: some goldens were generated
+    on Windows (CRLF) and pydantic always writes LF.
     """
     golden_text = fixture_path.read_text(encoding="utf-8")
     payload = json.loads(golden_text)
     parsed = ProscenioDocument.model_validate(payload)
     actual = parsed.model_dump_json(indent=2, exclude_unset=True)
-    # Normalize line endings; ignore trailing newline differences.
     assert actual.rstrip("\n") == golden_text.rstrip("\n").replace("\r\n", "\n")
 
 

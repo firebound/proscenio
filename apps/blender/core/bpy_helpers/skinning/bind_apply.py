@@ -32,11 +32,9 @@ _ENVELOPE_DEFAULT_RADIUS = 1.0
 _ORPHAN_EPS = 1e-6
 _ADAPTIVE_MAX_FACTOR = 1.5
 
-# Mapping from the operator-level BindMode to the BoneMode that a per-bone
-# override of "SOFT" or "HARD" corresponds to. PROXIMITY/ENVELOPE/BONE_HEAT
-# are proximity-falloff family (SOFT); SINGLE_NEAREST/EMPTY are hard-cut
-# family (HARD). Used to derive the default BoneMode fallback so that per-bone
-# overrides are always expressed relative to what the operator already does.
+# PROXIMITY/ENVELOPE/BONE_HEAT are proximity-falloff family (SOFT);
+# SINGLE_NEAREST/EMPTY are hard-cut family (HARD). Per-bone SOFT/HARD overrides
+# are expressed relative to this default family.
 _BIND_MODE_TO_BONE_MODE: dict[BindMode, BoneMode] = {
     "PROXIMITY": "SOFT",
     "ENVELOPE": "SOFT",
@@ -111,9 +109,6 @@ def _collect_envelope_radii(armature: bpy.types.Object) -> dict[str, float]:
     """Read per-bone ``proscenio_envelope_radius`` Custom Property.
 
     Missing keys default to ``_ENVELOPE_DEFAULT_RADIUS`` (1.0).
-    Edit Weights modal becomes the UI surface
-    for these radii; bind alone exposes them via the manual
-    Custom Property editor.
     """
     radii: dict[str, float] = {}
     for bone in iter_deform_bones(armature):
@@ -153,7 +148,6 @@ def _apply_bone_mode_overrides(
     if not override_exists:
         return weights
 
-    # Compute alternate matrix for the opposing mode family.
     alt_mode = _alt_bind_mode(default_bmode)
     # Heterogeneous value types (float + float | None) - bind_weights_for_mode
     # accepts both via separate kwargs; use Any to avoid dict-invariance errors.
@@ -258,9 +252,8 @@ def _apply_bone_heat(obj: bpy.types.Object, armature: bpy.types.Object) -> dict[
 
     Wipes any prior sidecar BEFORE the bpy.ops call (atomicity gate);
     stamps a populated WeightSidecar via ``snapshot_sidecar``
-    (provenance="auto_seed") AFTER on success.
-    Failure raises RuntimeError upward - operator surfaces a hint
-    about trying PROXIMITY as fallback.
+    (provenance="auto_seed") AFTER on success. Failure raises
+    RuntimeError upward.
     """
     if _SIDECAR_KEY in obj:
         del obj[_SIDECAR_KEY]

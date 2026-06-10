@@ -22,10 +22,9 @@ from .skeleton import BoneRestLocal, wrap_pi
 class _KeyKwargs(TypedDict):
     """Constructor kwargs for a ``bone_transform`` ``Key``.
 
-    Channel fields are ``NotRequired`` so a track only emits the
-    channels it actually animates; an explicit ``None`` would serialise
-    as ``"position": null`` under exclude_unset and drift from the
-    goldens (the legacy dict writer set each channel conditionally).
+    Channel fields are ``NotRequired`` so a track only emits the channels it
+    animates; an explicit ``None`` would serialise as ``"position": null`` under
+    exclude_unset and drift the goldens.
     """
 
     time: float
@@ -118,11 +117,9 @@ def build_bone_track(
     keys: list[Key] = []
     for t in sorted(resolved.keys()):
         r = resolved[t]
-        # Pass only the channels this track carries. Omitting a channel
-        # leaves the Key field unset so model_dump_json(exclude_unset=True)
-        # drops the key entirely - matching the legacy dict writer that
-        # only set `position`/`rotation`/`scale` when the channel had a
-        # delta. Passing None explicitly would emit `"position": null`.
+        # Pass only the channels this track carries; omitting a channel leaves
+        # the Key field unset so exclude_unset drops it. An explicit None would
+        # emit "position": null.
         key_kwargs: _KeyKwargs = {"time": round(t, 6)}
         if has_position:
             key_kwargs["position"] = _absolute_position(rest.position, r.position)
@@ -179,9 +176,8 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> PoseD
         loc = entry["location"]
         bx = float(loc.get(0, 0.0))
         bz = float(loc.get(2, 0.0))
-        # Y is the depth axis in Proscenio's XZ picture plane convention,
-        # so a keyframe authored only on bone-Y has no visible motion and
-        # shouldn't force a position channel into the export.
+        # Y is the depth axis (XZ picture plane), so a Y-only keyframe has no
+        # visible motion and must not promote a position channel.
         if max(abs(bx), abs(bz)) > 1e-6:
             position = [round(bx * ppu, 6), round(-bz * ppu, 6)]
 
@@ -198,9 +194,8 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> PoseD
         sc = entry["scale"]
         sx = float(sc.get(0, 1.0))
         sz = float(sc.get(2, 1.0))
-        # Same XZ-picture-plane reasoning as the location branch: scaling
-        # along bone-Y has no visible effect, so it should not promote
-        # the scale channel into the export.
+        # Same XZ reasoning: scaling along bone-Y has no visible effect, so it
+        # must not promote a scale channel.
         if max(abs(sx - 1.0), abs(sz - 1.0)) > 1e-6:
             scale = [round(sx, 6), round(sz, 6)]
 

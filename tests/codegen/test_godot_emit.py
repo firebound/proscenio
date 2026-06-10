@@ -1,10 +1,9 @@
 """Smoke tests for the GDScript Resource emitter.
 
-The Blender side rebuilds and verifies these .gd files only through
-the Godot lint job in CI (``lint-gdscript``); these workspace tests
-focus on the Python-side contract: every pydantic model produces a
-file, the emit is deterministic across runs, and the canonical
-header banner survives.
+These cover the Python-side contract: every pydantic model produces a
+file, the emit is deterministic across runs, and the header banner
+survives. The GDScript itself is rebuilt and verified by the Godot
+lint job in CI.
 """
 
 from __future__ import annotations
@@ -27,9 +26,8 @@ def test_godot_emitter_writes_one_file_per_model(tmp_path: Path) -> None:
     written = emit_godot_resources(tmp_path)
     names = {p.name for p in written}
 
-    # Every emitted class_name carries the `Proscenio` prefix so it
-    # cannot collide with Godot built-ins (`Animation`, `Skeleton`,
-    # `Bone`, ...). Filenames follow the prefixed class.
+    # Every class_name carries the `Proscenio` prefix to avoid colliding
+    # with Godot built-ins (`Animation`, `Skeleton`, ...); filenames follow.
     expected_models = {
         "proscenio_bone.gd",
         "proscenio_skeleton.gd",
@@ -56,12 +54,10 @@ def test_godot_emitter_writes_one_file_per_model(tmp_path: Path) -> None:
 def test_emit_is_deterministic(tmp_path: Path) -> None:
     """Two consecutive emits must produce byte-identical files.
 
-    gdformat is the post-pass that normalizes whitespace; this test
-    runs without invoking it so we exercise the Python emit path's
-    own determinism (catches dict-ordering or set-ordering bugs that
-    would surface in the dispatcher case-list, for example).
+    Runs without the gdformat whitespace post-pass, so it exercises the
+    Python emit path's own determinism (catches dict/set ordering bugs in
+    the dispatcher case-list, for example).
     """
-    # Run twice into distinct dirs; compare matching filenames.
     dir_a = tmp_path / "a"
     dir_b = tmp_path / "b"
     dir_a.mkdir()
@@ -78,10 +74,8 @@ def test_emit_is_deterministic(tmp_path: Path) -> None:
 def test_committed_artifacts_match_emit() -> None:
     """The checked-in .gd files reproduce from the current pydantic models.
 
-    Catches a contributor who edited a generated file by hand instead
-    of editing the source models. The check writes to a tmp dir, runs
-    the gdformat post-pass against both committed and freshly emitted
-    files, and diffs.
+    Catches a contributor who edited a generated file by hand instead of
+    the source models, by diffing the committed files against a fresh emit.
     """
     if not GODOT_BINDINGS_DIR.is_dir():
         pytest.skip("schema_bindings/ not committed yet")

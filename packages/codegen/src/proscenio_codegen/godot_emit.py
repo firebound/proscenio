@@ -22,11 +22,6 @@ Type mapping (pydantic -> GDScript):
 - ``list[X]`` (BaseModel)-> ``Array[X]`` (typed array)
 - ``list[str]``          -> ``PackedStringArray``
 - ``X | None``           -> nullable; the from_dict handles the absence
-
-P4b will wire the importer + builders to consume these classes. This
-PR ships the codegen layer plus parsing-only artifacts; the
-hand-written importer in ``apps/godot/addons/proscenio/`` keeps
-reading the raw ``Dictionary`` until then.
 """
 
 from __future__ import annotations
@@ -123,9 +118,6 @@ def _union_dispatcher_name(item: Any) -> str | None:
             variant_models.add(peeled)
     if not variant_models:
         return None
-    # The dispatcher names are paired with the models module's
-    # discriminated unions. Keep this small lookup local so each emit
-    # run doesn't import every model module at the top of this file.
     from proscenio_models.proscenio import MeshElement, SpriteElement
     from proscenio_models.psd_manifest import MeshLayer, SpriteLayer
 
@@ -247,10 +239,8 @@ def _resource_class_name(model: type[BaseModel]) -> str:
 
     Every generated class gets a ``Proscenio`` prefix so it cannot
     collide with Godot's built-in classes (``Animation``, ``Skeleton``,
-    ``Bone`` and friends would all shadow native types otherwise).
-    Models whose pydantic name already starts with ``Proscenio`` keep
-    it - applies to ``ProscenioDocument`` today and to whichever future
-    model the author already prefixed.
+    ``Bone`` would all shadow native types otherwise). Models already
+    prefixed ``Proscenio`` keep their name.
     """
     name = model.__name__
     if name.startswith("Proscenio"):
@@ -336,27 +326,20 @@ def _emit_model(model: type[BaseModel]) -> str:
             joined = ", ".join(f"{v}" for v in py_default)
             default = f"PackedFloat32Array([{joined}])"
 
-        # `scale` is a reserved built-in on Resource via Node2D contexts; the
-        # importer never sets it through the Resource layer so we keep the
-        # field name as declared for round-trip exactness.
         field_decls.append(f"@export var {name}: {resolved.gd_type} = {default}")
 
         wrapped = resolved.parse_expr_template.format(value=f'data["{name}"]')
         # Typed-array properties (Array[T]) cannot take the untyped Array the
         # object/union parsers return via plain ``=``; fill them with
-        # ``Array.assign`` instead. Scalars and the already-typed vec2 array
-        # parser keep direct assignment.
+        # ``Array.assign`` instead.
         assignment = (
             f"res.{name}.assign({wrapped})"
             if resolved.needs_assign
             else f"res.{name} = {wrapped}"
         )
-        # Guard against JSON nulls: pydantic Optional fields decode as None
-        # in dicts, which would break String(null) / Vector2(null) parsers.
-        # The default declared on the property covers the missing case.
-        # `_set_fields` records which keys actually appeared in `data` so
-        # downstream consumers (animation_builder, etc.) can tell "set to
-        # default" apart from "absent from the source document".
+        # Guard against JSON nulls: pydantic Optional fields decode as None,
+        # which would break String(null) / Vector2(null) parsers; the
+        # property default covers the missing case.
         parsers.append(
             f'\tif data.has("{name}") and data["{name}"] != null:\n'
             f"\t\t{assignment}\n"
@@ -536,15 +519,11 @@ def emit_godot_resources(target_dir: Path = GODOT_BINDINGS_DIR) -> list[Path]:
 def _gdformat_in_place(target_dir: Path) -> None:
     """Run gdformat over the emitted files, if available.
 
-    The hand-rolled emitter produces functionally-equivalent output to
-    what gdformat normalizes to (blank-line counts, trailing whitespace,
-    indent), but matching it character-for-character from Python is
-    brittle. Letting gdformat re-write each file post-emit keeps the
-    committed artifacts in the same canonical shape as the rest of the
-    Godot tree without duplicating gdtoolkit's heuristics here. If
-    gdformat is not on PATH (e.g. a contributor running codegen for the
-    first time before installing gdtoolkit), skip silently - the
-    gdscript-lint CI job is the staleness gate that catches drift.
+    Matching gdformat's canonical shape (blank-line counts, trailing
+    whitespace, indent) character-for-character from Python is brittle,
+    so let gdformat re-write each file post-emit. When gdformat is not
+    on PATH, skip silently - the gdscript-lint CI job is the staleness
+    gate that catches drift.
     """
     binary = shutil.which("gdformat") or shutil.which("gdformat.exe")
     if binary is None:

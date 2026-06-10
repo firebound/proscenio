@@ -36,7 +36,7 @@ def maybe_pre_regen_snapshot(
     - PG flag preserve_on_regen = False
     - obj has no existing sidecar AND no vertex_groups (nothing to snapshot)
 
-    Mixed-flow fallback (M1): when no sidecar exists but vertex_groups are
+    Mixed-flow fallback: when no sidecar exists but vertex_groups are
     populated (e.g. user bound via Ctrl+P Armature Auto Weights without our
     bind operator), build the sidecar on-the-fly from current vgroup data so
     weights survive the next automesh regen.
@@ -57,12 +57,12 @@ def _snapshot_from_existing_sidecar(
     armature: bpy.types.Object,
     payload: str,
 ) -> WeightSidecar | None:
-    """Happy path: existing sidecar present - snapshot from live vgroup state.
+    """Existing sidecar present - snapshot from live vgroup state.
 
     Falls through to the vgroup fallback when (a) the JSON is corrupt or (b)
-    the sidecar has zero entries. Without the fall-through, a corrupted or
-    empty sidecar would silently wipe the user's vgroup-based weights on
-    regen (the exact mixed-flow data-loss class M1 was meant to prevent).
+    the sidecar has zero entries. The fall-through is required: a corrupted or
+    empty sidecar would otherwise silently wipe the user's vgroup-based weights
+    on regen.
     """
     try:
         existing = from_json(payload)
@@ -77,7 +77,7 @@ def _snapshot_from_vgroups_fallback(
     obj: bpy.types.Object,
     armature: bpy.types.Object,
 ) -> WeightSidecar | None:
-    """Mixed-flow fallback (M1): no sidecar but vertex_groups may carry weights.
+    """Mixed-flow fallback: no sidecar but vertex_groups may carry weights.
 
     Covers Ctrl+P Armature Auto Weights bind (no sidecar written). Build
     sidecar on-the-fly so post-regen reproject can restore weights.

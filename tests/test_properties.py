@@ -4,10 +4,6 @@ Mocks ``bpy.types.Object`` via :class:`SimpleNamespace` so the hydration
 helper is exercised without a Blender session. The Blender side of the
 addon (PointerProperty wiring, register/unregister, decorators) is out
 of scope here - covered by the manual smoke test.
-
-Run from the repo root:
-
-    pytest tests/test_properties.py
 """
 
 from __future__ import annotations

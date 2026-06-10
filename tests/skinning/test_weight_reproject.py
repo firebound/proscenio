@@ -64,8 +64,8 @@ def test_far_anchor_falls_back_to_none():
 
 
 def test_fewer_than_three_old_entries_falls_back_to_nearest():
-    # B2 fix: 1-2 donors in range no longer auto_seeds. Inherits nearest
-    # donor's weights so the user does not lose paint on chained regens.
+    # 1-2 donors in range inherit the nearest donor's weights rather than
+    # auto_seeding, so the user does not lose paint on chained regens.
     old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((1.0, 0.0), {"A": 1.0})]
     out = reproject_entries(old, [(0.3, 0.0)], max_distance=2.0)
     assert out[0] is not None
@@ -75,7 +75,7 @@ def test_fewer_than_three_old_entries_falls_back_to_nearest():
 
 def test_zero_donors_in_range_still_returns_none():
     # Only when NO donor exists in range do we fall back to caller-side
-    # auto_seed (caller knows the target is truly out of mesh scope).
+    # auto_seed (the target is truly out of mesh scope).
     old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((0.1, 0.0), {"A": 1.0})]
     out = reproject_entries(old, [(10.0, 10.0)], max_distance=0.5)
     assert out == [None]
@@ -93,11 +93,10 @@ def test_single_bone_weight_preserved_under_interpolation():
 
 
 def test_degenerate_collinear_triangle_falls_back_to_nearest():
-    # B2 fix: when barycentric returns None (target outside the donor
-    # triangle, OR donors collinear so triangle is degenerate), fall back
-    # to nearest donor instead of auto_seed. Prior behavior dropped
-    # weights at every silhouette-boundary vert and produced the chaotic
-    # weight pattern seen during weight-paint smoke.
+    # When barycentric returns None (target outside the donor triangle, or
+    # donors collinear so the triangle is degenerate), fall back to nearest
+    # donor instead of auto_seed - otherwise weights drop at every
+    # silhouette-boundary vert.
     old = [
         _entry((0.0, 0.0), {"A": 1.0}),
         _entry((0.5, 0.0), {"A": 1.0}),
@@ -110,8 +109,8 @@ def test_degenerate_collinear_triangle_falls_back_to_nearest():
 
 
 def test_user_paint_carried_through_nearest_fallback():
-    # When the nearest-fallback fires (B2 fix), the donor's user_paint
-    # provenance must still propagate so artist marks survive the regen.
+    # When the nearest-fallback fires, the donor's user_paint provenance
+    # must still propagate so artist marks survive the regen.
     old = [
         _user_entry((0.0, 0.0), {"A": 1.0}),
         _entry((0.5, 0.0), {"A": 1.0}),
@@ -134,9 +133,8 @@ def test_negative_max_distance_raises():
 
 
 def test_user_paint_donor_propagates_to_new_entry():
-    # B1 fix - any donor with user_paint should carry the marker
-    # through reproject so artists do not silently lose their work
-    # on automesh regen.
+    # Any donor with user_paint must carry the marker through reproject so
+    # artists do not silently lose their work on automesh regen.
     old = [
         _user_entry((0.0, 0.0), {"A": 1.0}),
         _entry((1.0, 0.0), {"A": 1.0}),

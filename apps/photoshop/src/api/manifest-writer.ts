@@ -1,9 +1,6 @@
 // Manifest JSON writer. Stringifies a v2 manifest with two-space
-// indent so output is diff-friendly against the legacy JSX exporter
-// baseline, then writes it through the UXP local file system.
-//
-// Validation runs at the call site (`api/export-flow.ts`) so
-// the panel can surface ajv errors before any disk writes happen.
+// indent (diff-friendly) and writes it through the UXP file system.
+// Validation runs at the call site, before any disk write.
 
 import type { UxpFolder } from "uxp";
 
@@ -16,8 +13,7 @@ export async function writeManifest(
 ): Promise<void> {
     const file = await folder.createFile(fileName, { overwrite: true });
     const body = JSON.stringify(manifest, null, 2);
-    // No `{ format: "utf8" }` here - UXP's storage API rejects a bare
-    // string and wants `storage.formats.utf8`. The default for string
-    // content already is utf8, so omitting the option is the safe path.
+    // Pass no format option: UXP rejects a bare `"utf8"` string (it
+    // wants `storage.formats.utf8`), and string content defaults to utf8.
     await file.write(body);
 }

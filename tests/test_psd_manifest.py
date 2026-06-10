@@ -6,10 +6,6 @@ covers strict JSON Schema enforcement separately).
 
 The pydantic model constrains ``format_version`` to ``1``; documents
 declaring any other version are rejected up front.
-
-Run from the repo root::
-
-    pytest tests/test_psd_manifest.py
 """
 
 from __future__ import annotations

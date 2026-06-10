@@ -1,12 +1,10 @@
-// Click-to-select helper for the Validate / Debug surfaces. UXP
-// exposes layer selection through `action.batchPlay` rather than a
-// direct Layer.select() method, so this module wraps the descriptor
-// so the panel can stay focused on UI concerns.
+// Click-to-select helper for the Validate / Debug surfaces. UXP exposes
+// layer selection through `action.batchPlay`, not a direct
+// `Layer.select()` method.
 //
-// `layerPath` is the chain of layer names from the document root down
-// to the leaf - the same shape `PngWrite.layerPath` carries. Names
-// must match the live PSD (the planner uses display-name semantics on
-// the manifest, but selection has to use the raw PS layer name).
+// `layerPath` is the chain of layer names from the document root down to
+// the leaf. Names must match the live PSD - selection uses the raw PS
+// layer name, not the manifest display-name semantics.
 
 import { action, app, core } from "photoshop";
 import type { PsDocument, PsLayer } from "photoshop";
@@ -33,10 +31,9 @@ export function readActiveLayerPath(): string[] | null {
         for (let i = 0; i < MAX_DEPTH; i++) {
             if (cur === undefined || cur === null) break;
             if (cur === doc) break;
-            // Doc-shaped sentinel: has width/height but no parent.
-            // Some UXP builds return a fresh wrapper for the document
-            // on the parent chain that fails reference equality with
-            // `doc`. Stop there too.
+            // Some UXP builds put a fresh document wrapper on the parent
+            // chain that fails reference equality with `doc`; detect it by
+            // shape (width/height but no parent) and stop there too.
             if (isDocumentShape(cur)) break;
             const name = (cur as PsLayer).name;
             if (typeof name !== "string") {
@@ -68,13 +65,10 @@ export async function selectLayerByPath(layerPath: readonly string[]): Promise<v
         log.warn("ps-selection", "selectLayerByPath: no active document");
         return;
     }
-    // Resolve the full path to a concrete PsLayer first so the
-    // batchPlay descriptor can address the layer by `_id` instead of
-    // by leaf `_name`. A bare `_name: leaf` reference is ambiguous in
-    // PSDs where two siblings in different branches share a name
-    // (e.g. `body/eye.L` and `face/eye.L`) - the live document picks
-    // whichever the walker finds first, which is not necessarily the
-    // path the Validate / Debug row was emitted from.
+    // Resolve to a concrete PsLayer so the batchPlay descriptor addresses
+    // the layer by `_id`, not leaf `_name`: a bare `_name: leaf` reference
+    // is ambiguous when two siblings in different branches share a name
+    // (e.g. `body/eye.L` and `face/eye.L`).
     const target = findLayerByPath(doc, layerPath);
     if (target === null) {
         log.warn("ps-selection", "selectLayerByPath: layer not found", layerPath);

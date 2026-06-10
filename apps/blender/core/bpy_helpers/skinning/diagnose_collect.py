@@ -2,8 +2,7 @@
 
 Extracts primitive data via bmesh / mathutils.kdtree, delegates
 the actual checks to the pure ``core.skinning.bind_diagnosis``
-helpers. Lives under ``core/bpy_helpers/skinning/`` per the
-domain-package convention adopted in the productivity follow-up cleanup (PR #52).
+helpers.
 """
 
 from __future__ import annotations

@@ -1,11 +1,5 @@
-// the photoshop tag system reveal-output detail surface (read-only). When the artist
-// selects a PS layer that maps to a manifest entry, this panel shows
-// what the export will emit for it - kind, name, manifest path,
-// position, size, origin, blend, subfolder - plus the resolved on-disk
-// PNG path under the current output folder.
-//
-// The "Re-export this entry's PNG" action lives in the Exporter panel
-// (see ReexportSection); the Tags panel keeps only the inspection.
+// Read-only detail surface for the active layer's matched manifest
+// entry, plus its resolved on-disk PNG path(s).
 
 import React from "react";
 import type { UxpFolder } from "uxp";

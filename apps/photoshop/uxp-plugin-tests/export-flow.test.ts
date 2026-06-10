@@ -1,6 +1,5 @@
-// Unit tests for the export orchestrator. Covers the no-document guards,
-// the preview leg (plan + validate), and the full runExport happy path
-// (modal -> PNG writes -> manifest) wired through the host mock.
+// Export orchestrator. The runExport happy path (modal -> PNG writes ->
+// manifest) is wired through the host mock.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

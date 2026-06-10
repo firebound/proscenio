@@ -45,8 +45,7 @@ def test_apply_2d_preset_overrides_mirror_x():
 
 
 def test_preset_2d_locks_front_faces_off():
-    # Regression guard: T46254 / devtalk thread - Front Faces ON breaks
-    # strokes on thin planes. This MUST stay False in the preset.
+    # Front Faces ON breaks strokes on thin planes; must stay False in the preset.
     assert PRESET_2D.use_front_faces is False
 
 

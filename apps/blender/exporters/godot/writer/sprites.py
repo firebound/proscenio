@@ -30,11 +30,9 @@ _WEIGHT_EPS = 1e-9
 class _PolygonKwargs(TypedDict):
     """Constructor kwargs for ``MeshElement``.
 
-    ``texture`` / ``weights`` are ``NotRequired`` so they are passed
-    only when present; with ``model_dump_json(exclude_unset=True)`` an
-    explicit ``None`` would serialise as ``"field": null`` and drift
-    from the goldens (which omit the key, matching the legacy
-    dict-based writer that only set it conditionally).
+    ``texture`` / ``weights`` are ``NotRequired`` so they are passed only when
+    present; an explicit ``None`` would serialise as ``"field": null`` under
+    exclude_unset and drift the goldens.
     """
 
     name: str
@@ -47,8 +45,8 @@ class _PolygonKwargs(TypedDict):
 
 
 class _SpriteFrameKwargs(TypedDict):
-    """Constructor kwargs for ``SpriteElement``; ``texture_region`` is
-    omitted in auto mode (the legacy writer only set it for manual regions)."""
+    """Constructor kwargs for ``SpriteElement``; ``texture_region`` is omitted
+    in auto mode and set only for manual regions."""
 
     type: Literal["sprite"]
     name: str

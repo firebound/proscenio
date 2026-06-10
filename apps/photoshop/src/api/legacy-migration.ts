@@ -1,14 +1,9 @@
-// UXP-side companion to `domain/legacy-migration.ts`. Reads the active
-// document, plans the `_<name>` -> `[ignore]` rename batch, and
-// applies the renames inside a single `executeAsModal` so PS reports
-// one modal banner instead of N.
+// Reads the active document, plans the `_<name>` -> `[ignore]` rename
+// batch, and applies the renames inside one `executeAsModal`.
 //
-// Layer-tree traversal walks the live `PsDocument.layers` array and
-// matches by name path against the planned candidates. This is robust
-// to PS layer ID drift (sample fixtures regenerate IDs every export
-// run); it does mean a layer renamed by another action mid-flight
-// silently slips through, which is acceptable for a one-shot artist
-// helper.
+// Traversal matches candidates by name path (not layer ID) to survive
+// PS layer ID drift; a layer renamed by another action mid-flight thus
+// slips through, acceptable for a one-shot artist helper.
 
 import { app, core } from "photoshop";
 
@@ -48,11 +43,9 @@ export async function applyUnderscoreMigration(): Promise<MigrationResult> {
         log.warn("legacy-migration", "no active document");
         return { renamed: 0, failures: [] };
     }
-    // Sort by path depth DESCENDING so deeper layers rename first.
-    // Renaming an ancestor before its descendants would change the
-    // ancestor's name in the live tree, making the descendant's pre-
-    // migration `layerPath` no longer match - findLayerByPath would
-    // report "layer not found" for every nested candidate.
+    // Rename deepest-first: renaming an ancestor first would change its
+    // name in the live tree, so a descendant's pre-migration `layerPath`
+    // would no longer match in findLayerByPath.
     const candidates = planUnderscoreMigration(adaptDocument(doc).layers)
         .slice()
         .sort((a, b) => b.layerPath.length - a.layerPath.length);

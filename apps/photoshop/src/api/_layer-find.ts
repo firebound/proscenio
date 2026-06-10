@@ -1,10 +1,8 @@
 // Shared layer-tree walk: locates the live `PsLayer` reference for a
-// name-path chain produced by the planner / tag-tree. Used by every
-// PS-side mutation (`layer-rename`, `legacy-migration`) so the walk
-// has one implementation - matters because UXP's layer collections
-// are not always real Arrays, and the wrapper-to-name match has
-// edge cases (Adobe Clean uses NFC; tag-stripped names need exact
-// raw equality).
+// name-path chain. UXP's layer collections are not always real Arrays
+// (hence the `toArray` normalisation), and the name match must be exact
+// raw equality - PS stores names in NFC, so a tag-stripped name needs
+// byte-identical comparison.
 
 import { type PsDocument, type PsLayer } from "photoshop";
 

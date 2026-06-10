@@ -1,4 +1,4 @@
-"""Pure tests for CDT extra_edges threading (the weight-paint-automesh) and pre-filter."""
+"""Pure tests for CDT extra_edges threading and the silhouette pre-filter."""
 from __future__ import annotations
 
 import sys
@@ -44,10 +44,6 @@ def test_extra_edges_none_behaves_as_empty():
     assert coords_a == coords_b
     assert edges_a == edges_b
 
-
-# ---------------------------------------------------------------------------
-# : pre-index-allocation silhouette filter
-# ---------------------------------------------------------------------------
 
 # Unit square outer polygon used by all three filter tests.
 _OUTER = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]

@@ -30,8 +30,7 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        # Unpack writes uv_layer.data + materials; both need Object Mode for
-        # the same BMesh-vs-mesh.uv_layers reason that gates Pack and Apply.
+        # mesh.uv_layers is empty under BMesh in Edit Mode; Object Mode only.
         return bool(scene_has_pre_pack_snapshot(context.scene) and context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -46,9 +45,8 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             self._restore_object(obj, snapshot, partial)
             del obj[PROSCENIO_PRE_PACK]
             restored += 1
-        # Surface partial restores in the final INFO line as well as via
-        # the per-object warns. Blender's info bar only displays the last
-        # report, so the warn would otherwise be hidden by this summary.
+        # Blender's info bar shows only the last report, so fold partial
+        # restores into this summary or the per-object warns get hidden.
         if partial:
             msg = (
                 f"unpacked {restored} sprite(s); {len(partial)} with materials "
@@ -96,11 +94,8 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             return True
         mat = bpy.data.materials.get(mat_name)
         if mat is None:
-            # Snapshot stored the material by name; a manual rename between
-            # Apply and Unpack breaks the lookup. Surface the partial restore
-            # so the user knows UVs were rolled back but the material was
-            # not (a later spec may switch the snapshot to a PointerProperty
-            # so renames track automatically).
+            # Snapshot stores the material by name, so a rename between Apply
+            # and Unpack breaks the lookup; report the partial restore.
             report_warn(
                 self,
                 f"'{obj.name}': original material '{mat_name}' not found "

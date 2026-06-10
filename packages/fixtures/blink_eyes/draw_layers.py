@@ -6,8 +6,8 @@ Run with::
 
 Pure Python - no Blender required. Produces:
 
-- ``examples/generated/blink_eyes/layers/eye_0.png`` … ``eye_3.png`` (32×32 each)
-- ``examples/generated/blink_eyes/eye_spritesheet.png`` (128×32, 4 frames horizontal)
+- ``examples/generated/blink_eyes/pillow_layers/eye_0.png`` … ``eye_3.png`` (32×32 each)
+- ``examples/generated/blink_eyes/pillow_layers/eye_spritesheet.png`` (128×32, 4 frames horizontal)
 
 The accompanying ``build_blink_eyes.py`` runs in headless Blender,
 loads these PNGs from disk, and assembles the ``.blend``.

@@ -1,4 +1,4 @@
-"""Export/Import the per-object weight sidecar to/from a JSON file (O3)."""
+"""Export/Import the per-object weight sidecar to/from a JSON file."""
 
 from __future__ import annotations
 
@@ -73,7 +73,6 @@ class PROSCENIO_OT_import_sidecar(bpy.types.Operator, ImportHelper):
             # instead of raising RuntimeError - lets headless tests assert.
             self.report({"WARNING"}, f"Failed to read sidecar: {exc}")
             return {"CANCELLED"}
-        # Validate structure via the authoritative schema parser.
         from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
             from_json as _from_json,
         )

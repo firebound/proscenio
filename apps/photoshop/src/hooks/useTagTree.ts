@@ -5,16 +5,13 @@
 //   2. After a layer rename runs through this hook.
 //   3. Polled as a fallback - some UXP builds never fire notification
 //      callbacks, so the timer is the only way the panel learns about
-//      external edits. The cadence adapts to document visibility:
-//      ACTIVE_POLL_MS while the panel is visible, IDLE_POLL_MS while
-//      hidden, since the polling has no work to do off-screen.
+//      external edits. Cadence adapts to visibility: ACTIVE_POLL_MS
+//      while visible, IDLE_POLL_MS while hidden.
 //
-// All three paths fold into the same read + hash-compare step. A
-// fresh tree is only pushed to state when the structural hash
-// (rawName + visibility, depth-first) differs from the prior one.
-// Identical snapshots short-circuit to a no-op so React.memo on
-// `TagRow` actually saves work and the user's open dropdowns are
-// not torn down by polling.
+// All three paths fold into the same read + compare step. A fresh tree
+// is pushed to state only when it differs structurally from the prior
+// one, so polling does not tear down the user's open dropdowns and
+// React.memo on `TagRow` keeps saving work.
 
 import React from "react";
 
@@ -47,10 +44,9 @@ export function useTagTree(version: number): UseTagTree {
     const syncOnce = React.useCallback(() => {
         if (typeof document !== "undefined" && document.hidden) return;
         const snap = readTree(treeRef.current);
-        // `buildTagTreeReusing` preserves node refs for unchanged
-        // subtrees, so a top-level element-wise compare is enough
-        // to bail when nothing structural moved - O(top-level
-        // count) instead of walking the whole tree.
+        // buildTagTreeReusing preserves node refs for unchanged
+        // subtrees, so a top-level element-wise compare suffices to
+        // bail when nothing structural moved.
         if (
             snap.noDocument === noDocRef.current
             && elementsEqual(treeRef.current, snap.tree)

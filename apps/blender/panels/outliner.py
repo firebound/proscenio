@@ -1,4 +1,4 @@
-"""Outliner subpanel + UIList + category-rank helper (the outliner subpanel)."""
+"""Outliner subpanel + UIList + category-rank helper."""
 
 from __future__ import annotations
 
@@ -93,11 +93,8 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         objects = list(getattr(data, propname))
         scene_props = getattr(context.scene, "proscenio", None)
         proscenio_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
-        # Blender renders a built-in "Filter by Name" field at the bottom of
-        # every UIList. Our filter_items previously read only scene_props
-        # and ignored self.filter_name, so the native field looked broken.
-        # Prefer the Proscenio search bar (top, with VIEWZOOM icon) when
-        # both are non-empty; otherwise fall through to whichever is set.
+        # Honor the UIList's native "Filter by Name" field (self.filter_name)
+        # as well as the Proscenio search bar; the bar wins when both are set.
         native_text = (self.filter_name or "").lower()
         flt_text = proscenio_text or native_text
         favorites_only = bool(

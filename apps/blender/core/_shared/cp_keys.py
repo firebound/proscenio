@@ -1,10 +1,7 @@
 """Custom Property key registry.
 
 Single source of truth for every Blender Custom Property key the
-Proscenio addon reads or writes. The literal strings used to be
-scattered across ``writer.py``, slot operators, atlas-pack operators,
-panel helpers, and fixture scripts; centralising them here removes the
-drift risk and makes "rename a CP key" a one-liner.
+Proscenio addon reads or writes.
 
 Why a module of bare constants instead of an Enum: Custom Property
 access in Blender is dict-style (``obj["proscenio_is_slot"]``); a

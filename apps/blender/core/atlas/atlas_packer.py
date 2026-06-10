@@ -1,9 +1,8 @@
-"""Vendored 2D bin-packer for atlas generation (the atlas packer).
+"""Vendored 2D bin-packer for atlas generation.
 
-MaxRects with the Best Short Side Fit (BSSF) heuristic. Pure Python, no
-external deps - chosen over `pytexturepacker` because pip-installing into
-Blender's bundled Python is fragile cross-platform (paths differ Win/Mac/
-Linux, permissions vary, future Blender ABI may break).
+MaxRects with the Best Short Side Fit (BSSF) heuristic. Pure Python and
+no external deps deliberately: pip-installing into Blender's bundled
+Python is fragile cross-platform.
 
 Reference: Jukka Jylänki, "A Thousand Ways to Pack the Bin", 2010.
 

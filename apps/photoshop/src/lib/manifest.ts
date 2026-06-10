@@ -1,12 +1,11 @@
-// PSD manifest wire types. Re-exports of the generated bindings
-// at apps/photoshop/src/schema_bindings/psd_manifest.ts under
-// friendlier names the rest of the plugin already uses.
+// PSD manifest wire types. Re-exports the generated bindings under
+// friendlier names the rest of the plugin uses.
 //
 // json-schema-to-typescript derives interface names from the JSON
 // Schema $defs (MeshLayer, SpriteLayer, FrameEntry,
-// ProscenioPSDManifest); the plugin codebase calls them MeshEntry,
-// SpriteEntry, FrameEntry, Manifest. Re-export here so the call sites
-// stay readable and the names survive a regen of the bindings file.
+// ProscenioPSDManifest); the plugin calls them MeshEntry, SpriteEntry,
+// FrameEntry, Manifest. Re-exporting here keeps the call sites readable
+// and the names stable across a regen of the bindings file.
 
 import type {
     ProscenioPSDManifest,

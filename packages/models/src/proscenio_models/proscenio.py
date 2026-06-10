@@ -22,9 +22,8 @@ Encoding choices:
 - ``Element`` is a discriminated union on the ``type`` literal. The
   mesh variant defaults to ``"mesh"`` so documents that omit ``type``
   round-trip cleanly.
-- Field declaration order in each class matches the historical writer
-  dict insertion order so ``model_dump_json(exclude_unset=True)``
-  reproduces the goldens byte-for-byte.
+- Field declaration order reproduces the goldens (see the architecture
+  docs, "Where to tread carefully").
 - ``ProscenioDocument`` is the document root. Use ``model_dump_json``
   to serialize, ``model_validate`` to parse.
 """
@@ -73,11 +72,8 @@ class Weight(_Strict):
 class MeshElement(_Strict):
     """Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.
 
-    Default element kind when ``type`` is omitted.
-
-    Field declaration order mirrors the writer's dict insertion order
-    so ``model_dump_json(exclude_unset=True)`` reproduces the golden
-    fixtures byte-for-byte once the writer migrates.
+    Default element kind when ``type`` is omitted. Field order reproduces
+    the goldens.
     """
 
     type: Literal["mesh"] = Field(
@@ -122,11 +118,7 @@ class SpriteElement(_Strict):
     ``frame`` indexes into an ``hframes`` x ``vframes`` grid carved
     out of the atlas (or out of ``texture_region`` when present). A
     single-frame sprite (``hframes`` = ``vframes`` = 1) is the static
-    case.
-
-    Field declaration order mirrors the writer's dict insertion order
-    so ``model_dump_json(exclude_unset=True)`` reproduces the golden
-    fixtures byte-for-byte once the writer migrates.
+    case. Field order reproduces the goldens.
     """
 
     type: Literal["sprite"] = Field(
@@ -213,8 +205,7 @@ Element = Annotated[
 
 
 class Slot(_Strict):
-    # Field order matches the writer's dict emission order so
-    # `model_dump_json(exclude_unset=True)` reproduces the goldens.
+    # Field order reproduces the goldens.
     name: str = Field(min_length=1)
     attachments: list[str]
     bone: str | None = None
@@ -263,11 +254,7 @@ class ProscenioDocument(_Strict):
         title="Proscenio character",
     )
 
-    # Field declaration order matches the writer's dict insertion order so
-    # `model_dump_json()` round-trips against the existing golden fixtures.
-    # Domain order (skeleton -> elements -> slots -> atlas -> animations)
-    # is also a natural read for a `.proscenio` file: bones before what
-    # rides them, group memberships, then the texture and the timelines.
+    # Field order reproduces the goldens.
     format_version: Literal[1] = Field(
         description="Bump on any breaking change to the shape of this document.",
     )

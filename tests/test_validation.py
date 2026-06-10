@@ -3,10 +3,6 @@
 Runs under plain ``pytest`` - no Blender required. Mocks `bpy` objects via
 :class:`SimpleNamespace` so the validation module is exercised in isolation
 from the editor.
-
-Run from the repo root:
-
-    pytest tests/test_validation.py
 """
 
 from __future__ import annotations
@@ -52,11 +48,6 @@ def _sprite_obj(
         ),
         get=lambda key, default=None: default,
     )
-
-
-# --------------------------------------------------------------------------- #
-# validate_active_element
-# --------------------------------------------------------------------------- #
 
 
 def test_active_mesh_with_polygons_is_clean() -> None:

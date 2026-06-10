@@ -134,11 +134,8 @@ export interface Key {
 /**
  * Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.
  *
- * Default element kind when ``type`` is omitted.
- *
- * Field declaration order mirrors the writer's dict insertion order
- * so ``model_dump_json(exclude_unset=True)`` reproduces the golden
- * fixtures byte-for-byte once the writer migrates.
+ * Default element kind when ``type`` is omitted. Field order reproduces
+ * the goldens.
  */
 export interface MeshElement {
   bone?: Bone;
@@ -160,11 +157,7 @@ export interface Weight {
  * ``frame`` indexes into an ``hframes`` x ``vframes`` grid carved
  * out of the atlas (or out of ``texture_region`` when present). A
  * single-frame sprite (``hframes`` = ``vframes`` = 1) is the static
- * case.
- *
- * Field declaration order mirrors the writer's dict insertion order
- * so ``model_dump_json(exclude_unset=True)`` reproduces the golden
- * fixtures byte-for-byte once the writer migrates.
+ * case. Field order reproduces the goldens.
  */
 export interface SpriteElement {
   bone: Bone2;

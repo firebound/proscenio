@@ -25,8 +25,6 @@ static func populate(
 static func _populate_godot_animation(
 	anim_res: ProscenioAnimation, skeleton: Skeleton2D
 ) -> Animation:
-	# Local alias for Godot's Animation class (the function arg) to avoid
-	# shadowing the type name from the model.
 	var anim := Animation.new()
 	anim.length = anim_res.length
 	anim.loop_mode = (Animation.LOOP_LINEAR if anim_res.loop else Animation.LOOP_NONE)
@@ -38,8 +36,7 @@ static func _populate_godot_animation(
 static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: ProscenioTrack) -> void:
 	var track_type := track_res.type
 	# Sanitize so ``find_child`` matches the Godot-shaped node name (Node.name
-	# replaces ``.`` etc with ``_`` on assignment); the .proscenio document
-	# carries Blender-shaped names with dots intact.
+	# replaces ``.`` etc with ``_`` on assignment).
 	var target := NodeNameUtil.sanitize(track_res.target)
 	var keys: Array[ProscenioKey] = track_res.keys
 
@@ -92,21 +89,17 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: Proscen
 
 
 static func _key_has_property(key: ProscenioKey, property: String) -> bool:
-	# `_set_fields` records which keys actually appeared in the parsed JSON
-	# dictionary; checking it here keeps phantom channels out of the
-	# generated animation (a key that lands without `rotation` no longer
-	# pulls in a rotation track that resets the authored pose to zero).
+	# Gate on `_set_fields` (properties present in the parsed JSON) so a key
+	# without `rotation` does not pull in a phantom rotation channel that
+	# resets the authored pose to zero.
 	return key._set_fields.has(property)
 
 
 static func _add_value_track_if_present(
 	anim: Animation, base_path: String, property: String, keys: Array[ProscenioKey]
 ) -> void:
-	# bone_transform tracks emit one Godot value track per animated property
-	# (position, rotation, scale). The .proscenio writer only places a key in
-	# `keys[]` when the matching property has data; the per-property emit
-	# below checks each key with `_key_has_property` so a position-only
-	# track does not register a phantom rotation channel.
+	# Skip emitting this track entirely when no key carries the property, so a
+	# position-only animation does not register a phantom rotation channel.
 	var has_any := false
 	for key in keys:
 		if _key_has_property(key, property):
@@ -117,10 +110,8 @@ static func _add_value_track_if_present(
 
 	var idx := anim.add_track(Animation.TYPE_VALUE)
 	anim.track_set_path(idx, NodePath("%s:%s" % [base_path, property]))
-	# Default LINEAR; transform channels (position / scale / rotation) upgrade
-	# to cubic for smooth motion between keys without per-key Bezier handles in
-	# the .proscenio format. Rotation uses the *_ANGLE variant so wrap-around at
-	# +/-pi is handled correctly.
+	# Rotation must use the *_ANGLE variant so wrap-around at +/-pi interpolates
+	# correctly; position / scale upgrade to plain cubic.
 	var interp := Animation.INTERPOLATION_LINEAR
 	match property:
 		"rotation":
@@ -138,10 +129,9 @@ static func _add_value_track_if_present(
 static func _add_slot_attachment_tracks(
 	anim: Animation, character_root: Node, slot_node: Node, keys: Array[ProscenioKey]
 ) -> void:
-	# Slot attachment animation = N visibility tracks, one per attachment
-	# child of the slot Node2D. At each key time, exactly one attachment is
-	# visible (the one named in `key.attachment`); the rest go hidden. Uses
-	# NEAREST interpolation - attachment swaps are hard cuts, not blends.
+	# One visibility track per attachment child; at each key time only the
+	# attachment named in `key.attachment` is visible. NEAREST interpolation -
+	# swaps are hard cuts, not blends.
 	var slot_path := str(character_root.get_path_to(slot_node))
 	for child in slot_node.get_children():
 		if not (child is CanvasItem):
@@ -152,23 +142,17 @@ static func _add_slot_attachment_tracks(
 		for key in keys:
 			if key.attachment == "":
 				continue
-			# Normalise the keyed attachment name through the same sanitiser
-			# slot_builder uses so dotted Blender names (`face.angry`) match
-			# the Godot-shaped child name (`face_angry`).
+			# Sanitize so the keyed name matches the Godot-shaped child name.
 			var attachment_name := NodeNameUtil.sanitize(key.attachment)
 			anim.track_insert_key(idx, key.time, child.name == attachment_name)
 
 
 static func _add_frame_track(anim: Animation, base_path: String, keys: Array[ProscenioKey]) -> void:
-	# Frame indexes are discrete integers; smooth blending between them has no
-	# semantic meaning, so the track uses NEAREST interpolation.
+	# Frame indexes are discrete integers - NEAREST interpolation, no blending.
 	var idx := anim.add_track(Animation.TYPE_VALUE)
 	anim.track_set_path(idx, NodePath("%s:frame" % base_path))
 	anim.track_set_interpolation_type(idx, Animation.INTERPOLATION_NEAREST)
 	for key in keys:
-		# `frame` defaults to 0; treat key as a frame key whenever the writer
-		# emitted it on a sprite_frame track. The dispatcher above ensures we
-		# only land here for sprite_frame target types.
 		anim.track_insert_key(idx, key.time, key.frame)
 
 

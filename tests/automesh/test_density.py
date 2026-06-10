@@ -4,10 +4,6 @@ bpy-free. Exercises point-in-polygon, distance-to-segment, uniform
 grid generation, annulus clipping, and bone-aware subdivision -
 the math the bpy bridge feeds into ``bmesh.ops.triangle_fill``
 between the outer + inner contours.
-
-Run from the repo root:
-
-    pytest tests/automesh/test_density.py
 """
 
 from __future__ import annotations

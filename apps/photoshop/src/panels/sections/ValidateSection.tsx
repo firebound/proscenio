@@ -1,9 +1,5 @@
-// the photoshop tag system: Validate tab. Re-uses the planner's `warnings`
-// and `skipped` outputs from a live preview run. Each row is clickable
-// (selects the offending layer in PS) so the artist can jump straight
-// to the fix.
-//
-// Read-only - tag edits happen in the Tags panel.
+// Validate tab (read-only): the planner's warnings + skipped layers
+// from a live preview run; each row selects the offending PS layer.
 
 import React from "react";
 
@@ -122,9 +118,7 @@ const ValidateRow: React.FC<{
             onActivate();
         }
     }, [onActivate]);
-    // UXP's native <button> drops text content (verified visually in
-    // other panels), so we keep the div + role="button" pattern.
-
+    // UXP's native <button> drops text content, so use div + role="button".
     return (
         <div
             className={`validate-row ${severity}`}

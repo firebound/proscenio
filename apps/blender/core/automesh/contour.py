@@ -5,15 +5,10 @@ contour tracing + morphology math without booting Blender. The
 bpy bridge in ``core/bpy_helpers/automesh/bridge.py`` reads the
 image pixels and feeds the binary mask into the helpers here.
 
-No third-party dependencies. Per the weight-paint-automesh constraints, the addon
-must not depend on OpenCV / numpy at runtime (COA Tools 2 issues
-#94 / #107 prove that PyPI-fetch dependencies are the addon's
-single biggest adoption blocker - corp / ISP firewalls, version
-mismatch, manual cv2 copy breaking numpy ABI). Moore Neighbour
-contour tracing + 8-connectivity binary morphology + Laplacian
-contour smoothing are all expressible in plain Python loops at
-the scales Proscenio targets (alpha grids downscaled to
-<=256x256 before tracing).
+Constraint: no third-party runtime dependency (no OpenCV / numpy).
+Moore Neighbour contour tracing, 8-connectivity binary morphology,
+and Laplacian smoothing are all plain Python loops at the scales
+Proscenio targets (alpha grids downscaled to <=256x256 before tracing).
 """
 
 from __future__ import annotations
@@ -51,24 +46,8 @@ _NEIGHBOUR_OFFSETS_4: tuple[tuple[int, int], ...] = (
 HOLE_SAFETY_DILATE_CELLS: int = 1
 """Foreground dilation applied to the mask before hole detection.
 
-DEPRECATED - no longer used by :func:`extract_contours` (see the flood-fill fix
-below). Retained as a public constant to avoid breaking callers that
-imported it directly.
-
-History: the 1-cell foreground dilation was intended to shrink each
-real hole by 1 cell so the mesh-side cutout sits INSIDE the alpha
-hole boundary (user invariant: never cut alpha). In practice it
-closed narrow inter-finger corridors at coarse downscale factors
-(e.g. resolution=0.5 with 3-4px source gaps -> 1-2 cell gaps in the
-grid -> closed by dilation -> false enclosed background -> spurious
-CDT hole punches -> disconnected face fragments).
-
-Fix: :func:`extract_contours` now calls :func:`extract_holes` on the
-undilated raw mask. The alpha-safety invariant for real holes still
-holds because the outer safety dilation (``outer_dilate >= 1``) keeps
-the outer mesh boundary outside the alpha, and narrow holes narrower
-than 2 cells are correctly classified as connected-to-border external
-background by the flood-fill, not as enclosed holes."""
+DEPRECATED - no longer used by :func:`extract_contours`. Retained as
+a public constant to avoid breaking callers that imported it directly."""
 
 
 _MAX_CONTOUR_STEPS: int = 200_000
@@ -238,17 +217,11 @@ def trace_contour(mask: BinaryMask, start: ContourPoint) -> Contour:
     steps = 0
 
     # Simple stopping criterion: terminate on the first revisit to
-    # ``start``. This is correct for the simple closed contours that
+    # ``start``. Correct for the single-loop alpha islands that
     # alpha-threshold + binary morphology produce on a sprite
-    # silhouette (every silhouette is a single-loop alpha island
-    # after dilate / erode by the standard automesh margin). The
-    # strict Pavlidis-Jacob "revisit AND same incoming search
-    # direction" criterion was prototyped against this code (PR #51
-    # review feedback) but rejected: it requires careful pre-move
-    # vs post-move ordering to avoid double-counting start AND it
-    # only matters for figure-eight contours that the addon never
-    # generates. The defensive ``_MAX_CONTOUR_STEPS`` cap below is
-    # the ultimate guard against pathological inputs.
+    # silhouette; the stricter "revisit AND same incoming direction"
+    # criterion only matters for figure-eight contours the addon
+    # never generates. ``_MAX_CONTOUR_STEPS`` guards pathological input.
     while steps < _MAX_CONTOUR_STEPS:
         steps += 1
         search_start = (previous_direction + 2) % 8
@@ -431,15 +404,10 @@ def extract_contours(
     """
     if margin_px < 0:
         raise ValueError(f"margin_px must be >= 0, got {margin_px}")
-    # Outer ALWAYS gets at least 1 cell of dilation for safety.
-    # Without it, the mesh boundary sits at the LEFT edge of the
-    # rightmost True cell, which is INSIDE the alpha silhouette on
-    # the right side (pixel_contour_to_world places verts at cell
-    # left/top corners; for cells that border background on the
-    # right, this puts the vert several source pixels INSIDE the
-    # alpha). 1-cell safety dilation pushes the boundary out by 1
-    # cell on every side so coverage approaches 100% even at
-    # margin_pixels=0 (single-contour mode).
+    # Outer ALWAYS gets at least 1 cell of dilation: without it the
+    # mesh boundary would sit inside the alpha on the right/bottom
+    # sides, cutting alpha. The 1-cell floor keeps the boundary
+    # outside the silhouette even at margin_pixels=0.
     outer_dilate = max(1, margin_px)
     raw_mask = binarize(alpha, threshold)
     outer_mask = dilate(raw_mask, outer_dilate) if outer_dilate > 0 else raw_mask
@@ -450,20 +418,11 @@ def extract_contours(
             "check the image alpha channel and the threshold setting"
         )
     outer = trace_contour(outer_mask, seed)
-    # Detect holes on the RAW (undilated) mask. Using a foreground-
-    # dilated mask was the original approach (HOLE_SAFETY_DILATE_CELLS)
-    # but it caused a regression: at resolution=0.5 inter-finger gaps in the
-    # source image are only 1-2 cells wide in the downscaled grid;
-    # 1-cell foreground dilation closes those corridors entirely,
-    # converting border-connected external background into apparently-
-    # enclosed background, yielding false holes that CDT punches out as
-    # face-free regions -> disconnected mesh fragments.
-    # Using raw_mask means the flood-fill in extract_holes starts from
-    # the border of the UNDILATED mask, so corridors that are still
-    # open (even 1 cell wide) correctly drain to the border and are
-    # not mistaken for holes. Real enclosed holes (e.g. ring sprites)
-    # are unaffected: a true enclosed background island in the raw mask
-    # is still enclosed after any dilation.
+    # Detect holes on the RAW (undilated) mask: foreground dilation
+    # would close 1-2 cell inter-finger corridors at low resolution
+    # and convert border-connected background into false holes. On the
+    # raw mask the flood-fill drains still-open corridors to the
+    # border; only genuinely enclosed islands are returned.
     holes = extract_holes(raw_mask)
     if margin_px == 0:
         return (outer, [], holes)

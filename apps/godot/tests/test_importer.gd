@@ -19,10 +19,9 @@ const MeshBuilder := preload("res://addons/proscenio/builders/mesh_builder.gd")
 const SpriteBuilder := preload("res://addons/proscenio/builders/sprite_builder.gd")
 const AnimationBuilder := preload("res://addons/proscenio/builders/animation_builder.gd")
 
-# Schema bindings live inside the addon. When the addon is disabled
-# (this test project keeps it off to validate the no-runtime-plugin
-# rule) the `class_name` global registry does not include them, so
-# preload explicitly here.
+# With the addon disabled (this project keeps it off to validate the
+# no-runtime-plugin rule) the `class_name` global registry omits the schema
+# bindings, so preload them explicitly.
 const ProscenioDocumentRes := preload(
 	"res://addons/proscenio/schema_bindings/proscenio_document.gd"
 )
@@ -136,8 +135,8 @@ func _run_skinned_checks() -> void:
 	if sprites.size() == 1:
 		var torso: Polygon2D = sprites[0]
 		_assert_eq(torso.name, "torso", "skinned: sprite name")
-		# Skinned polygons live under the skeleton, not the bone - weights
-		# move vertices, not the parent transform.
+		# Skinned polygons parent to the skeleton, not a bone - weights move
+		# vertices, not the parent transform.
 		_assert_true(torso.get_parent() == skeleton, "skinned: parented to skeleton")
 		_assert_true(not torso.skeleton.is_empty(), "skinned: skeleton NodePath set")
 		_assert_eq(torso.get_bone_count(), 2, "skinned: bone count = 2")
@@ -163,9 +162,8 @@ func _run_slot_checks() -> void:
 	var character := _build_character(data)
 	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
 
-	# Slot Node2D is parented under the head Bone2D (per slot.bone field).
-	# Names are sanitized: ``face.state`` -> ``face_state`` etc (Godot strips
-	# ``.`` from Node.name on assignment).
+	# Slot Node2D parents under the head Bone2D (slot.bone). Names sanitize:
+	# ``face.state`` -> ``face_state`` (Node.name strips ``.`` on assignment).
 	var head_bone := skeleton.find_child("head", true, false)
 	_assert_true(head_bone != null, "slots: head bone exists")
 	var slot_node := skeleton.find_child("face_state", true, false)
@@ -175,7 +173,6 @@ func _run_slot_checks() -> void:
 		_assert_true(slot_node is Node2D, "slots: anchor is Node2D")
 
 	# All three attachments (2 meshes + 1 sprite) live under the slot.
-	# Names land sanitized: ``face.neutral`` -> ``face_neutral`` etc.
 	var attachments: Array = []
 	if slot_node != null:
 		attachments = slot_node.get_children()
@@ -237,12 +234,9 @@ func _build_character(data: Dictionary) -> Node2D:
 
 	var skeleton := SkeletonBuilder.build(document.skeleton)
 	character.add_child(skeleton)
-	# Slots build BEFORE elements so the element builders can route attachment
-	# children under the slot Node2D parent. Mirrors the
-	# order in importer.gd._import.
+	# Slots build BEFORE elements so element builders can route attachments
+	# under the slot Node2D, matching importer.gd._import.
 	var slot_map := SlotBuilder.build(skeleton, document.slots)
-	# Both builders discriminator-filter their own kind - calling both is
-	# the same dispatch flow used in importer.gd._import.
 	MeshBuilder.attach_elements(skeleton, document.elements, null, slot_map)
 	SpriteBuilder.attach_elements(skeleton, document.elements, null, slot_map)
 
@@ -254,11 +248,10 @@ func _build_character(data: Dictionary) -> Node2D:
 	return character
 
 
-# the reimport-merge work: re-running the importer on the same `.proscenio` must produce
-# a structurally identical scene. We cannot diff packed-scene bytes
-# headlessly without an editor session, so the equivalence check compares
-# the construction output (node hierarchy + key transforms + animation
-# library) of two independent builds.
+# Re-running the importer on the same `.proscenio` must produce a structurally
+# identical scene. Packed-scene bytes cannot be diffed headlessly, so this
+# compares the construction output (node hierarchy + key transforms +
+# animation library) of two independent builds.
 func _run_idempotency_check(data: Dictionary, original: Node2D) -> void:
 	var twin := _build_character(data)
 	_assert_eq(
@@ -335,10 +328,9 @@ func _fail(msg: String) -> void:
 
 
 func _finish() -> void:
-	# Zero passes means a build errored out before any assertion ran (e.g.
-	# from_dict throwing). The engine prints those as SCRIPT ERRORs that do
-	# not land in `_failures`, so guard on the pass count too - otherwise an
-	# all-errors run reports "PASS: 0 assertions" and exits 0 (false green).
+	# Zero passes means a build errored before any assertion ran (e.g. from_dict
+	# throwing). Those print as SCRIPT ERRORs that never reach `_failures`, so
+	# guard on pass count too - otherwise an all-errors run exits 0 (false green).
 	if _passes == 0:
 		printerr("FAIL: 0 assertions ran - a build errored before any check")
 		quit(1)

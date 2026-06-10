@@ -1,6 +1,4 @@
-// Unit tests for the manifest picker/reader. Drives uxp.storage's file
-// picker with a fake file, then exercises the cancelled / invalid-JSON /
-// schema-invalid / ok / parent-folder-fallback branches.
+// Manifest picker/reader. Drives uxp.storage's file picker with a fake file.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

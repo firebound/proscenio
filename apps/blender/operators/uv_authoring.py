@@ -1,4 +1,4 @@
-"""UV authoring operators: Reproject UV, Snap region to UV bounds (the authoring panel.1.b/c)."""
+"""UV authoring operators: Reproject UV, Snap region to UV bounds."""
 
 from __future__ import annotations
 
@@ -22,12 +22,11 @@ from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
     """Re-unwrap the active mesh's UVs against its first image-textured material.
 
-    Known limitation (specs/backlog-bugs-found.md): bpy.ops.uv.smart_project picks
-    a projection from face normals. For quads in the XZ picture plane the
-    normal points -Y; the operator can rotate/mirror the result relative
-    to whatever the build_blend.py author hand-tuned. Use only on meshes
-    whose UVs were never authored by hand, or restore from the pre_pack
-    snapshot afterwards.
+    Known limitation: smart_project derives the projection from face
+    normals. For XZ-picture-plane quads the normal points -Y, so it can
+    rotate/mirror the result relative to a hand-authored layout. Use only
+    on meshes whose UVs were never hand-authored, or restore from the
+    pre_pack snapshot afterwards.
     """
 
     bl_idname = "proscenio.reproject_sprite_uv"
@@ -52,16 +51,16 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
-        # Re-projection toggles Edit Mode on the active mesh; starting from
-        # Edit Mode would leak state from the user's in-progress selection.
+        # Toggles Edit Mode internally; starting in Edit Mode leaks the
+        # user's in-progress selection. Object Mode only.
         return bool(context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
         prior_mode = context.mode
 
-        # preserve_selection hands back the user's selection + active object;
-        # the inner finally is only for the Edit-Mode toggle this op makes.
+        # preserve_selection restores selection + active; the inner finally
+        # only handles the Edit-Mode toggle below.
         with preserve_selection(context):
             try:
                 for other in context.scene.objects:
@@ -97,9 +96,7 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
-        # mesh.uv_layers.active.data is empty while the mesh is in Edit
-        # Mode (BMesh owns the loop data instead); execute() would raise
-        # IndexError when reading uv_layer.data[li].
+        # uv_layer.data is empty under BMesh in Edit Mode; Object Mode only.
         return bool(context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -115,9 +112,8 @@ class PROSCENIO_OT_snap_region_to_uv(bpy.types.Operator):
             report_warn(self, f"'{obj.name}' has no UV layer or no polygons")
             return {"CANCELLED"}
 
-        # Flip v into Godot/region space, then reuse the exact auto-mode
-        # bounds computation so Snap seeds manual mode with the value the
-        # writer would emit (rounded to 6dp), not a divergent inline copy.
+        # Flip v into Godot/region space, then reuse the auto-mode bounds
+        # computation so Snap seeds the exact value the writer would emit.
         uvs_godot = [[u, 1.0 - v] for u, v in collect_mesh_loop_uvs(mesh)]
         if not uvs_godot:
             report_warn(self, f"'{obj.name}' has no UV data")

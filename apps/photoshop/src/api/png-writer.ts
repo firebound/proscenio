@@ -1,14 +1,12 @@
 // PNG writer. For each `PngWrite` the export plan emits, isolate the
 // source PsLayer onto a same-canvas-size temp document, trim the
 // transparent border, save as PNG into the target folder, then close
-// the temp doc without saving. Mirrors the legacy JSX exporter's
-// `exportLayerToFile` step.
+// the temp doc without saving.
 //
 // All Photoshop document operations have to run inside
-// `core.executeAsModal` from UXP. The caller is expected to invoke
-// `runWrites` from within a modal context (the export-flow orchestrator
-// wraps the whole batch in one `executeAsModal` so the user sees a
-// single modal banner instead of one per layer).
+// `core.executeAsModal`; `runWrites` must be called from within a modal
+// context (the orchestrator wraps the whole batch in one modal so the
+// user sees a single banner instead of one per layer).
 
 import { app, constants, type PsDocument, type PsLayer } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
@@ -65,10 +63,8 @@ async function writeLayerPng(
     try {
         const duplicated = await layer.duplicate(work);
         if (merge) {
-            // `[merge]` group: flatten the duplicated group into a
-            // single pixel layer inside the temp doc. PS surfaces this
-            // as `Layer.merge()` on a group layer; the result is one
-            // pixel layer occupying the union of the descendants.
+            // `Layer.merge()` on a group layer flattens it into one pixel
+            // layer occupying the union of the descendants.
             await duplicated.merge();
         }
         // UXP Document.trim takes positional args, not an options bag.
@@ -99,10 +95,8 @@ async function ensureSubfolder(parent: UxpFolder, name: string): Promise<UxpFold
     try {
         return await parent.createFolder(name, { overwrite: false });
     } catch {
-        // Folder already exists - look it up and confirm it really is
-        // a folder. A file at the same path collides with our output
-        // layout and must surface as a hard error rather than be
-        // silently cast to UxpFolder.
+        // Folder already exists - resolve it, but a non-folder entry at
+        // the same path must hard-fail rather than be cast to UxpFolder.
         const entry = await parent.getEntry(name);
         if (!entry.isFolder) {
             throw new Error(`output path collides with a non-folder entry: ${name}`);

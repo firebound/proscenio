@@ -1,7 +1,5 @@
-// Unit tests for the PNG writer IO core. Drives the host mock's
-// app.documents.add (temp doc) plus fake source layers and folders to
-// cover the missing-layer skip, the duplicate -> trim -> save -> close
-// path, the [merge] flatten, and nested-output-folder creation.
+// PNG writer IO core. Drives the host mock's app.documents.add (temp doc)
+// plus fake source layers and folders.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

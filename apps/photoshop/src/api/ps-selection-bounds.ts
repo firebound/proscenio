@@ -1,6 +1,5 @@
-// Reads the active document's marquee/lasso/region selection bounds
-// for "Set origin from selection" in the Tags panel. PSD coords are
-// top-left origin, Y increases down.
+// Reads the active document's selection bounds for "Set origin from
+// selection". PSD coords are top-left origin, Y increases down.
 
 import { app } from "photoshop";
 import type { PsUnitNumber } from "photoshop";

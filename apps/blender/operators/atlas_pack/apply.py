@@ -42,9 +42,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def poll(cls, context: bpy.types.Context) -> bool:
         if not bpy.data.filepath:
             return False
-        # Apply rewrites uv_layer.data which is empty under BMesh while in
-        # Edit Mode; the operator would silently skip every sprite reporting
-        # "no UV layer" without indicating the real cause.
+        # uv_layer.data is empty under BMesh in Edit Mode; Object Mode only.
         if context.mode != "OBJECT":
             return False
         _, manifest = packed_atlas_paths(bpy.data.filepath)
@@ -76,7 +74,6 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
                 continue
             placement = placements[obj.name]
             if not self._snapshot_pre_pack(obj):
-                # Re-Apply with a stale snapshot would shrink the slot.
                 skipped_drift += 1
                 continue
             if not self._apply_to_object(obj, placement, atlas_w, atlas_h):
@@ -97,16 +94,13 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def _snapshot_pre_pack(self, obj: bpy.types.Object) -> bool:
         """Snapshot pre-apply state to a Custom Property + duplicated UV layer.
 
-        Re-Apply path: when a snapshot is already present, the active UV
-        layer carries the atlas-space coordinates from the previous run.
-        Replaying _rewrite_uvs on those would treat them as source-image
-        space and shrink the slot each iteration. Restore the pre_pack
-        layer's data into the active layer first so every Apply starts
-        from the original source-image UVs.
+        When a snapshot already exists, restore the pre_pack layer into the
+        active layer first so every Apply starts from the original
+        source-image UVs (re-rewriting atlas-space UVs shrinks the slot).
 
-        Returns True when re-rewriting is safe; False when the snapshot
-        is unrecoverable (renamed pre_pack layer, mismatched length) and
-        the caller should skip this sprite to avoid cumulative drift.
+        Returns True when re-rewriting is safe; False when the snapshot is
+        unrecoverable (renamed pre_pack layer, mismatched length) and the
+        caller should skip this sprite.
         """
         if PROSCENIO_PRE_PACK in obj:
             return self._restore_active_uvs_from_pre_pack(obj)
@@ -129,12 +123,10 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
     def _restore_active_uvs_from_pre_pack(self, obj: bpy.types.Object) -> bool:
         """Copy the pre_pack snapshot layer's UVs into the active layer.
 
-        Resolves the snapshot layer by name stored in the CP, NOT from
-        the live active layer name - renaming the active UV between
-        Apply runs used to break this lookup silently and re-Apply would
-        run _rewrite_uvs over already-atlased UVs again.
-        Returns False when the snapshot is unrecoverable so the caller
-        can skip the sprite instead of double-packing.
+        Resolves the snapshot layer by the name stored in the CP, not from
+        the live active layer name (which the user may have renamed).
+        Returns False when the snapshot is unrecoverable so the caller can
+        skip the sprite instead of double-packing.
         """
         uv_layers = getattr(obj.data, "uv_layers", None)
         if uv_layers is None:
@@ -221,8 +213,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         slice_rect = placement.slice  # type: ignore[attr-defined]
         src_w = placement.source_w  # type: ignore[attr-defined]
         src_h = placement.source_h  # type: ignore[attr-defined]
-        # The packer emits top-down slot Y; remap_uv_into_slot expects the
-        # slot rect bottom-up, so convert once here before the loop.
+        # Packer emits top-down slot Y; remap_uv_into_slot wants it bottom-up.
         slot_px = (slot.x, atlas_h - slot.y - slot.h, slot.w, slot.h)
         slice_px = (slice_rect.x, slice_rect.y, slice_rect.w, slice_rect.h)
         for poly in mesh.polygons:

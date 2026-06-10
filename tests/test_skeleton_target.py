@@ -1,12 +1,8 @@
-"""Unit tests for the quick-armature follow-up hybrid armature targeting.
+"""Unit tests for hybrid armature targeting.
 
 bpy-free. Mocks ``bpy.types.Context`` / ``Scene`` / ``Object`` via
 ``SimpleNamespace`` to exercise the resolution order without booting
 Blender.
-
-Run from the repo root:
-
-    pytest tests/test_skeleton_target.py
 """
 
 from __future__ import annotations
@@ -40,7 +36,7 @@ def _ctx(
 
 
 class TestResolveOrder:
-    """the quick-armature follow-up contract: picker is the only source of truth.
+    """The picker is the only source of truth.
 
     Heuristics (active object, single-armature scene) live in the
     auto-populate handler, not in this resolver. Once the user clears

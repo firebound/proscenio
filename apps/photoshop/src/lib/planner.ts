@@ -1,6 +1,5 @@
-// Pure manifest builder (the photoshop tag system (manifest v2)).
-//
-// Drives the layer walk through the bracket-tag parser:
+// Pure manifest builder. Drives the layer walk through the bracket-tag
+// parser:
 //
 // - `[ignore]` removes a layer / group from the export.
 // - `[spritesheet]` marks a group as a multi-frame sprite source;
@@ -12,11 +11,6 @@
 // - `[scale:n]` rescales the bounds before they reach the manifest.
 // - `[blend:mode]` writes the `blend_mode` field.
 // - `[origin:x,y]` sets an explicit pivot in PSD pixels.
-//
-// The legacy v1 paths are gone (no `_` prefix skip, no flat
-// `<base>_<index>` sprite_frame aggregation). Buildchain tested
-// against the synthetic Layer fixture set in
-// `uxp-plugin-tests/planner.test.ts`.
 
 import type { Layer, LayerBounds, LayerSet } from "./layer";
 import {
@@ -75,10 +69,8 @@ export interface ExportPlan {
     writes: PngWrite[];
     skipped: SkippedLayer[];
     warnings: PlanWarning[];
-    /** Mapping from manifest entry (by index, parallel to
-     *  `manifest.layers`) back to the PSD layers that produced it.
-     *  The Debug / Tags surfaces use this to highlight the manifest
-     *  row that matches the currently selected PS layer. */
+    /** Maps each manifest entry (by index, parallel to
+     *  `manifest.layers`) back to the PSD layers that produced it. */
     entryRefs: EntryRef[];
 }
 
@@ -735,12 +727,10 @@ function joinName(prefix: string, name: string): string {
 }
 
 function fallbackName(displayName: string, raw: Layer): string {
-    // Last-ditch guard for manifest entries: when a leaf or group is
-    // named only with bracket tags, the display name strips to "" and
-    // would violate the schema's `minLength: 1` on `name`. Falling
-    // back to the raw (still-bracketed) name keeps the entry valid and
-    // makes the issue visible to the artist - the brackets show up in
-    // the importer too.
+    // When a leaf or group is named only with bracket tags the display
+    // name strips to "", which would violate the schema's `minLength: 1`
+    // on `name`. Fall back to the raw (bracketed) name to keep the entry
+    // valid and surface the issue to the artist.
     return displayName.length > 0 ? displayName : raw.name;
 }
 

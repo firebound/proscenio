@@ -1,7 +1,5 @@
-// Inline badge strip for the Tags row. Surfaces non-default tag
-// values (folder, path, scale, origin, name pattern) as compact
-// uppercase labels so the artist can see at a glance which tags
-// the layer carries without expanding the details panel.
+// Inline badge strip surfacing a row's non-default tag values as
+// compact uppercase labels.
 
 import React from "react";
 

@@ -1,10 +1,8 @@
 // Advanced tag-fields panel (the `+` expander on each row).
 //
-// Inputs are controlled by a LOCAL draft state. Typing / blurring does
-// not commit - the Apply button computes the delta vs the baseline
-// (current node.tags) and fires one rename call. External renames
-// (toggle X clicked, kind dropdown picked, etc.) reset the form so it
-// keeps showing the truth on disk.
+// Inputs are a LOCAL draft: typing does not commit. Apply computes the
+// delta vs the baseline (node.tags) and fires one rename; an external
+// rename resets the form to the on-disk truth.
 
 import React from "react";
 

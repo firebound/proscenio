@@ -1,11 +1,4 @@
-// Plugin entrypoint. Registers the four Proscenio panels:
-//
-// - `proscenioExporter`: doc info + folder + export options + import.
-// - `proscenioDebug`: standalone dry-run preview window with the
-//   manifest entries list.
-// - `proscenioTags`: layer hierarchy + bracket-tag controls.
-// - `proscenioValidate`: live warnings + skipped layers from the
-//   dry-run preview.
+// Plugin entrypoint: registers the four Proscenio panels.
 
 import React from "react";
 import { entrypoints } from "uxp";

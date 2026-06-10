@@ -1,4 +1,4 @@
-"""Headless: copy_weights_to_selected operator (O7)."""
+"""Headless: copy_weights_to_selected operator."""
 
 from __future__ import annotations
 
@@ -27,9 +27,7 @@ def test_copy_weights_to_selected_duplicate_mesh(automesh_fixture):
     src.select_set(True)
     dup.select_set(True)
     bpy.context.view_layer.objects.active = src
-    # Run the operator
     bpy.ops.proscenio.copy_weights_to_selected(max_distance=1.0)
-    # Verify dup has vertex groups now
     assert len(dup.vertex_groups) > 0, "target missing vertex groups after copy"
     # At least some verts in dup should have weights
     weighted_verts = 0

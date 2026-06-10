@@ -1,13 +1,9 @@
-"""Unit tests for the authoring panel.1.c.1 texture-region resolver.
+"""Unit tests for the authoring panel texture-region resolver.
 
 Mocks ``bpy.types.Object`` with :class:`SimpleNamespace`-flavored stand-ins so
 the helper is exercised without a Blender session. Covers both modes (auto
 vs manual), the legacy Custom Property fallback, and the ``manual_region_or_none``
 gate used by ``sprite_frame``.
-
-Run from the repo root:
-
-    pytest tests/test_region.py
 """
 
 from __future__ import annotations

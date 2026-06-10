@@ -12,8 +12,8 @@ Repo-wide rules, split by theme under [`conventions/`](conventions/):
 | --- | --- |
 | [`conventions/git.md`](conventions/git.md) | Branches, workflow, commits, pull requests, code review |
 | [`conventions/layout.md`](conventions/layout.md) | Repository layout, file and folder naming, versioning |
-| [`conventions/code.md`](conventions/code.md) | JSON keys, Blender addon module organization, static typing per language, validation gates |
-| [`conventions/docs.md`](conventions/docs.md) | Documentation style: prose rules, UI element decorators, feature naming, periodic drift audit |
+| [`conventions/code.md`](conventions/code.md) | JSON keys, Blender addon module organization, static typing per language, validation gates, comment routing |
+| [`conventions/docs.md`](conventions/docs.md) | Documentation style and information architecture: prose rules, UI decorators, feature naming, the docs-site section map, periodic drift audit |
 
 ## Skills
 

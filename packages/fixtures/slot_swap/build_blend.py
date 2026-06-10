@@ -16,16 +16,16 @@ Layout:
 - **Polygon mesh** ``arm`` parented to the bone - the visible 16x32
   arm sprite.
 - **Empty** ``weapon`` parented to the bone tip; flagged
-  ``proscenio.is_slot = True`` with default attachment ``axe``.
+  ``proscenio.is_slot = True`` with default attachment ``club``.
 - **Two attachment meshes** parented to the slot Empty:
-  - ``axe`` - 32x32 polygon mesh with axe.png material
+  - ``club`` - 32x32 polygon mesh with club.png material
   - ``sword`` - 32x32 polygon mesh with sword.png material
 - **Two actions named ``swing``** that share a name so the writer
   merges them into a single animation with two tracks:
   - On the armature: keyframes the arm bone's local Y rotation
     -pi/6 -> +pi/6 -> 0 over 24 frames (gentle swing).
-  - On the slot Empty: keyframes ``proscenio_slot_index`` 0 (axe)
-    -> 1 (sword) -> 0 (axe) over the same 24 frames, constant
+  - On the slot Empty: keyframes ``proscenio_slot_index`` 0 (club)
+    -> 1 (sword) -> 0 (club) over the same 24 frames, constant
     interpolation. Swap happens at the apex of the swing.
 
 The fixture exercises:
@@ -81,8 +81,8 @@ def main() -> None:
     armature_obj = _build_armature()
     _build_arm_mesh(armature_obj)
     slot_empty = _build_slot_empty(armature_obj)
-    # 1mm of stagger between attachments along bone-Y so Eevee never
-    # has to disambiguate coplanar quads if both end up visible.
+    # Stagger attachments along bone-Y so Eevee never disambiguates
+    # coplanar quads if both end up visible.
     _build_attachment(
         "club", CLUB_PATH, slot_empty, is_default=True, depth_offset=-0.001
     )
@@ -267,9 +267,7 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
     arm_pose = armature_obj.pose.bones[ARM_BONE]
     arm_pose.rotation_mode = "XYZ"
 
-    # Y rotation = camera-axis rotation in Blender Front Ortho =
-    # visible 2D rotation (per the project convention codified in
-    # packages/fixtures/README.md).
+    # Y rotation = camera-axis rotation in Front Ortho = visible 2D rotation.
     swing_keys = (
         (1, -math.pi / 6),
         (12, math.pi / 6),

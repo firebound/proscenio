@@ -1,7 +1,6 @@
-// Unit tests for the PS notification subscription wrapper. Drives the
-// host mock's action.addNotificationListener, exercising the three
-// return shapes (void / handle / Promise<handle>) and the teardown +
-// cancel-before-resolve paths.
+// PS notification subscription wrapper. Drives the host mock's
+// action.addNotificationListener across its three return shapes
+// (void / handle / Promise<handle>).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

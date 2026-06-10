@@ -2,11 +2,10 @@
 // name + TagBag per node so the UI does not re-parse on every
 // keystroke. Pure - no PS runtime touch.
 //
-// `buildTagTreeReusing` returns the prior node reference verbatim
-// when nothing about a layer (rawName, visibility, parent chain) and
-// its descendants has changed. That keeps `React.memo` happy: rows
-// that did not change keep their `node` prop by reference, so the
-// memo bail-out is a single pointer compare instead of a structural
+// `buildTagTreeReusing` returns the prior node reference verbatim when
+// a layer (rawName, visibility, parent chain) and its descendants are
+// unchanged, so unchanged rows keep their `node` prop by reference and
+// `React.memo` bails out on a pointer compare instead of a structural
 // walk.
 
 import type { Layer } from "./layer";

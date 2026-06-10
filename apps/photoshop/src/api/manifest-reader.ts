@@ -1,15 +1,10 @@
-// Manifest JSON reader. Picks a `.json` file via the UXP file picker,
-// parses it, then validates against the v2 schema. Validation errors
-// surface as plain strings so the panel can list them - identical
-// posture to `manifest-validator.ts` on the export side.
+// Manifest JSON reader. Picks a `.json` via the UXP file picker,
+// parses it, then validates against the v2 schema.
 //
-// Returns a discriminated result so the caller can branch without
-// throwing across the UXP IPC boundary (exceptions inside
-// `executeAsModal` etc. tend to surface as opaque host errors).
-//
-// The Manifest type flows from ajv's type-narrowing predicate (see
-// `parseManifest` in `manifest-validator.ts`), not from a cast. A
-// document that survives ajv is statically typed as `Manifest`.
+// Returns a discriminated result rather than throwing: exceptions
+// across the UXP IPC boundary tend to surface as opaque host errors.
+// The Manifest type flows from ajv's type-narrowing predicate
+// (`parseManifest`), not from a cast.
 
 import { storage } from "uxp";
 import type { UxpFile, UxpFolder } from "uxp";
@@ -63,10 +58,8 @@ export async function readManifestFromPicker(): Promise<ReadManifestResult> {
 }
 
 async function resolveParentFolder(file: UxpFile): Promise<UxpFolder | null> {
-    // Modern UXP exposes `file.parent` directly on the picked entry.
-    // Older builds (and a few host-version regressions) drop it; fall
-    // back to reconstructing the parent path from `nativePath` and
-    // re-resolving via `getEntryWithUrl`.
+    // Older UXP builds drop `file.parent`; fall back to reconstructing
+    // the parent path from `nativePath` and re-resolving it.
     if (file.parent?.isFolder === true) return file.parent;
 
     const native = file.nativePath;

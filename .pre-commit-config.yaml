@@ -127,3 +127,19 @@ repos:
             entry: '\bthe the \b|\bthis spec spec\b'
             types_or: [markdown, python, ts, tsx, gdscript]
             exclude: ^(node_modules|.+/dist|.+/__pycache__|\.ai/conventions/docs\.md)$
+
+          # The comment-routing policy (see ".ai/conventions/code.md", "Comments
+          # and rationale"): rationale lives in its home, not in a comment.
+          - id: ban-spec-path-in-code
+            name: ban spec-path references in code comments (cite a test or a doc home)
+            language: pygrep
+            entry: '(#|//).*\bspecs/'
+            types_or: [python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__|specs)/
+
+          - id: ban-step-phase-markers
+            name: ban "# Step N" / "# Phase N" markers in code (extract helpers instead)
+            language: pygrep
+            entry: '(#|//)\s*(Step|Phase)\s+[0-9]'
+            types_or: [python, ts, tsx, gdscript]
+            exclude: ^(node_modules|.+/dist|.+/__pycache__)/

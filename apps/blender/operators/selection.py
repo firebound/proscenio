@@ -38,7 +38,7 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
 
 
 class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
-    """Select + activate the object clicked in the Proscenio outliner (the outliner subpanel)."""
+    """Select + activate the object clicked in the Proscenio outliner."""
 
     bl_idname = "proscenio.select_outliner_object"
     bl_label = "Proscenio: Select Outliner Object"
@@ -64,11 +64,7 @@ class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
 
     bl_idname = "proscenio.select_bone_by_name"
     bl_label = "Proscenio: Select Bone"
-    bl_description = (
-        "Clicking a bone row in the Skeleton panel should select that "
-        "bone in the viewport. Without this operator, the UIList only "
-        "stores the index and the viewport stays where it was."
-    )
+    bl_description = "Selects the bone for this Skeleton-panel row in the viewport"
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     armature_name: StringProperty(  # type: ignore[valid-type]
@@ -103,9 +99,8 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
     bl_idname = "proscenio.set_active_action"
     bl_label = "Proscenio: Set Active Action"
     bl_description = (
-        "Clicking an action row in the Animation panel assigns that "
-        "action to the first armature in the scene so the timeline plays "
-        "it. Without this operator, the UIList only stores the index."
+        "Assigns this Animation-panel row's action to the first armature "
+        "in the scene so the timeline plays it"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -124,9 +119,7 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
             report_warn(self, "no armature in scene to receive the action")
             return {"CANCELLED"}
         if len(armatures) > 1:
-            # When the scene has multiple armatures the writer warns + uses
-            # the first only; mirror that heuristic here so the panel
-            # selector behaves predictably.
+            # Mirror the writer's heuristic: warn + use the first armature only.
             report_warn(
                 self,
                 f"{len(armatures)} armatures in scene - assigning to '{armatures[0].name}'",
@@ -144,10 +137,8 @@ def _sync_pose_bone_selection(armature: bpy.types.Object, bone_name: str) -> Non
 
     `bones.active` drives the Properties-editor highlight; PoseBone.select
     drives the viewport bone-shape selection. Blender 4.x exposed the
-    select flag on Bone too, but 5.1 moved it to PoseBone exclusively
-    (probe: `bpy.types.Bone.bl_rna.properties` has only `hide_select`,
-    while `bpy.types.PoseBone` has `select`). hasattr guard keeps the
-    helper tolerant of either layout.
+    select flag on Bone too, but 5.1 moved it to PoseBone exclusively, so
+    the hasattr guard stays tolerant of either layout.
     """
     if armature.pose is None:
         return
@@ -177,7 +168,7 @@ def _sync_active_index(
 
 
 class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):
-    """Flip the outliner favorite flag on a target object (the outliner subpanel)."""
+    """Flip the outliner favorite flag on a target object."""
 
     bl_idname = "proscenio.toggle_outliner_favorite"
     bl_label = "Proscenio: Toggle Outliner Favorite"

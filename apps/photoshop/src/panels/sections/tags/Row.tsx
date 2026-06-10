@@ -1,6 +1,6 @@
-// One row of the Tags panel. Wraps `TagRowImpl` in `React.memo` with
-// a structural equality check that short-circuits on node reference
-// equality (preserved across polls by `buildTagTreeReusing`).
+// One row of the Tags panel. `React.memo`'d with a structural equality
+// check that short-circuits on node-ref equality (preserved across
+// polls by `buildTagTreeReusing`).
 
 import React from "react";
 
@@ -202,8 +202,7 @@ const TagRowImpl: React.FC<TagRowProps> = ({
 export const TagRow = React.memo(TagRowImpl, tagRowEqual);
 
 function tagRowEqual(prev: TagRowProps, next: TagRowProps): boolean {
-    // Fast path: when buildTagTreeReusing preserves the node ref,
-    // skip the structural walk entirely.
+    // Node-ref equality skips the structural walk below.
     if (
         prev.node === next.node
         && prev.selected === next.selected

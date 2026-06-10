@@ -1,4 +1,4 @@
-"""Atlas manifest read (split out of atlas_io).
+"""Atlas manifest read.
 
 Pure JSON parser, but lives under ``bpy_helpers/`` because the typed
 ``Rect`` it returns is shared with ``compose_atlas`` and the

@@ -1,12 +1,7 @@
 """Unit tests for the automesh geometry pipeline.
 
 bpy-free. Exercises the Laplacian smoothing + arc-length resample +
-annulus edge construction consumed by
-``core/bpy_helpers/automesh/bridge.py``.
-
-Run from the repo root:
-
-    pytest tests/automesh/test_geometry.py
+annulus edge construction consumed by the automesh bpy bridge.
 """
 
 from __future__ import annotations

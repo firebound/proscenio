@@ -61,10 +61,9 @@ def _point_on_segment(
         return False
     closest_x = ax + ratio * abx
     closest_y = ay + ratio * aby
-    # Compare squared distance against squared epsilon - mixing
-    # squared LHS with linear epsilon widened the on-edge band to
-    # ~31um at the default 1e-9 epsilon, excluding valid interior
-    # points within that distance of the boundary.
+    # Compare squared distance against SQUARED epsilon: mixing a
+    # squared LHS with a linear epsilon widens the on-edge band and
+    # excludes valid interior points near the boundary.
     return (px - closest_x) ** 2 + (py - closest_y) ** 2 < _BOUNDARY_EPSILON_SQ
 
 
@@ -73,11 +72,9 @@ def point_in_polygon(point: Point2D, polygon: Sequence[Point2D]) -> bool:
 
     Returns ``True`` when the point lies strictly inside the closed
     polygon, ``False`` on the boundary or outside. The explicit
-    boundary check up front is what enforces "on the edge = outside"
-    per the contract - the raw ray-casting below is indeterminate
-    for points sitting exactly on a polygon segment and would
-    otherwise leak the rare-but-possible edge case (regression
-    caught in PR #51 review).
+    boundary check up front enforces "on the edge = outside"; the
+    raw ray-casting below is indeterminate for points sitting
+    exactly on a polygon segment.
 
     Performance is linear in the polygon vertex count - fine for
     the few-hundred-vertex contours Proscenio's automesh produces
@@ -237,11 +234,9 @@ def filter_points_too_close_to_boundary(
     """Drop Steiner points within ``min_distance`` of any boundary vert.
 
     Constrained Delaunay does not auto-merge near-coincident verts
-    when they sit just above the snap epsilon (default 1e-6). Result:
-    pairs of clustered verts at the boundary where a grid Steiner
-    point happened to land within a fraction of a pixel of an outer
-    contour vert (regression caught in PR #51 smoke - visible as
-    "phantom" close verts near the silhouette edge).
+    when they sit just above the snap epsilon (default 1e-6), leaving
+    clustered "phantom" verts where a grid Steiner point lands within
+    a fraction of a pixel of an outer contour vert.
 
     Pre-filter on the pure-Python side keeps the Steiner grid clean
     before it enters Delaunay; downstream sees only well-separated

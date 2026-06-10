@@ -1,9 +1,9 @@
 @tool
 extends RefCounted
 
-# Attaches Sprite2D-backed sprite elements (`type: "sprite"`) in the
-# .proscenio document. Companion of mesh_builder.gd - each builder
-# discriminator-filters its own kind so importer.gd can call both blindly.
+# Attaches Sprite2D-backed sprite elements (`type: "sprite"`). Companion of
+# mesh_builder.gd - each builder filters its own kind so importer.gd can call
+# both blindly.
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
 const SpriteAttachUtil := preload("res://addons/proscenio/builders/sprite_attach_util.gd")
@@ -48,9 +48,8 @@ static func _build_sprite(
 	if sprite_res.offset.size() >= 2:
 		sprite.offset = Vector2(sprite_res.offset[0], sprite_res.offset[1])
 
-	# Optional sub-rectangle of the atlas. Absent means use the full texture.
-	# Godot's Sprite2D divides region_rect into hframes x vframes when
-	# region_enabled is true.
+	# Optional atlas sub-rect; absent means the full texture. Sprite2D divides
+	# region_rect into hframes x vframes when region_enabled is true.
 	if sprite_res.texture_region.size() >= 4:
 		sprite.region_enabled = true
 		sprite.region_rect = Rect2(
@@ -61,10 +60,9 @@ static func _build_sprite(
 		)
 
 	var bone_name := NodeNameUtil.sanitize(sprite_res.bone)
-	# Slot routing (shared with mesh_builder via sprite_attach_util):
-	# sprite attachments compose with mesh attachments under the same
-	# slot Node2D; default-attachment starts visible, others hidden until the
-	# slot_attachment track (animation_builder.gd) flips them at runtime.
+	# Sprite and mesh attachments compose under the same slot Node2D. The
+	# default attachment starts visible, others hidden until the
+	# slot_attachment track flips them at runtime.
 	var sanitized_name := String(sprite.name)
 	var routing := SpriteAttachUtil.resolve_sprite_parent(
 		skeleton, sanitized_name, bone_name, slot_map, true

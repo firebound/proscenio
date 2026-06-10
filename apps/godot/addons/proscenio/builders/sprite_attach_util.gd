@@ -3,7 +3,7 @@ extends RefCounted
 
 # Shared sprite-attachment helpers for mesh_builder.gd and
 # sprite_builder.gd: per-element texture resolution and slot / bone parent
-# routing. Both builders carried verbatim copies of these before the extraction.
+# routing.
 
 const SlotBuilder := preload("res://addons/proscenio/builders/slot_builder.gd")
 
@@ -20,12 +20,9 @@ static func resolve_sprite_texture(
 	fallback_atlas: Texture2D,
 	source_dir: String,
 ) -> Texture2D:
-	# Per-sprite texture resolution order:
-	# 1. sprite.texture field (writer emits it when the mesh has an Image
-	#    Texture on its material) - load <source_dir>/<filename>.
-	# 2. <sprite.name>.png next to the .proscenio - filename-by-convention
-	#    fallback for fixtures (doll) whose materials carry flat colors but
-	#    whose body parts ship as separate PNGs alongside the document.
+	# Resolution order:
+	# 1. sprite.texture field - load <source_dir>/<filename>.
+	# 2. <sprite.name>.png next to the .proscenio (filename-by-convention).
 	# 3. fallback_atlas - the scene-wide single-image case.
 	if per_sprite_path != "" and source_dir != "":
 		var path := source_dir.path_join(per_sprite_path)
@@ -45,11 +42,10 @@ static func resolve_sprite_parent(
 	slot_map: Dictionary,
 	allow_bone_parent: bool,
 ) -> SpriteParent:
-	# Slot routing wins: a sprite whose sanitized name is in slot_map is
-	# re-parented under the slot Node2D, taking the slot's default visibility.
-	# Otherwise, when bone-parenting is allowed and a bone matches, parent to
-	# that Bone2D; else the skeleton root. visible stays true outside the slot
-	# case (the node keeps its default), matching the prior per-builder logic.
+	# Slot routing wins: a sprite whose sanitized name is in slot_map re-parents
+	# under the slot Node2D and takes the slot's default visibility. Otherwise,
+	# when bone-parenting is allowed and a bone matches, parent to that Bone2D;
+	# else the skeleton root. `visible` stays true outside the slot case.
 	var result := SpriteParent.new()
 	var slot_info: SlotBuilder.SlotInfo = slot_map.get(sanitized_name, null)
 	if slot_info != null:

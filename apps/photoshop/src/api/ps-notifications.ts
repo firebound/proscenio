@@ -1,7 +1,4 @@
-// PS notification subscription wrapper. Keeps the UXP boundary in
-// `api/`: hooks ask for "tell me when the document changes" and get a
-// plain teardown function back, without touching `action` or knowing
-// how `addNotificationListener` drifts across builds.
+// PS notification subscription wrapper returning a plain teardown.
 //
 // UXP changed `addNotificationListener` over time. Older PS / UXP
 // builds return `void` (no teardown handle), the next generation
@@ -54,10 +51,6 @@ export function subscribeToEvents(
     };
 
     try {
-        // `addNotificationListener` is typed as a union of three
-        // possible return shapes; the union is wider than what any
-        // single Photoshop build returns, so the runtime probe is
-        // what actually picks the shape.
         const result = action.addNotificationListener(events, callback);
         if (isPromiseLike<unknown>(result)) {
             result.then(adopt).catch((err: unknown) => {

@@ -26,7 +26,7 @@ def emit_authoring_chord_layout(
     """
     chord(layout, ("MOD_REMESH", f"Automesh: {stage_label}"))
     if stage in {AuthoringStage.EDIT_OUTLINE, AuthoringStage.EDIT_INTERIOR_POINTS}:
-        #  toggle pen: tap a modifier to enter draw mode (no holding).
+        # Toggle-pen: tap a modifier to enter draw mode (no holding).
         verb = "extend" if stage == AuthoringStage.EDIT_OUTLINE else "fold"
         if stage == AuthoringStage.EDIT_INTERIOR_POINTS:
             chord(layout, ("MOUSE_LMB", "point"))

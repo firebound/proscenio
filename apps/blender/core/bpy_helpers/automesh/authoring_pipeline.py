@@ -70,7 +70,7 @@ def compute_outer(
     downscale_factor)`` and passes that to extract_contours, which then floors
     at 1 cell of safety dilation. The preview applies the same scale so a
     margin set at the default downscale (resolution=0.25, margin_pixels=5)
-    does not over-dilate by 4x (CR finding 2026-05-29).
+    does not over-dilate by 4x.
     """
     outer_dilate = max(1, round(params.margin_pixels * params.resolution))
     alpha_grid = read_alpha_grid(image, params.resolution)
@@ -239,7 +239,7 @@ def compute_all_steiners(
     artist could not tell that APPLY fills inside the loops too. Filling the
     full interior matches build_automesh at the default margin_pixels=0.
     ``inner_loops`` stays in the signature for the deferred build_automesh
-    extension that will honor them as CDT constraints (see TODO known gap).
+    extension that will honor them as CDT constraints.
     """
     interior = interior_points_for_annulus(
         outer,
@@ -292,7 +292,7 @@ def _build_stroke_cdt_inputs(
     interior_base_index: int,
     params: StageParams,
 ) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]]]:
-    """Run the unified stroke CDT pipeline (T-REV5).
+    """Run the unified stroke CDT pipeline.
 
     All kind='cut' strokes (Stage 2 outer cuts + Stage 4 interior strokes)
     carve a corridor hole routed through holes_world. kind='stroke' produces
@@ -364,7 +364,7 @@ def apply_mesh(
 ) -> dict[str, int]:
     """Final write: build_automesh + the sidecar work reproject.
 
-    Stroke handling (T-REV5):
+    Stroke handling:
     - kind='stroke' (fold-line): extra_steiners + extra_edges constraints.
     - kind='cut' (Stage 2 + Stage 4 unified): carves a corridor hole. The
       lens between the +/- cut_margin offset polylines is routed into
@@ -417,8 +417,8 @@ def _build_authoring_mesh(
 
     # Extra (stroke) verts are indexed from a sentinel namespace; build_automesh
     # remaps them to their true coord position once the auto-fill count is known.
-    # This removes the need to guess the interior base here (the old guess
-    # omitted the auto-fill count, which corrupted extra_edges for 2+ folds).
+    # Indexing from the sentinel avoids guessing the interior base before the
+    # auto-fill count exists.
     extras_local, extra_edges, stroke_verts_dropped, cut_hole_loops = _build_stroke_cdt_inputs(
         obj,
         outer_cuts,
@@ -472,8 +472,8 @@ def compute_triangulation_preview(
     pairs. Returns ``[]`` for DENSE (which keeps the dense Steiner-point
     preview drawn from ``all_steiners`` instead).
 
-    Per OQ1, callers compute this on stage-enter + param-dirty and cache
-    the result rather than every TIMER tick (one CDT per refresh).
+    Callers compute this on stage-enter + param-dirty and cache the result
+    rather than every TIMER tick (one CDT per refresh).
     """
     if params.interior_mode != "SIMPLE":
         return []
@@ -531,10 +531,8 @@ def _to_world_xz(obj: bpy.types.Object, local_points: list[Point2D]) -> list[Poi
     """Transform local XZ points through obj.matrix_world; drop Y component.
 
     Used by stage compute helpers so the GPU overlay draws at the sprite's
-    actual viewport position rather than the world origin. Y is dropped
-    after transform since the Proscenio convention pins the sprite plane
-    to Y=0 anyway; preserving any tiny Y component would still flatten on
-    the POST_VIEW draw (which builds (x, 0, z) verts).
+    actual viewport position rather than the world origin. Y is depth (XZ
+    picture plane) and is dropped; the POST_VIEW draw rebuilds (x, 0, z).
     """
     matrix = obj.matrix_world
     out: list[Point2D] = []
@@ -700,14 +698,14 @@ def _cut_stroke_to_hole_loop(
     holes_world_local: list[list[Point2D]] | None,
     cut_half: float,
 ) -> tuple[list[Point2D] | None, int]:
-    """Build the corridor hole loop for a kind='cut' stroke (T-REV5 + ).
+    """Build the corridor hole loop for a kind='cut' stroke.
 
     Returns (lens_loop, dropped_count). lens_loop is None when the stroke is
     too short or lies entirely outside the silhouette. The loop is a closed
     polygon (left offset + right offset reversed) used as a CDT hole - the
     triangulation excludes its interior + never crosses it (clean corridor).
 
-     (cut-to-alpha): unlike fold-lines, cut verts are NOT filtered
+    Cut-to-alpha: unlike fold-lines, cut verts are NOT filtered
     to inside-silhouette. The full stroke (including samples that land in alpha
     OUTSIDE the silhouette) is offset into the corridor. When the corridor
     crosses the outer boundary, the CDT-hole severs the silhouette there - so
@@ -753,15 +751,14 @@ def _strokes_to_cdt_inputs(
     - kind='stroke': append resampled verts as Steiners + constraint edges
       (fold-line). Endpoint snap to outer contour verts within
       interior_spacing * 1.5 references the outer index directly (no dup vert).
-    - kind='cut' (T-REV5, both Stage 2 + Stage 4): build a corridor hole. The
+    - kind='cut' (both Stage 2 + Stage 4): build a corridor hole. The
       stroke is offset +/- cut_margin/2 perpendicular to its tangent into 2
       parallel polylines; the closed lens between them is appended to
       cut_hole_loops. The caller routes cut_hole_loops into build_automesh's
       holes_world so the CDT treats the corridor as a HOLE - the triangulation
-      excludes it + never crosses it (the user's algorithm). This is the same
-      battle-tested path the swirl fixture's alpha holes use, so the result is
-      a clean gap with no slivers (vs post-prune) and no jaggedness (vs
-      T-REV2 split_edges rip).
+      excludes it + never crosses it. This is the same path the swirl
+      fixture's alpha holes use, so the result is a clean gap with no slivers
+      and no jaggedness.
 
     Silhouette filter: every vert is tested BEFORE index allocation.
     Verts outside outer / inside inner / inside any hole are dropped so stale

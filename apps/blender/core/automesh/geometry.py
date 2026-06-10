@@ -105,11 +105,9 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
         raise ValueError("contour must have at least 3 vertices to resample")
 
     # Dedupe consecutive identical points up front so the sampling
-    # loop never has to handle zero-length edges. The earlier path
-    # (skip-and-continue on zero length) could emit duplicate
-    # samples and drift the arc-length distribution because the
-    # current edge_index was never advanced past the degenerate edge
-    # (regression caught in PR #51 review).
+    # loop never has to handle zero-length edges; otherwise duplicate
+    # samples drift the arc-length distribution when edge_index fails
+    # to advance past a degenerate edge.
     deduped: Contour2D = [contour[0]]
     for prev, point in pairwise(contour):
         if point != prev:

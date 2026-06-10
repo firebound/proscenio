@@ -1,7 +1,5 @@
-// Unit tests for the import orchestrator. Drives the host mock's
-// documents.add + open (via png-placer) and a fake folder tree to cover
-// mesh stamping, the missing-PNG skip, sprite-group stamping, and the
-// modal-failure path.
+// Import orchestrator. Drives the host mock's documents.add + open (via
+// png-placer) and a fake folder tree.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

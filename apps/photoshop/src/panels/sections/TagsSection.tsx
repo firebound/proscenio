@@ -1,5 +1,4 @@
-// Thin container for the Tags tab. Walks the planner-built tree and
-// hands each node to `TagRow`. Real work lives under `./tags/`.
+// Container for the Tags tab; renders the tree via `TagRow` (under `./tags/`).
 
 import React from "react";
 

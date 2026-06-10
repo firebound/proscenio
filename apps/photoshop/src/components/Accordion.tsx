@@ -1,7 +1,6 @@
-// Photoshop-style collapsible section. The host's Properties / Layers
-// panels use a tiny uppercase header + chevron; we mirror that here so
-// the Proscenio panels feel native. State is local so toggling one
-// accordion does not cascade re-renders into siblings.
+// Photoshop-style collapsible section mirroring the host's Properties /
+// Layers panel headers. Open state is local so toggling one accordion
+// does not cascade re-renders into siblings.
 
 import React from "react";
 

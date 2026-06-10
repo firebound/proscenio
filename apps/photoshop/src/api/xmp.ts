@@ -1,15 +1,11 @@
-// the photoshop tag system: XMP mirror for the bracket-tag canonical.
-// Bracket tags in the layer name remain the source of truth; this
-// module additionally stamps the same `TagBag` into document-level
-// XMP under the `proscenio` namespace (`urn:proscenio:tags:v1`),
-// keyed by sanitised layer path. Read paths still
-// trust the name (name wins on conflict); the mirror is
-// secondary, defensive, and best-effort.
+// XMP mirror for the bracket-tag canonical. Bracket tags in the layer
+// name remain the source of truth (name wins on conflict); this module
+// additionally stamps the same `TagBag` into XMP under the `proscenio`
+// namespace (`urn:proscenio:tags:v1`), keyed by sanitised layer path.
 //
-// Every operation is wrapped so failures never block the rename
-// pipeline. If the host build does not expose `uxp.xmp` or the PSD
-// metadata reader rejects the call, the mirror silently degrades to
-// a no-op and a debug log line.
+// Best-effort: if the host build does not expose `uxp.xmp` or the PSD
+// metadata reader rejects the call, the mirror degrades to a no-op plus
+// a debug log line, so a failure never blocks the rename pipeline.
 
 import { xmp as uxpXmp } from "uxp";
 import type { PsLayer } from "photoshop";

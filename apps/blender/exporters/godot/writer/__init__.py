@@ -103,10 +103,9 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     sprite_objs = find_sprite_meshes(scene)
 
     # Blender skips depsgraph evaluation for hide_viewport=True objects, so
-    # `obj.matrix_world` returns an identity / stale value for hidden slot
-    # attachments. Un-hide every sprite, force a depsgraph update so each
-    # `matrix_world` reflects the parent chain, build the entries, then
-    # restore the original hide state. See specs/backlog-bugs-found.md.
+    # matrix_world is stale for hidden slot attachments. Un-hide, force a
+    # depsgraph update so matrix_world reflects the parent chain, build the
+    # entries, then restore the hide state.
     hidden_state: dict[bpy.types.Object, bool] = {}
     for obj in sprite_objs:
         if obj.hide_viewport:
@@ -131,10 +130,8 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     if slot_anims:
         animations = merge_slot_animations_into(animations, slot_anims)
 
-    # Assemble kwargs so empty optionals are omitted entirely (not passed
-    # as None). With exclude_unset=True, an explicit None still serialises
-    # as `"field": null`; omitting the key leaves the field unset so the
-    # dump drops it - matching the goldens.
+    # Omit empty optionals; an explicit None serialises as "field": null under
+    # exclude_unset and drifts the goldens.
     kwargs: _DocumentKwargs = {
         "format_version": SCHEMA_VERSION,
         "name": doc_name(),

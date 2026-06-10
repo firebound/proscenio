@@ -8,9 +8,8 @@ import { defineConfig } from "vitest/config";
 const mock = (name: string): string =>
   fileURLToPath(new URL(`./uxp-plugin-tests/__mocks__/${name}`, import.meta.url));
 
-// Test discovery stays on Vitest defaults (**/*.test.ts[x]); this config
-// adds the host-mock aliases and coverage so the Sonar scan has an lcov
-// report to import.
+// Adds the host-mock aliases and coverage so the Sonar scan has an
+// lcov report to import; discovery stays on Vitest defaults.
 export default defineConfig({
   test: {
     alias: {

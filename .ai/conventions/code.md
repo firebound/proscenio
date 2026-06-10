@@ -25,6 +25,24 @@ Every concern lives in its own module; `__init__.py` orchestrates registration o
 - Operator user-facing reports go through one shared report helper so the `"Proscenio: "` prefix lives in one place.
 - Cross-package import direction: `panels` -> `operators` (only via `bl_idname` strings, never direct class imports) -> `core`. `properties` -> `core`. No cycles.
 
+## Comments and rationale
+
+Code carries what and how. Design, decisions, and "why it is this way" live in their canonical homes, not in comments. A comment earns its place only when it encodes something the code, the names, and the tests cannot. Route every comment to one destination:
+
+- **Delete** - it restates the code, or narrates refactor history that git already owns.
+- **Tooling directive** - `# type: ignore[code]`, `# noqa`, `eslint-disable`, `gdlint:`. Functional, kept verbatim.
+- **Tighten inline** - a local invariant the next editor of this line must not break. Keep the constraint, drop the narrative. Prefer promoting it to an `assert` / `raise` so the runtime enforces it (see Defensive throws / asserts below).
+- **Module docstring** - module- or file-level purpose and constraints. Write one only when the purpose or a constraint is not obvious from the module name plus its contents; a trivial module gets none.
+- **Test** - bug-born regression knowledge. The "why" moves into a named regression test; the comment becomes a one-line pointer to that test.
+- **Architecture** - a cross-cutting, stable decision that gets re-litigated across modules (the XZ picture-plane convention, the golden field-order constraint). It lands on the docs Architecture page ("Where to tread carefully"), not inline.
+
+Reference hygiene:
+
+- A comment never references a `specs/NNN-*` path or a spec by number. STUDY folders are pruned and the link rots (see [`docs.md`](docs.md)). Cite a **test by name** for regression provenance, or move the rationale to its home.
+- `# Step N` / `# Phase N` mark a function doing several steps: extract the steps into helpers rather than label them (see Single Responsibility above).
+
+Pre-commit blocks spec-path references and `# Step N` markers in code comments; an on-demand prose-density sweep (see [`docs.md`](docs.md), Periodic audit) flags comment-heavy files for a routing review.
+
 ## Static typing
 
 Both languages we target support full static typing. Use it everywhere. Type errors caught at parse time cost zero; type errors caught at runtime cost a Blender re-launch or a Godot reimport.

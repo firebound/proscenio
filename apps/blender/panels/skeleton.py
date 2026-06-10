@@ -4,9 +4,6 @@ The Skeleton panel hosts the isolated project-wide Active Armature
 selector and the armature-presence messaging. The body splits into
 subpanels: Armature (the bone hierarchy), Pose Mode (pose-only
 authoring ops), and Quick Armature (the modal rig draw + its defaults).
-The status badge + help button on each subpanel header land with the
-header-convention pass (a later phase). Create Slot lives here until
-the Slots panel claims it (the operator-relocation phase).
 """
 
 from __future__ import annotations
@@ -89,11 +86,9 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         layout = self.layout
         scene_props = getattr(context.scene, "proscenio", None)
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
-        # The picker is the single project-wide armature source. Writes
-        # during ``draw`` are forbidden by Blender, so the initial fill
-        # happens through the load_post / deferred_hydrate handlers; here
-        # it is purely surfaced + user-driven (clearing it via the "x"
-        # tells Proscenio to fall back to QuickRig on the next op).
+        # Writes during ``draw`` are forbidden by Blender, so the initial
+        # fill happens in the load_post / deferred_hydrate handlers; here the
+        # picker is surfaced read-only (clearing it falls back to QuickRig).
         if scene_props is not None:
             row = layout.row(align=True)
             row.label(text="", icon="ARMATURE_DATA")

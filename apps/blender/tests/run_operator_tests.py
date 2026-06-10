@@ -6,9 +6,7 @@ Invoke from the repository root:
 
 Runs pytest on apps/blender/tests/operators/ INSIDE Blender so
 ``bpy.ops.proscenio.*`` operators register + execute end-to-end.
-Exits non-zero on any test failure. This is the NEW test layer
-the bind work introduces; the paint / sidecar / modal work reuses
-the same pattern.
+Exits non-zero on any test failure.
 """
 
 from __future__ import annotations

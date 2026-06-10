@@ -1,13 +1,10 @@
-// Tracks the layer chain of the currently selected PS layer. Combined
-// with the planner's `entryRefs` it lets the Debug / Validate / Tags
-// surfaces highlight the manifest row matching the artist's current
-// selection ("reveal-output").
+// Tracks the layer chain of the currently selected PS layer, so the
+// Debug / Validate / Tags surfaces can highlight the manifest row
+// matching the artist's current selection.
 //
-// The `version` argument is the monotonic counter from
-// `useDocumentChanges` - bumped when PS fires a select / make /
-// delete / set / open / close notification. We re-read on every bump
-// rather than subscribing inside this hook so all watchers share the
-// same debounced trigger.
+// `version` is the monotonic counter from `useDocumentChanges`; we
+// re-read on every bump rather than subscribing here so all watchers
+// share the same debounced trigger.
 
 import React from "react";
 
@@ -20,9 +17,7 @@ const POLL_MS = 300;
 export function useActiveLayerPath(version: number): readonly string[] | null {
     const [path, setPath] = React.useState<readonly string[] | null>(null);
 
-    // Centralised setter: bails on identical chains and only logs
-    // when the path actually changes - avoids polling-induced log
-    // floods at trace level.
+    // Bails on identical chains so polling does not flood the log.
     const updatePath = React.useCallback((next: readonly string[] | null) => {
         setPath((prev) => {
             if (pathsEqual(prev, next)) return prev;
@@ -31,22 +26,18 @@ export function useActiveLayerPath(version: number): readonly string[] | null {
         });
     }, []);
 
-    // Read on every PS notification bump.
     React.useEffect(() => {
-        // Synchronous read + dedup-aware setState. The functional updater
-        // inside updatePath returns the previous reference unchanged when
-        // the path did not move, so React skips the re-render without a
-        // microtask hop.
+        // updatePath returns the previous reference unchanged when the
+        // path did not move, so React skips the re-render despite the
+        // synchronous setState in the effect.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         updatePath(readActiveLayerPath());
     }, [version, updatePath]);
 
-    // Polling fallback. On UXP builds where
+    // Polling fallback: on UXP builds where
     // `action.addNotificationListener` returns void, no `select` events
-    // ever fire - we never learn that the artist clicked a different
-    // layer. Polling at 300ms catches selection changes cheaply. Skips
-    // when the host hides the panel (document.hidden) so background
-    // panels do not burn cycles.
+    // fire, so polling is the only way to learn the artist clicked a
+    // different layer. Skip when the panel is hidden (document.hidden).
     React.useEffect(() => {
         const id = setInterval(() => {
             if (typeof document !== "undefined" && document.hidden) return;

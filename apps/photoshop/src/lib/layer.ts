@@ -1,6 +1,6 @@
 // Photoshop-agnostic layer view consumed by the exporter recursion.
-// The real adapter (the photoshop UXP migration) maps Photoshop's `LayerSet` / `ArtLayer`
-// onto this shape; unit tests pass plain object trees.
+// The UXP adapter maps Photoshop's `LayerSet` / `ArtLayer` onto this
+// shape; unit tests pass plain object trees.
 //
 // `bounds` is the source-document pixel rectangle of the layer's
 // visible content (Photoshop's `layer.bounds`, already trimmed to

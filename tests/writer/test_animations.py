@@ -1,10 +1,10 @@
 """Pure-pytest unit tests for the bone-animation writer.
 
-No Blender: the bpy / mathutils stand-ins in ``conftest`` let the
-writer module import, and these tests drive only the pure projection
-helpers (fcurve-sample -> typed Animation / Track / Key models) with
-hand-built fakes. The bpy-bound entry point (``build_animations``) is
-covered by monkeypatching the action iterator.
+No Blender: the bpy / mathutils stand-ins in ``conftest`` let the writer
+module import, and these tests drive only the pure projection helpers
+(fcurve-sample -> typed Animation / Track / Key models) with hand-built
+fakes. The bpy-bound entry point is covered by monkeypatching the action
+iterator.
 """
 
 from __future__ import annotations
@@ -25,9 +25,6 @@ def _fcurve(data_path: str, array_index: int, samples: list[tuple[float, float]]
     """Fake FCurve whose keyframe_points carry (frame, value) in ``.co``."""
     kps = [SimpleNamespace(co=Vector((frame, value))) for frame, value in samples]
     return SimpleNamespace(data_path=data_path, array_index=array_index, keyframe_points=kps)
-
-
-# --- _parse_bone_data_path ------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -54,9 +51,6 @@ def test_parse_bone_data_path_strips_quotes() -> None:
     assert prop == "location"
 
 
-# --- _quat_to_screen_angle ------------------------------------------------
-
-
 def test_quat_identity_is_zero() -> None:
     assert anim._quat_to_screen_angle({0: 1.0}) == 0.0
 
@@ -66,9 +60,6 @@ def test_quat_screen_angle_uses_w_and_y_axes() -> None:
     theta = math.pi / 3
     quat = {0: math.cos(theta / 2), 2: math.sin(theta / 2)}
     assert anim._quat_to_screen_angle(quat) == pytest.approx(theta)
-
-
-# --- _absolute_* ----------------------------------------------------------
 
 
 def test_absolute_position_adds_delta_to_rest() -> None:
@@ -90,9 +81,6 @@ def test_absolute_scale_multiplies_rest() -> None:
 
 def test_absolute_scale_none_delta_is_rest() -> None:
     assert anim._absolute_scale((2.0, 3.0), None) == [2.0, 3.0]
-
-
-# --- _resolve_pose_entry --------------------------------------------------
 
 
 def test_resolve_location_ignores_depth_axis() -> None:
@@ -132,9 +120,6 @@ def test_resolve_quaternion_rotation() -> None:
     quat = {0: math.cos(theta / 2), 2: math.sin(theta / 2)}
     delta = anim._resolve_pose_entry({"rotation_quaternion": quat}, ppu=1.0)
     assert delta.rotation == pytest.approx(theta)
-
-
-# --- build_bone_track -----------------------------------------------------
 
 
 def test_build_bone_track_position_only() -> None:
@@ -187,9 +172,6 @@ def test_build_bone_track_scale_channel() -> None:
     assert track.keys[0].scale == [2.0, 0.5]
 
 
-# --- action_fcurves / collect_bone_keys -----------------------------------
-
-
 def test_action_fcurves_legacy_path() -> None:
     fc = _fcurve('pose.bones["arm"].location', 0, [(1, 0.0)])
     action = SimpleNamespace(fcurves=[fc])
@@ -218,9 +200,6 @@ def test_collect_bone_keys_skips_unparseable_fcurves() -> None:
     fc = _fcurve("nonsense", 0, [(1, 0.0)])
     action = SimpleNamespace(fcurves=[fc])
     assert anim.collect_bone_keys(action, fps=10) == {}
-
-
-# --- build_animation / build_animations -----------------------------------
 
 
 def test_build_animation_returns_none_when_no_bone_keys() -> None:

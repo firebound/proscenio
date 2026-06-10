@@ -10,10 +10,8 @@ static func _apply_skinning(
 	skeleton: Skeleton2D,
 	weights: Array[ProscenioWeight],
 ) -> void:
-	# Wire Polygon2D.skeleton + per-bone weight arrays. Each Weight entry
-	# from the .proscenio document carries `{bone, values[]}`. Bones whose
-	# name does not resolve under the skeleton are reported and skipped;
-	# the rest of the rig still imports.
+	# Bones whose name does not resolve under the skeleton are skipped, not
+	# fatal - the rest of the rig still imports.
 	poly.skeleton = poly.get_path_to(skeleton)
 	poly.clear_bones()
 	for weight in weights:
@@ -41,11 +39,8 @@ static func attach_elements(
 	if elements == null:
 		return
 	for element: ProscenioElement in elements:
-		# Discriminator dispatch: this builder handles only ProscenioMeshElement.
-		# The "type absent -> mesh" default is applied upstream by
-		# ProscenioElement.from_dict (data.get("type", "mesh")), so a tag-less
-		# element has already parsed as ProscenioMeshElement by the time it
-		# reaches here - change the default there, not in this filter.
+		# Handles only ProscenioMeshElement. The "type absent -> mesh" default
+		# lives in ProscenioElement.from_dict, not in this filter - change it there.
 		if not (element is ProscenioMeshElement):
 			continue
 		_build_mesh(element as ProscenioMeshElement, skeleton, atlas, slot_map, source_dir)
@@ -71,10 +66,8 @@ static func _build_mesh(
 	)
 
 	var uvs := PackedVector2Array()
-	# .proscenio stores UVs normalized [0, 1] - engine-agnostic. Godot's
-	# Polygon2D expects UVs in texture pixel space, so multiply by the
-	# resolved texture's size at import time. Sprites without a texture
-	# keep raw UVs.
+	# .proscenio UVs are normalized [0, 1]; Polygon2D wants texture pixel
+	# space, so scale by texture size. Sprites with no texture keep raw UVs.
 	var uv_scale := Vector2.ONE
 	if sprite_tex != null:
 		uv_scale = sprite_tex.get_size()
@@ -89,10 +82,9 @@ static func _build_mesh(
 	var is_skinned: bool = weights != null and not weights.is_empty()
 
 	var bone_name := NodeNameUtil.sanitize(sprite.bone)
-	# Slot routing (shared with sprite_builder via sprite_attach_util):
-	# slot attachment wins; otherwise rigid meshes parent to their Bone2D,
-	# while skinned meshes stay under the skeleton (weights drive deform).
-	# Lookup uses ``poly.name`` (already Godot-sanitized via Node.name set).
+	# Slot attachment wins; otherwise rigid meshes parent to their Bone2D while
+	# skinned meshes stay under the skeleton (weights drive deform). Lookup uses
+	# ``poly.name``, already Godot-sanitized by the Node.name setter.
 	var sanitized_name := String(poly.name)
 	var routing := SpriteAttachUtil.resolve_sprite_parent(
 		skeleton, sanitized_name, bone_name, slot_map, not is_skinned

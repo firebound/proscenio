@@ -1,10 +1,10 @@
 """Pure-pytest unit tests for the sprite / weights writer.
 
 The bpy / mathutils substitutes in conftest let the module import. These
-tests drive the bpy-free projection helpers (vertex-group weights,
-sprite frame metadata, per-sprite texture resolution) with hand-built
-fakes. The mesh-geometry path of ``build_element`` needs a real matrix and
-stays with the in-Blender suite.
+tests drive the bpy-free projection helpers (vertex-group weights, sprite
+frame metadata, per-sprite texture resolution) with hand-built fakes. The
+mesh-geometry path of ``build_element`` needs a real matrix and stays with
+the in-Blender suite.
 """
 
 from __future__ import annotations
@@ -18,9 +18,6 @@ from blender.exporters.godot.writer import scene_discovery, sprites
 
 def _vgroup(index: int, name: str) -> SimpleNamespace:
     return SimpleNamespace(index=index, name=name)
-
-
-# --- resolve_sprite_bone --------------------------------------------------
 
 
 def test_resolve_sprite_bone_prefers_bone_parent() -> None:
@@ -38,9 +35,6 @@ def test_resolve_sprite_bone_falls_back_to_first_vertex_group() -> None:
 def test_resolve_sprite_bone_empty_when_no_bone_or_groups() -> None:
     obj = SimpleNamespace(parent_type="OBJECT", parent_bone="", vertex_groups=[])
     assert sprites.resolve_sprite_bone(obj) == ""
-
-
-# --- build_sprite ---------------------------------------------------
 
 
 def test_build_sprite_reads_grid_and_bone() -> None:
@@ -72,9 +66,6 @@ def test_build_sprite_rejects_zero_grid() -> None:
         sprites.build_sprite(obj)
 
 
-# --- build_element routing -------------------------------------------------
-
-
 def test_build_sprite_routes_sprite_kind() -> None:
     obj = SimpleNamespace(
         name="spark",
@@ -100,9 +91,6 @@ def test_build_sprite_rejects_unknown_kind() -> None:
     )
     with pytest.raises(RuntimeError, match="unknown element_type"):
         sprites.build_element(obj, {}, ppu=100.0)
-
-
-# --- weights --------------------------------------------------------------
 
 
 def test_resolve_known_groups_keeps_matching_and_drops_unknown() -> None:
@@ -165,9 +153,6 @@ def test_build_sprite_weights_uses_fallback_for_zero_weight_vertex() -> None:
         obj, mesh, [0], fallback_bone="arm", available_bones={"arm"}
     )
     assert {w.bone: w.values for w in weights} == {"arm": [1.0]}
-
-
-# --- per-sprite texture ---------------------------------------------------
 
 
 @pytest.mark.parametrize(

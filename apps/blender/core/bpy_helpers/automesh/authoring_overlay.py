@@ -41,7 +41,7 @@ _TRIANGULATION_COLOR = (0.2, 0.9, 0.9, 0.85)  # cyan - SIMPLE triangulation prev
 _TRIANGULATION_LINE_WIDTH = 1.5
 _USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
 _STROKE_VERT_COLOR_FOLD = (0.3, 0.7, 1.0, 1.0)  # blue - fold-line stroke (Stage 4 default)
-_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - cut (both Stage 2 + Stage 4, )
+_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - cut (both Stage 2 + Stage 4)
 _LINE_WIDTH = 2.0
 _DOT_SIZE_USER = 8.0
 _DOT_SIZE_STEINER = 4.0
@@ -127,7 +127,7 @@ def _register_interactive_handlers(
     receive mutable container references so they always see the latest operator
     state without needing re-registration on MOUSEMOVE.
 
-    Cut strokes render RED in both stages ( unified the color).
+    Cut strokes render RED in both stages.
     """
     if user_strokes is not None:
         handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
@@ -246,8 +246,7 @@ def register_overlay(
 
     For Stage 2 (EDIT_OUTLINE) pass user_outer_strokes + tooltip + live-preview
     refs. For Stage 4 (EDIT_INTERIOR_POINTS) pass user_strokes + user_outer_strokes
-    (kept visible) + tooltip refs. Cut strokes render RED in both stages
-    ( unified the color).
+    (kept visible) + tooltip refs. Cut strokes render RED in both stages.
 
     Live mutable container parameters (all optional):
     - user_strokes: interior Steiner strokes (_user_strokes in operator)
@@ -274,7 +273,7 @@ def register_overlay(
     }
     _register_contour_handlers(handles, stage, output)
     if stage == AuthoringStage.EDIT_OUTLINE:
-        # Stage 2: outer strokes only (cut = red, ). The spliced-outer
+        # Stage 2: outer strokes only (cut = red). The spliced-outer
         # preview holds the live output.outer_preview list by
         # reference so the operator can update it in-place after each edit.
         handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
@@ -295,7 +294,7 @@ def register_overlay(
     elif stage == AuthoringStage.EDIT_INTERIOR_POINTS:
         # Stage 4: interior strokes, plus outer strokes kept visible via a
         # separate handler stored in "user_outer_strokes". Cut = red in both
-        # . The colored live preview supersedes the gray raw-stroke.
+        # stages. The colored live preview supersedes the gray raw-stroke.
         _register_interactive_handlers(
             handles,
             user_strokes,
@@ -404,8 +403,8 @@ def _draw_edges(
     color: tuple[float, float, float, float],
     line_width: float,
 ) -> None:
-    """Draw independent edge segments from world-XZ endpoint pairs (
-    SIMPLE triangulation preview)."""
+    """Draw independent edge segments from world-XZ endpoint pairs
+    (SIMPLE triangulation preview)."""
     if not edges:
         return
     verts: list[tuple[float, float, float]] = []
@@ -447,7 +446,7 @@ def _resolve_stroke_color(kind: str) -> tuple[float, float, float, float]:
 
     kind="point"  -> YELLOW (single Steiner dot)
     kind="stroke" -> BLUE   (fold-line)
-    kind="cut"    -> RED    (cut, both Stage 2 + Stage 4, )
+    kind="cut"    -> RED    (cut, both Stage 2 + Stage 4)
     """
     if kind == "point":
         return _USER_DOT_COLOR
@@ -462,7 +461,7 @@ def _draw_user_strokes(strokes: list[Stroke]) -> None:
 
     kind=point:  YELLOW dot (8 px) - single Steiner.
     kind=stroke: BLUE verts (6 px) + blue line segments - fold-line.
-    kind=cut:    RED verts + red line segments - cut (both stages, ).
+    kind=cut:    RED verts + red line segments - cut (both stages).
 
     The strokes list is held by reference so this callback always reflects
     the latest committed state without re-registration.
@@ -545,7 +544,7 @@ def _draw_live_preview(state: dict[str, object]) -> None:
             shader.uniform_float("color", dim)
             gpu.state.line_width_set(1.5)
             rubber.draw(shader)
-            # : ghost dots for the subdivisions that will be baked into
+            # Ghost dots for the subdivisions that will be baked into
             # the segment (cursor is already axis-locked by the operator, so the
             # rubber-band doubles as the X/Z guide line).
             subdiv = int(cast("int", state.get("subdivisions") or 0))

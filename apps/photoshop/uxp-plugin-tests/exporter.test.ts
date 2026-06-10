@@ -1,8 +1,6 @@
-// Unit tests for the photoshop tag system (manifest v2) planner. Pure logic, no PS runtime.
-// The planner reads the bracket-tag parser and emits the v2 manifest
-// shape; tests cover the legacy auto-detection paths that survive
-// (visible polygons, digit-named sprite groups) plus the new
-// tag-driven semantics (ignore, kind override, folder/path, scale,
+// Manifest v2 planner. Pure logic, no PS runtime. Covers the surviving
+// auto-detection paths (visible polygons, digit-named sprite groups) plus
+// the tag-driven semantics (ignore, kind override, folder/path, scale,
 // blend, origin).
 
 import { describe, expect, it } from "vitest";
@@ -208,10 +206,9 @@ describe("bracket tags", () => {
     });
 
     it("group named only with a tag passes through without polluting child names", () => {
-        // User names a top-level group literally `[spritesheet]` but
-        // the children are not numeric. buildSpriteEntry returns
-        // null; the fall-through must NOT prefix children with the
-        // empty display name (would collide with manifest schema).
+        // Group named literally `[spritesheet]` with non-numeric children:
+        // buildSpriteEntry returns null and the fall-through must not prefix
+        // children with the empty display name (would break the schema).
         const layers: Layer[] = [
             set("[spritesheet]", [art("brow.L"), art("brow.R")]),
         ];
@@ -222,9 +219,8 @@ describe("bracket tags", () => {
     it("leaf layer named only with a tag falls back to the raw name (manifest stays valid)", () => {
         const layers: Layer[] = [art("[ignore-not-applied]")];
         const m = buildManifest(doc, layers, opts);
-        // Tag `[ignore-not-applied]` is not in the recognised
-        // vocabulary, so it stays in the display name (unknown
-        // brackets pass through). The entry name is the raw name.
+        // Unknown tag stays in the display name (unrecognised brackets pass
+        // through), so the entry name is the raw name.
         expect(m.layers).toHaveLength(1);
         expect(m.layers[0].name).toBe("[ignore-not-applied]");
     });

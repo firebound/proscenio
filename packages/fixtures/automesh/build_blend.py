@@ -9,8 +9,8 @@ Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
 - 3-bone vertical hand armature (``automesh.hand_rig``:
   ``wrist`` -> ``palm`` -> ``fingertip``) positioned along the Z
   axis at X=-3 so the chain follows the hand's natural deformation
-  direction (palm flex + finger bend). Exercises the weight-paint-automesh density-under-bones path
-  density-under-bones end-to-end (the hand mesh gets thicker
+  direction (palm flex + finger bend). Exercises the
+  density-under-bones path end-to-end (the hand mesh gets thicker
   triangulation along the chain when automesh runs against the
   picker).
 - 5 sprite plane meshes (``hand``, ``blob``, ``lshape``, ``ring``,
@@ -25,9 +25,9 @@ Loads 5 PNGs produced by ``draw_layers.py`` from disk and builds:
   trivially testable - select blob / lshape / ring + run automesh
   + verify uniform interior density falls back gracefully).
 
-The fixture exists to feed ``specs/backlog-manual-testing.md`` section
-1.15 (T1-T16) end-to-end. Regenerate by re-running ``draw_layers.py``
-then this script when the smoke checklist needs an updated baseline.
+The fixture feeds the automesh smoke checklist end-to-end. Regenerate
+by re-running ``draw_layers.py`` then this script when the checklist
+needs an updated baseline.
 
 Run ``draw_layers.py`` first or this script aborts on missing PNGs.
 """
@@ -113,11 +113,8 @@ def _build_hand_chain() -> bpy.types.Object:
                              |
         wrist     (Z=-0.8)   |
 
-    Density-under-bones now clusters triangles along the vertical
-    centerline of the hand - readable as "more deformation control
-    where the fingers and palm bend" rather than the previous
-    horizontal layout that made density cluster across the palm width
-    for no anatomical reason.
+    Density-under-bones clusters triangles along this vertical
+    centerline.
     """
     arm_data = bpy.data.armatures.new("automesh.hand_rig")
     arm_obj = bpy.data.objects.new("automesh.hand_rig", arm_data)
@@ -164,12 +161,8 @@ def _build_sprite_quad(
     )
     mesh.update()
     uv = mesh.uv_layers.new(name="UVMap")
-    # Direct UV mapping (matches shared_atlas convention). The
-    # atlas_pack-derived U-flip was a misapplied workaround for
-    # Blender's Front Ortho view direction; in the actual default
-    # Front Ortho (-Y look direction) it causes a horizontal mirror
-    # of the texture on the sprite plane (visible as wrist on wrong
-    # side for asymmetric content).
+    # Direct UV mapping (matches shared_atlas convention). A U-flip
+    # mirrors the texture under the default Front Ortho (-Y look).
     uv.data[0].uv = (0.0, 0.0)
     uv.data[1].uv = (1.0, 0.0)
     uv.data[2].uv = (1.0, 1.0)

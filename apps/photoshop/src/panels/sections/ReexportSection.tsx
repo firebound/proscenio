@@ -1,11 +1,5 @@
-// the photoshop tag system single-layer re-export. Lives in the Exporter panel
-// alongside the full export; the Tags panel only INSPECTS the
-// selected entry (RevealOutputSection), action moves here.
-//
-// Reads the active PS layer chain via useActiveLayerPath, matches
-// it against the live preview's entryRefs, and exposes a single
-// button that writes the PNG(s) for just that entry. Manifest
-// stays untouched - debugging aid for iterating on one asset.
+// Single-layer re-export: writes the PNG(s) for the active layer's
+// matched preview entry, leaving the manifest untouched.
 
 import React from "react";
 import type { UxpFolder } from "uxp";

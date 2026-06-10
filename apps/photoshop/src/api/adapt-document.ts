@@ -1,17 +1,9 @@
-// Photoshop -> exporter Layer adapter.
-//
-// The pure planner (`src/lib/planner.ts`) consumes the
-// runtime-agnostic `Layer` shape from `src/lib/layer.ts`. This
-// module bridges the live Photoshop document into that shape so the
-// planner can run identically against synthetic test data and a real
-// PSD. Nothing in here touches the file system or schedules an
-// export; it only reads.
+// Photoshop -> exporter Layer adapter. Read-only.
 //
 // Group detection uses the duck-typed shape (presence of a `.layers`
-// array) rather than `layer.kind === constants.LayerKind.group`. The
-// enum value differs across UXP / PS versions (some return numbers,
-// some return strings, some swap the casing); the `.layers` array is
-// the universal signal that a layer is a LayerSet.
+// array) rather than `layer.kind === constants.LayerKind.group`: the
+// enum value differs across UXP / PS versions (numbers, strings, or
+// swapped casing), while `.layers` is the universal LayerSet signal.
 
 import { type PsDocument, type PsGuide, type PsLayer, type PsBounds } from "photoshop";
 
@@ -43,7 +35,7 @@ function safeAnchor(doc: PsDocument): [number, number] | undefined {
         return extractAnchor(doc.guides);
     } catch {
         // Some PS / UXP builds throw on `doc.guides` access instead of
-        // returning undefined. Treat any failure as "no anchor".
+        // returning undefined; treat any failure as "no anchor".
         return undefined;
     }
 }

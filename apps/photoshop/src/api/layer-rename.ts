@@ -1,6 +1,4 @@
-// Tag-write side of the Tags tab. The hook computes the new layer
-// name from the bag (`domain/tag-writer.ts`) and calls `renameLayer`
-// here to persist it.
+// Tag-write side of the Tags tab: persists a computed layer name.
 //
 // IMPORTANT: `doc.layers` returns wrappers that go stale inside an
 // `executeAsModal` block on this UXP build - find() never matches
@@ -40,9 +38,8 @@ export async function renameLayer(
             // eslint-disable-next-line @typescript-eslint/require-await -- modal callback is async by API contract
             async () => {
                 target.name = newName;
-                // Best-effort XMP mirror per the photoshop tag system. Bracket
-                // tag in the name stays canonical; if this fails it
-                // logs at debug and the rename still counts as ok.
+                // Best-effort XMP mirror; the bracket tag in the name stays
+                // canonical, so a failure here still counts as a successful rename.
                 const newLayerPath = [...layerPath.slice(0, -1), newName];
                 const newTags = parseLayerName(newName).tags;
                 writeLayerTagsToXmp(target, newLayerPath, newTags);

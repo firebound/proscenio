@@ -106,15 +106,15 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
-          sidebarId: 'apiSidebar',
+          sidebarId: 'projectSidebar',
           position: 'left',
-          label: 'Schema reference',
+          label: 'Project',
         },
         {
           type: 'docSidebar',
-          sidebarId: 'blenderSidebar',
+          sidebarId: 'toolsSidebar',
           position: 'left',
-          label: 'Blender addon',
+          label: 'Tools',
         },
         {
           href: 'https://github.com/Space-Wizard-Studios/firebound-proscenio',
@@ -131,7 +131,7 @@ const config: Config = {
           items: [
             {label: 'Walkthrough', to: '/guides/basic'},
             {label: 'Architecture', to: '/project/architecture'},
-            {label: 'Features', to: '/project/features'},
+            {label: 'Tools', to: '/blender-addon'},
           ],
         },
         {

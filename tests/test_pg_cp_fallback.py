@@ -1,4 +1,4 @@
-"""Unit tests for the code-modularity work - core._shared.pg_cp_fallback helpers.
+"""Unit tests for the core._shared.pg_cp_fallback helpers.
 
 Pure pytest, no Blender. The fallback contract: PropertyGroup field
 wins, Custom Property literal as legacy fallback, ``default`` as last

@@ -36,19 +36,15 @@ def _ensure_single_driver(
 ) -> bpy.types.FCurve:
     """Idempotent: drop any existing driver on ``data_path`` first, then add fresh.
 
-    Also drop sibling drivers under ``proscenio.*`` that target the same
-    ``(armature, bone)`` source - F9 redo with a different ``Target``
-    property changes ``data_path`` but the old driver on the previous
-    path lingers otherwise. Side effect: a single sprite cannot host two
-    proscenio drivers off the same bone (an unusual setup; passing the
-    bone source through the cleanup makes the common case work).
+    Also drops sibling ``proscenio.*`` drivers off the same ``(armature,
+    bone)`` source, so changing the ``Target`` property on redo does not
+    leave the old driver on the previous ``data_path``. Consequence: a
+    sprite cannot host two proscenio drivers off the same bone.
 
-    After ``driver_add`` Blender seeds the fcurve with default keyframes
-    around the property's current value, with constant extrapolation.
-    Those keyframes act as an output remap that clamps every driver
-    expression result to the [first_key, last_key] range - silently
-    breaking the feature for property values outside that band. Strip
-    them so the driver expression result passes through 1:1.
+    ``driver_add`` seeds the fcurve with constant-extrapolation keyframes
+    around the property's current value; those clamp every expression
+    result to the [first_key, last_key] band, so strip them to let the
+    expression pass through 1:1.
     """
     _purge_stale_drivers(sprite, data_path, source_armature, source_bone)
     fcurve = sprite.driver_add(data_path)
@@ -192,24 +188,16 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         target.bone_target = self.bone_name
         target.transform_type = self.source_axis
         if self.source_axis.startswith("ROT_"):
-            # WORLD_SPACE matches 2D-cutout convention for rotations:
-            # the animator's R Y in pose mode (Blender Front Orthographic
-            # looks along world -Y, so world Y is the camera axis and
-            # rotation around it is what reads as "rotating in the
-            # picture") writes the same value WORLD_SPACE reads back.
-            # LOCAL_SPACE returns 0 when the bone's local axis happens
-            # to coincide with the world rotation axis.
+            # WORLD_SPACE reads back the pose-mode rotation 1:1; LOCAL_SPACE
+            # returns 0 when the bone's local axis coincides with it.
             target.transform_space = "WORLD_SPACE"
-            # XYZ Euler keeps the variable in radians instead of
-            # returning quaternion components (sin(angle/2)) that
-            # confuse expressions.
+            # XYZ Euler keeps the variable in radians, not quaternion
+            # components (sin(angle/2)) that confuse expressions.
             target.rotation_mode = "XYZ"
         else:
-            # LOC_* drivers measure the pose offset from rest, which is
-            # what authors mean by "bone moved by N units" in pose mode.
-            # WORLD_SPACE on translations would re-introduce the
-            # armature object's own transform into the driver, breaking
-            # rigs that get repositioned at instance time.
+            # Translations: LOCAL_SPACE gives the pose offset from rest.
+            # WORLD_SPACE would fold in the armature object's own transform
+            # and break rigs repositioned at instance time.
             target.transform_space = "LOCAL_SPACE"
 
         # Mirror redo-panel overrides back to the PropertyGroup.

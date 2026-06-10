@@ -6,9 +6,8 @@ onto the matching shader inputs. Invoked from the slot system panel
 operator.
 
 The pure-Python cell math (``cell_size``, ``cell_offset_x``,
-``cell_offset_y``) lives in ``core.spritesheet.spritesheet_math`` - bpy-free and
-exercised by pytest directly. moved it out so this module
-stays focused on the bpy node tree.
+``cell_offset_y``) lives in ``core.spritesheet.spritesheet_math`` - bpy-free
+and exercised by pytest directly.
 """
 
 from __future__ import annotations

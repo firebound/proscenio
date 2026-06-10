@@ -1,9 +1,7 @@
-"""Pure-Python helpers for the Quick Armature operator (the quick-armature follow-up).
+"""Pure-Python helpers for the Quick Armature operator.
 
 bpy-free. Lives under ``core/`` so unit tests can exercise the
-chord-resolution / axis-lock / grid-snap math without booting
-Blender. The operator imports these from
-``apps/blender/operators/quick_armature.py``.
+chord-resolution / axis-lock / grid-snap math without booting Blender.
 """
 
 from __future__ import annotations
@@ -47,8 +45,6 @@ def resolve_press_mode_label(
         return "disconnected"
     if default_chain:
         return "unparented" if shift_held else "connected"
-    # Legacy vocabulary: no modifier = unparented root,
-    # Shift = parented but disconnected (head free, parent set).
     return "disconnected" if shift_held else "unparented"
 
 
@@ -60,12 +56,10 @@ def resolve_press_mode(
 ) -> tuple[bool, bool]:
     """Decide ``(parent_to_last, connect)`` for a left-mouse PRESS.
 
-    ``default_chain=True`` (recommendation) matches Blender's E
-    extrude reflex: no modifier chains the new bone connected to the
-    previous tail; Shift starts a fresh unparented root. Hold Alt for
-    a parented + disconnected bone (head free, parent set). When
-    ``default_chain=False`` the vocabulary applies and
-    Shift means chain-disconnected.
+    ``default_chain=True``: no modifier chains the new bone connected
+    to the previous tail; Shift starts a fresh unparented root; Alt
+    gives a parented + disconnected bone (head free, parent set). When
+    ``default_chain=False``, Shift means chain-disconnected.
     """
     label = resolve_press_mode_label(
         shift_held=shift_held, alt_held=alt_held, default_chain=default_chain
@@ -81,11 +75,9 @@ def snap_world_point_xz(
     point: tuple[float, float, float],
     increment: float,
 ) -> tuple[float, float, float]:
-    """Round X and Z to the nearest ``increment``; Y is unchanged.
+    """Round X and Z to the nearest ``increment``; Y (picture plane) is left as-is.
 
-    Y is the picture-plane axis (Y=0 by Proscenio contract); rounding
-    it would amplify floating-point noise without UX gain. ``increment``
-    of zero or below is treated as a no-op so callers can pass a
+    ``increment`` of zero or below is a no-op so callers can pass a
     snap_increment field directly without guarding.
     """
     if increment <= 0.0:

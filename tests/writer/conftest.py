@@ -1,20 +1,17 @@
 """Shared scaffolding for pure-pytest tests of the Blender->Godot writer.
 
-The writer modules (``exporters/godot/writer/*``) and their shared
-helpers (``core/bpy_helpers/_shared/_bpy_compat``, ``writer/skeleton``)
-do a top-level ``import bpy`` / ``from mathutils import Vector`` because
-they use those native modules at runtime. fake-bpy-module ships type
-stubs only (no runtime module), so importing the writer chain under
-plain pytest fails with ``ModuleNotFoundError``.
+The writer modules and their shared helpers do a top-level
+``import bpy`` / ``from mathutils import Vector`` at runtime.
+fake-bpy-module ships type stubs only (no runtime module), so importing
+the writer chain under plain pytest fails with ``ModuleNotFoundError``.
 
-These tests exercise the *pure* projection logic (transform math plus
+These tests exercise only the pure projection logic (transform math plus
 typed-model construction), never the bpy-bound code paths. We install
-lightweight stand-ins for ``bpy`` and ``mathutils`` in ``sys.modules``
-so the import chain resolves; the stubs carry just enough surface for
-the pure functions (isinstance bases for the ``expect_*`` narrowing
-helpers, a pass-through ``bpy.path.abspath``, and a minimal ``Vector``).
-Any bpy-bound call (``bpy.data`` access, real fcurve evaluation) is
-patched per test instead.
+lightweight ``bpy`` / ``mathutils`` stand-ins in ``sys.modules`` so the
+import chain resolves; the stubs carry just enough surface for the pure
+functions (isinstance bases for the ``expect_*`` narrowing helpers, a
+pass-through ``bpy.path.abspath``, a minimal ``Vector``). Any bpy-bound
+call is patched per test instead.
 """
 
 from __future__ import annotations
@@ -30,15 +27,11 @@ def _install_addon_root_package() -> None:
     """Expose apps/blender as the synthetic ``blender`` package.
 
     The writer modules reach sibling subpackages with deep relative
-    imports (``from ....core...``), which assume the addon directory is
-    itself a package above ``exporters``. The pure-test convention puts
-    subpackages on sys.path as top-level names, which cannot satisfy
-    that four-level hop. Registering a synthetic ``blender`` package
-    whose ``__path__`` points at apps/blender lets
-    ``blender.exporters.godot.writer.animations`` import and resolves
-    its ``....core`` to ``blender.core`` - without executing the addon's
-    own ``__init__`` (which registers operators / panels and needs a
-    live Blender).
+    imports (``from ....core...``) that assume the addon directory is a
+    package above ``exporters``. A synthetic ``blender`` package whose
+    ``__path__`` points at apps/blender resolves ``....core`` to
+    ``blender.core`` without executing the addon's own ``__init__``
+    (which registers operators / panels and needs a live Blender).
     """
     if "blender" in sys.modules:
         return
@@ -51,10 +44,9 @@ class _AutoTypes(types.ModuleType):
     """``bpy.types`` substitute that creates a class for any name.
 
     Every attribute access returns (and caches) a fresh empty class, so
-    both the ``isinstance`` narrowing helpers (``expect_mesh`` /
-    ``expect_armature``) and the ``cast(Iterator[bpy.types.X], ...)`` shims
-    resolve for whatever type name the writer references at call time.
-    Caching keeps class identity stable so repeated isinstance checks agree.
+    the ``isinstance`` narrowing helpers and ``cast(...)`` shims resolve
+    for whatever type name the writer references. Caching keeps class
+    identity stable so repeated isinstance checks agree.
     """
 
     def __getattr__(self, name: str) -> type:
@@ -68,11 +60,11 @@ class _AutoTypes(types.ModuleType):
 def _install_bpy_stub() -> None:
     """Register a minimal ``bpy`` module so the writer chain imports.
 
-    Installed unconditionally (overwriting any earlier stand-in, e.g. the
-    ``MagicMock`` another suite installs): the writer modules capture
-    whatever ``sys.modules['bpy']`` holds when they import, which is right
-    after this conftest runs. Suites collected earlier already captured
-    their own ``bpy`` by reference, so the overwrite does not reach them.
+    Installed unconditionally to overwrite any earlier stand-in (e.g. a
+    ``MagicMock`` from another suite): the writer modules capture whatever
+    ``sys.modules['bpy']`` holds at import, right after this conftest runs.
+    Earlier-collected suites already captured their own ``bpy`` by
+    reference, so the overwrite does not reach them.
     """
     bpy = types.ModuleType("bpy")
 
@@ -83,8 +75,8 @@ def _install_bpy_stub() -> None:
     path_mod.abspath = lambda p: p  # type: ignore[attr-defined]
     bpy.path = path_mod  # type: ignore[attr-defined]
 
-    # Empty data collections: the bpy-bound iterators are patched per
-    # test, so this is only a safety net for stray attribute access.
+    # safety net for stray attribute access; the bpy-bound iterators are
+    # patched per test
     bpy.data = types.SimpleNamespace(actions=[], objects=[], materials=[])  # type: ignore[attr-defined]
 
     sys.modules["bpy"] = bpy
@@ -95,9 +87,9 @@ def _install_bpy_stub() -> None:
 def _install_mathutils_stub() -> None:
     """Register a minimal ``mathutils`` with a 3-component ``Vector``.
 
-    Installed unconditionally for the same reason as the bpy stub: it must
-    win over any earlier ``MagicMock`` so the writer captures a real
-    ``Vector`` at import time.
+    Installed unconditionally (like the bpy stub) so it wins over any
+    earlier ``MagicMock`` and the writer captures a real ``Vector`` at
+    import time.
     """
     mathutils = types.ModuleType("mathutils")
 

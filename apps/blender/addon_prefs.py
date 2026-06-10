@@ -1,8 +1,4 @@
-"""Addon preferences - the single debug_mode toggle.
-
-A minimal ``AddonPreferences`` so power users can flip on the developer
-surface (the Diagnostics panel + the automesh Debug Pipeline subpanel)
-without those panels cluttering the sidebar for everyone else.
+"""Addon preferences: the log-level and debug_mode toggles.
 
 ``bl_idname`` must equal the addon's top-level package name so
 ``context.preferences.addons[...]`` resolves. This module lives at the
@@ -101,9 +97,8 @@ def register() -> None:
 def _sync_log_level_from_prefs() -> None:
     """Best-effort: push the saved log_level into the report gate at register.
 
-    The ``update`` callback covers runtime changes; this applies a value the
-    user saved in a previous session. Guarded so a headless mount (no
-    ``context.preferences``) leaves the report gate at its default.
+    Guarded so a headless mount (no ``context.preferences``) leaves the
+    report gate at its default.
     """
     prefs = bpy.context.preferences
     if prefs is None:

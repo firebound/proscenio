@@ -243,7 +243,7 @@
     },
     "MeshElement": {
       "additionalProperties": false,
-      "description": "Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.\n\nDefault element kind when ``type`` is omitted.\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
+      "description": "Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.\n\nDefault element kind when ``type`` is omitted. Field order reproduces\nthe goldens.",
       "properties": {
         "bone": {
           "anyOf": [
@@ -407,7 +407,7 @@
     },
     "SpriteElement": {
       "additionalProperties": false,
-      "description": "Rigid sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present). A\nsingle-frame sprite (``hframes`` = ``vframes`` = 1) is the static\ncase.\n\nField declaration order mirrors the writer's dict insertion order\nso ``model_dump_json(exclude_unset=True)`` reproduces the golden\nfixtures byte-for-byte once the writer migrates.",
+      "description": "Rigid sprite rendered as a Godot Sprite2D.\n\n``frame`` indexes into an ``hframes`` x ``vframes`` grid carved\nout of the atlas (or out of ``texture_region`` when present). A\nsingle-frame sprite (``hframes`` = ``vframes`` = 1) is the static\ncase. Field order reproduces the goldens.",
       "properties": {
         "bone": {
           "title": "Bone",

@@ -1,4 +1,4 @@
-"""Pose library + bake-current-pose operators (the authoring panel.1.a/d.2)."""
+"""Pose library + bake-current-pose operators."""
 
 from __future__ import annotations
 
@@ -76,11 +76,8 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
             return {"CANCELLED"}
 
         pose_name = self.pose_name or _default_pose_asset_name(armature, context)
-        # asset_library_reference is required since Blender 4.x+ when
-        # calling create_pose_asset programmatically; default '' falls
-        # back to "" and Blender refuses with "Unexpected library type".
-        # Pass the first writable user library's name (matches the
-        # ENUM identifier convention).
+        # create_pose_asset requires asset_library_reference since Blender 4.x;
+        # '' raises "Unexpected library type", so pass a writable library name.
         try:
             bpy.ops.poselib.create_pose_asset(
                 pose_name=pose_name,
@@ -100,14 +97,10 @@ class PROSCENIO_OT_save_pose_asset(bpy.types.Operator):
 def _first_writable_asset_library() -> bpy.types.UserAssetLibrary | None:
     """Return the first Asset Library with a writable on-disk path, or None.
 
-    Blender 4.x ships without default writable Pose Libraries, so
-    poselib.create_pose_asset fails with "Unexpected library type" until
-    the user adds one in Preferences > File Paths > Asset Libraries.
-    Returning the entry (not just a bool) lets the caller pass its name
-    as ``asset_library_reference`` - required by the operator since 4.x
-    even when only one library is configured. The poll path lets the
-    operator stay clickable; the precheck surfaces the missing setup
-    with an actionable hint instead of the cryptic poselib error.
+    Blender 4.x ships without a default writable Pose Library, so
+    create_pose_asset fails with "Unexpected library type" until the user
+    adds one in Preferences > File Paths > Asset Libraries. The caller
+    passes the returned library's name as ``asset_library_reference``.
     """
     import os
 

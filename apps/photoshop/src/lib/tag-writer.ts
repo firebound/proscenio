@@ -1,12 +1,8 @@
 // Reverse of `tag-parser.ts`. Given a display name and a target tag
 // bag, produces the canonical layer name that the parser will round-
-// trip back into the same bag.
-//
-// Canonical ordering keeps tag-driven layer names stable across edits
-// so source control diffs stay readable. The Tags tab uses this when
-// the artist toggles a checkbox or picks a value from a dropdown: the
-// panel computes the new TagBag, asks `writeLayerName` for the literal
-// string, and pushes it onto `PsLayer.name`.
+// trip back into the same bag. Canonical ordering keeps tag-driven
+// layer names stable across edits so source-control diffs stay
+// readable.
 
 import type { BlendMode } from "./manifest";
 import type { TagBag } from "./tag-parser";

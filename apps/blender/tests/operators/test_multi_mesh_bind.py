@@ -1,4 +1,4 @@
-"""Headless: bind operator binds all selected MESH objects (O2)."""
+"""Headless: bind operator binds all selected MESH objects."""
 
 from __future__ import annotations
 

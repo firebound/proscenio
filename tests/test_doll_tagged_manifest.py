@@ -1,15 +1,9 @@
-"""the photoshop tag system parity oracle (Python side).
+"""Photoshop tag-system parity oracle (Python side).
 
 Loads the committed `doll_tagged.photoshop_exported.json` from the doll
-fixture and asserts the schema + tag coverage. Pairs with the vitest
-`tag-smoke` test (which exercises the planner against a synthetic
-tree). This file pins the **on-disk artefact** so a regression in the
-exporter's serialisation surfaces as a CI failure rather than waiting
-for a manual PS round-trip.
-
-Run from the repo root::
-
-    pytest tests/test_doll_tagged_manifest.py
+fixture and asserts the schema + tag coverage. Pins the on-disk artefact
+so a regression in the exporter's serialisation surfaces as a CI failure
+rather than waiting for a manual PS round-trip.
 """
 
 from __future__ import annotations
@@ -71,7 +65,6 @@ def test_entry_count_matches_oracle(manifest: psd_manifest.PsdManifest) -> None:
     # 22 baseline layers + 4 blend-stack duplicates + 1 sprite
     # (brow_states absorbs the nested merge frames into a single entry)
     # - head 2 + Camada 1 skipped during export.
-    # See 02_photoshop_setup/README.md::Tags exercised for the breakdown.
     assert len(manifest.layers) == 24
 
 

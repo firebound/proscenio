@@ -64,6 +64,6 @@ function clearToken(): void {
     try {
         localStorage.removeItem(STORAGE_KEY);
     } catch {
-        // ignore
+        /* no-op */
     }
 }

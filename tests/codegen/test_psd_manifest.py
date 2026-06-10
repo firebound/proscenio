@@ -1,6 +1,6 @@
 """Smoke tests for the PSD manifest pydantic model.
 
-Locks the behaviour CodeRabbit flagged on PR #74:
+Locks:
 
 - `UintPair` rejects negative integers (the name implies unsigned).
 - Unknown `kind` values surface as a ValidationError rather than

@@ -1,11 +1,10 @@
 """Weight Paint panel - mesh-only bind + weight authoring subpanels.
 
-Split out of Mesh Generation. The parent polls on the active element
-being a mesh (weight painting does not apply to sprite elements) and
-surfaces the picker readout; the work lives in accordion subpanels: Bind,
-Edit Weights, Snapshot, Sidecar IO, Weight Transfer. The panel renders
-on any selection and shows a mesh-only hint when the active element is
-not a mesh; every header carries a status badge + help button.
+The parent polls on the active element being a mesh (weight painting does
+not apply to sprite elements) and surfaces the picker readout; the work
+lives in accordion subpanels: Bind, Edit Weights, Snapshot, Sidecar IO,
+Weight Transfer. The panel renders on any selection and shows a mesh-only
+hint when the active element is not a mesh.
 """
 
 from __future__ import annotations
@@ -176,13 +175,11 @@ def _draw_bind(
     picker: bpy.types.Object | None,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Bind to Picker Armature + per-bone Soft/Hard overrides - on the subpanel layout.
+    """Bind to Picker Armature + per-bone Soft/Hard overrides.
 
-    Run button greys out when no picker armature is set in the Skeleton
-    panel - the most common cause of bind failure, caught visually instead
-    of via post-click ERROR. Per-bone override rows appear below once a
-    picker is present; ``depress`` marks the active override, a missing
-    entry means the bone uses the operator-level default (bind_init_mode).
+    Run button is disabled when no picker armature is set. Per-bone
+    override rows appear once a picker is present; a missing entry means
+    the bone uses the operator-level default (bind_init_mode).
     """
     from ..core.skinning.bone_modes import read_bone_modes  # type: ignore[import-not-found]
 
@@ -231,11 +228,10 @@ def _draw_edit_weights(
     obj: bpy.types.Object | None,
     picker: bpy.types.Object | None,
 ) -> None:
-    """Edit Weights modal entry + brush curve presets - on the subpanel layout.
+    """Edit Weights modal entry + brush curve presets.
 
     Button enabled only when (a) picker armature set, (b) mesh has a
-    populated sidecar (binds preceded edit). Active vertex group label
-    hints which bone the modal will start painting.
+    populated sidecar (bind must precede edit).
     """
     from ..core.skinning.brush_curve_presets import (  # type: ignore[import-not-found]
         PRESET_LABELS,
@@ -289,10 +285,9 @@ def _draw_snapshot(
     skinning_props: bpy.types.PropertyGroup | None,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Sidecar toggles + provenance counts pill + Restore button - on the subpanel layout.
+    """Sidecar toggles + provenance counts pill + Restore button.
 
-    Counts are recomputed live from the JSON payload stored on the active
-    mesh (single source of truth on the active mesh).
+    Counts are recomputed live from the JSON payload stored on the active mesh.
     """
     if skinning_props is not None:
         layout.prop(skinning_props, "preserve_on_regen")
@@ -342,7 +337,7 @@ def _draw_sidecar_io(
     layout: bpy.types.UILayout,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Export + Import file-dialog buttons for the sidecar JSON - on the subpanel layout."""
+    """Export + Import file-dialog buttons for the sidecar JSON."""
     row = layout.row(align=True)
     row.operator("proscenio.export_sidecar", text="Export", icon="EXPORT")
     row.operator("proscenio.import_sidecar", text="Import", icon="IMPORT")

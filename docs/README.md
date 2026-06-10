@@ -10,16 +10,23 @@ This is a top-level documentation index that pairs hand-authored workflow guides
 ## Project documentation
 
 - [Project architecture](01-project/01-architecture.md): the design goals, the dataflow, and how the tools and formats fit together.
-- [Features](01-project/02-features.md): the current feature set, the rationale for each, and how they fit together.
 - [Pipeline comparison](01-project/03-comparison.md): Proscenio against other 2D authoring stacks (Spine, DragonBones, COA Tools).
 - [Deferred / out-of-scope](01-project/04-deferred.md): rationale for features explicitly not in the current iteration.
+
+## Tools
+
+High-level, intent-level reference for each app in the pipeline:
+
+- [Blender Addon](02-blender-addon/index.md): the authoring addon - mesh, rig, weights, slots, atlas, export.
+- [Photoshop Plugin](03-photoshop-plugin/index.md): tag and export a layered PSD into a manifest plus PNGs.
+- [Godot Plugin](04-godot-plugin/index.md): reimport a `.proscenio` into a native Godot scene.
 
 ## Schema reference
 
 Interactive reference for both wire formats, grouped by feature and rendered live from the JSON Schemas by the docs-site viewer, so it always reflects the models:
 
 - [Schema reference](content/README.md): entry point for both formats.
-- [Proscenio character](content/proscenio/document.mdx): the `.proscenio` document: skeleton, sprites, slots, animation.
+- [Proscenio character](content/proscenio/document.mdx): the `.proscenio` document: skeleton, elements, slots, animation.
 - [PSD manifest](content/psd-manifest/manifest.mdx): the manifest the Blender importer reads from the Photoshop export.
 
 The JSON Schemas are dumped from the pydantic source of truth at [`packages/models/src/proscenio_models/`](../packages/models/src/proscenio_models/). Regenerate the schemas and bindings after editing the models:

@@ -72,8 +72,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    # Exit 0 regardless of suite rc: the spike / CI cares about the
-    # coverage data, and suite pass/fail is reported separately by the
-    # plain (non-coverage) test jobs.
+    # Exit 0 regardless of suite rc: CI cares about the coverage data,
+    # and suite pass/fail is reported separately by the plain
+    # (non-coverage) test jobs.
     main()
     sys.exit(0)

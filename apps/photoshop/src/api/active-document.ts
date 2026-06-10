@@ -1,9 +1,5 @@
-// Active-document reads for the hooks layer. The panel never touches
-// `app.activeDocument` directly: every read of the live PS document
-// funnels through here so the PS boundary stays in `api/` and the
-// hooks stay runtime-agnostic (testable against the adapted shape).
-//
-// Nothing here writes or schedules an export - reads only.
+// Active-document reads for the hooks layer. Reads only - nothing here
+// writes or schedules an export.
 
 import { app } from "photoshop";
 

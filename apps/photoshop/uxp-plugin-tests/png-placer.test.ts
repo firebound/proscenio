@@ -1,7 +1,5 @@
-// Unit tests for the PSD-side PNG placer. Drives the host mock's
-// app.open with a fake source doc/layer to cover the no-layers and
-// unreadable-bounds guards, the duplicate -> translate -> close happy
-// path, the size-mismatch warning, and the group move.
+// PSD-side PNG placer. Drives the host mock's app.open with a fake source
+// doc/layer.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

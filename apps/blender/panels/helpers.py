@@ -1,9 +1,7 @@
 """Helpers panel - viewport authoring aids that are not part of the pipeline.
 
 Currently hosts the Preview Camera (orthographic front camera) used to
-frame sprites the way the Godot importer expects, moved out of the
-Pipeline panel. The status badge + help button land with the
-header-convention pass (a later phase).
+frame sprites the way the Godot importer expects.
 """
 
 from __future__ import annotations

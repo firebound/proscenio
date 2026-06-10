@@ -1,6 +1,6 @@
 // Manages the chosen output folder for the panel: restores the
 // persisted folder on mount, exposes pick / clear actions. UXP-side
-// persistence lives in `infrastructure`-flavoured `io/folder-storage`.
+// persistence lives in `api/folder-storage`.
 
 import React from "react";
 import type { UxpFolder } from "uxp";

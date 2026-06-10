@@ -1,9 +1,8 @@
 """Automesh operator: PNG sprite -> deformable annulus mesh.
 
-the initial cut. Resolves the upstream half of skinning that
-the skinning-weights wire format already shipped on the export side. Turns a sprite plane
-with an image texture (or a `[mesh]`-tagged Photoshop import) into
-an annulus mesh whose density follows the picker armature's bones.
+Turns a sprite plane with an image texture (or a `[mesh]`-tagged
+Photoshop import) into an annulus mesh whose density follows the
+picker armature's bones.
 
 Decision map:
 - alpha-trace one-shot, pure-Python alpha walker (no OpenCV).

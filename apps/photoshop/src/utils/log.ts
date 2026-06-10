@@ -1,16 +1,15 @@
-// Tiny logger for the UXP panels. UXP's DevTools console is the only
-// runtime debugger we have, so the goal here is just to gate noise by
-// level + tag a single prefix on every line so logs from different
-// hooks remain greppable.
+// Tiny logger for the UXP panels: gate noise by level and tag a prefix
+// on every line so logs from different hooks stay greppable in UXP's
+// DevTools console.
 //
 // Levels (most to least verbose): trace > debug > info > warn > error > off.
-// Default level is `info`; flip at runtime via DevTools:
+// Default is `info`; flip at runtime via DevTools:
 //
 //     window.proscenio.setLogLevel("debug")
 //
-// The choice persists in `localStorage` so reloading the plugin keeps
-// the level. Reading happens lazily on every call so a flip from the
-// console takes effect immediately - no panel reload needed.
+// The choice persists in `localStorage`. The level is re-read lazily on
+// every call (with a short cache) so a console flip takes effect without
+// a panel reload.
 
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "off";
 

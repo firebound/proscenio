@@ -3,8 +3,7 @@
 CPU-hot path of the validator: for every source pixel, decide
 covered / leaked / hole-bleed against the generated mesh's triangle
 list + paint the per-pixel debug PNG. Helpers are extracted to keep
-the inner loop flat (cognitive complexity under 15 per function
-after the cleanup of step 8).
+the inner loop flat (cognitive complexity under 15 per function).
 """
 
 from __future__ import annotations

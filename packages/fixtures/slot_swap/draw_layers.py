@@ -56,10 +56,9 @@ def main() -> None:
 def _draw_arm() -> None:
     """Horizontal pixel-art arm: skin rectangle + dark outline.
 
-    32 px wide x 16 px tall - a forearm extending sideways from the
-    body. The slot Empty sits at the bone tip (right side after the
-    swing rotation) so the weapon attachment naturally comes out of
-    the wrist.
+    32 px wide x 8 px tall - a forearm extending sideways from the body.
+    The slot Empty sits at the bone tip so the weapon attachment comes
+    out of the wrist.
     """
     canvas = Canvas.empty(ARM_W, ARM_H)
     rect(canvas, 0, 0, ARM_W, ARM_H, OUTLINE)

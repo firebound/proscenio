@@ -1,18 +1,6 @@
-"""Unit tests for the vendored MaxRects atlas packer (the atlas packer).
+"""Unit tests for the vendored MaxRects atlas packer.
 
-The packer is bpy-free pure Python; tests run without Blender. Coverage:
-
-- Empty input → empty result.
-- Single rect fits at the start size.
-- Multiple rects do not overlap and stay inside the atlas bounds.
-- Padding is honored (placements sit ``+padding`` inside their reserved slot).
-- Atlas grows when start_size is insufficient.
-- ``max_size`` cap returns None.
-- ``power_of_two=True`` rounds up to POT dimensions.
-
-Run from the repo root:
-
-    pytest tests/test_atlas_packer.py
+The packer is bpy-free pure Python; tests run without Blender.
 """
 
 from __future__ import annotations

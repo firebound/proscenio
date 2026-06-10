@@ -1,9 +1,8 @@
 """Operator that wraps :func:`importers.photoshop.import_manifest`.
 
-Surfaces a panel button + file picker for the photoshop importer PSD manifest
-importer. Reports the number of stamped meshes (and any skipped
-layers) via ``self.report`` so the user gets visible feedback in the
-Blender info bar.
+Surfaces a panel button + file picker for the PSD manifest importer and
+reports the number of stamped meshes (and any skipped layers) via
+``self.report``.
 """
 
 from __future__ import annotations

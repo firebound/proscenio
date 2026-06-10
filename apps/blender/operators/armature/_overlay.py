@@ -54,10 +54,8 @@ def draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     if head is None or cursor is None:
         return
     color = _preview_color_for(cls)
-    # Disconnected mode (Alt+drag): bone gets a parent but its head
-    # stays at the user's press point. Render a dashed line from the
-    # parent's tail to the new head so the parent relationship stays
-    # visible despite the gap.
+    # Disconnected mode: head stays at the press point, so a dashed
+    # line from the parent's tail keeps the parent link visible.
     if cls._press_mode == "disconnected":
         parent_tail = _resolve_parent_tail_world(cls)
         if parent_tail is not None:
@@ -71,9 +69,8 @@ def draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
         segments=_ANCHOR_SEGMENTS,
         line_width=_PREVIEW_LINE_WIDTH,
     )
-    # When the connected-mode head was snapped to the parent's tail,
-    # also surface the "rejected" press point as a faint marker so the
-    # user can see how far Blender dragged the head from the click.
+    # In connected mode the head snapped to the parent tail; surface the
+    # original press point as a faint marker to show how far it moved.
     press_point = cls._drag_press_point
     if (
         press_point is not None
@@ -129,9 +126,7 @@ def _draw_axis_guideline(
 ) -> None:
     """Render an infinite-looking axis line through the drag head.
 
-    Matches Blender's transform-axis-lock convention (X=red, Z=blue).
-    The Y axis is excluded because Proscenio's authoring plane is
-    Y=0 - locking Y would collapse to a point.
+    X=red, Z=blue. Only X and Z lock (the authoring plane is Y=0).
     """
     if axis == "X":
         start = (head[0] - _AXIS_LINE_HALF_LENGTH, head[1], head[2])
@@ -153,10 +148,9 @@ def draw_cursor_warning_2d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     region = cls._invoke_region
     if region is None:
         return
-    # Convert window coords to region-local coords.
     region_x = cls._cursor_screen_x - region.x
     region_y = cls._cursor_screen_y - region.y
-    # Offset the tooltip so it does not sit under the cursor.
+    # Offset so the tooltip does not sit under the cursor.
     tooltip_x = region_x + 16
     tooltip_y = region_y + 16
     draw_text_panel_2d(

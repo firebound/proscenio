@@ -96,9 +96,8 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
 
     col = idx % GRID_COLS
     row = idx // GRID_COLS
-    # Center grid around origin. Blender's default Front Ortho looks
-    # from -Y so world +X maps to screen RIGHT; col=0 maps to -X (grid
-    # left) so sprite_1 reads at the screen left.
+    # Center grid around origin; Front Ortho looks from -Y so world +X
+    # is screen RIGHT (col=0 -> -X -> sprite_1 at screen left).
     cx = (col - (GRID_COLS - 1) / 2.0) * GRID_SPACING
     cz = ((GRID_ROWS - 1) / 2.0 - row) * GRID_SPACING
 
@@ -117,10 +116,7 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     )
     mesh.update()
     uv = mesh.uv_layers.new(name="UVMap")
-    # Direct UV mapping (matches shared_atlas convention). World +X
-    # displays at screen RIGHT in Blender's default Front Ortho
-    # (looking from -Y); direct UV + cx-not-inverted produces digits
-    # readable left-to-right in the viewport.
+    # Direct UV mapping (matches shared_atlas convention).
     uv.data[0].uv = (0.0, 0.0)
     uv.data[1].uv = (1.0, 0.0)
     uv.data[2].uv = (1.0, 1.0)

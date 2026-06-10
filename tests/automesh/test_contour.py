@@ -1,11 +1,7 @@
 """Unit tests for the pure-Python alpha contour walker.
 
 bpy-free. Exercises the contour tracing + binary morphology helpers
-consumed by ``core/bpy_helpers/automesh/bridge.py``.
-
-Run from the repo root:
-
-    pytest tests/automesh/test_contour.py
+consumed by the automesh bpy bridge.
 """
 
 from __future__ import annotations
@@ -332,20 +328,12 @@ class TestExtractContours:
         assert outer == outer2
 
     def test_b3_narrow_corridor_not_a_hole(self) -> None:
-        """Regression: narrow inter-finger corridor must not appear as an enclosed hole.
+        """Regression: a narrow border-connected corridor must not register as an enclosed hole.
 
-        Root cause: at resolution=0.5 the 3-4 source-pixel gaps between
-        fingers downscale to 1-2 grid cells. The old code dilated the foreground by 1
-        cell before calling extract_holes; that dilation closed 1-cell-wide corridors,
-        turning border-connected external background into apparently-enclosed regions
-        -> false CDT holes -> disconnected mesh fragments (44 verts / 27 faces on the
-        hand fixture instead of the expected clean silhouette).
-
-        This test exercises the failure mode with a synthetic 20x20 hand-like mask:
-        a solid palm (bottom half) plus two fingers with a 1-cell gap between them.
-        The gap connects to the top border, so it is NOT an enclosed hole. The fix
-        (extract_holes on raw_mask instead of the foreground-dilated mask) must
-        return zero holes regardless of how narrow the corridor is.
+        A 1-cell-wide gap between two fingers connects to the grid border, so
+        it is external background, not a hole. extract_holes runs on the raw
+        mask (not a foreground-dilated one, which would close the corridor and
+        fabricate a false enclosed region) and must return zero holes.
         """
         # Build a synthetic hand-like alpha grid:
         # top half = two fingers separated by a 1-cell gap (connects to border)
@@ -373,11 +361,11 @@ class TestExtractContours:
         )
 
     def test_b3_real_hole_still_detected(self) -> None:
-        """Counter-test: a genuine enclosed background island is still found after B3 fix.
+        """Counter-test: a genuine enclosed background island is still found.
 
-        The B3 fix must not suppress detection of actual holes (e.g. ring / donut
-        sprites). A 2x2 transparent hole fully surrounded by foreground cells has no
-        path to the grid border, so extract_holes on the raw mask must return it.
+        A transparent hole fully surrounded by foreground cells has no path to
+        the grid border, so extract_holes on the raw mask must return it.
+        Guards against the corridor fix over-suppressing real holes.
         """
         alpha = _donut_alpha(12, hole_inset=4)
         _outer, _inner, holes = extract_contours(alpha, threshold=0, margin_px=0)

@@ -77,7 +77,8 @@ For procedural pixel-art fixtures (Pillow-drawn spritesheets feeding a single-fe
 
 ## Coding rules
 
-- Strict static typing on every function signature (`from __future__ import annotations` at the top of new files).
+- Strict static typing on every function signature (`from __future__ import annotations` at the top of new files - EXCEPT files declaring Blender-registered classes, see next rule).
+- In Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), never declare `ClassVar[X | None]` where `X` is imported only under `if TYPE_CHECKING:` while PEP 563 (`from __future__ import annotations`) is active. Blender's `register_class` runs `typing.get_type_hints(cls)`; the unresolvable name raises `NameError`, Blender swallows it and aborts the whole annotation walk, so no `bpy.props` on the class promote to RNA - `self.<prop>` then raises `AttributeError` at runtime with no registration error. Import the type at runtime (or use `Any`), or drop the future-annotations import from that file (`operators/armature/quick_armature.py` documents the constraint).
 - `Any` only at the `bpy` boundary, documented inline.
 - No global mutable state. Use `bpy.types.Scene` properties or operator properties.
 - Operators must be undoable: `bl_options = {'REGISTER', 'UNDO'}`.

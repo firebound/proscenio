@@ -10,13 +10,10 @@ promove pro backlog.
 ## Cross-panel / general
 
 - Drag-and-drop reorder de subpanels (Blender nativo + outros plugins permitem) - aplicar onde der.
-- Tudo aparece aninhado / com recuo dentro de "Pipeline v0.1.0", o que dá impressão de submenu disso. Não faz sentido. Mover versão pro footer / Help panel.
-- **Nomenclatura: "sprite" é sobrecarregado** - herdado do COA Tools, mas tecnicamente "sprite" no contexto Godot/2D-cutout = `Sprite2D` (sprite_frame mesh com spritesheet), enquanto "polygon" mesh é uma classe **diferente** (`Polygon2D` com vertex weights). Hoje o projeto chama ambos de "sprite" indiscriminadamente: PG `sprite_type`, panel "Active Sprite", `sprites[]` no `.proscenio`, etc. Confunde leitor que conhece os termos Godot. **Proposta:** renomear pra termo neutro tipo `mesh` / `cutout_mesh` / `proscenio_mesh`. `sprite_type` vira `mesh_type` com valores `polygon` / `sprite_frame`. Operação grande (toca PG, panel, writer, schema, importer) - merece spec dedicada com migration path.
 
 ## Active Sprite panel
 
 - Mostrar nome do mesh selecionado no header do panel: "Active Sprite: <obj_name>" em vez de só "Active Sprite".
-- Sub-blocks (Sprite Frame / Polygon body, Texture Region, Drive from Bone) deveriam ser collapsibles individualmente (acordeão). Hoje vê tudo de uma vez sem jeito de esconder.
 - `Initial frame` field deveria ser clamped em `[0, hframes*vframes-1]` (hoje aceita qualquer int). Pode causar confusão - usuário digita 99 sem feedback de que só existem 4 frames. Idem `frame` field se editado fora desse range. UI atual: `min=0` está, `max` falta (ou usa `soft_max`).
 - `Initial frame` label confunde no contexto de animação. Quando usuário keyframa o field, ele NÃO é "initial" - é THE frame value sendo animado. Renomear label pra `Frame` (mais simples, alinha com Sprite2D do Godot). Description pode manter "frame index at rest pose; animation tracks override at runtime" - explica o duplo papel sem polluir a label. File: `apps/blender/properties/object_props.py:124`.
 - `Drive from Bone` - expression default `var` é misleading pra o caso `Frame index`. Bone rotation em radianos típica varia `[-pi, pi]`, mas frame range é `[0, hframes*vframes-1]`. Expression `var` faz negativos clamparem em 0 e valores acima de N-1 clamparem no max - usuário rotaciona bone e parece que driver não funciona.
@@ -74,12 +71,10 @@ promove pro backlog.
 ## Skeleton panel
 
 - Visualização atual está ruim:
-  - `length` field é inútil, não serve de nada - remover
-  - Em vez de mostrar parent como string, mostrar hierarquia indentada (como Blender outliner nativo)
   - Click no bone na lista deveria selecionar o bone no Blender (3D viewport / pose mode)
   - Ou permitir rename inline
 - Hoje o panel é só inspect read-only, não serve de muito
-- **Warning "2 armatures - writer uses the first only" precisa contexto.** `apps/blender/panels/skeleton.py:60` pega `armatures[0]` (scene order), não active object. Quando cena tem 2+ armatures (ex: usar Quick Armature numa cena que já tem atlas_pack.armature → cria Proscenio.QuickRig em paralelo), o panel mostra warning mas:
+- **Warning "2 armatures - writer uses the first only" precisa contexto.** (Update 2026-06-10: o picker de armature shippou no Skeleton panel, mas o writer segue exportando `armatures[0]` e ignorando o picker - virou bug próprio em `backlog-bugs-found.md`; aqui resta só o polish do texto do warning.) Quando cena tem 2+ armatures, o panel mostra warning mas:
   - "the first" sem indicar QUAL armature está sendo usada - usuário tem que adivinhar pela scene order.
   - Sem botão pra trocar a armature ativa do panel.
   - Sugestões: (a) mostrar nome da armature usada no warning: `2 armatures present - writer uses 'atlas_pack.armature'`. (b) Dropdown selector no panel pra escolher qual armature trabalhar (Scene PG `active_armature_name`). (c) Sincronizar com active object se for armature, fallback pra scene order só se nenhuma armature ativa.
@@ -97,16 +92,11 @@ promove pro backlog.
 
 ## Quick Armature operator
 
-- **Sem preview durante o drag.** Operator captura head no PRESS, tail no RELEASE. Entre os dois cliques, viewport não mostra nada - usuário não consegue ver "de onde até onde" o bone vai. Só vê o resultado depois de criar. Sugestões: (a) preview line + circle entre head capturado e mouse atual durante o drag (gpu.draw via SpaceView3D.draw_handler_add). (b) atualizar a edit_bone.tail em real-time durante o move (mais pesado, mas zero código de draw).
-- **Falta de feedback visual sobre estado modal.** Status bar mostra hint texto, mas viewport não dá pista de que o modal tá ativo. Sugestões: highlight do viewport border, ou overlay text in-viewport tipo "Quick Armature: drag to draw | Shift = chain | Esc = exit".
-- **Falta atalhos pra connect/disconnect parent.** Hoje só tem `Shift` pra parent ao último bone (sem connect). Faltam: Ctrl+Shift pra parent connected (extends naturally); modifier pra escolher um parent específico (não só o último); operador "unparent" sem sair do modal.
-- **Saída do modal não óbvia.** Esc / right-click funcionam mas user que não viu o status bar fica preso. Sugestões: (a) botão "Confirm" / "Cancel" floating na viewport. (b) header bar com mensagem destacada. (c) ESC sempre mostra confirm dialog "Discard / Keep" pra evitar perda acidental.
-- **Bones criados sem preview = trial and error.** Junto com bug do plano Z=0 (backlog-bugs-found.md), inviabiliza uso real. Refator-grande necessário antes de o operator ser útil.
 - **(quick-armature first-cut polish) Preview line cortada visualmente quando cursor passa por baixo de panel/header/toolbar.** Apos fix do region overlay filter (operator nao processa eventos sob N-panel/header/toolbar), preview line continua sendo desenhada matematicamente cheia ate cursor real - mas Blender pinta panels POR CIMA do GPU draw handler, mascarando trechos da linha. Visualmente parece "corte". Tradeoff aceito: clicks em panel area nao criam bones (correto). Polish proposto:
   - **A. Clamp visual no boundary do canvas-livre.** No MOUSEMOVE, se cursor entra zona de overlay, projeta `_cursor_world` pra borda mais proxima do retangulo canvas-menos-overlays. Linha para visualmente na borda do panel em vez de sumir sob ele.
   - **B. Indicacao por cor.** Linha muda pra cinza/vermelho `(0.6, 0.6, 0.6, 0.7)` quando cursor sobre overlay zone. Sinaliza "click aqui = no-op" sem precisar matematica de clamp.
   - **C. Ambos.** Clamp + cor diferente.
-  - Recomendacao: B inicialmente (zero risco de matematica errada). C depois se demanda surgir. Defer pra a quick-armature follow-up.
+  - Status 2026-06-10: opcao B SHIPPED (linha vermelha + tooltip quando cursor fora do canvas, `_overlay.py`). Resta A (clamp visual no boundary) se demanda surgir.
 
 ## Outliner panel
 
@@ -181,7 +171,6 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 
 ## Validation panel
 
-- **Botão "Validate" mora no Export panel, não no Validation panel.** Confunde o usuário - ele expande Validation, vê só "run Validate to see issues", sem onde clicar; precisa caçar o botão em outro panel. Mover (ou duplicar) o botão Validate pro próprio Validation panel é trivial e mais intuitivo. Export pode manter cópia pra gating, mas Validation deve poder rodar sozinho.
 - **Click em issue de objeto hidden seleciona no outliner mas viewport não reflete.** Comportamento Blender padrão, mas confuso pro usuário que clica achando que vai ver o offending object destacado. Sugestão: `proscenio.select_issue_object` operator deve também `hide_viewport=False` + frame view na target (View > Frame Selected). Workaround: usuário precisa unhide manual antes da seleção fazer sentido visual.
 
 ## Export panel
@@ -190,11 +179,8 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 
 ## Help / status badges
 
-- **Subpanels repetem o help topic do panel-pai (ajuda duplicada).** `draw_subpanel_header(layout, feature_id, help_topic)` recebe o topic como 2o argumento, mas todos os subpanels de uma família passam o MESMO topic do pai: Weight Paint > Bind / Edit Weights / Snapshot / Sidecar IO / Weight Transfer todos passam `"weight_paint"`; Mesh Generation > Automesh from Alpha / Interactive / Debug todos passam `"mesh_generation"`; Element > Active Mesh / Active Sprite / Texture Region passam `"active_element"`. Só existem 3 topics no `core/help_topics.py` pra essas famílias (`active_element`, `mesh_generation`, `weight_paint`); não há topic por-ferramenta. Resultado: clicar `?` em qualquer subpanel abre o mesmo popup genérico do pai em vez de explicar a ferramenta específica. **Proposta:** panel-pai = visão geral do processo da família; cada subpanel = topic próprio, pontual, focado na ferramenta (`bind`, `snapshot`, `sidecar_io`, `weight_transfer`, `edit_weights`, `automesh_alpha`, `automesh_interactive`, `active_sprite`, `active_mesh`). Escrever os topics em `help_topics.py` + passar o id certo no `draw_subpanel_header`. Casa com a spec 023 (help text / doc-links) deferida. Resolve também o gap "não entendi soft/hard / Snapshot / Sidecar IO / Weight Transfer": hoje não existe texto de ajuda por-ferramenta pra nenhuma dessas.
 - Help panel completamente inútil e ilegível como tá - substituir por botão único que abre popup
-- Versão (Pipeline v0.1.0) poderia ficar aqui no Help panel
-- Adicionar botão "GitHub" / link pro repo
-- **See-also references nos popups de help NÃO são clickáveis.** `help_dispatch.py:88-89` rendera cada ref como `layout.label(text="  " + ref)` puro - sem operator, sem hyperlink. Header da seção mostra ícone URL induzindo expectativa de click. Usuário só consegue ler os paths e abrir manual fora do Blender. Sugestões (em ordem de impacto):
+- **See-also references nos popups de help: refs LOCAIS não são clickáveis.** (Parcial pós-spec-023: refs `http(s)` já renderizam como `wm.url_open` + botão "Open online docs"; restam os see-also de path local - `specs/`, `examples/` - como labels puros.) Sugestões (em ordem de impacto):
   - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, pastas de exemplo (abre file manager) etc. Mínimo viável.
   - **B. wm.url_open** se ref começa com `http`. Mistura A+B detectando prefixo.
   - **C. Copy to clipboard button** próximo de cada ref - alternativa baixa-fricção.

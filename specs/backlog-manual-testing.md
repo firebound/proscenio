@@ -42,7 +42,7 @@ Workbench file recomendado: `examples/authored/doll/doll_workbench.blend` (clone
 - [x] hframes/vframes/frame fields: edit → Custom Property mirror atualiza
 - [x] Region mode auto: hint label "computed from UV bounds at export"
 - [x] Region mode manual: 4 floats (region_x/y/w/h) editáveis
-- [!] "Snap to UV bounds" button (polygon, manual mode): preenche os 4 floats baseado em UV. **Bug**: edit mode crasha (`IndexError` em `uv_layer.data[li]`, faltam guards de poll/contexto). Object mode funciona se UVs forem válidas. (Doll baseline tem UVs degeneradas em (0,0) - esperado para snap retornar bbox vazio nesse caso.)
+- [~] "Snap to UV bounds" button (polygon, manual mode): preenche os 4 floats baseado em UV. Fix shippado (`dece00a`): poll Object-Mode-only + guard de UV data vazia; retest GUI pendente. (Doll baseline tem UVs degeneradas em (0,0) - esperado para snap retornar bbox vazio nesse caso.)
 - [x] "Reproject UV" button (polygon): reprojeta UV active layer. Caveats em backlog-bugs-found.md (perf da segunda call, V invertido em meshes 3D-ish).
 - [x] material_isolated checkbox: salva no PG + CP
 
@@ -67,7 +67,7 @@ Active Sprite > Drive from bone box:
 - [x] Bone rotation em pose mode: driver value muda live. PR #39 fixou os 3 bugs originais (LOCAL_SPACE / AUTO Quaternion / seed keyframes) + commit 8196e9d alinhou eixo default com Blender Front Ortho (ROT_Y, não ROT_Z). Verificado em mouth_drive_workbench.
 - [x] Re-click "Drive from Bone" mesmo target: substitui driver, não duplica
 - [x] F9 redo panel: trocar `target_property` re-wires driver
-- [x] Custom expression `var * 0.5 + 0.3` em Region X: scroll continuous funciona. **Caveat:** trocar target via F9 não migra driver (adiciona outro), bug em backlog-bugs-found.md.
+- [x] Custom expression `var * 0.5 + 0.3` em Region X: scroll continuous funciona. (O caveat antigo "trocar target via F9 não migra driver" foi corrigido em `7f6e178` - `_purge_stale_drivers` remove drivers irmãos do mesmo bone.)
 
 ### 1.4 Active Slot panel
 
@@ -77,7 +77,7 @@ Workbench file: `examples/generated/slot_swap/slot_swap.blend` (arm + slot Empty
 - [x] Subpanel hide quando active object não é Empty + is_slot
 - [x] Lista attachments com kind icon (polygon)
 - [x] Default attachment marcado com SOLO_ON star, outro com SOLO_OFF
-- [!] Click star vazia: vira default, **CP NÃO atualiza** (PG mirror não inclui slot fields). Bug em backlog-bugs-found.
+- [~] Click star vazia: vira default. Fix shippado (`d6ff6a9`): `update=on_any_update` + `OBJECT_MIRROR_MAP` cobrem os 3 slot fields; retest GUI pendente.
 - [x] "Add Selected Mesh" button: select mesh + slot empty, button adiciona ao slot
 
 ### 1.5 Slot creation flows
@@ -103,7 +103,7 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 ### 1.7 Outliner panel
 
 - [x] Lista todos sprite meshes + armatures + slot Empties + attachments (não bones, não Empties não-slot, não cameras/lights). Label `<name> @ <parent_bone>` só aparece com `parent_type=BONE` rígido - doll usa skinning então label só mostra nome. Coverage gap registrado no backlog de fixtures (falta fixture `rigid_prop/`).
-- [!] Filtro substring funciona. **Bug:** campo nativo do UIList (rodapé `▼`) não filtra - só o campo do topo (ícone VIEWZOOM, `scene_props.outliner_filter`) funciona. `filter_items` ignora `self.filter_name`. Bug em backlog-bugs-found.md.
+- [~] Filtro substring funciona; campo nativo do UIList agora honrado via `filter_items` (fix `dcd08f6`) - retest GUI pendente.
 - [x] Favorites toggle (star) persiste no save (`is_outliner_favorite` é Object PG)
 - [x] "Show favorites only" filtra corretamente (botão SOLO_ON ao lado do search no header)
 - [x] Click linha → seleciona no scene + active object troca (`proscenio.select_outliner_object` operator dispara no row click)
@@ -112,14 +112,14 @@ Em slot_swap_workbench / scenario custom (doll_slots retired):
 ### 1.8 Skeleton panel
 
 - [x] Lista bones do active armature (header `Armature 'doll.rig' - N bone(s)` + UIList com nome / parent / length). Pega `armatures[0]` da scene (não active object); cena com >1 armature mostra warning.
-- [!] Click bone → seleciona em pose mode. **Gap:** `active_bone_index` é IntProperty puro sem `update=` callback; row click só atualiza index do PG, não sincroniza viewport selection. Bug em backlog-bugs-found.md.
+- [~] Click bone → seleciona em pose mode. Fix shippado (`dcd08f6`): row dispara `proscenio.select_bone_by_name`; retest GUI pendente (entry needs-retest em backlog-bugs-found.md).
 - [x] Active bone index sticky entre saves (Scene PG persiste no .blend)
 
 ### 1.9 Animation panel
 
 - [x] Lista actions do .blend (`bpy.data.actions`, com frame range), footer com count total
 - [~] Active action sticky entre saves (funciona, mas utilidade nula até o selector drive algo - ver gap abaixo)
-- [!] Scrub timeline com action selected funciona. **Gap:** row click só atualiza `active_action_index`; não atribui action ao `armature.animation_data.action`. Scrub mostra rest pose ou action que já estava assignada via Dope Sheet. Bug em backlog-bugs-found.md. Feedback do usuário: "o swap de animação pelo seletor do proscenio seria bem útil".
+- [~] Scrub timeline com action selected. Fix shippado (`dcd08f6`): row click dispara `proscenio.set_active_action`, que atribui `animation_data.action`; retest GUI pendente.
 
 ### 1.10 Atlas panel
 
@@ -128,10 +128,10 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 - [x] "Pack Atlas" button: gera `atlas_pack_workbench.atlas.png` (256x256, 9 sprites empacotados) + `atlas_pack_workbench.atlas.json` (schema format_version=2: atlas_w/h, padding, placements dict com x/y/w/h + source_w/h + slice_x/y/w/h por sprite). INFO bar: "packed 9 sprite(s) into 256x256 px atlas".
 - [x] Pack idempotente: re-roda sem duplicar. JSON segunda run idêntico em atlas_w/h, padding, placements (cada sprite na mesma x,y).
 - [~] Pack após Apply: usa atlas existente como source, idempotente. Não testado isoladamente; coberto indiretamente pelos items 8/9/10 (várias execuções de Pack após estado pós-Apply mexendo em padding/max_size/pot). Pack opera sem crash mas semântica do "atlas existente como source" merece teste dedicado quando shape pipeline evoluir.
-- [x] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite. **Pré-condição obrigatória:** Object Mode - em Edit Mode silenciosamente skip todos os sprites (bug em backlog-bugs-found.md). Operator deveria ter poll() guard.
+- [x] "Apply Packed Atlas": UVs de cada sprite reescritas pra apontar pra sua sub-região no atlas; sprites linkados a `Proscenio.PackedAtlas` material; viewport ainda mostra dígito correto em cada sprite. **Pré-condição agora enforced:** poll() exige Object Mode nos 3 operators do atlas (fix `15fc634`).
 - [x] material_isolated=True: sprite_5 manteve `sprite_5.mat` (não foi trocado pelo shared); Image Texture do material trocou pra atlas packed; outros 8 sprites linkados a `Proscenio.PackedAtlas` shared (8 users). Confirmado via Material Slots dropdown: shared mostra 8 users, sprite_5.mat sem prefixo "0" (ainda em uso), outros sprite_N.mat com prefixo "0" (órfãos).
 - [x] "Unpack": restaura UVs originais (consome + remove layer `<active>.pre_pack`) + cada sprite_N volta pra `sprite_N.mat`. `Proscenio.PackedAtlas` fica orphan (0 users) - esperado. `proscenio_pre_pack` CP deletada.
-- [!] Ciclo Pack > Apply > Pack > Apply: estado **NÃO idempotente**. Cada Apply consecutivo remapeia UVs como se estivessem em source-image space, mas após primeiro Apply elas já estão em atlas space → shrink iterativo (UVs convergem pra ponto único no slot). Pack em si é idempotente (item 2); a quebra é no Apply re-clickado. Bug em backlog-bugs-found.md.
+- [~] Ciclo Pack > Apply > Pack > Apply: idempotência corrigida (`27f7640`) - Apply restaura o snapshot `.pre_pack` antes de re-aplicar; retest GUI pendente.
 - [x] pack_padding_px setting respeitado. pack_padding_px=8 → atlas.json `"padding": 8`, stride entre sprites na mesma coluna passa de 36 (padding=2) pra 48 px (padding=8). Gap visível no atlas.png.
 - [x] pack_max_size: cap=64 com 9 sprites 32x32 - pack falha graciosamente. ERROR bar: `Proscenio: pack failed - 9 sprite(s) do not fit in 64x64 px atlas.` Sem crash. Atlas files do item 8 ficam intactos.
 - [x] pack_pot=True: atlas resultante 256x256 (POT, 2^8). Coincide com tamanho pot=False porque packer não shrinka start_size pra fit tight - 9 sprites caberiam em ~96x96, mas start_size default é 256. POT semântica preservada (atlas é POT); para ver round-up real precisaria de mais sprites empurrando além de start_size.
@@ -166,12 +166,12 @@ Workbench file: `examples/generated/atlas_pack/atlas_pack.blend` (9 sprites 3x3,
 
 ### 1.14 Quick Armature
 
-- [~] "Quick Armature" operator: 3D viewport, click-drag head → tail desenha bone. Funciona mas com bug crítico: bones sempre criados no plano Z=0 (horizontais) mesmo em Front Ortho - inviabiliza uso pro workflow Proscenio XZ. Bug em backlog-bugs-found.md.
+- [~] "Quick Armature" operator: 3D viewport, click-drag head → tail desenha bone. Bug do plano Z=0 corrigido (`800e80f`, projeção em Y=0 / plano XZ); preview + chords shippados na feedback pass (PR #50). Full re-test da suite pendente.
 - [x] Bone aparece em armature `Proscenio.QuickRig` (criada no invoke se não existir). Confirmado: qbone.000..004 listados.
 - [x] Multiple drags em sequência: cria múltiplos bones na mesma QuickRig (sem parent automático).
 - [x] Shift hold no PRESS: bone novo parented ao anterior (sem connect). Confirmado: relations.parent setado.
 - [x] ESC ou RIGHTMOUSE: sai do modal. Confirmado funcional (apesar de UX confusa - não tem feedback visual claro do modal).
-- [!] Cancel sem nenhum bone criado: armature vazio NÃO removido. Operator `_finish` (quick_armature.py:141) só limpa status text + `_drag_head`; deixa `Proscenio.QuickRig` orphan na cena com zero bones. Polui workspace a cada cancel acidental. Checklist espera cleanup que não existe.
+- [x] Cancel sem nenhum bone criado: sweep shippado e validado em GUI (T8/T9 PASS na feedback pass).
 - [x] Drag muito curto (< 1e-4): skip funciona. INFO bar `bone too short, skipped` reportado várias vezes durante a sessão.
 
 **Sessão 1.14 (10-mai-2026):** vários problemas de UX impedem teste cabal. Bug do plano Z=0 + falta de preview + falta de feedback visual modal + sem control de connect/disconnect parent durante o drag. Refator grande necessário antes do operator virar útil. Caveats e sugestões loggados em backlog-ui-feedback.md "Quick Armature operator" + "Skeleton panel". Usuário escolheu **skipar tests restantes** e mover pra próxima seção. Voltar quando refator estiver feita.
@@ -193,7 +193,7 @@ Branch `feat/quick-armature-feedback`. Re-roda apenas o **smoke set** (itens que
 
 **Drive-by bugs descobertos + corrigidos durante sessão:**
 
-- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. Codebase-wide latente loggado em `backlog-bugs-found.md` + auditoria pendente no backlog.
+- PEP 563 quebra `bpy.props` registration em Blender 5.1 (`from __future__ import annotations` deixa annotation como string, metaclass `_RNAMeta` falha `isinstance(value, _PropertyDeferred)` check). Fix: removido `from __future__ import annotations` de `quick_armature.py`. (Resolvido: auditoria codebase-wide concluiu que os demais operators são imunes; a regra foi promovida pra `.ai/conventions/code.md` Static typing + `.ai/skills/blender-dev.md`.)
 - `view_matrix` 4x4 acumula float drift entre mode toggles → falsos positivos em comparison. Fix: comparar via decomposed values (location/rotation/distance) em vez do matrix raw. Restore via decomposed assign também.
 - `context.region` em modal handler congela em invoke; quando invocado via N-panel button aponta UI sidebar. Fix: snapshot WINDOW region via `_find_window_region(context.area)` + filter via `event.mouse_x/y` contra rect.
 - WINDOW region rect cobre área inteira do viewport (panels overlay são sobrepostos). Filtering apenas pelo WINDOW rect deixava clicks em panel passar. Fix: itera todas regions da área; rejeita se cursor cair em qualquer overlay (UI/TOOLS/HEADER/ASSET_SHELF).
@@ -258,7 +258,7 @@ Branch `feat/quick-armature-feedback` (mesmo branch carregou first cut + feedbac
 
 ### 1.15 Pose library
 
-- [!] "Save Pose to Library": com armature em pose mode, pose name → action criada. **Falhou:** ERROR bar `Proscenio: pose library refused: Error: Unexpected library type. Failed to create pose asset`. Blender 4.x+ requer asset library writable configurada em Preferences > File Paths > Asset Libraries; Proscenio wrapper só propaga erro sem orientar usuário. Bug em backlog-bugs-found.md.
+- [~] "Save Pose to Library": pre-check de asset library writable + erro acionável shippados (`7d10f69`); retest GUI pendente (entry needs-retest em backlog-bugs-found.md).
 - [ ] Action salva apenas keyframes do current pose. **Bloqueado pelo item 1** - impossível inspecionar action que nunca foi criada.
 - [x] "Bake Current Pose": atual pose vira keyframe no frame_current. Confirmado: `baked pose at frame 16 for 65 bone(s)` - todos os 65 bones do doll.rig keyframados em location/rotation_quaternion/rotation_euler/scale. Não é "@ frame 1" como checklist diz; é o frame_current da timeline (mais útil). Texto da checklist poderia ser ajustado.
 
@@ -573,8 +573,8 @@ The weight-paint-automesh productivity follow-up gesture rewrite. Toggle-modal p
 - [x] `slot_swap.proscenio` → Slot vira Node2D parent + visible-toggled children (substitui doll_slots retired). Confirmado: `weapon` Node2D contém `club` (visible=ON, default) + `sword` (visible=OFF).
 - [x] sprite_frame meshes → Sprite2D com hframes/vframes. Validado em `blink_eyes`: node `eye` é Sprite2D com texture=eye_spritesheet.png, hframes=4, vframes=1, frame=0, centered=ON.
 - [~] polygon meshes → Polygon2D com UV + vertex weights. **UV + polygon validados** em slot_swap (arm Polygon2D: polygon size=4, UV size=4, texture=arm.png). **Weights NÃO exercitáveis** no Godot dev project - zero fixtures sincronizadas têm `weights[]` (atlas_pack/blink_eyes/mouth_drive/shared_atlas/simple_psd/slot_cycle/slot_swap todas com weights=[]). Doll era a única com weighted skinning (spine-region meshes + forearm spillover) mas está skipped do sync por ser authoring-only PS roundtrip. Path coberto via Blender headless tests (golden diffs), não via inspeção visual no Godot. Fechará quando `doll-from-photoshop` fixture (fixtures backlog) chegar.
-- [!] Animations → AnimationPlayer com bone tracks. **Bug writer:** lê `rotation_euler[2]` (Z) hardcoded em `animations.py:147` mas fixtures keyframam `[1]` (Y, convention Front Ortho per packages/fixtures/README.md). slot_swap `swing` action emit 3 keys com só `{time}`, sem rotation field. Godot importa AnimationPlayer com track de 0 propriedades. Bug em backlog-bugs-found.md.
-- [~] slot_attachment tracks → visible toggle keyframes constant interpolation. **Toggle funciona** em swing.001 - 2 visibility tracks (club + sword) com constant interp, 3 keys flipando ON/OFF corretamente. **Mas:** sword Polygon2D fica na posição (0,0) em vez do slot location porque writer lê `matrix_world` stale em meshes com `hide_viewport=True`. Bug em backlog-bugs-found.md.
+- [~] Animations → AnimationPlayer com bone tracks. Bug do writer (rotation axis) corrigido (`3e15758`): lê euler[1] + quaternion; goldens carregam rotation. Re-import GUI pendente.
+- [~] slot_attachment tracks → visible toggle keyframes constant interpolation. Toggle funciona; o sword em (0,0) foi corrigido no writer (`b2eacbf`, un-hide + depsgraph eval) - re-import GUI pendente.
 - [x] Atlas auto-discovery: `atlas.png` next to `.proscenio` carregado como CompressedTexture2D. Validado em shared_atlas: 3 Polygon2D (red_circle/green_triangle/blue_square) compartilham mesma CompressedTexture2D (`atlas.png`) com UV por quadrante.
 
 ### 2.3 Wrapper scene pattern

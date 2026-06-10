@@ -149,16 +149,6 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** a first-time user keyframes a Quick-Armature bone, finds 4 unlabelled quaternion channels in the Graph Editor, and asks which one is "the rotation"; or an imported rig's quaternion bone exports a mangled angle because its quaternion was not single-axis.
 
-### Spec 016 follow-up: god-module splits + low-risk companions (shipped)
-
-Spec 016 landed the system reorganization (`core/`, `core/bpy_helpers/`, and `operators/` grouped by domain; the `_shared/` infra tier; Custom Property keys consolidated). The three deferred items shipped as the 016 follow-up, behavior-preserving and proven by the headless gate set (ruff + mypy + `uv run pytest tests/` + the Blender fixture and operator suites):
-
-- **Operator god-modules split (done).** `automesh_authoring` projection moved to `core/bpy_helpers/_shared/viewport_math` and its status-bar chords to a sibling `_status_bar.py`. `quick_armature` view-pose / region math moved to `viewport_math`, its chord cheatsheet to `_status_bar.py`, and its GPU preview draw to `_overlay.py`; the bone-length tolerance moved to `core/armature/quick_armature_math`. Registered draw / header callbacks stay in the operators (they bind live class state). The dead `_build_status_bar_text` was dropped.
-- **import_photoshop reports through `core.report` (done).** Replaced raw `self.report` + inline `"Proscenio: "` with `report_info` / `report_error`.
-- **`scene_has_pre_pack_snapshot` relocated (done).** Now in `core/bpy_helpers/atlas/snapshot.py`; the atlas panel imports it from core instead of reaching into `operators/atlas_pack`.
-
-**Verified:** the moved modal draw / status-bar callbacks run only during the live modal, which the headless gates do not exercise, so this was confirmed by an in-editor smoke test of both the Quick Armature and Automesh Authoring modals (preview overlay, axis-lock guideline, status-bar chords, outside-canvas tooltip) - all intact at runtime.
-
 ### Validator internal naming (sprites vs elements)
 
 The element-vocabulary rename (the former spec 019) renamed the wire end-to-end and swept the Blender / Photoshop / Godot / fixtures internals, but `packages/validator` was outside its Phase 1-4 scope and never touched. It still uses the pre-rename internal names `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the wire field, so nothing breaks. Rename to `report.elements` / `ElementPayload` (and the `test_validator_report.py` import) the next time the validator is touched. Low priority, cosmetic.
@@ -253,10 +243,6 @@ Planned - the project should support NLA. The writer iterates `bpy.data.actions`
 
 Currently the writer assumes every mesh is a 2D sprite plane. A future check could skip 3D meshes or warn.
 
-### Camera orthographic preview helper
-
-A Blender operator that adds a properly configured ortho camera for pixel-perfect preview, matching the dummy's `pixels_per_unit`.
-
 ### IK chain helper
 
 Blender-side scaffolding that adds an IK constraint stack to a selected bone chain in one click: target bone, pole bone, chain length, defaults. This helper is pure authoring QoL and does not itself touch the `.proscenio` output - exporting IK is tracked separately (see IK constraints round-trip). Pairs with the existing Toggle IK shortcut, which currently flips a per-bone constraint but does not scaffold a whole chain.
@@ -301,13 +287,11 @@ The remaining quick-armature deferred items are now successor specs (quick-armat
 
 Items locked as the productivity follow-up tier of the weight-paint-automesh spec Design surface > Out of scope + the productivity polish TODO tier. Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
 
-- **Soft vs Hard bone toggle (Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb.
+- **Soft vs Hard bone toggle (Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb. Partially shipped: the toggle + rebind exist but are inert under the default `BONE_HEAT` mode (see the per-bone-overrides bug in [`backlog-bugs-found.md`](backlog-bugs-found.md)).
 - **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value follow-up candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
-- **Multi-mesh batch bind.** Bind operator takes selected meshes (not just active) and applies the same algorithm against the picker armature. Trigger: imported-character workflow with N sprites + 1 rig stresses this.
-- **Weight transfer between sprites.** `proscenio.copy_weights_to_selected` operator. Active mesh = source; selected meshes = targets; nearest-world-position vertex lookup copies weight dict. Solves COA Tools 2 issues [#18](https://github.com/Aodaruma/coa_tools2/issues/18) + [#73](https://github.com/Aodaruma/coa_tools2/issues/73). Foundational for Live2D-style line / colour / shadow layered sprites.
 - **Live pose-mode preview in weight paint.** Scrub bone to posed angle / see deformation / scrub back without leaving Edit Weights modal. Adds pose-scrub overlay + hotkey to toggle rest pose. Trigger: user wants verify weights vs deformed pose without modal exit.
-- **Sidecar import / export.** Operator dumps weight sidecar JSON to file + loads from file. Enables version-controlled weight backups outside the `.blend`. Trigger: user asks to back up weight work to git.
-- **Brush curve presets dropdown.** Quick-select brush curve presets named for common 2D tasks (Hard edge / Soft falloff / Crease / Smooth blend) via dropdown in the Edit Weights modal status pill. Saves a 6-click trip to the brush curve editor per session.
+
+(Shipped from this tier, 2026-05/06: multi-mesh batch bind, the `copy_weights_to_selected` weight-transfer operator, sidecar import / export to file, and the brush-curve presets row - see git history.)
 
 ### Weight-paint aspirational candidates
 
@@ -360,14 +344,6 @@ When a Bone2D and a child Polygon2D share a name (e.g. both called `head`), Godo
 
 Currently the rule "scene must work without the plugin" is enforced by review. A small editor check that opens a generated scene with the plugin disabled and asserts no errors would be a CI-friendly guard.
 
-### `project.godot` warning tuning for JSON boundary
-
-`apps/godot/project.godot` `[debug]` carries only `untyped_declaration=2`, `return_value_discarded=1`, `treat_warnings_as_errors=true`. The `unsafe_property_access` / `unsafe_method_access` / `unsafe_cast` / `unsafe_call_argument` families fire on every line that downcasts `JSON.parse` output, forcing `# warning-ignore` clutter. **Why deferred**: current builders use bare `Dictionary` at the JSON boundary, which compiles cleanly without the pins because the casts are implicit. **Trigger to revisit**: when tightening builders to use `Dictionary[K, V]` typed collections (see entry below), pin the four unsafe-access keys to `0` so the downcasts at the JSON edge stay quiet without per-line ignores.
-
-### Annotate `: Variant` on JSON-boundary lookups in Godot builders
-
-Three lookups currently bind without an explicit type: `polygon_builder.gd:114`, `skeleton_builder.gd:36`, `sprite_frame_builder.gd:74` (each of the shape `var x = dict.get("key", null)`). Conventions explicitly allow bare `Dictionary` at the decode boundary, but the `var x = ...` form trips the "Never `var x = 0`" reading on hover. **Why deferred**: cosmetic, no runtime impact, the surrounding code immediately tests the value for null. **Trigger to revisit**: when refactoring the builders to typed collections, or when a reader confuses these for missing type annotations.
-
 ### Sprite2D region_filter_clip for packed sprite_frame
 
 `sprite_frame_builder.gd` sets `region_enabled` + `region_rect` for a sprite_frame packed into an atlas but does not set `region_filter_clip_enabled`. Godot recommends enabling it for atlas usage so a frame does not sample neighbouring atlas pixels at the region edge under linear filtering. The packer's padding mitigates the outer-block edge and nearest filtering sidesteps it entirely, so this is a quality guard, not a correctness fix. Set `region_filter_clip_enabled = true` whenever `region_enabled` is set.
@@ -375,22 +351,6 @@ Three lookups currently bind without an explicit type: `polygon_builder.gd:114`,
 **Trigger:** a packed sprite under linear filtering shows a one-pixel seam from an adjacent atlas region.
 
 ## Photoshop and Krita
-
-### Spec 018 follow-up: png-writer findLayerByPath (shipped in #100)
-
-Shipped: `png-writer.ts` now calls the shared `findLayerByPath`, dropping the local `resolveLayer`; the latent non-Array UXP skip/throw and the duplicate fourth walk are closed.
-
-**What (historical):** [`apps/photoshop/src/api/png-writer.ts`](../apps/photoshop/src/api/png-writer.ts) keeps a local `resolveLayer` that walks `doc.layers` / `layer.layers` with a bare `Array.find`. The shared [`api/_layer-find.ts`](../apps/photoshop/src/api/_layer-find.ts) `findLayerByPath` - already used by `layer-rename`, `legacy-migration`, and `ps-selection` - wraps the walk in `toArray()` plus NFC name matching precisely because UXP layer collections are not always real Arrays. The spec 018 TODO ticked "replace png-writer `resolveLayer` with the shared `findLayerByPath`", but the code still carries the local copy.
-
-**Why it matters:** a non-Array UXP layer collection makes the local `Array.find` throw or miss, so an export can silently skip a layer or fail; the duplication also leaves the NFC / robustness fixes protecting only three of the four layer-walk call sites. The gate stays green because the vitest fixtures back layers with real Arrays, so the gap is latent.
-
-**Scope sketch:** import `findLayerByPath` from `./_layer-find`, swap the `resolveLayer(sourceDoc, write.layerPath)` call, delete the local function. `tsc --noEmit` + `eslint src` + `vitest run` should stay green. Same walk as the "Stable layer identity in `PngWrite.layerPath`" item below.
-
-**Trigger to revisit:** before relying on a png export against a deeply nested or programmatically built PS document, or the first wrong-PNG / missing-layer export report.
-
-### JSX exporter port from `coa_tools2`
-
-Port `coa_tools2/Photoshop/coa_export.jsx` forward into `apps/photoshop/proscenio_export.jsx`. Adapt output JSON to the format documented in `.ai/skills/photoshop-jsx-dev.md`.
 
 ### Krita exporter
 
@@ -508,10 +468,6 @@ Existing fixtures isolate single features (`blink_eyes` = sprite_frame, `shared_
 
 ## Repo and packaging
 
-### LICENSE full GPL-3.0 body
-
-`LICENSE` ships the header only with a clear placeholder pointing to gnu.org. Replace with the full text before the first public release.
-
 ### Issue and PR templates
 
 `.github/` lacks templates. Low priority until the project is open to outside contributors.
@@ -528,25 +484,18 @@ The dev junction setup for the Blender addon is a manual `New-Item -ItemType Jun
 
 The typed-models codegen migration is complete: pydantic is the source of truth, the writer builders construct model instances (`PolygonSprite()` / `Skeleton()` / `Animation()`), both manifest readers parse through the typed models (Blender `psd_manifest.py` → `PsdManifest`, Photoshop `manifest-reader.ts` → `parseManifest`), no `as unknown` casts remain in the typed surface, and the strictness flags all landed (`exactOptionalPropertyTypes`, ESLint `strictTypeChecked`, the mypy `disallow_any_*` trio). Committed-match tests reproduce the JSON Schema, TypeScript, and GDScript artifacts from the models and fail on drift (`tests/codegen/test_schema_roundtrip.py`, `test_ts_emit.py`, `test_godot_emit.py`); the docs emitter is the one artifact left ungated (see below). Only optional tooling / docs follow-ups remain.
 
-### bpy stubs via fake-bpy-module / bpy-stubgen
+### bpy stubs: drop the remaining `ignore_errors` overrides
 
-The mypy `disallow_any_*` trio landed with per-module overrides that relax the `bpy` / `mathutils` / `bmesh` boundary (no stubs ship for those modules). A frozen per-release stub snapshot would let those overrides drop so the boundary is fully typed. Both `fake-bpy-module` and `bpy-stubgen` exist; both are fragile across Blender releases, so pinning a snapshot per release matrix is the realistic path.
+`fake-bpy-module-latest` is adopted (`apps/blender/pyproject.toml`, PR #80) and mypy resolves the `bpy` / `mathutils` / `bmesh` boundary. What remains is the module-by-module sweep that lets the `ignore_errors = true` overrides drop for the bpy-bound subtrees - tracked as the enforcement gap in [`backlog-code-quality.md`](backlog-code-quality.md) ("mypy `ignore_errors` exempts large bpy-bound subtrees"); this entry is the enabling-dependency record.
 
 **Trigger to revisit:** the next Blender LTS jump that breaks an existing typed surface, or a push to remove the remaining bpy-boundary mypy overrides.
 
-### Docusaurus wiring of generated docs
-
-`docs/content/api/schemas/*.md` is regenerable via `python -m proscenio_codegen docs` but no docs site reads it, and the committed markdown has drifted from a fresh emit - it is the one codegen artifact without a committed-match staleness test, because it depends on the npx `jsonschema2md` output rather than pure-Python emit. The typed-models codegen deferred the site itself as a separate chore; regenerating (or deleting) the stale markdown rides along with wiring or dropping the site.
-
-**Trigger to revisit:** the first time someone wants to ship public schema documentation, or a code-health pass decides to drop the unconsumed markdown.
-
 ## Quick Armature follow-ups (deferred polish)
 
-Three small items deferred from the quick-armature TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up.
+Two small items deferred from the quick-armature TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up. (The third item - promoting the ClassVar/TYPE_CHECKING registration rule to the conventions docs - shipped 2026-06-10; the rule now lives in `.ai/conventions/code.md` Static typing and `.ai/skills/blender-dev.md`.)
 
 - **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
 - **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.
-- **Add the ClassVar mutation rule to `.ai/conventions/code.md` Static typing section + `.ai/skills/blender-dev.md`** - the rule lives in [`backlog-bugs-found.md`](backlog-bugs-found.md); promoting it to the conventions doc is low-priority because the bug is rare enough.
 
 ## Architecture revisits
 

@@ -36,78 +36,6 @@ blender.exe: view3d_main_region_draw
 
 **Trigger pra escalar:** se reproduzir 2x+ em sessões diferentes → file Blender bug report com este stack trace.
 
-### bpy.props annotations falham em Operator com PEP 563 + ClassVar referenciando tipo TYPE_CHECKING-only
-
-**Repro original:** `lock_to_front_ortho: BoolProperty(...)` em `PROSCENIO_OT_quick_armature` + acesso via `self.lock_to_front_ortho` no `invoke`. Resultado: `AttributeError: 'PROSCENIO_OT_quick_armature' object has no attribute 'lock_to_front_ortho'`.
-
-**Causa real (post-mortem refinado na auditoria da quick-armature feedback pass):** o problema **não** é PEP 563 em si. É a combinação tripla:
-
-1. `from __future__ import annotations` (PEP 563) ativo no arquivo
-2. ClassVar annotation referenciando tipo só importado sob `if TYPE_CHECKING:` (no caso, `_restore_view_matrix: ClassVar[Matrix | None]`)
-3. Blender 5.1's `register_class` chama `typing.get_type_hints(cls)` que tenta evaluar TODAS as annotation strings contra module globals
-
-`get_type_hints` encontra a string `"ClassVar[Matrix | None]"`, tenta `eval`, hit `NameError: name 'Matrix' is not defined` (Matrix só existia em TYPE_CHECKING branch). Blender catch o NameError e ABORTA todo o annotation walk → nenhuma `_PropertyDeferred` promove pra RNA → `self.<prop>` quebra.
-
-Confirmado via headless `--background --python` instrumentando `get_type_hints`. Após remover `TYPE_CHECKING` import + importar `Matrix` em runtime, registração volta a funcionar mesmo COM PEP 563 ativo. Mantivemos PEP 563 removido em `quick_armature.py` por simplicidade pedagógica + consistência.
-
-**Audit codebase-wide (quick-armature feedback pass):** verificado headless via `bpy.types.<NAME>.bl_rna.properties.keys()` em todos os operators do projeto. Aparentemente todos mostravam props "missing" - mas isso é ARTEFATO de `bl_rna.properties.keys()` não expor operator-declared props (vivem em namespace separado). Operator props acessadas via `self.<prop>` em runtime FUNCIONAM em todos os outros files do codebase (selection.py, driver.py, slot/create.py, etc).
-
-**Conclusão:** o bug se manifesta APENAS quando o combo das 3 condições acima ocorre. Todos os outros operators usam ClassVar só com tipos builtin (`set[str]`) e não tem TYPE_CHECKING import referenciado em ClassVar - imunes ao bug. Sem fix necessário em demais operators.
-
-**Fix aplicado (mantido):** removido `from __future__ import annotations` de `apps/blender/operators/quick_armature.py` + import `Matrix`/`Quaternion`/`Vector` em runtime do top do arquivo. Docstring documenta o constraint pra futuros leitores.
-
-**Lesson learned para [`.ai/conventions/code.md`](../.ai/conventions/code.md) + [`.ai/skills/blender-dev.md`](../.ai/skills/blender-dev.md):** em Blender-registered classes (`Operator`, `PropertyGroup`, `Panel`), evitar declarar `ClassVar[X | None]` onde `X` só existe em `if TYPE_CHECKING:`. Importar tipos em runtime ou usar `Any` no ClassVar. Bug é silent + difícil de debugar (annotation walk falha sem erro visível; só `self.<prop>` raises AttributeError tarde).
-
-**Severity (revisado):** medium - bug é raro (precisa o combo específico) mas custa horas pra debugar quando aparece.
-
-### Snap to UV bounds: IndexError em edit mode
-
-**Repro:** Active Sprite > polygon mode > manual region > entra Edit mode no mesh > click "Snap to UV bounds".
-
-**Erro:**
-
-```text
-File "apps/blender/operators/uv_authoring.py", line 102, in execute
-    u = uv_layer.data[li].uv
-        ~~~~~~~~~~~~~^^^^
-IndexError: bpy_prop_collection[index]: index 0 out of range, size 0
-```
-
-**Causa:** em edit mode `mesh.uv_layers.active.data` é overridden pelo BMesh e fica `size 0`. O operator itera direto sem guard.
-
-**Fix proposto:**
-
-- `poll()` bloqueia edit mode (return False quando `context.mode == "EDIT_MESH"`)
-- Ou execute() detecta `len(uv_layer.data) == 0` e retorna `{"CANCELLED"}` com warning
-
-**Arquivo:** `apps/blender/operators/uv_authoring.py:85-122` (`PROSCENIO_OT_snap_region_to_uv`).
-
-**Severity:** medium - crash de operator não pode acontecer; usuário em edit mode é caso comum.
-
-### Writer: pose-location Z (bone-local) descartado pra bones horizontais
-
-**Repro:** action keyframa `pose.bones["mouth_pos"].location[2] = 0.05` (bone com rest pose horizontal, head=(0,0,0) tail=(0.3,0,0)). Roda writer. .proscenio output mostra position track com `[0.0, -0.0]` em vez do esperado `[0.0, -5.0]` (0.05 world Z * 100 ppu, com Y inversion).
-
-**Causa:** `apps/blender/exporters/godot/writer/animations.py:138-144`:
-
-```python
-if "location" in entry:
-    loc = entry["location"]
-    bx = float(loc.get(0, 0.0))
-    by = float(loc.get(1, 0.0))
-    bz = float(loc.get(2, 0.0))
-    if max(abs(bx), abs(by), abs(bz)) > 1e-6:
-        position = [round(by * ppu, 6), round(-bx * ppu, 6)]
-```
-
-Formula assume bones com Y axis = world Z (verticais). Pra bones horizontais (Y axis = world X), bone-local Z = world Z, mas formula descarta `bz`. Position track sempre vira (0, 0).
-
-**Fix proposto:** converter `(bx, by, bz)` pose location pra world delta usando matrix do rest pose do bone, depois aplicar `world_to_godot_xy`. Lida com qualquer orientação de bone.
-
-**Arquivo:** `apps/blender/exporters/godot/writer/animations.py:138-144` (`_resolve_pose_entry`).
-
-**Severity:** medium - afeta qualquer rig 2D com bones horizontais (front-ortho convention). Bones verticais (típicos de rigs body-aligned) funcionam por acidente. Não causa crash, só silenciosamente perde translation tracks.
-
 ### Validator NÃO detecta keyframes de transform em slot attachments
 
 **Repro:** slot_swap workbench. Select `club` (filha de `weapon` slot). Insert Keyframe em Location (cria `clubAction`). Run Validate via Export panel. Nenhum warning sobre os keyframes.
@@ -177,138 +105,6 @@ empty.location = seed.matrix_world.to_translation()  # agora consistente
 
 **Severity:** medium -- Path B funciona para meshes sem parent (cenário documentado no slot system), mas quebra para meshes já parented (cenário comum: criando slot dentro de um rig que já tem armature).
 
-### Slot fields: PG <-> CP mirror não dispara (`is_slot`, `slot_default`, `is_outliner_favorite`)
-
-**Repro:** Active Slot panel, click star vazia em attachment não-default. PG `slot_default` muda visualmente (star toggle), mas Custom Property `proscenio_slot_default` no Properties editor continua mostrando valor anterior.
-
-**Causa:** dois bugs combinados:
-
-1. `apps/blender/properties/object_props.py:220-227` (`slot_default`), `:239-247` (`is_slot`), `:230-237` (`is_outliner_favorite`) - nenhum desses 3 fields tem `update=on_any_update` no IntProperty/StringProperty/BoolProperty. Os outros 11 fields têm.
-2. `apps/blender/core/mirror.py:24-36` (`OBJECT_MIRROR_MAP`) - mapping não inclui entries pros 3 fields acima. Mesmo se update callback disparasse, `mirror_all_fields` não saberia mirror eles.
-
-Resultado: PG e CP divergem assim que usuário toca esses fields. Headless writer (sem addon) lê CP stale → slot_default errado, is_slot errado.
-
-**Fix proposto:**
-
-1. Adicionar `update=on_any_update` nas 3 declarações em object_props.py.
-2. Adicionar 3 tuplas em `OBJECT_MIRROR_MAP`:
-
-   ```python
-   ("proscenio_is_slot", "is_slot", bool),
-   ("proscenio_slot_default", "slot_default", str),
-   ("proscenio_outliner_favorite", "is_outliner_favorite", bool),
-   ```
-
-**Severity:** high - afeta correctness do round-trip slot. Bug-of-omission no mirror-fix (fix do mirror cobriu sprite fields, esqueceu slot fields que vieram no slot system depois).
-
-### Drive from Bone: F9 redo trocando target NÃO migra driver, adiciona outro
-
-**Repro:**
-
-1. Active Sprite > Drive from Bone > Target=Frame index, click "Drive from Bone"
-2. Driver criado em `mouth.proscenio.frame`
-3. F9 redo > troca Target pra `Region X` (mesmo bone, mesma expression)
-4. Operator re-roda
-
-**Esperado:** driver migra de `proscenio.frame` pra `proscenio.region_x` (1 driver só, no novo target).
-
-**Atual:** driver **adicionado** em `proscenio.region_x`, driver antigo em `proscenio.frame` permanece. Sprite mesh fica com 2 drivers em proscenio.* properties.
-
-**Causa:** `apps/blender/operators/driver.py:_ensure_single_driver` só remove driver no `data_path` que está sendo escrito. Mudar target_property muda data_path, então drivers em outros proscenio.* properties não são tocados.
-
-**Fix proposto:** quando re-rodando o operator no mesmo sprite + mesma armature/bone source com target diferente, remover drivers existentes em outros `proscenio.*` paths (que tenham o mesmo source bone).
-
-Pseudocódigo:
-
-```python
-# Antes do driver_add:
-if sprite.animation_data is not None:
-    for fcurve in list(sprite.animation_data.drivers):
-        if fcurve.data_path.startswith("proscenio.") and fcurve.data_path != data_path:
-            # check se o source bone bate
-            for var in fcurve.driver.variables:
-                if any(t.id == armature and t.bone_target == self.bone_name for t in var.targets):
-                    sprite.driver_remove(fcurve.data_path)
-                    break
-```
-
-OR adicionar `replace_existing: BoolProperty(default=True)` na operator props pra permitir opt-out (caso usuário queira múltiplos drivers do mesmo bone).
-
-**Arquivo:** `apps/blender/operators/driver.py:31-51` (`_ensure_single_driver` precisa virar mais esperto, ou execute() deve fazer cleanup adicional).
-
-**Severity:** medium - F9 redo é workflow esperado de "tweak parameters", behavior atual viola princípio de menos surpresa.
-
-### Drive from Bone: transform_space LOCAL retorna 0 pra rotação world Z
-
-**Repro:** Active Sprite > Drive from bone com Target=Frame index, Axis=Bone Rot Z, expression=`var * 2 + 2`. Click "Drive from Bone". Em pose mode, R Z 45 no bone. Initial frame fica 2 (não muda da rotação 0). Driver Variable Value mostra 0.0° apesar do bone estar rotacionado 45°.
-
-**Causa:** `apps/blender/operators/driver.py:140`:
-
-```python
-target.transform_space = "LOCAL_SPACE"
-```
-
-Local Space retorna rotação relativa à orientação local do bone. Pra bones com axis vertical (Y aligned com world Z, como no fixture `mouth_drive`), R Z em pose mode rotaciona ao redor do bone-Y (twist), NÃO do bone-Z local. Local Z permanece 0. World Space pega a rotação Z do mundo direto - comportamento esperado pra 2D cutout.
-
-**Fix proposto:** `target.transform_space = "WORLD_SPACE"` - alinha com expectativa de 2D cutout (bones em plano XY-mundo, rotação Z = rotação no plano). Ou expor "Space" como dropdown na UI do Drive from Bone.
-
-**Arquivo:** `apps/blender/operators/driver.py:140` (`PROSCENIO_OT_create_driver.execute`).
-
-**Severity:** high - feature aparenta totalmente quebrada se usuário não souber Blender API a ponto de inspecionar driver no editor + trocar Space manualmente.
-
-### Drive from Bone: keyframes residuais no fcurve do driver clampam output
-
-**Repro:** Click "Drive from Bone" em sprite mesh. Olha no Drivers Editor o fcurve do driver. Tem keyframes em ~(0.667, 0.667), (1.0, 1.0), (1.333, 1.333) com Bezier interpolation + Constant extrapolation.
-
-**Causa:** quando o operator chama `sprite.driver_add(data_path)`, Blender cria fcurve com 3 default keyframes pra IntProperty (provavelmente seed da geometry padrão). Esses keyframes mapeiam driver expression output → final value. Constant extrapolation clamps qualquer valor fora de [0.667, 1.333] → int(1.333)=1. Frame fixo em 1 não importa quanto o driver expression calcule.
-
-**Fix proposto:** após `driver_add`, deletar os keyframes default do fcurve OU adicionar fcurve modifier "Generator" linear (`y = 1*x + 0`) explicitamente. Garante mapping 1:1 driver-output → property-value.
-
-**Arquivo:** `apps/blender/operators/driver.py:31-40` (`_ensure_single_driver`).
-
-**Severity:** high - combinado com o bug acima, esse é o motivo final do feature parecer quebrado. User precisa abrir Drivers Editor + selecionar fcurve + selecionar todos os keyframes + deletar manualmente pra fazer driver funcionar.
-
-### mouth_drive fixture: bone vertical força LOCAL_SPACE bug acima
-
-**Repro:** abrir `examples/generated/mouth_drive/mouth_drive.blend` e tentar usar Drive from Bone pra controlar mouth via bone rotation Z em pose mode.
-
-**Causa:** o fixture `packages/fixtures/mouth_drive/build_blend.py:79-84` cria o bone vertical (`head=(0,0,0)` → `tail=(0,0,0.5)`). Bone Y axis = world Z. R Z em pose mode = twist around bone-Y, não rotação local Z. Mesmo com WORLD_SPACE no driver, é confuso pro usuário.
-
-**Fix proposto:** orientar o bone horizontalmente (`head=(0,0,0)` → `tail=(0.5,0,0)`) ou ao longo de world Y (`tail=(0,0.5,0)`). Aí bone-Y = world Y, rotação Z em pose mode = rotação local Z do bone, e LOCAL_SPACE pega a rotação corretamente. Alinha com convenção 2D cutout (bones no plano XY mundo).
-
-**Arquivo:** `packages/fixtures/mouth_drive/build_blend.py:81-83`.
-
-**Severity:** medium - afeta UX da fixture, não da feature em geral. Fix combinado com os 2 bugs acima resolve a triade.
-
-### Wrapper .tscn: script path falta `/godot/` em fixtures legacy
-
-**Repro:** copiar `examples/<fixture>/` para `res://<fixture>/` em projeto Godot, abrir `*.tscn` - script ext_resource quebra com "file not found".
-
-**Causa:** `BlinkEyes.tscn`, `Doll.tscn`, `SharedAtlas.tscn` declaram `Script path="res://<fixture>/<File>.gd"`, mas o `.gd` mora em `<fixture>/godot/<File>.gd`. Path correto seria `res://<fixture>/godot/<File>.gd` (como faz `SimplePSD.tscn`).
-
-**Fix:** trocar 3 paths nos `.tscn` afetados:
-
-- `examples/generated/blink_eyes/godot/BlinkEyes.tscn`: `res://blink_eyes/BlinkEyes.gd` → `res://blink_eyes/godot/BlinkEyes.gd`
-- `examples/authored/doll/04_godot_import/Doll.tscn`: `res://doll/Doll.gd` → `res://doll/godot/Doll.gd` (historical; the restructure moved this file to `04_godot_import/` and updates path conventions accordingly)
-- `examples/generated/shared_atlas/godot/SharedAtlas.tscn`: `res://shared_atlas/SharedAtlas.gd` → `res://shared_atlas/godot/SharedAtlas.gd`
-
-`mouth_drive` já corrigido in-place (PR #38, post-CodeRabbit). `simple_psd` já estava correto.
-
-**Severity:** medium - wrapper scenes não funcionam out-of-the-box; usuário precisa fix manual ao copiar pra projeto Godot.
-
-### ~~blink_eyes fixture: image path absoluto bake'a no .blend~~ FIXED
-
-Fixed inline. `packages/fixtures/blink_eyes/build_blend.py` agora chama
-`bpy.path.relpath` após `save_as_mainfile` + salva de novo, persistindo
-`//pillow_layers/eye_spritesheet.png` em vez do path absoluto. Aproveitada
-a passagem para reorientar o bone ao longo de world Y (perpendicular ao
-plano XZ), alinhando com a convenção do `mouth_drive` (Spine-style:
-bones aparecem como pontos no Front Ortho).
-
-**Provável que `simple_psd/build_blend.py` e `slot_cycle/build_blend.py`
-ainda tenham o mesmo bug de path absoluto** - auditar quando rodar
-testes manuais nessas fixtures.
-
 ### Reproject UV: segunda chamada lenta + UV resultante rotacionada/flipada
 
 **Repro:** Active Sprite > polygon mode > "Reproject UV". Sintomas em primeira E segunda chamadas.
@@ -333,79 +129,6 @@ testes manuais nessas fixtures.
 
 ---
 
-### Writer emits identity matrix for hidden mesh objects (hide_viewport=True)
-
-**Repro:** `apps/blender/tests/run_tests.py` against slot_swap (or any fixture with `hide_viewport=True` attachments). Inspect sword sprite in the .proscenio output.
-
-**Sintoma:** non-default slot attachments (e.g. slot_swap's `sword` with `hide_viewport=True`) emit polygon vertices in world (0,0,0) instead of at the slot Empty's world position. In Godot, the imported Polygon2D renders at world origin overlapping the rig rather than tracking the slot.
-
-Headless inspect:
-
-- club (hide_viewport=False): `mw.translation=(0.36, -0.30, 0.02)` - correct world position.
-- sword (hide_viewport=True): `mw.translation=(0.0, 0.0, 0.0)` - stale identity.
-
-**Causa:** Blender drops `hide_viewport=True` objects from the active depsgraph; their `matrix_world` is not evaluated. `apps/blender/exporters/godot/writer/sprites.py:42` reads `mesh_world = obj.matrix_world` directly without forcing an evaluation, so hidden meshes return identity / stale matrices.
-
-**Fix proposto:**
-
-- Use `obj.evaluated_get(context.evaluated_depsgraph_get()).matrix_world` after temporarily un-hiding every mesh writer cares about.
-- OR: scene-level pass before iteration that un-hides every sprite mesh, captures matrix_world, and restores hide_viewport state. Save/restore is fragile but localised to the writer.
-- OR: don't use `hide_viewport` for slot attachments - rely on the runtime visibility flip baked into the slot system + depth_offset z-fighting prevention.
-
-**Arquivo:** `apps/blender/exporters/godot/writer/sprites.py:42` (read of `obj.matrix_world`).
-
-**Severity:** medium-high - breaks visual correctness in Godot for every slot attachment authored with hide_viewport=True (current convention in slot_swap fixture). Workaround: un-hide attachments in Blender before export.
-
-### Writer reads `rotation_euler[2]` (Z) but bones keyframe `rotation_euler[1]` (Y)
-
-**Repro:** slot_swap.blend `swing` action keyframes `arm` bone's `rotation_euler` index=1 (Y axis - camera-axis rotation in Front Ortho, per `packages/fixtures/README.md` convention). Run the writer → inspect emitted bone_transform track.
-
-**Sintoma:** swing track in the .proscenio has 3 keyframes with only `{"time": ...}` - no `position`/`rotation`/`scale` data. Godot imports an empty track and the arm doesn't animate.
-
-**Causa:** `apps/blender/exporters/godot/writer/animations.py:147`:
-
-```python
-if "rotation_euler" in entry:
-    rz = float(entry["rotation_euler"].get(2, 0.0))  # <-- reads Z (index 2)
-    if abs(rz) > 1e-6:
-        rotation = round(-rz, 6)
-```
-
-Hardcoded to read Z (index 2). The project convention (codified in `packages/fixtures/README.md` "Bone orientation" + slot_swap's build_blend.py:276) keyframes Y (index 1) because Y is the camera-axis rotation in Front Ortho. Writer never sees the Y keys → `rotation` stays None → `has["rotation"] = False` → emitted keys carry only `{time}`.
-
-**Fix proposto:** read Y, not Z (for the XZ-plane 2D rig convention). Possibly also support Z fallback for legacy fixtures with the older convention. Sign adjustment may also need attention (Godot's 2D rotation positive = clockwise in screen; Blender Y rotation positive = depends on camera-facing).
-
-**Arquivo:** `apps/blender/exporters/godot/writer/animations.py:146-149`.
-
-**Severity:** high - all rotation animations on bones keyframed via the project's documented Y-axis convention produce dead tracks. Affects slot_swap (swing action), mouth_drive (likely), and any future fixture following the README's bone orientation guidance.
-
----
-
-### Outliner panel: filtro nativo da UIList (campo de baixo) não filtra
-
-**Repro:** Proscenio > subpanel Outliner > expandir filtro nativo do UIList (seta `▼` no rodapé) > digitar substring (ex: `brow.L`) no campo "Filter by Name".
-
-**Sintoma:** lista não filtra. Continua mostrando todos objetos. Só funciona o campo do **topo** (com ícone `VIEWZOOM`), que é `scene_props.outliner_filter`.
-
-**Causa:** `PROSCENIO_UL_sprite_outliner.filter_items` (apps/blender/panels/outliner.py:93-127) sobrescreve a lógica de filtro completa e ignora `self.filter_name` (o campo nativo do UIList). Só consulta `scene_props.outliner_filter`. Resultado: 2 search bars visíveis (1 nossa, 1 nativa) e só uma funciona - confuso pro usuário.
-
-**Fix proposto (opção A, simples):** em `filter_items`, OR o substring filter com `self.filter_name`:
-
-```python
-flt_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
-native_text = (self.filter_name or "").lower()
-combined = flt_text or native_text  # nossa tem prioridade; cai pra nativa
-...
-if combined and combined not in obj.name.lower():
-    continue
-```
-
-**Fix proposto (opção B, mais limpo):** desabilitar o filtro nativo do UIList (`use_filter_show=False` no draw_filter override) e deixar só nosso search no topo, que já tem ícone próprio e está consistente com o style do panel.
-
-**Arquivo:** `apps/blender/panels/outliner.py:93-127`.
-
-**Severity:** medium - não crash, mas duplicidade engana usuário e parece bug de filtro quebrado.
-
 ### Skeleton panel: row click no UIList não seleciona bone no viewport
 
 **Repro:** doll_workbench.blend > Pose Mode > deselect all (`Alt+A`) > Proscenio > subpanel Skeleton > click row `upper_arm.L` no UIList de bones.
@@ -423,85 +146,6 @@ if combined and combined not in obj.name.lower():
 **Arquivo:** `apps/blender/properties/scene_props.py:54-59`, `apps/blender/panels/skeleton.py:12-31`.
 
 **Severity:** medium - panel oferece UX de selector de bone, mas não cumpre. Usuário precisa selecionar bone no viewport manualmente.
-
-### Animation panel: row click não atribui action ao armature
-
-**Repro:** doll_workbench.blend > Proscenio > Animation > click row `wave` no UIList > scrubar timeline.
-
-**Sintoma:** doll não anima. Selection do row só atualiza `active_action_index`; `doll.rig.animation_data.action` continua o que tava antes (provavelmente `None` ou outra action). Pra animar, usuário precisa abrir Dope Sheet > Action Editor > assignar manualmente.
-
-**Causa:** `apps/blender/properties/scene_props.py:48` define `active_action_index` como IntProperty sem `update=`. `apps/blender/panels/animation.py:53-61` usa `template_list` apontando pra esse PG sem operator que sincronize.
-
-**Padrão repetido:** mesma família dos bugs "Skeleton panel row click não seleciona bone" e "Active Sprite Drive-from-Bone selectors" - UI selectors do Proscenio armazenam índice mas não dirigem viewport / armature state. Vale considerar fix consolidado.
-
-**Fix proposto:** novo operator `proscenio.set_active_action` chamado de dentro de `PROSCENIO_UL_actions.draw_item`. Operator atribui `action` ao `armature.animation_data.action` (criando `animation_data` se preciso) + opcionalmente reseta timeline pra `action.frame_range[0]`. Variante mais segura: só aplica se exatamente 1 armature na cena (heurística mesma do Skeleton panel `armatures[0]`).
-
-**Feedback usuário (10-mai-2026):** "o swap de animação pelo seletor do proscenio seria bem útil".
-
-**Arquivo:** `apps/blender/properties/scene_props.py:48-53`, `apps/blender/panels/animation.py:12-30`.
-
-**Severity:** medium - panel parece broken pro usuário (selecionou mas nada acontece). Funcionalidade óbvia que falta.
-
-### Atlas Apply: skipped N sprites quando alguma mesh em Edit Mode (suspeita)
-
-**Repro (tentativa):** atlas_pack_workbench.blend > Pack Atlas (OK, packed 9 sprites 256x256) > Apply Packed Atlas. Operator reporta "applied packed atlas to 0 sprite(s); skipped 9 (no UV layer)".
-
-**Sintoma post-mortem (via inspect headless):**
-
-- `sprite_N.data.uv_layers["UVMap"]` ainda existe mas `len(data) == 0` (UV loop data wiped).
-- Nenhuma layer `.pre_pack` criada.
-- `proscenio_pre_pack` CP setada com `uv_layer_snapshot == ""` - prova que `duplicate_active_uv_layer` retornou early porque `len(active.data) == 0` (apps/blender/operators/atlas_pack/_paths.py:35).
-
-**Headless repro falhou em reproduzir:** rodar `duplicate_active_uv_layer` isoladamente em fresh `atlas_pack.blend` mantém `uv_layers.active.data` com len=4. Bug aparece só no interativo.
-
-**Suspeita:** mesh em Edit Mode quando Apply roda. Em edit mode, `mesh.uv_layers.active.data` reporta zero entries - precisa de BMesh access. Mesmo padrão do bug logado anteriormente "Snap to UV bounds: IndexError em edit mode" (apps/blender/operators/uv_authoring.py:102).
-
-**Outras hipóteses não descartadas:**
-
-- Operator wipa UV data inadvertidamente em algum path interno (`read_manifest`, `_ensure_shared_material`).
-- `uv_layers.new(do_init=False)` no Blender 5.1.1 invalida active reference em condições específicas (não reproduzido headless).
-- Multi-object edit mode em todos os sprites simultaneamente.
-
-**Fix proposto:**
-
-- `apply.py` deve adicionar guard em poll(): `return ... and context.mode == "OBJECT"` - previne run em edit mode.
-- `apply.py:execute` + `duplicate_active_uv_layer` precisam logar warning explícito (não apenas skipped count) quando data len=0 detectado: pode ser edit mode, mesh corrompido, ou mesh sem UV.
-- Considerar BMesh fallback em apps/blender/operators/atlas_pack/* análogo ao que uv_authoring.py precisa.
-
-**Arquivo:** `apps/blender/operators/atlas_pack/apply.py:148-159`, `apps/blender/operators/atlas_pack/_paths.py:24-46`.
-
-**Severity:** medium-high - operator silenciosamente wipa UV data + relata "skipped" sem indicar a causa. Usuário fica preso sem clue. Pode ser causa pre-existente do "actual UV data already empty" cenário.
-
-**CONFIRMADO (10-mai-2026):** root cause é Edit Mode. Usuário tinha todos os 9 sprites selecionados em Edit Mode quando clicou Apply. Em Object Mode o operator funciona normalmente. Fix definitivo: adicionar poll() check `context.mode == "OBJECT"` em PROSCENIO_OT_apply_packed_atlas + PROSCENIO_OT_pack_atlas + PROSCENIO_OT_unpack_atlas (mesma família).
-
-### Atlas Apply: re-click NÃO é idempotente - UVs encolhem a cada click
-
-**Repro:** atlas_pack_workbench.blend > Object Mode > Pack Atlas > Apply Packed Atlas (OK, viewport correto) > **Apply Packed Atlas** denovo.
-
-**Sintoma:** UVs encolhem dentro do slot do atlas. Cada Apply remapeia as UVs como se elas estivessem em "source image space" (0..1 do PNG original), mas após primeiro Apply elas já estão em atlas space (ex: 0..0.125 pra sprite 32px em atlas 256px). Segundo Apply trata 0..0.125 como source-image 0..1 e re-empacota dentro do já-pequeno slot. Repetir N vezes → UVs convergem pra ponto único no canto do slot.
-
-**Causa:** `apply.py:148-173` (`_rewrite_uvs`):
-
-```python
-src_px_x = u * src_w
-src_px_y = v * src_h
-new_u = (slot.x + (src_px_x - slice_rect.x)) / atlas_w
-new_v = (slot_y_bu + (src_px_y - slice_rect.y)) / atlas_h
-```
-
-Lê UV atual + transforma assumindo que `u, v` estão em source space. Sem flag detectando "já foi aplicado".
-
-**Fix proposto:**
-
-- Opção A (defensive): no _snapshot_pre_pack, se o CP `proscenio_pre_pack` já existe + layer `.pre_pack` ainda presente, restaurar UVs do `.pre_pack` antes de re-aplicar. Garante que Apply sempre parte do source-image space.
-- Opção B (block): poll() detecta presença de pre_pack snapshot + retorna False, com hint "Apply already applied - Unpack first to reapply" ou similar. Forço re-flow Unpack > Pack > Apply.
-- Opção C (auto-unpack): segundo Apply detecta snapshot existente e auto-Unpack antes de re-Apply. Transparente mas pode surpreender se usuário queria layering.
-
-Recomendação: Opção A é mais robusta + invisível ao usuário; Opção B é mais explícita mas adiciona fricção.
-
-**Arquivo:** `apps/blender/operators/atlas_pack/apply.py:80-97` (_snapshot_pre_pack), `apply.py:148-173` (_rewrite_uvs).
-
-**Severity:** medium-high - quebra silenciosamente o estado da fixture; usuário não tem warning. Se Pack for re-executado e Apply rodar de novo (ciclo natural), UVs vão drift cada iteração.
 
 ### Atlas Unpack: rename de material entre Apply e Unpack quebra restauração silenciosamente
 
@@ -535,6 +179,8 @@ Mesmo bug aplica ao shared material - se `Proscenio.PackedAtlas` for renomeado, 
 
 ### Help topic `sprite_frame_preview` é orphan - sem entry point na UI
 
+**Update (2026-06-10 audit):** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da spec 022 (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. Re-wirar nos `_draw_*.py` das sub-boxes.
+
 **Repro:** abre fixture com sprite_frame mesh (ex: `examples/generated/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
 
 **Sintoma:** sub-box "Sprite frame" tem só label header + fields (hframes / vframes / frame / centered) + Setup/Remove Preview buttons. **NÃO tem ícone `?`** pra abrir help topic. Visual confirmado em screenshot do usuário (10-mai-2026 sessão 1.13 item 9).
@@ -549,26 +195,6 @@ Mesmo bug aplica ao shared material - se `Proscenio.PackedAtlas` for renomeado, 
 **Arquivo:** `apps/blender/panels/_draw_sprite_frame.py:24-26`, e provavelmente outros `_draw_*.py`.
 
 **Severity:** low-medium - não é crash, mas help topic existe e foi documentado/testado como acessível via UI; checklist 1.13 item 9 falha por causa disso. Indica que o pattern de "help button per sub-box" está incompleto.
-
-### Quick Armature: bones criados sempre no plano Z=0 (horizontais), nunca no plano Y=0 do Proscenio
-
-**Repro:** atlas_pack_workbench.blend > Skeleton panel > Quick Armature > Front Ortho (numpad 1) > drag de cima pra baixo no viewport.
-
-**Sintoma:** bone criado fica horizontal (head.Z == tail.Z == 0), independente de pra onde o mouse vai no eixo Z visualizado. Drag vertical no Front Ortho resulta em bone horizontal - aparenta colapsar Z=0 silenciosamente.
-
-**Causa:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51` (`mouse_event_to_z0_point`) projeta ray do mouse no plano **Z=0** (XY plane, "ground plane"). Em Front Ortho o `view_vec.z ≈ 0` (câmera olha ao longo de Y) → linha 39 cai no fallback → linha 41 chama `region_2d_to_location_3d(..., Vector((0,0,0)))` → linha 43 retorna `(x, y, 0.0)` forçando Z=0.
-
-Proscenio é workflow XZ (Spine / 2D cutout convention - bones no plano Y=0 visíveis em Front Ortho). Helper foi escrito assumindo top-down (Z=0 plane), incompatível com a convention principal do addon.
-
-**Fix proposto:**
-
-- Renomear helper pra `mouse_event_to_plane_point(plane_axis)` ou similar; deixar caller especificar plano.
-- Em `quick_armature.py:70` + `:79`, passar `plane_axis="Y"` pra projetar em Y=0 (XZ plane) - combina com Front Ortho.
-- Considerar detectar a view atual automaticamente: Top Ortho → Z=0, Front Ortho → Y=0, Right Ortho → X=0. Mas complica UX (bone muda de plano se user gira camera). Simpler: hardcode Y=0 pra Proscenio uso.
-
-**Arquivo:** `apps/blender/core/bpy_helpers/viewport_math.py:14-51`, `apps/blender/operators/quick_armature.py:70,79`.
-
-**Severity:** high - inviabiliza o operator pro workflow primário do addon. Bones quick-rigged não funcionam em Front Ortho (a vista padrão de 2D cutout). Combinado com falta de preview (backlog-ui-feedback), torna Quick Armature inusável hoje.
 
 ### Save Pose to Library: `Unexpected library type` sem orientação ao usuário
 
@@ -643,6 +269,24 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 **Arquivo:** `apps/blender/core/bpy_helpers/skinning/bind_apply.py:225,249`; `apps/blender/panels/weight_paint.py` `_draw_bind` (gating da box).
 
 **Severity:** medium - affordance proeminente que não faz nada no modo default; confunde e mina a confiança na feature.
+
+### Writer exporta `armatures[0]` e ignora o active-armature picker
+
+**Repro:** cena com 2+ armatures (ex: rig principal + `Proscenio.QuickRig` de teste). Setar o picker do Skeleton panel pra segunda armature. Export Godot.
+
+**Sintoma:** o `.proscenio` sai com o esqueleto da PRIMEIRA armature em scene order, não a escolhida no picker. O panel mostra warning "2 armatures - writer uses the first only", mas o picker (fonte de verdade desde a feedback pass do Quick Armature) não alimenta o writer.
+
+**Causa:** `apps/blender/exporters/godot/writer/scene_discovery.py:14-17` (`find_armature`) itera `scene.objects` e retorna a primeira ARMATURE; nunca lê o PointerProperty do picker (`scene_props.py:473-486`).
+
+**Fix proposto:** `find_armature` prefere o picker quando setado e válido (fallback pra scene order quando vazio); o warning do Skeleton panel passa a citar o nome efetivamente usado. Descoberto na auditoria 2026-06-10 (o picker shippou na UI mas o writer nunca foi atualizado).
+
+**Severity:** medium-high - output correctness em cena multi-armature; usuário acha que escolheu o rig e o export usa outro silenciosamente.
+
+### Fixtures simple_psd / slot_cycle: provável path absoluto de imagem bake'ado no .blend
+
+Herdado do fix do blink_eyes (que ganhou `bpy.path.relpath` + re-save e saiu deste arquivo): `packages/fixtures/slot_cycle/build_blend.py` carrega imagem sem rewrite pra relativo antes do save (auditoria 2026-06-10: nenhum `relpath` no arquivo), e `simple_psd` delega ao importer Photoshop, que também não relativiza. Auditar ambos ao rodar os testes manuais dessas fixtures; aplicar o padrão do blink_eyes (`bpy.path.relpath` após `save_as_mainfile` + save de novo).
+
+**Severity:** low - quebra portabilidade do `.blend` da fixture entre máquinas, não o pipeline.
 
 ### Weight Transfer: sem warning quando targets ficam fora do alcance (cobertura zero silenciosa)
 

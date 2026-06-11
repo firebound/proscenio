@@ -62,7 +62,7 @@ class PROSCENIO_PT_main(bpy.types.Panel):
         right = row.row(align=True)
         right.alignment = "RIGHT"
         gh = right.operator("wm.url_open", text="", icon="URL", emboss=False)
-        gh.url = "https://github.com/Space-Wizard-Studios/firebound-proscenio"
+        gh.url = "https://github.com/firebound/proscenio"
         op = right.operator("proscenio.help", text="", icon="QUESTION", emboss=False)
         op.topic = "pipeline_overview"
 

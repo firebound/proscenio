@@ -247,7 +247,7 @@ class ProscenioDocument(_Strict):
         extra="forbid",
         json_schema_extra={
             "$id": (
-                "https://space-wizard-studios.github.io/proscenio/schemas/"
+                "https://firebound.github.io/proscenio/schemas/"
                 "proscenio.schema.json"
             ),
         },

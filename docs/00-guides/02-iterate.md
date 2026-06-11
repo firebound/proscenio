@@ -25,6 +25,6 @@ Every hop above is manual on purpose - there is no hot reload across the tool bo
 
 ## Help and feedback
 
-- Hit a bug or want a feature? Open an issue: [Proscenio issues](https://github.com/Space-Wizard-Studios/firebound-proscenio/issues).
+- Hit a bug or want a feature? Open an issue: [Proscenio issues](https://github.com/firebound/proscenio/issues).
 - Want to contribute? See [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 - Per-tool depth lives in the workflow guides: [Photoshop](01-advanced/01-photoshop.md), [Blender](01-advanced/02-blender.md), [Godot](01-advanced/03-godot.md).

@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](AGENTS.md) first - it points to [`.ai/`](.ai/README.md), the index of repo conventions and task-scoped skills. Human or LLM, load the file that matches your task before touching code.
 
-New to the tool itself? Start with the [end-to-end walkthrough](docs/00-guides/00-basic/index.md), backed by per-tool guides under [`docs/`](docs/README.md). Both render on the [documentation site](https://space-wizard-studios.github.io/firebound-proscenio/) for easier reading.
+New to the tool itself? Start with the [end-to-end walkthrough](docs/00-guides/00-basic/index.md), backed by per-tool guides under [`docs/`](docs/README.md). Both render on the [documentation site](https://firebound.github.io/proscenio/) for easier reading.
 
 ## Setup
 
@@ -10,8 +10,8 @@ Install Git LFS once, then clone - the LFS filter pulls the example assets durin
 
 ```sh
 git lfs install
-git clone https://github.com/Space-Wizard-Studios/firebound-proscenio
-cd firebound-proscenio
+git clone https://github.com/firebound/proscenio
+cd proscenio
 ```
 
 For component-specific setup, see the corresponding skill in [`.ai/skills/`](.ai/README.md#skills).

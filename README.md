@@ -11,7 +11,7 @@
 
 Proscenio is an open-source pipeline for 2D cutout animation, built for artists: you paint in Photoshop, rig and animate in Blender, and ship to Godot - every step on open, free tooling.
 
-Part of the [Firebound](https://github.com/Space-Wizard-Studios/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no proprietary editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
+Part of the [Firebound](https://github.com/firebound/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no proprietary editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
 
 The pipeline flows in one direction:
 
@@ -63,7 +63,7 @@ Artists and game devs who want a practical 2D cutout workflow on Godot 4, with e
 
 ## What you can do with it
 
-The full, code-verified feature list lives on the [Features page](https://space-wizard-studios.github.io/firebound-proscenio/project/features), and the systems behind them in [Architecture](https://space-wizard-studios.github.io/firebound-proscenio/project/architecture). In short:
+The full, code-verified feature list lives on the [Features page](https://firebound.github.io/proscenio/project/features), and the systems behind them in [Architecture](https://firebound.github.io/proscenio/project/architecture). In short:
 
 - **Photoshop** - tag layers from their name to drive the export; get one PNG per layer plus a validated manifest.
 - **Blender** - build a deformable mesh from the sprite alpha (automesh), draw a skeleton (Quick Armature), bind and paint weights, swap sprites through slots, pack an atlas, and animate - all on top of native Blender tools.
@@ -84,13 +84,13 @@ Paradigm-locked non-goals that will not reopen without a fundamental shift:
 
 You can find the contribution guidelines and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/README.md) for guidance on the project structure and best practices.
 
-For more, browse the [documentation site](https://space-wizard-studios.github.io/firebound-proscenio/):
+For more, browse the [documentation site](https://firebound.github.io/proscenio/):
 
-- [Basic walkthrough](https://space-wizard-studios.github.io/firebound-proscenio/guides/basic) - the full Photoshop → Blender → Godot loop, end to end.
-- [Architecture](https://space-wizard-studios.github.io/firebound-proscenio/project/architecture) - the systems and how the data flows.
-- [Comparison](https://space-wizard-studios.github.io/firebound-proscenio/project/comparison) - feature matrix vs Spine, COA Tools 2, Live2D, and others.
-- [Deferred](https://space-wizard-studios.github.io/firebound-proscenio/project/deferred) - features planned but not shipped yet.
-- [Features](https://space-wizard-studios.github.io/firebound-proscenio/project/features) - the full feature list, by plugin.
+- [Basic walkthrough](https://firebound.github.io/proscenio/guides/basic) - the full Photoshop → Blender → Godot loop, end to end.
+- [Architecture](https://firebound.github.io/proscenio/project/architecture) - the systems and how the data flows.
+- [Comparison](https://firebound.github.io/proscenio/project/comparison) - feature matrix vs Spine, COA Tools 2, Live2D, and others.
+- [Deferred](https://firebound.github.io/proscenio/project/deferred) - features planned but not shipped yet.
+- [Features](https://firebound.github.io/proscenio/project/features) - the full feature list, by plugin.
 
 ## License
 

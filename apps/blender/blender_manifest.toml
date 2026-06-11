@@ -7,7 +7,7 @@ tagline = "Blender → Godot 4 pipeline for 2D cutout animation"
 maintainer = "Space Wizard Studios <contato@spacewiz.dev>"
 type = "add-on"
 
-website = "https://github.com/Space-Wizard-Studios/firebound-proscenio"
+website = "https://github.com/firebound/proscenio"
 
 tags = ["Animation", "Mesh", "Pipeline", "Rigging"]
 

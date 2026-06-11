@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const REPO = 'https://github.com/Space-Wizard-Studios/firebound-proscenio';
+const REPO = 'https://github.com/firebound/proscenio';
 const BRANCH = 'main';
 
 // Docusaurus loads this through jiti (CJS context, no import.meta), and runs

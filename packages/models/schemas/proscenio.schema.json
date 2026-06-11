@@ -561,7 +561,7 @@
       "type": "object"
     }
   },
-  "$id": "https://space-wizard-studios.github.io/proscenio/schemas/proscenio.schema.json",
+  "$id": "https://firebound.github.io/proscenio/schemas/proscenio.schema.json",
   "additionalProperties": false,
   "description": "Root of a .proscenio v1 document.\n\nSchema id mirrors the hand-maintained file so consumer ajv\nvalidators that key off ``$id`` continue to resolve.",
   "properties": {

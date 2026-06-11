@@ -247,7 +247,7 @@
       "type": "object"
     }
   },
-  "$id": "https://space-wizard-studios.github.io/proscenio/schemas/psd_manifest.schema.json",
+  "$id": "https://firebound.github.io/proscenio/schemas/psd_manifest.schema.json",
   "additionalProperties": false,
   "description": "Root of a PSD manifest v1 document.",
   "properties": {

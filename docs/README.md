@@ -53,4 +53,4 @@ The docs site is a Docusaurus app in [`apps/docs/`](../apps/docs/) that serves t
 
 Run it with `pnpm --dir apps/docs start` for dev, or `pnpm --dir apps/docs build` for a production bundle.
 
-It deploys to GitHub Pages at [space-wizard-studios.github.io/firebound-proscenio](https://space-wizard-studios.github.io/firebound-proscenio/) via [`docs-deploy.yml`](../.github/workflows/docs-deploy.yml), on every push to `main` that touches `docs/`, `apps/docs/`, or the dumped schemas.
+It deploys to GitHub Pages at [firebound.github.io/proscenio](https://firebound.github.io/proscenio/) via [`docs-deploy.yml`](../.github/workflows/docs-deploy.yml), on every push to `main` that touches `docs/`, `apps/docs/`, or the dumped schemas.

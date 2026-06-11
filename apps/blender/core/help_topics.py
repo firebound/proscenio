@@ -834,7 +834,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
 # topic_for injects the matching page (and section anchor) as the topic's
 # doc_url so the help popup's "Open online docs" button lands on it - the URL
 # scheme lives here once instead of on every HelpTopic literal.
-_DOCS_BASE = "https://space-wizard-studios.github.io/firebound-proscenio/blender-addon/"
+_DOCS_BASE = "https://firebound.github.io/proscenio/blender-addon/"
 
 _DOC_PATHS: dict[str, str] = {
     "outliner": "outliner",

@@ -41,12 +41,12 @@ const config: Config = {
     ],
   ],
 
-  // GitHub Pages project site: https://space-wizard-studios.github.io/firebound-proscenio/
-  url: 'https://space-wizard-studios.github.io',
-  baseUrl: '/firebound-proscenio/',
+  // GitHub Pages project site: https://firebound.github.io/proscenio/
+  url: 'https://firebound.github.io',
+  baseUrl: '/proscenio/',
 
-  organizationName: 'Space-Wizard-Studios',
-  projectName: 'firebound-proscenio',
+  organizationName: 'firebound',
+  projectName: 'proscenio',
 
   // Docs cross-link to repo source (../apps, ../packages, ../specs) that does
   // not exist as a site route. The repo-links remark plugin rewrites those to
@@ -76,7 +76,7 @@ const config: Config = {
           //   styled on both GitHub and the docs site.
           beforeDefaultRemarkPlugins: [repoLinks, remarkGithubAdmonitionsToDirectives],
           editUrl:
-            'https://github.com/Space-Wizard-Studios/firebound-proscenio/tree/main/docs/',
+            'https://github.com/firebound/proscenio/tree/main/docs/',
         },
         blog: false,
         theme: {
@@ -117,7 +117,7 @@ const config: Config = {
           label: 'Tools',
         },
         {
-          href: 'https://github.com/Space-Wizard-Studios/firebound-proscenio',
+          href: 'https://github.com/firebound/proscenio',
           label: 'GitHub',
           position: 'right',
         },
@@ -139,11 +139,11 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/Space-Wizard-Studios/firebound-proscenio',
+              href: 'https://github.com/firebound/proscenio',
             },
             {
               label: 'Firebound',
-              href: 'https://github.com/Space-Wizard-Studios/firebound',
+              href: 'https://github.com/firebound/firebound',
             },
           ],
         },

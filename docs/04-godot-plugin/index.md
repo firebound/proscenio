@@ -1,7 +1,3 @@
----
-title: Godot Plugin
----
-
 # Godot Plugin
 
 A GDScript editor plugin: a single [`EditorImportPlugin`](https://docs.godotengine.org/en/stable/classes/class_editorimportplugin.html) plus a handful of builders that turn a `.proscenio` file into a native Godot scene on every reimport.

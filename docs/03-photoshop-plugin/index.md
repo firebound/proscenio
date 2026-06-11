@@ -1,7 +1,3 @@
----
-title: Photoshop Plugin
----
-
 # Photoshop Plugin
 
 A [UXP](https://developer.adobe.com/photoshop/uxp/) panel (React + TypeScript) that turns a layered PSD into a manifest plus PNGs the Blender importer reads. The artist drives the whole export from inside Photoshop, never leaving the canvas.

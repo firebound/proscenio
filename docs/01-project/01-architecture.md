@@ -2,57 +2,23 @@
 
 How Proscenio is built: the three plugins, the systems inside each, the data they move, and where the complexity and risk sit. Read this before changing anything load-bearing.
 
-## The cross-app pipeline
-
-You (the artist, or a team of game devs) work in all three tools - Photoshop, Blender, and Godot. Each tool hands the next one a file. The diagram separates the two things people tend to conflate: the **work you do** at each stage (top), and the **data chain the tools pass** between them (bottom).
-
-```mermaid
-flowchart LR
-    subgraph you["You work in all three tools"]
-        direction LR
-        A1["Photoshop:<br/>paint, tag layers"]
-        A2["Blender:<br/>mesh, rig, weight, slots, atlas, animate"]
-        A3["Godot:<br/>wrapper scene, scripts, gameplay"]
-    end
-    subgraph sys["The tools pass one shared data chain"]
-        direction LR
-        PSD(["PSD"]) -->|export| MAN(["manifest.json + PNGs"])
-        MAN -->|import| BLEND(["Blender scene"])
-        BLEND -->|export| PROS([".proscenio + atlas"])
-        PROS -->|import| SCN([".scn"])
-    end
-    A1 -.-> PSD
-    A2 -.-> BLEND
-    A3 -.-> SCN
-```
-
-### Independent tools, one shared language
-
-Each plugin runs on its own: you can tag and export from Photoshop and never open Blender, hand-author a rig in Blender with no PSD, or consume a `.proscenio` in Godot whatever produced it.
-
-What binds the pipeline is the **format**, not the tools - nothing is locked to Adobe, Blender, or Godot. A future Krita or GIMP exporter that emits a conforming manifest, or a Unity importer that reads a `.proscenio`, plugs in with no change to the other ends. The shared language is the product; the apps are interchangeable implementations of it.
-
-Each step is idempotent, too: re-running it overwrites cleanly, so re-export and re-import are safe to repeat.
-
-What makes that language trustworthy is a **single data model as the source of truth**: the schemas written as [pydantic](https://docs.pydantic.dev/latest/) models (`packages/models/`), and a codegen step (`packages/codegen/`) that generates the [JSON Schema](https://json-schema.org/), the [TypeScript](https://www.typescriptlang.org/) types, and the Godot [Resources](https://docs.godotengine.org/en/stable/classes/class_resource.html) from them. Change a field in one place and all three ends regenerate.
-
-In practice, Blender **writes** the `.proscenio` file by building a typed pydantic object (`ProscenioDocument(...).model_dump_json()`), and Godot **reads** the same file as a typed Resource (`ProscenioDocument.from_dict(...)`) - neither end hand-maintains a loose dictionary.
+The three plugins never call each other - Photoshop, Blender, and Godot each hand the next a file, bound only by a shared versioned format. Each section below covers one plugin's internals; for the end-to-end flow, start with the [basic walkthrough](../00-guides/00-basic/index.md).
 
 ## Photoshop - [UXP](https://developer.adobe.com/photoshop/uxp/2022/) plugin ([React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/))
 
 Turns a layered PSD into a manifest plus PNGs that Blender can import.
 
-The code is layered cleanly: an adapter isolates the Adobe API, the domain holds the pure (testable) logic, and the `io/` layer concentrates the side effects (reading and writing files, calling the Photoshop API) so the domain stays platform-free.
+The code is layered cleanly: `api/` isolates the Adobe API and concentrates the side effects (reading and writing files, calling the Photoshop API), while `lib/` holds the pure, testable domain logic, kept platform-free.
 
 | System | What it does | Key files |
 | --- | --- | --- |
-| [**Document adapter**](../../apps/photoshop/src/adapters/photoshop-layer.ts) | Converts the Photoshop API's document and layers into its own `Layer` model. Acts as a boundary so the rest of the code never touches the Adobe API directly. | `adapters/photoshop-layer.ts` |
-| [**Tag system**](../../apps/photoshop/src/domain/tag-parser.ts) | Reads and writes bracket markers in the layer name (`[ignore]`, `[merge]`, `[spritesheet]`, `[folder]`, `[scale]`, `[origin]`, and more). This is how the artist drives the export without leaving Photoshop. | `domain/tag-parser`, `tag-writer`, `tag-tree`; `io/layer-rename` |
-| [**Planner**](../../apps/photoshop/src/domain/planner.ts) | The heart of the export: walks the layer tree and produces the manifest (each layer becomes a `polygon`, `mesh`, or `sprite_frame` entry), the list of PNGs to write, the warnings, and what was skipped. Resolves draw order (z-order), `[merge]` groups, automatic spritesheet detection, pivot, and scale. | `domain/planner.ts`, `domain/manifest.ts` |
-| [**Manifest validation and I/O**](../../apps/photoshop/src/io/manifest-validator.ts) | Validates the manifest with [ajv](https://ajv.js.org/) (a runtime JSON Schema validator) **before** anything is written to disk, so an invalid manifest never reaches Blender. Plus the JSON reader and writer. | `io/manifest-validator` (ajv), `manifest-reader`, `manifest-writer` |
-| [**PNG export**](../../apps/photoshop/src/io/png-writer.ts) | Renders each layer region to a PNG, reading the bounding box from the Photoshop selection. | `io/png-writer`, `png-placer`, `ps-selection`, `ps-selection-bounds` |
-| [**Orchestration (export / import)**](../../apps/photoshop/src/controllers/export-flow.ts) | Wires it all together. Export: adapt the document, build the plan, validate, then write PNGs + manifest inside one Photoshop modal ([`executeAsModal`](https://developer.adobe.com/photoshop/uxp/2022/ps_reference/media/executeasmodal/)); the manifest is saved only if **every** PNG succeeded, so it never points at missing files. Import runs the reverse: from a manifest plus PNGs it **rebuilds a fresh PSD**. | `controllers/export-flow`, `import-flow` |
-| [**UI and cross-cutting**](../../apps/photoshop/src/panels) | The panels (Exporter, Tags, Validate, Debug) with their sections and reactive hooks, plus supporting parts: [XMP](https://developer.adobe.com/xmp/docs/) metadata (so pixels-per-unit survives the round trip), a persistent output folder, and migration of old manifests (v1 to v2). | `panels/**`, `hooks/**`, `io/xmp`, `folder-storage`, `*/legacy-migration` |
+| [**Document adapter**](../../apps/photoshop/src/api/adapt-document.ts) | Converts the Photoshop API's document and layers into its own `Layer` model. Acts as a boundary so the rest of the code never touches the Adobe API directly. | `api/adapt-document.ts` |
+| [**Tag system**](../../apps/photoshop/src/lib/tag-parser.ts) | Reads and writes bracket markers in the layer name (`[ignore]`, `[merge]`, `[spritesheet]`, `[folder]`, `[scale]`, `[origin]`, and more). This is how the artist drives the export without leaving Photoshop. | `lib/tag-parser`, `tag-writer`, `tag-tree`; `api/layer-rename` |
+| [**Planner**](../../apps/photoshop/src/lib/planner.ts) | The heart of the export: walks the layer tree and produces the manifest (each layer becomes a `polygon`, `mesh`, or `sprite_frame` entry), the list of PNGs to write, the warnings, and what was skipped. Resolves draw order (z-order), `[merge]` groups, automatic spritesheet detection, pivot, and scale. | `lib/planner.ts`, `lib/manifest.ts` |
+| [**Manifest validation and I/O**](../../apps/photoshop/src/api/manifest-validator.ts) | Validates the manifest with [ajv](https://ajv.js.org/) (a runtime JSON Schema validator) **before** anything is written to disk, so an invalid manifest never reaches Blender. Plus the JSON reader and writer. | `api/manifest-validator` (ajv), `manifest-reader`, `manifest-writer` |
+| [**PNG export**](../../apps/photoshop/src/api/png-writer.ts) | Renders each layer region to a PNG, reading the bounding box from the Photoshop selection. | `api/png-writer`, `png-placer`, `ps-selection`, `ps-selection-bounds` |
+| [**Orchestration (export / import)**](../../apps/photoshop/src/api/export-flow.ts) | Wires it all together. Export: adapt the document, build the plan, validate, then write PNGs + manifest inside one Photoshop modal ([`executeAsModal`](https://developer.adobe.com/photoshop/uxp/2022/ps_reference/media/executeasmodal/)); the manifest is saved only if **every** PNG succeeded, so it never points at missing files. Import runs the reverse: from a manifest plus PNGs it **rebuilds a fresh PSD**. | `api/export-flow`, `import-flow` |
+| [**UI and cross-cutting**](../../apps/photoshop/src/panels) | The panels (Exporter, Tags, Validate, Debug) with their sections and reactive hooks, plus supporting parts: [XMP](https://developer.adobe.com/xmp/docs/) metadata (so pixels-per-unit survives the round trip), a persistent output folder, and migration of old manifests (v1 to v2). | `panels/**`, `hooks/**`, `api/xmp`, `api/folder-storage`, `*/legacy-migration` |
 
 ## Blender - Python addon
 
@@ -64,7 +30,7 @@ The addon registers three groups: `properties`, `operators`, and `panels`.
 | --- | --- | --- |
 | [**Automesh**](../../apps/blender/core/automesh) | Builds the sprite's mesh from the image alpha: it detects the silhouette, then triangulates the interior with [CDT](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation) (constrained Delaunay triangulation - a triangle mesh that respects the outline). It has an interactive authoring mode (a modal) with a GPU overlay where the artist edits the contour, adds points, and cuts. The geometry logic is **pure** (`core/automesh`, no Blender) and kept separate from the bridge that touches [bmesh](https://docs.blender.org/api/current/bmesh.html) (`core/bpy_helpers/automesh`), which is why it can be tested outside Blender. | `automesh`, `automesh_authoring`, `bind_mesh` |
 | [**Skinning (weight paint)**](../../apps/blender/core/skinning) | Binds the mesh vertices to the bones. It does the initial bind by in-plane proximity, has a weight-paint modal with a 2D-appropriate preset, and keeps a **sidecar** - a parallel JSON that records each weight's provenance (hand-painted, reprojected, auto-generated) and survives a mesh regeneration. Includes copying weights between sprites and snapshot/restore. | `edit_weights`, `brush_preset`, `copy_weights_to_selected`, `restore_weight_snapshot`, `sidecar_io`; `core/skinning` |
-| [**Quick Armature**](../../apps/blender/operators/quick_armature.py) | A modal for drawing the bone chain by extruding in the viewport, locked to the XZ plane in front-orthographic view. The chain math is pure and tested separately. | `quick_armature`; `core/quick_armature_math` |
+| [**Quick Armature**](../../apps/blender/operators/armature/quick_armature.py) | A modal for drawing the bone chain by extruding in the viewport, locked to the XZ plane in front-orthographic view. The chain math is pure and tested separately. | `armature/quick_armature`; `core/armature/quick_armature_math` |
 | [**Slot system**](../../apps/blender/operators/slot) | Sprite-swap groups (for example, swapping a closed hand for an open one). Creates the slot, attaches the attachments, and has a preview shader. | `slot/create`, `slot/attachment`, `slot/preview_shader`; `core/slot_emit` |
 | [**Atlas packing**](../../apps/blender/operators/atlas_pack) | Packs, unpacks, and applies UV regions into a single texture atlas. | `atlas_pack/*`; `core/atlas_packer` |
 | [**PSD import**](../../apps/blender/importers/photoshop) | Consumes the Photoshop manifest plus PNGs and builds the planes (Polygon2D quads) and, optionally, the armature. | `import_photoshop`; `importers/photoshop/{planes,armature}`; `core/psd_manifest` |

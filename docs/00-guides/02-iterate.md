@@ -1,9 +1,4 @@
----
-title: About iterating
-sidebar_label: About iterating
----
-
-# About iterating
+# Iterating through the loop
 
 This is a loop, not a one-shot. One edit ripples across all three tools, and today each hop is a deliberate re-export / re-import - there is no live link **yet**.
 

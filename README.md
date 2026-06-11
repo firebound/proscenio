@@ -1,32 +1,94 @@
-# PROSCENIO TOOLSET
+# Proscenio
 
 ![Proscenio's logo](docs/images/proscenio.png)
 
 **A Photoshop → Blender → Godot pipeline for 2D cutout animation.**
 
 > [!WARNING]
-> Proof of concept / work in progress. The format is still unstable - not for production use.
+> Proof of concept, work in progress. The format is still unstable - not for production use.
 
 ## What it is
 
-Proscenio is an open-source pipeline for 2D cutout animation, built for artists: you paint in Photoshop, rig and animate in Blender, and ship to Godot - every step on open, free tooling.
+Proscenio is an open-source pipeline for 2D cutout animation. You paint in Photoshop, rig and animate in Blender, and ship to Godot.
 
-Part of the [Firebound](https://github.com/firebound/firebound) project but usable as a standalone toolset, Proscenio is designed to be a practical, artist-friendly alternative to Spine and similar tools: no custom runtime, no proprietary editor - just the native features of each tool, tied together by a predictable, versioned JSON format.
+It is an artist-friendly alternative to Spine and similar tools, with no custom runtime and no proprietary editor.
 
-The pipeline flows in one direction:
+Proscenio is part of the [Firebound](https://github.com/firebound/firebound) project, but works as a standalone toolset.
 
-1. Photoshop slices your layered artwork into one PNG per layer and emits a manifest JSON: the layer hierarchy, per-layer metadata, and document properties (canvas size, pixels-per-unit).
+## How it works
 
-2. Blender imports that, where you build the mesh, rig the skeleton, paint weights, and animate with Blender's features (dopesheet, NLA, drivers).
+You work in all three tools, and each hands the next a single file. The diagram separates the work you do (top) from the data chain the tools pass between them (bottom):
 
-3. Godot reads the file Blender exports and rebuilds the character as a native scene - an ordinary `Skeleton2D` + `Bone2D` + `Polygon2D` + `AnimationPlayer` tree that runs with nothing else installed.
-
-```text
-Photoshop → manifest + PNGs → Blender → .proscenio + atlas / spritesheets → Godot (.scn)
+```mermaid
+flowchart LR
+    subgraph you["You work in all three tools"]
+        direction LR
+        A1["Photoshop:<br/>paint, tag layers"]
+        A2["Blender:<br/>mesh, rig, weight, slots, atlas, animate"]
+        A3["Godot:<br/>wrapper scene, scripts, gameplay"]
+    end
+    subgraph sys["The tools pass one shared data chain"]
+        direction LR
+        PSD(["PSD"]) -->|export| MAN(["manifest.json + PNGs"])
+        MAN -->|import| BLEND(["Blender scene"])
+        BLEND -->|export| PROS([".proscenio + atlas"])
+        PROS -->|import| SCN([".scn"])
+    end
+    A1 -.-> PSD
+    A2 -.-> BLEND
+    A3 -.-> SCN
 ```
 
+### Independent tools
+
+What binds the pipeline is the **format**, not the tools - nothing necessary is locked to Adobe, Blender, or Godot. A future Krita or GIMP exporter, or a Unity importer that reads a `.proscenio`, plugs in with no change to the other ends.
+
+Each step is idempotent, so re-export and re-import are safe to repeat.
+
+What keeps the format trustworthy is a **single data model as the source of truth**: schemas written as [pydantic](https://docs.pydantic.dev/latest/) models, with a codegen step that generates the JSON Schema, the TypeScript types, and the Godot resources from them. Both ends read and write typed, so no loose dictionary drifts apart at the edges.
+
+## Why
+
+- **Non-destructive.** Each plugin is independent and leaves the others' work alone: your source `.psd` and `.blend` stay read-only, and a Godot reimport overwrites only the generated scene, never your wrapper scene, scripts, or gameplay. Inside each tool, the operations are built to preserve your work rather than overwrite it.
+
+- **Engine-native output.** The export builds from the target engine's own nodes - in Godot, a plain `Skeleton2D` + `Bone2D` + `Polygon2D` + `AnimationPlayer` scene. The shipped game runs with Proscenio uninstalled.
+
+## Who it's for
+
+Artists and game devs who want a practical 2D cutout workflow. You will need:
+
+- **Photoshop 2024+**
+- **Blender 4.2+**
+- **Godot 4.6+**
+
+## Components
+
+| Part | Tech | Role |
+| --- | --- | --- |
+| [`apps/photoshop/`](apps/photoshop/) | UXP plugin (TypeScript + React) | PSD → manifest + per-layer PNGs. |
+| [`apps/blender/`](apps/blender/) | Python addon | Import, the authoring panel, validation, and the `.proscenio` writer. |
+| [`apps/godot/`](apps/godot/) | GDScript | Rebuilds the scene from a `.proscenio` on every reimport. |
+| [`packages/models/`](packages/models/) | Pydantic v2 | The schema models that the other ends are generated from. |
+
+## Not in scope
+
+Paradigm non-goals, whichever tools join the chain:
+
+- **A custom runtime shipped with the game** (the Spine / DragonBones model). Each engine target gets a native scene instead, so a new engine means a new exporter, not a runtime to bundle.
+
+- **Live2D-style parameter deformers.** Skeleton-based cutout, not parameter-blended mesh deformation.
+
+## Learn more
+
+- **[Documentation site](https://firebound.github.io/proscenio/)**:
+  - [Basic walkthrough](https://firebound.github.io/proscenio/guides/basic) - the whole loop, end to end.
+  - [Architecture](https://firebound.github.io/proscenio/project/architecture) - the systems and how the data flows.
+  - [Comparison](https://firebound.github.io/proscenio/project/comparison) - feature matrix vs Spine, COA Tools 2, Live2D, and others.
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** - how to build, test, and contribute.
+- **[`AGENTS.md`](AGENTS.md)** and [`.ai/`](.ai/README.md) - project structure and conventions.
+
 > [!NOTE]
-> This project has been heavily AI-assisted throughout the current proof-of-concept development. All code and documentation are human-reviewed but may contain AI artifacts, as I'm a single developer and the project is in its early stages.
+> All code and docs are human-reviewed, but as a solo dev in the early stages, I can't rule out every AI artifact.
 
 <details>
   <summary></summary>
@@ -34,63 +96,6 @@ Photoshop → manifest + PNGs → Blender → .proscenio + atlas / spritesheets 
 ![eh...ato...bleh meme](docs/images/ehe.png)
 
 </details>
-
-## Who it's for
-
-Artists and game devs who want a practical 2D cutout workflow on Godot 4, with each tool playing to its strength:
-
-- **Photoshop 2024+** for rasterized art - paint, layer, organize.
-- **Blender 4.2+** for everything animation - rig, weight, keyframe.
-- **Godot 4.6+** as the final engine - native scenes, no proprietary runtime.
-
-## The promises
-
-| Pillar                        | What it means                                                                                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Non-destructive**           | `.psd` and `.blend` stay read-only sources; a Godot reimport overwrites only the generated `.scn`. Your wrapper scenes, scripts, and extras stay intact.      |
-| **Engine-native output**      | The `.scn` uses Godot core nodes only. The shipped game runs with Proscenio uninstalled.                                                                      |
-| **Each tool to its strength** | An open-source chain (Blender, Godot, schemas) with no Spine-style editor license. Shortcuts sit on top of Blender's native operators - never replacing them. |
-| **A predictable contract**    | One versioned, typed JSON schema. What leaves Blender is what arrives in Godot, validated from the IDE through CI. Format bumps require explicit migrators.   |
-
-## Main components
-
-| Part                                   | Tech                                | Role                                                                                                         |
-| -------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| [`apps/photoshop/`](apps/photoshop/)   | UXP plugin, TypeScript + React      | PSD → manifest JSON + per-layer PNGs.                                                                        |
-| [`apps/blender/`](apps/blender/)       | Python addon (mypy strict)          | Manifest import, the authoring panel (mesh, rig, weights, slots), validation, and the `.proscenio` writer.   |
-| [`apps/godot/`](apps/godot/)           | GDScript (typed)                    | An `EditorImportPlugin` that reads `.proscenio` and regenerates the `.scn` on every reimport.                |
-| [`packages/models/`](packages/models/) | Pydantic v2 + generated JSON Schema | The source of truth. The JSON Schema, TypeScript, and GDScript bindings are all generated from these models. |
-
-## What you can do with it
-
-The full, code-verified feature list lives on the [Features page](https://firebound.github.io/proscenio/project/features), and the systems behind them in [Architecture](https://firebound.github.io/proscenio/project/architecture). In short:
-
-- **Photoshop** - tag layers from their name to drive the export; get one PNG per layer plus a validated manifest.
-- **Blender** - build a deformable mesh from the sprite alpha (automesh), draw a skeleton (Quick Armature), bind and paint weights, swap sprites through slots, pack an atlas, and animate - all on top of native Blender tools.
-- **Godot** - a one-step import that rebuilds the character as a native scene on every reimport.
-
-## Out of scope
-
-Paradigm-locked non-goals that will not reopen without a fundamental shift:
-
-| Non-goal                                         | Why                                                                               |
-| ------------------------------------------------ | --------------------------------------------------------------------------------- |
-| Multi-engine runtime (Spine / DragonBones model) | Godot-only by design; multi-target export needs a runtime layer Proscenio avoids. |
-| Custom runtime / GDExtension / C#                | The generated `.scn` must run on plain Godot 4 with nothing installed.            |
-| Live2D parameter-driven deformers                | Skeleton-based cutout, not parameter-blended mesh deformation.                    |
-| Proprietary DCC dependency                       | Authoring stays in Blender, an open tool artists already know.                    |
-
-## More
-
-You can find the contribution guidelines and PR rules in [`CONTRIBUTING.md`](CONTRIBUTING.md), and check [`AGENTS.md`](AGENTS.md) or [`.ai/`](.ai/README.md) for guidance on the project structure and best practices.
-
-For more, browse the [documentation site](https://firebound.github.io/proscenio/):
-
-- [Basic walkthrough](https://firebound.github.io/proscenio/guides/basic) - the full Photoshop → Blender → Godot loop, end to end.
-- [Architecture](https://firebound.github.io/proscenio/project/architecture) - the systems and how the data flows.
-- [Comparison](https://firebound.github.io/proscenio/project/comparison) - feature matrix vs Spine, COA Tools 2, Live2D, and others.
-- [Deferred](https://firebound.github.io/proscenio/project/deferred) - features planned but not shipped yet.
-- [Features](https://firebound.github.io/proscenio/project/features) - the full feature list, by plugin.
 
 ## License
 

@@ -43,6 +43,19 @@ Rect = Annotated[
         description="[x, y, width, height] in atlas pixels.",
     ),
 ]
+Color = Annotated[
+    list[Annotated[float, Field(ge=0)]],
+    Field(
+        min_length=4,
+        max_length=4,
+        description="[r, g, b, a], each >= 0 (typically 0..1; HDR over-bright allowed).",
+    ),
+]
+
+# Godot clamps CanvasItem.z_index to this range (RenderingServer
+# CANVAS_ITEM_Z_MIN / CANVAS_ITEM_Z_MAX); reject out-of-range values up front.
+_Z_INDEX_MIN = -4096
+_Z_INDEX_MAX = 4096
 
 
 class _Strict(BaseModel):
@@ -106,6 +119,23 @@ class MeshElement(_Strict):
         ),
     )
     weights: list[Weight] | None = None
+    modulate: Color | None = Field(
+        default=None,
+        description=(
+            "Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent "
+            "means opaque white (no tint). Additive at format_version 1."
+        ),
+    )
+    z_index: int | None = Field(
+        default=None,
+        ge=_Z_INDEX_MIN,
+        le=_Z_INDEX_MAX,
+        description=(
+            "Optional draw order, mirroring Godot's CanvasItem.z_index. Absent "
+            "means 0. Carries the authored layer stacking the writer would "
+            "otherwise drop. Additive at format_version 1."
+        ),
+    )
 
     @model_validator(mode="after")
     def _polygon_uv_lengths_match(self) -> MeshElement:
@@ -181,6 +211,36 @@ class SpriteElement(_Strict):
         ),
     )
     offset: Vec2 = Field(default=[0.0, 0.0])
+    modulate: Color | None = Field(
+        default=None,
+        description=(
+            "Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent "
+            "means opaque white (no tint). Additive at format_version 1."
+        ),
+    )
+    z_index: int | None = Field(
+        default=None,
+        ge=_Z_INDEX_MIN,
+        le=_Z_INDEX_MAX,
+        description=(
+            "Optional draw order, mirroring Godot's CanvasItem.z_index. Absent "
+            "means 0. Additive at format_version 1."
+        ),
+    )
+    flip_h: bool | None = Field(
+        default=None,
+        description=(
+            "Optional horizontal flip, mirroring Godot's Sprite2D.flip_h. Absent "
+            "means false. Additive at format_version 1."
+        ),
+    )
+    flip_v: bool | None = Field(
+        default=None,
+        description=(
+            "Optional vertical flip, mirroring Godot's Sprite2D.flip_v. Absent "
+            "means false. Additive at format_version 1."
+        ),
+    )
 
     @model_validator(mode="after")
     def _frame_within_grid(self) -> SpriteElement:
@@ -248,11 +308,10 @@ class Key(_Strict):
     scale: Vec2 | None = None
     frame: int | None = Field(default=None, ge=0)
     attachment: str | None = None
-    visible: bool | None = None
 
 
 class Track(_Strict):
-    type: Literal["bone_transform", "sprite_frame", "slot_attachment", "visibility"]
+    type: Literal["bone_transform", "sprite_frame", "slot_attachment"]
     target: str = Field(min_length=1)
     keys: list[Key]
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
@@ -12,6 +13,13 @@ from ._shared import abspath_or_none, armature_bone_names, name_of
 from .active_element import validate_active_element
 from .active_slot import validate_active_slot
 from .issue import Issue
+
+# Orientation guards: the exporter assumes the 2D rig lives in the world XZ
+# plane and drops the depth (Y) axis. A bone whose rest direction tilts out of
+# that plane, or a mesh carrying depth on the dropped axis, exports silently
+# wrong; these warn-only checks surface that before a broken scene ships.
+_PLANE_TOLERANCE = 0.1  # sin of the off-plane angle (~5.7 degrees)
+_FLATNESS_TOLERANCE = 0.1  # mesh depth as a fraction of its in-plane size
 
 
 def validate_export(scene: object) -> list[Issue]:
@@ -31,7 +39,9 @@ def validate_export(scene: object) -> list[Issue]:
 
     # Same picker-first resolver the writer uses, so validate and export
     # never disagree on which rig supplies the bones in a multi-armature scene.
-    available_bones = armature_bone_names(resolve_export_armature(scene))
+    picked_armature = resolve_export_armature(scene)
+    available_bones = armature_bone_names(picked_armature)
+    issues.extend(_validate_bone_orientation(picked_armature))
 
     for obj in scene_objects:
         if getattr(obj, "type", None) != "MESH":
@@ -39,6 +49,7 @@ def validate_export(scene: object) -> list[Issue]:
         for active_issue in validate_active_element(obj):
             issues.append(active_issue)
         issues.extend(_validate_element_against_armature(obj, available_bones))
+        issues.extend(_validate_mesh_flatness(obj))
 
     issues.extend(_validate_slots(scene_objects))
     issues.extend(_validate_atlas_files(scene_objects))
@@ -95,6 +106,70 @@ def _validate_element_against_armature(obj: object, bones: set[str]) -> list[Iss
         )
 
     return issues
+
+
+def _validate_bone_orientation(armature: object) -> list[Issue]:
+    """Warn for rest bones whose direction tilts out of the world XZ plane."""
+    data = getattr(armature, "data", None)
+    issues: list[Issue] = []
+    for bone in getattr(data, "bones", ()):
+        head = getattr(bone, "head_local", None)
+        tail = getattr(bone, "tail_local", None)
+        if head is None or tail is None:
+            continue
+        if _direction_off_plane(head, tail):
+            issues.append(
+                Issue(
+                    "warning",
+                    "bone rest direction tilts out of the XZ plane - the exporter "
+                    "projects bone angles onto XZ and will misread this bone",
+                    name_of(bone),
+                )
+            )
+    return issues
+
+
+def _direction_off_plane(head: object, tail: object) -> bool:
+    """True when the head->tail direction carries a significant depth (Y) component."""
+    dx = float(getattr(tail, "x", 0.0)) - float(getattr(head, "x", 0.0))
+    dy = float(getattr(tail, "y", 0.0)) - float(getattr(head, "y", 0.0))
+    dz = float(getattr(tail, "z", 0.0)) - float(getattr(head, "z", 0.0))
+    total = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if total < 1e-6:
+        return False  # zero-length bone has no direction to judge
+    return abs(dy) / total > _PLANE_TOLERANCE
+
+
+def _validate_mesh_flatness(obj: object) -> list[Issue]:
+    """Warn for meshes that are not planar - 3D geometry the exporter flattens.
+
+    Frame-independent: a cutout sits in one plane, so its thinnest extent is
+    near zero whatever plane it lies in. Comparing the smallest axis spread to
+    the largest catches a genuinely 3D mesh without assuming which axis is the
+    depth (the writer drops world Y, but a quad may be authored in local XY or
+    XZ, so a fixed-axis test would false-warn one of them).
+    """
+    mesh = getattr(obj, "data", None)
+    coords = [v.co for v in getattr(mesh, "vertices", ()) if getattr(v, "co", None) is not None]
+    if len(coords) < 2:
+        return []
+    spreads = sorted(
+        max(float(getattr(c, axis)) for c in coords) - min(float(getattr(c, axis)) for c in coords)
+        for axis in ("x", "y", "z")
+    )
+    extent, thickness = spreads[2], spreads[0]
+    if extent < 1e-6:
+        return []  # degenerate (point) mesh, nothing to flatten
+    if thickness > _FLATNESS_TOLERANCE * extent:
+        return [
+            Issue(
+                "warning",
+                "element is not flat - it has thickness on every axis, so the "
+                "exporter's flatten-to-plane will lose geometry",
+                name_of(obj),
+            )
+        ]
+    return []
 
 
 def _validate_atlas_files(scene_objects: Sequence[object]) -> list[Issue]:

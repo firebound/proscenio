@@ -16,7 +16,6 @@ class_name ProscenioKey extends Resource
 @export var scale: PackedFloat32Array = PackedFloat32Array()
 @export var frame: int = 0
 @export var attachment: String = ""
-@export var visible: bool = false
 
 
 static func from_dict(data: Dictionary) -> ProscenioKey:
@@ -42,7 +41,4 @@ static func from_dict(data: Dictionary) -> ProscenioKey:
 	if data.has("attachment") and data["attachment"] != null:
 		res.attachment = String(data["attachment"])
 		res._set_fields.append("attachment")
-	if data.has("visible") and data["visible"] != null:
-		res.visible = bool(data["visible"])
-		res._set_fields.append("visible")
 	return res

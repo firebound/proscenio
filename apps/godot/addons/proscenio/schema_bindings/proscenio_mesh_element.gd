@@ -18,6 +18,8 @@ class_name ProscenioMeshElement extends ProscenioElement
 @export var polygons: Array[PackedInt32Array] = [] as Array[PackedInt32Array]
 @export var texture: String = ""
 @export var weights: Array[ProscenioWeight] = [] as Array[ProscenioWeight]
+@export var modulate: PackedFloat32Array = PackedFloat32Array()
+@export var z_index: int = 0
 
 
 static func from_dict(data: Dictionary) -> ProscenioMeshElement:
@@ -49,4 +51,10 @@ static func from_dict(data: Dictionary) -> ProscenioMeshElement:
 	if data.has("weights") and data["weights"] != null:
 		res.weights.assign(ProscenioParseHelpers._parse_array(ProscenioWeight, data["weights"]))
 		res._set_fields.append("weights")
+	if data.has("modulate") and data["modulate"] != null:
+		res.modulate = PackedFloat32Array(data["modulate"])
+		res._set_fields.append("modulate")
+	if data.has("z_index") and data["z_index"] != null:
+		res.z_index = int(data["z_index"])
+		res._set_fields.append("z_index")
 	return res

@@ -73,6 +73,42 @@
               "rotation": 0.0
             }
           ]
+        },
+        {
+          "type": "sprite_frame",
+          "target": "mouth",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.041667,
+              "interp": "constant",
+              "frame": 1
+            },
+            {
+              "time": 0.125,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.5,
+              "interp": "constant",
+              "frame": 3
+            },
+            {
+              "time": 0.833333,
+              "interp": "constant",
+              "frame": 2
+            }
+          ]
         }
       ]
     }

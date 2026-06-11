@@ -35,7 +35,7 @@ def test_badge_fields_are_non_empty() -> None:
 
 def test_known_features_resolve_to_expected_status() -> None:
     assert status_for("active_element") == FeatureStatus.GODOT_READY
-    assert status_for("drive_from_bone") == FeatureStatus.BLENDER_ONLY
+    assert status_for("drive_from_bone") == FeatureStatus.GODOT_READY
     assert status_for("toggle_ik") == FeatureStatus.BLENDER_ONLY
     assert status_for("slot_system") == FeatureStatus.GODOT_READY
     assert status_for("uv_animation") == FeatureStatus.PLANNED

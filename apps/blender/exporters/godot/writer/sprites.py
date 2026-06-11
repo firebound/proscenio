@@ -18,6 +18,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     iter_poly_vertices,
     iter_polygons,
     iter_vertex_groups,
+    object_color,
     vertex_at,
     vertex_group_at,
 )
@@ -25,6 +26,13 @@ from .scene_discovery import image_filename
 from .skeleton import BoneWorld, world_to_godot_xy
 
 _WEIGHT_EPS = 1e-9
+
+# Mirrors the PSD importer's per-layer depth stamp (planes.Z_EPSILON): the
+# importer writes object Y = z_order * this, with z_order 0 = front. Kept as a
+# local constant rather than imported so the exporter does not depend on the
+# importer; the two are coupled by the format convention, not by code.
+_DEPTH_EPSILON = 0.001
+_OPAQUE_WHITE = [1.0, 1.0, 1.0, 1.0]
 
 
 class _PolygonKwargs(TypedDict):
@@ -43,6 +51,8 @@ class _PolygonKwargs(TypedDict):
     polygons: NotRequired[list[list[int]]]
     texture: NotRequired[str]
     weights: NotRequired[list[Weight]]
+    modulate: NotRequired[list[float]]
+    z_index: NotRequired[int]
 
 
 class _SpriteFrameKwargs(TypedDict):
@@ -57,6 +67,11 @@ class _SpriteFrameKwargs(TypedDict):
     frame: int
     centered: bool
     texture_region: NotRequired[list[float]]
+    modulate: NotRequired[list[float]]
+    z_index: NotRequired[int]
+    flip_h: NotRequired[bool]
+    flip_v: NotRequired[bool]
+    offset: NotRequired[list[float]]
 
 
 def _build_polygon_topology(
@@ -84,6 +99,76 @@ def _build_polygon_topology(
     return order, polygons
 
 
+def _derive_modulate(obj: bpy.types.Object) -> list[float] | None:
+    """RGBA tint from the native object color, or None when opaque white.
+
+    Reads ``Object.color`` so appearance needs no new authoring surface; an
+    object with no tint emits nothing and keeps the goldens stable.
+    """
+    color = [round(c, 6) for c in object_color(obj)]
+    return None if color == _OPAQUE_WHITE else color
+
+
+def _derive_z_index(obj: bpy.types.Object) -> int | None:
+    """Draw order from the PSD-stamped depth (object Y), or None at the front.
+
+    The PSD import stamps ``object.location.y = z_order * Z_EPSILON`` with
+    z_order 0 = front; Godot draws a higher ``z_index`` on top, so negate to
+    keep the authored stacking. A flat rig (Y = 0) emits nothing.
+    """
+    z = -round(obj.location.y / _DEPTH_EPSILON)
+    return z or None
+
+
+def _derive_flips(obj: bpy.types.Object) -> tuple[bool | None, bool | None]:
+    """Flip flags from negative local scale signs (sprite only).
+
+    A rigid sprite has no exported vertices to bake a mirror into, so the
+    sign of the local scale becomes a Sprite2D flag. The quad is authored in
+    local XY then stood up 90deg on X, so local X is horizontal and local Y
+    vertical. A non-negative axis emits nothing.
+    """
+    flip_h = True if obj.scale.x < 0 else None
+    flip_v = True if obj.scale.y < 0 else None
+    return flip_h, flip_v
+
+
+def _compute_sprite_offset(obj: bpy.types.Object, ppu: float) -> list[float] | None:
+    """Sprite2D pixel offset from the object origin to its quad centre.
+
+    A rigid sprite renders centred on its node origin (the bone attach
+    point); when the authored pivot sits away from the quad centre the
+    texture must shift by that gap or it lands in the wrong place. Projects
+    the local mesh-bounds centre and the origin through the same Godot screen
+    mapping the mesh path uses, then returns their difference. None when
+    origin and centre coincide (no authored pivot) or the object carries no
+    geometry. Reads ``mesh.vertices`` rather than ``bound_box`` so the bounds
+    are current without a depsgraph refresh.
+    """
+    mesh = getattr(obj, "data", None)
+    vertices = getattr(mesh, "vertices", None)
+    if not vertices:
+        return None
+    xs = [v.co.x for v in vertices]
+    ys = [v.co.y for v in vertices]
+    zs = [v.co.z for v in vertices]
+    local_center = Vector(
+        (
+            (min(xs) + max(xs)) / 2.0,
+            (min(ys) + max(ys)) / 2.0,
+            (min(zs) + max(zs)) / 2.0,
+        )
+    )
+    matrix_world = obj.matrix_world
+    center_godot = world_to_godot_xy(matrix_world @ local_center, ppu)
+    origin_godot = world_to_godot_xy(matrix_world.translation, ppu)
+    offset = [
+        round(center_godot.x - origin_godot.x, 6),
+        round(center_godot.y - origin_godot.y, 6),
+    ]
+    return None if offset == [0.0, 0.0] else offset
+
+
 def build_element(
     obj: bpy.types.Object,
     world_godot: dict[str, BoneWorld],
@@ -98,7 +183,7 @@ def build_element(
         read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
     )
     if element_type == "sprite":
-        return build_sprite(obj)
+        return build_sprite(obj, ppu)
     if element_type != "mesh":
         raise RuntimeError(
             f"Proscenio: object {obj.name!r} has unknown element_type "
@@ -171,6 +256,12 @@ def build_element(
         poly_kwargs["texture"] = texture
     if weights:
         poly_kwargs["weights"] = weights
+    modulate = _derive_modulate(obj)
+    if modulate is not None:
+        poly_kwargs["modulate"] = modulate
+    z_index = _derive_z_index(obj)
+    if z_index is not None:
+        poly_kwargs["z_index"] = z_index
     return MeshElement(**poly_kwargs)
 
 
@@ -190,7 +281,7 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
     return None
 
 
-def build_sprite(obj: bpy.types.Object) -> SpriteElement:
+def build_sprite(obj: bpy.types.Object, ppu: float) -> SpriteElement:
     """Emit a ``sprite`` element entry (Sprite2D)."""
     hframes = int(read_field(obj, pg_field="hframes", cp_key="proscenio_hframes", default=1))
     vframes = int(read_field(obj, pg_field="vframes", cp_key="proscenio_vframes", default=1))
@@ -214,6 +305,20 @@ def build_sprite(obj: bpy.types.Object) -> SpriteElement:
     manual_region = region_core.manual_region_or_none(obj)
     if manual_region is not None:
         sf_kwargs["texture_region"] = manual_region
+    modulate = _derive_modulate(obj)
+    if modulate is not None:
+        sf_kwargs["modulate"] = modulate
+    z_index = _derive_z_index(obj)
+    if z_index is not None:
+        sf_kwargs["z_index"] = z_index
+    flip_h, flip_v = _derive_flips(obj)
+    if flip_h is not None:
+        sf_kwargs["flip_h"] = flip_h
+    if flip_v is not None:
+        sf_kwargs["flip_v"] = flip_v
+    offset = _compute_sprite_offset(obj, ppu)
+    if offset is not None:
+        sf_kwargs["offset"] = offset
     return SpriteElement(**sf_kwargs)
 
 

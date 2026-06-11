@@ -75,7 +75,8 @@
           0.0
         ]
       ],
-      "texture": "square.png"
+      "texture": "square.png",
+      "z_index": -1
     }
   ],
   "atlas": "arrow.png"

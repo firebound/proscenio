@@ -28,7 +28,22 @@
       "hframes": 4,
       "vframes": 1,
       "frame": 0,
-      "centered": true
+      "centered": true,
+      "texture_region": [
+        0.0,
+        0.0,
+        64.0,
+        64.0
+      ],
+      "modulate": [
+        1.0,
+        0.5,
+        0.25,
+        0.5
+      ],
+      "z_index": 5,
+      "flip_h": true,
+      "flip_v": true
     }
   ],
   "atlas": "atlas.png",

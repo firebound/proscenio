@@ -221,18 +221,6 @@
           "minimum": 0,
           "title": "Time",
           "type": "number"
-        },
-        "visible": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Visible"
         }
       },
       "required": [
@@ -256,6 +244,26 @@
           ],
           "default": null,
           "title": "Bone"
+        },
+        "modulate": {
+          "anyOf": [
+            {
+              "description": "[r, g, b, a], each >= 0 (typically 0..1; HDR over-bright allowed).",
+              "items": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent means opaque white (no tint). Additive at format_version 1.",
+          "title": "Modulate"
         },
         "name": {
           "minLength": 1,
@@ -349,6 +357,21 @@
           ],
           "default": null,
           "title": "Weights"
+        },
+        "z_index": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": -4096,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional draw order, mirroring Godot's CanvasItem.z_index. Absent means 0. Carries the authored layer stacking the writer would otherwise drop. Additive at format_version 1.",
+          "title": "Z Index"
         }
       },
       "required": [
@@ -437,6 +460,32 @@
           "title": "Centered",
           "type": "boolean"
         },
+        "flip_h": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional horizontal flip, mirroring Godot's Sprite2D.flip_h. Absent means false. Additive at format_version 1.",
+          "title": "Flip H"
+        },
+        "flip_v": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional vertical flip, mirroring Godot's Sprite2D.flip_v. Absent means false. Additive at format_version 1.",
+          "title": "Flip V"
+        },
         "frame": {
           "default": 0,
           "description": "Initial frame index (row-major). Animation tracks override at runtime.",
@@ -448,6 +497,26 @@
           "minimum": 1,
           "title": "Hframes",
           "type": "integer"
+        },
+        "modulate": {
+          "anyOf": [
+            {
+              "description": "[r, g, b, a], each >= 0 (typically 0..1; HDR over-bright allowed).",
+              "items": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent means opaque white (no tint). Additive at format_version 1.",
+          "title": "Modulate"
         },
         "name": {
           "minLength": 1,
@@ -509,6 +578,21 @@
           "minimum": 1,
           "title": "Vframes",
           "type": "integer"
+        },
+        "z_index": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": -4096,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional draw order, mirroring Godot's CanvasItem.z_index. Absent means 0. Additive at format_version 1.",
+          "title": "Z Index"
         }
       },
       "required": [
@@ -540,8 +624,7 @@
           "enum": [
             "bone_transform",
             "sprite_frame",
-            "slot_attachment",
-            "visibility"
+            "slot_attachment"
           ],
           "title": "Type",
           "type": "string"

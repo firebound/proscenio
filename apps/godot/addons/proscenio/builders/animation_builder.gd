@@ -82,8 +82,6 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: Proscen
 				push_error("Proscenio: slot '%s' not found for slot_attachment track" % target)
 				return
 			_add_slot_attachment_tracks(anim, character_root, slot_node, keys)
-		"visibility":
-			push_warning("Proscenio: track type '%s' not implemented yet" % track_type)
 		_:
 			push_warning("Proscenio: unknown track type '%s'" % track_type)
 

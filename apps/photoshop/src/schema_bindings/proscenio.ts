@@ -20,13 +20,16 @@ export type Position = [number, number] | null;
 export type Rotation = number | null;
 export type Scale = [number, number] | null;
 export type Time = number;
-export type Visible = boolean | null;
 export type Keys = Key[];
 export type Target = string;
-export type Type = "bone_transform" | "sprite_frame" | "slot_attachment" | "visibility";
+export type Type = "bone_transform" | "sprite_frame" | "slot_attachment";
 export type Tracks = Track[];
 export type Atlas = string | null;
 export type Bone = string | null;
+/**
+ * Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent means opaque white (no tint). Additive at format_version 1.
+ */
+export type Modulate = [number, number, number, number] | null;
 export type Name1 = string;
 export type Polygon = [number, number][];
 /**
@@ -52,13 +55,29 @@ export type Uv = [number, number][];
 export type Weights = Weight[] | null;
 export type Bone1 = string;
 export type Values = number[];
+/**
+ * Optional draw order, mirroring Godot's CanvasItem.z_index. Absent means 0. Carries the authored layer stacking the writer would otherwise drop. Additive at format_version 1.
+ */
+export type ZIndex = number | null;
 export type Bone2 = string;
 export type Centered = boolean;
+/**
+ * Optional horizontal flip, mirroring Godot's Sprite2D.flip_h. Absent means false. Additive at format_version 1.
+ */
+export type FlipH = boolean | null;
+/**
+ * Optional vertical flip, mirroring Godot's Sprite2D.flip_v. Absent means false. Additive at format_version 1.
+ */
+export type FlipV = boolean | null;
 /**
  * Initial frame index (row-major). Animation tracks override at runtime.
  */
 export type Frame1 = number;
 export type Hframes = number;
+/**
+ * Optional RGBA tint, mirroring Godot's CanvasItem.modulate. Absent means opaque white (no tint). Additive at format_version 1.
+ */
+export type Modulate1 = [number, number, number, number] | null;
 export type Name2 = string;
 /**
  * @minItems 2
@@ -78,6 +97,10 @@ export type TextureRegion1 = [number, number, number, number] | null;
  */
 export type Type2 = "sprite";
 export type Vframes = number;
+/**
+ * Optional draw order, mirroring Godot's CanvasItem.z_index. Absent means 0. Additive at format_version 1.
+ */
+export type ZIndex1 = number | null;
 export type Elements = (MeshElement | SpriteElement)[];
 /**
  * Bump on any breaking change to the shape of this document.
@@ -133,7 +156,6 @@ export interface Key {
   rotation?: Rotation;
   scale?: Scale;
   time: Time;
-  visible?: Visible;
 }
 /**
  * Deformable cutout element rendered as a Godot Polygon2D - vertices + UV.
@@ -143,6 +165,7 @@ export interface Key {
  */
 export interface MeshElement {
   bone?: Bone;
+  modulate?: Modulate;
   name: Name1;
   polygon: Polygon;
   polygons?: Polygons;
@@ -151,6 +174,7 @@ export interface MeshElement {
   type?: Type1;
   uv: Uv;
   weights?: Weights;
+  z_index?: ZIndex;
 }
 export interface Weight {
   bone: Bone1;
@@ -167,14 +191,18 @@ export interface Weight {
 export interface SpriteElement {
   bone: Bone2;
   centered?: Centered;
+  flip_h?: FlipH;
+  flip_v?: FlipV;
   frame?: Frame1;
   hframes: Hframes;
+  modulate?: Modulate1;
   name: Name2;
   offset?: Offset;
   texture?: Texture1;
   texture_region?: TextureRegion1;
   type: Type2;
   vframes: Vframes;
+  z_index?: ZIndex1;
 }
 export interface Skeleton {
   bones: Bones;

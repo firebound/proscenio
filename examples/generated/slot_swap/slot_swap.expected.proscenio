@@ -113,7 +113,8 @@
           0.0
         ]
       ],
-      "texture": "club.png"
+      "texture": "club.png",
+      "z_index": 1
     },
     {
       "name": "sword",
@@ -160,7 +161,8 @@
           0.0
         ]
       ],
-      "texture": "sword.png"
+      "texture": "sword.png",
+      "z_index": 2
     }
   ],
   "slots": [

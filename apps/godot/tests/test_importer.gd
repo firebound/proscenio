@@ -101,6 +101,12 @@ func _run_effect_checks() -> void:
 		_assert_eq(glint.vframes, 1, "effect: vframes")
 		_assert_eq(glint.frame, 0, "effect: initial frame")
 		_assert_true(glint.centered, "effect: centered default")
+		_assert_eq(glint.modulate, Color(1.0, 0.5, 0.25, 0.5), "effect: modulate stamped")
+		_assert_eq(glint.z_index, 5, "effect: z_index stamped")
+		_assert_true(glint.flip_h, "effect: flip_h stamped")
+		_assert_true(glint.flip_v, "effect: flip_v stamped")
+		_assert_true(glint.region_enabled, "effect: region enabled")
+		_assert_true(glint.region_filter_clip_enabled, "effect: region filter clip enabled")
 
 	var leaked_polygons := _collect_descendants_of_type(skeleton, "Polygon2D")
 	_assert_eq(leaked_polygons.size(), 0, "effect: dispatcher kept Polygon2D path off")
@@ -155,6 +161,8 @@ func _run_skinned_checks() -> void:
 		if torso.polygons.size() == 2:
 			_assert_eq(torso.polygons[0], PackedInt32Array([0, 1, 2]), "skinned: polygons face 0")
 			_assert_eq(torso.polygons[1], PackedInt32Array([0, 2, 3]), "skinned: polygons face 1")
+		_assert_eq(torso.modulate, Color(0.25, 0.5, 0.75, 1.0), "skinned: modulate stamped")
+		_assert_eq(torso.z_index, -3, "skinned: z_index stamped")
 
 	character.free()
 

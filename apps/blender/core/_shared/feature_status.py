@@ -78,7 +78,7 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "texture_region": FeatureStatus.GODOT_READY,
     "snap_region_to_uv": FeatureStatus.BLENDER_ONLY,
     "reproject_uv": FeatureStatus.BLENDER_ONLY,
-    "drive_from_bone": FeatureStatus.BLENDER_ONLY,
+    "drive_from_bone": FeatureStatus.GODOT_READY,
     "bake_current_pose": FeatureStatus.BLENDER_ONLY,
     "toggle_ik": FeatureStatus.BLENDER_ONLY,
     "quick_armature": FeatureStatus.BLENDER_ONLY,

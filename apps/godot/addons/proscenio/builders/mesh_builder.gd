@@ -87,6 +87,14 @@ static func _build_mesh(
 	if sprite_tex != null:
 		poly.texture = sprite_tex
 
+	# CanvasItem appearance: tint and draw order. An absent modulate keeps
+	# Godot's default white; z_index defaults to 0 (the front plane).
+	if sprite.modulate.size() >= 4:
+		poly.modulate = Color(
+			sprite.modulate[0], sprite.modulate[1], sprite.modulate[2], sprite.modulate[3]
+		)
+	poly.z_index = sprite.z_index
+
 	var weights: Array[ProscenioWeight] = sprite.weights
 	var is_skinned: bool = weights != null and not weights.is_empty()
 

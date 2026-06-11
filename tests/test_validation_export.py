@@ -22,7 +22,9 @@ from core.validation.active_slot import (  # noqa: E402
 )
 from core.validation.export import (  # noqa: E402
     _validate_atlas_files,
+    _validate_bone_orientation,
     _validate_element_against_armature,
+    _validate_mesh_flatness,
     _validate_slots,
     validate_export,
 )
@@ -191,6 +193,70 @@ def test_duplicate_slot_name_errors() -> None:
         )
 
     assert _has(_validate_slots([slot("brow"), slot("brow")]), "error", "duplicate slot name")
+
+
+def _vec3(x: float, y: float, z: float) -> SimpleNamespace:
+    return SimpleNamespace(x=x, y=y, z=z)
+
+
+def _rest_bone(name: str, head: tuple[float, float, float], tail: tuple[float, float, float]):
+    return SimpleNamespace(name=name, head_local=_vec3(*head), tail_local=_vec3(*tail))
+
+
+def _armature_with_rest_bones(*bones: SimpleNamespace) -> SimpleNamespace:
+    return SimpleNamespace(type="ARMATURE", data=SimpleNamespace(bones=list(bones)))
+
+
+def _mesh_obj_with_verts(name: str, coords: list[tuple[float, float, float]]) -> SimpleNamespace:
+    verts = [SimpleNamespace(co=_vec3(*c)) for c in coords]
+    return SimpleNamespace(name=name, data=SimpleNamespace(vertices=verts))
+
+
+def test_bone_tilted_out_of_the_xz_plane_warns() -> None:
+    # Head->tail runs diagonally into the screen (Y), which the XZ projection
+    # cannot represent.
+    arm = _armature_with_rest_bones(_rest_bone("tilt", (0.0, 0.0, 0.0), (1.0, 1.0, 0.0)))
+    assert _has(_validate_bone_orientation(arm), "warning", "XZ plane")
+
+
+def test_bone_in_the_xz_plane_is_clean() -> None:
+    arm = _armature_with_rest_bones(_rest_bone("flat", (0.0, 0.0, 0.0), (1.0, 0.0, 1.0)))
+    assert _validate_bone_orientation(arm) == []
+
+
+def test_bone_orientation_skips_a_zero_length_bone() -> None:
+    arm = _armature_with_rest_bones(_rest_bone("point", (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)))
+    assert _validate_bone_orientation(arm) == []
+
+
+def test_mesh_with_depth_warns() -> None:
+    # One vertex lifted off the picture plane along the dropped depth axis.
+    obj = _mesh_obj_with_verts(
+        "box", [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 1.0)]
+    )
+    assert _has(_validate_mesh_flatness(obj), "warning", "not flat")
+
+
+def test_flat_mesh_is_clean() -> None:
+    obj = _mesh_obj_with_verts(
+        "quad", [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)]
+    )
+    assert _validate_mesh_flatness(obj) == []
+
+
+def test_flat_mesh_authored_in_xz_is_clean() -> None:
+    # A quad authored directly in world XZ has Y as its flat axis; a fixed
+    # Z-is-depth test would false-warn it. Frame-independent flatness clears it.
+    obj = _mesh_obj_with_verts(
+        "panel", [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), (0.0, 0.0, 1.0)]
+    )
+    assert _validate_mesh_flatness(obj) == []
+
+
+def test_full_pass_surfaces_a_tilted_bone_as_a_warning() -> None:
+    arm = _armature_with_rest_bones(_rest_bone("spine", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0)))
+    scene = SimpleNamespace(objects=[arm], proscenio=SimpleNamespace(active_armature=arm))
+    assert _has(validate_export(scene), "warning", "XZ plane")
 
 
 def test_atlas_missing_file_warns(monkeypatch: pytest.MonkeyPatch) -> None:

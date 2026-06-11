@@ -52,12 +52,28 @@ static func _build_sprite(
 	# region_rect into hframes x vframes when region_enabled is true.
 	if sprite_res.texture_region.size() >= 4:
 		sprite.region_enabled = true
+		# Clip the texture filter to the region edge so neighbouring atlas frames
+		# do not bleed in at the seam (rides the region path for free).
+		sprite.region_filter_clip_enabled = true
 		sprite.region_rect = Rect2(
 			sprite_res.texture_region[0],
 			sprite_res.texture_region[1],
 			sprite_res.texture_region[2],
 			sprite_res.texture_region[3],
 		)
+
+	# CanvasItem appearance plus the Sprite2D-only flips. An absent modulate
+	# keeps Godot's default white; z_index / flips default to 0 / false.
+	if sprite_res.modulate.size() >= 4:
+		sprite.modulate = Color(
+			sprite_res.modulate[0],
+			sprite_res.modulate[1],
+			sprite_res.modulate[2],
+			sprite_res.modulate[3],
+		)
+	sprite.z_index = sprite_res.z_index
+	sprite.flip_h = sprite_res.flip_h
+	sprite.flip_v = sprite_res.flip_v
 
 	var bone_name := NodeNameUtil.sanitize(sprite_res.bone)
 	# Sprite and mesh attachments compose under the same slot Node2D. The

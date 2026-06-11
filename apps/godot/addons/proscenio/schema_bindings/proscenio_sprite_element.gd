@@ -19,6 +19,10 @@ class_name ProscenioSpriteElement extends ProscenioElement
 @export var texture_region: PackedFloat32Array = PackedFloat32Array()
 @export var texture: String = ""
 @export var offset: PackedFloat32Array = PackedFloat32Array([0.0, 0.0])
+@export var modulate: PackedFloat32Array = PackedFloat32Array()
+@export var z_index: int = 0
+@export var flip_h: bool = false
+@export var flip_v: bool = false
 
 
 static func from_dict(data: Dictionary) -> ProscenioSpriteElement:
@@ -53,4 +57,16 @@ static func from_dict(data: Dictionary) -> ProscenioSpriteElement:
 	if data.has("offset") and data["offset"] != null:
 		res.offset = PackedFloat32Array(data["offset"])
 		res._set_fields.append("offset")
+	if data.has("modulate") and data["modulate"] != null:
+		res.modulate = PackedFloat32Array(data["modulate"])
+		res._set_fields.append("modulate")
+	if data.has("z_index") and data["z_index"] != null:
+		res.z_index = int(data["z_index"])
+		res._set_fields.append("z_index")
+	if data.has("flip_h") and data["flip_h"] != null:
+		res.flip_h = bool(data["flip_h"])
+		res._set_fields.append("flip_h")
+	if data.has("flip_v") and data["flip_v"] != null:
+		res.flip_v = bool(data["flip_v"])
+		res._set_fields.append("flip_v")
 	return res

@@ -20,6 +20,46 @@ def _vgroup(index: int, name: str) -> SimpleNamespace:
     return SimpleNamespace(index=index, name=name)
 
 
+def _vec(x: float = 0.0, y: float = 0.0, z: float = 0.0) -> SimpleNamespace:
+    return SimpleNamespace(x=x, y=y, z=z)
+
+
+def test_derive_modulate_none_for_opaque_white() -> None:
+    obj = SimpleNamespace(color=(1.0, 1.0, 1.0, 1.0))
+    assert sprites._derive_modulate(obj) is None
+
+
+def test_derive_modulate_returns_the_tint() -> None:
+    obj = SimpleNamespace(color=(1.0, 0.5, 0.25, 1.0))
+    assert sprites._derive_modulate(obj) == [1.0, 0.5, 0.25, 1.0]
+
+
+def test_derive_z_index_none_at_the_front_plane() -> None:
+    # z_order 0 (front) stamps Blender Y = 0; default draw order needs no z_index.
+    obj = SimpleNamespace(location=_vec(y=0.0))
+    assert sprites._derive_z_index(obj) is None
+
+
+def test_derive_z_index_negates_the_psd_depth() -> None:
+    # z_order 2 (further back) is stamped as Y = 2 * 0.001; Godot draws a lower
+    # z_index behind, so the back layer maps to -2.
+    obj = SimpleNamespace(location=_vec(y=0.002))
+    assert sprites._derive_z_index(obj) == -2
+
+
+def test_derive_flips_none_for_positive_scale() -> None:
+    obj = SimpleNamespace(scale=_vec(x=1.0, y=1.0, z=1.0))
+    assert sprites._derive_flips(obj) == (None, None)
+
+
+def test_derive_flips_reads_negative_scale_signs() -> None:
+    # Quad authored in local XY then stood up 90deg on X: local X is horizontal,
+    # local Y is vertical. A mirrored sprite has no per-vertex geometry to carry
+    # the flip, so the sign becomes a flag.
+    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=-1.0, y=1.0))) == (True, None)
+    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=1.0, y=-1.0))) == (None, True)
+
+
 def test_build_polygon_topology_dedups_shared_vertices() -> None:
     # A quad split into two triangles sharing the 10->12 edge.
     faces = [[(10, 0), (11, 1), (12, 2)], [(10, 3), (12, 4), (13, 5)]]
@@ -67,14 +107,37 @@ def test_build_sprite_reads_grid_and_bone() -> None:
         parent_bone="head",
         vertex_groups=[],
         proscenio=SimpleNamespace(hframes=2, vframes=3, frame=4, centered=False),
+        color=(1.0, 1.0, 1.0, 1.0),
+        location=_vec(),
+        scale=_vec(1.0, 1.0, 1.0),
     )
-    sprite = sprites.build_sprite(obj)
+    sprite = sprites.build_sprite(obj, ppu=100.0)
     assert sprite.type == "sprite"
     assert sprite.name == "face"
     assert sprite.bone == "head"
     assert (sprite.hframes, sprite.vframes, sprite.frame) == (2, 3, 4)
     assert sprite.centered is False
     assert sprite.texture_region is None  # auto mode omits the region
+    # A default-appearance object emits no appearance fields.
+    assert (sprite.modulate, sprite.z_index, sprite.flip_h, sprite.flip_v) == (None, None, None, None)
+
+
+def test_build_sprite_emits_derived_appearance() -> None:
+    obj = SimpleNamespace(
+        name="hat",
+        parent_type="OBJECT",
+        parent_bone="",
+        vertex_groups=[],
+        proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+        color=(1.0, 0.5, 0.25, 1.0),
+        location=_vec(y=0.001),  # z_order 1, one step behind the front plane
+        scale=_vec(-1.0, 1.0, 1.0),  # mirrored horizontally
+    )
+    sprite = sprites.build_sprite(obj, ppu=100.0)
+    assert sprite.modulate == [1.0, 0.5, 0.25, 1.0]
+    assert sprite.z_index == -1
+    assert sprite.flip_h is True
+    assert sprite.flip_v is None  # omitted, not False
 
 
 def test_build_sprite_rejects_zero_grid() -> None:
@@ -86,7 +149,7 @@ def test_build_sprite_rejects_zero_grid() -> None:
         proscenio=SimpleNamespace(hframes=0, vframes=1, frame=0, centered=True),
     )
     with pytest.raises(RuntimeError, match="hframes"):
-        sprites.build_sprite(obj)
+        sprites.build_sprite(obj, ppu=100.0)
 
 
 def test_build_sprite_routes_sprite_kind() -> None:
@@ -98,6 +161,9 @@ def test_build_sprite_routes_sprite_kind() -> None:
         proscenio=SimpleNamespace(
             element_type="sprite", hframes=1, vframes=1, frame=0, centered=True
         ),
+        color=(1.0, 1.0, 1.0, 1.0),
+        location=_vec(),
+        scale=_vec(1.0, 1.0, 1.0),
     )
     out = sprites.build_element(obj, {}, ppu=100.0)
     assert out.type == "sprite"

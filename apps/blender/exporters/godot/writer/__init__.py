@@ -56,6 +56,7 @@ from .scene_discovery import doc_name, find_armature, find_atlas_image, find_spr
 from .skeleton import build_skeleton, compute_bone_world_godot
 from .slot_animations import build_slot_animations, merge_slot_animations_into
 from .slots import build_slots_for_scene
+from .sprite_frame_animations import build_sprite_frame_animations
 from .sprites import build_element
 
 
@@ -129,6 +130,11 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     slot_anims = build_slot_animations(scene)
     if slot_anims:
         animations = merge_slot_animations_into(animations, slot_anims)
+    # Bake bone-driven sprite frames into the same animations (merge by action
+    # name). PG-gated, so the headless CP-fallback fixtures skip it.
+    frame_anims = build_sprite_frame_animations(scene, scene.render.fps)
+    if frame_anims:
+        animations = merge_slot_animations_into(animations, frame_anims)
 
     # Omit empty optionals; an explicit None serialises as "field": null under
     # exclude_unset and drifts the goldens.

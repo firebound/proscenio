@@ -98,6 +98,31 @@ def iter_poly_loop_indices(poly: bpy.types.MeshPolygon) -> Iterator[int]:
     return iter(cast(Iterator[int], poly.loop_indices))
 
 
+def object_color(obj: bpy.types.Object) -> tuple[float, ...]:
+    """Read ``obj.color`` as a plain RGBA tuple (bpy_prop_array carries no Iterable in stub)."""
+    return tuple(cast(Iterator[float], obj.color))
+
+
+def iter_drivers(anim_data: bpy.types.AnimData) -> Iterator[bpy.types.FCurve]:
+    """Iterate ``anim_data.drivers`` (stub omits __iter__ on AnimDataDrivers)."""
+    return iter(cast(Iterator[bpy.types.FCurve], anim_data.drivers))
+
+
+def iter_driver_variables(driver: bpy.types.Driver) -> Iterator[bpy.types.DriverVariable]:
+    """Iterate ``driver.variables`` (stub omits __iter__ on ChannelDriverVariables)."""
+    return iter(cast(Iterator[bpy.types.DriverVariable], driver.variables))
+
+
+def iter_driver_targets(variable: bpy.types.DriverVariable) -> Iterator[bpy.types.DriverTarget]:
+    """Iterate ``variable.targets`` (stub omits __iter__ on the targets collection)."""
+    return iter(cast(Iterator[bpy.types.DriverTarget], variable.targets))
+
+
+def pose_bone_by_name(pose: bpy.types.Pose, name: str) -> bpy.types.PoseBone | None:
+    """Look up ``pose.bones[name]`` (stub mistypes the collection ``.get`` as None)."""
+    return cast("bpy.types.PoseBone | None", pose.bones.get(name))
+
+
 def iter_keyframe_points(
     fcurve: bpy.types.FCurve,
 ) -> Iterator[bpy.types.Keyframe]:

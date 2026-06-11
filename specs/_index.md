@@ -40,3 +40,15 @@ git show <commit>:specs/NNN-slug/STUDY.md
 | 024 | blender-addon-preferences | Addon preferences: log level (errors/info/debug), debug_mode, Developer group | pruned |
 | 025 | code-duplication | Type-2/3/4 clone audit (AST + k-gram, beyond Sonar's line scan); ~30 single-source helpers extracted across two PRs, justified divergences (N9/N12/N14/D6) kept | pruned |
 | 026 | documentation-architecture | Knowledge-home map: audience-driven Docusaurus re-IA, comment/docstring routing policy (~2,900 audited), codified in `.ai/` with enforcement | pruned |
+| 027 | export-correctness | Output integrity: writer respects the armature picker, whole-mesh export, validator slot-noise + CP-read fixes | planned |
+| 028 | schema-expressiveness | Format v2: appearance / track / constraint passthrough end to end, plus the migration path | planned |
+| 029 | mesh-authoring | Automesh interactive fix + mesh-generation panel gating, defaults, and manual hull | planned |
+| 030 | skinning-weight-paint | Weight-paint bind fixes, panel cleanup, and the advanced skinning toolset | planned |
+| 031 | rigging-and-posing | Quick Armature, skeleton, drivers, IK, and pose-library authoring | planned |
+| 032 | slot-attachments | Slot placement fixes + slots panel, warnings, and skin coordination | planned |
+| 033 | atlas-packing | Atlas authoring + packing heuristics + pixels-per-unit through the pipeline | planned |
+| 034 | photoshop-plugin | PS tag-system features + export-roundtrip stability | planned |
+| 035 | project-health | CI matrix, lint / type / coverage gates, fixtures, and release packaging | planned |
+| 036 | ui-help-surfaces | Editor UI polish, help/docs system, and new panels (materials, onion-skin) | planned |
+| 037 | storage-split | Collapse dual PG-vs-CP storage to one canonical home per field (1.0.0) | planned |
+| 038 | reach | Additional DCC exporters (Krita, GIMP) and the GDExtension escape hatch | planned |

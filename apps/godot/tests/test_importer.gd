@@ -149,6 +149,12 @@ func _run_skinned_checks() -> void:
 			# Vertex 0 is at the top - fully weighted to 'upper'.
 			_assert_eq(upper_weights[0], 1.0, "skinned: vertex 0 → upper = 1.0")
 			_assert_eq(lower_weights[0], 0.0, "skinned: vertex 0 → lower = 0.0")
+		# Multi-face mesh: per-face vertex-index arrays land on Polygon2D.polygons
+		# so a triangulated / multi-island mesh renders every face, not just the first.
+		_assert_eq(torso.polygons.size(), 2, "skinned: polygons face count")
+		if torso.polygons.size() == 2:
+			_assert_eq(torso.polygons[0], PackedInt32Array([0, 1, 2]), "skinned: polygons face 0")
+			_assert_eq(torso.polygons[1], PackedInt32Array([0, 2, 3]), "skinned: polygons face 1")
 
 	character.free()
 

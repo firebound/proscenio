@@ -30,6 +30,10 @@ export type Bone = string | null;
 export type Name1 = string;
 export type Polygon = [number, number][];
 /**
+ * Optional per-face vertex-index arrays into `polygon` / `uv`, mirroring Godot's Polygon2D.polygons. Present only for multi-face meshes (automesh output); absent means the single `polygon` ring is the whole element. Additive at format_version 1 - an importer that ignores it still renders the outline.
+ */
+export type Polygons = number[][] | null;
+/**
  * Optional per-element texture filename, resolved relative to the .proscenio document. Multi-PNG fixtures use this so each element picks its own image instead of slicing a shared atlas. Importers fall back to the top-level `atlas` field when absent.
  */
 export type Texture = string | null;
@@ -141,6 +145,7 @@ export interface MeshElement {
   bone?: Bone;
   name: Name1;
   polygon: Polygon;
+  polygons?: Polygons;
   texture?: Texture;
   texture_region: TextureRegion;
   type?: Type1;

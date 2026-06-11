@@ -63,6 +63,11 @@ def polygon_at(mesh: bpy.types.Mesh, index: int) -> bpy.types.MeshPolygon:
     return cast(bpy.types.MeshPolygon, mesh.polygons[index])  # type: ignore[index]
 
 
+def iter_polygons(mesh: bpy.types.Mesh) -> Iterator[bpy.types.MeshPolygon]:
+    """Iterate ``mesh.polygons`` (stub omits __iter__ on MeshPolygons)."""
+    return iter(cast(Iterator[bpy.types.MeshPolygon], mesh.polygons))
+
+
 def vertex_group_at(obj: bpy.types.Object, index: int) -> bpy.types.VertexGroup:
     """Subscript ``obj.vertex_groups[index]`` (stub omits __getitem__ on VertexGroups)."""
     return cast(bpy.types.VertexGroup, obj.vertex_groups[index])  # type: ignore[index]

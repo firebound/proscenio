@@ -797,6 +797,13 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "one is visible at scene load (the SOLO star = default), and add the",
                 "selected mesh as a new attachment. See the Slots help for the overview.",
             ),
+            _section(
+                "Editing raw Custom Properties",
+                "The SOLO star sets the default through the panel. Editing the raw",
+                "proscenio_slot_default Custom Property directly exports and validates",
+                "the same value, but the panel does not live-refresh to a raw edit -",
+                "use the panel buttons as the expected workflow.",
+            ),
         ),
         see_also=(),
     ),

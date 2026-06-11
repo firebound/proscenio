@@ -15,6 +15,7 @@ class_name ProscenioMeshElement extends ProscenioElement
 @export var texture_region: PackedFloat32Array = PackedFloat32Array()
 @export var polygon: Array[PackedFloat32Array] = [] as Array[PackedFloat32Array]
 @export var uv: Array[PackedFloat32Array] = [] as Array[PackedFloat32Array]
+@export var polygons: Array[PackedInt32Array] = [] as Array[PackedInt32Array]
 @export var texture: String = ""
 @export var weights: Array[ProscenioWeight] = [] as Array[ProscenioWeight]
 
@@ -39,6 +40,9 @@ static func from_dict(data: Dictionary) -> ProscenioMeshElement:
 	if data.has("uv") and data["uv"] != null:
 		res.uv = ProscenioParseHelpers._parse_vec2_array(data["uv"])
 		res._set_fields.append("uv")
+	if data.has("polygons") and data["polygons"] != null:
+		res.polygons = ProscenioParseHelpers._parse_int_array(data["polygons"])
+		res._set_fields.append("polygons")
 	if data.has("texture") and data["texture"] != null:
 		res.texture = String(data["texture"])
 		res._set_fields.append("texture")

@@ -77,6 +77,47 @@ def active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     return cast("bpy.types.Object", picker)
 
 
+def resolve_export_armature(scene: object) -> bpy.types.Object | None:
+    """Return the armature Proscenio exports for ``scene`` - picker first.
+
+    Honours ``scene.proscenio.active_armature`` when it still points at a live
+    ARMATURE present in this scene, otherwise the first ARMATURE in scene
+    order. The writer and the export validator both route through this so they
+    cannot disagree on the rig in a multi-armature scene.
+
+    Duck-typed and bpy-free at runtime: ``scene`` may be a ``SimpleNamespace``
+    in unit tests, and ``scene.proscenio`` is absent under ``--background``.
+    """
+    objects = list(getattr(scene, "objects", ()) or ())
+    picked = _picked_scene_armature(scene, objects)
+    if picked is not None:
+        return picked
+    first = next((o for o in objects if getattr(o, "type", None) == "ARMATURE"), None)
+    return cast("bpy.types.Object | None", first)
+
+
+def _picked_scene_armature(scene: object, objects: list[object]) -> bpy.types.Object | None:
+    """The picker pointer when it is a live ARMATURE in ``objects``, else None.
+
+    Guards a stale pointer: an armature unlinked from this scene (still in
+    ``bpy.data``) or a freed datablock both fall through to the caller's
+    scene-order fallback rather than exporting a rig the user cannot see.
+    """
+    props = getattr(scene, "proscenio", None)
+    picked = getattr(props, "active_armature", None) if props is not None else None
+    if picked is None:
+        return None
+    try:
+        if getattr(picked, "type", None) != "ARMATURE":
+            return None
+        name = getattr(picked, "name", None)
+    except ReferenceError:
+        return None
+    if not any(getattr(o, "name", None) == name for o in objects):
+        return None
+    return cast("bpy.types.Object", picked)
+
+
 def resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     """Scene pixels-per-unit, defaulting to 100.0 when unset or unregistered.
 

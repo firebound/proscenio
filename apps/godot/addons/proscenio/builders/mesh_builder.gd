@@ -61,6 +61,15 @@ static func _build_mesh(
 		pts.append(Vector2(p[0], p[1]))
 	poly.polygon = pts
 
+	# Multi-face meshes carry per-face vertex-index arrays (automesh
+	# triangulation, multi-island cutouts); Polygon2D.polygons renders each
+	# face. Absent or empty means the single `polygon` ring is the whole shape.
+	if not sprite.polygons.is_empty():
+		var faces: Array = []
+		for face: PackedInt32Array in sprite.polygons:
+			faces.append(face)
+		poly.polygons = faces
+
 	var sprite_tex := SpriteAttachUtil.resolve_sprite_texture(
 		sprite.texture, sprite.name, atlas, source_dir
 	)

@@ -8,15 +8,19 @@ from pathlib import Path
 import bpy
 
 from ....core._shared.material_images import iter_material_node_images
+from ....core._shared.props_access import resolve_export_armature
 from ....core.bpy_helpers._shared._bpy_compat import iter_materials, iter_objects
 
 
 def find_armature(scene: bpy.types.Scene) -> bpy.types.Object | None:
-    """Return the first ARMATURE in the scene or ``None``."""
-    for obj in iter_objects(scene):
-        if obj.type == "ARMATURE":
-            return obj
-    return None
+    """Return the armature Proscenio exports for the scene.
+
+    Picker-first (``proscenio.active_armature``) when it points at a live
+    ARMATURE in this scene, else the first ARMATURE in scene order. Shares
+    ``resolve_export_armature`` with the export validator so the two agree on
+    the rig in multi-armature scenes.
+    """
+    return resolve_export_armature(scene)
 
 
 def find_sprite_meshes(scene: bpy.types.Scene) -> list[bpy.types.Object]:

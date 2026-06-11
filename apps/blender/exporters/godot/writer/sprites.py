@@ -16,8 +16,8 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     expect_mesh,
     iter_poly_loop_indices,
     iter_poly_vertices,
+    iter_polygons,
     iter_vertex_groups,
-    polygon_at,
     vertex_at,
     vertex_group_at,
 )
@@ -40,6 +40,7 @@ class _PolygonKwargs(TypedDict):
     texture_region: list[float]
     polygon: list[list[float]]
     uv: list[list[float]]
+    polygons: NotRequired[list[list[int]]]
     texture: NotRequired[str]
     weights: NotRequired[list[Weight]]
 
@@ -56,6 +57,31 @@ class _SpriteFrameKwargs(TypedDict):
     frame: int
     centered: bool
     texture_region: NotRequired[list[float]]
+
+
+def _build_polygon_topology(
+    faces: list[list[tuple[int, int]]],
+) -> tuple[list[tuple[int, int]], list[list[int]]]:
+    """Dedup ``(vertex_index, loop_index)`` pairs across faces into one list.
+
+    Returns the ordered pairs in first-seen order plus per-face index arrays
+    into that order - the shape Godot's ``Polygon2D.polygon`` (positions) +
+    ``Polygon2D.polygons`` (per-face indices) expects. The retained loop index
+    lets the caller stamp each shared vertex's UV from one of its corners;
+    planar cutout UVs are consistent across a vertex's loops.
+    """
+    order: list[tuple[int, int]] = []
+    seen: dict[int, int] = {}
+    polygons: list[list[int]] = []
+    for face in faces:
+        emitted: list[int] = []
+        for vi, li in face:
+            if vi not in seen:
+                seen[vi] = len(order)
+                order.append((vi, li))
+            emitted.append(seen[vi])
+        polygons.append(emitted)
+    return order, polygons
 
 
 def build_element(
@@ -86,34 +112,39 @@ def build_element(
     bone_world = world_godot.get(bone_name)
     uv_layer = mesh.uv_layers.active
 
+    # Whole-mesh emission: every face's vertices, deduplicated, plus per-face
+    # index arrays. Emitting only the first polygon silently truncated any
+    # multi-island or triangulated (automesh) mesh to one face.
+    faces = [
+        list(zip(iter_poly_vertices(poly), iter_poly_loop_indices(poly), strict=False))
+        for poly in iter_polygons(mesh)
+    ]
+    vertex_order, face_indices = _build_polygon_topology(faces)
+
     polygon: list[list[float]] = []
     uvs: list[list[float]] = []
     vertex_indices: list[int] = []
 
-    if mesh.polygons:
-        first_poly = polygon_at(mesh, 0)
-        verts = iter_poly_vertices(first_poly)
-        loops = iter_poly_loop_indices(first_poly)
-        for vi, li in zip(verts, loops, strict=False):
-            v = vertex_at(mesh, vi)
-            vertex_indices.append(vi)
-            world_blender = mesh_world @ v.co
-            world_godot_pos = world_to_godot_xy(world_blender, ppu)
-            if bone_world is None:
-                local = world_godot_pos
-            else:
-                dx = world_godot_pos.x - bone_world.x
-                dy = world_godot_pos.y - bone_world.y
-                cos_b = math.cos(-bone_world.rot)
-                sin_b = math.sin(-bone_world.rot)
-                local = Vector((dx * cos_b - dy * sin_b, dx * sin_b + dy * cos_b))
-            polygon.append([round(local.x, 6), round(local.y, 6)])
+    for vi, li in vertex_order:
+        v = vertex_at(mesh, vi)
+        vertex_indices.append(vi)
+        world_blender = mesh_world @ v.co
+        world_godot_pos = world_to_godot_xy(world_blender, ppu)
+        if bone_world is None:
+            local = world_godot_pos
+        else:
+            dx = world_godot_pos.x - bone_world.x
+            dy = world_godot_pos.y - bone_world.y
+            cos_b = math.cos(-bone_world.rot)
+            sin_b = math.sin(-bone_world.rot)
+            local = Vector((dx * cos_b - dy * sin_b, dx * sin_b + dy * cos_b))
+        polygon.append([round(local.x, 6), round(local.y, 6)])
 
-            if uv_layer is not None:
-                u = uv_layer.data[li].uv
-                uvs.append([round(float(u.x), 6), round(1.0 - float(u.y), 6)])
-            else:
-                uvs.append([0.0, 0.0])
+        if uv_layer is not None:
+            u = uv_layer.data[li].uv
+            uvs.append([round(float(u.x), 6), round(1.0 - float(u.y), 6)])
+        else:
+            uvs.append([0.0, 0.0])
 
     region = region_core.resolve_region(obj, uvs)
     weights = build_sprite_weights(
@@ -131,6 +162,10 @@ def build_element(
         "polygon": polygon,
         "uv": uvs,
     }
+    # Only multi-face meshes carry the index arrays; a single-face mesh keeps
+    # the field-less shape so the existing single-quad goldens stay byte-stable.
+    if len(face_indices) > 1:
+        poly_kwargs["polygons"] = face_indices
     texture = _per_sprite_texture(obj)
     if texture is not None:
         poly_kwargs["texture"] = texture

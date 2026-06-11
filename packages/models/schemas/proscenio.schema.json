@@ -274,6 +274,25 @@
           "title": "Polygon",
           "type": "array"
         },
+        "polygons": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional per-face vertex-index arrays into `polygon` / `uv`, mirroring Godot's Polygon2D.polygons. Present only for multi-face meshes (automesh output); absent means the single `polygon` ring is the whole element. Additive at format_version 1 - an importer that ignores it still renders the outline.",
+          "title": "Polygons"
+        },
         "texture": {
           "anyOf": [
             {

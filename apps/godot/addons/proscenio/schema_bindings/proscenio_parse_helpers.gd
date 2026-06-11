@@ -15,6 +15,13 @@ static func _parse_vec2_array(raw: Array) -> Array[PackedFloat32Array]:
 	return out
 
 
+static func _parse_int_array(raw: Array) -> Array[PackedInt32Array]:
+	var out: Array[PackedInt32Array] = []
+	for item in raw:
+		out.append(PackedInt32Array(item))
+	return out
+
+
 static func _parse_array(klass, raw: Array) -> Array:
 	var out: Array = []
 	for item in raw:

@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import NotRequired, TypedDict
 
 import bpy
 from proscenio_models import Animation, Key, Track
 
-from ....core.bpy_helpers._shared._bpy_compat import (
-    iter_action_layers,
-    iter_action_strips,
-    iter_actions,
-    iter_keyframe_points,
-)
+from ....core._shared.action_fcurves import action_fcurves
+from ....core.bpy_helpers._shared._bpy_compat import iter_actions, iter_keyframe_points
 from .skeleton import BoneRestLocal, wrap_pi
+
+__all__ = ["action_fcurves", "build_animations"]
 
 
 class _KeyKwargs(TypedDict):
@@ -31,20 +28,6 @@ class _KeyKwargs(TypedDict):
     position: NotRequired[list[float]]
     rotation: NotRequired[float]
     scale: NotRequired[list[float]]
-
-
-def action_fcurves(action: bpy.types.Action) -> Iterator[bpy.types.FCurve]:
-    """Yield FCurves from a Blender 4.4+ layered action or a legacy action."""
-    if hasattr(action, "fcurves") and action.fcurves:
-        yield from action.fcurves
-        return
-    if not hasattr(action, "layers"):
-        return
-    for layer in iter_action_layers(action):
-        for strip in iter_action_strips(layer):
-            channelbags = getattr(strip, "channelbags", None) or []
-            for cb in channelbags:
-                yield from cb.fcurves
 
 
 _REST_FALLBACK = BoneRestLocal(

@@ -145,6 +145,12 @@ def _resolve_list_type(item: Any) -> _ResolvedType:
             "[] as Array[PackedFloat32Array]",
             "ProscenioParseHelpers._parse_vec2_array({value})",
         )
+    if nested_origin in (list, typing.List) and nested_args == (int,):
+        return _ResolvedType(
+            "Array[PackedInt32Array]",
+            "[] as Array[PackedInt32Array]",
+            "ProscenioParseHelpers._parse_int_array({value})",
+        )
     dispatcher = _union_dispatcher_name(item)
     if dispatcher is not None:
         return _ResolvedType(
@@ -428,6 +434,11 @@ def _emit_helpers() -> str:
             "static func _parse_vec2_array(raw: Array) -> Array[PackedFloat32Array]:",
             "var out: Array[PackedFloat32Array] = []",
             "PackedFloat32Array(item)",
+        ),
+        _build_helper(
+            "static func _parse_int_array(raw: Array) -> Array[PackedInt32Array]:",
+            "var out: Array[PackedInt32Array] = []",
+            "PackedInt32Array(item)",
         ),
         _build_helper(
             "static func _parse_array(klass, raw: Array) -> Array:",

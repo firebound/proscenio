@@ -85,6 +85,16 @@ class MeshElement(_Strict):
     texture_region: Rect
     polygon: list[Vec2]
     uv: list[Vec2]
+    polygons: list[list[int]] | None = Field(
+        default=None,
+        description=(
+            "Optional per-face vertex-index arrays into `polygon` / `uv`, "
+            "mirroring Godot's Polygon2D.polygons. Present only for "
+            "multi-face meshes (automesh output); absent means the single "
+            "`polygon` ring is the whole element. Additive at format_version "
+            "1 - an importer that ignores it still renders the outline."
+        ),
+    )
     texture: str | None = Field(
         default=None,
         description=(
@@ -109,6 +119,24 @@ class MeshElement(_Strict):
                 f"polygon has {len(self.polygon)} vertices but uv has "
                 f"{len(self.uv)}; counts must match"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _polygons_index_in_range(self) -> MeshElement:
+        """Every `polygons` index must reference an existing polygon vertex.
+
+        JSON Schema cannot express the cross-field bound; pydantic carries it.
+        """
+        if self.polygons is None:
+            return self
+        vertex_count = len(self.polygon)
+        for face in self.polygons:
+            for idx in face:
+                if not 0 <= idx < vertex_count:
+                    raise ValueError(
+                        f"polygons index {idx} out of range for "
+                        f"{vertex_count} polygon vertices"
+                    )
         return self
 
 
@@ -247,8 +275,7 @@ class ProscenioDocument(_Strict):
         extra="forbid",
         json_schema_extra={
             "$id": (
-                "https://firebound.github.io/proscenio/schemas/"
-                "proscenio.schema.json"
+                "https://firebound.github.io/proscenio/schemas/proscenio.schema.json"
             ),
         },
         title="Proscenio character",

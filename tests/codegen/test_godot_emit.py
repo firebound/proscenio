@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 from proscenio_codegen.godot_emit import (
     GODOT_BINDINGS_DIR,
+    _emit_helpers,
+    _resolve_type,
     emit_godot_resources,
 )
 
@@ -96,6 +98,16 @@ def test_committed_artifacts_match_emit() -> None:
                 f"{committed.name} differs from the pydantic-derived emit. "
                 "Run `python -m proscenio_codegen godot`."
             )
+
+
+def test_resolve_list_of_int_lists_maps_to_packed_int_array() -> None:
+    resolved = _resolve_type(list[list[int]])
+    assert resolved.gd_type == "Array[PackedInt32Array]"
+    assert "_parse_int_array" in resolved.parse_expr_template
+
+
+def test_int_array_parse_helper_is_emitted() -> None:
+    assert "_parse_int_array" in _emit_helpers()
 
 
 def test_each_file_carries_auto_generated_banner(tmp_path: Path) -> None:

@@ -20,6 +20,29 @@ def _vgroup(index: int, name: str) -> SimpleNamespace:
     return SimpleNamespace(index=index, name=name)
 
 
+def test_build_polygon_topology_dedups_shared_vertices() -> None:
+    # A quad split into two triangles sharing the 10->12 edge.
+    faces = [[(10, 0), (11, 1), (12, 2)], [(10, 3), (12, 4), (13, 5)]]
+    order, polygons = sprites._build_polygon_topology(faces)
+    # First-seen order: 10, 11, 12 from face one; 13 new from face two.
+    assert [vi for vi, _ in order] == [10, 11, 12, 13]
+    # Shared verts 10 and 12 reuse their emitted index in the second face.
+    assert polygons == [[0, 1, 2], [0, 2, 3]]
+
+
+def test_build_polygon_topology_single_face_keeps_loop_order() -> None:
+    faces = [[(5, 0), (6, 1), (7, 2), (8, 3)]]
+    order, polygons = sprites._build_polygon_topology(faces)
+    assert order == [(5, 0), (6, 1), (7, 2), (8, 3)]
+    assert polygons == [[0, 1, 2, 3]]
+
+
+def test_build_polygon_topology_empty_mesh() -> None:
+    order, polygons = sprites._build_polygon_topology([])
+    assert order == []
+    assert polygons == []
+
+
 def test_resolve_sprite_bone_prefers_bone_parent() -> None:
     obj = SimpleNamespace(parent_type="BONE", parent_bone="forearm.L", vertex_groups=[])
     assert sprites.resolve_sprite_bone(obj) == "forearm.L"

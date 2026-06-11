@@ -6,8 +6,8 @@ accordion subpanels: Automesh from Alpha (the one-shot alpha-trace),
 Automesh Interactive (the modal authoring entry), and Debug Pipeline
 (the stage enum + clear button).
 
-Weight painting (Bind / Edit Weights / Snapshot / Sidecar IO / Weight
-Transfer) lives in the dedicated mesh-only ``weight_paint`` panel. The
+Weight painting (Bind / Edit Weights / Snapshot / Weight Transfer) lives
+in the dedicated mesh-only ``weight_paint`` panel. The
 status badge + help button on each automesh subpanel header land with the
 header-convention pass (a later phase); the parent keeps the existing
 ``skinning`` badge until the feature-id rename in that same phase.

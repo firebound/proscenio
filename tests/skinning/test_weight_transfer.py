@@ -1,4 +1,5 @@
 """Pure tests for weight transfer KNN (O7)."""
+
 from __future__ import annotations
 
 import sys
@@ -12,17 +13,22 @@ sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 def test_identical_meshes_copy_weights_one_to_one():
     from core.skinning.weight_transfer import transfer_weights_by_nearest  # noqa: E402
+
     source_positions = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]
     source_weights = [{"a": 1.0}, {"a": 0.5, "b": 0.5}, {"b": 1.0}]
     target_positions = list(source_positions)
-    out = transfer_weights_by_nearest(source_positions, source_weights, target_positions, max_distance=0.1)
+    out = transfer_weights_by_nearest(
+        source_positions, source_weights, target_positions, max_distance=0.1
+    )
     assert out == source_weights
 
 
 def test_target_beyond_max_distance_returns_empty_dict():
     from core.skinning.weight_transfer import transfer_weights_by_nearest  # noqa: E402
+
     out = transfer_weights_by_nearest(
-        [(0.0, 0.0, 0.0)], [{"a": 1.0}],
+        [(0.0, 0.0, 0.0)],
+        [{"a": 1.0}],
         target_positions=[(10.0, 10.0, 10.0)],
         max_distance=0.5,
     )
@@ -31,20 +37,56 @@ def test_target_beyond_max_distance_returns_empty_dict():
 
 def test_empty_source_returns_empty_weights_for_all_targets():
     from core.skinning.weight_transfer import transfer_weights_by_nearest  # noqa: E402
-    out = transfer_weights_by_nearest([], [], [(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)], max_distance=1.0)
+
+    out = transfer_weights_by_nearest(
+        [], [], [(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)], max_distance=1.0
+    )
     assert out == [{}, {}]
 
 
 def test_negative_max_distance_raises():
     from core.skinning.weight_transfer import transfer_weights_by_nearest  # noqa: E402
+
     with pytest.raises(ValueError, match="max_distance"):
-        transfer_weights_by_nearest([(0.0, 0.0, 0.0)], [{"a": 1.0}], [(0.0, 0.0, 0.0)], max_distance=-1.0)
+        transfer_weights_by_nearest(
+            [(0.0, 0.0, 0.0)], [{"a": 1.0}], [(0.0, 0.0, 0.0)], max_distance=-1.0
+        )
 
 
 def test_nearest_wins_when_multiple_in_range():
     from core.skinning.weight_transfer import transfer_weights_by_nearest  # noqa: E402
+
     source_positions = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)]
     source_weights = [{"left": 1.0}, {"right": 1.0}]
     # Target at 0.4 -> nearest is left (0.0)
-    out = transfer_weights_by_nearest(source_positions, source_weights, [(0.4, 0.0, 0.0)], max_distance=2.0)
+    out = transfer_weights_by_nearest(
+        source_positions, source_weights, [(0.4, 0.0, 0.0)], max_distance=2.0
+    )
     assert out == [{"left": 1.0}]
+
+
+def test_summarize_transfer_all_covered_lists_per_target_counts():
+    from core.skinning.weight_transfer import summarize_transfer  # noqa: E402
+
+    all_covered, message = summarize_transfer([("arm", 10, 12), ("leg", 8, 8)])
+    assert all_covered is True
+    assert "arm: 10/12" in message
+    assert "leg: 8/8" in message
+
+
+def test_summarize_transfer_zero_coverage_warns_and_names_the_empty_target():
+    from core.skinning.weight_transfer import summarize_transfer  # noqa: E402
+
+    all_covered, message = summarize_transfer([("arm", 10, 12), ("leg", 0, 8)])
+    assert all_covered is False
+    assert "leg" in message
+    assert "Max Distance" in message
+    # The covered target still appears in the per-target counts.
+    assert "arm: 10/12" in message
+
+
+def test_summarize_transfer_no_targets_is_covered():
+    from core.skinning.weight_transfer import summarize_transfer  # noqa: E402
+
+    all_covered, _message = summarize_transfer([])
+    assert all_covered is True

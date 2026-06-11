@@ -70,3 +70,7 @@ PROSCENIO_USER_OUTER_STROKES = "proscenio_user_outer_strokes"
 PROSCENIO_IMPORT_ORIGIN = "proscenio_import_origin"
 PROSCENIO_PSD_KIND = "proscenio_psd_kind"
 PROSCENIO_BLEND_MODE = "proscenio_blend_mode"
+# The quad placement (width, height, offset_x, offset_z) baked at import.
+# A re-import with the same placement is an art retouch - the mesh, any
+# automesh densification, and painted weights are left untouched.
+PROSCENIO_IMPORT_PLACEMENT = "proscenio_import_placement"

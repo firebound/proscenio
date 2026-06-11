@@ -8,6 +8,7 @@ import bpy
 from bpy.props import FloatProperty
 
 from ...core.skinning.weight_transfer import (  # type: ignore[import-not-found]
+    summarize_transfer,
     transfer_weights_by_nearest,
 )
 
@@ -41,14 +42,12 @@ class PROSCENIO_OT_copy_weights_to_selected(bpy.types.Operator):
         source = context.active_object
         targets = [o for o in context.selected_objects if o.type == "MESH" and o != source]
         source_positions, source_weights = _collect_source_data(source)
-        total_verts_copied = sum(
-            _apply_to_target(target, source_positions, source_weights, self.max_distance)
-            for target in targets
-        )
-        self.report(
-            {"INFO"},
-            f"Copied weights to {total_verts_copied} vert(s) across {len(targets)} mesh(es)",
-        )
+        per_target: list[tuple[str, int, int]] = []
+        for target in targets:
+            applied = _apply_to_target(target, source_positions, source_weights, self.max_distance)
+            per_target.append((target.name, applied, len(target.data.vertices)))
+        all_covered, message = summarize_transfer(per_target)
+        self.report({"INFO"} if all_covered else {"WARNING"}, message)
         return {"FINISHED"}
 
 

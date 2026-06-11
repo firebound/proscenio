@@ -111,7 +111,6 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "bind": FeatureStatus.GODOT_READY,
     "edit_weights": FeatureStatus.BLENDER_ONLY,
     "snapshot": FeatureStatus.BLENDER_ONLY,
-    "sidecar_io": FeatureStatus.BLENDER_ONLY,
     "weight_transfer": FeatureStatus.GODOT_READY,
     "pipeline": FeatureStatus.GODOT_READY,
     "import": FeatureStatus.BLENDER_ONLY,

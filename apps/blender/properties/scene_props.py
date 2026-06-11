@@ -273,6 +273,17 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=-1.0,
     )
+    weight_transfer_max_distance: FloatProperty(  # type: ignore[valid-type]
+        name="Weight transfer max distance",
+        description=(
+            "Target verts farther than this from any source vert receive no "
+            "weights (Weight Transfer). Raise it when targets sit far from the "
+            "source mesh; the operator warns when a target gets zero coverage."
+        ),
+        default=0.5,
+        min=0.0,
+        soft_max=5.0,
+    )
     preserve_on_regen: BoolProperty(  # type: ignore[valid-type]
         name="Preserve weights on regen",
         description=(

@@ -14,6 +14,7 @@ import bpy
 from bpy.props import EnumProperty, StringProperty
 
 from ...core.skinning.bone_modes import (  # type: ignore[import-not-found]
+    clear_bone_mode,
     read_bone_modes,
     write_bone_modes,
 )
@@ -38,6 +39,7 @@ class PROSCENIO_OT_set_bone_mode(bpy.types.Operator):
         items=[
             ("SOFT", "Soft", "Proximity falloff"),
             ("HARD", "Hard", "Single-nearest"),
+            ("CLEAR", "Clear", "Drop the override - use the bind mode default"),
         ],
         default="SOFT",
     )
@@ -51,6 +53,9 @@ class PROSCENIO_OT_set_bone_mode(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return {"CANCELLED"}
+        if self.mode == "CLEAR":
+            clear_bone_mode(obj, self.bone_name)
+            return {"FINISHED"}
         modes = dict(read_bone_modes(obj))
         modes[self.bone_name] = self.mode
         write_bone_modes(obj, modes)

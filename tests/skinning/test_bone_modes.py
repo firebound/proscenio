@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
@@ -72,3 +74,39 @@ def test_per_bone_override_beats_default():
     write_bone_modes(obj, {"specific_bone": "HARD"})
     assert bone_mode_for(obj, "specific_bone", default="SOFT") == "HARD"
     assert bone_mode_for(obj, "other_bone", default="SOFT") == "SOFT"
+
+
+@pytest.mark.parametrize(
+    ("bind_mode", "expected"),
+    [
+        ("BONE_HEAT", False),
+        ("PROXIMITY", True),
+        ("ENVELOPE", True),
+        ("SINGLE_NEAREST", True),
+        ("EMPTY", True),
+    ],
+)
+def test_overrides_apply_only_off_bone_heat(bind_mode, expected):
+    # Mirrors apply_bind's BONE_HEAT early-return: per-bone SOFT/HARD only
+    # reaches the override pass under the planar modes. Gates the panel box.
+    from core.skinning.bone_modes import overrides_apply_under_bind_mode
+
+    assert overrides_apply_under_bind_mode(bind_mode) is expected
+
+
+def test_clear_bone_mode_pops_only_the_named_bone():
+    from core.skinning.bone_modes import clear_bone_mode
+
+    obj = _FakeObj()
+    write_bone_modes(obj, {"bone_a": "SOFT", "bone_b": "HARD"})
+    clear_bone_mode(obj, "bone_a")
+    assert read_bone_modes(obj) == {"bone_b": "HARD"}
+
+
+def test_clear_bone_mode_missing_key_is_noop():
+    from core.skinning.bone_modes import clear_bone_mode
+
+    obj = _FakeObj()
+    write_bone_modes(obj, {"bone_b": "HARD"})
+    clear_bone_mode(obj, "absent")
+    assert read_bone_modes(obj) == {"bone_b": "HARD"}

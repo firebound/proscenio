@@ -96,6 +96,48 @@ def _has_any_weight(obj: bpy.types.Object) -> bool:
     return False
 
 
+def snapshot_live_vgroups(obj: bpy.types.Object) -> WeightSidecar | None:
+    """Build a sidecar from obj's current vertex-group weights + UV anchors.
+
+    Armature-free counterpart to ``snapshot_sidecar`` for the PSD re-import:
+    when a mesh carries painted weights but no usable sidecar (a native Auto
+    Weights bind writes none, or the stored one is corrupt), capture the live
+    weights before a rebuild wipes them so the post-rebuild reproject has
+    something to restore. Returns None when the mesh has no UV layer or no
+    weighted vertex.
+    """
+    anchors = per_vert_uv_anchors(obj)
+    if anchors is None:
+        return None
+    group_names = [vg.name for vg in obj.vertex_groups]
+    if not group_names:
+        return None
+    entries: list[SidecarEntry] = []
+    any_weight = False
+    for vert in obj.data.vertices:
+        weights: dict[str, float] = {}
+        for group_elem in vert.groups:
+            weight = group_elem.weight
+            if weight > 1e-6:
+                weights[obj.vertex_groups[group_elem.group].name] = weight
+                any_weight = True
+        entries.append(
+            SidecarEntry(uv_anchor=anchors[vert.index], weights=weights, provenance="auto_seed")
+        )
+    if not any_weight:
+        return None
+    new_hash = compute_topology_hash(
+        len(obj.data.vertices),
+        [list(p.vertices) for p in obj.data.polygons],
+    )
+    return WeightSidecar(
+        version=SIDECAR_VERSION,
+        vertex_group_names=group_names,
+        mesh_topology_hash=new_hash,
+        entries=entries,
+    )
+
+
 def maybe_post_regen_reproject(
     obj: bpy.types.Object,
     armature: bpy.types.Object,
@@ -132,28 +174,40 @@ def maybe_post_regen_reproject(
             "total": len(stub.entries),
             "topology_changed": 1,
         }
-    raw_results = reproject_entries(prior_sidecar.entries, new_anchors)
     deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
+    return _reproject_and_apply(
+        obj, prior_sidecar.entries, new_anchors, new_hash, deform_bone_names
+    )
+
+
+def _reproject_and_apply(
+    obj: bpy.types.Object,
+    prior_entries: list[SidecarEntry],
+    new_anchors: list[tuple[float, float]],
+    new_hash: str,
+    vertex_group_names: list[str],
+) -> dict[str, int]:
+    """Reproject prior entries onto new_anchors, apply, and persist the sidecar.
+
+    Shared by the automesh regen hook (vertex_group_names = the armature's
+    deform bones) and the PSD re-import (vertex_group_names = the surviving
+    snapshot's own names, since no deform armature is in hand there).
+    """
+    raw_results = reproject_entries(prior_entries, new_anchors)
     final_entries: list[SidecarEntry] = []
     reprojected_count = 0
     auto_seed_count = 0
     for vert_idx, anchor in enumerate(new_anchors):
         candidate = raw_results[vert_idx]
         if candidate is None:
-            final_entries.append(
-                SidecarEntry(
-                    uv_anchor=anchor,
-                    weights={},
-                    provenance="auto_seed",
-                )
-            )
+            final_entries.append(SidecarEntry(uv_anchor=anchor, weights={}, provenance="auto_seed"))
             auto_seed_count += 1
         else:
             final_entries.append(candidate)
             reprojected_count += 1
     new_sidecar = WeightSidecar(
         version=SIDECAR_VERSION,
-        vertex_group_names=deform_bone_names,
+        vertex_group_names=vertex_group_names,
         mesh_topology_hash=new_hash,
         entries=final_entries,
     )
@@ -165,6 +219,35 @@ def maybe_post_regen_reproject(
         "total": len(final_entries),
         "topology_changed": 1,
     }
+
+
+def reproject_stored_sidecar(obj: bpy.types.Object) -> dict[str, int] | None:
+    """Reproject the obj's stored weight snapshot onto its current topology.
+
+    The PSD re-import rebuilds the quad on a bounds change, wiping vertex
+    weights - but the painted weights live in the proscenio_weight_sidecar
+    Custom Property, which is object-level and survives the geometry rebuild.
+    Reproject those onto the fresh quad's UV anchors and reapply. Returns None
+    when there is no usable snapshot or the mesh has no UV layer; no deform
+    armature is needed (the snapshot carries its own vertex_group_names).
+    """
+    payload = obj.get(_SIDECAR_KEY)
+    if payload is None:
+        return None
+    try:
+        prior = from_json(payload)
+    except ValueError:
+        return None
+    if not prior.entries:
+        return None
+    new_anchors = per_vert_uv_anchors(obj)
+    if new_anchors is None:
+        return None
+    new_hash = compute_topology_hash(
+        len(obj.data.vertices),
+        [list(p.vertices) for p in obj.data.polygons],
+    )
+    return _reproject_and_apply(obj, prior.entries, new_anchors, new_hash, prior.vertex_group_names)
 
 
 def _get_skinning_props() -> bpy.types.PropertyGroup | None:

@@ -2,9 +2,9 @@
 
 The parent polls on the active element being a mesh (weight painting does
 not apply to sprite elements) and surfaces the picker readout; the work
-lives in accordion subpanels: Bind, Edit Weights, Snapshot, Sidecar IO,
-Weight Transfer. The panel renders on any selection and shows a mesh-only
-hint when the active element is not a mesh.
+lives in accordion subpanels: Bind, Edit Weights, Snapshot (which also holds
+the snapshot file export / import), Weight Transfer. The panel renders on any
+selection and shows a mesh-only hint when the active element is not a mesh.
 """
 
 from __future__ import annotations
@@ -98,6 +98,7 @@ class PROSCENIO_PT_edit_weights(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_edit_weights(self.layout, context.active_object, _active_armature(context))
+        _draw_weight_overlay_controls(self.layout, context)
 
 
 class PROSCENIO_PT_snapshot(bpy.types.Panel):
@@ -123,29 +124,6 @@ class PROSCENIO_PT_snapshot(bpy.types.Panel):
         _draw_snapshot(self.layout, _scene_skinning(context), context.active_object)
 
 
-class PROSCENIO_PT_sidecar_io(bpy.types.Panel):
-    """Sidecar IO subpanel - export / import the weight sidecar JSON."""
-
-    bl_label = "Sidecar IO"
-    bl_idname = "PROSCENIO_PT_sidecar_io"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_weight_paint"
-    bl_order = 3
-    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context: bpy.types.Context) -> bool:
-        return _is_mesh_element(context)
-
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "sidecar_io", "sidecar_io")
-
-    def draw(self, context: bpy.types.Context) -> None:
-        _draw_sidecar_io(self.layout, context.active_object)
-
-
 class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
     """Weight Transfer subpanel - copy weights from the active mesh to selected."""
 
@@ -165,8 +143,16 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "weight_transfer", "weight_transfer")
 
-    def draw(self, _context: bpy.types.Context) -> None:
-        self.layout.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        skinning_props = _scene_skinning(context)
+        if skinning_props is not None:
+            layout.prop(skinning_props, "weight_transfer_max_distance", text="Max Distance")
+        op = layout.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")
+        if skinning_props is not None:
+            # Seed the operator from the panel so the click uses the field value;
+            # F9 redo still exposes max_distance for a one-off tweak.
+            op.max_distance = skinning_props.weight_transfer_max_distance
 
 
 def _draw_bind(
@@ -175,16 +161,26 @@ def _draw_bind(
     picker: bpy.types.Object | None,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Bind to Picker Armature + per-bone Soft/Hard overrides.
+    """Bind mode + target armature + per-bone overrides, then the Bind button.
 
-    Run button is disabled when no picker armature is set. Per-bone
-    override rows appear once a picker is present; a missing entry means
-    the bone uses the operator-level default (bind_init_mode).
+    The Bind button is drawn last so the panel reads Mode, overrides, then
+    the action that consumes them; it is disabled when no picker armature is
+    set. The overrides box only draws its per-bone rows under the planar
+    modes - Bone Heat returns before the override pass in ``apply_bind``, so
+    under it the box shows a hint instead of inert toggles.
     """
-    from ..core.skinning.bone_modes import read_bone_modes  # type: ignore[import-not-found]
-
+    bind_mode = "BONE_HEAT"
     if skinning_props is not None:
         layout.prop(skinning_props, "bind_init_mode", text="Mode")
+        bind_mode = skinning_props.bind_init_mode
+    layout.label(
+        text=f"Target: {picker.name}" if picker is not None else "Target: (no picker armature)",
+        icon="ARMATURE_DATA",
+    )
+
+    if picker is not None and obj is not None and obj.type == "MESH":
+        _draw_bone_overrides(layout, obj, picker, bind_mode)
+
     row = layout.row()
     row.enabled = picker is not None
     row.operator(
@@ -193,16 +189,35 @@ def _draw_bind(
         icon="MOD_ARMATURE",
     )
 
-    if picker is None or obj is None or obj.type != "MESH":
-        return
 
-    modes = read_bone_modes(obj)
+def _draw_bone_overrides(
+    layout: bpy.types.UILayout,
+    obj: bpy.types.Object,
+    picker: bpy.types.Object,
+    bind_mode: str,
+) -> None:
+    """Per-bone Soft / Hard / Clear rows, or a hint when the mode ignores them.
+
+    A missing entry means the bone uses the operator-level default
+    (bind_init_mode); the per-row clear button drops an override back to it.
+    """
+    from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
+        overrides_apply_under_bind_mode,
+        read_bone_modes,
+    )
+
     bones = picker.data.bones if picker.data is not None else []
     if not bones:
         return
-
     override_box = layout.box()
     override_box.label(text="Per-bone Soft/Hard overrides:")
+    if not overrides_apply_under_bind_mode(bind_mode):
+        override_box.label(
+            text="applies only to the planar modes - Bone Heat ignores these",
+            icon="INFO",
+        )
+        return
+    modes = read_bone_modes(obj)
     for bone in bones:
         current = modes.get(bone.name, "")
         bone_row = override_box.row(align=True)
@@ -221,6 +236,11 @@ def _draw_bind(
         )
         op_hard.bone_name = bone.name
         op_hard.mode = "HARD"
+        clear_sub = bone_row.row(align=True)
+        clear_sub.enabled = current != ""
+        op_clear = clear_sub.operator("proscenio.set_bone_mode", text="", icon="X")
+        op_clear.bone_name = bone.name
+        op_clear.mode = "CLEAR"
 
 
 def _draw_edit_weights(
@@ -280,21 +300,45 @@ def _edit_weights_button_enabled(
     return obj.get(PROSCENIO_WEIGHT_SIDECAR) is not None
 
 
+def _draw_weight_overlay_controls(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+) -> None:
+    """Native viewport overlay levers so the texture shows through while painting.
+
+    Surfaces Blender's own weight-paint opacity + Zero Weights display rather
+    than building a custom overlay (the flat-mesh display ask). Opacity 0 does
+    not fully hide the overlay - upstream Blender issue 145603.
+    """
+    box = layout.box()
+    box.label(text="Viewport display:")
+    overlay = getattr(context.space_data, "overlay", None)
+    if overlay is not None:
+        box.prop(overlay, "weight_paint_mode_opacity", text="Weight Opacity")
+    tool_settings = context.tool_settings
+    if tool_settings is not None:
+        box.prop(tool_settings, "vertex_group_user", text="Zero Weights")
+    box.label(text="opacity 0 is not fully invisible (Blender 145603)", icon="INFO")
+
+
 def _draw_snapshot(
     layout: bpy.types.UILayout,
     skinning_props: bpy.types.PropertyGroup | None,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Sidecar toggles + provenance counts pill + Restore button.
+    """Snapshot toggles + provenance counts pill + Restore + file IO.
 
     Counts are recomputed live from the JSON payload stored on the active mesh.
+    The Export / Import buttons (folded in from the former Sidecar IO subpanel)
+    write the snapshot to a file or load one back; Import also pushes it onto
+    the live weights when the mesh topology still matches.
     """
     if skinning_props is not None:
         layout.prop(skinning_props, "preserve_on_regen")
         layout.prop(skinning_props, "show_provenance_overlay")
     counts = _sidecar_counts(obj)
     if counts is None:
-        layout.label(text="no sidecar (run Bind first)", icon="INFO")
+        layout.label(text="no snapshot (run Bind first)", icon="INFO")
     else:
         layout.label(
             text=(
@@ -310,6 +354,10 @@ def _draw_snapshot(
         text="Reset to Last Saved Weights",
         icon="LOOP_BACK",
     )
+    layout.separator()
+    io_row = layout.row(align=True)
+    io_row.operator("proscenio.export_sidecar", text="Export Snapshot", icon="EXPORT")
+    io_row.operator("proscenio.import_sidecar", text="Import Snapshot", icon="IMPORT")
 
 
 def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
@@ -333,24 +381,11 @@ def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
     return counts
 
 
-def _draw_sidecar_io(
-    layout: bpy.types.UILayout,
-    obj: bpy.types.Object | None,
-) -> None:
-    """Export + Import file-dialog buttons for the sidecar JSON."""
-    row = layout.row(align=True)
-    row.operator("proscenio.export_sidecar", text="Export", icon="EXPORT")
-    row.operator("proscenio.import_sidecar", text="Import", icon="IMPORT")
-    if obj is not None and obj.type == "MESH" and obj.get(PROSCENIO_WEIGHT_SIDECAR) is None:
-        layout.label(text="no sidecar yet (run Bind first)", icon="INFO")
-
-
 _classes: tuple[type, ...] = (
     PROSCENIO_PT_weight_paint,
     PROSCENIO_PT_bind,
     PROSCENIO_PT_edit_weights,
     PROSCENIO_PT_snapshot,
-    PROSCENIO_PT_sidecar_io,
     PROSCENIO_PT_weight_transfer,
 )
 

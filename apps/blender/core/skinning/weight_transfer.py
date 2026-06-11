@@ -37,3 +37,26 @@ def transfer_weights_by_nearest(
         best_idx = nearest_index(target, source_positions, max_distance)
         out.append(dict(source_weights[best_idx]) if best_idx >= 0 else {})
     return out
+
+
+def summarize_transfer(per_target: Sequence[tuple[str, int, int]]) -> tuple[bool, str]:
+    """Build the report for a weight transfer run.
+
+    ``per_target`` is ``(target_name, verts_weighted, verts_total)`` per
+    target. Returns ``(all_covered, message)``: ``all_covered`` is False when
+    any target received zero coverage, so the caller reports WARNING (else
+    INFO). The message always lists per-target coverage; on a miss it names the
+    empty targets with the fix hint, since a target left fully beyond the
+    radius otherwise reads as a successful no-op.
+    """
+    if not per_target:
+        return True, "Weight transfer: no target meshes"
+    parts = [f"{name}: {weighted}/{total} verts" for name, weighted, total in per_target]
+    summary = "Weight transfer - " + "; ".join(parts)
+    zero = [name for name, weighted, _ in per_target if weighted == 0]
+    if zero:
+        return False, (
+            f"{summary}. No coverage for {', '.join(zero)} - "
+            "raise Max Distance or move the meshes closer."
+        )
+    return True, summary

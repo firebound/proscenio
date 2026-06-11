@@ -1,7 +1,8 @@
 """Brush curve presets for Edit Weights modal.
 
-Four named presets that configure the active weight-paint brush curve
-(brush.curve.curves[0].points). Saves artist trips to the curve editor.
+Four named presets that configure the active weight-paint brush falloff
+curve (brush.curve_distance_falloff.curves[0].points - renamed from the
+pre-5.x brush.curve). Saves artist trips to the curve editor.
 
 Curve points are (x, y) in [0, 1] x [0, 1] where x = stroke distance
 from center (0=center, 1=brush edge) and y = strength multiplier

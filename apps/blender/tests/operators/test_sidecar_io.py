@@ -101,3 +101,61 @@ def test_export_poll_false_without_sidecar(automesh_fixture):
     # poll() returns False, so invoking the op raises RuntimeError.
     with pytest.raises(RuntimeError):
         bpy.ops.proscenio.export_sidecar(filepath="irrelevant.json")
+
+
+def _vert_has_weight(obj: bpy.types.Object, idx: int) -> bool:
+    for vg in obj.vertex_groups:
+        try:
+            if vg.weight(idx) > 1e-6:
+                return True
+        except RuntimeError:
+            continue
+    return False
+
+
+def test_import_applies_live_weights_when_topology_matches(automesh_fixture):
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    assert len(obj.vertex_groups) > 0
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        tmp_path = Path(f.name)
+    try:
+        assert "FINISHED" in bpy.ops.proscenio.export_sidecar(filepath=str(tmp_path))
+        # Wipe the live weights so a successful import must re-create them.
+        obj.vertex_groups.clear()
+        assert len(obj.vertex_groups) == 0
+
+        assert "FINISHED" in bpy.ops.proscenio.import_sidecar(filepath=str(tmp_path))
+        # Topology is unchanged, so import reapplied the snapshot onto live groups.
+        assert len(obj.vertex_groups) > 0, "import did not re-create vertex groups"
+        wrote_live_weights = any(_vert_has_weight(obj, v.index) for v in obj.data.vertices)
+        assert wrote_live_weights, "import did not write live weights"
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_import_stores_only_when_topology_mismatches(automesh_fixture):
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        tmp_path = Path(f.name)
+    try:
+        assert "FINISHED" in bpy.ops.proscenio.export_sidecar(filepath=str(tmp_path))
+        # Tamper the topology hash so the live mesh no longer matches.
+        data = json.loads(tmp_path.read_text(encoding="utf-8"))
+        data["mesh_topology_hash"] = "mismatch-not-the-real-hash"
+        tmp_path.write_text(json.dumps(data), encoding="utf-8")
+        # Wipe live weights; a stored-only import must NOT re-create them.
+        obj.vertex_groups.clear()
+
+        assert "FINISHED" in bpy.ops.proscenio.import_sidecar(filepath=str(tmp_path))
+        # CP stored the tampered payload, but the live weights stay untouched.
+        stored = json.loads(obj["proscenio_weight_sidecar"])
+        assert stored["mesh_topology_hash"] == "mismatch-not-the-real-hash"
+        assert len(obj.vertex_groups) == 0, "stored-only import wrongly applied weights"
+    finally:
+        tmp_path.unlink(missing_ok=True)

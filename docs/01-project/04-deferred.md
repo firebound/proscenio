@@ -8,7 +8,6 @@ This file is intentionally coarse. Finer-grained items (single operators, CI mat
 
 Lift the artist out of "start from a 4-vertex quad" mode and toward "draw a shape, get a riggable mesh".
 
-- **Mesh tessellation from contour.** From a drawn outline (Blender `bmesh` + triangulation) or from the source image's alpha channel.
 - **Procedural mesh subdivision presets.** Low / medium / high density quad subdivision so the user does not start from scratch.
 - **Auto-rig templates.** Humanoid, quadruped, doll presets - "create armature with the bone naming the writer expects". Less ambitious than full auto-rig; more of a one-click onboarding step.
 
@@ -27,7 +26,6 @@ The runtime side of "what a character can do".
 
 - **Skin coordination.** Spine-style "skin" that groups N slot attachments under a named variant; one switch flips the whole costume.
 - **Bone physics, path constraints, transform constraints.** Spine-style runtime constraints. Requires a format extension and concrete demand.
-- **Symmetric / non-destructive weight transfer.** Transfer weights between sprites with identical topology for character variants sharing skeleton + mesh.
 
 ## Format extensions
 

@@ -31,10 +31,11 @@ Verified index of every open backlog item, grouped by plugin and area. Each row:
 | feature | format-migration-path | Format detection + v1-to-v2 migration path | open | no `migrations/` in tree; `importer.gd:136-140` errors with no migrator pointer | [backlog.md](backlog.md#format-detection--migration) |
 | feature | bone-physics-export | Bone physics joint-chain export (cape, hair) | open | no joint/stiffness/damping fields in models | [backlog.md](backlog.md#bone-physics-joint-chain-export) |
 | feature | path-constraint-export | Path-constraint export (PathFollow2D) | open | no path-geometry fields in models | [backlog.md](backlog.md#path-constraint-export) |
+| feature | transform-constraint-export | Transform constraint export (cross-bone copy via RemoteTransform2D) | open | writer exports raw bone keyframes only; no constraints[] in models | [backlog.md](backlog.md#transform-constraint-export-cross-bone-copy) |
 | feature | texture-region-track | Continuous UV animation (texture_region track) | open | Track literal = bone_transform/sprite_frame/slot_attachment/visibility only | [backlog.md](backlog.md#continuous-uv-animation-texture-region-track) |
 | feature | sprite-frame-export-path | sprite_frame track: Blender export path missing | open | grep sprite_frame in exporters: zero hits; writer emits bone_transform + slot_attachment only | [backlog.md](backlog.md#sprite_frame-animation-track---blender-export-path) |
 | feature | visibility-track-both-sides | visibility track: implement both sides or retire | open | `animation_builder.gd:86` still `push_warning("not implemented yet")`; no Blender emission | [backlog.md](backlog.md#visibility-animation-track---blender-export-path) |
-| feature | sprite-appearance-passthrough | Sprite appearance: modulate / z_index / flip / blend_mode passthrough | open | MeshElement/SpriteElement carry none; blend_mode exists only on PSD-manifest side | [backlog.md](backlog.md#sprite-appearance-fields---modulate--draw-order--flip--blend-mode-passthrough) |
+| feature | sprite-appearance-passthrough | Sprite appearance: modulate / z_index / flip / blend_mode / mask passthrough | open | MeshElement/SpriteElement carry none; blend_mode on PSD side only; mask needs a Godot masking strategy (heaviest, may split) | [backlog.md](backlog.md#sprite-appearance-fields---modulate--draw-order--flip--blend-mode--mask-passthrough) |
 | feature | sprite-pivot-offset | Sprite pivot / Sprite2D.offset from Blender origin | partial | schema field exists (`proscenio.py:155`) + importer stamps it (`sprite_builder.gd:48-49`); writer never computes offset from the Blender origin | [backlog.md](backlog.md#sprite-pivot--sprite2doffset-from-the-blender-origin) |
 | feature | ik-round-trip | IK constraints round-trip Blender to Godot | open | raw bone keyframes only; no SkeletonModification in Godot addon; no bake-at-export | [backlog.md](backlog.md#ik-constraints-round-trip-blender---godot) |
 | feature | nla-strips-to-actions | NLA strips flattened to baked Actions | open | `animations.py:162` iterates `bpy.data.actions`; no NLA/bake handling | [backlog.md](backlog.md#nla-strips-to-actions) |
@@ -59,6 +60,7 @@ Verified index of every open backlog item, grouped by plugin and area. Each row:
 | ui | driver-readout-inspect-reset | Inline driver-value readout + Inspect/Reset buttons | open | `_draw_driver_shortcut.py:14-28` picker fields + create operator only | [backlog-ui-feedback.md](backlog-ui-feedback.md#active-sprite-panel) |
 | ui | sticky-panel | Sticky/pinned panel while editing pose bone | open | panels poll on active MESH; no pin/lock affordance | [backlog-ui-feedback.md](backlog-ui-feedback.md#active-sprite-panel) |
 | feature | drive-slot-from-bone | Drive slot attachment from a bone | open | no slot driver code in `operators/slot/` | [backlog.md](backlog.md#drive-slot-attachment-from-a-bone-slot-analog-of-drive-from-bone) |
+| feature | skin-coordination | Skin coordination - named attachment sets across slots | open | per-slot visibility only; no skins[] grouping (promoted from deferred) | [backlog.md](backlog.md#skin-coordination---named-attachment-sets-across-slots) |
 
 ### Active Slot / Slots panel
 
@@ -83,6 +85,7 @@ Verified index of every open backlog item, grouped by plugin and area. Each row:
 | ui | automesh-modal-copy | Rename "Automesh (modal)" to action-oriented copy | open | `mesh_generation.py:185` button "Automesh (modal)"; `:174` "Multi-stage modal preview" | [backlog-ui-feedback.md](backlog-ui-feedback.md#weight-paint-panel-spec-022) |
 | feature | element-type-gating | Element-type gating: warn on sprite, validate quad | open | `mesh_generation.py:31-34` accepts any MESH; `automesh.py:166-168` poll type-only; no quad check | [backlog.md](backlog.md#element-type-gating-mesh-only-tools-warn-on-sprite--sprite-stays-a-quad) |
 | feature | sprite-rigid-single-bone-bind | Sprite rigid single-bone bind (weight-paint is mesh-only) | open | `weight_paint.py:25-31` mesh-only gate shipped; no rigid-bind control/operator exists | [backlog.md](backlog.md#sprite-rigid-single-bone-bind-weight-paint-is-mesh-only) |
+| feature | manual-hull-pen-tool | Manual mesh authoring - click-to-place hull (Spine Create-mode) | open | only alpha-trace paths exist; no manual pen-tool hull authoring | [backlog.md](backlog.md#manual-mesh-authoring---click-to-place-hull-spine-create-mode-analog) |
 
 ### Weight Paint panel
 

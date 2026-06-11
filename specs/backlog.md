@@ -42,6 +42,16 @@ Bones following a path: tail swish along a curve, eye blink along a Bezier, vehi
 
 **Trigger:** an animator authors a path constraint in Blender and asks why nothing happens on the Godot side.
 
+### Transform constraint export (cross-bone copy)
+
+**What:** Spine-style transform constraints - one bone copies position / rotation / scale / shear from another with a mix factor (Blender's Copy Location / Copy Rotation / Copy Transforms constraints). The writer exports raw bone keyframes only, so a constrained pose reaches Godot only if baked first; the constraint *relationship* never round-trips. Distinct from [bone physics](#bone-physics-joint-chain-export) (runtime simulation) and [path constraints](#path-constraint-export) (follow a curve) - this is a static cross-bone transform copy, split out per its own entry rather than folded into the physics umbrella.
+
+**Why:** Godot's `RemoteTransform2D` pushes one node's transform onto another, the engine-native analog of a copy-transform constraint. A schema field carrying (source bone, target bone, channel mask, mix) lets the importer wire it instead of forcing a pre-export bake. Keeps mechanical relationships (a gear bone driving another, an eye-aim bone) live and editable in Godot.
+
+**Scope sketch:** schema `constraints[]` entry of type `transform` with source / target bone, channel mask (loc/rot/scale/shear), and mix; the Godot importer wires a `RemoteTransform2D` under the source pushing to the target (or a small script resolver when `mix < 1` or only some channels are copied). `format_version=2`.
+
+**Trigger:** an animator sets a Copy Rotation / Copy Transforms constraint in Blender, exports, and the target bone does not follow in Godot.
+
 ### Continuous UV animation (texture region track)
 
 Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibility`) cover skeletal motion, grid-frame swap, attachment swap, and on/off. They do not cover continuous UV animation: animated water flow, conveyor belts, gradient sweeps, mask reveals, region resize.
@@ -72,7 +82,7 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** a feature needs timeline-driven show / hide of a sprite (swap a whole limb on / off), or a code-health pass decides to drop dead importer branches.
 
-### Sprite appearance fields - modulate / draw order / flip / blend-mode passthrough
+### Sprite appearance fields - modulate / draw order / flip / blend-mode / mask passthrough
 
 **What:** the `.proscenio` sprite types (`PolygonSprite`, `SpriteFrameSprite`) carry geometry, skinning, frame metadata and texture, but none of the *appearance* properties that Godot's `Polygon2D` / `Sprite2D` expose and 2D artists routinely use:
 
@@ -80,12 +90,13 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 - **draw order / z_index** - draw order is implicit in the `sprites[]` array order only; there is no explicit per-sprite `z_index`. Interleaving sprites across bones (an arm in front of the torso but behind the head) is not expressible.
 - **flip_h / flip_v** on the `Sprite2D` path.
 - **blend_mode** - the *PSD manifest* already carries `blend_mode` (`PolygonLayer.blend_mode` / `SpriteFrameLayer.blend_mode`, mapped to a Blender material on import), but the `.proscenio` sprite has no `blend_mode` field, so the value is dropped at the Blender → Godot hop. This is a pipeline discontinuity, not just a deferred feature: the upstream schema knows the blend mode and the downstream format throws it away.
+- **alpha mask / mask sprite** (from `04-deferred.md`) - one sprite masks (clips) another, the Spine clipping-attachment concept. The heaviest field here: Godot 2D has no per-`Polygon2D` mask property, so an engine-native route must be chosen (`CanvasGroup` + `clip_children`, a `Light2D` occluder mask, or `CanvasItem.clip_children`) - none is a single property like the others. Likely splits into its own spec rather than riding the additive-optional path the other fields take.
 
 **Why:** the format was scoped to geometry + skeleton + skinning + frame swap + slots + TRS animation - enough for a rigged character to deform and play. Appearance fidelity (tint, layering, blend) was outside the MVP. But these are not exotic: blend_mode is already half-plumbed (PSD → Blender), modulate and z_index are first-class 2D rendering knobs, and their absence means an artist's colour / blend / layer choices silently do not reach Godot.
 
 **Scope sketch:** add optional `modulate: [r, g, b, a]`, `z_index: int`, and `blend_mode` (reuse the manifest's `normal | multiply | screen | additive` literal) to both sprite variants; `flip_h` / `flip_v` to `SpriteFrameSprite`. Writer reads them from the Blender material / object; importer stamps the matching node property. For animation, add `modulate` and `z_index` as new track-target properties (or new track types) once the static fields land. Keep every field optional and defaulted so existing v1 goldens round-trip unchanged - additive optionals need no `format_version` bump.
 
-**Out of scope for this entry:** `material` / custom shader references (collides with the GDScript-only, no-GDExtension architecture rule) and method / audio tracks (separate animation-events entry above).
+**Out of scope for this entry:** `material` / custom shader references (collides with the GDScript-only, no-GDExtension architecture rule) and method / audio tracks (separate animation-events entry above). The mask-sprite bullet is in-scope to *track* here but will likely break out into its own spec once a Godot-native masking strategy is settled.
 
 **Trigger:** an artist tints or sets a blend mode on a sprite in Blender / Photoshop and finds it flat / normal in Godot, or a scene needs explicit cross-bone draw layering the array order cannot express.
 
@@ -127,6 +138,22 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** a user selects a sprite element and the Automesh from Alpha button runs without warning, or a re-meshed sprite exports a garbled sprite_frame grid.
 
+### Manual mesh authoring - click-to-place hull (Spine Create-mode analog)
+
+**What:** every mesh path today is alpha-driven - the one-shot `automesh_from_alpha` and the interactive modal both trace the sprite silhouette. There is no *manual* path where the artist places each hull vertex by clicking, pen-tool style (Illustrator / Photoshop pen): click a point, click the next, the loop auto-closes (the last point links back to the first), with a live preview of the closing edge and the resulting triangulation before commit. Spine ships both sides - Trace / Generate (automatic) and Create (manual click-to-place); Proscenio has only the automatic side. This is the "from a drawn outline" half of the old `04-deferred.md` mesh-tessellation umbrella (the alpha half shipped as automesh).
+
+**Why:** alpha-trace is great for clean silhouettes but fights stylized art, deliberate low-poly hulls, and shapes where the artist wants exact control over where each edge sits. A manual hull tool gives that control and complements - does not replace - automesh.
+
+**Scope sketch:**
+
+- **Create modal:** LMB places a hull vertex; a GPU overlay draws the polyline so far plus the closing edge from the last point back to the first (reuse the Quick Armature / automesh overlay machinery in `core/bpy_helpers`); RMB / Enter closes and triangulates (Constrained Delaunay - reuse the automesh triangulator); Esc cancels. A live triangulation preview before commit mirrors Spine's hull preview.
+- **Re-editable:** re-entering the tool adds / moves / deletes hull and interior vertices (Spine's Modify / Delete modes). On an already-bound mesh, a newly-added vertex reprojects its weight from the surrounding verts - the weight-sidecar + UV-anchor reprojection (`core/skinning/weight_snapshot`, already shipped for automesh regen) is the existing hook; extend it from full-mesh regen to single-vertex insertion (Spine auto-calculates a new vertex's weight from its neighbours; "Update Bindings" re-derives the bind pose - the analog here is a reproject-on-insert).
+- **Continuity:** the `proscenio_base_sprite` anchor + the preserve-on-regen contract carry over so a manually-authored hull survives a later automesh or PSD re-import the same way an alpha hull does.
+
+**Open questions:** interior vertex placement inside the same modal vs a second pass; whether to share the toggle-pen event routing already built for the automesh Stage 2 / Stage 4 (`decisions.md`, weight-paint + automesh) or ship a dedicated modal; straight segments only (this entry) vs curved - the existing "Bezier brush stroke for alpha-boundary trace" aspirational entry is the freehand-curve cousin, this one is discrete pen-style clicks.
+
+**Trigger:** an artist wants to hand-author a low-poly or stylized hull that alpha-trace cannot produce, or place mesh vertices deliberately like Spine's Create tool.
+
 ### Drive slot attachment from a bone (slot analog of Drive-from-Bone)
 
 **What:** the Element panel has Drive from Bone (a bone rotation / translation drives a sprite property via a driver + expression). There is no equivalent for slots: driving which attachment is active (the slot's visible child) from a bone. Today a slot swap animates via keyframed attachment visibility (`slot_attachment` tracks), but there is no driver-based "this bone angle selects this attachment" authoring path.
@@ -134,6 +161,16 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 **Why:** the ergonomics that make Drive-from-Bone useful for sprite_frame (a controller bone picks the frame) apply to slots (a controller bone picks the attachment - hand-pose selector swapping open / fist / point meshes, head turns). Needs a driver target on the slot's active-attachment state plus a panel UX mirroring Drive-from-Bone (range mapping rather than a raw expression - see the Drive-from-Bone UX rework in `backlog-ui-feedback.md`).
 
 **Trigger:** a rig wants a bone to select among slot attachments (hand poses, head turns) without hand-keyframing visibility.
+
+### Skin coordination - named attachment sets across slots
+
+**What:** Spine-style "skin" - a named variant that binds one attachment per slot across many slots at once, so a single switch flips a whole costume / character variant (knight vs mage, skin-tone A vs B). Today a slot swap is per-slot (`slot_attachment` visibility); there is no grouping that flips N slots together under one name. Promoted from the `04-deferred.md` "Skin coordination" umbrella.
+
+**Why:** variant characters share one skeleton + mesh and differ only in which attachment each slot shows; without a skin layer the artist hand-toggles every slot per variant. It is a coordination layer on top of the existing slot / attachment machinery - no new geometry, just a named map and a way to apply it.
+
+**Scope sketch:** schema `skins[]` mapping a skin name to `{ slot: attachment }`; the Godot importer emits one visibility-setting `AnimationPlayer` animation per skin (each sets the right attachment visible across its slots) or a small script selector. If it rides purely as generated animations it can stay additive; a first-class `skins[]` array on the document is a `format_version=2` concern. Pairs with [Drive slot attachment from a bone](#drive-slot-attachment-from-a-bone-slot-analog-of-drive-from-bone) (a bone could select the active skin) and with the slot system in `decisions.md`.
+
+**Trigger:** a character ships two costume variants sharing one rig and the artist wants one control to swap the whole set instead of keyframing each slot.
 
 ### Bone rotation-mode authoring surface (quaternion vs Euler)
 

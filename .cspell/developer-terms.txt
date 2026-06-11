@@ -371,3 +371,4 @@ msys
 pathconv
 contextmanager
 unvalidated
+occluder

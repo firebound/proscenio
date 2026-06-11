@@ -1,4 +1,8 @@
-# Blender addon reference
+---
+title: Blender Addon
+---
+
+# Blender Addon
 
 Per-panel reference for the Proscenio sidebar. Open it in Blender at **3D Viewport > Sidebar (`N`) > Proscenio**.
 

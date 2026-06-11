@@ -6,8 +6,12 @@ from typing import ClassVar
 
 import bpy
 from bpy.props import StringProperty
+from mathutils import Matrix
 
 from ...core._shared.report import report_info  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.geometry import (  # type: ignore[import-not-found]
+    world_geometry_center,
+)
 from ...core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-found]
     parent_keep_world,
 )
@@ -82,11 +86,19 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
                 empty.parent = seed.parent
                 empty.parent_type = seed.parent_type
                 empty.parent_bone = seed.parent_bone
-            empty.location = seed.matrix_world.to_translation()
+            # Write the world-space geometry center through ``matrix_world`` so a
+            # parented seed does not compound the offset through the parent
+            # matrix and an unapplied origin does not strand the slot away from
+            # its vertices.
+            empty.matrix_world = Matrix.Translation(world_geometry_center(selected_meshes))
 
         if hasattr(empty, "proscenio"):
             empty.proscenio.is_slot = True
 
+        # Evaluate the empty's world matrix before wrapping attachments so
+        # ``parent_keep_world`` reads a current ``matrix_world`` for its inverse.
+        if selected_meshes:
+            context.view_layer.update()
         for mesh_obj in selected_meshes:
             parent_keep_world(mesh_obj, empty)
 

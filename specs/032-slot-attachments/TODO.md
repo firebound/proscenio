@@ -6,20 +6,20 @@ Sequenced from [STUDY.md](STUDY.md): the blocking placement fix first, then the 
 
 ### Chunk 1 - slot placement matrix fix (blocking; one fix closes both bugs)
 
-- [ ] Compute the world-space geometry center of the selected meshes (`bound_box` corners through `matrix_world`) and write it through `empty.matrix_world` after parenting, replacing the world-into-local `empty.location` assignment ([create.py](../../apps/blender/operators/slot/create.py))
-- [ ] Headless tests: parented-seed and unapplied-origin fixtures asserting the Empty's world translation lands at the geometry center (and that attachments keep their world transforms via `parent_keep_world`)
+- [x] Compute the world-space geometry center of the selected meshes (`bound_box` corners through `matrix_world`) and write it through `empty.matrix_world` after parenting, replacing the world-into-local `empty.location` assignment ([create.py](../../apps/blender/operators/slot/create.py))
+- [x] Headless tests: parented-seed and unapplied-origin fixtures asserting the Empty's world translation lands at the geometry center (and that attachments keep their world transforms via `parent_keep_world`)
 - [ ] GUI confirmation on the logged repros: slot_swap_workbench multi-select Path B, and a mesh with origin at world zero and offset geometry
 
 ### Chunk 2 - keyframe the active attachment
 
-- [ ] Operator: set `proscenio_slot_index` to the chosen attachment's index and `keyframe_insert` on that custom-property data path with constant interpolation, surfaced as a button in the **Active Slot** subpanel ([attachment.py](../../apps/blender/operators/slot/attachment.py), [slots.py](../../apps/blender/panels/slots.py))
-- [ ] Headless test: invoking on a slot with an action produces exactly the fcurve key the writer already projects ([slot_animations.py](../../apps/blender/exporters/godot/writer/slot_animations.py) contract)
+- [x] Operator: set `proscenio_slot_index` to the chosen attachment's index and `keyframe_insert` on that custom-property data path with constant interpolation, surfaced as a button in the **Active Slot** subpanel ([attachment.py](../../apps/blender/operators/slot/attachment.py), [slots.py](../../apps/blender/panels/slots.py))
+- [x] Headless test: invoking on a slot with an action produces exactly the fcurve key the writer already projects ([slot_animations.py](../../apps/blender/exporters/godot/writer/slot_animations.py) contract)
 - [ ] GUI smoke: key two attachment swaps, export, confirm the swap plays in Godot (rides the existing slot_cycle/slot_swap verification pass)
 
 ### Chunk 3 - panel affordances (draw-only, one PR)
 
-- [ ] Inline hint above `Create Slot` naming the two context behaviors: Pose Mode + bone gives a bone-parented slot, Object Mode + meshes gives a wrapping slot ([slots.py](../../apps/blender/panels/slots.py))
-- [ ] Unparented-slot warning row in the **Active Slot** subpanel ("slot has no parent bone - attachments will not follow any bone"), sharing the predicate from the validator slot-no-parent-bone fix in the export-correctness spec instead of forking a second rule
+- [x] Inline hint above `Create Slot` naming the two context behaviors: Pose Mode + bone gives a bone-parented slot, Object Mode + meshes gives a wrapping slot ([slots.py](../../apps/blender/panels/slots.py))
+- [x] Unparented-slot warning row in the **Active Slot** subpanel ("slot has no parent bone - attachments will not follow any bone"), sharing the predicate from the validator slot-no-parent-bone fix in the export-correctness spec instead of forking a second rule
 
 ## Deferred
 

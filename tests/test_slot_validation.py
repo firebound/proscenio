@@ -14,7 +14,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.validation import validate_active_slot  # noqa: E402
+from core.validation import slot_parent_bone, validate_active_slot  # noqa: E402
 
 
 def _slot_props(*, is_slot: bool = True, slot_default: str = "") -> SimpleNamespace:
@@ -168,3 +168,20 @@ def test_slot_with_no_bone_skips_bone_mismatch_check() -> None:
         ],
     )
     assert validate_active_slot(empty) == []
+
+
+def test_slot_parent_bone_reads_a_bone_parent() -> None:
+    empty = _empty("forearm.swap", parent_bone="forearm.L", parent_type="BONE")
+    assert slot_parent_bone(empty) == "forearm.L"
+
+
+def test_slot_parent_bone_empty_when_object_parented() -> None:
+    # parent_bone is a stale leftover; parent_type OBJECT means it is not a
+    # bone parent, so the shared predicate reports the slot as unparented.
+    empty = _empty("loose.swap", parent_bone="forearm.L", parent_type="OBJECT")
+    assert slot_parent_bone(empty) == ""
+
+
+def test_slot_parent_bone_empty_when_unparented() -> None:
+    empty = _empty("free.swap")
+    assert slot_parent_bone(empty) == ""

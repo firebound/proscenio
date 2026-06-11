@@ -30,13 +30,14 @@ Submodules per concern:
 from __future__ import annotations
 
 from .active_element import validate_active_element
-from .active_slot import validate_active_slot
+from .active_slot import slot_parent_bone, validate_active_slot
 from .export import validate_export
 from .issue import Issue, Severity
 
 __all__ = [
     "Issue",
     "Severity",
+    "slot_parent_bone",
     "validate_active_element",
     "validate_active_slot",
     "validate_export",

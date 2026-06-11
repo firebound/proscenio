@@ -71,6 +71,10 @@ class PROSCENIO_PT_slots(bpy.types.Panel):
                 n_children = sum(1 for c in slot.children if c.type == "MESH")
                 row.label(text=str(n_children), icon="OUTLINER_OB_MESH")
         layout.separator()
+        tip = layout.box().column(align=True)
+        tip.scale_y = 0.8
+        tip.label(text="Pose Mode + active bone: slot anchored to the bone", icon="INFO")
+        tip.label(text="Object Mode + meshes: slot wraps the selection", icon="BLANK1")
         layout.operator("proscenio.create_slot", text="Create Slot", icon="ADD")
 
 
@@ -108,12 +112,20 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             key=lambda c: c.name,
         )
 
+        parent_bone = validation.slot_parent_bone(empty)
         col = layout.column()
         col.label(text=f"Slot '{empty.name}'", icon="LINK_BLEND")
         col.label(
-            text=f"bone: {empty.parent_bone or '(unparented)'}",
+            text=f"bone: {parent_bone or '(unparented)'}",
             icon="BONE_DATA",
         )
+        if not parent_bone:
+            warn = col.row()
+            warn.alert = True
+            warn.label(
+                text="no parent bone - attachments will not follow any bone",
+                icon="ERROR",
+            )
 
         layout.separator()
         layout.label(text=f"Attachments ({len(children)}):", icon="OUTLINER_OB_MESH")
@@ -137,6 +149,12 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             row.label(text=child.name)
             kind = _attachment_kind_for(child)
             row.label(text=kind, icon=_attachment_icon_for(kind))
+            key_op = row.operator(
+                "proscenio.keyframe_slot_attachment",
+                text="",
+                icon="KEYFRAME_HLT",
+            )
+            key_op.attachment_name = child.name
 
         layout.separator()
         row = layout.row()

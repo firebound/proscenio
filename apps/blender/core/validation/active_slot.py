@@ -60,19 +60,26 @@ def _check_slot_default(obj: object, children: list[object], obj_name: str) -> l
     ]
 
 
-def _slot_bone_of(obj: object) -> str:
+def slot_parent_bone(obj: object) -> str:
+    """The bone ``obj`` is parented to, or "" when it is not bone-parented.
+
+    Requires ``parent_type == "BONE"``: a leftover ``parent_bone`` string on an
+    OBJECT-parented slot is not a live bone parent. Shared by the slot
+    validators and the Active Slot panel so the "no parent bone" notion has a
+    single definition rather than a forked inline check.
+    """
     if getattr(obj, "parent_type", "") != "BONE":
         return ""
     return str(getattr(obj, "parent_bone", ""))
 
 
 def _check_slot_child_bones(obj: object, children: list[object], obj_name: str) -> list[Issue]:
-    slot_bone = _slot_bone_of(obj)
+    slot_bone = slot_parent_bone(obj)
     if not slot_bone:
         return []
     issues: list[Issue] = []
     for child in children:
-        child_bone = _slot_bone_of(child)
+        child_bone = slot_parent_bone(child)
         if child_bone and child_bone != slot_bone:
             child_name = name_of(child)
             issues.append(

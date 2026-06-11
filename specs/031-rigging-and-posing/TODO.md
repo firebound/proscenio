@@ -6,34 +6,34 @@ Sequenced from the assessment in [STUDY.md](STUDY.md): the Drive-from-Bone rewor
 
 ### PR 1: Drive from Bone edits two ranges instead of a raw expression
 
-- [ ] Add the four float fields (bone-rotation input range, target-value output range) to the driver PG in [object_props.py](../../apps/blender/properties/object_props.py), with defaults spanning negative rotation so the first driver no longer clamps at 0 - the exact first-contact failure the ui-feedback log records.
-- [ ] Build the expression from the ranges in a pure helper (clamped linear map) consumed by the operator in [driver.py](../../apps/blender/operators/driver.py); unit-test the builder, including the negative-rotation default.
-- [ ] Redraw the box in [_draw_driver_shortcut.py](../../apps/blender/panels/_draw_driver_shortcut.py): two range rows replace the expression field, with the raw string demoted to an Advanced fallback.
-- [ ] Show the live driver value inline in the same box - the readout rides this PR; no Inspect popup, and re-clicking `Drive from Bone` stays the reset since the idempotent re-run already replaces the driver and purges stale siblings.
-- [ ] Note in the PR: this closes both the expression-two-ranges and driver-readout-inspect-reset rows ([canonical entries](../backlog-ui-feedback.md#active-sprite-panel)).
+- [x] Add the four float fields (bone-rotation input range, target-value output range) to the driver PG in [object_props.py](../../apps/blender/properties/object_props.py), with defaults spanning negative rotation so the first driver no longer clamps at 0 - the exact first-contact failure the ui-feedback log records.
+- [x] Build the expression from the ranges in a pure helper (clamped linear map) consumed by the operator in [driver.py](../../apps/blender/operators/driver.py); unit-test the builder, including the negative-rotation default.
+- [x] Redraw the box in [_draw_driver_shortcut.py](../../apps/blender/panels/_draw_driver_shortcut.py): two range rows replace the expression field, with the raw string demoted to an Advanced fallback.
+- [x] Show the live driver value inline in the same box - the readout rides this PR; no Inspect popup, and re-clicking `Drive from Bone` stays the reset since the idempotent re-run already replaces the driver and purges stale siblings.
+- [x] Note in the PR: this closes both the expression-two-ranges and driver-readout-inspect-reset rows ([canonical entries](../backlog-ui-feedback.md#active-sprite-panel)).
 
 ### PR 2: Toggle IK wires a target
 
-- [ ] Extend `Toggle IK` in [authoring_ik.py](../../apps/blender/operators/armature/authoring_ik.py) to wire `target`/`subtarget` when inserting the constraint, so the chain solves on its own instead of only while grabbing the constrained bone and the INFO bar stops punting to the Properties editor ([canonical entry](../backlog-ui-feedback.md#toggle-ik--ik-workflow)).
-- [ ] Headless test in `apps/blender/tests/operators/`: toggling on yields a solving constraint with a target set; toggling off removes it cleanly.
+- [x] Extend `Toggle IK` in [authoring_ik.py](../../apps/blender/operators/armature/authoring_ik.py) to wire `target`/`subtarget` when inserting the constraint, so the chain solves on its own instead of only while grabbing the constrained bone and the INFO bar stops punting to the Properties editor ([canonical entry](../backlog-ui-feedback.md#toggle-ik--ik-workflow)).
+- [x] Headless test in `apps/blender/tests/operators/`: toggling on yields a solving constraint with a target set; toggling off removes it cleanly.
 
 ### PR 3: the bake gate closes the silent IK export hole
 
-- [ ] Add the export-validation check in [export.py](../../apps/blender/core/validation/export.py): an active-influence IK chain whose member bones carry no keyframes while animation drives the target - the case the writer exports as flat intermediate bones - reports an actionable error naming the chain ([canonical entry](../backlog-ui-feedback.md#toggle-ik--ik-workflow)).
-- [ ] Add the `nla.bake` wrapper operator (bake the IK chain to bone keyframes over the action range) as the one-click fix the check points at.
-- [ ] Headless tests: a keyed-target/unkeyed-chain scene trips the check, a baked scene passes; build the constrained fixture through the PR 2 toggle so the gate exercises the shipped wiring.
+- [x] Add the export-validation check in [export.py](../../apps/blender/core/validation/export.py): an active-influence IK chain whose member bones carry no keyframes while animation drives the target - the case the writer exports as flat intermediate bones - reports an actionable error naming the chain ([canonical entry](../backlog-ui-feedback.md#toggle-ik--ik-workflow)).
+- [x] Add the `nla.bake` wrapper operator (bake the IK chain to bone keyframes over the action range) as the one-click fix the check points at.
+- [x] Headless tests: a keyed-target/unkeyed-chain scene trips the check, a baked scene passes; build the constrained fixture through the PR 2 toggle so the gate exercises the shipped wiring.
 
 ### PR 4: headless Quick Armature undo and axis-lock suite
 
-- [ ] New suite under `apps/blender/tests/operators/` (driven by [run_operator_tests.py](../../apps/blender/tests/run_operator_tests.py)) exercising `_create_bone`, `_undo_last_bone`, `_redo_last_bone`, and `_post_process_world_point` from [quick_armature.py](../../apps/blender/operators/armature/quick_armature.py) - all callable without the modal event loop ([canonical entry](../backlog.md#quick-armature-follow-ups-deferred-polish)).
-- [ ] Cover the in-modal undo/redo stack (create bones across chains, undo to empty, redo to full, names and parenting stable) and the snap-then-lock ordering of `_post_process_world_point` (grid snap before X/Z axis lock, Y pinned to 0).
+- [x] New suite under `apps/blender/tests/operators/` (driven by [run_operator_tests.py](../../apps/blender/tests/run_operator_tests.py)) exercising `_create_bone`, `_undo_last_bone`, `_redo_last_bone`, and `_post_process_world_point` from [quick_armature.py](../../apps/blender/operators/armature/quick_armature.py) - all callable without the modal event loop ([canonical entry](../backlog.md#quick-armature-follow-ups-deferred-polish)).
+- [x] Cover the in-modal undo/redo stack (create bones across chains, undo to empty, redo to full, names and parenting stable) and the snap-then-lock ordering of `_post_process_world_point` (grid snap before X/Z axis lock, Y pinned to 0).
 
 ### PR 5: the Skeleton panel names the export armature
 
 Sequenced strictly after the writer-respects-the-picker fix in the [export-correctness spec](../027-export-correctness/STUDY.md) - naming the export target while `find_armature` ([scene_discovery.py](../../apps/blender/exporters/godot/writer/scene_discovery.py)) still returns the first armature in the scene would advertise a lie.
 
-- [ ] Show the effective export armature in the **Skeleton** panel ([skeleton.py](../../apps/blender/panels/skeleton.py)): the picker's name when set, the writer's actual fallback choice when unset - completing the partial skeleton-armature-picker row ([canonical entry](../backlog-ui-feedback.md#skeleton-panel)).
-- [ ] Re-read the picker tooltip in [scene_props.py](../../apps/blender/properties/scene_props.py) once the writer fix lands and align any copy that is still ahead of or behind the shipped behavior.
+- [x] Show the effective export armature in the **Skeleton** panel ([skeleton.py](../../apps/blender/panels/skeleton.py)): the picker's name when set, the writer's actual fallback choice when unset - completing the partial skeleton-armature-picker row ([canonical entry](../backlog-ui-feedback.md#skeleton-panel)).
+- [x] Re-read the picker tooltip in [scene_props.py](../../apps/blender/properties/scene_props.py) once the writer fix lands and align any copy that is still ahead of or behind the shipped behavior.
 
 ### Retests (verification session)
 

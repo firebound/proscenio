@@ -24,6 +24,7 @@ from core.validation.export import (  # noqa: E402
     _validate_atlas_files,
     _validate_bone_orientation,
     _validate_element_against_armature,
+    _validate_ik_bake,
     _validate_mesh_flatness,
     _validate_slots,
     validate_export,
@@ -267,3 +268,116 @@ def test_atlas_missing_file_warns(monkeypatch: pytest.MonkeyPatch) -> None:
     material = SimpleNamespace(use_nodes=True, node_tree=SimpleNamespace(nodes=[node]))
     obj = SimpleNamespace(name="torso", material_slots=[SimpleNamespace(material=material)])
     assert _has(_validate_atlas_files([obj]), "warning", "not found on disk")
+
+
+# --- IK bake gate -------------------------------------------------------------
+
+
+def _ik_constraint(
+    subtarget: str,
+    target: object,
+    *,
+    chain_count: int = 2,
+    influence: float = 1.0,
+    mute: bool = False,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        type="IK",
+        subtarget=subtarget,
+        target=target,
+        chain_count=chain_count,
+        influence=influence,
+        mute=mute,
+    )
+
+
+def _ik_pose_bone(name: str, *, parent: object = None, constraints: tuple = ()) -> SimpleNamespace:
+    return SimpleNamespace(name=name, parent=parent, constraints=list(constraints))
+
+
+def _ik_armature(pose_bones: list, *keyed_paths: str) -> SimpleNamespace:
+    action = SimpleNamespace(fcurves=[SimpleNamespace(data_path=p) for p in keyed_paths])
+    return SimpleNamespace(
+        type="ARMATURE",
+        pose=SimpleNamespace(bones=list(pose_bones)),
+        animation_data=SimpleNamespace(action=action),
+        data=SimpleNamespace(bones=[SimpleNamespace(name=pb.name) for pb in pose_bones]),
+    )
+
+
+def test_ik_chain_with_animated_target_but_unkeyed_bones_errors() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2)]
+    issues = _validate_ik_bake(arm)
+    assert _has(issues, "error", "Bake IK")
+    assert any(i.obj_name == "shin" for i in issues), "error should name the chain tip"
+
+
+def test_ik_chain_baked_to_keyframes_passes() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature(
+        [thigh, shin],
+        'pose.bones["foot_ik"].location',
+        'pose.bones["shin"].rotation_quaternion',
+    )
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2)]
+    assert _validate_ik_bake(arm) == []
+
+
+def test_ik_gate_ignores_a_muted_constraint() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2, mute=True)]
+    assert _validate_ik_bake(arm) == []
+
+
+def test_ik_gate_ignores_a_zero_influence_constraint() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2, influence=0.0)]
+    assert _validate_ik_bake(arm) == []
+
+
+def test_ik_gate_skips_a_targetless_constraint() -> None:
+    # A targetless IK has nothing animating it; nothing to bake, no false error.
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([thigh, shin])
+    shin.constraints = [_ik_constraint("", target=None, chain_count=2)]
+    assert _validate_ik_bake(arm) == []
+
+
+def test_ik_gate_clean_when_no_action() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    shin.constraints = [_ik_constraint("foot_ik", target=None, chain_count=2)]
+    arm = SimpleNamespace(
+        type="ARMATURE",
+        pose=SimpleNamespace(bones=[thigh, shin]),
+        animation_data=None,
+    )
+    assert _validate_ik_bake(arm) == []
+
+
+def test_ik_chain_count_zero_walks_to_the_root() -> None:
+    # chain_count 0 = whole parent chain; the unkeyed root must still be caught.
+    root = _ik_pose_bone("root")
+    thigh = _ik_pose_bone("thigh", parent=root)
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([root, thigh, shin], 'pose.bones["foot_ik"].location')
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=0)]
+    assert _has(_validate_ik_bake(arm), "error", "Bake IK")
+
+
+def test_full_pass_flags_an_unbaked_ik_chain() -> None:
+    thigh = _ik_pose_bone("thigh")
+    shin = _ik_pose_bone("shin", parent=thigh)
+    arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
+    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2)]
+    scene = SimpleNamespace(objects=[arm], proscenio=SimpleNamespace(active_armature=arm))
+    assert _has(validate_export(scene), "error", "Bake IK")

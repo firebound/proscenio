@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core._shared.props_access import (  # noqa: E402
+    describe_export_target,
     object_props,
     resolve_export_armature,
     scene_props,
@@ -116,3 +117,41 @@ def test_resolve_export_armature_none_when_scene_has_no_armature() -> None:
         proscenio=SimpleNamespace(active_armature=None),
     )
     assert resolve_export_armature(scene) is None
+
+
+def test_describe_export_target_reports_the_picker() -> None:
+    first = _armature("Rig.A")
+    picked = _armature("Rig.B")
+    scene = SimpleNamespace(
+        objects=[first, picked],
+        proscenio=SimpleNamespace(active_armature=picked),
+    )
+    assert describe_export_target(scene) == ("Rig.B", True)
+
+
+def test_describe_export_target_reports_the_fallback_when_unset() -> None:
+    first = _armature("Rig.A")
+    second = _armature("Rig.B")
+    scene = SimpleNamespace(
+        objects=[first, second],
+        proscenio=SimpleNamespace(active_armature=None),
+    )
+    assert describe_export_target(scene) == ("Rig.A", False)
+
+
+def test_describe_export_target_marks_a_stale_picker_as_fallback() -> None:
+    in_scene = _armature("Rig.A")
+    orphan = _armature("Rig.Orphan")
+    scene = SimpleNamespace(
+        objects=[in_scene],
+        proscenio=SimpleNamespace(active_armature=orphan),
+    )
+    assert describe_export_target(scene) == ("Rig.A", False)
+
+
+def test_describe_export_target_none_when_scene_has_no_armature() -> None:
+    scene = SimpleNamespace(
+        objects=[_mesh("torso")],
+        proscenio=SimpleNamespace(active_armature=None),
+    )
+    assert describe_export_target(scene) is None

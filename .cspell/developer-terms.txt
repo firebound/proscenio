@@ -318,6 +318,7 @@ hashlib
 hexdigest
 stdlib
 rstrip
+lstrip
 ungated
 pyupgrade
 conftest
@@ -399,3 +400,4 @@ usuário
 unhydrated
 homefile
 dedups
+repr

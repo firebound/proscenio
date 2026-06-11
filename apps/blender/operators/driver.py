@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import ClassVar
 
 import bpy
-from bpy.props import EnumProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
+from ..core.armature.driver_expression import (
+    build_driver_expression,  # type: ignore[import-not-found]
+)
 
 _DRIVER_VAR_NAME = "var"
 _DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
@@ -117,10 +120,35 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
     expression: StringProperty(  # type: ignore[valid-type]
         name="Expression",
         description=(
-            "Driver expression. 'var' is the bone channel; edit in the "
+            "Advanced driver expression. 'var' is the bone channel; edit in the "
             "Drivers Editor for scaling / offsets / branching."
         ),
         default="var",
+    )
+    advanced: BoolProperty(  # type: ignore[valid-type]
+        name="Advanced expression",
+        description="Use the raw expression instead of the two-range linear map",
+        default=False,
+    )
+    in_min: FloatProperty(  # type: ignore[valid-type]
+        name="Input min",
+        description="Bone-channel value mapped to the output minimum",
+        default=-1.5708,
+    )
+    in_max: FloatProperty(  # type: ignore[valid-type]
+        name="Input max",
+        description="Bone-channel value mapped to the output maximum",
+        default=1.5708,
+    )
+    out_min: FloatProperty(  # type: ignore[valid-type]
+        name="Output min",
+        description="Target value at the input minimum",
+        default=0.0,
+    )
+    out_max: FloatProperty(  # type: ignore[valid-type]
+        name="Output max",
+        description="Target value at the input maximum",
+        default=1.0,
     )
     armature_name: StringProperty(  # type: ignore[valid-type]
         name="Armature",
@@ -149,6 +177,11 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
                 self.target_property = str(props.driver_target)
                 self.source_axis = str(props.driver_source_axis)
                 self.expression = str(props.driver_expression) or "var"
+                self.advanced = bool(props.driver_advanced)
+                self.in_min = float(props.driver_in_min)
+                self.in_max = float(props.driver_in_max)
+                self.out_min = float(props.driver_out_min)
+                self.out_max = float(props.driver_out_max)
                 arm = props.driver_source_armature
                 self.armature_name = arm.name if arm is not None else ""
                 self.bone_name = str(props.driver_source_bone)
@@ -177,9 +210,16 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
             report_error(self, f"could not add driver on {data_path}: {exc}")
             return {"CANCELLED"}
 
+        if self.advanced:
+            expression = self.expression or "var"
+        else:
+            expression = build_driver_expression(
+                self.in_min, self.in_max, self.out_min, self.out_max
+            )
+
         driver = fcurve.driver
         driver.type = "SCRIPTED"
-        driver.expression = self.expression or "var"
+        driver.expression = expression
         var = driver.variables[0] if driver.variables else driver.variables.new()
         var.name = _DRIVER_VAR_NAME
         var.type = "TRANSFORMS"
@@ -200,10 +240,17 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
             # and break rigs repositioned at instance time.
             target.transform_space = "LOCAL_SPACE"
 
-        # Mirror redo-panel overrides back to the PropertyGroup.
+        # Mirror redo-panel overrides back to the PropertyGroup. The computed
+        # expression is stored too, so the Advanced field shows the built map
+        # as a starting point to hand-tweak.
         props.driver_target = self.target_property
         props.driver_source_axis = self.source_axis
-        props.driver_expression = self.expression or "var"
+        props.driver_expression = expression
+        props.driver_advanced = self.advanced
+        props.driver_in_min = self.in_min
+        props.driver_in_max = self.in_max
+        props.driver_out_min = self.out_min
+        props.driver_out_max = self.out_max
         props.driver_source_armature = armature
         props.driver_source_bone = self.bone_name
 

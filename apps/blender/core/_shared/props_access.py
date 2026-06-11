@@ -131,6 +131,25 @@ def _picked_scene_armature(scene: object, objects: list[object]) -> bpy.types.Ob
     return cast("bpy.types.Object", picked)
 
 
+def describe_export_target(scene: object) -> tuple[str, bool] | None:
+    """Name of the armature the writer will export, plus whether the picker chose it.
+
+    Mirrors :func:`resolve_export_armature` but returns ``(name, picked)`` -
+    ``picked`` is True when the Skeleton picker supplied the target, False when
+    it fell back to the first armature in scene order. ``None`` when the scene
+    has no armature at all. The Skeleton panel reads this to name the export
+    target, so the picker-vs-fallback choice is visible before export.
+    """
+    objects = list(getattr(scene, "objects", ()) or ())
+    picked = _picked_scene_armature(scene, objects)
+    if picked is not None:
+        return str(getattr(picked, "name", "")), True
+    first = next((o for o in objects if getattr(o, "type", None) == "ARMATURE"), None)
+    if first is None:
+        return None
+    return str(getattr(first, "name", "")), False
+
+
 def resolve_pixels_per_unit(context: bpy.types.Context) -> float:
     """Scene pixels-per-unit, defaulting to 100.0 when unset or unregistered.
 

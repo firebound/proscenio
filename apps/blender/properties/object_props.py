@@ -189,11 +189,49 @@ class ProscenioObjectProps(PropertyGroup):
         items=DRIVER_SOURCE_AXIS_ITEMS,
         default="ROT_Y",
     )
+    driver_in_min: FloatProperty(  # type: ignore[valid-type]
+        name="Input min",
+        description=(
+            "Bone-channel value mapped to the output minimum. The default spans "
+            "negative rotation so a bone swung back no longer clamps to zero - the "
+            "first-contact failure the raw 'var' default produced."
+        ),
+        default=-1.5708,  # -pi/2 rad (about -90 deg)
+        precision=4,
+    )
+    driver_in_max: FloatProperty(  # type: ignore[valid-type]
+        name="Input max",
+        description="Bone-channel value mapped to the output maximum.",
+        default=1.5708,  # +pi/2 rad (about +90 deg)
+        precision=4,
+    )
+    driver_out_min: FloatProperty(  # type: ignore[valid-type]
+        name="Output min",
+        description="Target-property value when the bone sits at the input minimum.",
+        default=0.0,
+        precision=4,
+    )
+    driver_out_max: FloatProperty(  # type: ignore[valid-type]
+        name="Output max",
+        description="Target-property value when the bone sits at the input maximum.",
+        default=1.0,
+        precision=4,
+    )
+    driver_advanced: BoolProperty(  # type: ignore[valid-type]
+        name="Advanced expression",
+        description=(
+            "Drive from the hand-written expression below instead of the two "
+            "ranges. 'var' is the raw bone channel; edit for scaling, offsets, "
+            "or branching the two-range map cannot express."
+        ),
+        default=False,
+    )
     driver_expression: StringProperty(  # type: ignore[valid-type]
         name="Driver expression",
         description=(
-            "Driver expression. 'var' is the raw bone channel; "
-            "edit in the Drivers Editor for scaling, offsets, branching."
+            "Driver expression (Advanced). 'var' is the raw bone channel. "
+            "Built from the two ranges unless Advanced is on; edit in the "
+            "Drivers Editor for anything the linear map cannot express."
         ),
         default="var",
     )

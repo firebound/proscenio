@@ -825,9 +825,9 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 _SECTION_WHAT,
                 "Bake Current Pose keys every bone at the playhead. Toggle IK adds /",
-                "removes a test IK constraint. Save Pose to Library stores the pose as",
-                "a Blender asset. None of these reach the .proscenio - they are",
-                "authoring conveniences.",
+                "removes an IK constraint plus a control bone at the chain tip. Save",
+                "Pose to Library stores the pose as a Blender asset. None of these",
+                "reach the .proscenio - they are authoring conveniences.",
             ),
         ),
         see_also=(),

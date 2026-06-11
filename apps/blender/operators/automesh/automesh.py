@@ -32,6 +32,7 @@ from ...core._shared.material_images import (  # type: ignore[import-not-found]
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     active_armature,
+    element_type_of,
     resolve_pixels_per_unit,
     scene_skinning,
 )
@@ -74,8 +75,12 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     resolution: FloatProperty(  # type: ignore[valid-type]
-        name="Resolution",
-        description=("Image downscale factor for the contour walker (1.0 = full, 0.25 = quarter)"),
+        name="Trace resolution",
+        description=(
+            "Alpha-silhouette trace resolution, an image downscale factor. "
+            "1.0 = full image (finest, slowest), 0.25 = quarter (coarser, faster); "
+            "sets outline fidelity, not vertex count"
+        ),
         default=0.25,
         min=0.01,
         max=1.0,
@@ -119,7 +124,7 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
     )
     density_under_bones: BoolProperty(  # type: ignore[valid-type]
         name="Density under bones",
-        default=True,
+        default=False,
     )
     bone_radius: FloatProperty(  # type: ignore[valid-type]
         name="Bone radius",
@@ -189,6 +194,14 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             report_error(self, "active object must be a mesh")
+            return {"CANCELLED"}
+        if element_type_of(obj) == "sprite":
+            report_warn(
+                self,
+                "active object is a sprite element - automesh is mesh-only; meshing "
+                "would replace its quad. To attach a sprite to a bone, parent it with "
+                "Ctrl+P > Bone instead",
+            )
             return {"CANCELLED"}
 
         image = self._preflight_image(obj)

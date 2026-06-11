@@ -17,6 +17,7 @@ from ...core._shared.material_images import (  # type: ignore[import-not-found]
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     active_armature,
+    element_type_of,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
@@ -148,6 +149,24 @@ def _stage_label(stage: AuthoringStage, mode: str) -> str:
     return f"{idx + 1}/{len(stages)} {_stage_base_name(stage, mode)}"
 
 
+def _outer_strokes_summary(strokes: list[Stroke]) -> str:
+    """Running 'N extend(s), M cut(s)' count of committed Stage 2 outer strokes.
+
+    A committed cut carves its corridor only at APPLY, so it changes no overlay
+    and reads as a no-op the moment it is drawn; surfacing this count in the
+    report + tooltip acknowledges the commit. Empty when no strokes are
+    committed.
+    """
+    extends = sum(1 for stroke in strokes if stroke["kind"] == "stroke")
+    cuts = sum(1 for stroke in strokes if stroke["kind"] == "cut")
+    parts: list[str] = []
+    if extends:
+        parts.append(f"{extends} extend" + ("s" if extends != 1 else ""))
+    if cuts:
+        parts.append(f"{cuts} cut" + ("s" if cuts != 1 else ""))
+    return ", ".join(parts)
+
+
 class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     """Multi-stage modal preview of the automesh pipeline."""
 
@@ -192,6 +211,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             report_error(self, "active object must be a mesh")
+            return {"CANCELLED"}
+        if element_type_of(obj) == "sprite":
+            report_warn(
+                self,
+                "active object is a sprite element - mesh authoring is mesh-only; it "
+                "would replace its quad. To attach a sprite to a bone, parent it with "
+                "Ctrl+P > Bone instead",
+            )
             return {"CANCELLED"}
         image = first_material_image(obj)
         if image is None:
@@ -811,8 +838,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 write_user_strokes(obj, self._user_strokes)
             else:
                 write_user_outer_strokes(obj, self._user_outer_strokes)
-        if stage == "outer" and self._outer_preview_relevant():
-            self._refresh_outer_preview(context)
+        if stage == "outer":
+            if self._outer_preview_relevant():
+                self._refresh_outer_preview(context)
+            # Cuts change no overlay (corridor carved at APPLY), so report the
+            # running count to confirm the commit registered.
+            summary = _outer_strokes_summary(self._user_outer_strokes)
+            if summary:
+                report_info(self, f"Edit silhouette: {summary} (applied at APPLY)")
         _tag_redraw_view3d(context)
 
     def _outer_preview_relevant(self) -> bool:
@@ -912,7 +945,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _neutral_tooltip_text(self, stage: str) -> str:
         if stage == "outer":
-            return "tap Shift=Extend / Ctrl=Cut | Alt+click=delete"
+            base = "tap Shift=Extend / Ctrl=Cut | Alt+click=delete"
+            summary = _outer_strokes_summary(self._user_outer_strokes)
+            return f"{base} | {summary} committed" if summary else base
         return "click=point | tap Shift=Fold / Ctrl=Cut | Alt+click=delete"
 
     def _commit_drag_stroke(

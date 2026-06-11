@@ -20,6 +20,7 @@ from typing import ClassVar
 import bpy
 
 from ..addon_prefs import debug_mode_enabled
+from ..core._shared.props_access import element_type_of  # type: ignore[import-not-found]
 from ._helpers import (
     _active_armature,
     _scene_skinning,
@@ -28,10 +29,17 @@ from ._helpers import (
 )
 
 
-def _active_is_mesh(context: bpy.types.Context) -> bool:
-    """True when the active object is a MESH (any element type)."""
+def _active_is_mesh_element(context: bpy.types.Context) -> bool:
+    """True when the active object is a MESH whose element_type is "mesh".
+
+    A sprite element is also a Blender MESH, but running a mesh tool on it
+    replaces its single quad - so the mesh-generation gate matches the
+    weight_paint panel and excludes sprites. Mirrors weight_paint._is_mesh_element.
+    """
     obj = context.active_object
-    return obj is not None and obj.type == "MESH"
+    if obj is None or obj.type != "MESH":
+        return False
+    return element_type_of(obj) == "mesh"
 
 
 class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
@@ -50,8 +58,15 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        if not _active_is_mesh(context):
+        obj = context.active_object
+        if obj is None or obj.type != "MESH":
             layout.label(text="select a mesh to generate or edit", icon="INFO")
+            return
+        if not _active_is_mesh_element(context):
+            # warn-not-hide: a sprite element is a mesh in Blender, but meshing
+            # it would replace its single quad. Point at native bone-parenting.
+            layout.label(text="mesh tools are mesh-only (this is a sprite)", icon="INFO")
+            layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
             return
         skinning_props = _scene_skinning(context)
         draw_picker_readout(layout, _active_armature(context))
@@ -72,7 +87,7 @@ class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh(context)
+        return _active_is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "automesh_alpha", "automesh_alpha")
@@ -95,7 +110,7 @@ class PROSCENIO_PT_automesh_interactive(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh(context)
+        return _active_is_mesh_element(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "automesh_interactive", "automesh_interactive")
@@ -118,7 +133,7 @@ class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh(context) and debug_mode_enabled(context)
+        return _active_is_mesh_element(context) and debug_mode_enabled(context)
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "debug_pipeline", "debug_pipeline")
@@ -142,13 +157,19 @@ def _draw_automesh_alpha(
         col.prop(skinning_props, "automesh_alpha_threshold")
         col.prop(skinning_props, "automesh_margin_pixels")
         col.prop(skinning_props, "automesh_contour_vertices")
+        # Interior spacing is not dense-only: the interactive modal reads it in
+        # SIMPLE mode too (free-draw resample + fold snap radius), so it stays
+        # in the always-active column rather than greyed behind DENSE.
+        col.prop(skinning_props, "automesh_interior_spacing")
         col.separator()
         col.prop(skinning_props, "preserve_base_quad")
+        # Regen reprojects weights when ON; surfaced here (not only in the
+        # Snapshot subpanel) because this button is what triggers the regen.
+        col.prop(skinning_props, "preserve_on_regen")
         col.separator()
         is_dense = skinning_props.automesh_interior_mode == "DENSE"
         dense_col = col.column(align=True)
         dense_col.active = is_dense
-        dense_col.prop(skinning_props, "automesh_interior_spacing")
         dense_col.prop(skinning_props, "automesh_density_under_bones")
         sub = dense_col.column(align=True)
         sub.active = is_dense and bool(skinning_props.automesh_density_under_bones)
@@ -171,18 +192,22 @@ def _draw_automesh_interactive(
     Button greys out when active obj is not MESH or has no image texture
     (modal validates these at invoke; the panel mirror is a UX cue).
     """
-    layout.label(text="Multi-stage modal preview")
+    layout.label(text="Interactive trace and edit")
     if skinning_props is not None:
         row = layout.row(align=True)
         row.prop(skinning_props, "authoring_inner_loop_count", text="Loops")
         row.prop(skinning_props, "authoring_inner_loop_spacing", text="Spacing")
         row = layout.row()
         row.prop(skinning_props, "authoring_cut_margin", text="Cut margin")
+        # APPLY regenerates the mesh + reprojects weights when ON; mirror the
+        # toggle here so the regen trigger and its weight-preserve control sit
+        # together.
+        layout.prop(skinning_props, "preserve_on_regen")
     row = layout.row()
     row.enabled = _authoring_button_enabled(obj)
     row.operator(
         "proscenio.automesh_authoring",
-        text="Automesh (modal)",
+        text="Author Mesh (interactive)",
         icon="MOD_REMESH",
     )
     if obj is None or obj.type != "MESH":

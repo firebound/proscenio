@@ -78,12 +78,15 @@ class ProscenioSkinningProps(PropertyGroup):
     """
 
     automesh_resolution: FloatProperty(  # type: ignore[valid-type]
-        name="Mesh resolution",
+        name="Trace resolution",
         description=(
-            "Image downscale factor for the alpha contour walker. "
-            "1.0 = full image, 0.25 = quarter-pixel (default - safe "
-            "for typical HD sprites). Lower values produce more "
-            "vertices but cost quadratically more time."
+            "Resolution of the alpha-silhouette trace, as an image downscale "
+            "factor. 1.0 = full image (finest outline, slowest); 0.25 = "
+            "quarter-pixel (coarser outline, faster - the default, safe for "
+            "typical HD sprites). HIGHER traces a finer silhouette and costs "
+            "quadratically more time. It sets outline fidelity, NOT vertex "
+            "count - use Contour vertices for the outline and Interior spacing "
+            "for the fill."
         ),
         default=0.25,
         min=0.01,
@@ -174,9 +177,9 @@ class ProscenioSkinningProps(PropertyGroup):
             "When ON and the picker armature has deform bones, add "
             "extra interior triangles near each bone segment so the "
             "mesh has more density where deformation actually happens. "
-            "OFF falls back to uniform interior density."
+            "OFF (default) falls back to uniform interior density."
         ),
-        default=True,
+        default=False,
     )
     automesh_bone_radius: FloatProperty(  # type: ignore[valid-type]
         name="Bone influence radius",

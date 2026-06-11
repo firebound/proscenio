@@ -263,10 +263,10 @@ def _resolve_outer_override_local(
     Returns None when no extend strokes produce a valid splice (all strokes
     were outside the silhouette or the splice was a no-op).
     """
-    from ...automesh.outer_splice import splice_extend_strokes
+    from ...automesh.outer_splice import apply_outer_extends
 
-    spliced_world = splice_extend_strokes(outer_world_raw, outer_extends)
-    if spliced_world is outer_world_raw:
+    spliced_world = apply_outer_extends(outer_world_raw, outer_extends)
+    if spliced_world is None:
         for i in range(len(outer_extends)):
             print(
                 f"[apply_mesh] WARNING: outer extend stroke {i} entirely outside "
@@ -340,17 +340,13 @@ def compute_outer_preview(output: StageOutput, params: StageParams) -> list[Poin
     is a no-op. Cut strokes carve corridor holes (not the contour), so they
     do not change this preview.
     """
-    from ...automesh.outer_splice import splice_extend_strokes
+    from ...automesh.outer_splice import apply_outer_extends
 
     extends, _cuts = _split_outer_strokes(output.user_outer_strokes)
     if not extends or len(output.outer) < 3:
         return []
-    base = list(output.outer)
-    spliced = splice_extend_strokes(base, extends)
-    # splice_extend_strokes always returns a fresh list (never the input),
-    # so `is` would never trip - use value equality to catch the no-op case
-    # (every stroke skipped: fully inside / fully outside the silhouette).
-    if len(spliced) < 3 or spliced == base:
+    spliced = apply_outer_extends(list(output.outer), extends)
+    if spliced is None:
         return []
     return list(arc_length_resample(spliced, params.contour_vertices))
 

@@ -3,14 +3,26 @@
 Used by Stage 2 EDIT_OUTLINE to extend the auto-walker silhouette with
 artist-drawn paths. Pure module: no bpy / mathutils.
 
-Wrap-around case (``exit_outer_idx < entry_outer_idx``): when the
-replacement arc wraps across the closed-loop seam, the splice takes the
-FORWARD arc from entry to end-of-list plus the arc from 0 to exit. The
-shorter direction is not computed; the artist's stroke geometry picks the
-intended arc.
+The splice anchors at the points where the stroke actually CROSSES the
+contour, not at the outer vertices nearest the stroke's inside samples. The
+crossing points are unambiguous, so the result does not depend on how sparse
+the pen clicks are, on the contour's winding direction, or on where the
+polyline seam (index 0) falls - the three traps the nearest-vertex splice fell
+into (logged in specs/029).
 
-Fully-outside strokes return None with no side effect; callers log a
-WARNING so the artist knows the stroke had no effect.
+For a two-sided extend (the stroke leaves the silhouette and re-enters) the two
+crossings split the contour into two arcs. The bump replaces one of them; the
+correct one is picked by area - growing the silhouette - so a stroke drawn
+against the winding or across the seam can never amputate the contour.
+
+On-boundary stroke samples count as inside (the pen snaps endpoints exactly
+onto contour verts), so a snap-anchored extend is not misread as fully outside
+and dropped.
+
+Strokes that touch the silhouette only once (a half gesture: out-and-not-back,
+or starting outside) splice as a spike rooted at the single crossing. Strokes
+entirely inside or entirely outside return None with no side effect; callers
+log a WARNING so the artist knows the stroke had no effect.
 """
 
 from __future__ import annotations
@@ -18,88 +30,139 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .._shared.geometry_2d import Point2D
-from .._shared.nearest import nearest_index
-from .density import point_in_polygon
+from .density import point_in_polygon, point_on_contour
+
+_INTERSECT_EPSILON = 1e-9
+_PARALLEL_EPSILON = 1e-12
 
 
-def _nearest_outer_vert_index(query: Point2D, outer: Sequence[Point2D]) -> int:
-    """Index of the closest outer vert (linear scan; outer is typically <256 verts)."""
-    return nearest_index(query, outer)
+def _inside_or_on(point: Point2D, outer: Sequence[Point2D]) -> bool:
+    """Inside the contour OR on its boundary (snap-anchored endpoints count)."""
+    return point_in_polygon(point, outer) or point_on_contour(point, outer)
 
 
-def _extract_outside_run(
-    stroke: list[Point2D],
-    inside_mask: list[bool],
-) -> tuple[list[Point2D], Point2D, Point2D] | None:
-    """Return ``(outside_run, anchor_in, anchor_out)`` for an extend stroke.
+def _segment_intersection(
+    p0: Point2D, p1: Point2D, q0: Point2D, q1: Point2D
+) -> tuple[Point2D, float, float] | None:
+    """Intersection of segment ``p0->p1`` with ``q0->q1``.
 
-    ``outside_run`` is the contiguous outside portion of the stroke;
-    ``anchor_in`` / ``anchor_out`` are the inside samples that bracket it
-    (equal when the stroke only crosses the boundary once). Returns
-    ``None`` when no non-empty outside run exists.
+    Returns ``(point, t, u)`` where ``t`` is the parameter along ``p`` and
+    ``u`` the parameter along ``q``, both in ``[0, 1]``. Returns None when the
+    segments are parallel/collinear (handled by the boundary mask) or do not
+    meet within their spans.
     """
-    n = len(stroke)
-    departure_idx: int | None = None
-    # First transition inside -> outside marks the last inside vert.
-    for i in range(1, n):
-        if inside_mask[i - 1] and not inside_mask[i]:
-            departure_idx = i - 1
-            break
-
-    if departure_idx is None:
-        # Stroke starts outside; treat the arc up to the first inside vert
-        # as the outside run, anchored on that single re-entry sample.
-        first_inside = next((i for i, m in enumerate(inside_mask) if m), None)
-        if first_inside is None or first_inside == 0:
-            return None
-        anchor = stroke[first_inside]
-        return list(stroke[:first_inside]), anchor, anchor
-
-    # Walk forward from departure to find the first re-entry.
-    return_idx: int | None = None
-    for i in range(departure_idx + 2, n):
-        if inside_mask[i]:
-            return_idx = i
-            break
-
-    if return_idx is None:
-        # Stroke leaves and never returns - single-point splice anchor.
-        anchor = stroke[departure_idx]
-        outside_run = list(stroke[departure_idx + 1 :])
-        return (outside_run, anchor, anchor) if outside_run else None
-
-    outside_run = list(stroke[departure_idx + 1 : return_idx])
-    if not outside_run:
+    rx, ry = p1[0] - p0[0], p1[1] - p0[1]
+    sx, sy = q1[0] - q0[0], q1[1] - q0[1]
+    denom = rx * sy - ry * sx
+    if abs(denom) < _PARALLEL_EPSILON:
         return None
-    return outside_run, stroke[departure_idx], stroke[return_idx]
+    qpx, qpy = q0[0] - p0[0], q0[1] - p0[1]
+    t = (qpx * sy - qpy * sx) / denom
+    u = (qpx * ry - qpy * rx) / denom
+    if not (-_INTERSECT_EPSILON <= t <= 1.0 + _INTERSECT_EPSILON):
+        return None
+    if not (-_INTERSECT_EPSILON <= u <= 1.0 + _INTERSECT_EPSILON):
+        return None
+    point = (p0[0] + t * rx, p0[1] + t * ry)
+    return point, min(max(t, 0.0), 1.0), min(max(u, 0.0), 1.0)
 
 
-def _splice_outside_run(
-    outer: list[Point2D],
-    outside_run: list[Point2D],
-    entry_outer_idx: int,
-    exit_outer_idx: int,
-) -> list[Point2D]:
-    """Insert ``outside_run`` into ``outer`` between the entry/exit verts.
+def _seg_contour_crossing(
+    seg0: Point2D, seg1: Point2D, outer: Sequence[Point2D], *, pick_far: bool
+) -> tuple[Point2D, int, float] | None:
+    """Where stroke segment ``seg0->seg1`` crosses the closed ``outer`` contour.
 
-    Take ``outer[0..entry]`` inclusive, then the run, then continue from
-    ``exit`` onward. The wrap case (``exit < entry``) keeps only the
-    complementary arc ``[exit..entry]`` plus the run; same-vert reinserts
-    at the shared index.
+    Returns ``(crossing_point, edge_index, edge_param)`` for the crossing
+    nearest ``seg0`` (``pick_far`` False) or nearest ``seg1`` (``pick_far``
+    True), so an exit segment anchors at its first boundary hit and an entry
+    segment at its last. ``edge_param`` orders multiple crossings that land on
+    the same edge.
     """
-    spliced: list[Point2D] = []
-    if exit_outer_idx > entry_outer_idx:
-        spliced.extend(outer[: entry_outer_idx + 1])
-        spliced.extend(outside_run)
-        spliced.extend(outer[exit_outer_idx:])
-    elif exit_outer_idx == entry_outer_idx:
-        spliced.extend(outer[: entry_outer_idx + 1])
-        spliced.extend(outside_run)
-        spliced.extend(outer[entry_outer_idx:])
-    else:
-        spliced.extend(outer[exit_outer_idx : entry_outer_idx + 1])
-        spliced.extend(outside_run)
-    return spliced
+    n = len(outer)
+    best: tuple[float, Point2D, int, float] | None = None
+    for edge in range(n):
+        hit = _segment_intersection(seg0, seg1, outer[edge], outer[(edge + 1) % n])
+        if hit is None:
+            continue
+        point, t, u = hit
+        if best is None or (t > best[0] if pick_far else t < best[0]):
+            best = (t, point, edge, u)
+    if best is None:
+        return None
+    _, point, edge, u = best
+    return point, edge, u
+
+
+def _signed_area(pts: list[Point2D]) -> float:
+    acc = 0.0
+    n = len(pts)
+    for i in range(n):
+        x0, y0 = pts[i]
+        x1, y1 = pts[(i + 1) % n]
+        acc += x0 * y1 - x1 * y0
+    return acc / 2.0
+
+
+def _splice_at_crossings(
+    outer: list[Point2D],
+    run: list[Point2D],
+    exit_cross: tuple[Point2D, int, float],
+    entry_cross: tuple[Point2D, int, float],
+) -> list[Point2D]:
+    """Replace the contour arc the bump caps, keeping the larger-area result.
+
+    The two crossings split the contour into two arcs. Inserting the bump in
+    place of one arc and the (reversed) bump in place of the other yields two
+    candidate silhouettes; the larger-area one is the grow. Picking by area is
+    winding- and seam-independent: a wrong-direction or seam-straddling stroke
+    can only ever produce the small (capped) polygon, which loses.
+    """
+    point_a, edge_a, param_a = exit_cross
+    point_b, edge_b, param_b = entry_cross
+
+    # Order all nodes around the loop: original verts at edge param 0, crossings
+    # at their measured edge param. Stable sort keeps a vert ahead of a crossing
+    # that lands exactly on it.
+    nodes: list[tuple[int, float, Point2D]] = [(i, 0.0, v) for i, v in enumerate(outer)]
+    idx_a = len(nodes)
+    nodes.append((edge_a, param_a, point_a))
+    idx_b = len(nodes)
+    nodes.append((edge_b, param_b, point_b))
+    order = sorted(range(len(nodes)), key=lambda k: (nodes[k][0], nodes[k][1]))
+    pos = {k: p for p, k in enumerate(order)}
+
+    def forward_verts(src: int, dst: int) -> list[Point2D]:
+        """Original-vertex points strictly between ``src`` and ``dst`` (forward)."""
+        out: list[Point2D] = []
+        steps = len(order)
+        k = (pos[src] + 1) % steps
+        while k != pos[dst]:
+            out.append(nodes[order[k]][2])
+            k = (k + 1) % steps
+        return out
+
+    arc_a_to_b = forward_verts(idx_a, idx_b)
+    arc_b_to_a = forward_verts(idx_b, idx_a)
+    candidate_keep_b_to_a = [point_a, *run, point_b, *arc_b_to_a]
+    candidate_keep_a_to_b = [point_b, *reversed(run), point_a, *arc_a_to_b]
+    if abs(_signed_area(candidate_keep_b_to_a)) >= abs(_signed_area(candidate_keep_a_to_b)):
+        return candidate_keep_b_to_a
+    return candidate_keep_a_to_b
+
+
+def _splice_spike(
+    outer: list[Point2D], cross: tuple[Point2D, int, float], run: list[Point2D]
+) -> list[Point2D]:
+    """Insert a one-sided spike at a single crossing (a half gesture).
+
+    The stroke touched the boundary once, so there is no arc to replace; the
+    outside run is grafted at the crossing edge and returns to it.
+    """
+    point, edge, _param = cross
+    n = len(outer)
+    head = [outer[i] for i in range(edge + 1)]
+    tail = [outer[i] for i in range(edge + 1, n)]
+    return [*head, point, *run, point, *tail]
 
 
 def splice_extend_stroke(
@@ -109,41 +172,62 @@ def splice_extend_stroke(
     """Splice an extend stroke's outside portion into the closed outer polyline.
 
     Returns the new outer polyline with the outside portion of the stroke
-    inserted between the closest outer verts to the stroke's last-inside
-    and first-re-entry samples. Returns None when:
-    - Stroke is entirely inside the silhouette (not an extend - caller should
-      drop or route to cut path)
-    - Stroke is entirely outside silhouette (no entry/exit; caller logs WARN)
-    - Stroke has < 2 samples or outer has < 3 verts
+    grafted in at the contour crossings, or None when the stroke is not an
+    extend:
 
-    The returned polyline preserves the original outer ordering and inserts
-    the outside_run in walker direction (no reversal).
+    - entirely inside the silhouette (caller drops or routes to the cut path),
+    - entirely outside it (no crossing; caller logs WARN),
+    - fewer than 2 samples, or the outer has fewer than 3 verts.
 
-    Wrap-around: when exit_outer_idx < entry_outer_idx the outside_run is
-    inserted at entry_outer_idx, then outer continues from exit_outer_idx to
-    the end, then from 0 to entry_outer_idx (forward wrap). This correctly
-    handles strokes that cross the polyline seam without computing shorter-arc
-    direction (v1 limitation documented in module docstring).
+    A two-sided stroke (out and back) replaces the capped arc by area; a
+    one-sided stroke (out only, or in from outside) grafts a spike at its
+    single crossing.
     """
     if len(stroke) < 2 or len(outer) < 3:
         return None
 
-    inside_mask = [point_in_polygon(p, outer) for p in stroke]
-
-    if all(inside_mask):
-        return None  # not an extend stroke
-
-    if not any(inside_mask):
-        return None  # fully outside - caller handles WARN
-
-    run = _extract_outside_run(stroke, inside_mask)
-    if run is None:
+    mask = [_inside_or_on(point, outer) for point in stroke]
+    if all(mask) or not any(mask):
         return None
-    outside_run, anchor_in, anchor_out = run
 
-    entry_outer_idx = _nearest_outer_vert_index(anchor_in, outer)
-    exit_outer_idx = _nearest_outer_vert_index(anchor_out, outer)
-    spliced = _splice_outside_run(outer, outside_run, entry_outer_idx, exit_outer_idx)
+    n = len(stroke)
+    departure = next((i - 1 for i in range(1, n) if mask[i - 1] and not mask[i]), None)
+
+    if departure is None:
+        # Stroke starts outside and enters: graft the outside prefix at the
+        # re-entry crossing.
+        first_inside = next((i for i, inside in enumerate(mask) if inside), None)
+        if first_inside is None or first_inside == 0:
+            return None
+        run = list(stroke[:first_inside])
+        cross = _seg_contour_crossing(
+            stroke[first_inside - 1], stroke[first_inside], outer, pick_far=True
+        )
+        if cross is None:
+            return None
+        spliced = _splice_spike(outer, cross, run)
+        return spliced if len(spliced) >= 3 else None
+
+    re_entry = next((i for i in range(departure + 2, n) if mask[i]), None)
+    exit_cross = _seg_contour_crossing(
+        stroke[departure], stroke[departure + 1], outer, pick_far=False
+    )
+    if exit_cross is None:
+        return None
+
+    if re_entry is None:
+        # Leaves and never returns: single-crossing spike.
+        run = list(stroke[departure + 1 :])
+        spliced = _splice_spike(outer, exit_cross, run)
+        return spliced if len(spliced) >= 3 else None
+
+    run = list(stroke[departure + 1 : re_entry])
+    entry_cross = _seg_contour_crossing(
+        stroke[re_entry - 1], stroke[re_entry], outer, pick_far=True
+    )
+    if entry_cross is None:
+        return None
+    spliced = _splice_at_crossings(outer, run, exit_cross, entry_cross)
     return spliced if len(spliced) >= 3 else None
 
 
@@ -163,3 +247,21 @@ def splice_extend_strokes(
         if result is not None:
             current = result
     return current
+
+
+def apply_outer_extends(
+    outer: list[Point2D],
+    extend_strokes: list[list[Point2D]],
+) -> list[Point2D] | None:
+    """Splice all extend strokes; None when nothing changed.
+
+    Returns the new outer when at least one stroke spliced, else None - so the
+    caller can warn and skip the override. Detection is by value: every stroke
+    being a no-op leaves the contour equal to the input (the splice always
+    returns a fresh list, so an identity check would never fire). A degenerate
+    result (< 3 verts) also returns None.
+    """
+    spliced = splice_extend_strokes(outer, extend_strokes)
+    if len(spliced) < 3 or spliced == list(outer):
+        return None
+    return spliced

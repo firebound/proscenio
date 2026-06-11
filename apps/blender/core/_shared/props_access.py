@@ -51,6 +51,19 @@ def object_props(obj: bpy.types.Object | None) -> object | None:
     return getattr(obj, "proscenio", None)
 
 
+def element_type_of(obj: bpy.types.Object | None) -> str:
+    """Return ``obj``'s proscenio ``element_type`` ('mesh' or 'sprite').
+
+    Defaults to ``"mesh"`` when the object, the PropertyGroup, or the field is
+    absent (the schema default). Live-bpy PG read shared by the Mesh Generation
+    gate and the automesh operators so they refuse to mesh a sprite element
+    consistently; the headless validator reads the type via
+    ``validation.read_element_type`` (PG + Custom Property fallback) instead.
+    """
+    props = object_props(obj)
+    return str(getattr(props, "element_type", "mesh")) if props is not None else "mesh"
+
+
 def scene_skinning(context: bpy.types.Context) -> object | None:
     """Return ``context.scene.proscenio.skinning`` or None when unavailable.
 

@@ -66,6 +66,93 @@ def test_stage_label_numbering_tracks_active_len(automesh_fixture):
     assert _stage_label(AuthoringStage.APPLY, "DENSE").startswith("6/6")
 
 
+def test_outer_strokes_summary_acknowledges_committed_cuts(automesh_fixture):
+    """A committed Stage 2 cut changes no overlay (it carves a corridor only at
+    APPLY), so it reads as a no-op. The modal surfaces a running extend/cut
+    count to acknowledge the commit."""
+    from proscenio.operators.automesh.automesh_authoring import (
+        _outer_strokes_summary,  # type: ignore[import-not-found]
+    )
+
+    assert _outer_strokes_summary([]) == ""
+    assert _outer_strokes_summary([{"kind": "cut", "points": []}]) == "1 cut"
+    assert _outer_strokes_summary([{"kind": "stroke", "points": []}]) == "1 extend"
+    mixed = [
+        {"kind": "stroke", "points": []},
+        {"kind": "cut", "points": []},
+        {"kind": "cut", "points": []},
+    ]
+    assert _outer_strokes_summary(mixed) == "1 extend, 2 cuts"
+
+
+def test_density_under_bones_defaults_off(automesh_fixture):
+    """Bone-aware density is opt-in: the scene PG defaults 'Density follows
+    bones' OFF, so a plain trace is not silently bone-weighted. The operator
+    reads this PG value at invoke, so the PG default drives the behaviour; only
+    a DENSE session with a picker armature consumes it."""
+    from proscenio.properties.scene_props import (
+        ProscenioSkinningProps,  # type: ignore[import-not-found]
+    )
+
+    pg = ProscenioSkinningProps.bl_rna.properties["automesh_density_under_bones"]
+    assert pg.default is False
+
+
+def test_trace_resolution_copy_is_not_inverted(automesh_fixture):
+    """The resolution knob was renamed and its blurb corrected. A HIGHER
+    downscale factor traces a finer silhouette (read_alpha_grid: 1.0 = full
+    image); the old copy claimed the opposite ('lower = denser', conflating
+    trace fidelity with mesh density). The name, description, and help topic
+    must not carry the inverted claim."""
+    from proscenio.core.help_topics import HELP_TOPICS  # type: ignore[import-not-found]
+    from proscenio.properties.scene_props import (
+        ProscenioSkinningProps,  # type: ignore[import-not-found]
+    )
+
+    prop = ProscenioSkinningProps.bl_rna.properties["automesh_resolution"]
+    assert prop.name == "Trace resolution"
+    assert "Lower values produce more" not in prop.description
+    topic = HELP_TOPICS["automesh_alpha"]
+    text = " ".join(line for section in topic.sections for line in section.body).lower()
+    assert "denser" not in text
+    assert "reads backwards" not in text
+
+
+def test_automesh_from_alpha_refuses_a_sprite_element(automesh_fixture):
+    """Mesh tools are gated on element_type == mesh. Running automesh on a
+    sprite element is refused - meshing would replace its single quad - so the
+    operator cancels and leaves the mesh untouched."""
+    obj = _activate("hand")
+    obj.proscenio.element_type = "sprite"
+    before = len(obj.data.vertices)
+    result = bpy.ops.proscenio.automesh_from_alpha(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        interior_spacing=0.1,
+        density_under_bones=False,
+        preserve_base_quad=False,
+        debug_stage="off",
+    )
+    assert result == {"CANCELLED"}
+    assert len(obj.data.vertices) == before
+
+
+def test_mesh_generation_gate_excludes_a_sprite_element(automesh_fixture):
+    """The Mesh Generation panel gate (and the subpanel polls) treat a sprite
+    element as out of scope even though it is a Blender MESH."""
+    from proscenio.panels.mesh_generation import (
+        _active_is_mesh_element,  # type: ignore[import-not-found]
+    )
+
+    obj = _activate("hand")
+    obj.proscenio.element_type = "mesh"
+    assert _active_is_mesh_element(bpy.context) is True
+    obj.proscenio.element_type = "sprite"
+    assert _active_is_mesh_element(bpy.context) is False
+
+
 def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):
     """Stage 2 cut strokes use the same RED as Stage 4 rip-cuts;
     the orange chunk-remove color is retired."""

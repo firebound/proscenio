@@ -43,7 +43,37 @@ def _validate_sprite_fields(obj: object, name: str) -> list[Issue]:
         issues.append(Issue("error", "sprite needs hframes >= 1", name))
     if vframes < 1:
         issues.append(Issue("error", "sprite needs vframes >= 1", name))
+    issues.extend(_validate_sprite_is_quad(obj, name))
     return issues
+
+
+def _validate_sprite_is_quad(obj: object, name: str) -> list[Issue]:
+    """Warn when a sprite element's mesh is no longer a single quad.
+
+    A sprite exports as a Godot Sprite2D carved from its single base quad
+    (4 verts, 1 face). A mesh tool run on the sprite by mistake (automesh
+    replaces the quad with a dense cutout) leaves geometry the writer cannot
+    map back to a sprite. Skips when the mesh data is unavailable - nothing to
+    judge.
+    """
+    mesh = getattr(obj, "data", None)
+    vertices = getattr(mesh, "vertices", None) if mesh is not None else None
+    polygons = getattr(mesh, "polygons", None) if mesh is not None else None
+    if vertices is None or polygons is None:
+        return []
+    vert_count = len(vertices)
+    face_count = len(polygons)
+    if vert_count == 4 and face_count == 1:
+        return []
+    return [
+        Issue(
+            "warning",
+            f"sprite element mesh is {vert_count} verts / {face_count} face(s), not a "
+            "single quad - a mesh tool likely ran on this sprite; to attach a sprite to "
+            "a bone, parent it with Ctrl+P > Bone instead of meshing it",
+            name,
+        )
+    ]
 
 
 def _validate_mesh(obj: object, name: str) -> list[Issue]:

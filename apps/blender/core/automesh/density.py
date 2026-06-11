@@ -103,6 +103,26 @@ def point_in_polygon(point: Point2D, polygon: Sequence[Point2D]) -> bool:
     return inside
 
 
+def point_on_contour(point: Point2D, polygon: Sequence[Point2D]) -> bool:
+    """True when ``point`` lies on (within epsilon of) any edge of the polygon.
+
+    Complements :func:`point_in_polygon`, which reports the boundary as
+    outside. Callers that must treat an on-edge sample as part of the shape
+    (the extend splice, where the pen snaps stroke endpoints exactly onto
+    contour vertices) OR the two together for an inside-or-on test.
+    """
+    if len(polygon) < 2:
+        return False
+    px, py = point
+    count = len(polygon)
+    for index in range(count):
+        x0, y0 = polygon[index]
+        x1, y1 = polygon[(index + 1) % count]
+        if _point_on_segment(px, py, x0, y0, x1, y1):
+            return True
+    return False
+
+
 def distance_to_segment(point: Point2D, segment: BoneSegment2D) -> float:
     """Euclidean distance from ``point`` to the line segment.
 

@@ -6,8 +6,8 @@ Turn a sprite's alpha into a deformable cutout mesh you can weight-paint. The pa
 
 A one-shot trace: it walks the image alpha contour into an annulus mesh, and re-runs preserve the UV-pinned base quad. Key settings:
 
-- **Mesh resolution** - an image downscale factor. Lower values produce a *denser* mesh (more vertices); the name reads backwards.
-- **Density follows bones** (Dense only) - packs more triangles near the picker's bones, where the deformation happens.
+- **Trace resolution** - an image downscale factor. A *higher* value (1.0 = full image) traces a finer silhouette but costs more; it sets outline fidelity, not the vertex count (use **Contour vertices** for the outline and **Interior spacing** for the fill).
+- **Density follows bones** (Dense only, off by default) - packs more triangles near the picker's bones, where the deformation happens.
 
 ## Automesh Interactive
 

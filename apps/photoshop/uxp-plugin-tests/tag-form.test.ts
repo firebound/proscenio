@@ -1,11 +1,13 @@
 // Tests for the pure Tags advanced-fields model. Covers the draft <->
 // TagBag mapping and the baseline diff, with emphasis on the value
 // validation shared with the bracket-tag parser (invalid input must be
-// left alone rather than written).
+// left alone rather than written) and on clearing a set field - the diff
+// carries cleared keys in `clear` so the writer can delete the tag.
 
 import { describe, expect, it } from "vitest";
 
 import { computeChanges, formFromTags, formsEqual, type DetailForm } from "../src/lib/tag-form";
+import { applyTagChanges } from "../src/lib/tag-writer";
 import type { TagBag } from "../src/lib/tag-parser";
 
 const EMPTY: DetailForm = {
@@ -51,47 +53,112 @@ describe("formsEqual", () => {
     });
 });
 
-describe("computeChanges", () => {
-    it("returns no changes when the form matches the baseline", () => {
-        expect(computeChanges(form({ folder: "body" }), form({ folder: "body" }))).toEqual({});
+describe("computeChanges sets", () => {
+    it("returns empty set and clear when the form matches the baseline", () => {
+        expect(computeChanges(form({ folder: "body" }), form({ folder: "body" }))).toEqual({
+            set: {},
+            clear: [],
+        });
     });
 
     it("sets a newly-typed folder, trimming whitespace", () => {
-        expect(computeChanges(form({ folder: "  body  " }), EMPTY)).toEqual({ folder: "body" });
+        expect(computeChanges(form({ folder: "  body  " }), EMPTY)).toEqual({
+            set: { folder: "body" },
+            clear: [],
+        });
     });
 
     it("sets a valid path", () => {
-        expect(computeChanges(form({ path: "hero" }), EMPTY)).toEqual({ path: "hero" });
+        expect(computeChanges(form({ path: "hero" }), EMPTY)).toEqual({ set: { path: "hero" }, clear: [] });
     });
 
     it("ignores a path with separators (parser rule reuse)", () => {
-        expect(computeChanges(form({ path: "a/b" }), EMPTY)).toEqual({});
-        expect(computeChanges(form({ path: ".." }), EMPTY)).toEqual({});
+        expect(computeChanges(form({ path: "a/b" }), EMPTY)).toEqual({ set: {}, clear: [] });
+        expect(computeChanges(form({ path: ".." }), EMPTY)).toEqual({ set: {}, clear: [] });
     });
 
     it("sets a valid scale as a number", () => {
-        expect(computeChanges(form({ scale: "2" }), EMPTY)).toEqual({ scale: 2 });
+        expect(computeChanges(form({ scale: "2" }), EMPTY)).toEqual({ set: { scale: 2 }, clear: [] });
     });
 
     it("ignores non-numeric or non-positive scale (parser rule reuse)", () => {
-        expect(computeChanges(form({ scale: "1abc" }), EMPTY)).toEqual({});
-        expect(computeChanges(form({ scale: "0" }), EMPTY)).toEqual({});
+        expect(computeChanges(form({ scale: "1abc" }), EMPTY)).toEqual({ set: {}, clear: [] });
+        expect(computeChanges(form({ scale: "0" }), EMPTY)).toEqual({ set: {}, clear: [] });
     });
 
     it("sets origin from the x / y pair", () => {
-        expect(computeChanges(form({ originX: "1", originY: "2" }), EMPTY)).toEqual({ origin: [1, 2] });
+        expect(computeChanges(form({ originX: "1", originY: "2" }), EMPTY)).toEqual({
+            set: { origin: [1, 2] },
+            clear: [],
+        });
     });
 
     it("ignores a non-numeric origin", () => {
-        expect(computeChanges(form({ originX: "x", originY: "2" }), EMPTY)).toEqual({});
+        expect(computeChanges(form({ originX: "x", originY: "2" }), EMPTY)).toEqual({ set: {}, clear: [] });
     });
 
     it("sets a name pattern only when it carries the * wildcard (parser rule reuse)", () => {
-        expect(computeChanges(form({ namePattern: "arm_*" }), EMPTY)).toEqual({ namePattern: "arm_*" });
-        expect(computeChanges(form({ namePattern: "literal" }), EMPTY)).toEqual({});
+        expect(computeChanges(form({ namePattern: "arm_*" }), EMPTY)).toEqual({
+            set: { namePattern: "arm_*" },
+            clear: [],
+        });
+        expect(computeChanges(form({ namePattern: "literal" }), EMPTY)).toEqual({ set: {}, clear: [] });
     });
 
     it("enables the origin marker", () => {
-        expect(computeChanges(form({ originMarker: true }), EMPTY)).toEqual({ originMarker: true });
+        expect(computeChanges(form({ originMarker: true }), EMPTY)).toEqual({
+            set: { originMarker: true },
+            clear: [],
+        });
+    });
+});
+
+describe("computeChanges clears", () => {
+    it("clears a folder emptied against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ folder: "body" }))).toEqual({ set: {}, clear: ["folder"] });
+    });
+
+    it("clears a path emptied against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ path: "hero" }))).toEqual({ set: {}, clear: ["path"] });
+    });
+
+    it("clears a scale emptied against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ scale: "2" }))).toEqual({ set: {}, clear: ["scale"] });
+    });
+
+    it("clears an origin emptied against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ originX: "1", originY: "2" }))).toEqual({
+            set: {},
+            clear: ["origin"],
+        });
+    });
+
+    it("clears a name pattern emptied against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ namePattern: "arm_*" }))).toEqual({
+            set: {},
+            clear: ["namePattern"],
+        });
+    });
+
+    it("clears the origin marker when unchecked against a set baseline", () => {
+        expect(computeChanges(EMPTY, form({ originMarker: true }))).toEqual({
+            set: {},
+            clear: ["originMarker"],
+        });
+    });
+});
+
+describe("computeChanges round-trip through the writer", () => {
+    it("removes the bracket from the layer name when a field is cleared", () => {
+        const baseline = formFromTags({ folder: "body" });
+        const changes = computeChanges(EMPTY, baseline);
+        const name = applyTagChanges("hero", { folder: "body" }, changes);
+        expect(name).toBe("hero");
+        expect(name).not.toContain("[folder");
+    });
+
+    it("still writes the bracket when a field is set", () => {
+        const changes = computeChanges(form({ folder: "body" }), EMPTY);
+        expect(applyTagChanges("hero", {}, changes)).toBe("hero [folder:body]");
     });
 });

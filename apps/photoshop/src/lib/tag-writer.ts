@@ -4,6 +4,7 @@
 // layer names stable across edits so source-control diffs stay
 // readable.
 
+import type { TagChanges } from "./tag-form";
 import type { BlendMode } from "./manifest";
 import type { TagBag } from "./tag-parser";
 
@@ -78,22 +79,21 @@ function kindSegment(kind: NonNullable<TagBag["kind"]>): string {
     }
 }
 
-/** Merge a partial bag into `tags` and rewrite. Keys whose value is
- *  `undefined` in `changes` are deleted from the result, so callers
- *  can use `undefined` to clear a field. */
+/** Apply a `TagChanges` edit to `tags` and rewrite. `set` keys are
+ *  written, `clear` keys are deleted - the two channels keep a cleared
+ *  field representable, which a single `Partial<TagBag>` cannot under
+ *  `exactOptionalPropertyTypes`. */
 export function applyTagChanges(
     displayName: string,
     tags: TagBag,
-    changes: Partial<TagBag>,
+    changes: TagChanges,
 ): string {
     const next: TagBag = { ...tags };
-    for (const key of Object.keys(changes) as (keyof TagBag)[]) {
-        const value = changes[key];
-        if (value === undefined) {
-            delete next[key];
-        } else {
-            (next as Record<string, unknown>)[key] = value;
-        }
+    for (const key of Object.keys(changes.set) as (keyof TagBag)[]) {
+        (next as Record<string, unknown>)[key] = changes.set[key];
+    }
+    for (const key of changes.clear) {
+        delete next[key];
     }
     return writeLayerName(displayName, next);
 }

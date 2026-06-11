@@ -6,13 +6,13 @@
 
 import React from "react";
 
-import type { TagBag } from "../../../lib/tag-parser";
 import type { TagTreeNode } from "../../../lib/tag-tree";
 import {
     computeChanges,
     formFromTags,
     formsEqual,
     type DetailForm,
+    type TagChanges,
 } from "../../../lib/tag-form";
 import { readSelectionCenter } from "../../../api/ps-selection-bounds";
 import { log } from "../../../utils/log";
@@ -21,7 +21,7 @@ interface TagDetailsProps {
     indentPx: number;
     node: TagTreeNode;
     busy: boolean;
-    onChange: (changes: Partial<TagBag>) => void;
+    onChange: (changes: TagChanges) => void;
 }
 
 export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, onChange }) => {
@@ -45,7 +45,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
     const onApply = React.useCallback(() => {
         const changes = computeChanges(form, baseline);
         log.debug("TagsSection.details", "apply", node.layerPath, changes);
-        if (Object.keys(changes).length > 0) onChange(changes);
+        if (Object.keys(changes.set).length > 0 || changes.clear.length > 0) onChange(changes);
     }, [form, baseline, node.layerPath, onChange]);
 
     const onRevert = React.useCallback(() => {

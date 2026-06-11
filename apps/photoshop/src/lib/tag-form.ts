@@ -42,6 +42,16 @@ export function formsEqual(a: DetailForm, b: DetailForm): boolean {
     );
 }
 
+// The minimal edit one Apply fires: keys to write (`set`) and keys to
+// delete (`clear`). Two channels rather than one `Partial<TagBag>`
+// because `exactOptionalPropertyTypes` forbids a present `undefined`
+// member, so a cleared field cannot ride the bag as `{ key: undefined }`
+// - it would be dropped, which is the form-clear bug this shape fixes.
+export interface TagChanges {
+    set: Partial<TagBag>;
+    clear: (keyof TagBag)[];
+}
+
 // Sentinel returned by `diff*` helpers when the form value matches the
 // baseline (or is invalid and should be left alone). Distinct symbol so
 // the diff type cannot collapse with `string`-typed fields
@@ -89,29 +99,29 @@ function diffNamePattern(form: DetailForm, baseline: DetailForm): Diff<TagBag["n
 }
 
 function applyDiff<K extends keyof TagBag>(
-    changes: Partial<TagBag>,
+    changes: TagChanges,
     key: K,
     diff: Diff<TagBag[K]>,
 ): void {
     if (diff === SKIP) return;
     if (diff === undefined) {
-        delete changes[key];
+        changes.clear.push(key);
         return;
     }
-    changes[key] = diff;
+    changes.set[key] = diff;
 }
 
-export function computeChanges(form: DetailForm, baseline: DetailForm): Partial<TagBag> {
-    const changes: Partial<TagBag> = {};
+export function computeChanges(form: DetailForm, baseline: DetailForm): TagChanges {
+    const changes: TagChanges = { set: {}, clear: [] };
     applyDiff(changes, "folder", diffFolder(form, baseline));
     applyDiff(changes, "path", diffPath(form, baseline));
     applyDiff(changes, "scale", diffScale(form, baseline));
     applyDiff(changes, "origin", diffOrigin(form, baseline));
     if (form.originMarker !== baseline.originMarker) {
         if (form.originMarker) {
-            changes.originMarker = true;
+            changes.set.originMarker = true;
         } else {
-            delete changes.originMarker;
+            changes.clear.push("originMarker");
         }
     }
     applyDiff(changes, "namePattern", diffNamePattern(form, baseline));

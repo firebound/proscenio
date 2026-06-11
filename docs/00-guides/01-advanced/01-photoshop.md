@@ -76,8 +76,8 @@ display name        tag             tag
 | `[ignore]` | layer or group | dropped entirely - no manifest entry, no PNG |
 | `[merge]` | group | flattens the whole group into one PNG, as if it were a single art layer |
 | `[folder:NAME]` | group | becomes a Blender `Collection` named `NAME`; children inherit it |
-| `[polygon]` / `[sprite]` | layer | forces `kind: polygon` (the default for art layers anyway) |
-| `[mesh]` | layer | emits `kind: mesh` - a polygon flagged as a deformable-mesh source |
+| `[mesh]` / `[poly]` / `[polygon]` | layer | all parse to the same `kind: mesh`; they are synonyms today because the export builds the same standard polygon (Polygon2D) for each - the very node an untagged art layer gets, since only `kind: sprite` diverges (to Sprite2D). `[mesh]` reserves the deformable-mesh intent for the future mesh-deformation work; until that ships the choice is cosmetic |
+| `[sprite]` | layer | parses to `kind: sprite` - a Sprite2D-backed element instead of a polygon (`[spritesheet]` below is the group form that builds frames) |
 | `[spritesheet]` | group | marks the group as a sprite-frame; its numbered child layers become the frames |
 | `[origin]` | layer | marks that layer's centroid as the pivot of its parent `[spritesheet]` or `[merge]` group (the marker layer itself is not exported) |
 | `[origin:X,Y]` | layer or group | an explicit pivot in PSD pixels; overrides the implicit centre |

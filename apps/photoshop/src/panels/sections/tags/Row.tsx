@@ -5,6 +5,7 @@
 import React from "react";
 
 import type { BlendMode } from "../../../lib/manifest";
+import type { TagChanges } from "../../../lib/tag-form";
 import type { TagBag } from "../../../lib/tag-parser";
 import type { TagTreeNode } from "../../../lib/tag-tree";
 import {
@@ -98,7 +99,7 @@ const TagRowImpl: React.FC<TagRowProps> = ({
     }, []);
 
     const onAdvancedChange = React.useCallback(
-        (changes: Partial<TagBag>) => {
+        (changes: TagChanges) => {
             const newName = applyTagChanges(node.displayName, node.tags, changes);
             log.debug("TagsSection", "advanced", node.layerPath, changes, newName);
             onRename(node.layerPath, newName);

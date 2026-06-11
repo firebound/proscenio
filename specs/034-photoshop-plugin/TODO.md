@@ -6,10 +6,10 @@ Sequenced from the verdicts in [STUDY.md](STUDY.md): one bugfix PR and one retes
 
 ### PR 1: make the advanced-fields form able to clear a set tag
 
-- [ ] Carry cleared keys explicitly out of `computeChanges` in [tag-form.ts](../../apps/photoshop/src/lib/tag-form.ts) - the backlog sketch is a `{ set, clear }` return shape - replacing the `delete changes[key]` that drops the clear signal (an `exactOptionalPropertyTypes` workaround) before `applyTagChanges` in [tag-writer.ts](../../apps/photoshop/src/lib/tag-writer.ts) can delete the tag.
-- [ ] Update the Apply path in [Details.tsx](../../apps/photoshop/src/panels/sections/tags/Details.tsx) so a clears-only edit fires the rename - the `Object.keys(changes).length > 0` gate swallows it today while `Apply` reads enabled.
-- [ ] Extend [tag-form.test.ts](../../apps/photoshop/uxp-plugin-tests/tag-form.test.ts) with the clear cases (`folder`, `path`, `scale`, `origin`, name pattern emptied; origin marker unchecked) plus one round-trip asserting the bracket actually leaves the layer name.
-- [ ] Docs rider: state the `[mesh]` vs `[polygon]` downstream equivalence in the tag table of the [advanced Photoshop guide](../../docs/00-guides/01-advanced/01-photoshop.md); the deformation branch itself stays gated below.
+- [x] Carry cleared keys explicitly out of `computeChanges` in [tag-form.ts](../../apps/photoshop/src/lib/tag-form.ts) - the backlog sketch is a `{ set, clear }` return shape - replacing the `delete changes[key]` that drops the clear signal (an `exactOptionalPropertyTypes` workaround) before `applyTagChanges` in [tag-writer.ts](../../apps/photoshop/src/lib/tag-writer.ts) can delete the tag.
+- [x] Update the Apply path in [Details.tsx](../../apps/photoshop/src/panels/sections/tags/Details.tsx) so a clears-only edit fires the rename - the `Object.keys(changes).length > 0` gate swallows it today while `Apply` reads enabled.
+- [x] Extend [tag-form.test.ts](../../apps/photoshop/uxp-plugin-tests/tag-form.test.ts) with the clear cases (`folder`, `path`, `scale`, `origin`, name pattern emptied; origin marker unchecked) plus one round-trip asserting the bracket actually leaves the layer name.
+- [x] Docs rider: state the `[mesh]` vs `[polygon]` downstream equivalence in the tag table of the [advanced Photoshop guide](../../docs/00-guides/01-advanced/01-photoshop.md); the deformation branch itself stays gated below.
 
 ### Retest: waist 1px drift through the UXP path
 

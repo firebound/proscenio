@@ -29,11 +29,17 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        atlas_name = _discover_atlas_name()
-        if atlas_name is None:
+        discovered = _discover_atlas()
+        if discovered is None:
             layout.label(text="no atlas linked in materials", icon="INFO")
+        elif discovered[1]:
+            layout.label(text=f"packed atlas: {discovered[0]}", icon="IMAGE")
         else:
-            layout.label(text=atlas_name, icon="IMAGE")
+            layout.label(text=f"source image: {discovered[0]}", icon="IMAGE_DATA")
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is not None:
+            # Read-only readout; the Export subpanel owns the editable field.
+            layout.label(text=f"pixels per unit: {scene_props.pixels_per_unit:g}", icon="DRIVER")
         _draw_packer_box(layout, context)
 
 
@@ -68,18 +74,31 @@ def _packed_manifest_exists() -> bool:
     return (Path(blend).parent / f"{Path(blend).stem}.atlas.json").exists()
 
 
-def _discover_atlas_name() -> str | None:
+def _packed_atlas_filename() -> str | None:
+    """Basename of the packed atlas PNG for the active .blend, or None."""
+    blend = bpy.data.filepath
+    if not blend:
+        return None
+    return f"{Path(blend).stem}.atlas.png"
+
+
+def _discover_atlas() -> tuple[str, bool] | None:
+    """First material texture image: ``(display_name, is_packed_atlas)``.
+
+    ``is_packed_atlas`` distinguishes the shared packed atlas from a
+    discovered source image so the panel can label which one is linked.
+    """
+    packed = _packed_atlas_filename()
     for mat in bpy.data.materials:
         if not mat.use_nodes or mat.node_tree is None:
             continue
         for node in mat.node_tree.nodes:
             if node.type == "TEX_IMAGE" and node.image is not None:
                 fp = node.image.filepath
-                return (
-                    str(bpy.path.abspath(fp)).split("\\")[-1].split("/")[-1]
-                    if fp
-                    else (f"{node.image.name} (unsaved)")
-                )
+                if not fp:
+                    return f"{node.image.name} (unsaved)", False
+                name = Path(bpy.path.abspath(fp)).name
+                return name, (packed is not None and name == packed)
     return None
 
 

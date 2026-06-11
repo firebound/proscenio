@@ -12,6 +12,7 @@ import type { PsDocument } from "photoshop";
 import type { UxpFile, UxpFolder } from "uxp";
 
 import { moveLayerIntoGroup, placePngAt } from "./png-placer";
+import { persistPixelsPerUnit } from "./pixels-per-unit-store";
 import type { Manifest, ManifestEntry, MeshEntry, SpriteEntry } from "../lib/manifest";
 
 export interface ImportFlowResult {
@@ -48,6 +49,11 @@ async function doImport(manifest: Manifest, folder: UxpFolder): Promise<ImportFl
         fill: constants.DocumentFill.TRANSPARENT,
         mode: constants.NewDocumentMode.RGB,
     });
+
+    // Seed the exporter's PPU from the imported document so a re-export
+    // emits the imported scale instead of whatever the numeric input last
+    // held (the 10x-scale waiver). The document is now committed.
+    persistPixelsPerUnit(manifest.pixels_per_unit);
 
     const sortedEntries = [...manifest.layers].sort((a, b) => b.z_order - a.z_order);
     const warnings: string[] = [];

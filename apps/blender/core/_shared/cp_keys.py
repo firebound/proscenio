@@ -34,6 +34,14 @@ PROSCENIO_SLOT_INDEX = "proscenio_slot_index"
 # PROSCENIO_OT_pack_atlas, restored by PROSCENIO_OT_unpack_atlas.
 PROSCENIO_PRE_PACK = "proscenio_pre_pack"
 
+# Origin marker stamped on a sprite's pre-Apply material by
+# PROSCENIO_OT_apply_packed_atlas, carrying the material's apply-time name.
+# PROSCENIO_OT_unpack_atlas rescue-scans for it when the snapshot's by-name
+# lookup misses after a rename (the value survives a rename; the name does
+# not). A deleted material, or its old name reused by a different material,
+# is the residual identity-by-name edge the atlas help topic documents.
+PROSCENIO_ATLAS_ORIGIN_MARKER = "proscenio_atlas_origin"
+
 # Legacy Custom Property mirrors of the per-Object PropertyGroup.
 # Writer reads these as fallbacks when the PropertyGroup is not
 # registered (headless contexts).

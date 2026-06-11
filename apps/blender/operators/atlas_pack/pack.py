@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import ClassVar
 
 import bpy
@@ -13,6 +14,23 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_warn,
 )
 from ._paths import packed_atlas_paths
+
+
+def packable_atlas_meshes(objects: Iterable[bpy.types.Object]) -> list[bpy.types.Object]:
+    """Mesh objects eligible for atlas packing.
+
+    Drops any object flagged ``exclude_from_atlas``: a flagged sprite keeps
+    its own UVs, texture, and material instead of joining the shared atlas.
+    """
+    out: list[bpy.types.Object] = []
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        props = getattr(obj, "proscenio", None)
+        if props is not None and bool(getattr(props, "exclude_from_atlas", False)):
+            continue
+        out.append(obj)
+    return out
 
 
 class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
@@ -47,7 +65,7 @@ class PROSCENIO_OT_pack_atlas(bpy.types.Operator):
             report_error(self, "scene props not registered")
             return {"CANCELLED"}
 
-        sprite_meshes = [o for o in context.scene.objects if o.type == "MESH"]
+        sprite_meshes = packable_atlas_meshes(context.scene.objects)
         sources = collect_source_images(sprite_meshes)
         if not sources:
             report_warn(self, "no sprite meshes with source images found")

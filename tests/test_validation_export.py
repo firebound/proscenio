@@ -27,6 +27,7 @@ from core.validation.export import (  # noqa: E402
     _validate_ik_bake,
     _validate_mesh_flatness,
     _validate_slots,
+    _validate_sprite_frame_uvs,
     validate_export,
 )
 from core.validation.issue import Issue  # noqa: E402
@@ -116,6 +117,58 @@ def test_full_pass_on_a_clean_scene_has_no_errors() -> None:
 def test_element_with_parent_bone_is_clean() -> None:
     obj = SimpleNamespace(name="torso", parent_bone="spine", vertex_groups=[])
     assert _validate_element_against_armature(obj, {"spine"}) == []
+
+
+def _sprite_uvs(
+    name: str,
+    uvs: list[tuple[float, float]],
+    *,
+    hframes: int = 2,
+    vframes: int = 1,
+    region_mode: str = "auto",
+    element_type: str = "sprite",
+) -> SimpleNamespace:
+    loops = [SimpleNamespace(uv=(u, v)) for u, v in uvs]
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        proscenio=SimpleNamespace(
+            element_type=element_type,
+            hframes=hframes,
+            vframes=vframes,
+            region_mode=region_mode,
+        ),
+        data=SimpleNamespace(uv_layers=SimpleNamespace(active=SimpleNamespace(data=loops))),
+    )
+
+
+_FULL_SHEET = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+_SHRUNK = [(0.1, 0.1), (0.4, 0.1), (0.4, 0.4), (0.1, 0.4)]
+
+
+def test_sheet_sliced_sprite_warns_on_shrunk_uvs() -> None:
+    obj = _sprite_uvs("blink", _SHRUNK)
+    assert _has(_validate_sprite_frame_uvs(obj), "warning", "not the full 0-1 sheet")
+
+
+def test_full_sheet_sprite_has_no_warning() -> None:
+    obj = _sprite_uvs("blink", _FULL_SHEET)
+    assert _validate_sprite_frame_uvs(obj) == []
+
+
+def test_manual_region_sprite_is_skipped() -> None:
+    obj = _sprite_uvs("blink", _SHRUNK, region_mode="manual")
+    assert _validate_sprite_frame_uvs(obj) == []
+
+
+def test_single_frame_sprite_is_skipped() -> None:
+    obj = _sprite_uvs("blink", _SHRUNK, hframes=1, vframes=1)
+    assert _validate_sprite_frame_uvs(obj) == []
+
+
+def test_mesh_element_is_skipped() -> None:
+    obj = _sprite_uvs("torso", _SHRUNK, element_type="mesh")
+    assert _validate_sprite_frame_uvs(obj) == []
 
 
 def test_element_without_bone_or_groups_warns() -> None:

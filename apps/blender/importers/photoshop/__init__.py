@@ -66,6 +66,7 @@ def import_manifest(
     :class:`psd_manifest.ManifestError` on shape mismatch.
     """
     manifest = psd_manifest.load(manifest_path)
+    _sync_scene_pixels_per_unit(manifest)
     armature_obj = build_root_armature(
         name=_armature_name(manifest),
         root_bone_name=root_bone_name,
@@ -88,6 +89,22 @@ def import_manifest(
     if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
+
+
+def _sync_scene_pixels_per_unit(manifest: psd_manifest.LoadedManifest) -> None:
+    """Push the manifest's PPU onto the active scene's Proscenio props.
+
+    The importer sizes every mesh by ``manifest.pixels_per_unit``; if the
+    scene property kept its default while an import used 1000, a later
+    export would emit a 10x-scale mismatch. Syncing here keeps the
+    import/export round-trip consistent. No-op when the scene props are
+    not registered (e.g. the addon is not enabled in this context).
+    """
+    scene = bpy.context.scene
+    props = getattr(scene, "proscenio", None)
+    if props is None:
+        return
+    props.pixels_per_unit = manifest.pixels_per_unit
 
 
 def _anchor_meshes_at_feet(

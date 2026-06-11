@@ -165,6 +165,17 @@ class ProscenioObjectProps(PropertyGroup):
         default=False,
         update=on_any_update,
     )
+    exclude_from_atlas: BoolProperty(  # type: ignore[valid-type]
+        name="Exclude from atlas",
+        description=(
+            "Keep this sprite out of Pack Atlas entirely: it is not packed, "
+            "its UVs and material are left untouched, and it ships its own "
+            "texture. Use it to keep large or rarely-shared sprites out of the "
+            "shared atlas."
+        ),
+        default=False,
+        update=on_any_update,
+    )
 
     driver_target: EnumProperty(  # type: ignore[valid-type]
         name="Driver target",

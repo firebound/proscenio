@@ -87,6 +87,7 @@ class PROSCENIO_PT_export(bpy.types.Panel):
             return
         layout.prop(scene_props, "last_export_path")
         layout.prop(scene_props, "pixels_per_unit")
+        layout.prop(scene_props, "bundle_textures")
         layout.separator()
         col = layout.column(align=True)
         col.operator("proscenio.export_godot", text="Export (.proscenio)", icon="EXPORT")

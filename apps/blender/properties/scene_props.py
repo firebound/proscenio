@@ -415,6 +415,15 @@ class ProscenioSceneProps(PropertyGroup):
         default=100.0,
         min=0.0001,
     )
+    bundle_textures: BoolProperty(  # type: ignore[valid-type]
+        name="Bundle textures",
+        description=(
+            "On export, copy every referenced texture next to the .proscenio so "
+            "Godot's siblings-only import resolves PSD assets that live in images/ "
+            "and _spritesheets/ subfolders"
+        ),
+        default=False,
+    )
     validation_results: CollectionProperty(  # type: ignore[valid-type]
         type=ProscenioValidationIssue,
     )

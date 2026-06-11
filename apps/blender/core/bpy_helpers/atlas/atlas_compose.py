@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ...atlas.atlas_packer import PackResult, Rect
+from ...atlas.edge_extend import edge_extend_ring
 from .._shared.image_canvas import save_rgba_canvas_as_png
 from .atlas_collect import SourceImage
 
@@ -29,7 +30,9 @@ def compose_atlas(
 ) -> Any:
     """Build a single bpy.types.Image holding every packed source and save it.
 
-    Pixels are RGBA float32. Padding pixels are left transparent (alpha=0).
+    Pixels are RGBA float32. Each placement's reserved ``padding`` ring is
+    filled by edge-extending its border pixels (alpha bleed), so bilinear
+    filtering does not seam transparency into the sprite under it.
 
     Tolerates the case where ``src.image`` is the same image being
     overwritten: source pixel arrays are copied into NumPy **before** the
@@ -77,6 +80,7 @@ def compose_atlas(
         w = min(rect.w, sliced.shape[1])
         slot_y_bu = packed.atlas_h - rect.y - rect.h
         canvas[slot_y_bu : slot_y_bu + h, rect.x : rect.x + w] = sliced[:h, :w]
+        edge_extend_ring(canvas, slot_y_bu, rect.x, h, w, padding, packed.atlas_w, packed.atlas_h)
 
     return save_rgba_canvas_as_png(name, canvas, out_path)
 

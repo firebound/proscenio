@@ -7,7 +7,10 @@ from typing import Any, ClassVar
 
 import bpy
 
-from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
+    PROSCENIO_ATLAS_ORIGIN_MARKER,
+    PROSCENIO_PRE_PACK,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -109,6 +112,9 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         if materials and materials[0] is not None:
             snapshot["material"] = materials[0].name
             snapshot["image"] = first_texture_image_name(materials[0])
+            # Stamp the origin marker so Unpack can rescue this material if it
+            # is renamed before the by-name restore runs.
+            materials[0][PROSCENIO_ATLAS_ORIGIN_MARKER] = materials[0].name
         props = getattr(obj, "proscenio", None)
         if props is not None:
             snapshot["region_mode"] = str(props.region_mode)

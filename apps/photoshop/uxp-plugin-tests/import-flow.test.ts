@@ -1,12 +1,14 @@
 // Import orchestrator. Drives the host mock's documents.add + open (via
 // png-placer) and a fake folder tree.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "photoshop";
 
+import { loadPixelsPerUnit } from "../src/api/pixels-per-unit-store";
 import { runImport } from "../src/api/import-flow";
-import type { Manifest } from "../src/lib/manifest";
+import { buildExportPlan } from "../src/lib/planner";
+import { DEFAULT_PIXELS_PER_UNIT, type Manifest } from "../src/lib/manifest";
 import type { UxpFolder } from "uxp";
 
 function meshManifest(): Manifest {
@@ -118,5 +120,49 @@ describe("runImport", () => {
         const result = await runImport(meshManifest(), {} as unknown as UxpFolder);
         expect(result.kind).toBe("failed");
         expect(result.errors?.[0]).toContain("doc add failed");
+    });
+});
+
+describe("import seeds the exporter pixels-per-unit", () => {
+    beforeEach(() => {
+        const store = new Map<string, string>();
+        vi.stubGlobal("localStorage", {
+            getItem: (k: string) => store.get(k) ?? null,
+            setItem: (k: string, v: string) => { store.set(k, v); },
+            removeItem: (k: string) => { store.delete(k); },
+        });
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("seeds the persisted PPU from the manifest so the next export plan stamps it", async () => {
+        stubDocAdd();
+        stubSourceLayer();
+        const manifest = meshManifest();
+        manifest.pixels_per_unit = 1000; // non-default: the imported document's scale
+
+        const result = await runImport(manifest, folderResolving({ isFile: true, name: "torso.png" }));
+        expect(result.kind).toBe("ok");
+
+        // The persisted exporter value now holds the imported PPU, so a
+        // re-export reads it back and stamps it into the new manifest
+        // instead of whatever the numeric input last held.
+        expect(loadPixelsPerUnit()).toBe(1000);
+        const plan = buildExportPlan(
+            { name: "hero.psd", width: 64, height: 64 },
+            [],
+            { skipHidden: false, pixelsPerUnit: loadPixelsPerUnit() },
+        );
+        expect(plan.manifest.pixels_per_unit).toBe(1000);
+    });
+
+    it("seeds the default for a manifest at the default PPU", async () => {
+        stubDocAdd();
+        stubSourceLayer();
+        const result = await runImport(meshManifest(), folderResolving({ isFile: true, name: "torso.png" }));
+        expect(result.kind).toBe("ok");
+        expect(loadPixelsPerUnit()).toBe(DEFAULT_PIXELS_PER_UNIT);
     });
 });

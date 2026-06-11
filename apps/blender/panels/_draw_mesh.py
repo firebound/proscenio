@@ -22,6 +22,7 @@ def draw_body(
     layout.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
     layout.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
     layout.prop(props, "material_isolated")
+    layout.prop(props, "exclude_from_atlas")
 
 
 def draw_weight_paint(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:

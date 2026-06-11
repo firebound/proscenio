@@ -94,6 +94,30 @@ def _gate_and_write(
     return True
 
 
+def _bundle_after_write(scene: bpy.types.Scene, filepath: str) -> str:
+    """Copy referenced textures beside the file when the scene flag is set.
+
+    Returns a one-line suffix for the caller's success report (empty when the
+    flag is off). The info bar shows only the last report, so the bundle
+    summary rides the operator's own message rather than a separate one.
+    """
+    props = getattr(scene, "proscenio", None)
+    if props is None or not getattr(props, "bundle_textures", False):
+        return ""
+    from ..exporters.godot.writer.bundle import bundle_textures  # type: ignore[import-not-found]
+
+    dest = Path(bpy.path.abspath(filepath)).parent
+    result = bundle_textures(list(scene.objects), dest)
+    print(
+        f"[Proscenio] bundle -> copied {result.copied}, "
+        f"skipped {result.skipped}, missing {result.missing}"
+    )
+    parts = [f"bundled {len(result.copied)} texture(s)"]
+    if result.missing:
+        parts.append(f"{len(result.missing)} missing on disk")
+    return "; " + ", ".join(parts)
+
+
 class PROSCENIO_OT_validate_export(bpy.types.Operator):
     """Run the full export-time validation pass and surface issues in the panel."""
 
@@ -145,7 +169,8 @@ class PROSCENIO_OT_export_godot(bpy.types.Operator, ExportHelper):
             return {"CANCELLED"}
 
         path = Path(self.filepath)
-        report_info(self, f"wrote {path.name}")
+        suffix = _bundle_after_write(context.scene, self.filepath)
+        report_info(self, f"wrote {path.name}{suffix}")
         print(f"[Proscenio] exported -> {path}")
         props = scene_props(context)
         if props is not None:
@@ -175,7 +200,8 @@ class PROSCENIO_OT_reexport_godot(bpy.types.Operator):
         ):
             return {"CANCELLED"}
 
-        report_info(self, f"re-exported -> {Path(filepath).name}")
+        suffix = _bundle_after_write(context.scene, filepath)
+        report_info(self, f"re-exported -> {Path(filepath).name}{suffix}")
         print(f"[Proscenio] re-exported -> {filepath}")
         return {"FINISHED"}
 

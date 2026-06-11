@@ -7,12 +7,30 @@ from typing import Any, ClassVar
 
 import bpy
 
-from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
+    PROSCENIO_ATLAS_ORIGIN_MARKER,
+    PROSCENIO_PRE_PACK,
+)
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 from ...core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
     scene_has_pre_pack_snapshot,
 )
 from ._paths import pre_pack_snapshot_for, swap_image_in_materials
+
+
+def _rescue_material_by_marker(token: str) -> bpy.types.Material | None:
+    """Find a material carrying the Apply-time origin marker for ``token``.
+
+    The snapshot stores the original material by name; a rename between
+    Apply and Unpack breaks the by-name lookup. The marker stamped at Apply
+    travels with the material across a rename, so scan for it as a rescue.
+    """
+    if not token:
+        return None
+    for mat in bpy.data.materials:
+        if mat.get(PROSCENIO_ATLAS_ORIGIN_MARKER) == token:
+            return mat
+    return None
 
 
 class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
@@ -94,12 +112,14 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
             return True
         mat = bpy.data.materials.get(mat_name)
         if mat is None:
-            # Snapshot stores the material by name, so a rename between Apply
-            # and Unpack breaks the lookup; report the partial restore.
+            # The by-name lookup misses after a rename; rescue by the origin
+            # marker Apply stamped on the material.
+            mat = _rescue_material_by_marker(mat_name)
+        if mat is None:
             report_warn(
                 self,
                 f"'{obj.name}': original material '{mat_name}' not found "
-                f"(renamed or deleted?); restored UVs only",
+                f"(deleted?); restored UVs only",
             )
             return False
         if materials:

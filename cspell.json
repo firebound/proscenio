@@ -11,6 +11,8 @@
     "specs/backlog-bugs-found.md",
     "specs/backlog-manual-testing.md",
     "specs/backlog-ui-feedback.md",
+    "specs/backlog-ik-ergonomics.md",
+    "specs/backlog-photoshop-performance.md",
     "specs/BACKLOGS_SUMMARY.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
     "specs/025-code-duplication/raw/**"

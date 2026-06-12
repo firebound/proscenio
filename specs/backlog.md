@@ -4,121 +4,9 @@ Items that are not in any active spec. Each entry promotes into a numbered spec 
 
 Forward-compatibility items gated on a future Blender release live in a dedicated [`backlog-blender-6.md`](backlog-blender-6.md). Cross-cutting type-safety and lint-enforcement gaps (strict gates configured but not run, trees exempted from type checking) live in [`backlog-code-quality.md`](backlog-code-quality.md).
 
-## Format and schema
-
-### Bezier curve preservation
-
-**What:** the `.proscenio` v1 stores keyframes with track-level interpolation only (`linear`, `constant`); the Godot importer also offers cubic via `INTERPOLATION_CUBIC*` for smooth automatic splines. Blender authors curves with per-key Bezier handles that the format does not transmit.
-
-**Why future-spec:** transmitting Bezier handles requires schema fields (`tangent_in`, `tangent_out`) and a Godot-side custom Bezier track or pre-baking. Cubic auto-spline is good enough for MVP.
-
-**Trigger to revisit:** an animator complains that the imported animation does not match Blender to within visual tolerance.
-
-### Multiple atlases per character
-
-`atlas` is a single string in v1. Multi-atlas characters split into multiple `.proscenio` files. Future v2 may support an `atlas_pages` array indexed by sprite.
-
-### Animation events (method tracks)
-
-`AnimationPlayer` supports method tracks for audio cues, particle spawns, etc. v1 has no `event` track type.
-
-### Per-key interpolation mixing
-
-Schema's `interp` field is per-key but the importer applies a single track-level interpolation. Mixed `linear`/`constant`/`cubic` keys in one track would require splitting into multiple tracks at runtime or adopting a Bezier track type.
-
-### Format detection / migration
-
-Schema validation rejects unknown `format_version`. Once v2 lands, the Blender exporter ships `migrations/v1_to_v2.py` and the Godot importer surfaces a clear migration error pointing to the migrator.
-
-### Bone physics (joint chain export)
-
-`Joint2D` chains driven by physics for cape, hair, tail, dangly weapon ornaments. Requires a schema extension carrying joint type + stiffness / damping per chain, then a Godot-side importer that wires `PinJoint2D` / `DampedSpringJoint2D` / `Joint2D` under the relevant bones. Pairs with the live-link discussion in [Architecture revisits](#architecture-revisits) since runtime physics on hot-reloaded poses gets interesting fast.
-
-**Trigger:** a character design surfaces dangly elements that look stiff under skeletal-only deformation.
-
-### Path constraint export
-
-Bones following a path: tail swish along a curve, eye blink along a Bezier, vehicle wheels rolling along a road. Blender ships path-following constraints today; the schema extension carries the path geometry + per-bone path attachment, and the Godot importer wires `PathFollow2D` (or a custom path resolver) under each follower bone. Requires `format_version=2` bump.
-
-**Trigger:** an animator authors a path constraint in Blender and asks why nothing happens on the Godot side.
-
-### Transform constraint export (cross-bone copy)
-
-**What:** Spine-style transform constraints - one bone copies position / rotation / scale / shear from another with a mix factor (Blender's Copy Location / Copy Rotation / Copy Transforms constraints). The writer exports raw bone keyframes only, so a constrained pose reaches Godot only if baked first; the constraint *relationship* never round-trips. Distinct from [bone physics](#bone-physics-joint-chain-export) (runtime simulation) and [path constraints](#path-constraint-export) (follow a curve) - this is a static cross-bone transform copy, split out per its own entry rather than folded into the physics umbrella.
-
-**Why:** Godot's `RemoteTransform2D` pushes one node's transform onto another, the engine-native analog of a copy-transform constraint. A schema field carrying (source bone, target bone, channel mask, mix) lets the importer wire it instead of forcing a pre-export bake. Keeps mechanical relationships (a gear bone driving another, an eye-aim bone) live and editable in Godot.
-
-**Scope sketch:** schema `constraints[]` entry of type `transform` with source / target bone, channel mask (loc/rot/scale/shear), and mix; the Godot importer wires a `RemoteTransform2D` under the source pushing to the target (or a small script resolver when `mix < 1` or only some channels are copied). `format_version=2`.
-
-**Trigger:** an animator sets a Copy Rotation / Copy Transforms constraint in Blender, exports, and the target bone does not follow in Godot.
-
-### Continuous UV animation (texture region track)
-
-Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibility`) cover skeletal motion, grid-frame swap, attachment swap, and on/off. They do not cover continuous UV animation: animated water flow, conveyor belts, gradient sweeps, mask reveals, region resize.
-
-**Scope when promoted:** add a `texture_region` track that animates `Sprite2D.region_rect.x/y/w/h` on the Godot side. Targets `sprite_frame` sprites in v1; polygon UV animation deferred (would need shader-driven approach). Authoring side reuses the existing `region_x/y/w/h` floats on `Object.proscenio` - already keyframable in Blender via standard right-click flow.
-
-**Open design questions when promoted:** track type name (`texture_region` vs `uv_animation`), scope (sprite_frame only or polygon too), interp options, schema bump path (format v2 with migrator vs additive v1), Blender authoring UX (keyframe-the-floats vs new operator).
-
-**Trigger:** a user asks for animated water, conveyor-belt, or region-resize effects. If the request is "swap whole image" - slot system covers it. If "swap frame in grid" - sprite_frame already covers it.
-
-**Out of scope definitively:** polygon UV animation (Spine-only feature, niche), shader-driven UV scroll (no schema, runtime-only), per-vertex UV animation (free-form deformation territory, separate concern).
-
-### sprite_frame animation track - Blender export path
-
-**What:** the `.proscenio` schema defines a `sprite_frame` track type and the Godot importer (`apps/godot/addons/proscenio/builders/animation_builder.gd`) already consumes it (animates `Sprite2D.frame` over time), but the Blender writer never emits one. `apps/blender/exporters/godot/writer/animations.py` only walks `pose.bones[...]` location / rotation / scale fcurves and emits `bone_transform` tracks (and `slot_animations.py` emits `slot_attachment`); a keyframed or bone-driven `proscenio.frame` channel does not become a `sprite_frame` track. The `drive_from_bone` shortcut is `BLENDER_ONLY` (`core/feature_status.py`), so the mouth_drive fixture's frame swap is a Blender-preview effect that never round-trips - its golden carries only a `bone_transform` track.
-
-**Why:** closes the producer half of an existing importer capability and the mouth_drive UX cliff ("I drove the mouth frame from a bone in Blender, why does Godot not animate it?"). Today the importer branch is reachable only by hand-authored documents; no Blender-produced fixture exercises it.
-
-**Scope sketch:** read keyframes on the sprite's `frame` channel (and/or bake the `drive_from_bone` driver) into a `sprite_frame` track targeting the sprite name; emit `interp: "constant"` keys (frame index is a hard step). Add a fixture with a `.blend` source whose golden carries a `sprite_frame` track so the CI re-export diff covers the path.
-
-**Trigger:** an animator authors a frame swap (blink, mouth phoneme) on the timeline and asks why Godot does not play it.
-
-### visibility animation track - Blender export path
-
-**What:** the schema defines a `visibility` track type, but neither side implements it. The Godot importer stubs it - `animation_builder.gd` matches `"visibility"` and only `push_warning("not implemented yet")` - and nothing on the Blender side emits one. Only the schema enum plus a dead importer branch exist. (Not to be confused with `slot_attachment`, which is fully wired and emits per-attachment `:visible` tracks - that is how slot swaps animate today.)
-
-**Why:** either complete the loop on both sides (a keyframed `hide_render` / `hide_viewport` or a `proscenio.visible` channel becomes a `visibility` track, and the importer builds the value track) or retire the schema enum + importer stub so the format stops advertising an unimplemented track type.
-
-**Trigger:** a feature needs timeline-driven show / hide of a sprite (swap a whole limb on / off), or a code-health pass decides to drop dead importer branches.
-
-### Sprite appearance fields - modulate / draw order / flip / blend-mode / mask passthrough
-
-**What:** the `.proscenio` sprite types (`PolygonSprite`, `SpriteFrameSprite`) carry geometry, skinning, frame metadata and texture, but none of the *appearance* properties that Godot's `Polygon2D` / `Sprite2D` expose and 2D artists routinely use:
-
-- **modulate / colour tint** - no per-sprite colour; a tinted material in Blender is lost. Also absent as an animation track (Godot animates `modulate` freely).
-- **draw order / z_index** - draw order is implicit in the `sprites[]` array order only; there is no explicit per-sprite `z_index`. Interleaving sprites across bones (an arm in front of the torso but behind the head) is not expressible.
-- **flip_h / flip_v** on the `Sprite2D` path.
-- **blend_mode** - the *PSD manifest* already carries `blend_mode` (`PolygonLayer.blend_mode` / `SpriteFrameLayer.blend_mode`, mapped to a Blender material on import), but the `.proscenio` sprite has no `blend_mode` field, so the value is dropped at the Blender → Godot hop. This is a pipeline discontinuity, not just a deferred feature: the upstream schema knows the blend mode and the downstream format throws it away.
-- **alpha mask / mask sprite** (from `04-deferred.md`) - one sprite masks (clips) another, the Spine clipping-attachment concept. The heaviest field here: Godot 2D has no per-`Polygon2D` mask property, so an engine-native route must be chosen (`CanvasGroup` + `clip_children`, a `Light2D` occluder mask, or `CanvasItem.clip_children`) - none is a single property like the others. Likely splits into its own spec rather than riding the additive-optional path the other fields take.
-
-**Why:** the format was scoped to geometry + skeleton + skinning + frame swap + slots + TRS animation - enough for a rigged character to deform and play. Appearance fidelity (tint, layering, blend) was outside the MVP. But these are not exotic: blend_mode is already half-plumbed (PSD → Blender), modulate and z_index are first-class 2D rendering knobs, and their absence means an artist's colour / blend / layer choices silently do not reach Godot.
-
-**Scope sketch:** add optional `modulate: [r, g, b, a]`, `z_index: int`, and `blend_mode` (reuse the manifest's `normal | multiply | screen | additive` literal) to both sprite variants; `flip_h` / `flip_v` to `SpriteFrameSprite`. Writer reads them from the Blender material / object; importer stamps the matching node property. For animation, add `modulate` and `z_index` as new track-target properties (or new track types) once the static fields land. Keep every field optional and defaulted so existing v1 goldens round-trip unchanged - additive optionals need no `format_version` bump.
-
-**Out of scope for this entry:** `material` / custom shader references (collides with the GDScript-only, no-GDExtension architecture rule) and method / audio tracks (separate animation-events entry above). The mask-sprite bullet is in-scope to *track* here but will likely break out into its own spec once a Godot-native masking strategy is settled.
-
-**Trigger:** an artist tints or sets a blend mode on a sprite in Blender / Photoshop and finds it flat / normal in Godot, or a scene needs explicit cross-bone draw layering the array order cannot express.
-
-### Sprite pivot / Sprite2D.offset from the Blender origin
-
-**What:** a `sprite` element (`SpriteElement`) exports only `type / name / bone / hframes / vframes / frame / centered / texture_region` (`writer/sprites.py` `build_sprite_frame`). It does NOT export the quad geometry or any pivot / offset. Unlike a `mesh` element - whose vertices bake in world position, so the Blender origin is honored implicitly - a sprite's authored Blender origin is discarded: positioning comes from the bone attachment, and the only pivot control that ships is the boolean `centered` (Godot `Sprite2D.centered`), which either centers the texture on the node origin or puts its top-left there. Godot's `Sprite2D` also exposes a free `offset: Vector2` that is never used.
-
-**Why:** an artist who sets a deliberate pivot on a sprite quad in Blender (moving the object origin) expects that pivot to reach Godot; today it silently does not - only the centered / top-left toggle does. Deriving `Sprite2D.offset` from the Blender origin relative to the quad bounds would round-trip the authored pivot. Explains the `centered`-vs-origin confusion logged in `backlog-ui-feedback.md`; offset / pivot can ride the same schema bump as the Sprite appearance fields entry above.
-
-**Scope sketch:** add an optional `offset: [x, y]` (or `pivot`) to `SpriteElement`; the writer computes it from the quad's origin-vs-bounds; the importer stamps `Sprite2D.offset` and respects `centered`. Keep it optional + defaulted so existing v1 goldens round-trip unchanged.
-
-**Trigger:** an artist sets a sprite pivot in Blender and finds the Godot Sprite2D ignores it (only centered / top-left honored).
+The 2026-06-11 reconciliation of specs 027-035 emptied most of this file: resolved work was removed (locked calls recorded in [`decisions.md`](decisions.md)), and the not-now work moved to [`DEFERRED.md`](DEFERRED.md) (sequenced second-stage), [`GATED.md`](GATED.md) (held behind a written trigger), and [`DROPPED.md`](DROPPED.md) (value below cost, with rationale). What remains here is work owned by the not-yet-started specs (ui-help-surfaces, storage-split, reach) plus standing architecture notes.
 
 ## Blender addon
-
-### Sprite rigid single-bone bind (Weight Paint is mesh-only)
-
-**What:** a `sprite` element (Sprite2D) is rigid - it attaches to a single bone, not deformed by a weight map. The reorganized Weight Paint panel (the `apps/blender` UI restructure, opened by the spec 021 audit) polls `element_type == "mesh"`; a sprite instead gets a one-bone rigid bind control (effective weight 1 on its `parent_bone`).
-
-**Why:** weight paint on a Sprite2D is meaningless; surfacing the weight workflow on sprites invites the user to author weights the exporter ignores. Isolating the rigid-bind path keeps the sprite contract honest and the Weight Paint panel mesh-only.
-
-**Trigger:** lands with the Weight Paint panel in the UI restructure (spec 022); until then sprites are bound via bone-parenting as today.
 
 ### Panel helper consolidation (cross-module dupes)
 
@@ -128,76 +16,17 @@ Existing tracks (`bone_transform`, `sprite_frame`, `slot_attachment`, `visibilit
 
 **Trigger:** low priority - fold in when next touching the panel modules, or when a third copy of any accessor appears.
 
-### Element-type gating: mesh-only tools warn on sprite + sprite stays a quad
-
-**What:** the Mesh Generation panel + the `automesh_from_alpha` operator poll only on `obj.type == "MESH"` (`panels/mesh_generation.py` `_active_is_mesh`, `operators/automesh/automesh.py` `poll`), so they show and run on a `sprite` element too - a sprite is a quad MESH in Blender. Automesh-ing a sprite turns its quad into a deformable annulus with no warning, silently breaking the sprite_frame slicing contract. The Weight Paint panel already gates correctly on `element_type == "mesh"` (`panels/weight_paint.py` `_is_mesh_element`); Mesh Generation does not. Conversely there is no validation that a `sprite` element stays an exact quad (the hframes/vframes grid assumes it).
-
-**Why:** the element-type split (`sprite` = Sprite2D, rigid + sprite_frame grid; `mesh` = Polygon2D, deformable) is a contract. Mesh-only tools (automesh, weight paint, bind) are meaningless on a sprite and should warn or disable; a sprite that stops being a quad breaks slicing downstream. The only thing exclusive to a sprite that a Polygon2D cannot do is the sprite_frame spritesheet grid; everything else (bone deform) is mesh-only.
-
-**Scope sketch:** make Mesh Generation gate on `_is_mesh_element` like Weight Paint (warn-not-hide), or have `automesh_from_alpha` report a warning when `element_type == "sprite"`. Add a validation check that a `sprite` element's mesh is a single quad (4 verts, 1 face) and warn otherwise. Pairs with the sprite rigid single-bone bind entry above.
-
-**Trigger:** a user selects a sprite element and the Automesh from Alpha button runs without warning, or a re-meshed sprite exports a garbled sprite_frame grid.
-
-### Manual mesh authoring - click-to-place hull (Spine Create-mode analog)
-
-**What:** every mesh path today is alpha-driven - the one-shot `automesh_from_alpha` and the interactive modal both trace the sprite silhouette. There is no *manual* path where the artist places each hull vertex by clicking, pen-tool style (Illustrator / Photoshop pen): click a point, click the next, the loop auto-closes (the last point links back to the first), with a live preview of the closing edge and the resulting triangulation before commit. Spine ships both sides - Trace / Generate (automatic) and Create (manual click-to-place); Proscenio has only the automatic side. This is the "from a drawn outline" half of the old `04-deferred.md` mesh-tessellation umbrella (the alpha half shipped as automesh).
-
-**Why:** alpha-trace is great for clean silhouettes but fights stylized art, deliberate low-poly hulls, and shapes where the artist wants exact control over where each edge sits. A manual hull tool gives that control and complements - does not replace - automesh.
-
-**Scope sketch:**
-
-- **Create modal:** LMB places a hull vertex; a GPU overlay draws the polyline so far plus the closing edge from the last point back to the first (reuse the Quick Armature / automesh overlay machinery in `core/bpy_helpers`); RMB / Enter closes and triangulates (Constrained Delaunay - reuse the automesh triangulator); Esc cancels. A live triangulation preview before commit mirrors Spine's hull preview.
-- **Re-editable:** re-entering the tool adds / moves / deletes hull and interior vertices (Spine's Modify / Delete modes). On an already-bound mesh, a newly-added vertex reprojects its weight from the surrounding verts - the weight-sidecar + UV-anchor reprojection (`core/skinning/weight_snapshot`, already shipped for automesh regen) is the existing hook; extend it from full-mesh regen to single-vertex insertion (Spine auto-calculates a new vertex's weight from its neighbours; "Update Bindings" re-derives the bind pose - the analog here is a reproject-on-insert).
-- **Continuity:** the `proscenio_base_sprite` anchor + the preserve-on-regen contract carry over so a manually-authored hull survives a later automesh or PSD re-import the same way an alpha hull does.
-
-**Open questions:** interior vertex placement inside the same modal vs a second pass; whether to share the toggle-pen event routing already built for the automesh Stage 2 / Stage 4 (`decisions.md`, weight-paint + automesh) or ship a dedicated modal; straight segments only (this entry) vs curved - the existing "Bezier brush stroke for alpha-boundary trace" aspirational entry is the freehand-curve cousin, this one is discrete pen-style clicks.
-
-**Trigger:** an artist wants to hand-author a low-poly or stylized hull that alpha-trace cannot produce, or place mesh vertices deliberately like Spine's Create tool.
-
-### Drive slot attachment from a bone (slot analog of Drive-from-Bone)
-
-**What:** the Element panel has Drive from Bone (a bone rotation / translation drives a sprite property via a driver + expression). There is no equivalent for slots: driving which attachment is active (the slot's visible child) from a bone. Today a slot swap animates via keyframed attachment visibility (`slot_attachment` tracks), but there is no driver-based "this bone angle selects this attachment" authoring path.
-
-**Why:** the ergonomics that make Drive-from-Bone useful for sprite_frame (a controller bone picks the frame) apply to slots (a controller bone picks the attachment - hand-pose selector swapping open / fist / point meshes, head turns). Needs a driver target on the slot's active-attachment state plus a panel UX mirroring Drive-from-Bone (range mapping rather than a raw expression - see the Drive-from-Bone UX rework in `backlog-ui-feedback.md`).
-
-**Trigger:** a rig wants a bone to select among slot attachments (hand poses, head turns) without hand-keyframing visibility.
-
-### Skin coordination - named attachment sets across slots
-
-**What:** Spine-style "skin" - a named variant that binds one attachment per slot across many slots at once, so a single switch flips a whole costume / character variant (knight vs mage, skin-tone A vs B). Today a slot swap is per-slot (`slot_attachment` visibility); there is no grouping that flips N slots together under one name. Promoted from the `04-deferred.md` "Skin coordination" umbrella.
-
-**Why:** variant characters share one skeleton + mesh and differ only in which attachment each slot shows; without a skin layer the artist hand-toggles every slot per variant. It is a coordination layer on top of the existing slot / attachment machinery - no new geometry, just a named map and a way to apply it.
-
-**Scope sketch:** schema `skins[]` mapping a skin name to `{ slot: attachment }`; the Godot importer emits one visibility-setting `AnimationPlayer` animation per skin (each sets the right attachment visible across its slots) or a small script selector. If it rides purely as generated animations it can stay additive; a first-class `skins[]` array on the document is a `format_version=2` concern. Pairs with [Drive slot attachment from a bone](#drive-slot-attachment-from-a-bone-slot-analog-of-drive-from-bone) (a bone could select the active skin) and with the slot system in `decisions.md`.
-
-**Trigger:** a character ships two costume variants sharing one rig and the artist wants one control to swap the whole set instead of keyframing each slot.
-
-### Bone rotation-mode authoring surface (quaternion vs Euler)
-
-**What:** Blender defaults pose bones to `rotation_mode = "QUATERNION"`, but a 2D cutout rig rotates around a single screen axis (one DOF), so quaternion (4 channels) buys nothing over Euler-Y (1 readable channel) and there is no gimbal lock to avoid. The writer already collapses either input to a single screen-angle scalar (`exporters/godot/writer/animations.py` reads both `rotation_euler[1]` and `rotation_quaternion` via `_quat_to_screen_angle`), so this is an authoring-clarity surface, not an export-correctness gap. A first-timer never sees the difference and lands on opaque 4-channel quaternion fcurves; Drive-from-Bone is also easier targeting a single Euler channel, and `_quat_to_screen_angle` is exact only for a clean single-axis quaternion.
-
-**Why a choice, not a silent default:** Proscenio must not author on the user's behalf without an explicit control. If Quick Armature creates bones in Euler-Y (off Blender's standard) it has to be a visible, overridable choice, not a hidden behaviour. Switching `rotation_mode` on an *already-keyframed* bone does NOT convert the existing fcurves - the quaternion channels orphan and Euler sits at default, silently breaking the animation. So any swap affordance must guard on keyframe presence and warn.
-
-**Scope sketch:**
-
-- **Quick Armature:** a rotation-mode control (dropdown / checkbox) in the "Quick Armature defaults" sub-box + F3 redo override, defaulting to Euler-Y for the 2D workflow but always user-selectable. Pairs with the addon-preference + per-invoke-override pattern the operator already uses for the naming prefix.
-- **Skeleton panel:** a per-bone badge / hint when a selected bone uses Quaternion, with an info tooltip explaining the 2D-rig rationale. Covers imported / external rigs that Quick Armature did not create.
-- **Safe swap operator:** offer a "set rotation mode" action only when the bone carries no rotation keyframes (lossless); when keyframes exist, offer a "Convert (bake)" path instead of a raw `rotation_mode` flip, with an explicit warning. Never flip silently.
-
-**Trigger:** a first-time user keyframes a Quick-Armature bone, finds 4 unlabelled quaternion channels in the Graph Editor, and asks which one is "the rotation"; or an imported rig's quaternion bone exports a mangled angle because its quaternion was not single-axis.
-
 ### Validator internal naming (sprites vs elements)
 
 The element-vocabulary rename (the former spec 019) renamed the wire end-to-end and swept the Blender / Photoshop / Godot / fixtures internals, but `packages/validator` was outside its Phase 1-4 scope and never touched. It still uses the pre-rename internal names `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the wire field, so nothing breaks. Rename to `report.elements` / `ElementPayload` (and the `test_validator_report.py` import) the next time the validator is touched. Low priority, cosmetic.
 
-### Spec 021 follow-up: unfinished discovery + buckets B/C
+### Spec 021 follow-up: unfinished discovery
 
-The spec 021 UI/UX audit is pruned. Its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind + atlas findings were filed elsewhere in this backlog - that purpose is served. Three threads outlived it:
+The spec 021 UI/UX audit is pruned. Its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind + atlas findings were filed elsewhere in this backlog - that purpose is served. One thread outlived it:
 
 - **Phase A / B discovery (never finished).** The reconciliation against `backlog-ui-feedback.md` was only partly run (~15 areas pending, much now overtaken by spec 022 shipping); the hands-on per-tool audit (GOOD / BAD / MISSING, needs the maintainer in a GUI Blender) never ran. Resume only if a fresh holistic UX pass is wanted.
 
-- **Bucket B - per-asset pixels-per-unit (cross-app).** PPU is a single global value today (one export field, default 100). The audit flagged an end-to-end per-asset PPU so different elements can carry different Blender-world-to-pixel ratios. Spans Blender (a per-element field), the schema (`.proscenio` shape), and the Godot importer. Schema-level, post-launch - a `format_version` concern.
-- **Bucket C - per-tool feature gaps.** Bone-collections management inside Proscenio (create / assign / toggle Blender bone collections from the Skeleton panel), and richer bone-hierarchy editing (the read-only connected / relative-parent readout shipped in spec 022; the editing did not). Both are feature work, not IA.
+(The per-asset-PPU bucket from this audit is now in [`GATED.md`](GATED.md); the bone-collections + hierarchy-editing bucket is in [`DROPPED.md`](DROPPED.md).)
 
 ### Spec 022 follow-up: in-editor smoke + guide-doc rename sweep
 
@@ -225,67 +54,6 @@ Spec 023 shipped and verified the help / docs / i18n layer (2026-06-09: per-subp
 - **Migrate inline see-also refs to online URLs.** The `specs/` / `examples/` see-also entries render as plain labels because they do not resolve in an installed (zipped) extension; the working clickable link is the per-topic `doc_url` / "Open online docs" button. Convert the local refs to online URLs once the matching pages exist.
 - **Expand the addon reference pages.** `docs/02-blender-addon/` is a first cut (one brief page per panel mirroring the `?` help); add screenshots and deeper per-tool detail as the panels settle.
 
-### General rig orientation detection
-
-Writer assumes the 2D plane is Blender XZ (Z up, Y into screen). Some users author on XY (Y up). Future work: detect the dominant plane from the armature's bone axes or expose an export option.
-
-### Multi-polygon mesh meshes
-
-`writer._build_sprite` only emits the **first** polygon of a mesh. A mesh with multiple disjoint polygons (mask cutouts, complex topology) is silently truncated. Multi-polygon support would either:
-
-- emit one Proscenio sprite per polygon (cleanest), or
-- use `Polygon2D.polygons` array for multi-island Polygon2D nodes (preserves original mesh structure).
-
-### Atlas region authoring helper
-
-User UV-maps each plane in Blender to a region of the atlas; the writer reads whatever UVs are there. There is no Blender operator to "snap UV to atlas region by name". Could ship as a Phase 2 quality-of-life operator.
-
-### Exclude sprites from the shared atlas pack
-
-`Pack Atlas` is all-or-nothing today: it packs every mesh with a texture - `polygon` and `sprite_frame` alike - into one sheet. This is correct (a packed sprite_frame still slices: Godot divides its `region_rect` by `hframes`/`vframes`, not the whole atlas), but not always wanted - a large spritesheet grid bloats the shared atlas, and an effect sprite may prefer its own texture. Add an opt-out: a per-object `exclude_from_atlas` flag (keeps its own texture, skipping the pack entirely - unlike `material_isolated`, which still uses the atlas image), or auto-isolate `sprite_frame` so spritesheets keep their own composed `_spritesheets/` sheet. Pairs with Multiple atlases per character.
-
-**Trigger:** an artist packs a rig and the atlas balloons to fit a big spritesheet, or wants one effect sheet kept apart.
-
-### Validate sprite_frame UV covers the full sheet
-
-The atlas packer slices each source by its mesh UV bounds. A `sprite_frame` quad is imported with full-sheet UVs (`(0,0)-(1,1)`), so the packer takes the whole sheet as one block and the `hframes`/`vframes` grid survives the round-trip. If a user hand-edits a sprite_frame quad's UVs down to a single cell, the packer would pack just that cell and the grid breaks silently in Godot. Add a Validate check that warns when a `sprite_frame` mesh's UV bounds are not the full sheet.
-
-**Trigger:** a re-UV'd sprite_frame exports a packed atlas whose frames come out garbled in Godot.
-
-### Export bundle: gather the .proscenio and its textures into one folder
-
-The `.proscenio` references its textures by bare filename, and the Godot importer resolves them relative to the document's own folder (same directory, no subfolders). Today the writer drops the `.proscenio` next to the `.blend` and assumes the referenced PNGs (packed atlas, per-sprite, composed spritesheets) are siblings - but PSD-import assets live in `images/` / `_spritesheets/` subfolders, so the user must gather everything into one folder by hand before Godot can import it. Add an export option that writes the `.proscenio` plus copies of every texture it references into a single output folder, named by the user with a sensible default (e.g. `<doc>_proscenio/`), producing a self-contained bundle that drops straight into a Godot project. Keeps the bare-filename contract intact - it just guarantees co-location.
-
-**Trigger:** a user exports, drops only the `.proscenio` into Godot, and the import warns "atlas not found" or sprites render blank because the PNGs stayed behind.
-
-### Weight-preserving PSD re-import
-
-Re-importing a manifest rebuilds every matched plane's mesh - `importers/photoshop/planes.py:_ensure_mesh` runs `clear_geometry()` then stamps a fresh quad - so any Automesh densification and the painted vertex weights are lost on re-import (the weight values live in the vertex data that is cleared; only the vertex-group names, which sit on the object, survive). That makes re-importing PSD art after skinning destructive, and the iteration loop only safe before a sprite is skinned. The Automesh regen path already has a snapshot-and-reproject mechanism (`core/skinning/weight_snapshot`); wiring the same snapshot-before / reproject-after around the manifest re-import (for sprites whose UVs and bounds did not change, at least) would let an artist iterate the PSD after rigging without redoing weights. Pairs with the mid-edit non-destructive re-rig idea in [`docs/01-project/04-deferred.md`](../docs/01-project/04-deferred.md).
-
-**Trigger:** an artist tweaks a PSD layer, re-imports, and finds the rig's weights (and automesh) on every sprite wiped back to a flat quad.
-
-### IK constraints round-trip (Blender -> Godot)
-
-Planned - the project should support IK end to end. Today IK is Blender-only: the writer exports raw bone keyframes, not constraints, so an IK-posed animation reaches Godot only if it is baked to bone keyframes first. Two implementation paths to evaluate: bake the IK-resolved motion into the bone transform tracks at export time (no schema change, motion is flattened), or detect the IK chain and emit Godot's built-in 2D skeleton IK modifiers (`SkeletonModification2D*` on a `SkeletonModificationStack2D`) so it stays live in-engine (needs a schema field for the chain). Until it ships, bake before export or rebuild IK in-engine post-import.
-
-**Trigger:** an animator rigs with IK in Blender and the motion is flat in Godot, or asks to keep IK live in the engine.
-
-### NLA strips to Actions
-
-Planned - the project should support NLA. The writer iterates `bpy.data.actions` and ignores the NLA stack, so motion composed from non-linear strips does not export; the animator must bake to a single Action first. The target is to consume the NLA at export: flatten each object's strips (honouring blend mode and influence) into one baked Action per animation, so a strip-composed timeline round-trips to Godot's `AnimationPlayer` without manual baking.
-
-**Trigger:** an animator layers walk + overlay on the NLA, exports, and Godot plays only the base Action (or nothing).
-
-### Auto-detect 2D rig vs 3D mesh
-
-Currently the writer assumes every mesh is a 2D sprite plane. A future check could skip 3D meshes or warn.
-
-### IK chain helper
-
-Blender-side scaffolding that adds an IK constraint stack to a selected bone chain in one click: target bone, pole bone, chain length, defaults. This helper is pure authoring QoL and does not itself touch the `.proscenio` output - exporting IK is tracked separately (see IK constraints round-trip). Pairs with the existing Toggle IK shortcut, which currently flips a per-bone constraint but does not scaffold a whole chain.
-
-**Trigger:** an animator complains about repeatedly walking through the constraint panel to set up arm + leg IK on a fresh rig.
-
 ### Joystick / slider authoring
 
 Multi-pose blend widget. The artist authors N corner poses (e.g. mouth shapes); a 2D widget interpolates between them as the artist drags a slider in the viewport. Pairs with Godot's `AnimationTree.BlendSpace2D` so the imported character can blend the same way at runtime. Requires a Blender PG carrying the pose set + corner coordinates, plus an exporter path that emits the blend space.
@@ -297,52 +65,6 @@ Multi-pose blend widget. The artist authors N corner poses (e.g. mouth shapes); 
 Viewport draw handler that renders the rest pose plus N keyframes around the current playhead in low-opacity outlines. Authoring shortcut for animators tweaking timing without scrubbing back and forth. Pure GPU overlay; no schema or export impact.
 
 **Trigger:** an animator reports that scrubbing the timeline to compare poses is the slowest part of polishing an action.
-
-### Pose library evolution
-
-The pose-library operator (`PROSCENIO_OT_save_pose_asset`) shipped as a thin shim over Blender's native pose-asset system. Evolutions worth carrying:
-
-- One-click "apply pose to selection" that walks the asset library and lets the artist pick.
-- Auto-categorise poses by armature name so the Asset Browser stops mixing rigs.
-- Pose-asset thumbnails rendered through the Proscenio preview camera so the swatches are pipeline-flat instead of viewport-shaded.
-
-**Trigger:** the second character ships and the artist hits the asset-browser mixing problem.
-
-### Quick Armature follow-up candidates
-
-Items deferred from the quick-armature spec STUDY out-of-scope after PR #50 shipped. Each is a self-contained refinement of the existing operator; they do not require a new spec, only a follow-up iteration (or a smaller PR) when demand justifies the work.
-
-- **Pick-parent-in-viewport.** `Shift+click` an existing bone tip during the modal to re-target the next bone's parent. Useful for branching skeletons (humanoid second-chain off the spine) without exiting the operator. Medium effort; chord vocabulary already has `Shift+click` available because the press-time `Shift+drag` reads only on PRESS+drag combo. Highest user value on the deferred list.
-- **Bone naming chain-aware suffixes.** Today the prefix gives `qbone.000`, `qbone.001`, `qbone.002` flat. A chain-aware mode would emit `spine.01`, `spine.02`, `spine.03` per chain, resetting the counter at every new-root press. Small effort, medium value. Couples to the rigging-guide naming convention from the quick-armature spec's RESEARCH addendum.
-- **Mirror auto-suffix `_L`/`_R`** when X-Mirror is enabled in the armature data. Auto-creates the symmetric pair on each press so humanoid rigs save half the work. Small effort but only pays off with a humanoid fixture - currently no Proscenio fixture exercises symmetric rigs end-to-end.
-- **Numeric length input.** `Tab` to type `0.5` Enter (Blender E-extrude convention). Bigger lift because it needs a text-input field on a modal operator; precision authoring win when implemented.
-- **Local-axis lock.** Today X / Z = global axis only. Pressing the same axis twice could switch to the active armature's local axis (Blender extrude convention). Only relevant when an armature is rotated; small effort but small value for the current XZ-plane-locked workflow.
-
-The remaining quick-armature deferred items are now successor specs (quick-armature STUDY successor-considerations section): auto-attach mesh / sprite to bone (needs slot-system maturity), Quick Mesh operator (sibling tool, would lift `core/bpy_helpers/modal_overlay.py` scaffolding), i18n of the cheatsheet copy, addon-wide modal feedback library extraction.
-
-### Weight-paint productivity follow-up candidates
-
-Items locked as the productivity follow-up tier of the weight-paint-automesh spec Design surface > Out of scope + the productivity polish TODO tier. Each is a self-contained productivity refinement on top of the first cut; they do not require a new spec, only a follow-up iteration when demand justifies the work.
-
-- **Soft vs Hard bone toggle (Adobe Animate lift).** Per-bone enum on the vertex group metadata that flips between proximity-falloff ("soft") and single-nearest ("hard") binding. Rebind operator re-derives weights respecting the mode. First cut covers via `bind_init_mode` at bind time; this adds the runtime per-bone toggle. Trigger: user complains that proximity bleed between adjacent bones is too soft on a specific limb. Partially shipped: the toggle + rebind exist but are inert under the default `BONE_HEAT` mode (see the per-bone-overrides bug in [`backlog-bugs-found.md`](backlog-bugs-found.md)).
-- **Bone strength region painting (Moho lift).** Per-bone elliptical / capsule influence widget. Drag a handle along the bone in the viewport to grow / shrink radius. Region drives initial weight map procedurally; weight paint becomes fix-up. Couples to a custom viewport draw + gizmo handle. Highest user-value follow-up candidate by reach. Trigger: feedback that proximity default does not give enough control for long hair, tails, hands.
-- **Live pose-mode preview in weight paint.** Scrub bone to posed angle / see deformation / scrub back without leaving Edit Weights modal. Adds pose-scrub overlay + hotkey to toggle rest pose. Trigger: user wants verify weights vs deformed pose without modal exit.
-
-(Shipped from this tier, 2026-05/06: multi-mesh batch bind, the `copy_weights_to_selected` weight-transfer operator, sidecar import / export to file, and the brush-curve presets row - see git history.)
-
-### Weight-paint aspirational candidates
-
-Heavier lifts than productivity follow-up; each is a candidate for a follow-up spec if the demand surfaces. Listed here so the future reader sees what was considered + why deferred.
-
-- **Auto-Patch joint cover at articulations (Toon Boom Harmony lift).** One-click joint-cover operator: given two child meshes sharing a parent bone, generate the seam geometry + weight blend that hides the inner-elbow hole as the joint bends. Requires both child-mesh detection (which sprites belong to which side of the articulation) and a custom seam generator (boundary-following triangulation). Trigger: humanoid fixture lands + user complains about inner-elbow gap.
-- **Cubism Glue equivalent.** Seam-binds overlapping vertices of two meshes with a weight slider biasing which side dominates. Different surface than Auto-Patch (covers any seam, not just articulations). Trigger: layered-sprite use case stresses this.
-- **Smart-Bone-style corrective drivers (Moho lift).** Per-bone shape key driven by bone rotation; user records a corrective pose at a specific angle, the addon emits a driver. Belongs in a future animation-system spec not the weight-paint-automesh spec (authoring), but listed here for visibility because the trigger is the same as Auto-Patch.
-- **Mirror humanoid binding.** One mesh on one side, click to mirror to other. Couples to symmetric rigs. Trigger: first humanoid fixture lands end-to-end.
-- **Bezier brush stroke for alpha-boundary trace.** Adds a free-draw path on top of the one-shot automesh. COA Tools 2 uses straight-segment strokes; Bezier would give higher-control silhouettes for stylised shapes. Requires draw modal with tablet release detection (the gesture helpers are already in place from the first cut).
-
-### Blender 4.3 legacy actions compatibility
-
-`writer._action_fcurves` falls back to `action.fcurves` when present. Untested against Blender 4.2 LTS - may need fixture-based regression once the addon is shipped.
 
 ### Split PropertyGroup vs Custom Property storage by intent (target: 1.0.0)
 
@@ -371,22 +93,6 @@ Heavier lifts than productivity follow-up; each is a candidate for a follow-up s
 - Library-override / linking semantics for the surviving PG fields (separate concern; address only if a user reports issues).
 - Schema `format_version` bump - the contract on disk does not change; only the in-`.blend` storage shape does. May still want a `format_version` bump on the *scene PG* to gate the migrator.
 
-## Godot plugin
-
-### Node name collision polish
-
-When a Bone2D and a child Polygon2D share a name (e.g. both called `head`), Godot auto-renames the polygon to `head_001`. Acceptable but ugly. Either prefix sprite names in the importer (`sprite_head`) or document the convention.
-
-### Plugin-uninstall warning UI
-
-Currently the rule "scene must work without the plugin" is enforced by review. A small editor check that opens a generated scene with the plugin disabled and asserts no errors would be a CI-friendly guard.
-
-### Sprite2D region_filter_clip for packed sprite_frame
-
-`sprite_frame_builder.gd` sets `region_enabled` + `region_rect` for a sprite_frame packed into an atlas but does not set `region_filter_clip_enabled`. Godot recommends enabling it for atlas usage so a frame does not sample neighbouring atlas pixels at the region edge under linear filtering. The packer's padding mitigates the outer-block edge and nearest filtering sidesteps it entirely, so this is a quality guard, not a correctness fix. Set `region_filter_clip_enabled = true` whenever `region_enabled` is set.
-
-**Trigger:** a packed sprite under linear filtering shows a one-pixel seam from an adjacent atlas region.
-
 ## Photoshop and Krita
 
 ### Krita exporter
@@ -396,143 +102,6 @@ Currently the rule "scene must work without the plugin" is enforced by review. A
 ### GIMP exporter
 
 `coa_tools2` has a GIMP path. Lower priority - fewer 2D animation users on GIMP.
-
-### Deferred Photoshop tags (after the photoshop tag system)
-
-Tags evaluated during the photoshop tag system research pass that did not make the v1 taxonomy. Each was deferred for a documented reason. Promote into a future photoshop tag system iteration or a successor spec when a real workflow surfaces the need.
-
-#### `[slice:l,t,r,b]` - Cocos-style 9-slice
-
-Encodes 4 corner insets so a single sprite scales as a 9-slice tile (UI panels, scalable backgrounds). Cocos Creator and Unity ship this. **Why deferred**: Proscenio's current consumer set is rigged characters, not UI; no real workflow surfaces 9-slice today. Trigger to revisit: first UI-focused fixture lands.
-
-#### Head-turner view groups (Adobe Character Animator)
-
-Groups named `Frontal` / `Left Profile` / `Left Quarter` / `Right Quarter` / `Right Profile` collapse into a single mesh with swappable view variants. Specific to face puppetry. **Why deferred**: deep coupling to a face-rig template; harder to generalise across project types than the tag system in the photoshop tag system.
-
-#### Pseudo-keyword auto-tagging (`Head`, `Mouth`, `Eye_Open`, ...)
-
-Layer / group named `Head` automatically gets a face-region tag without an explicit `[head]` bracket. Mirrors Character Animator. **Why deferred**: tight coupling to one rig style (humanoid face puppet); collides with arbitrary artist naming. The bracket-tag explicit path (in the photoshop tag system) is cleaner and ships first.
-
-#### `[isolated]` warp-independent flag (Character Animator's `+` prefix)
-
-Marks a layer as "animated separately from its parent group" so the rig generator emits a dedicated pose key for it. **Why deferred**: Proscenio's rig model has no concept of "warp pose keys"; bones already encode separability. Reserved tag name: `[isolated]` (the `+` prefix from Character Animator is rejected as non-idiomatic for this project). Trigger to revisit: if the authoring-panel or future UV-animation work grows a "per-layer pose channel" concept.
-
-#### Stable layer identity in `PngWrite.layerPath`
-
-`PngWrite.layerPath` (and the parallel `_frameSources` on planned sprite_frame entries) is a chain of layer names. Photoshop allows siblings with duplicate names; if a user authors two children named `arm` inside the same group, the materialiser would resolve whichever appears first in `layer.layers` and silently write the wrong PNG. **Why deferred**: the doll oracle and every shipped fixture have unique names per group; ajv catches name collisions at the sanitize level for manifest entries. **Trigger to revisit**: a user reports a wrong-PNG export, or the photoshop tag system's tag inspector starts addressing layers by stable handle. Implementation hint: replace `string[]` with `Array<{ name: string; index: number }>` so the adapter can tie-break by position when two siblings share a name.
-
-### the photoshop tag system v1 design decisions to revisit
-
-Behaviours that landed as "by design" in the v1 taxonomy. Each is intentional today but worth re-examining once real artist usage stresses the assumption.
-
-#### Nested `[merge]` collapses silently
-
-A `[merge]` group inside another `[merge]` is flattened into the outer entry without a warning. Confirmed end-to-end on the doll oracle: `brow_states [spritesheet]` with `1 [merge]` containing `1.1 [merge]` emits two frames (`0`, `1`) instead of three, because `1.1` collapses into `1`. **Why deferred**: this is the obvious recursive semantics for `[merge]` and the doll authoring run produced no surprise; no warning means no false-positive fatigue. **Trigger to revisit**: an artist reports "I added a sub-layer inside `[merge]` and it vanished" without realising it was deliberate - then we surface a `merge-nested` info-level entry on the Validate tab so the collapse is visible at authoring time.
-
-#### `[name:pre*suf]` parsed but planner does not rewrite
-
-The tag parser accepts `[name:lh_*]` on a parent group, but the v1 planner does not rewrite descendant names against the template. Display names cascade via `joinName` (parent `__` child) unchanged. **Why deferred**: rewrite has subtle interactions with `joinName` (do we rewrite before or after joining? what wins when a child carries its own `[path:NAME]`?) and zero shipped consumer needs it today. **Trigger to revisit**: a fixture or external user wants prefix/suffix templating on a real group; then we design the rewrite order with the actual workflow in hand.
-
-#### `kind: "mesh"` semantically equal to `kind: "polygon"` downstream
-
-`[mesh]` emits `kind: "mesh"` on the manifest and the Blender importer stamps a `proscenio_psd_kind = "mesh"` custom property, but no downstream code branches on it yet (the Godot writer treats both as a single quad). **Why deferred**: the distinction exists so future mesh-deformation work and the continuous-UV-animation entry can tell editable polygons apart from rigid sprites. **Trigger to revisit**: a mesh-deformation feature ships; at that point the importer adds a Subdivision Surface modifier (or equivalent) only to `kind: "mesh"` entries.
-
-#### Waist height drifts -1 px on the PS round-trip
-
-`waist` ships as 173 px tall in the Blender-emitted manifest, returns as 172 px through the Photoshop exporter. Logged in [`backlog-bugs-found.md`](backlog-bugs-found.md). **Why deferred**: cosmetic (0.6 % drift on a 173 px region), and the round-trip oracle accepts it within tolerance. **Trigger to revisit**: an artist reports visible Y-offset on the waist mesh in Godot, or a future Photoshop-roundtrip cycle fixes the underlying off-by-one in the JSX-era PSD reader.
-
-#### `pixels_per_unit` not round-tripped (defaults to 100 on re-export)
-
-The Blender manifest emits `pixels_per_unit = 1000.0`; the PS round-trip emits `100.0` (hardcoded in the JSX exporter, inherited by the UXP port). Logged in [`backlog-bugs-found.md`](backlog-bugs-found.md). **Why deferred**: PPU only affects world-space placement in Blender, and the importer reads the PPU back out of the round-trip manifest correctly (it just lands at a different scale). **Trigger to revisit**: a future Photoshop-roundtrip cycle plumbs PPU through XMP so the round-trip is lossless.
-
-### photoshop tag system follow-ups deferred from the photoshop tag system work
-
-#### Dedicated origin / pivot fixture (a photoshop tag system follow-up)
-
-a photoshop tag system follow-up listed a "small PSD with one `[origin]` marker layer per body part, golden-diffed" as a follow-up. The doll oracle (`02_photoshop_setup/doll_tagged.psd`) covers the planner + writer paths for `[origin]` and `[origin:X,Y]` end-to-end, so the dedicated mini-PSD never materialised. **Why deferred**: tests/test_doll_tagged_manifest.py asserts origin presence on both the explicit-coordinate (`belly`, `arm.R`) and marker (`brow_states`) paths; tag_smoke locks the synthetic case. Coverage redundancy is high. **Trigger to revisit**: a regression where the origin handling diverges between PSD authoring styles - then ship the dedicated fixture so the failure mode has its own named test.
-
-#### Doll-roundtrip oracle re-run against schema v2
-
-The Photoshop UXP migration captured a byte-equal JSX baseline against `doll.psd` for the retirement gate. After the photoshop-tag-system v2 landed, the manifest gained `anchor`, per-entry `origin`, `blend_mode`, `subfolder`, and `kind: "mesh"`. The captured oracle still applies to legacy v1 imports, but a fresh v2 byte-equal capture against `doll_tagged.psd` is open. **Why deferred**: pytest's `test_doll_tagged_manifest.py` already pins the v2 manifest's structural invariants; a byte-equal SHA capture adds little signal beyond locking the exact JSON whitespace and key order. **Trigger to revisit**: the UXP exporter changes its serialisation strategy (key order, indentation, encoding) - then byte-equal capture catches the change before users notice.
-
-#### Spectrum web component shadow-DOM init cost
-
-`sp-action-button` / `sp-textfield` mount with shadow-DOM overhead noticeable on first paint of the Tags / Validate panels. Acceptable on the doll-sized PSD (22 layers). **Why deferred**: panels are not interaction-heavy, and the doll fixture is the largest known consumer today. **Trigger to revisit**: an artist reports lag opening the Tags tab on a >100-layer PSD; first response is to switch the hot widgets to plain HTML elements (the SRP audit already retired several Spectrum components for this reason - see `5c6bef2`).
-
-#### Migrating flat fixtures into `psd_to_blender/` and `blender_to_godot/`
-
-The new categorization buckets at `examples/generated/{psd_to_blender,blender_to_godot}/` accept new fixtures directly. The pre-existing flat fixtures (`atlas_pack/`, `blink_eyes/`, `mouth_drive/`, `shared_atlas/`, `simple_psd/`, `slot_cycle/`, `slot_swap/`) stay where they are because moving them ripples through every spec TODO, the `packages/fixtures/` index, and several wrapper-scene paths. **Why deferred**: refactor cost > current confusion cost. **Trigger to revisit**: the next time one of those fixtures needs editing for an unrelated reason; piggyback the move onto the same commit.
-
-### Tags advanced-fields form cannot clear a set tag
-
-**What:** in the Tags panel's advanced-fields expander, clearing a previously-set field (emptying `[folder:...]`, `[path:...]`, `[scale:...]`, `[origin:...]`, `[name:...]`, or un-checking the origin marker) does not remove the tag. The value stays on the layer name. Setting and changing values works; only clearing is broken.
-
-**Why:** `lib/tag-form.ts` `computeChanges` signals a cleared field by returning `undefined` from the `diff*` helper, but `applyDiff` then does `delete changes[key]` instead of writing the key. `applyTagChanges` (`lib/tag-writer.ts`) clears a tag only when the key is *present* with value `undefined`; an absent key is a no-op. The `delete` was an `exactOptionalPropertyTypes` workaround (assigning `undefined` to an optional field is a type error) that silently dropped the clear signal. Pre-existing; surfaced during the web-app-layout extraction of this logic out of `Details.tsx` (it was moved verbatim, not introduced).
-
-**Scope sketch:** carry cleared keys explicitly - e.g. `computeChanges` returns `{ set: Partial<TagBag>; clear: (keyof TagBag)[] }`, or the changes object uses a branded "clear" marker - so the rename path passes `undefined` through to `applyTagChanges` for each cleared field. Extend `tag-form.test.ts` with the clear cases (currently it asserts only the set / unchanged / validation paths, deliberately not locking in the broken clear behaviour).
-
-**Trigger:** an artist sets a folder / scale / origin via the advanced fields, empties it, applies, and the tag is still on the layer.
-
-## Tests and CI
-
-### Spec 020 follow-up: coverage deferrals
-
-Spec 020 lifted coverage 36% -> 88.8% (Sonar gate green at merge, PR #95) and shipped the test suites, the UXP host mock, the in-Blender `coverage.py` instrumentation (`apps/blender/tests/run_coverage.py`), and the exclusion policy (recipe in the `sonar-project.properties` header). Three follow-ups were deferred by design:
-
-- **Wire `run_coverage.py` + combine into CI.** Today Sonar runs only on the local Docker instance, so the two-interpreter combine is a documented local pre-scan step. Wire it into the `test-blender` job, and set `REFERENCE_BRANCH=main` for new-code, once Sonar moves into CI (Community Edition ignores `REFERENCE_BRANCH` on a single-branch project, so `NUMBER_OF_DAYS=30` stands in locally).
-- **Drop the bpy-bound coverage exclusions when in-Blender unit coverage is comprehensive.** `operators/`, `panels/`, `properties/`, `core/bpy_helpers/` stay excluded because the headless suites are scenario integration tests (measured 23-29%), not units; dropping the exclusions would add ~6900 lines at ~25% and tank the number. The instrumentation makes them measurable; the value is not there until real unit coverage exists.
-- **Edge-polish ~8 pure modules at 89-93%.** One to six uncovered edge lines each; diminishing returns, not chased.
-
-Related enforcement gaps (ESLint not in CI, `packages/{models,codegen}` without a mypy gate, the bpy-bound mypy `ignore_errors` override) live in [`backlog-code-quality.md`](backlog-code-quality.md).
-
-### Blender headless test - multi-version matrix
-
-A single-version `test-blender` job ships in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) pinned to Blender 5.1.1. Expand to a matrix covering Blender 4.2 LTS and the latest stable so legacy-action regressions are caught.
-
-### Godot importer test - full editor reimport
-
-[`apps/godot/tests/test_importer.gd`](../apps/godot/tests/test_importer.gd) exercises the builders directly. A higher-fidelity test would launch the editor headlessly, drop a `.proscenio` into the project, and assert the generated `.scn` opens with the plugin disabled (the no-GDExtension hard rule, automated). Currently verified manually as part of the smoke checklist.
-
-### CI matrix expansion
-
-The current `test-godot` job pins Godot 4.6.2-stable. Add Godot 4.3 and 4.5 to the matrix once those releases settle. Same for the `test-blender` matrix.
-
-### End-to-end mixed-feature fixture
-
-Existing fixtures isolate single features (`blink_eyes` = sprite_frame, `shared_atlas` = sliced atlas, `slot_cycle` = slots). There is no generated golden exercising a realistic rig with many features at once: a skinned `polygon` body, a `sprite_frame` mouth, a slot swapping several attachments (mixed `polygon` + `sprite_frame`), a packed atlas, Drive-from-Bone, and an animation - carried from a `.psd` through Blender to a Godot `.scn`. Add such a fixture and run it through the full generated pipeline (Photoshop manifest -> Blender import -> `.proscenio` -> Godot `.scn`) as a CI golden, so cross-feature interactions are covered - especially atlas pack + sprite_frame + slots stacked in one character, the exact combination this backlog round surfaced as untested.
-
-**Trigger:** a feature combination that each isolated fixture passes still breaks when stacked in one character.
-
-## Repo and packaging
-
-### Issue and PR templates
-
-`.github/` lacks templates. Low priority until the project is open to outside contributors.
-
-### Statusline / dev-loop polish
-
-The dev junction setup for the Blender addon is a manual `New-Item -ItemType Junction`. A `scripts/install-dev.ps1` would automate it. Same for copying the dummy fixture into `apps/godot/test_dummy/`.
-
-### Release workflow Photoshop job stale (`.jsx` → UXP `dist/`)
-
-`.github/workflows/release.yml` line 39 still runs `cp apps/photoshop/proscenio_export.jsx "dist/proscenio-photoshop-${version}.jsx"`. The legacy JSX exporter is gone; the plugin is now a UXP bundle that webpack emits into `apps/photoshop/dist/` (`index.html`, `index.js`, `manifest.json`, `icons/`). A `photoshop-v*` tag would fail at this step. **Why deferred**: no release has been cut yet on the UXP branch; current development uses `pnpm uxp:load` from the dev folder. **Trigger to revisit**: before cutting the first `photoshop-v*` tag. Replace the `cp` with `(cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-${version}.ccx" .)` (or `.zip` if `.ccx` packaging is out of scope), and adjust the release artifact pattern in the same job.
-
-## Typed-models migration follow-ups
-
-The typed-models codegen migration is complete: pydantic is the source of truth, the writer builders construct model instances (`PolygonSprite()` / `Skeleton()` / `Animation()`), both manifest readers parse through the typed models (Blender `psd_manifest.py` → `PsdManifest`, Photoshop `manifest-reader.ts` → `parseManifest`), no `as unknown` casts remain in the typed surface, and the strictness flags all landed (`exactOptionalPropertyTypes`, ESLint `strictTypeChecked`, the mypy `disallow_any_*` trio). Committed-match tests reproduce the JSON Schema, TypeScript, and GDScript artifacts from the models and fail on drift (`tests/codegen/test_schema_roundtrip.py`, `test_ts_emit.py`, `test_godot_emit.py`); the docs emitter is the one artifact left ungated (see below). Only optional tooling / docs follow-ups remain.
-
-### bpy stubs: drop the remaining `ignore_errors` overrides
-
-`fake-bpy-module-latest` is adopted (`apps/blender/pyproject.toml`, PR #80) and mypy resolves the `bpy` / `mathutils` / `bmesh` boundary. What remains is the module-by-module sweep that lets the `ignore_errors = true` overrides drop for the bpy-bound subtrees - tracked as the enforcement gap in [`backlog-code-quality.md`](backlog-code-quality.md) ("mypy `ignore_errors` exempts large bpy-bound subtrees"); this entry is the enabling-dependency record.
-
-**Trigger to revisit:** the next Blender LTS jump that breaks an existing typed surface, or a push to remove the remaining bpy-boundary mypy overrides.
-
-## Quick Armature follow-ups (deferred polish)
-
-Two small items deferred from the quick-armature TODO at ship time. None are blocking; listed so the next quick-armature touch can clean them up. (The third item - promoting the ClassVar/TYPE_CHECKING registration rule to the conventions docs - shipped 2026-06-10; the rule now lives in `.ai/conventions/code.md` Static typing and `.ai/skills/blender-dev.md`.)
-
-- **Help-topic for `quick_armature_defaults`** - panel already self-describes via field tooltips; a dedicated topic page would help discoverability but is not required.
-- **Headless undo / axis-lock interaction tests** - the helper-level math is covered by `tests/test_quick_armature_math.py`; the ClassVar dance is hard to test without booting Blender, so manual smoke covers it.
 
 ## Architecture revisits
 

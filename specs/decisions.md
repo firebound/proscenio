@@ -154,3 +154,46 @@ First cut + productivity follow-up + interior modes + gesture rewrite all locked
 - **Code carries what and how; rationale lives in its home, not in a comment.** The comment-routing policy (delete / tighten-inline / to-assert / to-module-docstring / to-test / to-architecture / keep, plus reference hygiene: cite a test by name, never a spec path) is the canonical rule in `.ai/conventions/code.md` "Comments and rationale". The two cross-cutting conventions it points at, the XZ picture-plane convention and the golden field-order constraint, live on the docs Architecture page.
 - **Module docstrings only when non-obvious.** A trivial module gets none. A pydantic model class docstring is the schema `description`, so trimming one regenerates the schema and the TypeScript binding through codegen.
 - **Enforcement in pre-commit.** Two drift hooks reject spec-path references and `# Step N` / `# Phase N` markers in code comments; the prose-density heuristic stays an on-demand advisory sweep in `docs.md`.
+
+### Export correctness
+
+- **One picker-first armature resolver, shared by writer and validator.** `resolve_export_armature(scene)` is the single home that decides which rig a scene exports (the picker pointer when it is live and in-scene, else the first ARMATURE in scene order, guarding the headless `--background` path and stale pointers); the writer (`find_armature`), the export validator, and the Skeleton panel "Exports: <name>" readout all route through it. Rationale: fixing only the writer would leave validate and export disagreeing in a multi-armature scene - the contract is that they cannot diverge.
+- **`MeshElement.polygons` is additive-optional at `format_version` 1, multi-face only.** Per-face index arrays (mirroring `Polygon2D.polygons`) are emitted only when a mesh has more than one face; single-face meshes stay field-less. Rationale: an old importer ignores the field and still renders the outline, and single-face goldens stay byte-stable, so the change ships without the still-gated migration path a version bump would require.
+- **`action_fcurves` is the one duck-typed reader for legacy and Blender 4.4+ layered-action fcurves.** Both the writer's track emission and the validator's transform-key check read curves through it (flat `fcurves`, else layers > strips > channelbags). Rationale: the writer already guarded layered actions while the validator did not, which was the silent-miss bug; a shared reader stops the two sides drifting again.
+
+### Sprite appearance and orientation
+
+- **Appearance is derived from native Blender state, never from new authoring properties.** `modulate` from object color, `z_index` from the PSD-stamped Y depth, flips from negative local-scale signs, `Sprite2D.offset` from quad-bounds-vs-origin. Rationale: the manual-GUI surface and the PG/CP mirror stay exactly as large as they were, which the storage-split work depends on.
+- **Color channels are `ge=0` (HDR over-bright allowed); `z_index` is bounded to Godot's +/-4096.** Rationale: a negative channel serializes an invalid tint while over-bright is a legitimate modulate value; an out-of-range `z_index` is rejected up front to match Godot's clamp.
+- **The bone-driven `sprite_frame` bake is reproduced from the posed bone, not read from the driver target, and clamps to the grid with constant interpolation.** Rationale: the driver's write target needs the addon PropertyGroup (absent in the headless CP-fallback harness), so reproducing it keeps the track exporting with or without the PG; Godot rejects an out-of-range `Sprite2D.frame`, and frames are discrete hard cuts.
+- **Orientation checks are warn-only; the writer keeps its XZ-plane assumption.** Rationale: they surface a silently-wrong export class without generalizing the transform math (the full-XY generalization is gated); the mesh-flatness test compares smallest-vs-largest axis spread, so a planar cutout authored in any plane is not false-warned. Revisit: a real XY-authored rig.
+- **`region_filter_clip_enabled` is set wherever `region_enabled` is set.** Rationale: stops neighbouring atlas frames bleeding at the seam on packed sprite frames.
+
+### Mesh authoring
+
+- **The extend splice anchors at stroke/contour crossings and picks the kept arc by area, not by nearest-outer-vertex plus index comparison.** Rationale: crossing points are unambiguous, so the result is independent of pen-click sparsity, contour winding, and where the polyline seam falls - the three traps that made the old splice silently amputate the silhouette.
+- **Mesh-authoring tools gate on `element_type == "mesh"` (warn-not-hide), and the rigid sprite bind is delegated to native bone-parenting (Ctrl+P > Bone).** Rationale: a sprite element is a single-quad MESH the writer maps to a Sprite2D; meshing it silently destroys that mapping, and native parenting already provides the rigid bind, so a dedicated operator is bloat.
+- **"Trace resolution" (the alpha-downscale knob) is named apart from mesh density.** Rationale: a higher factor traces a finer silhouette; vertex count is set by Contour vertices + Interior spacing - the old "Mesh resolution / lower = denser" copy steered artists backwards.
+
+### Rigging, drivers, and IK
+
+- **IK export protection is bake-at-export, not live constraints.** The export validator hard-errors an active-influence IK chain whose target is animated but whose member bones carry no keyframes, and "Bake IK to Keyframes" (`nla.bake` visual-keying, clear-constraints) is the one-click fix. Rationale: the import-time-only, built-in-nodes contract has no runtime IK consumer, and Godot's 2D `SkeletonModification2D` stack is experimental and flipped-rig-buggy; baking is the structural equivalent and closes the silent-wrong-export class. Revisit: the live-constraint round-trip is gated on that stack graduating.
+- **Proscenio-owned IK scaffolding is identified by a `.IK` suffix on a non-deforming control bone; toggle-off deletes only suffix-matched controls.** Rationale: Toggle-IK can clean up its own control bone without touching hand-authored or hand-retargeted constraints.
+- **Drive-from-Bone is a clamped two-range linear map (`build_driver_expression`, bpy-free) with a negative-spanning default input range; the raw expression is an Advanced fallback only.** Rationale: the old raw `var` default mapped bone radians straight onto a 0..N frame range, clamping negative rotation to 0 and making the flagship driver look broken on first contact.
+
+### Slot placement
+
+- **Create Slot places the Empty at the world-space bound-box center of the selection, written through `matrix_world`.** Rationale: the slot system's entry point must land on the visible geometry regardless of a parented seed or an unapplied origin; writing the AABB center through `matrix_world` (mirroring `parent_keep_world`) is the single fix that satisfies both. Distinct from the Slot-system decisions above (interpolation, flat array, kind-agnostic), which do not cover placement.
+
+### Atlas packing and PPU
+
+- **PPU round-trips via the persisted exporter value (a localStorage seed), not document metadata.** Rationale: the import flow already holds the validated manifest, so seeding the exporter PPU closes the loop without the JSX-era XMP plan; Blender import additionally syncs the scene prop so both ends stay consistent.
+- **PPU stays one document-level value end to end; per-asset PPU is not adopted.** Rationale: uniform PPU is the engine-side best practice; per-asset divergence is a normalization problem, gated on a recurring real case.
+- **The atlas padding ring is edge-extended (alpha bleed), default-on, no UI knob; atlas rotation is permanently rejected.** Rationale: a transparent ring seams alpha=0 into sprite edges under bilinear filtering, so edge-extend is table stakes; Godot's `AtlasTexture` / `region_rect` cannot express a rotated region, so rotation would be a Polygon2D-only footgun (dropped, not deferred).
+- **The packer keeps single-heuristic MaxRects-BSSF.** Rationale: BSSF is the strongest single heuristic (~94% occupancy); trying all of them multiplies pack time for low single-digit density nobody sees at this scale.
+- **Unpack material recovery is marker-Custom-Property based; the pointer-based PropertyGroup snapshot is deferred to the storage split.** Rationale: a marker stamped at Apply survives a rename and gives Unpack a rescue scan without the PG storage refactor.
+
+### Project health gates
+
+- **The models / codegen mypy profile drops `disallow_any_explicit` under the pydantic plugin** (the rest of the strict profile holds; `python_version = "3.11"`, not Blender's 3.13). Rationale: pydantic's plugin-synthesized methods carry explicit `Any` on every model, and the codegen emitter reasons over typing internals whose payloads are `Any` by stdlib contract, so the flag fires on the framework surface, not author looseness.
+- **`release.yml` routes every `workflow_dispatch` free-text input through env vars, never `${{ inputs.* }}` expansion in a shell body, and is exercisable tagless via a dry-run that skips the gh-release upload.** Rationale: a free-text input expanded into a `run:` block is a template-injection vector (zizmor / CodeRabbit finding); and the stale `.jsx` line rotted unnoticed precisely because the job only ran on tags.

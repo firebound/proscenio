@@ -12,7 +12,7 @@ Sequenced from the verdicts in [STUDY.md](STUDY.md): two defects that make every
 ### PR 2: make imported examples render their textures
 
 - [ ] Diagnose the editor-import path: reproduce the blank render on a clean reimport, and determine whether [importer.gd](../../apps/godot/addons/proscenio/importer.gd) `_import` bakes the `.scn` before the sibling atlas / per-sprite PNG is imported (so `ResourceLoader.load` returns null), and whether the importer declares those images as dependencies at all.
-- [ ] Fix the ordering: declare each referenced image as an import dependency so Godot imports it first and reimports the `.proscenio` when it changes (or raise `_get_import_order`, or add an explicit reimport pass). Confirm against the earlier passing `SlotSwap` validation in [backlog-manual-testing.md](../backlog-manual-testing.md) (section 2.x) to pin what regressed.
+- [ ] Fix the ordering: declare each referenced image as an import dependency so Godot imports it first and reimports the `.proscenio` when it changes (or raise `_get_import_order`, or add an explicit reimport pass). Confirm against the earlier passing `SlotSwap` validation in [manual-testing.md](../manual-testing.md) (section 2.x) to pin what regressed.
 - [ ] Verify in the editor: open `atlas_pack`, `mixed_feature`, and one PSD-sourced fixture in the `apps/godot` dev project after a clean reimport; every `Polygon2D` / `Sprite2D` shows its atlas region textured, none white.
 
 ### PR 3: test-godot builds against the real baked goldens

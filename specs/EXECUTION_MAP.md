@@ -57,7 +57,7 @@ Surface: new `apps/`.
 
 ## Verification session (not a spec)
 
-One GUI pass closes the `[retest]` rows from the shipped wave (slot-transform-keys, automesh-interactive-extend-cut at `backlog-manual-testing.md` 1.23 T1 / 1.25 T6,T9, skeleton-row-click, pose-save-precheck, waist-1px-drift) plus the 036 reproject-uv perf retest, plus the cross-app roundtrip bar: doll PS->Blender->Godot end to end, `slot_swap`, `slot_cycle`. Known waivers re-measured here: waist 1px, PPU=100. The hands-on checklist is [backlog-manual-testing.md](backlog-manual-testing.md).
+One GUI pass closes the `[retest]` rows from the shipped wave (slot-transform-keys, automesh-interactive-extend-cut, skeleton-row-click, pose-save-precheck, waist-1px-drift) plus the 036 reproject-uv perf retest, plus the cross-app roundtrip bar: doll PS->Blender->Godot end to end, `slot_swap`, `slot_cycle`. Known waivers re-measured here: waist 1px, PPU=100. The hands-on checklist lives in [manual-testing.md](manual-testing.md) (being repopulated; the open retest slugs carry `needs-retest` in [BACKLOGS_SUMMARY.md](BACKLOGS_SUMMARY.md)).
 
 ## Upstream-watch (no spec)
 

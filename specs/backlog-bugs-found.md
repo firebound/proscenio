@@ -1,7 +1,7 @@
 # Bugs found during manual testing
 
 Bugs reproducíveis encontrados durante manual smoke / feature tests
-(backlog-manual-testing.md). Cada item cita reproducer + suspeita + arquivo
+(manual-testing.md). Cada item cita reproducer + suspeita + arquivo
 afetado. Vira PR fix ou issue dedicada.
 
 Distinto de backlog-ui-feedback.md (que cobre polish, não comportamento).
@@ -78,7 +78,7 @@ blender.exe: view3d_main_region_draw
 
 **Repro:** doll_workbench.blend > Pose Mode > deselect all (`Alt+A`) > Proscenio > subpanel Skeleton > click row `upper_arm.L` no UIList de bones.
 
-**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela backlog-manual-testing.md item 1.8.2: click row → seleciona bone correspondente em pose mode.
+**Sintoma:** linha highlight no panel (active_bone_index muda), mas viewport não reflete - nenhum bone selecionado, nenhum active bone na armatura. Comportamento esperado pela manual-testing.md item 1.8.2: click row → seleciona bone correspondente em pose mode.
 
 **Causa:** `apps/blender/properties/scene_props.py:54` define `active_bone_index` como `IntProperty` puro, sem `update=` callback. `apps/blender/panels/skeleton.py:73-80` usa `template_list` apontando pra esse PG, que só armazena o índice; não há operator no row draw nem update hook que sincronize com `armature.data.bones.active` ou `armature.pose.bones[...].bone.select`.
 
@@ -129,7 +129,7 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 **Arquivo:** `apps/blender/operators/pose_library.py:23-73` (PROSCENIO_OT_save_pose_asset).
 
-**Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do backlog-manual-testing.
+**Severity:** medium - não crash, mas operator inusável out-of-the-box sem setup explícito que não tá documentado nem na UI. Bloqueia 1.15 items 1 e 2 do manual-testing.
 
 ### Automesh Interactive (modal): ferramentas extend / cut quebradas
 
@@ -137,7 +137,7 @@ Usuário não sabe que precisa configurar asset library primeiro. Mesmo trocando
 
 **Sintoma:** as ferramentas não fazem nada OU geram muitos artefatos indesejados na malha (revisão manual 08-jun-2026). Stage 4 (interior points add / shift+click delete) parece funcionar; o problema é o Stage 2 extend / cut.
 
-**Suspeita:** `apps/blender/operators/automesh/automesh_authoring.py` - o dispatch do pen tool no Stage 2 (EXTEND / CUT) ou a splice do outer contour. Os scenarios T1 / T6 de `backlog-manual-testing.md` 1.23 / 1.25 (Stage 2 extend / cut, cut overlay vermelho, snap / merge / loop) nunca foram validados em sessão - estão `[ ]`. Precisa repro com console aberto pra capturar traceback / inspecionar a malha resultante.
+**Suspeita:** `apps/blender/operators/automesh/automesh_authoring.py` - o dispatch do pen tool no Stage 2 (EXTEND / CUT) ou a splice do outer contour. Os scenarios T1 / T6 de `manual-testing.md` 1.23 / 1.25 (Stage 2 extend / cut, cut overlay vermelho, snap / merge / loop) nunca foram validados em sessão - estão `[ ]`. Precisa repro com console aberto pra capturar traceback / inspecionar a malha resultante.
 
 **Arquivo:** `apps/blender/operators/automesh/automesh_authoring.py` (Stage 2 EXTEND / CUT) + `core/bpy_helpers/automesh` (splice / triangulação).
 

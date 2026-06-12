@@ -1,7 +1,7 @@
 # UI feedback (defer)
 
 Coisas que **funcionam** mas poderiam melhorar - UX polish, copy, layout,
-defaults. Não são bugs (não vão para `[!]` no backlog-manual-testing.md), são
+defaults. Não são bugs (não vão para `[!]` no manual-testing.md), são
 melhorias de qualidade. Eventualmente viram issues / spec próprio.
 
 Formato livre. Quando tiver massa crítica de itens, agrupa por área e

@@ -27,7 +27,7 @@ Writer honours the active-armature picker (shared `resolve_export_armature`), mu
 
 ### B3. Retests + verification gaps - PENDING (the verification session)
 
-One GUI pass closes the code-fixed retests: `slot-transform-keys`, `automesh-interactive-extend-cut` (manual-testing 1.23 / 1.25), `skeleton-row-click-select`, `pose-save-library-precheck`, `waist-1px-drift`, and the 036 reproject-uv perf retest. Markers live in [backlog-manual-testing.md](backlog-manual-testing.md). Every new failure here is a new blocking bug.
+One GUI pass closes the code-fixed retests: `slot-transform-keys`, `automesh-interactive-extend-cut` (manual-testing 1.23 / 1.25), `skeleton-row-click-select`, `pose-save-library-precheck`, `waist-1px-drift`, and the 036 reproject-uv perf retest. Markers live in [manual-testing.md](manual-testing.md). Every new failure here is a new blocking bug.
 
 ### B4. Day-one capability: sprite appearance passthrough (light) - SHIPPED (#105, spec 028)
 
@@ -35,7 +35,7 @@ End-to-end `modulate` + `z_index` + `flip` on `MeshElement` / `SpriteElement`, d
 
 ### B5. Cross-app roundtrip pass - PENDING (the verification session)
 
-Section 4 of [backlog-manual-testing.md](backlog-manual-testing.md): the doll full pipeline (PS -> Blender -> Godot) end to end, plus `slot_swap` / `slot_cycle`, exercising the B4 appearance fields. The PS-side waist 1px drift and PPU=100 default are known waivers (re-measure through the UXP path during this pass).
+Section 4 of [manual-testing.md](manual-testing.md): the doll full pipeline (PS -> Blender -> Godot) end to end, plus `slot_swap` / `slot_cycle`, exercising the B4 appearance fields. The PS-side waist 1px drift and PPU=100 default are known waivers (re-measure through the UXP path during this pass).
 
 ### B6. Packaging for a real tag - SHIPPED (#112, spec 035)
 
@@ -64,7 +64,7 @@ A per-item effort evaluation ran across the 12 thematic specs (each scored on fl
 ## Backlog map (where things live)
 
 - [`backlog-bugs-found.md`](backlog-bugs-found.md) - reproducible bugs (now: the retest queue + the 036 / upstream bugs).
-- [`backlog-manual-testing.md`](backlog-manual-testing.md) - hands-on verification checklists (B3 / B5 source).
+- [`manual-testing.md`](manual-testing.md) - hands-on verification checklists (B3 / B5 source).
 - [`backlog.md`](backlog.md) - features owned by the not-yet-started specs (036 / 037 / 038) + architecture notes.
 - [`backlog-ui-feedback.md`](backlog-ui-feedback.md) - polish / copy / layout (the ui-help-surfaces surface).
 - [`backlog-code-quality.md`](backlog-code-quality.md) - toolchain gates (now: the wheel-staleness gap).

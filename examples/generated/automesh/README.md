@@ -1,6 +1,6 @@
 # automesh fixture
 
-Workbench for the **automesh-from-sprite** operator + follow-up bind / weight paint / sidecar work. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the Automesh smoke checklist in [`specs/backlog-manual-testing.md`](../../../specs/backlog-manual-testing.md) end-to-end.
+Workbench for the **automesh-from-sprite** operator + follow-up bind / weight paint / sidecar work. Four sprite planes with image-textured materials plus a 3-bone vertical hand chain positioned over the hand sprite - feeds the Automesh smoke checklist in [`specs/manual-testing.md`](../../../specs/manual-testing.md) end-to-end.
 
 ## Directory layout
 
@@ -54,7 +54,7 @@ Re-run both steps when smoke surfaces a need for an updated baseline (new shape,
 
 ## Smoke usage
 
-See the Automesh section of [`specs/backlog-manual-testing.md`](../../../specs/backlog-manual-testing.md) for the scenario checklist. Quick reference:
+See the Automesh section of [`specs/manual-testing.md`](../../../specs/manual-testing.md) for the scenario checklist. Quick reference:
 
 1. Open `automesh.blend` in Blender.
 2. Enable Proscenio addon (if not auto-loaded).

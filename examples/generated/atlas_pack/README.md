@@ -54,7 +54,7 @@ blender --background examples/generated/atlas_pack/atlas_pack.blend \
 
 ## Testing the Atlas panel (manual)
 
-See the Atlas section of [`specs/backlog-manual-testing.md`](../../../specs/backlog-manual-testing.md) - this fixture is the workbench used there.
+See the Atlas section of [`specs/manual-testing.md`](../../../specs/manual-testing.md) - this fixture is the workbench used there.
 
 Quick smoke (high level):
 

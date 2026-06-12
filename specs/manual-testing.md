@@ -1,8 +1,6 @@
 # Manual testing checklist
 
-Items that are technically implemented or treated but await a manual GUI / visual validation that headless CI cannot run. Each carries the fix that shipped and the smoke step that closes it: pass it in a GUI session, then check it off and drop it. Populated 2026-06-12 from the backlog reconciliation - the rule is that a treated issue whose only remaining work is manual validation lives here, not in the backlog files. Still-broken or never-started issues stay in the backlogs; this file is exclusively "done, needs a human to confirm".
-
-The verification-session references in [PLAN.md](PLAN.md) (B3 / B5) and [EXECUTION_MAP.md](EXECUTION_MAP.md) point here.
+Items that are technically implemented or treated but await a manual GUI / visual validation that headless CI cannot run. Each carries the fix that shipped and the smoke step that closes it: pass it in a GUI session, then check it off and drop it. Populated 2026-06-12 from the backlog reconciliation - the rule is that a treated issue whose only remaining work is manual validation lives here, not in the backlog files. Still-broken or never-started issues stay in the backlogs; this file is exclusively "done, needs a human to confirm". Run it before cutting a release tag - a failure here is a new blocking bug.
 
 ## Retests - fix shipped, GUI smoke pending
 

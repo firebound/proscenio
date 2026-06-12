@@ -27,10 +27,6 @@ A reconciliação de 2026-06-11 das specs 027-035 removeu os itens já trabalhad
 - Favoritos: útil, manter
 - Alinhamento dos nomes das meshes está centralizado - horrível. **Regra geral pra todas as listas: alinhar à esquerda**.
 
-## Animation panel
-
-- (a testar)
-
 ## Materials panel (proposed - doesn't exist yet)
 
 Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário caça pelos materiais no Shader Editor ou Properties > Material per-objeto. Sugestão: novo subpanel **Materials** com:
@@ -54,18 +50,9 @@ Sem panel dedicado pra inspeção / configuração de materials. Hoje usuário c
 
 - **Click em issue de objeto hidden seleciona no outliner mas viewport não reflete.** Comportamento Blender padrão, mas confuso pro usuário que clica achando que vai ver o offending object destacado. Sugestão: `proscenio.select_issue_object` operator deve também `hide_viewport=False` + frame view na target (View > Frame Selected). Workaround: usuário precisa unhide manual antes da seleção fazer sentido visual.
 
-## Export panel
-
-- (a testar)
-
 ## Help / status badges
 
 - Help panel completamente inútil e ilegível como tá - substituir por botão único que abre popup
-- **See-also references nos popups de help: refs LOCAIS não são clickáveis.** (Parcial pós-spec-023: refs `http(s)` já renderizam como `wm.url_open` + botão "Open online docs"; restam os see-also de path local - `specs/`, `examples/` - como labels puros.) Sugestões (em ordem de impacto):
-  - **A. wm.path_open operator:** envolver cada ref num `layout.operator("wm.path_open")` com `filepath=<abspath>` - abre arquivo/pasta no app default do OS. Funciona pra `STATUS.md`, pastas de exemplo (abre file manager) etc. Mínimo viável.
-  - **B. wm.url_open** se ref começa com `http`. Mistura A+B detectando prefixo.
-  - **C. Copy to clipboard button** próximo de cada ref - alternativa baixa-fricção.
-  - **D. Ícone visual:** se decidir não fazer A/B, ao menos trocar ícone URL no header da seção pra algo menos clicky (DOT, INFO), pra não enganar.
 
 ## Diagnostics panel
 

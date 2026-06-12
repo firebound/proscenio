@@ -20,14 +20,6 @@ The 2026-06-11 reconciliation of specs 027-035 emptied most of this file: resolv
 
 The element-vocabulary rename (the former spec 019) renamed the wire end-to-end and swept the Blender / Photoshop / Godot / fixtures internals, but `packages/validator` was outside its Phase 1-4 scope and never touched. It still uses the pre-rename internal names `report.sprites` + `SpritePayload` (`measurement.py:177`, `report.py:63`). Internal accumulator names, not the wire field, so nothing breaks. Rename to `report.elements` / `ElementPayload` (and the `test_validator_report.py` import) the next time the validator is touched. Low priority, cosmetic.
 
-### Spec 021 follow-up: unfinished discovery
-
-The spec 021 UI/UX audit is pruned. Its IA design fed specs 022 (restructure), 023 (help / docs / i18n), and 024 (preferences), and the sprite-rigid-bind + atlas findings were filed elsewhere in this backlog - that purpose is served. One thread outlived it:
-
-- **Phase A / B discovery (never finished).** The reconciliation against `backlog-ui-feedback.md` was only partly run (~15 areas pending, much now overtaken by spec 022 shipping); the hands-on per-tool audit (GOOD / BAD / MISSING, needs the maintainer in a GUI Blender) never ran. Resume only if a fresh holistic UX pass is wanted.
-
-(The per-asset-PPU bucket from this audit is now in [`GATED.md`](GATED.md); the bone-collections + hierarchy-editing bucket is in [`DROPPED.md`](DROPPED.md).)
-
 ### Spec 022 follow-up: guide-doc rename sweep
 
 Spec 022 shipped and verified the 13-panel restructure (2026-06-09: panels renamed, `feature_status` bands updated, the stale `skinning` fallback gone, operator suite green at 50, addon registers headless). It also renamed the operator `proscenio.automesh_from_sprite` -> `automesh_from_alpha` and the Skinning panel -> Mesh Generation. The in-editor visual smoke of the restructure is a shipped-but-unvalidated item and moved to [`manual-testing.md`](manual-testing.md); one doc deferral outlives the spec:

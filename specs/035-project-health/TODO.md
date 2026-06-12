@@ -34,11 +34,11 @@ Sequenced from the verdicts in [STUDY.md](STUDY.md): six items land now (the blo
 
 ### End-to-end mixed-feature fixture
 
-Carried to a focused follow-up PR, split from the toolchain/shipping PR (the STUDY flags this as the one heavier now-item). Its precondition is met: the export-correctness writer fixes (picker-first `find_armature`, `MeshElement.polygons`) are already in code.
+Delivered in a focused follow-up PR, split from the toolchain/shipping PR (the STUDY flags this as the one heavier now-item). Precondition was met: the export-correctness writer fixes (picker-first `find_armature`, `MeshElement.polygons`) are already in code.
 
-- [ ] Sequence after the export-correctness blocking writer fixes (armature picker, multi-polygon) so the golden bakes once.
-- [ ] Author the fixture in the categorization buckets under `examples/generated/`: skinned polygon body + sprite_frame mouth + slot with mixed attachments + packed atlas + Drive-from-Bone + one animation.
-- [ ] Bake the Blender-to-Godot golden and wire it into the existing `test-blender` re-export diff and `test-godot` smoke; populate the dev project via [sync_fixtures.py](../../scripts/godot/sync_fixtures.py) (never edit the synced copies).
+- [x] Sequence after the export-correctness blocking writer fixes (armature picker, multi-polygon) so the golden bakes once.
+- [x] Author the fixture in the categorization buckets under `examples/generated/`: skinned polygon body + sprite_frame mouth + slot with mixed attachments + packed atlas + Drive-from-Bone + one animation. (Single shared `atlas.png`; sprite_frames carry manual atlas regions, meshes derive theirs from UV.)
+- [x] Bake the Blender-to-Godot golden and wire it into the existing `test-blender` re-export diff and `test-godot` smoke; populate the dev project via [sync_fixtures.py](../../scripts/godot/sync_fixtures.py) (never edit the synced copies).
 - [ ] Optional follow-up PR: the PSD-to-Blender leg (photoshop manifest golden) once the Blender leg is green.
 
 ## Deferred

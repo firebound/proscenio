@@ -30,6 +30,7 @@ const FIXTURE := "res://tests/fixtures/dummy.proscenio"
 const EFFECT_FIXTURE := "res://tests/fixtures/effect.proscenio"
 const SKINNED_FIXTURE := "res://tests/fixtures/skinned_dummy.proscenio"
 const SLOTS_FIXTURE := "res://tests/fixtures/slots_demo.proscenio"
+const MIXED_FIXTURE := "res://tests/fixtures/mixed_feature.proscenio"
 
 var _failures: Array[String] = []
 var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
@@ -40,6 +41,7 @@ func _initialize() -> void:
 	_run_effect_checks()
 	_run_skinned_checks()
 	_run_slot_checks()
+	_run_mixed_checks()
 	_finish()
 
 
@@ -244,6 +246,73 @@ func _run_slot_checks() -> void:
 			)
 
 	_assert_saved_scene_has_no_scripts(character, "slots")
+
+	character.free()
+
+
+func _run_mixed_checks() -> void:
+	# The feature-stack fixture: skinned body + sprite_frame mouth + a slot with
+	# mixed (mesh + sprite) attachments + a shared atlas + a Drive-from-Bone
+	# animation, all in one document.
+	var data := _load_fixture(MIXED_FIXTURE)
+	if data.is_empty():
+		_fail("could not load %s" % MIXED_FIXTURE)
+		return
+
+	var character := _build_character(data)
+	_assert_eq(character.name, "mixed_feature", "mixed: root name")
+	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
+
+	var bones := _collect_descendants_of_type(skeleton, "Bone2D")
+	_assert_eq(bones.size(), 4, "mixed: bone count")
+	var bone_names := PackedStringArray()
+	for bone: Node in bones:
+		bone_names.append(String(bone.name))
+	bone_names.sort()
+	_assert_eq(", ".join(bone_names), "head, jaw, root, spine", "mixed: bone names")
+
+	# Skinned body: a Polygon2D parented to the skeleton, two bone weights, two faces.
+	var body := skeleton.find_child("body", true, false)
+	_assert_true(body != null and body is Polygon2D, "mixed: body is Polygon2D")
+	if body is Polygon2D:
+		var poly: Polygon2D = body
+		_assert_true(poly.get_parent() == skeleton, "mixed: body parented to skeleton (skinned)")
+		_assert_eq(poly.get_bone_count(), 2, "mixed: body bone count = 2")
+		_assert_eq(poly.polygons.size(), 2, "mixed: body multi-face polygons = 2")
+
+	# sprite_frame mouth: a 4-frame Sprite2D.
+	var mouth := skeleton.find_child("mouth", true, false)
+	_assert_true(mouth != null and mouth is Sprite2D, "mixed: mouth is Sprite2D")
+	if mouth is Sprite2D:
+		_assert_eq((mouth as Sprite2D).hframes, 4, "mixed: mouth hframes = 4")
+
+	# Slot with mixed attachments: 'face.slot' sanitizes to 'face_slot'.
+	var slot_node := skeleton.find_child("face_slot", true, false)
+	_assert_true(slot_node != null, "mixed: 'face_slot' Node2D anchored")
+	var neutral: Node = null
+	var glow: Node = null
+	if slot_node != null:
+		neutral = slot_node.find_child("face_neutral", false, false)
+		glow = slot_node.find_child("face_glow", false, false)
+	_assert_true(
+		neutral != null and neutral is Polygon2D, "mixed: face_neutral attachment is Polygon2D"
+	)
+	_assert_true(glow != null and glow is Sprite2D, "mixed: face_glow attachment is Sprite2D")
+	_assert_true(
+		neutral != null and (neutral as CanvasItem).visible, "mixed: default attachment visible"
+	)
+	_assert_true(
+		glow != null and not (glow as CanvasItem).visible, "mixed: non-default attachment hidden"
+	)
+
+	# One animation carrying the driven mouth frames plus the jaw bone track.
+	var player: AnimationPlayer = character.get_node("AnimationPlayer")
+	_assert_true(player.has_animation("mixed_anim"), "mixed: mixed_anim present")
+	if player.has_animation("mixed_anim"):
+		var anim := player.get_animation("mixed_anim")
+		_assert_true(anim.get_track_count() >= 2, "mixed: mixed_anim has a bone + a frame track")
+
+	_assert_saved_scene_has_no_scripts(character, "mixed")
 
 	character.free()
 

@@ -1,0 +1,19 @@
+; Documentation-by-example wrapper scene for the Proscenio mixed_feature fixture.
+;
+; The single fixture that stacks every Blender-to-Godot feature: a skinned
+; body polygon, a sprite_frame mouth driven from a bone, a slot with mixed
+; (mesh + sprite) attachments, a shared atlas, and one animation. Wrapper
+; instances the imported scene so extra nodes survive a reimport.
+;
+; Drop `examples/generated/blender_to_godot/mixed_feature/` at
+; `res://examples/mixed_feature/` in your Godot project, or adjust paths.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://examples/mixed_feature/mixed_feature.proscenio" id="1_mixed"]
+[ext_resource type="Script" path="res://examples/mixed_feature/godot/MixedFeature.gd" id="2_mixed"]
+
+[node name="MixedFeature" type="Node2D"]
+script = ExtResource("2_mixed")
+
+[node name="MixedFeatureCharacter" parent="." instance=ExtResource("1_mixed")]

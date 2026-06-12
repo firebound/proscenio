@@ -1,0 +1,323 @@
+{
+  "format_version": 1,
+  "name": "mixed_feature",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "root",
+        "parent": null,
+        "position": [
+          0.0,
+          30.000002
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      },
+      {
+        "name": "spine",
+        "parent": null,
+        "position": [
+          0.0,
+          -10.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      },
+      {
+        "name": "head",
+        "parent": null,
+        "position": [
+          0.0,
+          -50.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      },
+      {
+        "name": "jaw",
+        "parent": null,
+        "position": [
+          40.0,
+          -30.000002
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 50.0
+      }
+    ]
+  },
+  "elements": [
+    {
+      "name": "body",
+      "bone": "root",
+      "texture_region": [
+        0.0,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "polygon": [
+        [
+          -20.0,
+          19.999998
+        ],
+        [
+          20.0,
+          19.999998
+        ],
+        [
+          20.0,
+          -30.000002
+        ],
+        [
+          -20.0,
+          -30.000002
+        ],
+        [
+          20.0,
+          -80.0
+        ],
+        [
+          -20.0,
+          -80.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          0.5,
+          1.0
+        ],
+        [
+          0.5,
+          0.75
+        ],
+        [
+          0.0,
+          0.75
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.5
+        ]
+      ],
+      "polygons": [
+        [
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          4,
+          5
+        ]
+      ],
+      "texture": "atlas.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            0.5,
+            0.5,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "bone": "spine",
+          "values": [
+            0.0,
+            0.0,
+            0.5,
+            0.5,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sprite",
+      "name": "face_glow",
+      "bone": "",
+      "hframes": 2,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true,
+      "texture_region": [
+        0.5,
+        0.0,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "face_neutral",
+      "bone": "",
+      "texture_region": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "polygon": [
+        [
+          -16.0,
+          16.0
+        ],
+        [
+          16.0,
+          16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ],
+        [
+          -16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.5,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.5
+        ],
+        [
+          0.5,
+          0.5
+        ]
+      ],
+      "texture": "atlas.png"
+    },
+    {
+      "type": "sprite",
+      "name": "mouth",
+      "bone": "head",
+      "hframes": 4,
+      "vframes": 1,
+      "frame": 2,
+      "centered": true,
+      "texture_region": [
+        0.0,
+        0.0,
+        0.5,
+        0.5
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "name": "face.slot",
+      "attachments": [
+        "face_glow",
+        "face_neutral"
+      ],
+      "default": "face_neutral"
+    }
+  ],
+  "atlas": "atlas.png",
+  "animations": [
+    {
+      "name": "mixed_anim",
+      "length": 0.958333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "bone_transform",
+          "target": "jaw",
+          "keys": [
+            {
+              "time": 0.0,
+              "rotation": 0.0
+            },
+            {
+              "time": 0.291667,
+              "rotation": -1.570796
+            },
+            {
+              "time": 0.625,
+              "rotation": 1.570796
+            },
+            {
+              "time": 0.958333,
+              "rotation": 0.0
+            }
+          ]
+        },
+        {
+          "type": "sprite_frame",
+          "target": "mouth",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.041667,
+              "interp": "constant",
+              "frame": 1
+            },
+            {
+              "time": 0.125,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.5,
+              "interp": "constant",
+              "frame": 3
+            },
+            {
+              "time": 0.833333,
+              "interp": "constant",
+              "frame": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

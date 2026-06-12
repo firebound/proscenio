@@ -61,4 +61,4 @@ One GUI pass closes the `[retest]` rows from the shipped wave (slot-transform-ke
 
 ## Upstream-watch (no spec)
 
-- qa-gizmo-crash - Blender/AMD internals; defensive try/except shipped; watch only.
+- qa-gizmo-crash - Blender/AMD internals; defensive try/except shipped; watch for recurrence (the re-test step is in [manual-testing.md](manual-testing.md)).

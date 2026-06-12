@@ -28,14 +28,13 @@ The spec 021 UI/UX audit is pruned. Its IA design fed specs 022 (restructure), 0
 
 (The per-asset-PPU bucket from this audit is now in [`GATED.md`](GATED.md); the bone-collections + hierarchy-editing bucket is in [`DROPPED.md`](DROPPED.md).)
 
-### Spec 022 follow-up: in-editor smoke + guide-doc rename sweep
+### Spec 022 follow-up: guide-doc rename sweep
 
-Spec 022 shipped and verified the 13-panel restructure (2026-06-09: panels renamed, `feature_status` bands updated, the stale `skinning` fallback gone, operator suite green at 50, addon registers headless). It also renamed the operator `proscenio.automesh_from_sprite` -> `automesh_from_alpha` and the Skinning panel -> Mesh Generation. Two deferrals outlive the spec:
+Spec 022 shipped and verified the 13-panel restructure (2026-06-09: panels renamed, `feature_status` bands updated, the stale `skinning` fallback gone, operator suite green at 50, addon registers headless). It also renamed the operator `proscenio.automesh_from_sprite` -> `automesh_from_alpha` and the Skinning panel -> Mesh Generation. The in-editor visual smoke of the restructure is a shipped-but-unvalidated item and moved to [`manual-testing.md`](manual-testing.md); one doc deferral outlives the spec:
 
-- **In-editor visual smoke (workstation).** Headless cannot render panels. At a GUI Blender, confirm the sibling-panel tree (nothing nested under the version line), the accordion subpanels collapsing independently, the warn-not-hide hints, the per-header badge + `?`, and the `debug_mode` preference showing / hiding Diagnostics + the Debug Pipeline subpanel. A layout regression found here is a new bug.
-- **Guide-doc rename sweep.** `docs/00-guides/00-basic/02-blender.md` and `docs/00-guides/01-advanced/02-blender.md` still say "Automesh from Sprite" / "Skinning panel"; `manual-testing.md` references the old names too (a historical log, lower priority). The same two guide pages also carry pre-Element-rename vocabulary - fold this into the spec 019 guide-doc residual for one holistic pass. Verified IA map (while shipping #100): the old "Skinning" panel split into "Mesh Generation" (Automesh from Alpha / Automesh Interactive / Debug Pipeline) and "Weight Paint" (Bind / Edit Weights / Snapshot / Sidecar IO / Weight Transfer); "Active Sprite" persists as a sibling of "Active Mesh" under an "Element" parent (NOT "Active Element"). The workflow prose needs rewriting against this, not find-replace.
+- **Guide-doc rename sweep.** `docs/00-guides/00-basic/02-blender.md` and `docs/00-guides/01-advanced/02-blender.md` still say "Automesh from Sprite" / "Skinning panel". The same two guide pages also carry pre-Element-rename vocabulary - fold this into the spec 019 guide-doc residual for one holistic pass. Verified IA map (while shipping #100): the old "Skinning" panel split into "Mesh Generation" (Automesh from Alpha / Automesh Interactive / Debug Pipeline) and "Weight Paint" (Bind / Edit Weights / Snapshot / Sidecar IO / Weight Transfer); "Active Sprite" persists as a sibling of "Active Mesh" under an "Element" parent (NOT "Active Element"). The workflow prose needs rewriting against this, not find-replace.
 
-**Trigger:** the visual smoke at the next workstation session; the docs sweep follows the review (or sooner - the renames are known).
+**Trigger:** the docs sweep follows the next review (or sooner - the renames are known).
 
 ### Spec 024 follow-up: docs-URL preference (D3) + overrides (D4 - none)
 

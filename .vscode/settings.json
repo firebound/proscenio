@@ -90,11 +90,13 @@
     // false positives.
     "markdown.validate.referenceLinks.enabled": "ignore",
     "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
         "**/.DS_Store": true,
+        "**/.git": true,
+        "**/.hg": true,
+        "**/.svn": true,
+        "**/*.uid": true,
         "**/Thumbs.db": true
     },
-    "hide-files.files": []
+    "hide-files.files": [],
+    "explorerExclude.backup": {}
 }

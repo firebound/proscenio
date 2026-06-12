@@ -45,6 +45,8 @@ def main() -> None:
     _wipe_blend()
     _run_importer()
     _save_blend()
+    _rewrite_images_to_relpath()
+    bpy.ops.wm.save_mainfile()
     print(f"[build_simple_psd] wrote {BLEND_PATH}")
 
 
@@ -96,6 +98,28 @@ def _run_importer() -> None:
 def _save_blend() -> None:
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), check_existing=False)
+
+
+def _rewrite_images_to_relpath() -> None:
+    """After save_as, rewrite each image filepath to a ``//``-relative path.
+
+    The importer loads PNGs by absolute path; ``bpy.path.relpath`` needs the
+    .blend already on disk (the save_as above sets that base), and the caller
+    saves again afterward. Keeps the committed .blend machine-independent.
+    """
+    for img in bpy.data.images:
+        if not img.filepath:
+            continue
+        try:
+            img.filepath = bpy.path.relpath(img.filepath)
+        except ValueError as exc:
+            # bpy.path.relpath raises ValueError on Windows when the image
+            # lives on a different drive letter from the .blend; the absolute
+            # path still resolves, only the portability promise weakens.
+            print(
+                f"[build_simple_psd] keeping absolute path for {img.name} ({exc})",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":

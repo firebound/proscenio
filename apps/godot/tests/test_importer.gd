@@ -77,6 +77,7 @@ func _run_dummy_checks() -> void:
 		_assert_true(anim.length > 0.0, "dummy: animation length > 0")
 
 	_run_idempotency_check(data, character)
+	_assert_saved_scene_has_no_scripts(character, "dummy")
 
 	character.free()
 
@@ -124,6 +125,8 @@ func _run_effect_checks() -> void:
 			)
 			_assert_eq(anim.track_get_key_count(0), 4, "effect: frame key count")
 
+	_assert_saved_scene_has_no_scripts(character, "effect")
+
 	character.free()
 
 
@@ -163,6 +166,8 @@ func _run_skinned_checks() -> void:
 			_assert_eq(torso.polygons[1], PackedInt32Array([0, 2, 3]), "skinned: polygons face 1")
 		_assert_eq(torso.modulate, Color(0.25, 0.5, 0.75, 1.0), "skinned: modulate stamped")
 		_assert_eq(torso.z_index, -3, "skinned: z_index stamped")
+
+	_assert_saved_scene_has_no_scripts(character, "skinned")
 
 	character.free()
 
@@ -237,6 +242,8 @@ func _run_slot_checks() -> void:
 				Animation.INTERPOLATION_NEAREST,
 				"slots: track %d uses NEAREST" % i
 			)
+
+	_assert_saved_scene_has_no_scripts(character, "slots")
 
 	character.free()
 
@@ -318,6 +325,56 @@ func _collect_descendants_of_type(node: Node, type_name: String) -> Array:
 			out.append(child)
 		out.append_array(_collect_descendants_of_type(child, type_name))
 	return out
+
+
+# The shipped .scn must carry no addon script references: consumers run with
+# the plugin disabled (it is editor-only), so a baked script path would break
+# the scene at load. Mirror importer.gd's owner-set + pack + save, reload from
+# disk, and assert every node's get_script() is null.
+func _assert_saved_scene_has_no_scripts(character: Node2D, label: String) -> void:
+	_set_owner_recursive(character, character)
+	var packed := PackedScene.new()
+	var pack_err := packed.pack(character)
+	if pack_err != OK:
+		_fail("%s: PackedScene.pack failed (error %d)" % [label, pack_err])
+		return
+	var path := "user://proscenio_saved_scene_check.scn"
+	var save_err := ResourceSaver.save(packed, path)
+	if save_err != OK:
+		_fail("%s: ResourceSaver.save failed (error %d)" % [label, save_err])
+		return
+	# CACHE_MODE_REPLACE so each fixture reloads its own bytes off disk, not a
+	# cached PackedScene left by the previous call to this shared path.
+	var reloaded := (
+		ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE) as PackedScene
+	)
+	if reloaded == null:
+		_fail("%s: reload of saved scene returned null" % label)
+		return
+	var instance := reloaded.instantiate()
+	var scripted := _collect_scripted_nodes(instance)
+	_assert_eq(
+		scripted.size(),
+		0,
+		"%s: saved scene free of addon script refs [%s]" % [label, ", ".join(scripted)]
+	)
+	instance.free()
+
+
+func _collect_scripted_nodes(node: Node) -> PackedStringArray:
+	var out: PackedStringArray = []
+	if node.get_script() != null:
+		out.append(String(node.name))
+	for child: Node in node.get_children():
+		out.append_array(_collect_scripted_nodes(child))
+	return out
+
+
+func _set_owner_recursive(node: Node, owner: Node) -> void:
+	for child: Node in node.get_children():
+		if child != owner:
+			child.owner = owner
+		_set_owner_recursive(child, owner)
 
 
 func _assert_eq(actual: Variant, expected: Variant, label: String) -> void:

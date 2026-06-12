@@ -54,6 +54,8 @@ def main() -> None:
         _build_attachment_mesh(name, slot_empty)
     _build_cycle_action(slot_empty)
     _save_blend()
+    _rewrite_images_to_relpath()
+    bpy.ops.wm.save_mainfile()
     print(f"[build_slot_cycle] wrote {BLEND_PATH}")
 
 
@@ -186,6 +188,28 @@ def _build_cycle_action(slot_empty: bpy.types.Object) -> None:
 def _save_blend() -> None:
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), check_existing=False)
+
+
+def _rewrite_images_to_relpath() -> None:
+    """After save_as, rewrite each image filepath to a ``//``-relative path.
+
+    ``bpy.path.relpath`` needs the .blend already on disk (the save_as above
+    sets that base); the caller saves again afterward. Keeps the committed
+    .blend machine-independent instead of baking a dev's repo root into it.
+    """
+    for img in bpy.data.images:
+        if not img.filepath:
+            continue
+        try:
+            img.filepath = bpy.path.relpath(img.filepath)
+        except ValueError as exc:
+            # bpy.path.relpath raises ValueError on Windows when the image
+            # lives on a different drive letter from the .blend; the absolute
+            # path still resolves, only the portability promise weakens.
+            print(
+                f"[build_slot_cycle] keeping absolute path for {img.name} ({exc})",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":

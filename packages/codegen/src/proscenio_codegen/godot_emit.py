@@ -121,9 +121,15 @@ def _union_dispatcher_name(item: Any) -> str | None:
     from proscenio_models.proscenio import MeshElement, SpriteElement
     from proscenio_models.psd_manifest import MeshLayer, SpriteLayer
 
-    if variant_models == {MeshElement, SpriteElement}:
+    # Typed as the same set element type as `variant_models` so the literal
+    # joins to `type[BaseModel]` rather than the per-module `_Strict` base
+    # (proscenio and psd_manifest each define one; the bare literal would
+    # join to the wrong one and fail the equality check under strict mypy).
+    element_variants: set[type[BaseModel]] = {MeshElement, SpriteElement}
+    layer_variants: set[type[BaseModel]] = {MeshLayer, SpriteLayer}
+    if variant_models == element_variants:
         return "ProscenioElement"
-    if variant_models == {MeshLayer, SpriteLayer}:
+    if variant_models == layer_variants:
         return "ProscenioLayer"
     return None
 

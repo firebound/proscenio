@@ -28,6 +28,10 @@ jobs:
         run: uv run --with mypy mypy --config-file apps/blender/pyproject.toml
       - name: Mypy strict (packages/validator)
         run: uv run --with mypy mypy --config-file packages/validator/pyproject.toml
+      - name: Mypy strict (packages/models)
+        run: uv run --with mypy mypy --config-file packages/models/pyproject.toml
+      - name: Mypy strict (packages/codegen)
+        run: uv run --with mypy mypy --config-file packages/codegen/pyproject.toml
       - name: Pytest (validation unit tests, no Blender)
         run: uv run pytest tests/
 
@@ -47,6 +51,9 @@ jobs:
       - name: Typecheck
         working-directory: apps/photoshop
         run: pnpm run typecheck
+      - name: Lint
+        working-directory: apps/photoshop
+        run: pnpm run lint
       - name: Unit tests
         working-directory: apps/photoshop
         run: pnpm test

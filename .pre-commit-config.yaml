@@ -49,6 +49,33 @@ repos:
             entry: uv run --project apps/blender --quiet mypy --config-file packages/validator/pyproject.toml
             files: ^packages/validator/.*\.py$
             pass_filenames: false
+          - id: mypy-models
+            name: mypy (packages/models)
+            language: system
+            entry: uv run --with mypy --quiet mypy --config-file packages/models/pyproject.toml
+            files: ^packages/models/.*\.py$
+            pass_filenames: false
+          - id: mypy-codegen
+            name: mypy (packages/codegen)
+            language: system
+            entry: uv run --with mypy --quiet mypy --config-file packages/codegen/pyproject.toml
+            # Fires on models edits too: codegen's typing depends on the
+            # models it imports, so a models change can break codegen mypy.
+            files: ^packages/(codegen|models)/.*\.py$
+            pass_filenames: false
+
+    # eslint runs the strictTypeChecked + stylisticTypeChecked config
+    # (the no-unsafe-* family that tsc cannot see) over the UXP plugin.
+    # `language: system` so it uses the local pnpm; pass_filenames is off
+    # because the config globs `src` itself.
+    - repo: local
+      hooks:
+          - id: eslint-photoshop
+            name: eslint (apps/photoshop)
+            language: system
+            entry: pnpm --dir apps/photoshop run lint
+            files: ^apps/photoshop/src/.*\.tsx?$
+            pass_filenames: false
 
     - repo: https://github.com/Scony/godot-gdscript-toolkit
       rev: 4.3.3

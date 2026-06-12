@@ -6,33 +6,35 @@ Sequenced from the verdicts in [STUDY.md](STUDY.md): six items land now (the blo
 
 ### Repackage the Photoshop release job `[blocking]`
 
-- [ ] Replace the stale `.jsx` copy in [release.yml](../../.github/workflows/release.yml) with a UXP build: setup-node + pnpm, `pnpm install --frozen-lockfile`, `pnpm run build` in `apps/photoshop` (`dist/` is gitignored, so the job must build), then zip `dist/` as `proscenio-photoshop-<version>.zip` (`.ccx` rename optional).
-- [ ] Add a `workflow_dispatch` dry-run path that runs the package steps without the gh-release upload, so the job can be exercised tagless - the `.jsx` line rotted precisely because the workflow only runs on tags.
-- [ ] Dry-run all three component branches (blender, godot, photoshop) via the dispatch path and check each artifact's content listing.
+- [x] Replace the stale `.jsx` copy in [release.yml](../../.github/workflows/release.yml) with a UXP build: setup-node + pnpm, `pnpm install --frozen-lockfile`, `pnpm run build` in `apps/photoshop` (`dist/` is gitignored, so the job must build), then zip `dist/` as `proscenio-photoshop-<version>.zip` (`.ccx` rename optional).
+- [x] Add a `workflow_dispatch` dry-run path that runs the package steps without the gh-release upload, so the job can be exercised tagless - the `.jsx` line rotted precisely because the workflow only runs on tags.
+- [x] Dry-run all three component branches (blender, godot, photoshop) via the dispatch path and check each artifact's content listing. (Verified: photoshop zip carries `manifest.json` at the root, blender the addon tree, godot `addons/proscenio/`.)
 
 ### Turn the existing ESLint config into a gate
 
-- [ ] Run `pnpm run lint` over `apps/photoshop/src`; fix or narrowly scope-justify any findings so the enabling commit lands green.
-- [ ] Add the lint step to the `lint-photoshop` job in [ci.yml](../../.github/workflows/ci.yml).
-- [ ] Mirror it as a pre-commit local hook (sketch in [backlog-code-quality.md](../backlog-code-quality.md)).
+- [x] Run `pnpm run lint` over `apps/photoshop/src`; fix or narrowly scope-justify any findings so the enabling commit lands green. (Tree already passes clean.)
+- [x] Add the lint step to the `lint-photoshop` job in [ci.yml](../../.github/workflows/ci.yml).
+- [x] Mirror it as a pre-commit local hook (sketch in [backlog-code-quality.md](../backlog-code-quality.md)).
 
 ### mypy gate for proscenio-models and proscenio-codegen
 
-- [ ] Add `[tool.mypy]` strict-strict blocks (validator profile, `python_version = "3.11"`) to [packages/models/pyproject.toml](../../packages/models/pyproject.toml) and [packages/codegen/pyproject.toml](../../packages/codegen/pyproject.toml); scope the pydantic discriminator functions' `Any`-by-contract payloads with coded ignores.
-- [ ] Add the two mypy steps to `lint-python` in ci.yml and matching pre-commit hooks.
-- [ ] Land before the schema-expressiveness wave starts churning the models (cross-spec sequencing; see [EXECUTION_MAP.md](../EXECUTION_MAP.md)).
+- [x] Add `[tool.mypy]` strict-strict blocks (validator profile, `python_version = "3.11"`) to [packages/models/pyproject.toml](../../packages/models/pyproject.toml) and [packages/codegen/pyproject.toml](../../packages/codegen/pyproject.toml). The pydantic plugin handles the model surface; `disallow_any_explicit` is dropped here (pydantic's synthesized methods carry explicit `Any` on every model), the rest of the strict profile stays.
+- [x] Add the two mypy steps to `lint-python` in ci.yml and matching pre-commit hooks.
+- [x] Land before the schema-expressiveness wave starts churning the models (cross-spec sequencing; see [EXECUTION_MAP.md](../EXECUTION_MAP.md)).
 
 ### Saved-scene assert for the plugin-uninstall guard
 
-- [ ] In [test_importer.gd](../../apps/godot/tests/test_importer.gd), pack the built character into a `PackedScene`, save, reload, and walk every node asserting `get_script() == null` - no addon script references baked into importer output.
-- [ ] Run the assert for all four fixture documents inside the same headless pass (no new CI job).
+- [x] In [test_importer.gd](../../apps/godot/tests/test_importer.gd), pack the built character into a `PackedScene`, save, reload, and walk every node asserting `get_script() == null` - no addon script references baked into importer output.
+- [x] Run the assert for all four fixture documents inside the same headless pass (no new CI job).
 
 ### Fixture portability: strip absolute image paths
 
-- [ ] Apply the blink_eyes `bpy.path.relpath` + re-save pattern to [slot_cycle/build_blend.py](../../packages/fixtures/slot_cycle/build_blend.py) and the simple_psd build path; regenerate both committed `.blend`s.
-- [ ] Verify with a strings-scan of both `.blend`s for machine-absolute paths and confirm the goldens still diff clean.
+- [x] Apply the blink_eyes `bpy.path.relpath` + re-save pattern to [slot_cycle/build_blend.py](../../packages/fixtures/slot_cycle/build_blend.py) and the simple_psd build path. (Both committed `.blend`s already store relative `//` paths - `save_as_mainfile` remaps by default - so no re-bake was committed; the script change makes the guarantee explicit + cross-drive-safe for the next regeneration.)
+- [x] Verify with a strings-scan of both `.blend`s for machine-absolute paths and confirm the goldens still diff clean. (Confirmed via `image.filepath_raw` = `//...` and a clean full `run_tests.py` re-export.)
 
 ### End-to-end mixed-feature fixture
+
+Carried to a focused follow-up PR, split from the toolchain/shipping PR (the STUDY flags this as the one heavier now-item). Its precondition is met: the export-correctness writer fixes (picker-first `find_armature`, `MeshElement.polygons`) are already in code.
 
 - [ ] Sequence after the export-correctness blocking writer fixes (armature picker, multi-polygon) so the golden bakes once.
 - [ ] Author the fixture in the categorization buckets under `examples/generated/`: skinned polygon body + sprite_frame mouth + slot with mixed attachments + packed atlas + Drive-from-Bone + one animation.

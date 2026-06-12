@@ -1,6 +1,6 @@
 # Deferred work
 
-Items with real value, sequenced for a second stage but not held behind a written trigger (those are in [GATED.md](GATED.md)). The difference from a gate: a deferred item is scheduled work waiting its turn, usually to ride a related change so its cost is shared, whereas a gate waits on a demand signal that may never come. Carved out of specs 027-035 during the 2026-06-11 reconciliation (those specs shipped their near-term work and their folders were pruned; see [_index.md](_index.md)). Companion homes: [DROPPED.md](DROPPED.md) (value below cost), [decisions.md](decisions.md) (locked calls).
+Items with real value, sequenced for a second stage but not held behind a written trigger (those are in [gated.md](gated.md)). The difference from a gate: a deferred item is scheduled work waiting its turn, usually to ride a related change so its cost is shared, whereas a gate waits on a demand signal that may never come. Carved out of specs 027-035 during the 2026-06-11 reconciliation (those specs shipped their near-term work and their folders were pruned; see [_index.md](_index.md)). Companion homes: [dropped.md](dropped.md) (value below cost), [decisions.md](decisions.md) (locked calls).
 
 ## 028 - schema-expressiveness
 

@@ -2,7 +2,7 @@
 
 Items where the value does not justify the cost. Removed from the live backlog during the 2026-06-11 reconciliation of specs 027-035 (those specs shipped their near-term work and their folders were pruned; see [_index.md](_index.md)). Kept here, not deleted, so a pruned item never loses its reasoning: a future reader sees it was considered and consciously declined, not forgotten. Organized by originating domain.
 
-Re-propose any of these only if its premise changes (a new consuming runtime, a schema feature it would ride, a real demand signal). Companion homes: [GATED.md](GATED.md) (held behind a trigger), [DEFERRED.md](DEFERRED.md) (sequenced second-stage), [decisions.md](decisions.md) (locked calls).
+Re-propose any of these only if its premise changes (a new consuming runtime, a schema feature it would ride, a real demand signal). Companion homes: [gated.md](gated.md) (held behind a trigger), [deferred.md](deferred.md) (sequenced second-stage), [decisions.md](decisions.md) (locked calls).
 
 ## 028 - schema-expressiveness
 

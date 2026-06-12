@@ -2,7 +2,7 @@
 
 Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out of specs 027-035 during the 2026-06-11 reconciliation, where those specs shipped their near-term work and their folders were pruned (see [_index.md](_index.md)). Organized by originating domain.
 
-Companion homes: deferred work (real value, sequenced second-stage, no trigger) is in [DEFERRED.md](DEFERRED.md); dropped work (value below cost) in [DROPPED.md](DROPPED.md); locked calls in [decisions.md](decisions.md). The not-yet-started specs 036-038 keep their own items in [backlog.md](backlog.md) until they are worked.
+Companion homes: deferred work (real value, sequenced second-stage, no trigger) is in [deferred.md](deferred.md); dropped work (value below cost) in [dropped.md](dropped.md); locked calls in [decisions.md](decisions.md). The not-yet-started specs 036-038 keep their own items in [backlog.md](backlog.md) until they are worked.
 
 ## 028 - schema-expressiveness
 

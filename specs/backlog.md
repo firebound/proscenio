@@ -4,7 +4,7 @@ Items that are not in any active spec. Each entry promotes into a numbered spec 
 
 Forward-compatibility items gated on a future Blender release live in a dedicated [`backlog-blender-6.md`](backlog-blender-6.md). Cross-cutting type-safety and lint-enforcement gaps (strict gates configured but not run, trees exempted from type checking) live in [`backlog-code-quality.md`](backlog-code-quality.md).
 
-The 2026-06-11 reconciliation of specs 027-035 emptied most of this file: resolved work was removed (locked calls recorded in [`decisions.md`](decisions.md)), and the not-now work moved to [`DEFERRED.md`](DEFERRED.md) (sequenced second-stage), [`GATED.md`](GATED.md) (held behind a written trigger), and [`DROPPED.md`](DROPPED.md) (value below cost, with rationale). What remains here is work owned by the not-yet-started specs (ui-help-surfaces, storage-split, reach) plus standing architecture notes.
+The 2026-06-11 reconciliation of specs 027-035 emptied most of this file: resolved work was removed (locked calls recorded in [`decisions.md`](decisions.md)), and the not-now work moved to [`deferred.md`](deferred.md) (sequenced second-stage), [`gated.md`](gated.md) (held behind a written trigger), and [`dropped.md`](dropped.md) (value below cost, with rationale). What remains here is work owned by the not-yet-started specs (ui-help-surfaces, storage-split, reach) plus standing architecture notes.
 
 ## Blender addon
 

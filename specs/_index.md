@@ -11,7 +11,7 @@ git show <commit>:specs/NNN-slug/STUDY.md
 
 `002` was reused for two unrelated specs (a numbering quirk that history preserves); there is no `001`.
 
-The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved work left the backlogs, the not-now work moved to [DEFERRED.md](DEFERRED.md) / [GATED.md](GATED.md) / [DROPPED.md](DROPPED.md), and the locked calls landed in [decisions.md](decisions.md). Per-spec PR mapping: 027 #104, 028 #105, 029 #106, 030 #107, 031 #108, 032 #109, 033 #110, 034 #111, 035 #112 / #113.
+The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved work left the backlogs, the not-now work moved to [deferred.md](deferred.md) / [gated.md](gated.md) / [dropped.md](dropped.md), and the locked calls landed in [decisions.md](decisions.md). Per-spec PR mapping: 027 #104, 028 #105, 029 #106, 030 #107, 031 #108, 032 #109, 033 #110, 034 #111, 035 #112 / #113.
 
 | # | Spec | Summary | Status |
 | --- | --- | --- | --- |

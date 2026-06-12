@@ -7,7 +7,7 @@ melhorias de qualidade. Eventualmente viram issues / spec próprio.
 Formato livre. Quando tiver massa crítica de itens, agrupa por área e
 promove pro backlog.
 
-A reconciliação de 2026-06-11 das specs 027-035 removeu os itens já trabalhados (resolvidos saíram; adiados / gated / dropados foram pro [`DEFERRED.md`](DEFERRED.md), [`GATED.md`](GATED.md), [`DROPPED.md`](DROPPED.md)). O que resta aqui é polish ainda não atacado (a maioria mora na spec ui-help-surfaces).
+A reconciliação de 2026-06-11 das specs 027-035 removeu os itens já trabalhados (resolvidos saíram; adiados / gated / dropados foram pro [`deferred.md`](deferred.md), [`gated.md`](gated.md), [`dropped.md`](dropped.md)). O que resta aqui é polish ainda não atacado (a maioria mora na spec ui-help-surfaces).
 
 ## Cross-panel / general
 

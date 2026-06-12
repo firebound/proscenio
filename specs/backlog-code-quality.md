@@ -4,7 +4,7 @@ Cross-cutting type-safety and lint-enforcement gaps surfaced by the 2026-06-06 q
 
 These entries track places where a strict gate is configured but not enforced, or where a tree is exempted from type checking entirely. Feature-shaped work lives in [`backlog.md`](backlog.md); this file is exclusively code-health and toolchain enforcement. Each entry promotes into a numbered spec under `specs/` when work begins.
 
-The 2026-06-11 reconciliation of spec 035 closed two of the original holes (the ESLint CI/pre-commit gate and the `packages/{models,codegen}` mypy gate both shipped in #112) and moved a third behind a trigger (the bpy-bound `ignore_errors` sweep now lives in [`GATED.md`](GATED.md)). The one entry below is what remains.
+The 2026-06-11 reconciliation of spec 035 closed two of the original holes (the ESLint CI/pre-commit gate and the `packages/{models,codegen}` mypy gate both shipped in #112) and moved a third behind a trigger (the bpy-bound `ignore_errors` sweep now lives in [`gated.md`](gated.md)). The one entry below is what remains.
 
 ## Audit baseline (what is already clean)
 

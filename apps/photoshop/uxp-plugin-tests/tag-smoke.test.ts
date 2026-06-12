@@ -32,7 +32,7 @@ function set(name: string, layers: Layer[], visible = true): LayerSet {
 }
 
 // Synthetic tree mirroring `examples/authored/doll/02_photoshop_setup/
-// doll_tagged.psd` at miniature scale (10x10 bboxes) so the test math
+// doll_tagged_test.psd` at miniature scale (10x10 bboxes) so the test math
 // stays human-readable.
 function buildSmokeTree(): Layer[] {
     return [

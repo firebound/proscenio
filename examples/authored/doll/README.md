@@ -10,7 +10,7 @@ This fixture acts as the **parity oracle for the photoshop tag system**: step 02
 examples/authored/doll/
 |-- 00_blender_base/        [SOURCE  ] hand-authored .blend + derived render layers + base manifest
 |-- 01_photoshop_base/      [DERIVED ] clean PSD produced from 00's manifest (no artist edits)
-|-- 02_photoshop_setup/     [AUTHORED] artist workbench: tagged PSD + re-exported manifest (the photoshop tag system parity oracle)
+|-- 02_photoshop_setup/     [AUTHORED] artist workbench: real-character PSD (doll_tagged.psd) + tag-taxonomy oracle (doll_tagged_test.psd) + re-exported manifest
 |-- 03_blender_setup/       [AUTHORED] rigged .blend imported from 02 + manual armature/weights/actions
 |-- 04_godot_import/        [AUTHORED] the reimport-merge work wrapper scene/script that consumes 03's export
 `-- scripts/                python/bpy scripts that produce the derived outputs in step 00
@@ -33,10 +33,10 @@ Each subfolder owns its own `README.md` documenting **what it consumes**, **what
         |
         |   copy + manual artist edits + the photoshop tag system bracket tags
         v
-[02_photoshop_setup/]     doll_tagged.psd
+[02_photoshop_setup/]     doll_tagged.psd (real)  +  doll_tagged_test.psd (tag oracle)
         |   (Proscenio Exporter panel: Export manifest + PNGs)
         v
-    export/doll_tagged.photoshop_exported.json + export/images/<...>.png
+    export/doll_tagged_test.photoshop_exported.json + export/images/<...>.png
         |
         v
 [03_blender_setup/]       doll_rigged.blend   (tracked; hand-authored rig/weights/actions)
@@ -55,7 +55,7 @@ The pipeline is **sequential**. Each numbered folder consumes the previous one a
 | ---- | ------ | ------------ | -------------- |
 | 00 | `00_blender_base/` | `doll_base.blend` + per-mesh render PNGs + base manifest | yes (`.blend` only) |
 | 01 | `01_photoshop_base/` | `doll_ps_base.psd` placed from the manifest | no (panel import) |
-| 02 | `02_photoshop_setup/` | `doll_tagged.psd` with the photoshop tag system tags + re-exported manifest | yes |
+| 02 | `02_photoshop_setup/` | `doll_tagged.psd` (real character) + `doll_tagged_test.psd` (tag oracle) + re-exported manifest | yes |
 | 03 | `03_blender_setup/` | `doll_rigged.blend` with armature + weights + actions | yes |
 | 04 | `04_godot_import/` | `Doll.tscn` + `Doll.gd` the reimport-merge work wrappers | yes |
 
@@ -97,7 +97,7 @@ Future actions land as future specs require them.
 
 ## photoshop tag system tag coverage (parity oracle)
 
-Every photoshop tag system v1 tag is exercised somewhere in `02_photoshop_setup/doll_tagged.psd`. See `02_photoshop_setup/README.md::Tags exercised` for the canonical table. If you add or rename a tag in the photoshop tag system, the parity test re-exports this PSD and diffs against the recorded baseline.
+Every photoshop tag system v1 tag is exercised somewhere in `02_photoshop_setup/doll_tagged_test.psd`. See `02_photoshop_setup/README.md::Tags exercised` for the canonical table. If you add or rename a tag in the photoshop tag system, the parity test re-exports this PSD and diffs against the recorded baseline.
 
 ## What this fixture catches when broken
 

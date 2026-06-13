@@ -13,6 +13,8 @@ git show <commit>:specs/NNN-slug/STUDY.md
 
 The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved work left the backlogs, the not-now work moved to [deferred.md](deferred.md) / [gated.md](gated.md) / [dropped.md](dropped.md), and the locked calls landed in [decisions.md](decisions.md). Per-spec PR mapping: 027 #104, 028 #105, 029 #106, 030 #107, 031 #108, 032 #109, 033 #110, 034 #111, 035 #112 / #113.
 
+Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet reader + shared-adaptation dedup moved to [deferred.md](deferred.md), the large-doc windowing to [gated.md](gated.md), and the locked calls to [decisions.md](decisions.md).
+
 | # | Spec | Summary | Status |
 | --- | --- | --- | --- |
 | 000 | initial-plan | Initial plan: what Proscenio is, settled vs open decisions; drove the Phase 0 to Phase 1 work | pruned |
@@ -56,4 +58,4 @@ The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved
 | 038 | reach | Additional DCC exporters (Krita, GIMP) and the GDExtension escape hatch | planned |
 | 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, goldens-as-test | planned |
 | 040 | end-to-end-verification | Exhaustive manual-test surface: every control + flow across the 3 apps audited vs documented intent (452 items, 176 findings) | planned |
-| 041 | photoshop-overhaul | Make the UXP plugin usable: multiGet IPC reader + export-writer resilience (the 040 trigger), shared adaptation, stable tag-tree keys, adaptive poll | planned |
+| 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |

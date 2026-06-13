@@ -79,3 +79,7 @@ CI / coverage / fixture / repo gates whose cost is not yet justified by a real e
 - **origin-pivot-fixture** - Dedicated origin / pivot fixture. Gated: origin paths are triple-covered today (doll oracle, tag_smoke, pytest). Trigger: ship together with the sprite-pivot-offset writer work, or on the first regression where origin handling diverges between PSD authoring styles.
 - **issue-pr-templates** - Issue + PR templates. Gated: zero protection for a solo repo. Trigger: the repo opens to outside contributors.
 - **install-dev-script** - `scripts/install-dev.ps1` to automate dev junctions. Gated: convenience, not a gate, and a twice-a-year script rots silently. Trigger: the next fresh-machine dev setup; author the script during that setup so it is tested by construction.
+
+## 041 - photoshop-overhaul
+
+- **large-doc collapse-by-default + windowed rendering** - Collapse top-level groups on document open, and window the Tags row list for very large PSDs. Gated: Proscenio characters are flat (the doll is 22 layers), so this is the speculative large-doc tail; UXP has no `react-window` guarantee, so the full fix is a hand-rolled scroll window. Trigger: a real Proscenio-scale-or-larger PSD makes the Tags panel painful after the IPC fixes (deferred) land; re-measure first, since the multiGet reader may make it unnecessary.

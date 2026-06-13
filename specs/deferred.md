@@ -15,3 +15,8 @@ Items with real value, sequenced for a second stage but not held behind a writte
 ## 033 - atlas-packing
 
 - **shrink-start-size** - Shrink-to-fit / configurable atlas start size (the `start_size=256` floor at `atlas_packer.py:65` is never passed and has no scene prop). Deferred: atlas waste is real only at fixture scale, so the change rides the next packer-touching PR to share the fixture regeneration rather than triggering one of its own.
+
+## 041 - photoshop-overhaul
+
+- **multiGet document reader** - Replace the DOM walk in `adaptDocument` with one `batchPlay` multiGet (`extendedReference` keys, `count: -1`), rebuilding the tree in pure JS (~50x on the dominant IPC cost). Deferred: it turns `adaptDocument` async (a ripple through every read path) and the descriptor can only be proven against a real PSD; the hardened DOM adapter is the correct, working read path meanwhile, and the speedup matters most on the large-doc tail (gated). Rides the next live-Photoshop validation session; build it as a try -> DOM-fallback fast path so a wrong descriptor degrades safely.
+- **shared adaptation per tick / lazy preview** - Adapt the document once per `version` bump and feed the tag-tree + export-preview + active-layer consumers from one snapshot (or defer the preview off the tag-paint path). Deferred: it removes the redundant second walk per event, but it is React-hook timing only a real panel can validate; the layerID-key + adaptive-poll wins already cut the felt jank. Rides the same session as the multiGet reader.

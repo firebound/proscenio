@@ -4,6 +4,18 @@ Items that are technically implemented or treated but await a manual GUI / visua
 
 ## Retests - fix shipped, GUI smoke pending
 
+### [ ] ps-export-resilience - one bad layer no longer blocks the whole manifest export
+
+Fix shipped in PR #115 (spec 041): per-layer try/catch in `runWrites` + partial manifest in `runExport`, unit-tested against a real `duplicate` rejection asserting the written manifest excludes the failed entry. Happy path GUI-confirmed 2026-06-13 (`doll_tagged.psd` exported 22 entries); the partial path is the remaining smoke.
+
+Validate: Proscenio Exporter on `examples/authored/doll/02_photoshop_setup/debug/doll_tagged_debug.psd`. Force one layer to fail (a layer the UXP duplicate/saveAs rejects), then Export manifest + PNGs. Expect a `partial` result naming the failed layer + reason, the manifest written with the entries that landed (the failed one absent), and the good PNGs on disk.
+
+### [ ] ps-tag-writes-in-renamed-group - tag edits target by layerID, survive a renamed parent group
+
+Fix shipped in PR #115 (spec 041): the `object null is not iterable` crash hardened at every PS-API null boundary, and tag-write targets resolve by `findLayerById` (node.id threaded through all five Row handlers - ignore / merge / kind / blend / advanced). The null-crash + flat-layer tag writes were GUI-confirmed 2026-06-13; the renamed-group path is the remaining smoke. This closes the tag-edit half of finding F-24; the click-to-select + legacy-migration paths still resolve by name (tracked in the spec 040 findings).
+
+Validate: Proscenio Tags on `debug/doll_tagged_debug.psd`. Group two layers, rename the group, then on a child run each of the five controls (X / M / kind / blend / `+` Apply). Expect every edit to apply with no `no match at depth 0` warning and no stale-path miss. With the Debug panel log level at `trace`, a null collection surfaces as `[proscenio:layer-find] normalized null .layers to []`.
+
 ### [ ] slot-transform-keys - validator detects transform keys on slot attachments
 
 Fix shipped in #104 (a shared `action_fcurves` reader wired through `active_slot.py` + `export.py`; unit-tested against layered-action mocks).

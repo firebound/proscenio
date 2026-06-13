@@ -26,6 +26,14 @@ describe("readActiveLayerPath", () => {
         expect(readActiveLayerPath()).toBeNull();
     });
 
+    it("returns null (does not throw) when activeLayers is null", () => {
+        // Some UXP builds hand back null for the collection; the old code
+        // read `.length` off it and threw. Must degrade to "no selection".
+        (app as MutableApp).activeDocument = { activeLayers: null };
+        expect(() => readActiveLayerPath()).not.toThrow();
+        expect(readActiveLayerPath()).toBeNull();
+    });
+
     it("builds the name chain from the leaf up to the document", () => {
         const doc: Record<string, unknown> = { width: 100, height: 100 };
         const arm = { name: "arm", parent: doc };

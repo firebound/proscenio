@@ -12,7 +12,11 @@ export async function writeManifest(
     fileName: string,
 ): Promise<void> {
     const file = await folder.createFile(fileName, { overwrite: true });
-    const body = JSON.stringify(manifest, null, 2);
+    // Trailing newline so the committed manifest matches the repo's
+    // end-of-file convention (the parity-oracle fixture is committed; a
+    // newline-less export would be rewritten by the pre-commit hook on
+    // every re-export).
+    const body = `${JSON.stringify(manifest, null, 2)}\n`;
     // Pass no format option: UXP rejects a bare `"utf8"` string (it
     // wants `storage.formats.utf8`), and string content defaults to utf8.
     await file.write(body);

@@ -56,3 +56,4 @@ The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved
 | 038 | reach | Additional DCC exporters (Krita, GIMP) and the GDExtension escape hatch | planned |
 | 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, goldens-as-test | planned |
 | 040 | end-to-end-verification | Exhaustive manual-test surface: every control + flow across the 3 apps audited vs documented intent (452 items, 176 findings) | planned |
+| 041 | photoshop-overhaul | Make the UXP plugin usable: multiGet IPC reader + export-writer resilience (the 040 trigger), shared adaptation, stable tag-tree keys, adaptive poll | planned |

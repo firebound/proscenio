@@ -75,4 +75,38 @@ describe("runWrites", () => {
         await runWrites(doc, folder, [write(["torso"], "images/body/torso.png")]);
         expect(createFolder).toHaveBeenCalled();
     });
+
+    it("isolates a layer whose duplicate rejects and still writes the rest", async () => {
+        // Real failure mode: a UXP rejection inside writeLayerPng must not
+        // reject the whole batch (the old behavior - one bad layer killed
+        // the entire export). The bad layer is recorded ok:false with the
+        // reason; the good layer after it still writes.
+        const bad = {
+            name: "bad",
+            duplicate: vi.fn(async () => { throw new Error("UXP duplicate failed"); }),
+        };
+        const good = { name: "good", duplicate: vi.fn(async () => ({ merge: vi.fn() })) };
+        const doc = { width: 10, height: 10, layers: [bad, good] } as unknown as PsDocument;
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        const folder = { createFile: vi.fn(async () => ({ name: "f.png" })) } as unknown as UxpFolder;
+        const results = await runWrites(doc, folder, [
+            write(["bad"], "bad.png"),
+            write(["good"], "good.png"),
+        ]);
+        expect(results[0]).toMatchObject({ outputPath: "bad.png", ok: false });
+        expect(results[0]?.skippedReason).toContain("UXP duplicate failed");
+        expect(results[1]).toMatchObject({ outputPath: "good.png", ok: true });
+    });
+
+    it("records ok:false (not a throw) when the output file cannot be created", async () => {
+        const layer = { name: "torso", duplicate: vi.fn(async () => ({ merge: vi.fn() })) };
+        const doc = { width: 10, height: 10, layers: [layer] } as unknown as PsDocument;
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        const folder = {
+            createFile: vi.fn(async () => { throw new Error("folder permission revoked"); }),
+        } as unknown as UxpFolder;
+        const results = await runWrites(doc, folder, [write(["torso"], "torso.png")]);
+        expect(results[0]).toMatchObject({ outputPath: "torso.png", ok: false });
+        expect(results[0]?.skippedReason).toContain("folder permission revoked");
+    });
 });

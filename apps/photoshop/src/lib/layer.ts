@@ -17,6 +17,11 @@ export interface LayerBounds {
 export interface BaseLayer {
     name: string;
     visible: boolean;
+    /** Photoshop's stable per-layer id (`PsLayer.id`). Survives renames,
+     *  so the UI keys rows on it to avoid remounting a subtree every time
+     *  a tag edit rewrites a layer name. Optional: unit-test fixtures and
+     *  any host build that does not expose it fall back to the path key. */
+    id?: number;
 }
 
 export interface ArtLayer extends BaseLayer {

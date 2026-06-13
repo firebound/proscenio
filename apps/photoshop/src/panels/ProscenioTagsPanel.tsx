@@ -43,8 +43,8 @@ export const ProscenioTagsPanel: React.FC = () => {
 
     const renameFn = tags.rename;
     const onRename = React.useCallback(
-        (layerPath: readonly string[], newName: string) => {
-            void renameFn(layerPath, newName);
+        (layerPath: readonly string[], newName: string, id?: number) => {
+            void renameFn(layerPath, newName, id);
         },
         [renameFn],
     );

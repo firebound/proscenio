@@ -1,10 +1,11 @@
 """Photoshop tag-system parity oracle (Python side).
 
-Loads the committed `doll_tagged_test.photoshop_exported.json` from the doll
-fixture and asserts the schema + tag coverage. Pins the on-disk artefact
+Loads the committed `debug/doll_tagged_debug.photoshop_exported.json` from the
+doll fixture and asserts the schema + tag coverage. Pins the on-disk artefact
 so a regression in the exporter's serialisation surfaces as a CI failure
 rather than waiting for a manual PS round-trip. The oracle source is the
-kitchen-sink `doll_tagged_test.psd`, not the real-character `doll_tagged.psd`.
+kitchen-sink `debug/doll_tagged_debug.psd`, not the real-character
+`doll_tagged.psd` (the clean end-to-end authoring figure).
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 MANIFEST_PATH = (
     REPO_ROOT
-    / "examples/authored/doll/02_photoshop_setup/export/doll_tagged_test.photoshop_exported.json"
+    / "examples/authored/doll/02_photoshop_setup/debug/doll_tagged_debug.photoshop_exported.json"
 )
 
 from core.psd import psd_manifest  # noqa: E402
@@ -30,8 +31,8 @@ from core.psd import psd_manifest  # noqa: E402
 def manifest_raw() -> object:
     if not MANIFEST_PATH.exists():
         pytest.skip(
-            f"doll_tagged_test manifest missing at {MANIFEST_PATH}; re-export from "
-            "doll_tagged_test.psd via the Proscenio Exporter panel."
+            f"doll_tagged_debug manifest missing at {MANIFEST_PATH}; re-export from "
+            "debug/doll_tagged_debug.psd via the Proscenio Exporter panel."
         )
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
@@ -50,7 +51,7 @@ def test_canvas_size_matches_doll_psd(manifest: psd_manifest.PsdManifest) -> Non
 
 
 def test_doc_name(manifest: psd_manifest.PsdManifest) -> None:
-    assert manifest.doc == "doll_tagged_test.psd"
+    assert manifest.doc == "doll_tagged_debug.psd"
 
 
 def test_anchor_is_set_from_guides(manifest: psd_manifest.PsdManifest) -> None:

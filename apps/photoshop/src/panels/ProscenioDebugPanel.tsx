@@ -11,6 +11,7 @@ import { useExportPreview } from "../hooks/useExportPreview";
 import { useFilenameTemplate } from "../hooks/useFilenameTemplate";
 import { DebugSection } from "./sections/DebugSection";
 import { DocSection } from "./sections/DocSection";
+import { LogLevelSection } from "./sections/LogLevelSection";
 
 export const ProscenioDebugPanel: React.FC = () => {
     const { doc, refresh: refreshDoc } = useDocSnapshot();
@@ -46,6 +47,7 @@ export const ProscenioDebugPanel: React.FC = () => {
                 activeLayerPath={activeLayerPath}
                 onRefresh={onRefresh}
             />
+            <LogLevelSection />
         </div>
     );
 };

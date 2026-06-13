@@ -22,6 +22,9 @@ const ORDER: Record<LogLevel, number> = {
     off: 100,
 };
 
+/** All levels, most to least verbose, for UI pickers. */
+export const LOG_LEVELS: LogLevel[] = ["trace", "debug", "info", "warn", "error", "off"];
+
 const STORAGE_KEY = "proscenio.logLevel";
 const DEFAULT_LEVEL: LogLevel = "info";
 const CACHE_MS = 500;

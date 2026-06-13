@@ -47,6 +47,24 @@ describe("buildTagTreeReusing - fresh build", () => {
         const tree = build([art("hidden", false)]);
         expect(tree[0].visible).toBe(false);
     });
+
+    it("carries the layer id onto the node", () => {
+        const tree = build([{ kind: "art", name: "torso", visible: true, id: 42, bounds: null }]);
+        expect(tree[0].id).toBe(42);
+    });
+
+    it("preserves the id across a rename so the React key stays stable", () => {
+        // The remount-on-rename bug: a tag edit renames the layer, which
+        // changed the old layerPath-based key and tore the row down. The
+        // id survives the rename, so a key built from it does not change.
+        const before: Layer[] = [{ kind: "art", name: "torso", visible: true, id: 7, bounds: null }];
+        const first = build(before);
+        const after: Layer[] = [{ kind: "art", name: "torso [ignore]", visible: true, id: 7, bounds: null }];
+        const second = buildTagTreeReusing(after, first);
+        expect(second[0].id).toBe(7);
+        expect(second[0].id).toBe(first[0].id);
+        expect(second[0].tags.ignore).toBe(true);
+    });
 });
 
 describe("buildTagTreeReusing - reuse", () => {

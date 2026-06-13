@@ -32,5 +32,6 @@ describe("writeManifest", () => {
         const body = write.mock.calls[0]?.[0] as string;
         expect(JSON.parse(body)).toEqual(manifest);
         expect(body).toContain('\n  "doc"'); // two-space indent
+        expect(body.endsWith("\n")).toBe(true); // repo end-of-file convention
     });
 });

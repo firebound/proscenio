@@ -13,6 +13,11 @@ import { parseLayerName, type TagBag } from "./tag-parser";
 import { elementsEqual } from "../utils/arrays";
 
 export interface TagTreeNode {
+    /** Photoshop's stable per-layer id, carried from the adapter. Used as
+     *  the React key so a tag edit (which renames the layer) does not
+     *  remount the row + its subtree. Undefined falls back to the
+     *  display-path key. */
+    id?: number;
     /** Names from the document root down to this node, inclusive. */
     layerPath: string[];
     /** Same chain as `layerPath` but using stripped (tag-free) display
@@ -67,6 +72,7 @@ function reuseOrBuild(
         // Children changed; keep this node's own fields (rawName,
         // tags, displayName) but swap in the new children array.
         return {
+            ...(prev.id === undefined ? {} : { id: prev.id }),
             layerPath: prev.layerPath,
             displayPath: prev.displayPath,
             rawName: prev.rawName,
@@ -95,6 +101,7 @@ function reuseOrBuild(
         ))
         : [];
     return {
+        ...(layer.id === undefined ? {} : { id: layer.id }),
         layerPath,
         displayPath,
         rawName: layer.name,

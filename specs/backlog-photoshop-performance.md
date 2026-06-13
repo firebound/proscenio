@@ -6,6 +6,8 @@ Community references backing the diagnosis: [bubblydoo/uxp-toolkit](https://gith
 
 Related existing entry: ["Spectrum web-component shadow-DOM init cost"](backlog.md#spectrum-web-component-shadow-dom-init-cost) in `backlog.md` tracks the `sp-*` component side; this file tracks the IPC and re-render side. Each entry promotes into a numbered spec under `specs/` when work begins.
 
+**Status (2026-06-13):** these entries are now owned by [spec 041 (photoshop-overhaul)](041-photoshop-overhaul/STUDY.md), which folds the IPC perf work together with the export-writer resilience that spec 040 flagged. The multiGet conversion is the keystone (PR 2); the per-tick adaptation, `layerID` keys, and adaptive poll follow. The large-document virtualization entry stays gated. Keep these entries as the detailed diagnosis the spec references; mark them shipped here as each PR lands.
+
 ## DOM API layer walks pay one synchronous IPC call per property
 
 **What:** [`adapt-document.ts`](../apps/photoshop/src/api/adapt-document.ts) walks the document recursively through the UXP DOM API: `doc.layers`, then per layer `.name`, `.visible`, `.bounds` (art layers), `.layers` (groups). Each getter is a synchronous blocking IPC call into the Photoshop process; `.bounds` is among the most expensive. A document with N layers costs hundreds of roundtrips per walk, and the walk runs on the UI thread (UXP has one JS thread for both panel rendering and scripting).

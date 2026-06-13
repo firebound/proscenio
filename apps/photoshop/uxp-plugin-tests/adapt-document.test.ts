@@ -52,6 +52,26 @@ describe("adaptLayer", () => {
         const layer = adaptLayer(artLayer("blank", null));
         if (layer.kind === "art") expect(layer.bounds).toBeNull();
     });
+
+    it("carries the PS layer id when present", () => {
+        const raw = { name: "torso", visible: true, bounds: null, id: 314 } as unknown as PsLayer;
+        expect(adaptLayer(raw).id).toBe(314);
+    });
+
+    it("omits id when the host layer has none", () => {
+        const layer = adaptLayer(artLayer("torso", { left: 0, top: 0, right: 4, bottom: 4 }));
+        expect(layer.id).toBeUndefined();
+    });
+
+    it("adapts a layer with null `.layers` as an art layer without crashing", () => {
+        const raw = { name: "arm", visible: true, layers: null } as unknown as PsLayer;
+        const layer = adaptLayer(raw);
+        // A null `.layers` is not Array.isArray, so `isGroup` is false and it
+        // falls to the art branch; the point is it does not throw.
+        expect(() => adaptLayer(raw)).not.toThrow();
+        expect(layer.kind).toBe("art");
+        expect(layer.name).toBe("arm");
+    });
 });
 
 describe("adaptDocument", () => {
@@ -61,6 +81,12 @@ describe("adaptDocument", () => {
         expect(out.info).toEqual({ name: "fixture.psd", width: 256, height: 128 });
         expect(out.layers).toHaveLength(1);
         expect(out.anchor).toBeUndefined();
+    });
+
+    it("yields an empty layer list when doc.layers is null instead of throwing", () => {
+        const doc = baseDoc({ layers: null });
+        const out = adaptDocument(doc);
+        expect(out.layers).toEqual([]);
     });
 
     it("extracts the first vertical + horizontal guide pair as the rounded anchor", () => {

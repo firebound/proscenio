@@ -4,7 +4,7 @@ Artist re-enters Blender to rig the doll. The pipeline forks here into **two par
 
 | Artefact | Source manifest | Purpose |
 | --- | --- | --- |
-| `doll_ps_tagged.blend` | `../02_photoshop_setup/export/doll_tagged_test.photoshop_exported.json` | **Parity sandbox** for the photoshop tag system v1 tags. Geometry is intentionally deformed (scale 2.5 on arm.R, custom origins, blend-stack duplicates of chest / eyes) so every tag exercises its semantics end-to-end. Not used for rigging - the figure looks broken on purpose. |
+| `doll_ps_tagged.blend` | `../02_photoshop_setup/debug/doll_tagged_debug.photoshop_exported.json` | **Parity sandbox** for the photoshop tag system v1 tags. Geometry is intentionally deformed (scale 2.5 on arm.R, custom origins, blend-stack duplicates of chest / eyes) so every tag exercises its semantics end-to-end. Not used for rigging - the figure looks broken on purpose. |
 | `doll_rigged.blend` | re-export of `../01_photoshop_base/doll_ps_base.psd` (clean, no artist tags) | **Rigging target**. Built from a fresh re-export of the untagged baseline PSD via the Proscenio Exporter, then hand-rigged on top. This is what step 04 (`../04_godot_import/`) consumes. |
 
 The split exists because tagging and rigging answer different questions. Step 02 answers "does every tag in the taxonomy round-trip Blender → PS → Blender?" - the deformations are the signal. Step 03's rigged path answers "can the artist work the pipeline end-to-end on a real character?" - the deformations would just be noise.
@@ -23,7 +23,7 @@ The split exists because tagging and rigging answer different questions. Step 02
 
 1. Open Blender (clean scene).
 2. Enable the **Proscenio** addon.
-3. `File > Import > Proscenio Photoshop manifest...` → pick `../02_photoshop_setup/export/doll_tagged_test.photoshop_exported.json`.
+3. `File > Import > Proscenio Photoshop manifest...` → pick `../02_photoshop_setup/debug/doll_tagged_debug.photoshop_exported.json`.
 4. The importer stamps 24 textured planes + 1 stub armature, populates collections `body` / `eyes` / `teste`, applies origins / blend modes / scale per tag.
 5. Save as `doll_ps_tagged.blend`. **Do not rig this file** - it is the parity oracle, not the production figure.
 

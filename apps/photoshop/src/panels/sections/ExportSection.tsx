@@ -155,6 +155,18 @@ const ExportResultView: React.FC<{ result: ExportFlowResult }> = ({ result }) =>
             </div>
         );
     }
+    if (result.kind === "partial") {
+        return (
+            <div className="result warn">
+                <sp-body size="XS">
+                    Wrote {result.entryCount} entry(ies) to {result.manifestFile}; {result.skippedEntryCount} skipped (PNG failed). Fix and re-export:
+                </sp-body>
+                {(result.errors ?? []).map((err) => (
+                    <sp-body size="XS" key={err} className="result-row warn">{err}</sp-body>
+                ))}
+            </div>
+        );
+    }
     return (
         <div className="result error">
             <sp-body size="XS">Export {result.kind}.</sp-body>

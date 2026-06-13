@@ -27,18 +27,32 @@ export async function runWrites(
 ): Promise<PngWriteResult[]> {
     const results: PngWriteResult[] = [];
     for (const write of writes) {
-        const layer = findLayerByPath(sourceDoc, write.layerPath);
-        if (layer === null) {
+        // Each write is isolated: a UXP rejection on one layer (a bad
+        // duplicate / merge / trim / saveAs, or a folder write that
+        // fails) records that layer as `ok: false` and the loop moves on,
+        // instead of rejecting the whole modal and losing every other
+        // layer plus the manifest. The orchestrator then decides
+        // full / partial / failed from the per-layer results.
+        try {
+            const layer = findLayerByPath(sourceDoc, write.layerPath);
+            if (layer === null) {
+                results.push({
+                    outputPath: write.outputPath,
+                    ok: false,
+                    skippedReason: `source layer not found: ${write.layerPath.join("/")}`,
+                });
+                continue;
+            }
+            const file = await ensureOutputFile(folder, write.outputPath);
+            await writeLayerPng(sourceDoc, layer, file, write.merge === true);
+            results.push({ outputPath: write.outputPath, ok: true });
+        } catch (err) {
             results.push({
                 outputPath: write.outputPath,
                 ok: false,
-                skippedReason: `source layer not found: ${write.layerPath.join("/")}`,
+                skippedReason: err instanceof Error ? err.message : String(err),
             });
-            continue;
         }
-        const file = await ensureOutputFile(folder, write.outputPath);
-        const wrote = await writeLayerPng(sourceDoc, layer, file, write.merge === true);
-        results.push({ outputPath: write.outputPath, ok: wrote });
     }
     return results;
 }

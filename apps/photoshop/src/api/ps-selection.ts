@@ -21,7 +21,15 @@ export function readActiveLayerPath(): string[] | null {
     try {
         const doc = app.activeDocument;
         if (doc === null) return null;
-        const active = doc.activeLayers;
+        // `activeLayers` can be null on some UXP builds; treat a missing
+        // collection as "no single selection" rather than letting a
+        // null `.length` read throw. Two checks so the type narrows for
+        // the `active[0]` read below.
+        const active = doc.activeLayers as readonly PsLayer[] | null | undefined;
+        if (active === null || active === undefined) {
+            log.trace("ps-selection", "no active layers collection");
+            return null;
+        }
         if (active.length !== 1) {
             log.trace("ps-selection", "no single active layer", active.length);
             return null;

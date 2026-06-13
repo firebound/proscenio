@@ -17,7 +17,7 @@ import {
     type PlanWarning,
     type SkippedLayer,
 } from "../lib/planner";
-import type { Manifest } from "../lib/manifest";
+import type { Manifest, ManifestEntry } from "../lib/manifest";
 import { entryMatchesPath } from "../lib/entry-match";
 import { validateManifest } from "./manifest-validator";
 import { writeManifest } from "./manifest-writer";
@@ -25,10 +25,14 @@ import { runWrites, type PngWriteResult } from "./png-writer";
 import { log } from "../utils/log";
 
 export interface ExportFlowResult {
-    kind: "ok" | "validation-failed" | "no-document" | "failed";
+    kind: "ok" | "partial" | "validation-failed" | "no-document" | "failed";
     folder?: string;
     manifestFile?: string;
+    /** Entries actually written to the manifest (every PNG landed). */
     entryCount?: number;
+    /** Entries excluded from the manifest because a PNG write failed
+     *  (present on `partial`). */
+    skippedEntryCount?: number;
     pngResults?: PngWriteResult[];
     errors?: string[];
 }
@@ -98,54 +102,75 @@ export async function runExport(
     }
 
     log.info("export-flow", "runExport start", { folder: folder.nativePath, opts });
-    const adapted = adaptDocument(doc);
-    const plan = buildExportPlan(adapted.info, adapted.layers, {
-        ...opts,
-        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
-    });
-
-    const errors = validateManifest(plan.manifest);
-    if (errors.length > 0) {
-        log.warn("export-flow", "validation failed", errors);
-        return { kind: "validation-failed", errors };
-    }
-
-    const manifestFile = manifestFileName(adapted.info.name);
 
     try {
-        // Atomicity: the manifest is persisted only if every PNG
-        // landed, else it would reference files that do not exist.
-        const { pngResults, manifestWritten } = await core.executeAsModal(
+        const adapted = adaptDocument(doc);
+        const plan = buildExportPlan(adapted.info, adapted.layers, {
+            ...opts,
+            ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+        });
+
+        const validationErrors = validateManifest(plan.manifest);
+        if (validationErrors.length > 0) {
+            log.warn("export-flow", "validation failed", validationErrors);
+            return { kind: "validation-failed", errors: validationErrors };
+        }
+
+        const manifestFile = manifestFileName(adapted.info.name);
+        const total = plan.manifest.layers.length;
+
+        // Invariant: the manifest never references a PNG that is not on
+        // disk. So an entry is kept only when every PNG it owns landed.
+        // A single bad layer no longer blocks the whole export - the good
+        // entries ship and the failures are reported (partial), instead
+        // of the old all-or-nothing gate that wrote nothing.
+        const { pngResults, keptEntries, failures } = await core.executeAsModal(
             async () => {
                 const results = await runWrites(doc, folder, plan.writes);
-                const allOk = results.every((r) => r.ok);
-                if (allOk) await writeManifest(folder, plan.manifest, manifestFile);
-                return { pngResults: results, manifestWritten: allOk };
+                const okByPath = new Map(results.map((r) => [r.outputPath, r.ok] as const));
+                const isEntryOk = (entry: ManifestEntry): boolean =>
+                    entryOutputPaths(entry).every((p) => okByPath.get(p) === true);
+                const kept = plan.manifest.layers.filter(isEntryOk);
+                const failed = plan.manifest.layers.filter((e) => !isEntryOk(e));
+                if (kept.length > 0) {
+                    await writeManifest(folder, { ...plan.manifest, layers: kept }, manifestFile);
+                }
+                return {
+                    pngResults: results,
+                    keptEntries: kept.length,
+                    failures: failed.map((e) => describeEntryFailure(e, okByPath, results)),
+                };
             },
             { commandName: "Proscenio export" },
         );
-        if (!manifestWritten) {
-            const failed = pngResults.filter((r) => !r.ok);
-            log.warn("export-flow", "PNG writes failed", failed.length);
+
+        if (failures.length === 0) {
+            log.info("export-flow", "runExport done", { entries: keptEntries, manifestFile });
             return {
-                kind: "failed",
+                kind: "ok",
+                folder: folder.nativePath,
+                manifestFile,
+                entryCount: keptEntries,
                 pngResults,
-                errors: failed.map(
-                    (r) => `${r.outputPath}: ${r.skippedReason ?? "failed"}`,
-                ),
             };
         }
-        log.info("export-flow", "runExport done", {
-            entries: plan.manifest.layers.length,
-            manifestFile,
-        });
-        return {
-            kind: "ok",
-            folder: folder.nativePath,
-            manifestFile,
-            entryCount: plan.manifest.layers.length,
-            pngResults,
-        };
+        if (keptEntries > 0) {
+            log.warn("export-flow", "runExport partial", {
+                wrote: keptEntries,
+                skipped: failures.length,
+            });
+            return {
+                kind: "partial",
+                folder: folder.nativePath,
+                manifestFile,
+                entryCount: keptEntries,
+                skippedEntryCount: failures.length,
+                pngResults,
+                errors: failures,
+            };
+        }
+        log.warn("export-flow", "runExport failed - no entry exported", { total });
+        return { kind: "failed", pngResults, errors: failures };
     } catch (err) {
         log.error("export-flow", "runExport threw", err);
         return {
@@ -153,6 +178,28 @@ export async function runExport(
             errors: [err instanceof Error ? err.message : String(err)],
         };
     }
+}
+
+/** Output paths an entry owns: the single mesh PNG, or every frame PNG
+ *  of a sprite. Parallel to what `toWrites` emitted for the entry. */
+function entryOutputPaths(entry: ManifestEntry): string[] {
+    return entry.kind === "sprite" ? entry.frames.map((f) => f.path) : [entry.path];
+}
+
+/** One actionable line per failed entry: the entry name plus each PNG
+ *  that did not land and why, so the artist knows exactly which layer to
+ *  fix rather than seeing a generic failure. */
+function describeEntryFailure(
+    entry: ManifestEntry,
+    okByPath: Map<string, boolean>,
+    results: PngWriteResult[],
+): string {
+    const reasonByPath = new Map(results.map((r) => [r.outputPath, r.skippedReason] as const));
+    const failedPaths = entryOutputPaths(entry).filter((p) => okByPath.get(p) !== true);
+    const detail = failedPaths
+        .map((p) => `${p} (${reasonByPath.get(p) ?? "failed"})`)
+        .join("; ");
+    return `${entry.name}: ${detail}`;
 }
 
 function manifestFileName(docName: string): string {

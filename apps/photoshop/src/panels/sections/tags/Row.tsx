@@ -34,7 +34,7 @@ export interface TagRowProps {
     selected: boolean;
     collapsed: boolean;
     busy: boolean;
-    onRename: (layerPath: readonly string[], newName: string) => void;
+    onRename: (layerPath: readonly string[], newName: string, id?: number) => void;
     onToggleCollapse: (displayPath: readonly string[]) => void;
 }
 
@@ -62,15 +62,15 @@ const TagRowImpl: React.FC<TagRowProps> = ({
         const next = node.tags.ignore !== true;
         const newName = toggleTag(node.displayName, node.tags, "ignore", next);
         log.debug("TagsSection", "ignore", node.layerPath, next, newName);
-        onRename(node.layerPath, newName);
-    }, [node.layerPath, node.displayName, node.tags, onRename]);
+        onRename(node.layerPath, newName, node.id);
+    }, [node.layerPath, node.displayName, node.tags, node.id, onRename]);
 
     const onToggleMerge = React.useCallback(() => {
         const next = node.tags.merge !== true;
         const newName = toggleTag(node.displayName, node.tags, "merge", next);
         log.debug("TagsSection", "merge", node.layerPath, next, newName);
-        onRename(node.layerPath, newName);
-    }, [node.layerPath, node.displayName, node.tags, onRename]);
+        onRename(node.layerPath, newName, node.id);
+    }, [node.layerPath, node.displayName, node.tags, node.id, onRename]);
 
     const onKindChange = React.useCallback(
         (e: React.SyntheticEvent) => {
@@ -78,9 +78,9 @@ const TagRowImpl: React.FC<TagRowProps> = ({
             const kind = parseKind(value);
             const newName = setKindTag(node.displayName, node.tags, kind);
             log.debug("TagsSection", "kind", node.layerPath, kind, newName);
-            onRename(node.layerPath, newName);
+            onRename(node.layerPath, newName, node.id);
         },
-        [node.layerPath, node.displayName, node.tags, onRename],
+        [node.layerPath, node.displayName, node.tags, node.id, onRename],
     );
 
     const onBlendChange = React.useCallback(
@@ -89,9 +89,9 @@ const TagRowImpl: React.FC<TagRowProps> = ({
             const blend = parseBlend(value);
             const newName = setBlendTag(node.displayName, node.tags, blend);
             log.debug("TagsSection", "blend", node.layerPath, blend, newName);
-            onRename(node.layerPath, newName);
+            onRename(node.layerPath, newName, node.id);
         },
-        [node.layerPath, node.displayName, node.tags, onRename],
+        [node.layerPath, node.displayName, node.tags, node.id, onRename],
     );
 
     const onClickExpand = React.useCallback(() => {
@@ -102,9 +102,9 @@ const TagRowImpl: React.FC<TagRowProps> = ({
         (changes: TagChanges) => {
             const newName = applyTagChanges(node.displayName, node.tags, changes);
             log.debug("TagsSection", "advanced", node.layerPath, changes, newName);
-            onRename(node.layerPath, newName);
+            onRename(node.layerPath, newName, node.id);
         },
-        [node.layerPath, node.displayName, node.tags, onRename],
+        [node.layerPath, node.displayName, node.tags, node.id, onRename],
     );
 
     const rowClass = buildRowClass(selected, node.tags.ignore === true, !node.visible);

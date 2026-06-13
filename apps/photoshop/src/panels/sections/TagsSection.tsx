@@ -14,7 +14,7 @@ interface Props {
     collapsed: ReadonlySet<string>;
     busy: boolean;
     lastError: string | null;
-    onRename: (layerPath: readonly string[], newName: string) => void;
+    onRename: (layerPath: readonly string[], newName: string, id?: number) => void;
     onToggleCollapse: (displayPath: readonly string[]) => void;
 }
 
@@ -77,7 +77,7 @@ const TagNodeList: React.FC<NodeListProps> = ({
     <>
         {nodes.map((node) => (
             <TagNodeBranch
-                key={node.layerPath.join("/")}
+                key={nodeKey(node)}
                 node={node}
                 activeLayerPath={activeLayerPath}
                 collapsed={collapsed}
@@ -88,6 +88,15 @@ const TagNodeList: React.FC<NodeListProps> = ({
         ))}
     </>
 );
+
+// Stable React key: the PS layer id survives renames, so a tag edit does
+// not remount the row + its subtree (which lost expanded state and paid
+// UXP native-control re-creation cost). Fall back to the tag-stripped
+// display path when no id is available - still far more stable than the
+// raw layer-name path, which changes on every tag edit.
+function nodeKey(node: TagTreeNode): string {
+    return node.id === undefined ? `p:${node.displayPath.join("/")}` : `id:${node.id}`;
+}
 
 interface BranchProps {
     node: TagTreeNode;

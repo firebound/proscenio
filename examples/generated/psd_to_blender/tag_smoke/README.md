@@ -4,7 +4,7 @@ Synthetic layer tree that exercises every bracket tag in the photoshop tag syste
 
 ## Why no PSD?
 
-The full doll round-trip oracle (`examples/authored/doll/02_photoshop_setup/doll_tagged_test.psd`) already proves the PS-DOM side - export from a real PSD, every PNG written, XMP round-tripped. `tag_smoke` exists to lock the **planner-side semantics** of every tag into CI: the algorithm that turns a tag bag into a `format_version: 2` manifest entry. Pure logic. Mocking the layer tree in TypeScript is enough; spinning up Photoshop is not.
+The full doll round-trip oracle (`examples/authored/doll/02_photoshop_setup/debug/doll_tagged_debug.psd`) already proves the PS-DOM side - export from a real PSD, every PNG written, XMP round-tripped. `tag_smoke` exists to lock the **planner-side semantics** of every tag into CI: the algorithm that turns a tag bag into a `format_version: 2` manifest entry. Pure logic. Mocking the layer tree in TypeScript is enough; spinning up Photoshop is not.
 
 ## Tag coverage
 

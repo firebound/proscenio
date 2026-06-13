@@ -8,7 +8,7 @@
 
 import { app, core } from "photoshop";
 
-import { findLayerByPath } from "./_layer-find";
+import { findLayerById, findLayerByPath } from "./_layer-find";
 import { writeLayerTagsToXmp } from "./xmp";
 import { parseLayerName } from "../lib/tag-parser";
 import { log } from "../utils/log";
@@ -21,13 +21,18 @@ export interface RenameResult {
 export async function renameLayer(
     layerPath: readonly string[],
     newName: string,
+    id?: number,
 ): Promise<RenameResult> {
     const doc = app.activeDocument;
     if (doc === null) {
         log.warn("layer-rename", "no active document");
         return { ok: false, reason: "no active document" };
     }
-    const target = findLayerByPath(doc, layerPath);
+    // Prefer the stable id: the cached name-path goes stale when a parent
+    // group (or the layer) is renamed between the tree build and the click,
+    // which silently missed by name for layers inside a renamed group.
+    const target = (id === undefined ? null : findLayerById(doc, id))
+        ?? findLayerByPath(doc, layerPath);
     if (target === null) {
         return { ok: false, reason: "layer not found" };
     }

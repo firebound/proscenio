@@ -48,3 +48,30 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 **Arquivo:** `apps/blender/panels/_draw_sprite_frame.py:24-26`, e provavelmente outros `_draw_*.py`.
 
 **Severity:** low-medium - não é crash, mas help topic existe e foi documentado/testado como acessível via UI; checklist 1.13 item 9 falha por causa disso. Indica que o pattern de "help button per sub-box" está incompleto.
+
+## apps/photoshop
+
+### Export do manifest falha por completo quando uma única layer falha (sem try/catch + gate atômico)
+
+Gatilho da spec [040-end-to-end-verification](040-end-to-end-verification/STUDY.md); surfaced pela auditoria do caminho de export (findings F-01 / F-02 em [checklist/photoshop.md](040-end-to-end-verification/checklist/photoshop.md)). Foi o que bloqueou um export real (12-jun-2026).
+
+**Repro:** Photoshop > painel Proscenio Exporter > escolher pasta de saída > abrir um PSD com layers > "Export manifest + PNGs". Reproduz quando (a) uma layer não pode ser duplicada / merge / `trim` / `saveAs.png` pelo UXP, OU (b) uma layer foi renomeada / movida / reordenada depois que o preview foi montado.
+
+**Sintoma:** banner de falha genérico (`kind: 'failed'` com a `Error.message` crua); **nenhum** `*.photoshop_exported.json` é escrito em disco; PNGs parciais das layers que deram certo podem ficar para trás.
+
+**Causa raiz (dois fatores compostos):**
+
+- **Sem try/catch por layer.** `runWrites` chama `writeLayerPng` sem proteção (`png-writer.ts:29-43` + `46-77`); qualquer rejeição da API UXP (`documents.add`, `layer.duplicate`, `merge`, `trim`, `saveAs.png`) propaga, rejeita o `core.executeAsModal` e cai no catch externo que retorna `failed` — o manifest nunca chega a ser escrito.
+- **Gate atômico tudo-ou-nada.** O manifest só é gravado se `results.every(r => r.ok)` (`export-flow.ts:120-137`). Uma única layer que não resolve (`findLayerByPath === null`) zera `allOk` e suprime o manifest do documento inteiro. O match é por nome bruto, byte-exato (`_layer-find.ts:22-31`), então qualquer rename no meio da sessão quebra.
+
+**Fix proposto:**
+
+- Envolver `writeLayerPng` em try/catch por-layer, coletando a falha como `{ ok: false, outputPath, reason }` em vez de deixar propagar — uma layer ruim vira um aviso por-entrada, não um abort global.
+- Reavaliar o gate atômico: ou (a) escrever o manifest com as entradas que deram certo + relatar as puladas, ou (b) manter atômico mas com erro **acionável** nomeando a layer culpada (nome + motivo) no lugar do banner genérico.
+- Tornar `findLayerByPath` resiliente a rename: casar por id de layer quando disponível, ou re-resolver a partir do plano em vez do nome bruto (`_layer-find.ts:22-31`). Relacionado: F-24 (nomes-irmãos duplicados roteiam toda edição para o primeiro match).
+
+**Suspeitos secundários (mesmo painel):** F-03 token de pasta obsoleto (`createFile`/`write` rejeitam sem affordance de "escolher pasta de novo", `manifest-writer.ts:14-18`); F-04 botão Export habilitado pelo snapshot mas `runExport` lê `app.activeDocument` ao vivo → `no-document` se o doc fechar (`export-flow.ts:94-98`).
+
+**Arquivos:** `apps/photoshop/src/api/png-writer.ts:29-77`, `apps/photoshop/src/api/export-flow.ts:118-155`, `apps/photoshop/src/api/_layer-find.ts:22-31`.
+
+**Severity:** high - bloqueia o export do manifest por completo, sem mensagem acionável. Confirmado por usuário em uso real.

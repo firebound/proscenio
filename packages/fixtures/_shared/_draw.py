@@ -184,7 +184,7 @@ def trapezoid(
     h: float,
     color: RGBA,
 ) -> None:
-    """Filled isoceles trapezoid. ``(x, y)`` is the top-left of the top edge.
+    """Filled isosceles trapezoid. ``(x, y)`` is the top-left of the top edge.
 
     The trapezoid widens downward when ``bottom_w > top_w`` (typical
     pelvis silhouette: narrower at top, wider at hips).

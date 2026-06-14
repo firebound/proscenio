@@ -14,7 +14,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { REVIEWS, STATUSES, type Item, emptyItem } from "./format";
+import { FEEDBACK_KINDS, REVIEWS, STATUSES, type Item, emptyItem } from "./format";
 import {
   type Store,
   addItem,
@@ -84,6 +84,15 @@ function coerceItem(raw: Record<string, unknown>): Item {
   }
   if (Array.isArray(raw["steps"])) item.steps = raw["steps"].filter((s) => typeof s === "string");
   if (Array.isArray(raw["shots"])) item.shots = raw["shots"].filter((s) => typeof s === "string");
+  if (Array.isArray(raw["feedback"])) {
+    item.feedback = raw["feedback"]
+      .filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
+      .map((f) => ({
+        kind: typeof f["kind"] === "string" ? f["kind"] : "note",
+        text: typeof f["text"] === "string" ? f["text"] : "",
+      }))
+      .filter((f) => f.text);
+  }
   return item;
 }
 
@@ -109,7 +118,7 @@ function handleApi(store: Store, req: IncomingMessage, res: ServerResponse, path
     for (const file of Object.keys(groupsByFile)) {
       groupsByFile[file] = [...new Set(groupsByFile[file])];
     }
-    sendJson(res, 200, { items, statuses: STATUSES, reviews: REVIEWS, groupsByFile });
+    sendJson(res, 200, { items, statuses: STATUSES, reviews: REVIEWS, feedbackKinds: FEEDBACK_KINDS, groupsByFile });
     return;
   }
 

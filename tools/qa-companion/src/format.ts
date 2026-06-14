@@ -28,6 +28,20 @@ export type Status = (typeof STATUSES)[number];
 export const REVIEWS = ["keep", "rephrase", "drop", "todo"] as const;
 export type Review = (typeof REVIEWS)[number];
 
+/**
+ * Feedback kinds - product feedback about a feature/control, not a test result.
+ * Each routes to a backlog home when the walk is normalized later:
+ * `ui` / `remove` -> ui-feedback, `bug` -> bugs-found, `code` -> code-quality,
+ * `perf` -> perf, `note` -> general.
+ */
+export const FEEDBACK_KINDS = ["ui", "remove", "bug", "perf", "code", "note"] as const;
+
+/** One feature-level observation to triage into the backlog (kind + free text). */
+export interface Feedback {
+  kind: string;
+  text: string;
+}
+
 export interface Item {
   id: string;
   title: string;
@@ -43,6 +57,8 @@ export interface Item {
   code: string;
   /** Free-text observation recorded during the walk. */
   note: string;
+  /** Feature-level feedback to triage into the backlog (not a test result). */
+  feedback: Feedback[];
   /** Screenshot paths, repo-relative (e.g. walk-screenshots/PS-EXPORT-14-1.png). */
   shots: string[];
   /** Why the test was dropped (only set for items archived in removed.md). */
@@ -72,6 +88,7 @@ export function emptyItem(id: string, title: string): Item {
     intent: "",
     code: "",
     note: "",
+    feedback: [],
     shots: [],
     reason: "",
   };

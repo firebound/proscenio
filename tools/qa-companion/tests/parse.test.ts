@@ -75,6 +75,21 @@ describe("parseDoc", () => {
     expect(doc.groups[0]!.items[0]!.id).toBe("A-B-1");
   });
 
+  it("parses a feedback sublist into kind/text pairs", () => {
+    const doc = parseDoc(
+      "## G\n\n### X-Y-1 · t\n- status: pass\n- observe: ok\n- feedback:\n  - ui: panel wastes width\n  - remove: redundant second search\n",
+    );
+    expect(doc.groups[0]!.items[0]!.feedback).toEqual([
+      { kind: "ui", text: "panel wastes width" },
+      { kind: "remove", text: "redundant second search" },
+    ]);
+  });
+
+  it("defaults a feedback line with no kind to 'note'", () => {
+    const doc = parseDoc("## G\n\n### X-Y-1 · t\n- observe: ok\n- feedback:\n  - just a loose thought\n");
+    expect(doc.groups[0]!.items[0]!.feedback).toEqual([{ kind: "note", text: "just a loose thought" }]);
+  });
+
   it("tolerates CRLF line endings (id/title not corrupted by a trailing \\r)", () => {
     const crlf = "## G\r\n\r\n### BL-X-1 · A title\r\n- status: pass\r\n- observe: ok here\r\n";
     const item = parseDoc(crlf).groups[0]!.items[0]!;

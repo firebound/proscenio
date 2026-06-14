@@ -51,4 +51,15 @@ describe("serializeBlock", () => {
     item.note = "one liner";
     expect(serializeBlock(item)).toContain("- note: one liner");
   });
+
+  it("renders a feedback sublist (kind: text) after the note", () => {
+    const item = emptyItem("X-Y-1", "t");
+    item.observe = "ok";
+    item.note = "saw it";
+    item.feedback = [
+      { kind: "ui", text: "wastes width" },
+      { kind: "remove", text: "redundant" },
+    ];
+    expect(serializeBlock(item)).toContain("- note: saw it\n- feedback:\n  - ui: wastes width\n  - remove: redundant");
+  });
 });

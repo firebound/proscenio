@@ -335,6 +335,12 @@ WCAG
 webbrowser
 wfile
 wibble
+repoints
+untick
+unticking
+unmarking
+wireframes
 workbench
 worklist
 wrappable
+xfer

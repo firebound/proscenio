@@ -1,6 +1,9 @@
 # Superpowers brainstorming companion (session dirs + mockups)
 .superpowers/
 
+# QA Companion local pre-restructure snapshots (not committed)
+tools/qa-companion/.backup/
+
 # Python
 __pycache__/
 *.py[cod]

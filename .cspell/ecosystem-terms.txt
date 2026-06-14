@@ -17,6 +17,7 @@ artefacts
 artifacting
 asdict
 autocalculate
+automatable
 autouse
 backcompat
 backgrounded
@@ -288,6 +289,8 @@ subclassing
 subdirs
 subdiv
 subfolders
+sublist
+sublists
 subpackages
 subparsers
 subscriptable

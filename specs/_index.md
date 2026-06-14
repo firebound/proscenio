@@ -15,6 +15,8 @@ The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved
 
 Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet reader + shared-adaptation dedup moved to [deferred.md](deferred.md), the large-doc windowing to [gated.md](gated.md), and the locked calls to [decisions.md](decisions.md).
 
+Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped the whole product's manual-test surface, so its two outputs are living data rather than a prunable plan. They moved into the QA Companion tool ([tools/qa-companion/checklist/](../tools/qa-companion/checklist/) for the walkable surface, [findings.md](../tools/qa-companion/findings.md) for the code-read audit) and the spec folder was removed. See [decisions.md](decisions.md).
+
 | # | Spec | Summary | Status |
 | --- | --- | --- | --- |
 | 000 | initial-plan | Initial plan: what Proscenio is, settled vs open decisions; drove the Phase 0 to Phase 1 work | pruned |
@@ -57,5 +59,5 @@ Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet
 | 037 | storage-split | Collapse dual PG-vs-CP storage to one canonical home per field (1.0.0) | planned |
 | 038 | reach | Additional DCC exporters (Krita, GIMP) and the GDExtension escape hatch | planned |
 | 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, goldens-as-test | planned |
-| 040 | end-to-end-verification | Exhaustive manual-test surface: every control + flow across the 3 apps audited vs documented intent (452 items, 176 findings) | planned |
+| 040 | end-to-end-verification | Automatic pass mapping the whole manual-test surface (452 items) + a code-read audit (176 findings); both now owned by the QA Companion tool (`tools/qa-companion`) | retired |
 | 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |

@@ -1,0 +1,21 @@
+{
+  "name": "proscenio-qa-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "QA Companion: a local tool to walk and curate the Proscenio manual-test checklists - record status + notes + screenshots per control, and edit / add / remove tests, with everything round-tripping back to the checklist .md files.",
+  "license": "GPL-3.0-or-later",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "walk": "tsx src/server.ts",
+    "normalize": "tsx src/normalize.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.8"
+  }
+}

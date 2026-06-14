@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Proscenio QA Companion</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <h1>QA Companion</h1>
+  <span id="modeChip" class="chip live">writing to .md</span>
+  <span class="grow"></span>
+  <div class="progress">
+    <span id="progText">0/0</span>
+    <span class="bar" id="bar"></span>
+  </div>
+</header>
+<main>
+  <aside>
+    <div class="filters">
+      <input type="text" id="search" placeholder="filter id / title / observe / note..." />
+      <div class="row" id="appFilters"></div>
+      <div class="row">
+        <select id="statusFilter">
+          <option value="">all status</option>
+          <option value="__not-done">not done</option>
+          <option value="__done">done</option>
+        </select>
+        <select id="reviewFilter">
+          <option value="">all review</option>
+        </select>
+        <span class="grow"></span>
+        <span id="countChip" class="chip">0</span>
+      </div>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+  <section class="card" id="card"><div class="empty">Loading...</div></section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

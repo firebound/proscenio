@@ -9,7 +9,8 @@ The repo is a uv-managed Python workspace alongside the Photoshop and Godot apps
 ```text
 apps/        self-contained apps: the pipeline plugins (blender/, photoshop/, godot/) plus the docs site (docs/)
 packages/    shared building blocks consumed by apps (models, codegen, fixtures, validator)
-scripts/     one-off dev tools and maintenance scripts only
+scripts/     one-off, run-directly helpers (single file, no own dependencies); co-located at the root, per-package, or per-example
+tools/       standalone dev/QA tools that are their own package (own deps/build/tests; not shipped, not a shared lib), e.g. tools/qa-companion/
 specs/       planning artifacts (numbered specs, backlog, decisions)
 tests/       repo-level cross-app integration tests
 docs/        Docusaurus content
@@ -20,7 +21,8 @@ Rules:
 
 - New shared code goes under `packages/`, not `scripts/` or `apps/<app>/`. If two apps consume the same module or data, it belongs in a package.
 - New Python packages register as uv workspace members in the root `pyproject.toml` (`tool.uv.workspace.members`). The package's own `pyproject.toml` declares `name = "proscenio-<slug>"`; the import path uses the underscored form (`proscenio_<slug>`).
-- `scripts/` accepts only true one-offs (a single maintenance script, a dev convenience). Anything with subpackage layout, tests, or a CLI surface belongs in `packages/`.
+- `scripts/` accepts only true one-offs: a single run-directly file with no dependency manifest of its own. The deciding question is "does it have its own deps/build?" - if yes it is not a `scripts/` one-off. A standalone dev or QA tool with its own deps, build, or test suite goes under `tools/` (e.g. `tools/qa-companion/`); a shared module consumed by the apps goes under `packages/`.
+- `tools/` is internal tooling not shipped with the product, distinct from `apps/` (the shipped pipeline plugins plus the docs site). A pnpm/TypeScript tool belongs in `tools/` even though `apps/photoshop` is also pnpm/TypeScript - the split is shipped-product versus internal-tool, not language. A `tools/` package may own its working data in its own directory (the QA Companion owns its checklist surface + audit under `tools/qa-companion/`, not in a spec folder).
 - Per-app folders under `apps/<app>/.../schema_bindings/` hold codegen output (TypeScript interfaces, GDScript `Resource` classes). They are never edited by hand; every file carries an `AUTO-GENERATED` header and committed-match tests under `tests/codegen/` fail on drift. See the typed-models codegen and monorepo packages decisions in [`decisions.md`](../../specs/decisions.md).
 - Editing the workspace root `pyproject.toml` is allowed; do not add a real `[project]` package to it (the root is a virtual workspace marker, not a publishable distribution).
 

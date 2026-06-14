@@ -14,9 +14,7 @@
     "specs/backlog-ui-feedback.md",
     "specs/backlog-ik-ergonomics.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
-    "specs/025-code-duplication/raw/**",
-    "specs/040-end-to-end-verification/walk.html",
-    "specs/040-end-to-end-verification/walk-results.json"
+    "specs/025-code-duplication/raw/**"
   ],
   "dictionaries": [
     "ecosystem-terms",

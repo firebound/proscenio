@@ -2,728 +2,397 @@
 
 Maintained by the QA Companion tool (tools/qa-companion): one block per item. `status` / `note` / `shots` are the recorded walk; `review` is your verdict on the test itself (keep / rephrase / drop / todo). Edit here or via the tool.
 
-## Exporter panel: Output folder + Export options + Pixels per unit + Filename templates + Run export + Re-export selected sections, plus the export -> manifest + PNG write path
+This file is layered and grouped by subpanel: (1) global chrome tested once across every accordion (PS-CHROME-01); (2) within each `## <panel>` group, items are ordered by subpanel/sub-area in UI order - each sub-area's inventory sweep first (confirm every control is present in one visual pass), then its standalone behavioral tests. Existence-only controls whose behavior lives in an end-to-end flow are covered in flows.md, not duplicated here.
 
-### PS-EXPORT-01 · Output folder - path display / 'No folder picked.' placeholder
+## Global chrome (test once)
+
+### PS-CHROME-01 · Accordion section behaves the same everywhere
 - status: pending
 - review: keep
-- observe: With no folder: 'No folder picked.' card. After picking: the folder.nativePath string is shown and is the title tooltip.
-- intent: Shows where the export writes the manifest + PNGs; the path persists across plugin reloads.
-- code: apps/photoshop/src/panels/sections/FolderSection.tsx:17-23
+- steps:
+  1. Pick any one collapsible section header in the panel.
+  2. Click the header, then collapse it and reopen it with Enter, then with the Space bar.
+  3. Hover the header and wait for the tooltip.
+  4. Glance at the little count badge on a few different section headers.
+- observe: The chevron flips between down and right and the body shows or hides on each click, on Enter, and on Space (Space does not also scroll the page). Hovering shows the section's hint text as a tooltip. A section's badge shows a number when there is a count, shows "ok" when the validate total is zero, and shows nothing when there is nothing to count. Sections with no data show a muted "empty" style label.
+- intent: The collapse/expand behavior, keyboard access, hint tooltip, and badge/empty-state rules are shared by every section, so they are checked once instead of per section.
+- code: apps/photoshop/src/components/Accordion.tsx:33-60
+- note: absorbs PS-EXPORT-04, PS-EXPORT-06, PS-EXPORT-13, PS-EXPORT-18, PS-IMPORT-01, PS-IMPORT-02, PS-IMPORT-03, PS-TAGS-01, PS-TAGS-03, PS-TAGS-04, PS-AUX-01, PS-AUX-05, PS-AUX-14, PS-AUX-23 (accordion headers, hint tooltips, keyboard toggle, badge rules, empty-state labels across all panels).
 
-### PS-EXPORT-04 · Output folder accordion header + hint tooltip
+## Exporter panel
+
+### PS-EXPORT-SWEEP · Exporter panel inventory (visual pass)
 - status: pending
 - review: keep
-- observe: Chevron toggles v/>; body shows/hides; native title tooltip shows the hint text.
-- intent: Collapsible Output-folder section; hint explains it persists across reloads.
-- code: apps/photoshop/src/components/Accordion.tsx:44-59 (title='Output folder')
+- observe: From top to bottom the Exporter panel shows: an Output-folder card with the picked folder's path (also its hover tooltip), or "No folder picked." when none is chosen; an Export options area with a "Skip hidden layers" checkbox (checked by default); a "Pixels per unit" text field with a read-only canvas line reading "NNpx = NN.NN units" (hidden when there is no document height or the value is not positive) and a "Reset to {default}" button; a "Filename templates" area (collapsed by default) with a mesh template field, a sprite (frames) template field, and a "Reset to defaults" button; and a "Run export" area with an "Export manifest + PNGs" button. After a run, success shows "Wrote N entry(ies) to <file>" with a warning row per problem PNG, and failure shows "Export <kind>." with a list of errors.
+- intent: Confirm every Exporter-panel field, button, read-only line, and result message is present and labeled.
+- code: apps/photoshop/src/panels/sections/ExportSection.tsx:78-164; apps/photoshop/src/panels/sections/FolderSection.tsx:17-23
+- note: absorbs PS-EXPORT-01, PS-EXPORT-08, PS-EXPORT-16, PS-EXPORT-17; behavior -> FLOW-DOLL-01.
 
-### PS-EXPORT-05 · Skip hidden layers checkbox
+### PS-EXPORT-OPTIONS-01 · Skip hidden layers checkbox
 - status: pending
 - review: keep
-- observe: When checked (default true), hidden layers are dropped from the plan (planner.ts:324 reason 'hidden'); when unchecked, hidden layers are included in writes.
-- intent: Export options section; doc implies hidden/ignored layers are excluded (use [ignore] tag to exclude). Skip-hidden toggle itself is UNDOCUMENTED by name.
+- steps:
+  1. Hide a layer in Photoshop, leave "Skip hidden layers" checked, and run a Preview/export.
+  2. Uncheck "Skip hidden layers" and run again.
+- observe: With the box checked (the default), the hidden layer is left out of the export. With it unchecked, the hidden layer is included.
+- intent: The "Skip hidden layers" toggle decides whether hidden layers are exported, so a tester can keep work-in-progress layers out of the output.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:82-84 -> onSkipHidden -> useExportFlow.setOption('skipHidden')
 
-### PS-EXPORT-06 · Export options accordion header + hint
+### PS-EXPORT-OPTIONS-02 · Pixels per unit field
 - status: pending
 - review: keep
-- observe: Tooltip shows the [ignore]-tag hint; section collapses/expands.
-- intent: Hint: use the [ignore] tag in a layer/group name to exclude it from export.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:78-85
-
-### PS-EXPORT-07 · Pixels per unit (ppu) text field
-- status: pending
-- review: keep
-- observe: Valid finite >0 values persist (localStorage) and become manifest.pixels_per_unit; invalid/zero/negative inputs are ignored (no state change). canvas row updates docHeight/ppu units.
-- intent: UNDOCUMENTED on this doc page - conversion factor for Blender/Godot; higher PPU = smaller world-space objects (hint only). Doc index.md does not mention PPU.
+- steps:
+  1. Type a positive number into "Pixels per unit".
+  2. Type a zero, a negative number, then letters.
+  3. Reopen the panel.
+- observe: A valid positive number sticks (it is still there after reopening the panel) and the read-only canvas line recomputes its "units" figure. Zero, negative, or non-numeric input is ignored and the field keeps its last good value.
+- intent: Pixels per unit is the scale used when the art reaches Blender/Godot, so the field must accept only sensible positive values and remember them.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:91-95 -> onPpuInput -> usePixelsPerUnit.setPixelsPerUnit
 
-### PS-EXPORT-08 · canvas read-only row (NNpx = NN.NN units)
+### PS-EXPORT-OPTIONS-03 · Reset pixels per unit button
 - status: pending
 - review: keep
-- observe: Displays e.g. '1024px = 16.00 units'; hidden entirely when docHeight is null or ppu <= 0.
-- intent: UNDOCUMENTED - shows doc height converted to world units at the current PPU.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:97-103 (heightInUnits)
-
-### PS-EXPORT-09 · Reset to {default} ppu button
-- status: pending
-- review: keep
-- observe: ppu returns to 100 and persists; the button is disabled (greyed) when ppu already equals the default.
-- intent: UNDOCUMENTED - resets ppu to the default (100).
+- steps:
+  1. Change "Pixels per unit" away from 100.
+  2. Click the "Reset to {default}" button next to it.
+- observe: The value returns to 100 and stays there after reopening the panel. The button is greyed out whenever the value already equals 100.
+- intent: The reset button restores the default pixels-per-unit (100) in one click and is unavailable when there is nothing to reset.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:104-106 -> onPpuReset -> usePixelsPerUnit (DEFAULT 100)
 
-### PS-EXPORT-10 · mesh filename template field
+### PS-EXPORT-TEMPLATES-01 · Mesh filename template field
 - status: pending
 - review: keep
-- observe: Value persists to localStorage; empty string normalises back to '{name}.png'; mesh PNG paths in the preview/Reveal reflect the template under images/.
-- intent: Filename templates section; tokens {name} and {kind} for meshes; images/ prefix and [folder:...] subfolder added automatically.
+- steps:
+  1. Open "Filename templates" and edit the mesh template (it uses {name} and {kind}).
+  2. Clear the field to empty, then reopen the panel.
+  3. Run a Preview and look at the mesh PNG paths.
+- observe: The template sticks after reopening the panel. Clearing it to empty falls back to "{name}.png". The mesh PNG paths under images/ follow whatever template you set.
+- intent: The mesh filename template controls how mesh PNGs are named, with an automatic images/ prefix and any [folder:...] subfolder.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:113-118 -> onPolygonInput -> useFilenameTemplate.setPolygonTemplate; consumed planner.ts:641
 
-### PS-EXPORT-11 · sprite (frames) filename template field
+### PS-EXPORT-TEMPLATES-02 · Sprite (frames) filename template field
 - status: pending
 - review: keep
-- observe: Persists; empty normalises to '{name}/{index}.png'; sprite frame paths reflect the template.
-- intent: Tokens {name} and {index} for frames; images/ prefix + subfolder added automatically.
+- steps:
+  1. Edit the sprite (frames) template (it uses {name} and {index}).
+  2. Clear it to empty, then reopen the panel.
+  3. Run a Preview and look at the sprite frame paths.
+- observe: The template sticks after reopening. Clearing it falls back to "{name}/{index}.png". The sprite frame PNG paths follow whatever template you set.
+- intent: The frames filename template controls how individual sprite frames are named, with an automatic images/ prefix and subfolder.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:120-125 -> onFramesInput -> setFramesTemplate; consumed planner.ts:500/675
 
-### PS-EXPORT-12 · Reset to defaults (templates) button
+### PS-EXPORT-TEMPLATES-03 · Reset filename templates button
 - status: pending
 - review: keep
-- observe: Both templates revert to {name}.png and {name}/{index}.png; button disabled when both already equal defaults.
-- intent: UNDOCUMENTED - resets both filename templates to defaults.
+- steps:
+  1. Change either filename template away from its default.
+  2. Click "Reset to defaults".
+- observe: Both templates go back to "{name}.png" and "{name}/{index}.png". The button is greyed out when both templates already match their defaults.
+- intent: The reset button restores both filename templates at once and is unavailable when there is nothing to reset.
 - code: apps/photoshop/src/panels/sections/ExportSection.tsx:127-129 -> onResetTemplates -> useFilenameTemplate.reset
 
-### PS-EXPORT-13 · Filename templates accordion (collapsed by default)
+### PS-EXPORT-RUN-01 · Export button stays disabled until ready
 - status: pending
 - review: keep
-- observe: Starts closed (chevron '>'); expands on click; tooltip lists {name}/{kind}/{index} tokens.
-- intent: Section with token hint; collapsed by default.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:108-112 (defaultOpen={false})
-
-### PS-EXPORT-15 · Export button disabled state
-- status: pending
-- review: keep
-- observe: Button greyed/disabled when busy OR folder===null OR doc(snapshot)===null; enabled only when all three are satisfied.
-- intent: Export should be unavailable until prerequisites are met (folder + document).
+- steps:
+  1. With no folder picked, look at the "Export manifest + PNGs" button.
+  2. Pick a folder but have no document open.
+  3. Open a document with a folder picked.
+- observe: The Export button is greyed out while an export is running, while no folder is picked, or while no document is open. It is clickable only once a folder and a document are both present.
+- intent: Export is unavailable until its prerequisites (a folder and an open document) are in place.
 - code: apps/photoshop/src/panels/ProscenioExporter.tsx:65 exportDisabled; ExportSection.tsx:132 disabled
 
-### PS-EXPORT-16 · Export result - OK view ('Wrote N entry(ies) to <file>')
+### PS-EXPORT-RUN-02 · Exporting an empty document
 - status: pending
 - review: keep
-- observe: Shows entryCount and manifestFile; lists any PNG write rows where !r.ok with skippedReason.
-- intent: Confirms the manifest filename and entry count written.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:141-156 (ExportResultView ok)
-
-### PS-EXPORT-17 · Export result - error view (validation-failed / no-document / failed)
-- status: pending
-- review: keep
-- observe: Shows 'Export <kind>.' plus the errors[] list; note 'failed' shows the raw Error.message or per-PNG 'path: reason' strings.
-- intent: Surfaces why an export did not complete (validation gate or write failure).
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:158-164 (ExportResultView error)
-
-### PS-EXPORT-18 · Run export accordion header + hint
-- status: pending
-- review: keep
-- observe: Tooltip shows the write hint; section collapses/expands.
-- intent: Hint: writes the manifest JSON + all PNGs to the output folder.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:131
-
-### PS-EXPORT-19 · Re-export selected - entry / kind detail rows or placeholder
-- status: pending
-- review: keep
-- observe: When matched: 'entry' (mono name) and 'kind' rows shown; when no match: placeholder 'Select a layer in Photoshop that maps to a manifest entry.'
-- intent: Rewrites the PNG(s) for the layer selected in Photoshop; manifest JSON is not touched.
-- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:49-58 (findMatchedEntry)
-
-### PS-EXPORT-21 · Re-export button disabled state
-- status: pending
-- review: keep
-- observe: Disabled when busy, no matched entry, or no folder; enabled only when both a match and a folder exist.
-- intent: Re-export unavailable without a matched entry + folder.
-- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:65 (disabled = busy || matched===null || folder===null)
-
-### PS-EXPORT-22 · Re-export result rows (ok / error)
-- status: pending
-- review: keep
-- observe: ok: 'Wrote N PNG(s).'; error: 'Re-export <kind>.' plus errors[] (e.g. 'not-found' or per-PNG failure).
-- intent: Confirms how many PNGs were rewritten, or surfaces re-export errors.
-- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:92-108 (ReexportResult)
-
-### PS-EXPORT-26 · empty / zero-layer document export
-- status: pending
-- review: keep
-- observe: Validation passes (empty layers array is schema-valid); manifest written with 'layers: []'; result 'Wrote 0 entry(ies)'. No PNGs written.
-- intent: A recursive walk produces one PNG per layer plus a manifest; doc does not state behaviour when no exportable layers exist.
+- steps:
+  1. Open a document with no exportable layers and run the export.
+- observe: The export succeeds, the result reads "Wrote 0 entry(ies)", a manifest file is written with an empty layer list, and no PNGs are created.
+- intent: Exporting a document with nothing to export writes a valid empty manifest instead of failing.
 - code: apps/photoshop/src/lib/planner.ts:133-148 (layers: []) ; schema layers has no minItems
 
-### PS-EXPORT-02 · Pick folder / Change folder button
+### PS-EXPORT-RUN-03 · A broken manifest is blocked before it is written
 - status: pending
 - review: keep
-- pre: Exporter panel open
+- pre: A document whose export would produce an invalid manifest (for example a zero or negative size, or a layer name that ends up empty with no fallback).
 - steps:
-  1. Click 'Pick folder' > choose a directory in the OS picker
-- observe: Path display updates to the chosen folder; a persistent token is written to localStorage key 'proscenio.exporter.folderToken'; reloading the plugin restores the same folder without prompting.
-- intent: Choose the output folder; the path persists across reloads (folder-storage persistent token).
-- code: apps/photoshop/src/panels/sections/FolderSection.tsx:25-27 -> useFolderCache.pick -> api/folder-storage.ts:31
-
-### PS-EXPORT-03 · Forget button
-- status: pending
-- review: keep
-- pre: A folder is currently picked
-- steps:
-  1. With a folder set, click 'Forget'
-- observe: localStorage token removed; folder state resets to null; card reverts to 'No folder picked.'; Export button becomes disabled (folder === null).
-- intent: UNDOCUMENTED - doc never mentions clearing the remembered folder.
-- code: apps/photoshop/src/panels/sections/FolderSection.tsx:28 -> useFolderCache.clear -> api/folder-storage.ts:42 (clearRememberedFolder)
-
-### PS-EXPORT-14 · Export manifest + PNGs button (Run export)
-- status: pending
-- review: keep
-- pre: A document is open AND a folder is picked (else disabled). Fixture: doll PSD with tagged layers.
-- steps:
-  1. Pick a folder > open a layered PSD > click 'Export manifest + PNGs' > wait for the modal banner
-- observe: Button shows 'Exporting...' while busy; on success a green result 'Wrote N entry(ies) to <doc>.photoshop_exported.json' plus per-PNG warn rows for any skipped writes; the .photoshop_exported.json file and images/*.png appear on disk.
-- intent: Writes the manifest JSON + all PNGs to the output folder; a recursive layer walk produces one PNG per layer plus a manifest JSON, validated before written so a broken manifest never reaches disk.
-- code: apps/photoshop/src/panels/sections/ExportSection.tsx:131-135 -> ProscenioExporter.onExport -> useExportFlow.run -> api/export-flow.ts:90 runExport
-
-### PS-EXPORT-20 · Re-export this entry's PNG button
-- status: pending
-- review: keep
-- pre: A folder is picked AND the active PS layer matches a manifest entry
-- steps:
-  1. Pick folder > select a matching layer > click 'Re-export this entry's PNG'
-- observe: Button shows 'Re-exporting...'; on success 'Wrote N PNG(s).'; only that entry's PNG file(s) rewritten on disk; the *.photoshop_exported.json manifest is NOT modified.
-- intent: Rewrites only the selected layer's PNG(s), leaving the manifest untouched.
-- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:59-68 onReexport -> api/export-flow.ts:167 runSingleLayerExport
-
-### PS-EXPORT-23 · manifest validation gate (ajv) - export path
-- status: pending
-- review: keep
-- pre: A document whose plan would produce an invalid manifest (e.g. a sub-pixel/zero size, or a layer name that strips to empty without fallback)
-- steps:
-  1. Export a doc crafted to break a schema rule (e.g. negative/zero coordinate) and observe the result
-- observe: runExport returns kind 'validation-failed' with errors[]; NO files written; error block lists '(root) ...' / instancePath messages.
-- intent: The manifest is validated against the schema with ajv before it is written, so a broken manifest never reaches disk.
+  1. Export a document crafted to break a manifest rule (for example a negative or zero coordinate) and read the result.
+- observe: The export fails with a "validation failed" result and a list of errors, and no files are written to the folder.
+- intent: The manifest is checked against its schema before anything is saved, so a broken manifest never reaches disk.
 - code: apps/photoshop/src/api/export-flow.ts:107-111 validateManifest -> api/manifest-validator.ts:28; schema packages/models/schemas/psd_manifest.schema.json
 
-### PS-EXPORT-24 · manifest write (writeManifest) - atomicity with PNGs
+### PS-EXPORT-RUN-04 · Manifest is saved only if every PNG was written
 - status: pending
 - review: keep
-- pre: A folder picked; an export where at least one PNG write fails (e.g. one layer renamed after preview)
+- pre: A folder is picked and the export is set up so at least one PNG fails to write (for example a layer renamed after Preview).
 - steps:
-  1. Trigger an export where one PNG write returns ok:false; inspect the folder
-- observe: manifestWritten=false; NO manifest JSON written; result kind 'failed' lists the failing 'outputPath: reason'. Existing PNGs that succeeded may still be on disk (partial).
-- intent: The manifest is persisted only if every PNG landed, so it never references missing files.
+  1. Run an export where one PNG write fails, then look in the folder.
+- observe: No manifest JSON is written and the result is a failure that lists the failing "outputPath: reason". PNGs that already succeeded may still be sitting in the folder (a partial write).
+- intent: The manifest is saved only when every PNG landed, so it never points at files that are missing.
 - code: apps/photoshop/src/api/export-flow.ts:118-126 (executeAsModal) -> api/manifest-writer.ts:9 writeManifest
 
-### PS-EXPORT-25 · PNG write per layer (runWrites/writeLayerPng) - temp doc + trim + saveAs.png
+### PS-EXPORT-RUN-05 · One trimmed PNG per layer
 - status: pending
 - review: keep
-- pre: Export running inside the modal; layers resolvable by path
+- pre: An export is running and the layers can still be found by their path.
 - steps:
-  1. Export a multi-layer doc; verify images/*.png exist and match each layer's trimmed bounds
-- observe: For each write, a PNG appears at folder/<outputPath>; a layer whose path no longer resolves yields ok:false 'source layer not found'.
-- intent: One PNG per layer: isolate the source layer on a temp doc, trim transparency, save PNG into the target folder.
+  1. Export a multi-layer document, then check that images/*.png exists and that each PNG matches its layer's trimmed bounds.
+- observe: One PNG appears at folder/<outputPath> for each layer, trimmed to the layer's visible pixels. A layer whose path can no longer be found produces a failure reading "source layer not found".
+- intent: Each layer is exported as its own trimmed PNG into the target folder.
 - code: apps/photoshop/src/api/png-writer.ts:23-77 runWrites/writeLayerPng
 
-## Import section: rebuild PSD from manifest (png-placer, manifest-reader)
+## Re-export sub-panel
 
-### PS-IMPORT-01 · Accordion header "Import (manifest to PSD)" (collapse/expand)
+### PS-REEXPORT-SWEEP · Re-export sub-panel inventory (visual pass)
 - status: pending
 - review: keep
-- observe: Section toggles open: chevron flips '>' to 'v', section className flips closed/open, body with the Import button renders. Click again collapses it (body unmounts).
-- intent: UNDOCUMENTED (doc says the plugin "can rebuild a PSD from a manifest" but never describes the panel section/header).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:14-18; apps/photoshop/src/components/Accordion.tsx:33-60
+- observe: When the active Photoshop layer matches a manifest entry, the sub-panel shows an "entry" row (the entry name in monospace) and a "kind" row. When nothing matches, it shows "Select a layer in Photoshop that maps to a manifest entry." It always shows a "Re-export this entry's PNG" button. After a run it shows either "Wrote N PNG(s)." on success, or "Re-export <kind>." with a list of errors (for example "not-found" or a per-PNG failure).
+- intent: Confirm the re-export sub-panel's detail rows, placeholder, button, and result messages are present.
+- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:49-108
+- note: absorbs PS-EXPORT-19, PS-EXPORT-22; behavior -> GAP-1 (single-layer re-export; see PS-REEXPORT-02).
 
-### PS-IMPORT-02 · Accordion header keyboard toggle (Enter / Space)
+### PS-REEXPORT-01 · Re-export button stays disabled until ready
 - status: pending
 - review: keep
-- observe: Each Enter/Space press toggles open state (preventDefault stops page scroll on Space); aria-expanded reflects state.
-- intent: UNDOCUMENTED (keyboard a11y affordance; not in doc).
-- code: apps/photoshop/src/components/Accordion.tsx:35-40
-
-### PS-IMPORT-03 · Accordion header tooltip (hint title attribute)
-- status: pending
-- review: keep
-- observe: Native tooltip shows: "Pick a Proscenio manifest JSON. The plugin recreates the PSD with placed layers / sprite_frame groups; the document stays open and unsaved -- use File > Save As to commit it to disk."
-- intent: UNDOCUMENTED (hint text describing the import behavior; only an HTML title tooltip).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:17; apps/photoshop/src/components/Accordion.tsx:52
-
-### PS-IMPORT-08 · Import OK result - "Stamped N entry(ies) (M skipped). Use File > Save As"
-- status: pending
-- review: keep
-- observe: Green "result ok" body reads "Stamped <stamped> entry(ies)" and appends " (<skipped> skipped)" only when skipped > 0, then ". Use File > Save As to commit the PSD."
-- intent: UNDOCUMENTED (doc never describes the stamped/skipped counts or the result body).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:27-42; apps/photoshop/src/api/import-flow.ts:62-73
-
-### PS-IMPORT-09 · Import OK result - per-entry warning rows
-- status: pending
-- review: keep
-- observe: Yellow "result-row warn" lines, one per warning, e.g. "mesh <name>: missing PNG at <path>", "<file> bounds WxH differ from manifest WxH; using PNG bounds.", "sprite <name>: zero frames placed; group removed".
-- intent: UNDOCUMENTED (warnings surface for missing PNGs / bounds mismatch / empty sprites not in doc).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:38-40; apps/photoshop/src/api/import-flow.ts:96,107,109,123,131,142,150
-
-### PS-IMPORT-10 · Import failed result - "Import failed." + error rows
-- status: pending
-- review: keep
-- observe: Red "result error" block: "Import failed." followed by one row per error message string from the caught exception.
-- intent: UNDOCUMENTED (doc does not describe the modal failure surface).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:44-52; apps/photoshop/src/api/import-flow.ts:34-41
-
-### PS-IMPORT-11 · "Importing..." busy state / button disable
-- status: pending
-- review: keep
-- observe: Button label switches to "Importing..." and disabled=true for the duration; re-enables and reverts label to "Import manifest as PSD" in the finally block regardless of success/failure.
-- intent: UNDOCUMENTED (busy/disable UX behavior).
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:19-21; apps/photoshop/src/hooks/useImportFlow.ts:30-36
-
-### PS-IMPORT-04 · "Import manifest as PSD" action button (file picker stage)
-- status: pending
-- review: keep
-- pre: Import section expanded; not busy.
 - steps:
-  1. Click "Import manifest as PSD" > UXP file picker opens (types: json).
-- observe: OS/UXP JSON file picker appears. Cancelling the picker (returns null) silently no-ops: no error, no result view, prior manifestErrors cleared (set to null on run start).
-- intent: Rebuild a PSD from a manifest; pick a Proscenio manifest JSON (doc: "plugin can rebuild a PSD from a manifest").
-- code: apps/photoshop/src/panels/sections/ImportSection.tsx:19-21; apps/photoshop/src/hooks/useImportFlow.ts:22-28; apps/photoshop/src/api/manifest-reader.ts:26-30
+  1. With no folder picked and/or no matching layer selected, look at the "Re-export this entry's PNG" button.
+  2. Pick a folder and select a layer that matches a manifest entry.
+- observe: The button is greyed out while an export is running, while no layer matches an entry, or while no folder is picked. It is clickable only when both a matching entry and a folder are present.
+- intent: Re-export is unavailable until there is a matched entry and a folder to write into.
+- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:65 (disabled = busy || matched===null || folder===null)
 
-### PS-IMPORT-05 · Import flow - invalid JSON / schema-invalid manifest path
+### PS-REEXPORT-02 · Re-export this entry's PNG
 - status: pending
 - review: keep
-- pre: Import section expanded.
+- pre: A folder is picked and the active Photoshop layer matches a manifest entry.
 - steps:
-  1. Click Import > pick a .json that is malformed JSON OR valid JSON failing the v2 schema.
-- observe: "Manifest invalid." error block appears (ManifestErrors) listing per-error rows like "(root) must have required property 'size'" or "manifest is not valid JSON: ..."; no document is created; busy never set true.
-- intent: Manifest is validated before use; a broken manifest never reaches disk (doc: validation gate).
+  1. Pick a folder, select a matching layer, and click "Re-export this entry's PNG".
+- observe: The button reads "Re-exporting..." during the run, then "Wrote N PNG(s)." on success. Only that one entry's PNG file(s) are rewritten on disk, and the existing manifest JSON is left completely unchanged.
+- intent: Re-exporting rewrites only the selected layer's PNG(s) and leaves the manifest untouched.
+- code: apps/photoshop/src/panels/sections/ReexportSection.tsx:59-68 onReexport -> api/export-flow.ts:167 runSingleLayerExport
+- note: no owning flow yet - candidate flow GAP-1 (single-layer re-export partial-write path is the plugin's own write path, not covered by any existing flow).
+
+## Import section
+
+### PS-IMPORT-SWEEP · Import sub-panel inventory (visual pass)
+- status: pending
+- review: keep
+- observe: The Import sub-panel shows an "Import manifest as PSD" button; during a run its label switches to "Importing..." and it is disabled, then reverts when done. A successful result reads "Stamped N entry(ies)", adds " (M skipped)" only when something was skipped, then "Use File > Save As to commit the PSD." Per-entry warning rows appear in yellow (for example "mesh <name>: missing PNG at <path>", "<file> bounds WxH differ from manifest WxH; using PNG bounds.", "sprite <name>: zero frames placed; group removed"). A failed result appears in red as "Import failed." with one row per error.
+- intent: Confirm the Import sub-panel's button, busy label, success body, warning rows, and error block are all present.
+- code: apps/photoshop/src/panels/sections/ImportSection.tsx:19-52; apps/photoshop/src/api/import-flow.ts:34-73
+- note: absorbs PS-IMPORT-08, PS-IMPORT-09, PS-IMPORT-10, PS-IMPORT-11; behavior -> GAP-2 (PSD rebuild from manifest; see PS-IMPORT-03).
+
+### PS-IMPORT-01 · A broken manifest is rejected on import
+- status: pending
+- review: keep
+- pre: The Import section is expanded.
+- steps:
+  1. Click Import and pick a .json file that is either malformed JSON or valid JSON that fails the manifest schema.
+- observe: A "Manifest invalid." error block appears listing the problems (for example "(root) must have required property 'size'" or "manifest is not valid JSON: ..."). No document is created and the panel never enters the busy state.
+- intent: The manifest is validated before use, so a broken manifest never builds a document.
 - code: apps/photoshop/src/api/manifest-reader.ts:32-46; apps/photoshop/src/api/manifest-validator.ts:34-42; apps/photoshop/src/hooks/useImportFlow.ts:26-29
 
-### PS-IMPORT-06 · Import flow - parent-folder resolution failure path
+### PS-IMPORT-02 · Import fails clearly when the PNG folder cannot be found
 - status: pending
 - review: keep
-- pre: Import section expanded.
+- pre: The Import section is expanded.
 - steps:
-  1. Pick a schema-valid manifest whose parent folder cannot be resolved (no file.parent and empty/unresolvable nativePath).
-- observe: "Manifest invalid." block shows single error "could not resolve manifest's parent folder"; import does not proceed.
-- intent: UNDOCUMENTED (doc never mentions resolving the manifest's sibling PNG folder).
+  1. Pick a schema-valid manifest whose surrounding folder cannot be located (no resolvable parent folder).
+- observe: A "Manifest invalid." block shows the single error "could not resolve manifest's parent folder" and the import does not proceed.
+- intent: Import stops with a clear message when it cannot find the folder that holds the sibling PNGs.
 - code: apps/photoshop/src/api/manifest-reader.ts:47-53,60-75
 
-### PS-IMPORT-07 · Import flow - modal document build + entry stamping (happy path)
+### PS-IMPORT-03 · Rebuild a PSD from a manifest and its PNGs
 - status: pending
 - review: keep
-- pre: Valid manifest picked; sibling PNGs present alongside the manifest at the declared relative paths.
+- pre: A valid manifest is picked and its sibling PNGs sit next to it at the relative paths it declares.
 - steps:
-  1. Click Import > pick a valid manifest with PNGs on disk > wait.
-- observe: Button shows "Importing..." and is disabled while busy; a single "Proscenio import" modal runs; a new transparent RGB document named manifest.doc (size = manifest.size) opens with one layer per mesh entry and one group per sprite (frames as layers named by index). Entries stacked so z_order 0 ends on top. Result shows "Stamped N entry(ies). Use File > Save As to commit the PSD."
-- intent: Recreate the PSD with placed layers / sprite_frame groups; document stays open and unsaved (doc + hint).
+  1. Click Import, pick a valid manifest that has its PNGs on disk, and wait.
+- observe: A single "Proscenio import" progress runs and a new transparent document (named after the manifest, sized to the manifest) opens with one layer per mesh entry and one group per sprite (its frames as layers named by index). Entries are stacked so the first one ends on top. The document stays open and unsaved, and the result reads "Stamped N entry(ies). Use File > Save As to commit the PSD."
+- intent: Import rebuilds the PSD with placed mesh layers and sprite-frame groups and leaves it open and unsaved for the user to save.
 - code: apps/photoshop/src/api/import-flow.ts:26-74; apps/photoshop/src/api/png-placer.ts:20-71
+- note: no owning flow yet - candidate flow GAP-2. The PSD-import flows (FLOW-PSD-01/02) drive Blender's importer, not the PS plugin's import-flow.ts + png-placer.ts rebuild path.
 
-### PS-IMPORT-12 · Side effect - pixels_per_unit seeded into localStorage on import
+### PS-IMPORT-04 · Import carries the manifest's pixels-per-unit into the exporter
 - status: pending
 - review: keep
-- pre: Valid manifest with a pixels_per_unit value distinct from the current Export PPU input.
+- pre: A valid manifest whose pixels-per-unit differs from the current Export field value.
 - steps:
-  1. Import a manifest > inspect the Export section's pixels-per-unit input (and after a panel reload).
-- observe: localStorage key proscenio.pixelsPerUnit is overwritten with manifest.pixels_per_unit (normalised, >0). NOTE the live Export input does NOT update this session (see finding); value only takes effect after panel reload.
-- intent: Seed the exporter PPU from the imported manifest so a re-export emits the imported scale (code comment / pixels-per-unit-store doc).
+  1. Import the manifest, then reload the panel and look at the Export section's "Pixels per unit" field.
+- observe: After a panel reload, the Export "Pixels per unit" field shows the manifest's value. Note: the live Export field does not update during the same session - the imported value only appears after a panel reload.
+- intent: Importing seeds the exporter's pixels-per-unit from the manifest so a re-export uses the same scale the art came in at.
 - code: apps/photoshop/src/api/import-flow.ts:54-56; apps/photoshop/src/api/pixels-per-unit-store.ts:28-36
 
-## Tags panel + tag vocabulary (parse/tree/write/form) + tagging UI
+## Tags panel
 
-### PS-TAGS-01 · Tags accordion header (title + chevron)
+### PS-TAGS-ROW-SWEEP · Tags row inventory (visual pass)
 - status: pending
 - review: keep
-- observe: Section toggles open/closed; chevron flips between 'v' and '>'; body hides/shows.
-- intent: UNDOCUMENTED - doc describes tagging but never the Tags panel/accordion chrome.
-- code: apps/photoshop/src/components/Accordion.tsx:46-59
+- observe: The Tags header badge equals the number of top-level layers. Each row shows the layer's display name (with tags stripped off, falling back to the raw name when the display name is empty), and the active layer's row is highlighted as "selected". A read-only strip of small badges shows the layer's tags: F (folder), P (path), S (scale), O (origin x,y), OM (origin marker, no value), NP (name pattern); a tag that is absent shows no badge, and each visible badge has a hover tooltip. A red warning row above the tree shows the last rename failure reason (for example "layer not found", "no active document"). Group rows have a disclosure triangle (down/right) that opens and closes their children; non-group rows show no triangle.
+- intent: Confirm the Tags header badge and every read-only element on a row (name, badge strip, error row, disclosure triangle) are present.
+- code: apps/photoshop/src/panels/sections/TagsSection.tsx:39-45; apps/photoshop/src/panels/sections/tags/Row.tsx:52-59; apps/photoshop/src/panels/sections/tags/Badges.tsx:19-38
+- note: absorbs PS-TAGS-02, PS-TAGS-05, PS-TAGS-06, PS-TAGS-07, PS-TAGS-08.
 
-### PS-TAGS-02 · Tags header count badge
+### PS-TAGS-ROW-01 · Kind dropdown (auto / mesh / sprite)
 - status: pending
 - review: keep
-- observe: Badge equals the number of top-level layers (tree.length); 0 layers shows the empty-state body with no badge.
-- intent: UNDOCUMENTED - count of top-level layers shown next to the title.
-- code: apps/photoshop/src/panels/sections/TagsSection.tsx:39
-
-### PS-TAGS-03 · Tags header hint tooltip ('?' equivalent)
-- status: pending
-- review: keep
-- observe: Tooltip 'Layer tree with bracket-tag controls per row. Click + on a row to edit folder / path / scale / origin / name pattern.' appears.
-- intent: UNDOCUMENTED - hover hint explaining the row controls; there is no visible '?' button, only an HTML title tooltip.
-- code: apps/photoshop/src/panels/sections/TagsSection.tsx:41
-
-### PS-TAGS-04 · Empty-state label ('No layers. Open a PSD to begin tagging.')
-- status: pending
-- review: keep
-- observe: Body reads 'No layers. Open a PSD to begin tagging.'; no tree, no badge.
-- intent: UNDOCUMENTED - placeholder when no document/layers.
-- code: apps/photoshop/src/panels/sections/TagsSection.tsx:33
-
-### PS-TAGS-05 · Rename-error warning row (lastError)
-- status: pending
-- review: keep
-- observe: A red 'warn' body row appears above the tree showing the failure reason (e.g. 'layer not found', 'no active document').
-- intent: UNDOCUMENTED - surfaces a failed rename reason.
-- code: apps/photoshop/src/panels/sections/TagsSection.tsx:43-45
-
-### PS-TAGS-07 · Row name label (click to select layer in PS)
-- status: pending
-- review: keep
-- observe: selectLayerByPath fires; the matching layer becomes active/selected in the PS Layers panel. Label shows display name (tag-stripped); falls back to raw name when display name is empty. Active layer's row gets 'selected' styling.
-- intent: UNDOCUMENTED - clicking the row name selects/reveals that layer in Photoshop.
-- code: apps/photoshop/src/panels/sections/tags/Row.tsx:52-55
-
-### PS-TAGS-08 · Inline badge strip (F/P/S/O/OM/NP)
-- status: pending
-- review: keep
-- observe: Badges render: F=folder value, P=path, S=scale, O='x,y', OM (marker, no value), NP=pattern, each with a hover title. Absent tags show no badge.
-- intent: UNDOCUMENTED - read-only compact display of folder/path/scale/origin/origin-marker/name-pattern tags present on the row.
-- code: apps/photoshop/src/panels/sections/tags/Badges.tsx:19-38
-
-### PS-TAGS-11 · Kind dropdown (auto / mesh / sprite)
-- status: pending
-- review: keep
-- observe: auto clears the kind tag; mesh writes '[mesh]'; sprite writes '[sprite]'. PS layer name updates accordingly. (See finding: on a [spritesheet] group this rewrites it to [sprite].)
-- intent: [mesh]/[poly]/[polygon] -> kind:mesh (Polygon2D); [sprite] -> kind:sprite (Sprite2D); auto = no kind tag.
+- steps:
+  1. On a row, set the Kind dropdown to mesh, then sprite, then auto.
+  2. Watch the layer's name in Photoshop.
+- observe: "mesh" puts "[mesh]" in the layer name, "sprite" puts "[sprite]" in it, and "auto" removes the kind tag. The Photoshop layer name updates each time.
+- intent: The Kind dropdown tags a layer as a mesh (Polygon2D) or a sprite (Sprite2D), or clears the tag with auto.
 - code: apps/photoshop/src/panels/sections/tags/Row.tsx:75-84,157-168
+- note: finding - on a [spritesheet] group this rewrites it to [sprite].
 
-### PS-TAGS-12 · Blend dropdown (none / mult / scrn / add)
+### PS-TAGS-ROW-02 · Blend dropdown (none / multiply / screen / additive)
 - status: pending
 - review: keep
-- observe: none clears [blend]; multiply/screen/additive write '[blend:multiply|screen|additive]'. A pre-existing [blend:normal] displays as 'none'. PS layer name updates.
-- intent: [blend:VALUE] records the intended blend mode (normal/multiply/screen/additive) as metadata.
+- steps:
+  1. On a row, set the Blend dropdown to multiply, screen, additive, then none.
+  2. Watch the layer's name.
+- observe: multiply/screen/additive write "[blend:multiply]" / "[blend:screen]" / "[blend:additive]" into the layer name, and "none" removes the blend tag. A layer that already had "[blend:normal]" reads as "none" in the dropdown. The layer name updates each time.
+- intent: The Blend dropdown records the layer's intended blend mode as a tag.
 - code: apps/photoshop/src/panels/sections/tags/Row.tsx:86-95,169-181
 
-### PS-TAGS-14 · Advanced: folder text field
+### PS-TAGS-DETAILS-SWEEP · Tag details (advanced) inventory (visual pass)
 - status: pending
 - review: keep
-- observe: Draft only updates on type; Apply writes '[folder:NAME]'. Empty value on Apply clears the tag. Layer name updates on Apply, not per keystroke.
-- intent: [folder:NAME] becomes a Blender Collection NAME; children inherit it (output subfolder under images/).
+- observe: A "+"/"-" expander at the far right of a row opens and closes the advanced Tag details box (the glyph flips to "-" when open). Inside the box are a folder field, a path field, a scale field, an origin X field, an origin Y field, an origin-marker checkbox, and a name-pattern field (shown on group rows only). Three buttons are present: "From selection", Apply, and Revert; Apply and Revert are greyed out while the form has no unsaved changes or while a write is running.
+- intent: Confirm the advanced expander and every Tag details field and button are present and follow the enable-when-dirty rule.
+- code: apps/photoshop/src/panels/sections/tags/Row.tsx:97-99,182-188; apps/photoshop/src/panels/sections/tags/Details.tsx:100-182
+- note: absorbs PS-TAGS-13, PS-TAGS-22, PS-TAGS-23.
+
+### PS-TAGS-DETAILS-01 · Advanced: folder field
+- status: pending
+- review: keep
+- steps:
+  1. Expand a row's advanced details, type a name into the folder field, and click Apply.
+  2. Clear the folder field and click Apply again.
+- observe: Typing alone changes nothing in the layer name; Apply writes "[folder:NAME]" into it. Applying an empty folder field removes the tag. The layer name updates on Apply, not as you type.
+- intent: The folder field assigns the layer to a Blender Collection (and an output subfolder under images/), committed on Apply.
 - code: apps/photoshop/src/panels/sections/tags/Details.tsx:100-109,55-58
 
-### PS-TAGS-15 · Advanced: path text field
+### PS-TAGS-DETAILS-02 · Advanced: path field
 - status: pending
 - review: keep
-- observe: Valid value writes '[path:NAME]'; empty clears. Invalid values (containing / or \, or '.'/'..') are silently skipped (no change, no error surfaced).
-- intent: [path:NAME] overrides the on-disk leaf filename stem (no slashes).
+- steps:
+  1. In a row's advanced details, type a plain name into the path field and click Apply.
+  2. Clear it and Apply; then try a value containing a slash or a dot.
+- observe: A valid name writes "[path:NAME]" and an empty value removes the tag. A value containing "/", "\\", ".", or ".." is silently ignored - nothing changes and no error is shown.
+- intent: The path field overrides the exported filename stem for the layer, and only plain names (no slashes or dots) are accepted.
 - code: apps/photoshop/src/panels/sections/tags/Details.tsx:110-119,59-62,69-74
 
-### PS-TAGS-16 · Advanced: scale text field
+### PS-TAGS-DETAILS-03 · Advanced: scale field
 - status: pending
 - review: keep
-- observe: Positive finite number writes '[scale:N]'; empty clears. 0, negative, or non-numeric are skipped (no write). No validation/sub-pixel warning is shown in the panel (see finding).
-- intent: [scale:N] multiplies bounding-box size by N; a sub-pixel result raises a validation warning.
+- steps:
+  1. In a row's advanced details, type a positive number into the scale field and click Apply.
+  2. Clear it and Apply; then try 0, a negative number, and letters.
+- observe: A positive number writes "[scale:N]" and an empty value removes the tag. 0, negative, or non-numeric input is ignored (nothing is written). No sub-pixel warning appears in the panel.
+- intent: The scale field multiplies the layer's bounding-box size, and only positive numbers are accepted.
 - code: apps/photoshop/src/panels/sections/tags/Details.tsx:120-129,63-66,76-81
 
-### PS-TAGS-17 · Advanced: origin X field
+### PS-TAGS-DETAILS-04 · Advanced: origin X / Y fields
 - status: pending
 - review: keep
-- observe: When both X and Y parse as finite, writes '[origin:X,Y]'; both empty clears origin. Non-finite parse skips. Note: a non-numeric X/Y is skipped, not errored.
-- intent: [origin:X,Y] sets an explicit pivot in PSD pixels overriding the implicit centre.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:130-138,67-70,83-92
-
-### PS-TAGS-18 · Advanced: origin Y field
-- status: pending
-- review: keep
-- observe: Combined with X to write '[origin:X,Y]'; see PS-TAGS-17.
-- intent: Second component of [origin:X,Y] explicit pivot.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:139-146,71-74,83-92
-
-### PS-TAGS-20 · Advanced: origin marker checkbox
-- status: pending
-- review: keep
-- observe: Checked writes bare '[origin]'; unchecked clears it. Note: writer suppresses '[origin]' when explicit '[origin:x,y]' coords are present (mutually exclusive).
-- intent: [origin] marks the layer's bbox centre as its parent [spritesheet]/[merge] group's pivot (marker layer not exported).
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:155-162,75-78,120-126
-
-### PS-TAGS-21 · Advanced: name pattern field (groups only)
-- status: pending
-- review: keep
-- observe: Valid pattern (non-empty, contains '*') writes '[name:..]'; empty clears. A pattern without '*' is skipped. Field is not rendered on non-group rows.
-- intent: [name:pre*suf] is a name template for descendants; * is replaced by each descendant's name.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:163-174,79-82,94-98
-
-### PS-TAGS-06 · Row disclosure triangle (expand/collapse group)
-- status: pending
-- review: keep
-- pre: A group (LayerSet) row with children.
 - steps:
-  1. Click the 'v'/'>' glyph at the left of a group row (or Enter/Space).
-- observe: Glyph toggles 'v'<->'>'; the group's child rows show/hide. For non-group rows the glyph is blank and disabled (no-op).
-- intent: UNDOCUMENTED - collapse/expand a group subtree in the panel (purely a panel-state toggle).
-- code: apps/photoshop/src/panels/sections/tags/Row.tsx:57-59
+  1. In a row's advanced details, type numbers into both origin X and origin Y and click Apply.
+  2. Clear both and Apply; then leave one field non-numeric and Apply.
+- observe: With both fields valid, Apply writes "[origin:X,Y]". Clearing both removes the origin tag. If either field is non-numeric, nothing is written and no error appears.
+- intent: The origin X/Y fields set an explicit pivot for the layer in pixels, overriding the default centre.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx:130-146,67-74,83-92
 
-### PS-TAGS-09 · [ignore] toggle glyph (X)
+### PS-TAGS-DETAILS-05 · Advanced: From selection button
 - status: pending
 - review: keep
-- pre: Any layer or group row; document open.
+- pre: A row's advanced details are expanded and there is an active rectangular marquee selection in the document.
 - steps:
-  1. Click the 'X' glyph in the row's right cluster.
-- observe: Layer name gains/loses '[ignore]'; row gets/loses 'ignored' styling; PS layer name updates (renameLayer). Toggling again removes it. Disabled while busy.
-- intent: [ignore] drops the layer/group entirely from export (no manifest entry, no PNG).
-- code: apps/photoshop/src/panels/sections/tags/Row.tsx:61-66
-
-### PS-TAGS-10 · [merge] toggle glyph (M)
-- status: pending
-- review: keep
-- pre: A group (LayerSet) row; disabled on non-group rows.
-- steps:
-  1. Click the 'M' glyph on a group row.
-- observe: Group name gains/loses '[merge]'; glyph active styling toggles. On a non-group row the glyph is disabled with title '[merge] only applies to groups'.
-- intent: [merge] flattens a whole group into one PNG (group-only tag).
-- code: apps/photoshop/src/panels/sections/tags/Row.tsx:68-73
-
-### PS-TAGS-13 · Advanced fields expander glyph (+ / -)
-- status: pending
-- review: keep
-- pre: Any row.
-- steps:
-  1. Click the '+'/'-' glyph at the far right of the row.
-- observe: Row expands to show the TagDetails sub-box; glyph flips to '-' (active). Click again collapses. State is per-row local (not persisted).
-- intent: UNDOCUMENTED (only as a hover hint) - opens the folder/path/scale/origin/name-pattern editor for the row.
-- code: apps/photoshop/src/panels/sections/tags/Row.tsx:97-99,182-188
-
-### PS-TAGS-19 · Advanced: 'From selection' button
-- status: pending
-- review: keep
-- pre: Row expanded; an active marquee selection in the document.
-- steps:
-  1. Make a rectangular marquee, click 'From selection'.
-- observe: origin X/Y fields populate with the rounded centre of the selection bounds (draft only, requires Apply to commit). With no selection it silently does nothing (only a debug log).
-- intent: UNDOCUMENTED - fills origin X/Y from the centre of the current Photoshop marquee selection.
+  1. Make a rectangular marquee selection, then click "From selection".
+  2. Click "From selection" again with no active selection.
+- observe: The origin X and Y fields fill in with the rounded centre of the selection (this is a draft - it needs Apply to commit). With no selection, the button does nothing visible.
+- intent: "From selection" fills the origin fields from the centre of the current Photoshop marquee.
 - code: apps/photoshop/src/panels/sections/tags/Details.tsx:147-153,84-96; apps/photoshop/src/api/ps-selection-bounds.ts:15-36
 
-### PS-TAGS-22 · Advanced: Apply button
+### PS-TAGS-DETAILS-06 · Advanced: origin marker checkbox
 - status: pending
 - review: keep
-- pre: Row expanded; form dirty (differs from baseline).
 - steps:
-  1. Edit one or more advanced fields, click Apply.
-- observe: Computes set/clear delta and fires a single renameLayer. Disabled when not dirty or busy. If the delta resolves to no valid set/clear (all invalid), no rename fires.
-- intent: UNDOCUMENTED - commits the draft form as one minimal rename (delta vs baseline).
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:175-182,45-49; apps/photoshop/src/lib/tag-form.ts:114-129
+  1. In a row's advanced details, tick the origin-marker checkbox and click Apply.
+  2. Untick it and Apply.
+- observe: Ticking writes a bare "[origin]" into the layer name and unticking removes it. When explicit origin X,Y coordinates are set, the bare "[origin]" marker is suppressed (the two are mutually exclusive).
+- intent: The origin-marker checkbox marks the layer's centre as its parent group's pivot.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx:155-162,75-78,120-126
 
-### PS-TAGS-23 · Advanced: Revert button
+### PS-TAGS-DETAILS-07 · Advanced: name pattern field (groups only)
 - status: pending
 - review: keep
-- pre: Row expanded; form dirty.
+- pre: A group row's advanced details are expanded.
 - steps:
-  1. Edit fields, click Revert.
-- observe: All advanced fields snap back to baseline (node.tags); no rename fires. Disabled when not dirty or busy.
-- intent: UNDOCUMENTED - discards the local draft back to the on-disk baseline.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:176-178,51-53
+  1. On a group row, type a pattern containing "*" into the name-pattern field and click Apply.
+  2. Clear it and Apply; then try a pattern with no "*".
+- observe: A non-empty pattern that contains "*" writes "[name:..]" and an empty value removes the tag. A pattern with no "*" is ignored. The field does not appear on non-group rows at all.
+- intent: The name-pattern field sets a naming template for a group's descendants, where "*" stands in for each descendant's own name.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx:163-174,79-82,94-98
 
-### PS-TAGS-24 · Layer-tree live sync (poll + notification + rename refresh)
+### PS-TAGS-SYNC-01 · Layer tree stays in sync with Photoshop
 - status: pending
 - review: keep
-- pre: Document open; panel visible.
+- pre: A document is open and the panel is visible.
 - steps:
-  1. Rename/add/remove a layer directly in PS and wait ~1.5s (active) or switch panel away/back.
-- observe: Tree reflects external changes without a manual refresh; unchanged subtrees keep node refs (rows don't tear down open dropdowns). Poll pauses while document.hidden.
-- intent: UNDOCUMENTED - panel keeps the tree current via PS notifications and a visibility-adaptive poll.
+  1. Rename, add, or remove a layer directly in Photoshop and wait about 1.5 seconds, or switch away from the panel and back.
+- observe: The tags tree updates to match without any manual refresh, and untouched branches keep their state (open dropdowns are not torn down). The tree stops polling while the panel is hidden.
+- intent: The panel keeps its layer tree current with Photoshop on its own.
 - code: apps/photoshop/src/hooks/useTagTree.ts:44-91,115-119
 
-### PS-TAGS-25 · renameLayer write path (XMP mirror + executeAsModal)
+## Active document sub-panel
+
+### PS-DOC-SWEEP · Active-document sub-panel inventory (visual pass)
 - status: pending
 - review: keep
-- pre: Document open; any tag-editing control invoked.
+- observe: A "name" row shows the open document's filename in monospace, or "No document open in Photoshop." when nothing is open. A "canvas" row shows "<width> x <height> px" (matching Image > Canvas Size) in monospace.
+- intent: Confirm the active-document name and canvas rows and the no-document fallback are present.
+- code: apps/photoshop/src/panels/sections/DocSection.tsx:18-19
+- note: absorbs PS-AUX-02, PS-AUX-03.
+
+## Validate sub-panel
+
+### PS-VALIDATE-SWEEP · Validate sub-panel inventory (visual pass)
+- status: pending
+- review: keep
+- observe: The header badge shows the total of warnings plus skipped plus validation errors, or "ok" when that total is zero. With no document, the body shows "Open a document to begin validation." or, in the no-document state, the first error or a fallback "No document open." When everything is fine, the badge reads "ok" and the body reads "No issues. Manifest looks ready to export." When invalid, a red "Manifest invalid:" block lists one row per error. Problems are grouped under "Warnings (N)" with a row each and "Skipped (N)" with a row each.
+- intent: Confirm every Validate-panel state (empty, no-document, clean, invalid) and the warnings/skipped groups render.
+- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:16-68
+- note: absorbs PS-AUX-06, PS-AUX-07, PS-AUX-08, PS-AUX-09, PS-AUX-10, PS-AUX-12; behavior -> FLOW-PSD-03 (Validate refresh + click-to-select offending/skipped layer).
+
+## Preview (Debug) sub-panel
+
+### PS-DEBUG-SWEEP · Preview (Debug) sub-panel inventory (visual pass)
+- status: pending
+- review: keep
+- observe: The header badge shows the manifest layer count when there is one, otherwise no badge. Before a run the body shows "Click Refresh to dry-run the export. Nothing is written." with a Refresh button; with no document it shows the first error or "No document open." plus a Refresh button. An "anchor" row shows "(canvas centre)" when there is no explicit anchor, otherwise "<x>, <y> px" in monospace. Count rows show "entries", "skipped", and "warnings". Each mesh entry row shows its kind, name, path, and optional badges "(folder=..., blend=..., origin=x,y)"; each sprite entry row shows "sprite", name, "<N> frames", and any badges. The entry matching the selected Photoshop layer is highlighted as "selected".
+- intent: Confirm the Preview dry-run panel's badge, empty and no-document states, anchor and count rows, and per-entry rows all render.
+- code: apps/photoshop/src/panels/sections/DebugSection.tsx:19-117
+- note: absorbs PS-AUX-15, PS-AUX-17, PS-AUX-18, PS-AUX-19, PS-AUX-20, PS-AUX-21, PS-AUX-22; behavior (Refresh dry-run) -> FLOW-PSD-03.
+
+## Legacy migration sub-panel
+
+### PS-MIGRATION-SWEEP · Legacy-migration sub-panel inventory (visual pass)
+- status: pending
+- review: keep
+- observe: The header badge shows the candidate count and the section opens by default when there is at least one candidate. The section is hidden entirely when no document is open, or when there are zero candidates and no previous result. The empty state reads "No underscore-prefixed layers found." (shown when there are zero candidates but a previous result exists). The candidate preview reads "N layer(s) ready to rename:" then up to six rows of "oldName -> newName" and then "...and N more." A button reads "Convert N layer(s) to [ignore]". The result reads "Renamed N layer(s)." on success; on failures it turns red, reads "..., M failed:", and shows one row per failure "<path>: <reason>".
+- intent: Confirm the migration panel's badge, empty state, candidate preview, Convert button, and result view all render.
+- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:20-87
+- note: absorbs PS-AUX-24, PS-AUX-25, PS-AUX-28; behavior -> GAP-3 (migration apply; see PS-MIGRATION-01).
+
+### PS-MIGRATION-01 · Convert underscore layers to [ignore]
+- status: pending
+- review: keep
+- pre: A document with at least one underscore-prefixed candidate layer.
 - steps:
-  1. Invoke any toggle/dropdown/Apply that changes a name.
-- observe: Target resolved outside the modal; inside executeAsModal sets target.name and mirrors tags to XMP (best-effort). On no active doc / layer-not-found / modal rejection, busy clears and lastError shows the reason.
-- intent: Tag edits are persisted into the PSD layer name; re-import in Blender reads tags from names.
-- code: apps/photoshop/src/api/layer-rename.ts:21-58
-
-## Validate + Migration + Doc + Debug sections
-
-### PS-AUX-01 · Active document accordion header (title + chevron + hint tooltip)
-- status: pending
-- review: keep
-- observe: Section toggles open/closed; chevron flips v <-> >; hovering shows tooltip 'Doc name + canvas dimensions'. Open by default.
-- intent: UNDOCUMENTED (index.md never describes the document-header section); hint reads 'Doc name + canvas dimensions'.
-- code: apps/photoshop/src/panels/sections/DocSection.tsx:13
-
-### PS-AUX-02 · Active document: name row (read-only)
-- status: pending
-- review: keep
-- observe: Label 'name' with the document's filename rendered in monospace. With no doc open, instead shows 'No document open in Photoshop.'
-- intent: UNDOCUMENTED; shows the active PS document name (mono).
-- code: apps/photoshop/src/panels/sections/DocSection.tsx:18
-
-### PS-AUX-03 · Active document: canvas row (read-only)
-- status: pending
-- review: keep
-- observe: Label 'canvas' shows '<width> x <height> px' matching Image > Canvas Size, in monospace.
-- intent: UNDOCUMENTED; shows canvas WxH in px (mono).
-- code: apps/photoshop/src/panels/sections/DocSection.tsx:19
-
-### PS-AUX-05 · Validate accordion header + badge (count / 'ok')
-- status: pending
-- review: keep
-- observe: Badge shows the integer total of warnings+skipped+validation errors, or the literal 'ok' when total is 0. Header collapses/expands; tooltip text as above.
-- intent: UNDOCUMENTED as a panel; index.md only says the manifest is validated before write. Header hint: 'Planner-emitted warnings + skipped layers. Click any row to jump to the offending layer in Photoshop.'
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:38-42
-
-### PS-AUX-06 · Validate: 'Open a document to begin validation.' empty-state label
-- status: pending
-- review: keep
-- observe: Body shows muted text 'Open a document to begin validation.'
-- intent: UNDOCUMENTED; placeholder shown before any preview has run (preview === null).
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:16-20
-
-### PS-AUX-07 · Validate: no-document message (preview.kind === 'no-document')
-- status: pending
-- review: keep
-- observe: Body shows the planner's first error string, or 'No document open.' when none provided.
-- intent: UNDOCUMENTED; shows preview.errors[0] or fallback 'No document open.'
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:23-30
-
-### PS-AUX-08 · Validate: 'No issues. Manifest looks ready to export.' clean label
-- status: pending
-- review: keep
-- observe: Badge='ok'; body shows 'No issues. Manifest looks ready to export.'
-- intent: UNDOCUMENTED; clean-state confirmation when warnings+skipped+valErrors == 0.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:43-44
-
-### PS-AUX-09 · Validate: 'Manifest invalid:' error block + per-error rows
-- status: pending
-- review: keep
-- observe: Red 'result error' block titled 'Manifest invalid:' with one row per error string from preview.errors.
-- intent: Reflects index.md's 'manifest is validated before it is written, so a broken manifest never reaches disk' - surfaces ajv validation errors here.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:47-54
-
-### PS-AUX-10 · Validate: 'Warnings (N)' subgroup header
-- status: pending
-- review: keep
-- observe: Subgroup titled 'Warnings (N)' renders with one WarningRow per warning.
-- intent: Lists the planner-emitted warnings; count in title.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:55-61
-
-### PS-AUX-12 · Validate: 'Skipped (N)' subgroup header
-- status: pending
-- review: keep
-- observe: Subgroup titled 'Skipped (N)' with one SkippedRow per skipped layer.
-- intent: Lists skipped layers (e.g. hidden / [ignore]); count in title.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:62-68
-
-### PS-AUX-14 · Preview (Debug) accordion header + entry-count badge
-- status: pending
-- review: keep
-- observe: Badge shows manifest layer count when >0, otherwise no badge; header toggles; tooltip as above.
-- intent: UNDOCUMENTED panel; hint 'Dry-run of the export. Manifest entries listed below; warnings + skipped layers live in the Proscenio Validate panel.'
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:19-23
-
-### PS-AUX-15 · Preview: pre-run empty state ('Click Refresh to dry-run the export. Nothing is written.')
-- status: pending
-- review: keep
-- observe: Muted text 'Click Refresh to dry-run the export. Nothing is written.' plus a Refresh button.
-- intent: UNDOCUMENTED; placeholder shown when preview === null.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:24-30
-
-### PS-AUX-17 · Preview: no-document body + Refresh
-- status: pending
-- review: keep
-- observe: Muted error text (first error or fallback) and a Refresh button.
-- intent: UNDOCUMENTED; shows preview.errors[0] or 'No document open.' plus a Refresh button.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:43-51
-
-### PS-AUX-18 · Preview: anchor row (read-only)
-- status: pending
-- review: keep
-- observe: Row 'anchor' shows '(canvas centre)' when manifest.anchor==null, else '<x>, <y> px' (mono).
-- intent: UNDOCUMENTED; shows manifest anchor or '(canvas centre)' when null.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:57-62
-
-### PS-AUX-19 · Preview: entries / skipped / warnings count rows (read-only)
-- status: pending
-- review: keep
-- observe: Rows 'entries', 'skipped', 'warnings' show counts matching manifest.layers.length, skipped.length, warnings.length respectively.
-- intent: UNDOCUMENTED; numeric summary of the dry-run plan.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:63-65
-
-### PS-AUX-20 · Preview: polygon entry row
-- status: pending
-- review: keep
-- observe: Row shows kind, name, path, and optional badges '(folder=..., blend=..., origin=x,y)' when those fields are set.
-- intent: Reflects index.md 'one PNG per layer plus a manifest JSON' - lists each polygon manifest entry (kind, name, path, badges).
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:100-108,111-117
-
-### PS-AUX-21 · Preview: sprite entry row
-- status: pending
-- review: keep
-- observe: Row shows 'sprite', the name, and '<N> frames' plus any badges.
-- intent: Reflects index.md spritesheet behaviour - shows 'sprite' + name + 'N frames' for a sprite_frame group.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:90-98
-
-### PS-AUX-22 · Preview: active-layer row highlight (selected styling)
-- status: pending
-- review: keep
-- observe: The matching entry row gains the 'selected' class (highlighted). Selecting a non-matching/no/multiple layers leaves no row highlighted.
-- intent: UNDOCUMENTED; the entry whose EntryRef matches the artist's currently selected PS layer is highlighted.
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:69-73,80-86 (match useActiveLayerPath + entryMatchesPath)
-
-### PS-AUX-23 · Legacy migration accordion header + count badge + hint
-- status: pending
-- review: keep
-- observe: Section appears with badge = candidate count; defaultOpen when count>0; tooltip as above. Hidden entirely when preview.noDocument, or when count==0 and no prior result.
-- intent: Reflects index.md tag vocabulary (legacy convention -> [ignore]); hint 'Convert legacy `_layerName` skip conventions to the [ignore] tag.'
-- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:20-25
-
-### PS-AUX-24 · Legacy migration: 'No underscore-prefixed layers found.' label
-- status: pending
-- review: keep
-- observe: Muted text 'No underscore-prefixed layers found.' shown above the result view.
-- intent: UNDOCUMENTED; empty-state when count==0 but a lastResult exists (post-conversion).
-- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:26-28
-
-### PS-AUX-25 · Legacy migration: 'N layer(s) ready to rename' + candidate rows (max 6 + 'and N more')
-- status: pending
-- review: keep
-- observe: '8 layer(s) ready to rename:' then 6 CandidateRows then '...and 2 more.'
-- intent: Previews the planned _name -> [ignore] renames before applying.
-- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:30-36
-
-### PS-AUX-28 · Legacy migration: result view ('Renamed N layer(s)' + per-failure rows)
-- status: pending
-- review: keep
-- observe: 'Renamed N layer(s).' on full success; on failures the block gets 'result error' class, '..., M failed:' and one warn row per failure ('<path>: <reason>').
-- intent: UNDOCUMENTED; reports renamed count and any per-candidate failures after applying.
-- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:74-87
-
-### PS-AUX-04 · Active document: Refresh button
-- status: pending
-- review: keep
-- pre: Validate or Debug panel open.
-- steps:
-  1. 1. Change the active document (rename / resize canvas / switch tabs). 2. Click 'Refresh'.
-- observe: name + canvas rows update synchronously to the now-active document (readDocSnapshot via app.activeDocument). No file is written.
-- intent: UNDOCUMENTED; re-reads the active document header into the panel.
-- code: apps/photoshop/src/panels/sections/DocSection.tsx:22 (handler ProscenioValidatePanel.tsx:37 / ProscenioDebugPanel.tsx:43 -> useDocSnapshot.refresh)
-
-### PS-AUX-11 · Validate: Warning row (click-to-select offending layer)
-- status: pending
-- review: keep
-- pre: At least one warning present.
-- steps:
-  1. 1. Click a warning row (or focus it and press Enter/Space). 2. Watch the PS Layers panel.
-- observe: Row shows code + bold name + message. Clicking runs batchPlay 'select' on the layer matched by warning.layerPath; that layer becomes the active selection in PS. Keyboard Enter/Space also activates.
-- intent: Each row selects the offending PS layer; hint says 'Click any row to jump to the offending layer in Photoshop.'
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:82-95 (handler useLayerSelection -> ps-selection.selectLayerByPath:61)
-
-### PS-AUX-13 · Validate: Skipped row (click-to-select skipped layer)
-- status: pending
-- review: keep
-- pre: At least one skipped layer present.
-- steps:
-  1. 1. Click a skipped row (or Enter/Space when focused). 2. Watch the PS Layers panel.
-- observe: Row shows skip reason code + layer name; clicking selects that layer (by its layerPath) in PS via batchPlay.
-- intent: Row selects the skipped PS layer; shows the skip reason as the code and the layer name.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:97-107 (handler useLayerSelection -> selectLayerByPath:61)
-
-### PS-AUX-16 · Preview: Refresh button (dry-run)
-- status: pending
-- review: keep
-- pre: Debug panel open, document open.
-- steps:
-  1. 1. Edit the PSD layers. 2. Click 'Refresh'.
-- observe: anchor/entries/skipped/warnings rows and the entries list recompute from previewExport(opts) with skipHidden:true. No file is written to disk.
-- intent: Runs a dry-run preview of the export; per index.md the recursive walk produces manifest + PNGs, but Refresh writes nothing (dry-run).
-- code: apps/photoshop/src/panels/sections/DebugSection.tsx:29,49,66 (handler ProscenioDebugPanel.onRefresh:31 -> useExportPreview.refresh -> previewExport)
-
-### PS-AUX-26 · Legacy migration: candidate row (click-to-select layer)
-- status: pending
-- review: keep
-- pre: Candidate rows visible.
-- steps:
-  1. 1. Click a candidate row (or Enter/Space when focused). 2. Watch PS Layers panel.
-- observe: Row shows oldName -> newName; clicking selects the layer at candidate.layerPath in PS via batchPlay.
-- intent: UNDOCUMENTED; clicking a candidate selects that layer in PS (shows old -> new name).
-- code: apps/photoshop/src/panels/sections/MigrationSection.tsx:47-72 (handler useLayerSelection -> selectLayerByPath:61)
-
-### PS-AUX-27 · Legacy migration: 'Convert N layer(s) to [ignore]' button
-- status: pending
-- review: keep
-- pre: Doc with >=1 underscore-prefixed candidate.
-- steps:
-  1. 1. Click 'Convert N layer(s) to [ignore]'. 2. Watch the button + PS layer names.
-- observe: Button label switches to 'Renaming...' and disables (busy=true). Inside one executeAsModal, candidates are renamed deepest-first to their [ignore] newName (single undo step). On finish: result view appears, preview re-reads (candidates -> 0), button re-enables.
-- intent: Applies the batch rename, converting _name layers to [ignore]; reflects index.md tag conventions.
+  1. Click "Convert N layer(s) to [ignore]".
+  2. Watch the button and the layer names in Photoshop.
+- observe: The button reads "Renaming..." and is disabled during the run. The candidate layers are renamed to their "[ignore]" names in a single undo step. When it finishes, the result view appears, the candidate count drops to zero, and the button re-enables.
+- intent: Convert renames all underscore-prefixed layers to the "[ignore]" convention in one batch and one undo step.
 - code: apps/photoshop/src/panels/sections/MigrationSection.tsx:37-39 (handler useMigration.apply -> applyUnderscoreMigration -> executeAsModal:57)
+- note: no owning flow yet - candidate flow GAP-3 (the plugin's own legacy [ignore] migration-apply write path is not covered by any existing flow).

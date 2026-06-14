@@ -38,14 +38,6 @@ export function serializeBlock(item: Item): string {
     note.forEach((l) => out.push(`  ${l}`));
   }
 
-  const feedback = item.feedback
-    .map((f) => ({ kind: f.kind.trim(), text: f.text.trim() }))
-    .filter((f) => f.text);
-  if (feedback.length) {
-    out.push("- feedback:");
-    feedback.forEach((f) => out.push(`  - ${f.kind || "note"}: ${f.text}`));
-  }
-
   const shots = item.shots.map((s) => s.trim()).filter(Boolean);
   if (shots.length) {
     out.push("- shots:");

@@ -23,6 +23,7 @@ button:hover { border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: default; }
 main { flex: 1; display: flex; min-height: 0; }
 aside { width: 340px; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+aside[hidden], section.card[hidden] { display: none; } /* explicit display rules beat the UA [hidden] rule */
 .filters { padding: 8px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
 .filters .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .filters input[type=text], .filters select { flex: 1; min-width: 0; }
@@ -90,6 +91,31 @@ kbd { font-family: ui-monospace, monospace; font-size: 10px; background: var(--p
 .fb-add { display: flex; gap: 6px; margin-top: 4px; }
 .fb-add select { flex: none; }
 .fb-add input { flex: 1; }
+
+/* header tabs (Tests <-> Feedback) */
+.tabs { display: flex; gap: 4px; }
+.tab { background: transparent; border: 1px solid transparent; color: var(--muted); padding: 4px 12px; border-radius: 6px; }
+.tab:hover { color: var(--fg); }
+.tab.on { color: var(--fg); background: var(--panel2); border-color: var(--line); }
+
+/* tree group header: feedback jump button */
+.grp-h .fb-go { padding: 0 6px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.grp-h .fb-go:hover { color: var(--todo); border-color: var(--todo); }
+
+/* card hint pointing at the Feedback tab */
+.fb-hint { font-size: 11px; color: var(--muted); margin: 4px 0; }
+.text-link { background: none; border: none; color: var(--accent); padding: 0; text-decoration: underline; cursor: pointer; }
+.text-link:hover { color: var(--fg); }
+
+/* isolated feedback view */
+.feedback-view { flex: 1; overflow: auto; padding: 16px 20px; min-height: 0; }
+.feedback-view[hidden] { display: none; }
+.fb-intro { font-size: 12px; color: var(--muted); margin-bottom: 14px; max-width: 720px; }
+.fb-intro code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+.fb-app-h { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 6px; }
+.fb-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; max-width: 860px; }
+.fb-panel-h { font-weight: 600; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+.fb-badge { font-size: 10px; padding: 0 6px; border-radius: 9px; border: 1px solid var(--todo); color: var(--todo); white-space: nowrap; }
 
 /* modal (browser prompt/confirm are blocked in the VS Code webview) */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; }

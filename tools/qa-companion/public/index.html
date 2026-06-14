@@ -9,6 +9,10 @@
 <body>
 <header>
   <h1>QA Companion</h1>
+  <nav class="tabs">
+    <button id="tabTests" class="tab on">Tests</button>
+    <button id="tabFeedback" class="tab">Feedback</button>
+  </nav>
   <span id="modeChip" class="chip live">writing to .md</span>
   <span class="grow"></span>
   <div class="progress">
@@ -37,6 +41,7 @@
     <div class="tree" id="tree"></div>
   </aside>
   <section class="card" id="card"><div class="empty">Loading...</div></section>
+  <section class="feedback-view" id="feedbackView" hidden></section>
 </main>
 <div id="modal" class="modal-overlay" hidden>
   <div class="modal">

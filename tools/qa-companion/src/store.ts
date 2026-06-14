@@ -10,12 +10,14 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Doc, type Item, emptyItem, splitId } from "./format";
+import { type Doc, type Feedback, type Item, emptyItem, splitId } from "./format";
+import { type Area, FEEDBACK_PREAMBLE, parseFeedback, serializeFeedback } from "./feedback";
 import { parseDoc } from "./parse";
 import { serializeDoc } from "./serialize";
 
 export const FILES = ["blender.md", "photoshop.md", "godot.md", "flows.md"] as const;
 export const REMOVED_FILE = "removed.md";
+export const FEEDBACK_FILE = "feedback.md";
 
 const APP_BY_FILE: Record<string, string> = {
   "blender.md": "BL",
@@ -23,6 +25,15 @@ const APP_BY_FILE: Record<string, string> = {
   "godot.md": "GD",
   "flows.md": "FLOW",
 };
+
+const FILE_BY_APP: Record<string, string> = Object.fromEntries(
+  Object.entries(APP_BY_FILE).map(([file, app]) => [app, file]),
+);
+
+/** Stable key for an area/panel, matching the client's `file||group`. */
+export function areaKey(file: string, group: string): string {
+  return `${file}||${group}`;
+}
 
 export interface FlatItem extends Item {
   file: string;
@@ -67,6 +78,45 @@ export function loadFlat(store: Store): FlatItem[] {
     }
   }
   return out;
+}
+
+/** Load all panel feedback, keyed by `file||group` (the client's area key). */
+export function loadFeedback(store: Store): Record<string, Feedback[]> {
+  const path = join(store.dir, FEEDBACK_FILE);
+  if (!existsSync(path)) return {};
+  const doc = parseFeedback(readFileSync(path, "utf8"));
+  const out: Record<string, Feedback[]> = {};
+  for (const area of doc.areas) {
+    const file = FILE_BY_APP[area.app];
+    if (!file) continue; // unknown app code: skip rather than mis-key
+    out[areaKey(file, area.group)] = area.feedback;
+  }
+  return out;
+}
+
+/** Replace one area's feedback list, then persist feedback.md (empty = remove). */
+export function upsertFeedback(store: Store, file: string, group: string, feedback: Feedback[]): void {
+  const app = APP_BY_FILE[file];
+  if (!app) throw new Error(`unknown checklist file: ${file}`);
+
+  const path = join(store.dir, FEEDBACK_FILE);
+  const doc = existsSync(path)
+    ? parseFeedback(readFileSync(path, "utf8"))
+    : { preamble: FEEDBACK_PREAMBLE, areas: [] as Area[] };
+
+  const clean = feedback
+    .map((f) => ({ kind: f.kind.trim() || "note", text: f.text.trim() }))
+    .filter((f) => f.text);
+
+  const idx = doc.areas.findIndex((a) => a.app === app && a.group === group);
+  if (clean.length === 0) {
+    if (idx >= 0) doc.areas.splice(idx, 1);
+  } else if (idx >= 0) {
+    doc.areas[idx]!.feedback = clean;
+  } else {
+    doc.areas.push({ app, group, feedback: clean });
+  }
+  atomicWrite(path, serializeFeedback(doc));
 }
 
 /** Insert or replace an item in `file`/`group`, then persist that file. */

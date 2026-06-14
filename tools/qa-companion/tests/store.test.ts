@@ -8,10 +8,13 @@ import {
   type Store,
   addItem,
   allocateId,
+  areaKey,
+  loadFeedback,
   loadFlat,
   removeItem,
   sanitizeId,
   saveScreenshot,
+  upsertFeedback,
   upsertItem,
 } from "../src/store";
 
@@ -109,5 +112,33 @@ describe("store", () => {
     expect(sanitizeId("BL-OUTLN-01")).toBe("BL-OUTLN-01");
     expect(sanitizeId("../../weird/Name")).toBe("weirdName");
     expect(() => sanitizeId("///")).toThrow();
+  });
+
+  it("upsert of panel feedback keys by area and persists to feedback.md", () => {
+    store = freshStore();
+    const key = areaKey("blender.md", "Outliner panel");
+    expect(loadFeedback(store)[key]).toBeUndefined();
+
+    upsertFeedback(store, "blender.md", "Outliner panel", [
+      { kind: "remove", text: "redundant second search" },
+      { kind: "ui", text: "panel wastes width" },
+    ]);
+
+    const loaded = loadFeedback(store);
+    expect(loaded[key]).toEqual([
+      { kind: "remove", text: "redundant second search" },
+      { kind: "ui", text: "panel wastes width" },
+    ]);
+    const md = readFileSync(join(store.dir, "feedback.md"), "utf8");
+    expect(md).toContain("## BL · Outliner panel");
+    expect(md).toContain("- remove: redundant second search");
+  });
+
+  it("drops an area from feedback.md when its list is emptied", () => {
+    store = freshStore();
+    upsertFeedback(store, "blender.md", "Outliner panel", [{ kind: "ui", text: "x" }]);
+    upsertFeedback(store, "blender.md", "Outliner panel", []);
+    expect(loadFeedback(store)[areaKey("blender.md", "Outliner panel")]).toBeUndefined();
+    expect(readFileSync(join(store.dir, "feedback.md"), "utf8")).not.toContain("## BL · Outliner panel");
   });
 });

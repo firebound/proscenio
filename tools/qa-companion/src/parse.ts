@@ -132,19 +132,6 @@ function applyField(item: Item, key: string, inline: string, cont: string[]): vo
       item.shots = shots;
       break;
     }
-    case "feedback": {
-      item.feedback = cont
-        .map((l) => l.replace(/^-\s+/, "").trim())
-        .filter(Boolean)
-        .map((l) => {
-          const colon = l.indexOf(":");
-          return colon >= 0
-            ? { kind: l.slice(0, colon).trim(), text: l.slice(colon + 1).trim() }
-            : { kind: "note", text: l };
-        })
-        .filter((f) => f.text);
-      break;
-    }
     default:
       break;
   }

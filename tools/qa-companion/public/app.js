@@ -6,7 +6,11 @@ let ITEMS = [];
 let STATUSES = [];
 let REVIEWS = [];
 let FEEDBACK_KINDS = [];
+// Panel-level feedback, keyed by `file||group` (the area), not by test.
+let AREA_FEEDBACK = {};
 let activeId = null;
+// "tests" (tree + card) or "feedback" (isolated panel-notes view).
+let view = "tests";
 const collapsed = {};
 const fileFilter = new Set();
 let saveTimer = null;
@@ -46,6 +50,92 @@ function saveActive(immediate) {
   else saveTimer = setTimeout(send, 400);
 }
 
+// ---------- panel feedback (area-scoped, keyed by file||group) ----------
+// Feedback is deliberately isolated from the test cards: it is product feedback
+// about a panel, not a test result, and lives in its own Feedback view + file.
+const areaKeyOf = (a) => a.file + "||" + a.group;
+const areaList = (a) => (AREA_FEEDBACK[areaKeyOf(a)] ??= []);
+async function saveFeedback(a) {
+  try {
+    await api("/api/feedback", { file: a.file, group: a.group, feedback: areaList(a) });
+    setMode(true);
+  } catch (e) {
+    setMode(false);
+  }
+}
+
+// The distinct panels (areas), in checklist order, derived from the test list.
+function areas() {
+  const seen = new Map();
+  ITEMS.forEach((it) => {
+    const k = areaKeyOf(it);
+    if (!seen.has(k)) seen.set(k, { key: k, file: it.file, group: it.group });
+  });
+  return [...seen.values()];
+}
+
+// ---------- view switching (Tests <-> Feedback) ----------
+function setView(v, focusKey) {
+  view = v;
+  const tests = v === "tests";
+  document.querySelector("aside").hidden = !tests;
+  document.getElementById("card").hidden = !tests;
+  document.getElementById("feedbackView").hidden = tests;
+  document.getElementById("tabTests").classList.toggle("on", tests);
+  document.getElementById("tabFeedback").classList.toggle("on", !tests);
+  if (tests) {
+    renderCard();
+  } else {
+    renderFeedbackView();
+    if (focusKey) {
+      const el = document.querySelector('.fb-panel[data-key="' + cssEsc(focusKey) + '"]');
+      if (el) { el.scrollIntoView({ block: "start" }); el.querySelector("input")?.focus(); }
+    }
+  }
+}
+
+// ---------- render: isolated feedback view ----------
+function renderFeedbackView() {
+  const root = document.getElementById("feedbackView");
+  const kindOpts = FEEDBACK_KINDS.map((k) => '<option value="' + esc(k) + '">' + esc(k) + "</option>").join("");
+  let curFile = null;
+  let h = '<div class="fb-intro">Panel feedback - product notes about a panel, not test results. Saved to <code>checklist/feedback.md</code> and normalized to the backlog later.</div>';
+  areas().forEach((a) => {
+    if (a.file !== curFile) { curFile = a.file; h += '<div class="fb-app-h">' + esc(FILE_LABEL[a.file] || a.file) + "</div>"; }
+    const list = AREA_FEEDBACK[a.key] || [];
+    h += '<div class="fb-panel" data-key="' + esc(a.key) + '">' +
+      '<div class="fb-panel-h">' + esc(a.group) + (list.length ? ' <span class="fb-badge">&#9873; ' + list.length + "</span>" : "") + "</div>" +
+      '<div class="feedback">' +
+      list.map((f, i) => '<div class="fb-row"><span class="k ' + esc(f.kind) + '">' + esc(f.kind) + '</span><span class="txt" title="' + esc(f.text) + '">' + esc(f.text) + '</span><button class="fb-del" data-key="' + esc(a.key) + '" data-i="' + i + '" title="remove">&times;</button></div>').join("") +
+      "</div>" +
+      '<div class="fb-add"><select class="fb-kind">' + kindOpts + "</select>" +
+      '<input type="text" class="fb-text" placeholder="observation about this panel (e.g. remove the redundant second search)" />' +
+      '<button class="fb-submit" data-key="' + esc(a.key) + '">Add</button></div>' +
+      "</div>";
+  });
+  root.innerHTML = h || '<div class="empty">No panels loaded.</div>';
+}
+function areaByKey(key) {
+  const [file, group] = key.split("||");
+  return { file, group };
+}
+function addAreaFeedback(panelEl, key) {
+  const text = panelEl.querySelector(".fb-text").value.trim();
+  if (!text) return;
+  const kind = panelEl.querySelector(".fb-kind").value;
+  const a = areaByKey(key);
+  areaList(a).push({ kind, text });
+  saveFeedback(a);
+  renderFeedbackView();
+  document.querySelector('.fb-panel[data-key="' + cssEsc(key) + '"] .fb-text')?.focus();
+}
+function delAreaFeedback(key, i) {
+  const a = areaByKey(key);
+  areaList(a).splice(i, 1);
+  saveFeedback(a);
+  renderFeedbackView();
+}
+
 // ---------- modal (window.prompt/confirm are blocked in the VS Code webview) ----------
 let modalOk = null;
 let modalCancel = null;
@@ -77,7 +167,7 @@ function visible() {
     if (sf === "__not-done" && it.status !== "pending") return false;
     if (sf && !sf.startsWith("__") && it.status !== sf) return false;
     if (rf && it.review !== rf) return false;
-    const fb = (it.feedback || []).map((f) => f.kind + " " + f.text).join(" ");
+    const fb = (AREA_FEEDBACK[areaKeyOf(it)] || []).map((f) => f.kind + " " + f.text).join(" ");
     if (q && !(it.id + " " + it.title + " " + it.observe + " " + it.note + " " + fb).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -111,9 +201,11 @@ function renderTree() {
     const groupKey = it.file + "||" + it.group;
     if (it.group !== curGroup) {
       curGroup = it.group;
+      const fbCount = (AREA_FEEDBACK[groupKey] || []).length;
       html += '<div class="grp-h"><span class="group-name" data-grp="' + esc(groupKey) + '">' +
-        (collapsed[groupKey] ? "&#9656;" : "&#9662;") + " " + esc(it.group || "(ungrouped)") +
-        '</span><button class="add" title="add a test to this group" data-add="' + esc(groupKey) + '">+</button></div>';
+        (collapsed[groupKey] ? "&#9656;" : "&#9662;") + " " + esc(it.group || "(ungrouped)") + "</span>" +
+        '<button class="fb-go" title="panel feedback (separate from tests)" data-fb-go="' + esc(groupKey) + '">&#9873;' + (fbCount ? " " + fbCount : "") + "</button>" +
+        '<button class="add" title="add a test to this group" data-add="' + esc(groupKey) + '">+</button></div>';
     }
     if (collapsed[groupKey]) return;
     html += itemRow(it);
@@ -169,10 +261,7 @@ function renderCard() {
 
   h += '<div class="field"><div class="lab">screenshots</div><div class="drop-zone" id="drop-zone">Paste (Ctrl/Cmd+V), drop an image, or click to pick</div><div class="shots" id="shots"></div></div>';
 
-  h += '<div class="field"><div class="lab">feedback (feature notes -> normalized to backlog later)</div>' +
-    '<div class="feedback" id="feedback"></div>' +
-    '<div class="fb-add"><select id="fbKind">' + FEEDBACK_KINDS.map((k) => '<option value="' + esc(k) + '">' + esc(k) + "</option>").join("") + "</select>" +
-    '<input type="text" id="fbText" placeholder="feature observation, not a test result (e.g. remove this control)" /><button id="fbAdd">Add</button></div></div>';
+  h += '<div class="fb-hint">Feedback about this <b>panel</b> (not this test) lives in the <button class="text-link" id="toFeedback">Feedback tab</button>.</div>';
 
   h += '<div class="nav"><button id="prev">&larr; Prev</button><button id="nextPending">Next pending</button><button id="next">Next &rarr;</button>' +
     '<button class="danger" id="remove">Remove test</button></div>';
@@ -196,9 +285,7 @@ function renderCard() {
   document.getElementById("remove").onclick = () => removeActive();
   wireDrop(it);
   renderShots(it);
-  document.getElementById("fbAdd").onclick = () => addFeedback(it);
-  document.getElementById("fbText").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addFeedback(it); } });
-  renderFeedback(it);
+  document.getElementById("toFeedback").onclick = () => setView("feedback", areaKeyOf(it));
 }
 function patchTitle(it) {
   const row = document.querySelector('.it[data-id="' + cssEsc(it.id) + '"] .t');
@@ -215,24 +302,6 @@ function renderShots(it) {
     .map((p, i) => '<div class="shot"><a href="/' + esc(p) + '" target="_blank"><img src="/' + esc(p) + '" /></a><button data-shot="' + i + '" title="remove reference">&times;</button></div>')
     .join("");
   wrap.querySelectorAll("[data-shot]").forEach((b) => (b.onclick = () => { it.shots.splice(Number(b.dataset.shot), 1); saveActive(true); renderShots(it); }));
-}
-function renderFeedback(it) {
-  const wrap = document.getElementById("feedback");
-  if (!wrap) return;
-  wrap.innerHTML = (it.feedback || [])
-    .map((f, i) => '<div class="fb-row"><span class="k ' + esc(f.kind) + '">' + esc(f.kind) + '</span><span class="txt" title="' + esc(f.text) + '">' + esc(f.text) + '</span><button data-fb="' + i + '" title="remove">&times;</button></div>')
-    .join("");
-  wrap.querySelectorAll("[data-fb]").forEach((b) => (b.onclick = () => { it.feedback.splice(Number(b.dataset.fb), 1); saveActive(true); renderFeedback(it); }));
-}
-function addFeedback(it) {
-  const kind = document.getElementById("fbKind").value;
-  const text = document.getElementById("fbText").value.trim();
-  if (!text) return;
-  if (!Array.isArray(it.feedback)) it.feedback = [];
-  it.feedback.push({ kind, text });
-  document.getElementById("fbText").value = "";
-  saveActive(true);
-  renderFeedback(it);
 }
 function wireDrop(it) {
   const dz = document.getElementById("drop-zone");
@@ -304,9 +373,22 @@ function buildReviewFilter() {
   REVIEWS.forEach((r) => { const o = document.createElement("option"); o.value = r; o.textContent = "review: " + r; sel.appendChild(o); });
 }
 document.getElementById("tree").addEventListener("click", (e) => {
+  const go = e.target.closest("[data-fb-go]"); if (go) { setView("feedback", go.dataset.fbGo); return; }
   const add = e.target.closest("[data-add]"); if (add) { addTest(add.dataset.add); return; }
   const g = e.target.closest("[data-grp]"); if (g) { collapsed[g.dataset.grp] = !collapsed[g.dataset.grp]; renderTree(); return; }
   const it = e.target.closest(".it"); if (it) selectItem(it.dataset.id);
+});
+document.getElementById("tabTests").onclick = () => setView("tests");
+document.getElementById("tabFeedback").onclick = () => setView("feedback");
+document.getElementById("feedbackView").addEventListener("click", (e) => {
+  const del = e.target.closest(".fb-del"); if (del) { delAreaFeedback(del.dataset.key, Number(del.dataset.i)); return; }
+  const add = e.target.closest(".fb-submit"); if (add) { addAreaFeedback(add.closest(".fb-panel"), add.dataset.key); }
+});
+document.getElementById("feedbackView").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !e.target.classList.contains("fb-text")) return;
+  e.preventDefault();
+  const panel = e.target.closest(".fb-panel");
+  addAreaFeedback(panel, panel.dataset.key);
 });
 document.getElementById("search").oninput = renderTree;
 document.getElementById("statusFilter").onchange = renderTree;
@@ -318,6 +400,7 @@ document.getElementById("modal").addEventListener("keydown", (e) => {
   else if (e.key === "Escape") { e.preventDefault(); if (modalCancel) modalCancel(); }
 });
 document.addEventListener("keydown", (e) => {
+  if (view !== "tests") return;
   if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
   const it = byId(activeId); if (!it) return;
   if (e.key >= "1" && e.key <= "5") { it.status = STATUSES[+e.key]; saveActive(true); renderCard(); }
@@ -326,6 +409,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "p") move(-1);
 });
 document.addEventListener("paste", (e) => {
+  if (view !== "tests") return;
   const it = byId(activeId); if (!it) return;
   const img = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
   if (img) { const f = img.getAsFile(); if (f) { e.preventDefault(); addShot(it, f); } }
@@ -335,7 +419,7 @@ async function init() {
   try {
     const state = await api("/api/state");
     ITEMS = state.items; STATUSES = state.statuses; REVIEWS = state.reviews; FEEDBACK_KINDS = state.feedbackKinds || [];
-    ITEMS.forEach((it) => { if (!Array.isArray(it.feedback)) it.feedback = []; });
+    AREA_FEEDBACK = state.feedback || {};
     buildFileFilters(); buildReviewFilter();
     renderProgress(); renderTree();
     const vis = visible(); if (vis.length) activeId = vis[0].id;

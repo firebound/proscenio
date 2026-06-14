@@ -14,14 +14,16 @@ import { extname, join, normalize, resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { FEEDBACK_KINDS, REVIEWS, STATUSES, type Item, emptyItem } from "./format";
+import { FEEDBACK_KINDS, REVIEWS, STATUSES, type Feedback, type Item, emptyItem } from "./format";
 import {
   type Store,
   addItem,
   defaultStore,
+  loadFeedback,
   loadFlat,
   removeItem,
   saveScreenshot,
+  upsertFeedback,
   upsertItem,
 } from "./store";
 
@@ -84,16 +86,19 @@ function coerceItem(raw: Record<string, unknown>): Item {
   }
   if (Array.isArray(raw["steps"])) item.steps = raw["steps"].filter((s) => typeof s === "string");
   if (Array.isArray(raw["shots"])) item.shots = raw["shots"].filter((s) => typeof s === "string");
-  if (Array.isArray(raw["feedback"])) {
-    item.feedback = raw["feedback"]
-      .filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
-      .map((f) => ({
-        kind: typeof f["kind"] === "string" ? f["kind"] : "note",
-        text: typeof f["text"] === "string" ? f["text"] : "",
-      }))
-      .filter((f) => f.text);
-  }
   return item;
+}
+
+/** Coerce an untrusted payload into a clean panel-feedback array. */
+function coerceFeedback(raw: unknown): Feedback[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
+    .map((f) => ({
+      kind: typeof f["kind"] === "string" ? f["kind"] : "note",
+      text: typeof f["text"] === "string" ? f["text"] : "",
+    }))
+    .filter((f) => f.text.trim());
 }
 
 function serveStatic(res: ServerResponse, baseDir: string, urlPath: string): void {
@@ -118,7 +123,14 @@ function handleApi(store: Store, req: IncomingMessage, res: ServerResponse, path
     for (const file of Object.keys(groupsByFile)) {
       groupsByFile[file] = [...new Set(groupsByFile[file])];
     }
-    sendJson(res, 200, { items, statuses: STATUSES, reviews: REVIEWS, feedbackKinds: FEEDBACK_KINDS, groupsByFile });
+    sendJson(res, 200, {
+      items,
+      statuses: STATUSES,
+      reviews: REVIEWS,
+      feedbackKinds: FEEDBACK_KINDS,
+      feedback: loadFeedback(store),
+      groupsByFile,
+    });
     return;
   }
 
@@ -137,6 +149,14 @@ function handleApi(store: Store, req: IncomingMessage, res: ServerResponse, path
           }
           upsertItem(store, file, group, item);
           sendJson(res, 200, { ok: true, item });
+          return;
+        }
+        if (path === "/api/feedback") {
+          const file = String(raw["file"] ?? "");
+          const group = String(raw["group"] ?? "");
+          const feedback = coerceFeedback(raw["feedback"]);
+          upsertFeedback(store, file, group, feedback);
+          sendJson(res, 200, { ok: true, feedback });
           return;
         }
         if (path === "/api/remove") {

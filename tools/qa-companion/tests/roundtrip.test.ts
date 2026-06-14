@@ -12,7 +12,7 @@ const norm = (text: string): string => serializeDoc(parseDoc(text));
 describe("round-trip", () => {
   it("is idempotent on a hand-written sample (no data drift on a second cycle)", () => {
     const sample =
-      "# T\n\nintro.\n\n## G\n\n### A-B-1 · t\n- status: pass\n- review: keep\n- steps:\n  1. do it\n- observe: it worked\n- note:\n  saw a glitch\n  then fine\n";
+      "# T\n\nintro.\n\n## G\n\n### A-B-1 · t\n- status: pass\n- review: keep\n- steps:\n  1. do it\n- observe: it worked\n- note:\n  saw a glitch\n  then fine\n- feedback:\n  - ui: redundant control\n  - remove: drop the second search\n";
     expect(norm(norm(sample))).toBe(norm(sample));
   });
 

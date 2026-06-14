@@ -18,7 +18,8 @@ Open the URL. Pick a test on the left; the card on the right is where you walk i
 - `status` answers "does the feature pass": `pending` / `pass` / `fail` / `blocked` / `n/a` / `regressed`. Keys `1`-`5` set it, `0` resets to pending.
 - `review` answers "is this test worth keeping": `keep` / `rephrase` / `drop` / `todo`. `drop` archives the block to `checklist/removed.md` with a reason.
 - The note field and any pasted/dropped screenshot persist as you type. Prints land in `walk-screenshots/<id>-<n>.png`.
-- Edit any field inline to rephrase a test. The `+` on a group header adds a new test with an allocated id.
+- `feedback` records feature-level observations that are not test results (`ui` / `remove` / `bug` / `perf` / `code` / `note` + text), e.g. "this control is redundant, remove it". These normalize into the backlog later, separate from `review` (a verdict on the test) and `status` (the feature's result).
+- Edit any field inline to rephrase a test. The `+` on a group header adds a new test with an allocated id. Adds and removes use an in-page dialog (the VS Code webview blocks `window.prompt`).
 
 Everything autosaves to the owning `.md` file (the whole file is re-serialized atomically). Review the diff in git before committing.
 
@@ -35,11 +36,14 @@ Each item is one unified block:
   2. Click Export manifest + PNGs.
 - observe: green "Wrote N entries"; the JSON and images/*.png appear on disk.
 - note: worked; one print attached
+- feedback:
+  - ui: the second search field is redundant
+  - remove: drop the non-native filter
 - shots:
   - walk-screenshots/PS-EXPORT-14-1.png
 ```
 
-Scalar fields are single-line; `steps` and `shots` are sublists; `note` is free multiline. No tables means no pipe-escaping, so the parse -> edit -> serialize cycle is byte-stable.
+Scalar fields are single-line; `steps`, `shots`, and `feedback` are sublists (`feedback` lines are `kind: text`); `note` is free multiline. No tables means no pipe-escaping, so the parse -> edit -> serialize cycle is byte-stable.
 
 ## Layout
 

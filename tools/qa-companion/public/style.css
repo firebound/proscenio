@@ -77,3 +77,27 @@ section.card { flex: 1; overflow: auto; padding: 18px 22px; }
 .empty { color: var(--muted); padding: 40px; text-align: center; }
 kbd { font-family: ui-monospace, monospace; font-size: 10px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 .hint { color: var(--muted); font-size: 11px; margin-top: 10px; }
+
+/* feature feedback (routes to backlog) */
+.feedback { display: flex; flex-direction: column; gap: 6px; }
+.fb-row { display: flex; gap: 6px; align-items: center; }
+.fb-row .k { font-size: 10px; padding: 1px 7px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); color: var(--muted); white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; }
+.fb-row .k.remove, .fb-row .k.bug { color: var(--fail); border-color: var(--fail); }
+.fb-row .k.ui { color: var(--todo); border-color: var(--todo); }
+.fb-row .k.perf { color: var(--blocked); border-color: var(--blocked); }
+.fb-row .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-row button { padding: 0 7px; }
+.fb-add { display: flex; gap: 6px; margin-top: 4px; }
+.fb-add select { flex: none; }
+.fb-add input { flex: 1; }
+
+/* modal (browser prompt/confirm are blocked in the VS Code webview) */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.modal-overlay[hidden] { display: none; }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; width: min(460px, 92vw); }
+.modal-title { font-weight: 600; margin-bottom: 8px; }
+.modal-body { margin-bottom: 14px; }
+.modal-body label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.modal-body input[type=text], .modal-body textarea, .modal-body select { width: 100%; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+#modalOk { border-color: var(--accent); }

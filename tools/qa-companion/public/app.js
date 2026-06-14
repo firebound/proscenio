@@ -5,6 +5,7 @@
 let ITEMS = [];
 let STATUSES = [];
 let REVIEWS = [];
+let FEEDBACK_KINDS = [];
 let activeId = null;
 const collapsed = {};
 const fileFilter = new Set();
@@ -45,6 +46,26 @@ function saveActive(immediate) {
   else saveTimer = setTimeout(send, 400);
 }
 
+// ---------- modal (window.prompt/confirm are blocked in the VS Code webview) ----------
+let modalOk = null;
+let modalCancel = null;
+function openModal(title, bodyHtml) {
+  return new Promise((resolve) => {
+    const m = document.getElementById("modal");
+    document.getElementById("modalTitle").textContent = title;
+    document.getElementById("modalBody").innerHTML = bodyHtml;
+    m.hidden = false;
+    const first = document.getElementById("modalBody").querySelector("input,textarea,select");
+    if (first) first.focus();
+    modalOk = () => { m.hidden = true; resolve(true); };
+    modalCancel = () => { m.hidden = true; resolve(false); };
+  });
+}
+async function askText(title, label, value) {
+  const ok = await openModal(title, '<label>' + esc(label) + '</label><input id="modalInput" type="text" value="' + esc(value || "") + '" />');
+  return ok ? document.getElementById("modalInput").value : null;
+}
+
 // ---------- filtering ----------
 function visible() {
   const q = document.getElementById("search").value.trim().toLowerCase();
@@ -56,7 +77,8 @@ function visible() {
     if (sf === "__not-done" && it.status !== "pending") return false;
     if (sf && !sf.startsWith("__") && it.status !== sf) return false;
     if (rf && it.review !== rf) return false;
-    if (q && !(it.id + " " + it.title + " " + it.observe + " " + it.note).toLowerCase().includes(q)) return false;
+    const fb = (it.feedback || []).map((f) => f.kind + " " + f.text).join(" ");
+    if (q && !(it.id + " " + it.title + " " + it.observe + " " + it.note + " " + fb).toLowerCase().includes(q)) return false;
     return true;
   });
 }
@@ -147,6 +169,11 @@ function renderCard() {
 
   h += '<div class="field"><div class="lab">screenshots</div><div class="drop-zone" id="drop-zone">Paste (Ctrl/Cmd+V), drop an image, or click to pick</div><div class="shots" id="shots"></div></div>';
 
+  h += '<div class="field"><div class="lab">feedback (feature notes -> normalized to backlog later)</div>' +
+    '<div class="feedback" id="feedback"></div>' +
+    '<div class="fb-add"><select id="fbKind">' + FEEDBACK_KINDS.map((k) => '<option value="' + esc(k) + '">' + esc(k) + "</option>").join("") + "</select>" +
+    '<input type="text" id="fbText" placeholder="feature observation, not a test result (e.g. remove this control)" /><button id="fbAdd">Add</button></div></div>';
+
   h += '<div class="nav"><button id="prev">&larr; Prev</button><button id="nextPending">Next pending</button><button id="next">Next &rarr;</button>' +
     '<button class="danger" id="remove">Remove test</button></div>';
   h += '<div class="hint">Keys: <kbd>1</kbd>-<kbd>5</kbd> status, <kbd>0</kbd> pending, <kbd>n</kbd>/<kbd>p</kbd> next/prev. Edits autosave to the .md.</div>';
@@ -169,6 +196,9 @@ function renderCard() {
   document.getElementById("remove").onclick = () => removeActive();
   wireDrop(it);
   renderShots(it);
+  document.getElementById("fbAdd").onclick = () => addFeedback(it);
+  document.getElementById("fbText").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addFeedback(it); } });
+  renderFeedback(it);
 }
 function patchTitle(it) {
   const row = document.querySelector('.it[data-id="' + cssEsc(it.id) + '"] .t');
@@ -185,6 +215,24 @@ function renderShots(it) {
     .map((p, i) => '<div class="shot"><a href="/' + esc(p) + '" target="_blank"><img src="/' + esc(p) + '" /></a><button data-shot="' + i + '" title="remove reference">&times;</button></div>')
     .join("");
   wrap.querySelectorAll("[data-shot]").forEach((b) => (b.onclick = () => { it.shots.splice(Number(b.dataset.shot), 1); saveActive(true); renderShots(it); }));
+}
+function renderFeedback(it) {
+  const wrap = document.getElementById("feedback");
+  if (!wrap) return;
+  wrap.innerHTML = (it.feedback || [])
+    .map((f, i) => '<div class="fb-row"><span class="k ' + esc(f.kind) + '">' + esc(f.kind) + '</span><span class="txt" title="' + esc(f.text) + '">' + esc(f.text) + '</span><button data-fb="' + i + '" title="remove">&times;</button></div>')
+    .join("");
+  wrap.querySelectorAll("[data-fb]").forEach((b) => (b.onclick = () => { it.feedback.splice(Number(b.dataset.fb), 1); saveActive(true); renderFeedback(it); }));
+}
+function addFeedback(it) {
+  const kind = document.getElementById("fbKind").value;
+  const text = document.getElementById("fbText").value.trim();
+  if (!text) return;
+  if (!Array.isArray(it.feedback)) it.feedback = [];
+  it.feedback.push({ kind, text });
+  document.getElementById("fbText").value = "";
+  saveActive(true);
+  renderFeedback(it);
 }
 function wireDrop(it) {
   const dz = document.getElementById("drop-zone");
@@ -219,8 +267,8 @@ function nextPending() {
 }
 async function addTest(groupKey) {
   const [file, group] = groupKey.split("||");
-  const title = prompt("New test title for group:\n" + group, "");
-  if (title === null) return;
+  const title = await askText("Add test to " + group, "New test title", "");
+  if (title === null || !title.trim()) return;
   try {
     const r = await api("/api/item", { file, group, item: { id: "", title } });
     if (r.ok && r.item) { ITEMS.push({ ...r.item, file, group }); renderTree(); selectItem(r.item.id); }
@@ -228,7 +276,7 @@ async function addTest(groupKey) {
 }
 async function removeActive() {
   const it = byId(activeId); if (!it) return;
-  const reason = prompt("Remove '" + it.id + "' - archived to removed.md.\nReason:", it.reason || "");
+  const reason = await askText("Remove " + it.id, "Reason (archived to removed.md)", it.reason || "");
   if (reason === null) return;
   try {
     const r = await api("/api/remove", { id: it.id, reason });
@@ -263,6 +311,12 @@ document.getElementById("tree").addEventListener("click", (e) => {
 document.getElementById("search").oninput = renderTree;
 document.getElementById("statusFilter").onchange = renderTree;
 document.getElementById("reviewFilter").onchange = renderTree;
+document.getElementById("modalOk").onclick = () => modalOk && modalOk();
+document.getElementById("modalCancel").onclick = () => modalCancel && modalCancel();
+document.getElementById("modal").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); if (modalOk) modalOk(); }
+  else if (e.key === "Escape") { e.preventDefault(); if (modalCancel) modalCancel(); }
+});
 document.addEventListener("keydown", (e) => {
   if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
   const it = byId(activeId); if (!it) return;
@@ -280,7 +334,8 @@ document.addEventListener("paste", (e) => {
 async function init() {
   try {
     const state = await api("/api/state");
-    ITEMS = state.items; STATUSES = state.statuses; REVIEWS = state.reviews;
+    ITEMS = state.items; STATUSES = state.statuses; REVIEWS = state.reviews; FEEDBACK_KINDS = state.feedbackKinds || [];
+    ITEMS.forEach((it) => { if (!Array.isArray(it.feedback)) it.feedback = []; });
     buildFileFilters(); buildReviewFilter();
     renderProgress(); renderTree();
     const vis = visible(); if (vis.length) activeId = vis[0].id;

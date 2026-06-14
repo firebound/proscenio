@@ -103,6 +103,11 @@ repos:
             # paths (uv.lock, pnpm-lock.yaml, *.uid, generated bindings) leaves
             # cspell zero files to check; without this it exits 1 on "no files".
             args: [--no-progress, --no-summary, --no-must-find-files]
+            # cspell bundles no Portuguese dictionary; the repo is pt-BR/en
+            # bilingual. pre-commit installs this into the hook's isolated
+            # env so PT prose is covered by a real language dict instead of
+            # being smuggled into the custom term dicts.
+            additional_dependencies: ['@cspell/dict-pt-br']
 
     # Drift markers - reject the most common LLM-style artifacts that
     # leak into docs and code over time. Tighten the list when a new

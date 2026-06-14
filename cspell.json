@@ -1,6 +1,7 @@
 {
   "version": "0.2",
-  "language": "pt-BR,en",
+  "language": "en",
+  "import": ["@cspell/dict-pt-br/cspell-ext.json"],
   "ignorePaths": [
     "**/pnpm-lock.yaml",
     "**/uv.lock",
@@ -13,11 +14,13 @@
     "specs/backlog-ui-feedback.md",
     "specs/backlog-ik-ergonomics.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
-    "specs/025-code-duplication/raw/**"
+    "specs/025-code-duplication/raw/**",
+    "specs/040-end-to-end-verification/walk.html",
+    "specs/040-end-to-end-verification/walk-results.json"
   ],
   "dictionaries": [
-    "developer-terms",
-    "names",
+    "ecosystem-terms",
+    "proper-nouns",
     "project-terms",
     "css",
     "docker",
@@ -26,7 +29,6 @@
     "javascript",
     "json",
     "lorem",
-    "portuguese",
     "pt-br",
     "tsx",
     "typescript"
@@ -35,13 +37,13 @@
   "caseSensitive": false,
   "dictionaryDefinitions": [
     {
-      "name": "developer-terms",
-      "path": "./.cspell/developer-terms.txt",
+      "name": "ecosystem-terms",
+      "path": "./.cspell/ecosystem-terms.txt",
       "addWords": true
     },
     {
-      "name": "names",
-      "path": "./.cspell/names.txt",
+      "name": "proper-nouns",
+      "path": "./.cspell/proper-nouns.txt",
       "addWords": true
     },
     {
@@ -50,6 +52,6 @@
       "addWords": true
     }
   ],
-  "words": ["zizmor"],
+  "words": ["bleh", "braba", "zizmor"],
   "ignoreWords": []
 }

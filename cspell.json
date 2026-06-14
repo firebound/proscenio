@@ -14,7 +14,9 @@
     "specs/backlog-ui-feedback.md",
     "specs/backlog-ik-ergonomics.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
-    "specs/025-code-duplication/raw/**"
+    "specs/025-code-duplication/raw/**",
+    "tools/qa-companion/.backup/**",
+    "tools/qa-companion/checklist/feedback.md"
   ],
   "dictionaries": [
     "ecosystem-terms",

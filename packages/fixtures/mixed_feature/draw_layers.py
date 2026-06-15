@@ -62,16 +62,15 @@ def _draw_head(canvas: Canvas, ox: int, oy: int, glow: bool) -> None:
 
 def _draw_mouth_frames(canvas: Canvas) -> None:
     """Mouth: 4 frames in a 2x2 grid of 16x16 cells in the top-left 32x32 of the
-    atlas (a small mouth, smaller than the face), opening wider 0 -> 3. The rest
-    of the quadrant stays transparent so the sprite overlays the face."""
+    atlas (smaller than the face). A round mouth opening wider 0 -> 3 (a small
+    closed dot to a wide open 'o'). The rest of the quadrant stays transparent so
+    the sprite overlays the face."""
     cell = 16
-    openings = (1, 2, 4, 6)  # mouth half-height per frame
-    for i, half_h in enumerate(openings):
-        cx = (i % 2) * cell + cell // 2
-        cy = (i // 2) * cell + cell // 2
-        rect(canvas, cx - 5, cy - half_h, 10, 2 * half_h, _MOUTH)
-        circle(canvas, cx - 5, cy, half_h, _MOUTH)
-        circle(canvas, cx + 5, cy, half_h, _MOUTH)
+    radii = (1.5, 3.0, 4.5, 6.0)  # mouth radius per frame
+    for i, radius in enumerate(radii):
+        cx = (i % 2) * cell + cell / 2
+        cy = (i // 2) * cell + cell / 2
+        circle(canvas, cx, cy, radius, _MOUTH)
 
 
 def main() -> None:

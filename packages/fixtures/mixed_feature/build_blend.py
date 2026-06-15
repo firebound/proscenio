@@ -48,8 +48,8 @@ PIXELS_PER_UNIT = 100.0
 
 # Manual atlas regions for the two sprite strips, in the top-down normalized
 # convention the importer expects ([x, y, w, h], y=0 at the PNG top).
-MOUTH_REGION = (0.0, 0.0, 0.5, 0.5)  # top-left quadrant, 4 frames
-GLOW_REGION = (0.5, 0.0, 0.5, 0.5)  # top-right quadrant, 2 frames
+MOUTH_REGION = (0.0, 0.0, 0.25, 0.25)  # top-left 32x32 = 2x2 grid of 16px frames
+GLOW_REGION = (0.5, 0.0, 0.5, 0.5)  # top-right quadrant, single glow face
 
 
 def main() -> None:
@@ -103,21 +103,21 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Flat bones (no hierarchy), tails along +Z (UP, in the XZ picture plane) -
-    # the 2D-cutout convention: bones lie in the plane, never into depth (Y). A
-    # vertical spine up the screen: root at the hips, spine at the chest, head at
-    # the face, jaw beside it as the (invisible) driver source for the mouth
-    # frame. The body is skinned and the mouth object-parented (neither is
-    # bone-parented), so they stay flat in the plane.
-    for name, (hx, hz) in (
-        ("root", (0.0, -0.3)),
-        ("spine", (0.0, 0.1)),
-        ("head", (0.0, 0.6)),
-        ("jaw", (0.4, 0.3)),
+    # Flat bones (no hierarchy) in the XZ picture plane - never into depth (Y).
+    # root / spine / head climb the screen as a +Z spine; spine animates (a
+    # vertical bob) and deforms the skinned body. `mouth` is +X (lateral) so the
+    # mouth Sprite2D, a child of its Bone2D, exports rotation 0 and sits upright.
+    # `jaw` is the invisible driver source for the mouth frame.
+    for name, head, tail in (
+        ("root", (0.0, 0.0, -0.4), (0.0, 0.0, -0.1)),
+        ("spine", (0.0, 0.0, -0.1), (0.0, 0.0, 0.3)),
+        ("head", (0.0, 0.0, 0.5), (0.0, 0.0, 0.8)),
+        ("mouth", (0.0, 0.0, 0.46), (0.3, 0.0, 0.46)),
+        ("jaw", (0.4, 0.0, 0.5), (0.4, 0.0, 0.8)),
     ):
-        bone = arm_data.edit_bones.new(name)
-        bone.head = (hx, 0.0, hz)
-        bone.tail = (hx, 0.0, hz + 0.2)
+        b = arm_data.edit_bones.new(name)
+        b.head = head
+        b.tail = tail
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -219,32 +219,34 @@ def _build_skinned_body(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """A 4-frame Sprite2D bone-parented to ``head``, region = atlas top-left.
+    """A 4-frame mouth Sprite2D on the ``mouth`` bone (top-left atlas quadrant).
 
-    Centred on the face disc (the ``head`` bone sits at the face). Local Y =
-    -0.004 pushes it the frontmost of the stack (z_index 4 > slot face at 2 >
-    torso at 0) so the mouth always draws over the face it sits on; the bone
-    tail already places it at the face's screen position, so no XZ offset.
+    Skinned 1.0 to the ``mouth`` bone (a +X child of ``head``): the Sprite2D
+    becomes a child of that Bone2D in Godot - upright (the +X bone exports
+    rotation 0) and carried along when the head/spine move. The frame is driven
+    from ``jaw`` rotation. Local Y = -0.004 keeps it the frontmost element.
     """
-    # Godot Sprite2D draws from `texture_region` (atlas top-left quadrant) and
-    # ignores these UVs, but Blender samples the shared atlas through them - map
-    # the quad onto the mouth quadrant so the Blender preview shows the mouth
-    # strip, not the whole atlas. Sprite UVs do not enter the golden.
-    w = 0.2
-    mesh = _quad_mesh("mouth", w, w, [(0.0, 0.0), (0.5, 0.0), (0.5, 0.5), (0.0, 0.5)])
+    # Godot reads `texture_region` (top-left 32x32) + the frame grid; these UVs
+    # only drive the Blender preview - map the quad onto the mouth cells (PNG
+    # top-left -> Blender UV top-left, v flipped).
+    w = 0.16
+    mesh = _quad_mesh(
+        "mouth", w, w, [(0.0, 0.75), (0.25, 0.75), (0.25, 1.0), (0.0, 1.0)]
+    )
     obj = bpy.data.objects.new("mouth", mesh)
     bpy.context.scene.collection.objects.link(obj)
-    # Object-parent at the head/face screen position (z=0.6); local Y = -0.004
-    # keeps it frontmost (z_index 4). Bone-parenting to the in-plane head bone
-    # would tilt the quad out of plane.
-    obj.location = (0.0, -0.004, 0.6)
+    obj.location = (0.0, -0.004, 0.46)
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="mouth")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mesh.materials.append(_atlas_material("mouth.mat"))
     _dual(obj, "element_type", "proscenio_type", "sprite")
-    _dual(obj, "hframes", "proscenio_hframes", 4)
-    _dual(obj, "vframes", "proscenio_vframes", 1)
+    _dual(obj, "hframes", "proscenio_hframes", 2)
+    _dual(obj, "vframes", "proscenio_vframes", 2)
     _dual(obj, "frame", "proscenio_frame", 0)
     _dual(obj, "centered", "proscenio_centered", True)
     _apply_manual_region(obj, MOUTH_REGION)
@@ -265,11 +267,14 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     # The face sits at the head, just above the torso (the body spans z[-0.5,
     # 0.5]); object-parented so the attachment quads keep their screen-plane
     # orientation (the slot's `bone` field stays empty).
-    empty.location = (0.0, 0.0, 0.6)
+    empty.location = (0.0, 0.0, 0.55)
     empty.parent = armature_obj
     empty.parent_type = "OBJECT"
     _dual(empty, "is_slot", "proscenio_is_slot", True)
     _dual(empty, "slot_default", "proscenio_slot_default", "face_neutral")
+    # The face follows the head bone: the importer parents the slot Node2D under
+    # the head Bone2D (object-parented Empty keeps the attachment quads flat).
+    _dual(empty, "slot_bone", "proscenio_slot_bone", "head")
 
     # Mesh attachment: UVs into the atlas bottom-right quadrant. Local Y =
     # -0.002 -> z_index 2, in front of the torso (0) and behind the mouth (4).
@@ -284,11 +289,12 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     neutral_mesh.materials.append(_atlas_material("face_neutral.mat"))
     _dual(neutral, "element_type", "proscenio_type", "mesh")
 
-    # Sprite attachment: 2-frame strip, region = atlas top-right quadrant. UVs
+    # Sprite attachment (the mixed-slot test: one mesh + one sprite under one
+    # slot): a single-frame glowing head, region = atlas top-right quadrant. UVs
     # map the quad onto that quadrant for the Blender preview (Godot reads
     # `texture_region`, not these UVs; sprite UVs do not enter the golden).
     glow_mesh = _quad_mesh(
-        "face_glow", 0.32, 0.32, [(0.5, 0.0), (1.0, 0.0), (1.0, 0.5), (0.5, 0.5)]
+        "face_glow", 0.32, 0.32, [(0.5, 0.5), (1.0, 0.5), (1.0, 1.0), (0.5, 1.0)]
     )
     glow = bpy.data.objects.new("face_glow", glow_mesh)
     bpy.context.scene.collection.objects.link(glow)
@@ -297,7 +303,7 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     glow.parent_type = "OBJECT"
     glow_mesh.materials.append(_atlas_material("face_glow.mat"))
     _dual(glow, "element_type", "proscenio_type", "sprite")
-    _dual(glow, "hframes", "proscenio_hframes", 2)
+    _dual(glow, "hframes", "proscenio_hframes", 1)
     _dual(glow, "vframes", "proscenio_vframes", 1)
     _dual(glow, "frame", "proscenio_frame", 0)
     _dual(glow, "centered", "proscenio_centered", True)
@@ -359,11 +365,12 @@ def _install_mouth_driver(
 
 
 def _build_action(armature_obj: bpy.types.Object) -> None:
-    """Animate ``jaw`` ROT_Y -pi/2 -> +pi/2 -> 0 over 24 frames.
+    """Animate over 24 frames: the ``jaw`` spin (drives the mouth frame) plus a
+    ``spine`` bob up and down (which carries the chest, head + face with it via
+    the bone chain and deforms the skinned body).
 
-    The driver projects this into the mouth's frame cell, so the export
-    carries a ``bone_transform`` track for ``jaw`` plus the driven
-    ``sprite_frame`` track for ``mouth``.
+    The export carries a ``bone_transform`` track for ``jaw`` and ``spine`` plus
+    the driven ``sprite_frame`` track for ``mouth``.
     """
     armature_obj.animation_data_create()
     action = bpy.data.actions.new(name="mixed_anim")
@@ -373,13 +380,21 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
 
     jaw_pose = armature_obj.pose.bones["jaw"]
     jaw_pose.rotation_mode = "XYZ"
-    # The jaw is an invisible driver source pointing +Z. Spin it about its own
-    # axis (local Y = world Z); the driver reads it via ROT_Z WORLD_SPACE. A
-    # clean single channel keeps the driven frame sequence stable.
+    # The jaw is an invisible driver source. Spin it about its own axis (local Y
+    # = world Z); the driver reads it via ROT_Z WORLD_SPACE. Clean single channel
+    # keeps the driven frame sequence stable.
     for frame, value in ((1, 0.0), (8, -math.pi / 2), (16, math.pi / 2), (24, 0.0)):
         bpy.context.scene.frame_set(frame)
         jaw_pose.rotation_euler = (0.0, value, 0.0)
         jaw_pose.keyframe_insert(data_path="rotation_euler", frame=frame, index=1)
+
+    # Spine bob: translate up the screen (local Y for a +Z bone is world +Z) and
+    # back, so the chest/head rise and fall and the body stretches.
+    spine_pose = armature_obj.pose.bones["spine"]
+    for frame, dz in ((1, 0.0), (12, 0.15), (24, 0.0)):
+        bpy.context.scene.frame_set(frame)
+        spine_pose.location = (0.0, dz, 0.0)
+        spine_pose.keyframe_insert(data_path="location", frame=frame, index=1)
 
 
 def _save_blend() -> None:

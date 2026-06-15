@@ -9,56 +9,70 @@
         "parent": null,
         "position": [
           0.0,
-          30.000002
+          40.0
         ],
         "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 20.000002
+        "length": 30.000001
       },
       {
         "name": "spine",
         "parent": null,
         "position": [
           0.0,
-          -10.0
+          10.0
         ],
         "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 20.000002
+        "length": 40.000001
       },
       {
         "name": "head",
         "parent": null,
         "position": [
           0.0,
-          -60.000004
+          -50.0
         ],
         "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 19.999999
+        "length": 30.000001
+      },
+      {
+        "name": "mouth",
+        "parent": null,
+        "position": [
+          0.0,
+          -46.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 30.000001
       },
       {
         "name": "jaw",
         "parent": null,
         "position": [
           40.0,
-          -30.000002
+          -50.0
         ],
         "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 19.999999
+        "length": 30.000001
       }
     ]
   },
@@ -168,7 +182,7 @@
       "type": "sprite",
       "name": "face_glow",
       "bone": "",
-      "hframes": 2,
+      "hframes": 1,
       "vframes": 1,
       "frame": 0,
       "centered": true,
@@ -192,19 +206,19 @@
       "polygon": [
         [
           -16.0,
-          -44.000004
+          -39.0
         ],
         [
           16.0,
-          -44.000004
+          -39.0
         ],
         [
           16.0,
-          -76.0
+          -71.0
         ],
         [
           -16.0,
-          -76.0
+          -71.0
         ]
       ],
       "uv": [
@@ -231,16 +245,16 @@
     {
       "type": "sprite",
       "name": "mouth",
-      "bone": "",
-      "hframes": 4,
-      "vframes": 1,
+      "bone": "mouth",
+      "hframes": 2,
+      "vframes": 2,
       "frame": 2,
       "centered": true,
       "texture_region": [
         0.0,
         0.0,
-        0.5,
-        0.5
+        0.25,
+        0.25
       ],
       "z_index": 4
     }
@@ -252,6 +266,7 @@
         "face_glow",
         "face_neutral"
       ],
+      "bone": "head",
       "default": "face_neutral"
     }
   ],
@@ -277,6 +292,33 @@
             },
             {
               "time": 0.958333
+            }
+          ]
+        },
+        {
+          "type": "bone_transform",
+          "target": "spine",
+          "keys": [
+            {
+              "time": 0.0,
+              "position": [
+                0.0,
+                10.0
+              ]
+            },
+            {
+              "time": 0.458333,
+              "position": [
+                0.0,
+                -5.000001
+              ]
+            },
+            {
+              "time": 0.958333,
+              "position": [
+                0.0,
+                10.0
+              ]
             }
           ]
         },

@@ -49,6 +49,7 @@ lipsync
 lshape
 mainfile
 mathutils
+matmul
 metarig
 NEXTWAVE
 occluder

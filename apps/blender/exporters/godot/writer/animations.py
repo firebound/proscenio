@@ -35,6 +35,10 @@ _REST_FALLBACK = BoneRestLocal(
     position=(0.0, 0.0),
     rotation=0.0,
     scale=(1.0, 1.0),
+    # World-aligned identity so a bone missing from the skeleton dict (e.g. a
+    # bare `root` handle keyed at rest) still projects through the same path
+    # rather than silently dropping its channels.
+    rest_basis=Matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))),
 )
 
 
@@ -93,6 +97,15 @@ def build_bone_track(
     rest still gets a track (timing markers only) - useful for ``root`` handles.
     """
     rest = rest_local.get(bone_name, _REST_FALLBACK)
+    # rest_basis is required for the location/rotation projection. Every bone the
+    # skeleton builds carries one and the fallback is identity, so a None here is
+    # a contract break (a stale BoneRestLocal); surface it instead of silently
+    # emitting a motionless track.
+    if rest.rest_basis is None and any(
+        "location" in entry or "rotation_euler" in entry or "rotation_quaternion" in entry
+        for entry in by_time.values()
+    ):
+        raise ValueError(f"missing rest_basis for animated bone {bone_name!r}")
     resolved = {t: _resolve_pose_entry(entry, ppu, rest) for t, entry in by_time.items()}
     has_position = any(r.position is not None for r in resolved.values())
     has_rotation = any(r.rotation is not None for r in resolved.values())

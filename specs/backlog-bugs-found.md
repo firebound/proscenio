@@ -63,18 +63,6 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 **Severity:** medium - não é crash, mas é uma divergência doc-vs-código numa área (weights) historicamente propensa a confusão; deixa o oráculo de teste ambíguo.
 
-### Slot cujos anexos seguem um bone precisa de propriedade slot-bone (deferido)
-
-**Status:** deferido na spec 039. Não é bug ativo; é um limite de design que força um trade-off no `slot_swap`.
-
-**Sintoma:** o `slot.bone` no export vem SÓ de `obj.parent_bone` quando o Empty do slot é `parent_type="BONE"` (vide `slots.py:28`). Mas bone-parentear o Empty a um bone in-plane inclina os anexos (mesh) pra fora do plano no preview do Blender (mesmo problema do cutout bone-parented). Então hoje, pra manter o preview flat, o Empty do slot é object-parented (`bone=""`) e os anexos NÃO seguem o bone - no `slot_swap` o braço (skinned) balança mas a arma fica parada na mão.
-
-**Por que importa:** no Godot um `Polygon2D` rígido sob um `Bone2D` segue a rotação 2D sem colapsar (Bone2D é 2D). O problema é só o preview 3D do Blender. Uma propriedade `slot_bone` (lida pelo writer em vez de exigir bone-parent) deixaria o Empty ser object-parented (flat no Blender) E rotear sob o Bone2D no Godot (segue + flat). Aí a arma seguiria o braço.
-
-**Arquivo:** `apps/blender/exporters/godot/writer/slots.py:28` (resolução de `bone`), `apps/blender/properties/object_props.py` (nova prop), `apps/godot/addons/proscenio/builders/slot_builder.gd`.
-
-**Severity:** low - `slot_swap` testa slot-swap + animação de bone coexistindo (ambos funcionam); só a arma-segue-braço fica de fora.
-
 ### Sprite multi-frame: preview no Blender != frame no Godot (diferença inerente, não-bug mas pegadinha de autoria)
 
 **Status:** observado na spec 039. Não é defeito de código; é consequência do modelo (Blender mostra a região da atlas no quad; Godot `Sprite2D` mostra UMA célula no tamanho nativo de pixel da região/`hframes`).

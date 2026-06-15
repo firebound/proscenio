@@ -7,17 +7,16 @@ Run with::
 Stacks every Blender-to-Godot feature into one rig so the golden catches
 interactions a single-feature fixture cannot:
 
-- **Armature** ``mixed_rig`` with four flat bones (tails along +Y, into
-  the screen, so the bone-parented mouth stays un-flipped - see atlas_pack):
-  ``root`` / ``spine`` skin the body, ``head`` anchors the mouth, ``jaw``
-  drives it.
+- **Armature** ``mixed_rig`` with four flat bones (tails along +Z, up, in
+  the XZ picture plane - the 2D-cutout convention): ``root`` / ``spine``
+  skin the body, ``head`` marks the face, ``jaw`` drives the mouth frame.
 - **Skinned body** ``body`` - a 2-face polygon weighted across ``root``
   (lower) and ``spine`` (upper), so the export carries per-bone weights
   and the per-face ``polygons`` index arrays.
-- **sprite_frame mouth** ``mouth`` - a 4-frame Sprite2D bone-parented to
-  ``head``, its cell driven from ``jaw`` rotation.
+- **sprite_frame mouth** ``mouth`` - a 4-frame Sprite2D object-parented at
+  the face, its cell driven from ``jaw`` rotation.
 - **Drive-from-Bone** - a scripted driver on ``mouth.proscenio.frame``
-  reading ``jaw`` ROT_Y (mirrors the Drive-from-Bone operator defaults).
+  reading the ``jaw`` spin (ROT_Z for the +Z bone).
 - **Slot with mixed attachments** ``face.slot`` - one mesh attachment
   (``face_neutral``) and one sprite attachment (``face_glow``), default
   ``face_neutral``.
@@ -104,13 +103,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Flat bones (no hierarchy), tails along +Y (INTO the screen, away from the
-    # Front Ortho camera at -Y). A -Y tail makes Blender bone-parenting rotate
-    # the bone-parented `mouth` 180deg about Z, mirroring it in X; +Y keeps it
-    # un-flipped in the XZ picture plane (see atlas_pack). Each bone still
-    # exports at angle 0 - they are runtime-invisible. Z stacks them up the
-    # screen: root at the hips, spine at the chest, head at the face, jaw beside
-    # it as the (invisible) driver source for the mouth frame.
+    # Flat bones (no hierarchy), tails along +Z (UP, in the XZ picture plane) -
+    # the 2D-cutout convention: bones lie in the plane, never into depth (Y). A
+    # vertical spine up the screen: root at the hips, spine at the chest, head at
+    # the face, jaw beside it as the (invisible) driver source for the mouth
+    # frame. The body is skinned and the mouth object-parented (neither is
+    # bone-parented), so they stay flat in the plane.
     for name, (hx, hz) in (
         ("root", (0.0, -0.3)),
         ("spine", (0.0, 0.1)),
@@ -119,7 +117,7 @@ def _build_armature() -> bpy.types.Object:
     ):
         bone = arm_data.edit_bones.new(name)
         bone.head = (hx, 0.0, hz)
-        bone.tail = (hx, 0.5, hz)
+        bone.tail = (hx, 0.0, hz + 0.2)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -232,10 +230,12 @@ def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
     mesh = _quad_mesh("mouth", w, w, [(0.0, 0.0), (0.5, 0.0), (0.5, 0.5), (0.0, 0.5)])
     obj = bpy.data.objects.new("mouth", mesh)
     bpy.context.scene.collection.objects.link(obj)
-    obj.location = (0.0, -0.004, 0.0)
+    # Object-parent at the head/face screen position (z=0.6); local Y = -0.004
+    # keeps it frontmost (z_index 4). Bone-parenting to the in-plane head bone
+    # would tilt the quad out of plane.
+    obj.location = (0.0, -0.004, 0.6)
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "head"
+    obj.parent_type = "OBJECT"
 
     mesh.materials.append(_atlas_material("mouth.mat"))
     _dual(obj, "element_type", "proscenio_type", "sprite")
@@ -315,7 +315,7 @@ def _apply_manual_region(
 def _install_mouth_driver(
     mouth_obj: bpy.types.Object, armature_obj: bpy.types.Object
 ) -> None:
-    """Wire ``jaw`` ROT_Y to ``mouth.proscenio.frame`` (Drive-from-Bone shape)."""
+    """Wire the ``jaw`` spin (ROT_Z) to ``mouth.proscenio.frame``."""
     data_path = "proscenio.frame"
     if (
         mouth_obj.animation_data is not None
@@ -329,8 +329,8 @@ def _install_mouth_driver(
 
     driver = fcurve.driver
     driver.type = "SCRIPTED"
-    # Matches the Drive-from-Bone operator default (and the mouth_drive fixture):
-    # `var` is jaw ROT_Y in radians, so across the action's [-pi/2, +pi/2] sweep
+    # Mirrors the mouth_drive fixture: `var` is the jaw spin (ROT_Z) in radians,
+    # so across the action's [-pi/2, +pi/2] sweep
     # `var * 2 + 2` ranges roughly [-1.1, 5.1]. The overshoot is intentional - the
     # writer's frame-driver bake clamps to [0, hframes*vframes-1], yielding a full
     # 0..3 cell sweep with frame 2 at the rest pose. The fixture exercises exactly
@@ -342,7 +342,7 @@ def _install_mouth_driver(
     target = var.targets[0]
     target.id = armature_obj
     target.bone_target = "jaw"
-    target.transform_type = "ROT_Y"
+    target.transform_type = "ROT_Z"
     target.transform_space = "WORLD_SPACE"
     target.rotation_mode = "XYZ"
 
@@ -350,7 +350,7 @@ def _install_mouth_driver(
         mouth_obj.proscenio.driver_target = "frame"
         mouth_obj.proscenio.driver_source_armature = armature_obj
         mouth_obj.proscenio.driver_source_bone = "jaw"
-        mouth_obj.proscenio.driver_source_axis = "ROT_Y"
+        mouth_obj.proscenio.driver_source_axis = "ROT_Z"
         mouth_obj.proscenio.driver_expression = "var * 2 + 2"
 
 
@@ -369,6 +369,9 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
 
     jaw_pose = armature_obj.pose.bones["jaw"]
     jaw_pose.rotation_mode = "XYZ"
+    # The jaw is an invisible driver source pointing +Z. Spin it about its own
+    # axis (local Y = world Z); the driver reads it via ROT_Z WORLD_SPACE. A
+    # clean single channel keeps the driven frame sequence stable.
     for frame, value in ((1, 0.0), (8, -math.pi / 2), (16, math.pi / 2), (24, 0.0)):
         bpy.context.scene.frame_set(frame)
         jaw_pose.rotation_euler = (0.0, value, 0.0)

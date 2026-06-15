@@ -70,11 +70,11 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Tail along +Y (INTO the screen, away from the Front Ortho camera at -Y):
-    # bone-parented cutouts stay un-flipped + camera-facing (see atlas_pack).
+    # Tail along +Z (UP, in the XZ picture plane) - bones lie in the plane,
+    # never into depth (Y). The eye is object-parented (see atlas_pack).
     bone = arm_data.edit_bones.new("head")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.5, 0.0)
+    bone.tail = (0.0, 0.0, 0.5)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -102,9 +102,11 @@ def _build_sprite_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
     obj = bpy.data.objects.new("eye", mesh)
     bpy.context.scene.collection.objects.link(obj)
+    # Object-parent (not bone-parent): a Sprite2D is screen-facing in Godot
+    # either way, but bone-parenting to the in-plane bone tilts the quad in the
+    # Blender preview. Object-parent keeps the preview flat.
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "head"
+    obj.parent_type = "OBJECT"
 
     mat = bpy.data.materials.new(name="eye.mat")
     mat.use_nodes = True

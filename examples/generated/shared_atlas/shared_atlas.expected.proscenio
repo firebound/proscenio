@@ -11,7 +11,7 @@
           0.0,
           -0.0
         ],
-        "rotation": -0.0,
+        "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
@@ -23,7 +23,7 @@
   "elements": [
     {
       "name": "blue_square",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.5,
@@ -70,7 +70,7 @@
     },
     {
       "name": "green_triangle",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.5,
         0.0,
@@ -117,7 +117,7 @@
     },
     {
       "name": "red_circle",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,

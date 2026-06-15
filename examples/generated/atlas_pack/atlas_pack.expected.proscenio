@@ -11,7 +11,7 @@
           0.0,
           -0.0
         ],
-        "rotation": -0.0,
+        "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
@@ -23,7 +23,7 @@
   "elements": [
     {
       "name": "sprite_1",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -70,7 +70,7 @@
     },
     {
       "name": "sprite_2",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -117,7 +117,7 @@
     },
     {
       "name": "sprite_3",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -164,7 +164,7 @@
     },
     {
       "name": "sprite_4",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -211,7 +211,7 @@
     },
     {
       "name": "sprite_5",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -258,7 +258,7 @@
     },
     {
       "name": "sprite_6",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -305,7 +305,7 @@
     },
     {
       "name": "sprite_7",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -352,7 +352,7 @@
     },
     {
       "name": "sprite_8",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,
@@ -399,7 +399,7 @@
     },
     {
       "name": "sprite_9",
-      "bone": "root",
+      "bone": "",
       "texture_region": [
         0.0,
         0.0,

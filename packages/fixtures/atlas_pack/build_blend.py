@@ -83,14 +83,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    # Tail along +Y (INTO the screen, away from the Front Ortho camera at -Y).
-    # A -Y tail makes Blender bone-parenting rotate children 180deg about Z,
-    # which mirrors every attached cutout in X (3,2,1 reversed + flipped glyphs)
-    # both in Blender world space and in the export. +Y keeps bone-parented
-    # quads in the XZ picture plane, un-flipped, facing the camera. The bone
-    # projects to angle 0 (rests +X in Godot) either way - cosmetic, the bone
-    # is runtime-invisible; what matters is the cutout renders identically.
-    bone.tail = (0.0, 0.5, 0.0)
+    # Tail along +Z (UP, in the XZ picture plane) - the 2D-cutout convention:
+    # bones lie in the picture plane (lateral or up), never into depth (Y). The
+    # quads are object-parented (below), not bone-parented, so they stay in the
+    # plane regardless of the bone; bone-parenting to an in-plane bone would
+    # tilt them out of plane and collapse them on import.
+    bone.tail = (0.0, 0.0, 0.5)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -132,9 +130,11 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (cx, 0.0, cz)
+    # Object-parent (NOT bone-parent): keeps the quad flat in the XZ picture
+    # plane. Bone-parenting to the in-plane root bone would inherit the bone`s
+    # orientation and tilt the quad out of plane.
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "root"
+    obj.parent_type = "OBJECT"
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

@@ -80,14 +80,13 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Tail along +Y (INTO the screen, away from the Front Ortho camera at -Y).
-    # A -Y tail makes Blender bone-parenting rotate children 180deg about Z,
-    # mirroring every attached cutout in X; +Y keeps bone-parented quads in the
-    # XZ picture plane, un-flipped and camera-facing (see atlas_pack). The bone
-    # exports at angle 0 either way - it is runtime-invisible.
+    # Tail along +Z (UP, in the XZ picture plane) - bones lie in the plane
+    # (lateral or up), never into depth (Y). The quads are object-parented (not
+    # bone-parented), so they stay in plane regardless of the bone (see
+    # atlas_pack).
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.5, 0.0)
+    bone.tail = (0.0, 0.0, 0.5)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -123,9 +122,9 @@ def _build_sprite_plane(
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (screen_x, 0.0, 0.0)
+    # Object-parent (not bone-parent): keeps the quad flat in the XZ plane.
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "root"
+    obj.parent_type = "OBJECT"
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

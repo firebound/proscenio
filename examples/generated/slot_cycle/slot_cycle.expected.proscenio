@@ -23,7 +23,7 @@
   "elements": [
     {
       "name": "attachment_blue",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -66,11 +66,22 @@
           0.0
         ]
       ],
-      "texture": "attachment_blue.png"
+      "texture": "attachment_blue.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "attachment_green",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -113,11 +124,22 @@
           0.0
         ]
       ],
-      "texture": "attachment_green.png"
+      "texture": "attachment_green.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "attachment_red",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -160,7 +182,18 @@
           0.0
         ]
       ],
-      "texture": "attachment_red.png"
+      "texture": "attachment_red.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     }
   ],
   "slots": [

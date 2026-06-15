@@ -192,6 +192,8 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
     obj.parent_type = "OBJECT"
     vg = obj.vertex_groups.new(name=ARM_BONE)
     vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
     mat = _build_material("arm.mat", ARM_PATH)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)

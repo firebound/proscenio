@@ -23,7 +23,7 @@
   "elements": [
     {
       "name": "blue_square",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.5,
@@ -66,11 +66,22 @@
           0.5
         ]
       ],
-      "texture": "atlas.png"
+      "texture": "atlas.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "green_triangle",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.5,
         0.0,
@@ -113,11 +124,22 @@
           0.0
         ]
       ],
-      "texture": "atlas.png"
+      "texture": "atlas.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "red_circle",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -160,7 +182,18 @@
           0.0
         ]
       ],
-      "texture": "atlas.png"
+      "texture": "atlas.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     }
   ],
   "atlas": "atlas.png"

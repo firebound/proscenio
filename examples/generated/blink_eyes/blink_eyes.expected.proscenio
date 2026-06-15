@@ -11,7 +11,7 @@
           0.0,
           -0.0
         ],
-        "rotation": -1.570796,
+        "rotation": -0.0,
         "scale": [
           1.0,
           1.0
@@ -24,7 +24,7 @@
     {
       "type": "sprite",
       "name": "eye",
-      "bone": "",
+      "bone": "head",
       "hframes": 4,
       "vframes": 1,
       "frame": 0,

@@ -70,11 +70,14 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Tail along +Z (UP, in the XZ picture plane) - bones lie in the plane,
-    # never into depth (Y). The eye is object-parented (see atlas_pack).
+    # Tail along +X (LATERAL, in the XZ picture plane). A sprite becomes a
+    # Sprite2D parented under this Bone2D and inherits its rotation, so the bone
+    # must export rotation 0 (a +X bone does; a +Z bone exports -90deg and would
+    # lay the sprite on its side). The eye is skinned 1.0 to this bone (armature
+    # modifier + vertex group) so the bone controls it while it stays flat.
     bone = arm_data.edit_bones.new("head")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.0, 0.5)
+    bone.tail = (0.5, 0.0, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -102,11 +105,16 @@ def _build_sprite_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
     obj = bpy.data.objects.new("eye", mesh)
     bpy.context.scene.collection.objects.link(obj)
-    # Object-parent (not bone-parent): a Sprite2D is screen-facing in Godot
-    # either way, but bone-parenting to the in-plane bone tilts the quad in the
-    # Blender preview. Object-parent keeps the preview flat.
+    # Skinned 1.0 to `head` (armature modifier + vertex group), object-parented:
+    # the bone controls the sprite and it stays flat (bone-parenting an in-plane
+    # bone would tilt the quad). Exports `bone=head`; Godot makes a Sprite2D
+    # child of the head Bone2D.
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="head")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name="eye.mat")
     mat.use_nodes = True

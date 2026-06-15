@@ -23,7 +23,7 @@
   "elements": [
     {
       "name": "sprite_1",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -66,11 +66,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_1.png"
+      "texture": "sprite_1.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_2",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -113,11 +124,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_2.png"
+      "texture": "sprite_2.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_3",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -160,11 +182,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_3.png"
+      "texture": "sprite_3.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_4",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -207,11 +240,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_4.png"
+      "texture": "sprite_4.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_5",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -254,11 +298,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_5.png"
+      "texture": "sprite_5.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_6",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -301,11 +356,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_6.png"
+      "texture": "sprite_6.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_7",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -348,11 +414,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_7.png"
+      "texture": "sprite_7.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_8",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -395,11 +472,22 @@
           0.0
         ]
       ],
-      "texture": "sprite_8.png"
+      "texture": "sprite_8.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     },
     {
       "name": "sprite_9",
-      "bone": "",
+      "bone": "root",
       "texture_region": [
         0.0,
         0.0,
@@ -442,7 +530,18 @@
           0.0
         ]
       ],
-      "texture": "sprite_9.png"
+      "texture": "sprite_9.png",
+      "weights": [
+        {
+          "bone": "root",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     }
   ],
   "atlas": "sprite_1.png"

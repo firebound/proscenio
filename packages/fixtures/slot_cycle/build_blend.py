@@ -136,6 +136,13 @@ def _build_attachment_mesh(name: str, slot_empty: bpy.types.Object) -> bpy.types
     bpy.context.scene.collection.objects.link(obj)
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
+    # Skinned 1.0 to `root` (armature modifier + vertex group), as the docstring
+    # promises - the bone binds the attachment, not bone-parenting. The Empty
+    # only groups it for the slot.
+    vg = obj.vertex_groups.new(name="root")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = slot_empty.parent
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

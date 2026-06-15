@@ -208,6 +208,10 @@ def _build_skinned_body(armature_obj: bpy.types.Object) -> bpy.types.Object:
     vg_root.add([2, 3], 0.5, "REPLACE")
     vg_spine.add([2, 3], 0.5, "REPLACE")
     vg_spine.add([4, 5], 1.0, "REPLACE")
+    # Armature modifier so root/spine actually deform the body in Blender (the
+    # weights alone only feed the export).
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mesh.materials.append(_atlas_material("body.mat"))
     _dual(obj, "element_type", "proscenio_type", "mesh")

@@ -130,11 +130,15 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (cx, 0.0, cz)
-    # Object-parent (NOT bone-parent): keeps the quad flat in the XZ picture
-    # plane. Bone-parenting to the in-plane root bone would inherit the bone`s
-    # orientation and tilt the quad out of plane.
+    # Skinned 1.0 to `root` (armature modifier + vertex group), object-parented:
+    # the bone controls the quad and it stays flat. Bone-parenting to the in-
+    # plane bone would tilt it out of plane.
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="root")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

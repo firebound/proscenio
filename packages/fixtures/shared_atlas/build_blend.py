@@ -122,9 +122,14 @@ def _build_sprite_plane(
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (screen_x, 0.0, 0.0)
-    # Object-parent (not bone-parent): keeps the quad flat in the XZ plane.
+    # Skinned 1.0 to `root` (armature modifier + vertex group): bone controls
+    # the quad, stays flat.
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="root")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

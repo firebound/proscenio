@@ -191,14 +191,16 @@ def _resolve_pose_entry(
     rotation: float | None = None
     scale: list[float] | None = None
 
-    if "location" in entry:
+    if "location" in entry and rest.rest_basis is not None:
         loc = entry["location"]
-        bx = float(loc.get(0, 0.0))
-        bz = float(loc.get(2, 0.0))
-        # Y is the depth axis (XZ picture plane), so a Y-only keyframe has no
-        # visible motion and must not promote a position channel.
-        if max(abs(bx), abs(bz)) > 1e-6:
-            position = [round(bx * ppu, 6), round(-bz * ppu, 6)]
+        # The keyed location is in bone-local space; rotate it by the bone's rest
+        # orientation to get the world delta, then project to the Godot screen
+        # (drop Y depth, flip Z). Works for any in-plane bone, unlike reading
+        # local X/Z directly (that only matched world-aligned bones).
+        local = Vector((loc.get(0, 0.0), loc.get(1, 0.0), loc.get(2, 0.0)))
+        world = rest.rest_basis @ local
+        if max(abs(world.x), abs(world.z)) > 1e-6:
+            position = [round(world.x * ppu, 6), round(-world.z * ppu, 6)]
 
     rotation = _screen_rotation_delta(entry, rest)
 

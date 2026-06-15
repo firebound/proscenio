@@ -103,10 +103,33 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
 
     sprite_objs = find_sprite_meshes(scene)
 
+    # Element geometry is the bind/rest shape; the action animates it on top
+    # (e.g. slot_swap's swinging arm). Reading matrix_world while the .blend
+    # sits on a posed frame would bake the pose into the geometry, which the
+    # bone_transform track then double-applies. Detach the armature action so
+    # the pose drops to rest for the geometry read, and restore it before the
+    # tracks are built (they come from the action's fcurves). Bones already
+    # export at rest - compute_bone_world_godot reads head_local/tail_local -
+    # so only the geometry read needs this.
+    from mathutils import Matrix
+
+    pose = armature_obj.pose
+    anim_data = armature_obj.animation_data
+    saved_action = anim_data.action if anim_data is not None else None
+    saved_basis: dict[str, Matrix] = {}
+    if saved_action is not None and anim_data is not None and pose is not None:
+        anim_data.action = None
+        # Detaching the action does not reset pose_bone.matrix_basis - it keeps
+        # the last evaluated value - so zero each basis to drop to the rest pose
+        # before the geometry read. Restored in the finally below.
+        for pose_bone in pose.bones:
+            saved_basis[pose_bone.name] = pose_bone.matrix_basis.copy()
+            pose_bone.matrix_basis = Matrix()
+
     # Blender skips depsgraph evaluation for hide_viewport=True objects, so
     # matrix_world is stale for hidden slot attachments. Un-hide, force a
-    # depsgraph update so matrix_world reflects the parent chain, build the
-    # entries, then restore the hide state.
+    # depsgraph update so matrix_world reflects the parent chain (and the
+    # rest pose above), build the entries, then restore the hide state.
     hidden_state: dict[bpy.types.Object, bool] = {}
     for obj in sprite_objs:
         if obj.hide_viewport:
@@ -114,14 +137,21 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
             obj.hide_viewport = False
 
     try:
-        if hidden_state:
-            view_layer = bpy.context.view_layer
-            if view_layer is not None:
-                view_layer.update()
+        view_layer = bpy.context.view_layer
+        if view_layer is not None:
+            view_layer.update()
         sprites_out = [build_element(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
     finally:
         for obj in hidden_state:
             obj.hide_viewport = True
+        if saved_action is not None and anim_data is not None and pose is not None:
+            for pose_bone in pose.bones:
+                if pose_bone.name in saved_basis:
+                    pose_bone.matrix_basis = saved_basis[pose_bone.name]
+            anim_data.action = saved_action
+            restore_vl = bpy.context.view_layer
+            if restore_vl is not None:
+                restore_vl.update()
 
     slots = build_slots_for_scene(scene)
     atlas = find_atlas_image(path)

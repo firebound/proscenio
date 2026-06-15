@@ -99,15 +99,24 @@ static func _build_mesh(
 	var is_skinned: bool = weights != null and not weights.is_empty()
 
 	var bone_name := NodeNameUtil.sanitize(sprite.bone)
-	# Slot attachment wins; otherwise rigid meshes parent to their Bone2D while
-	# skinned meshes stay under the skeleton (weights drive deform). Lookup uses
-	# ``poly.name``, already Godot-sanitized by the Node.name setter.
+	if is_skinned:
+		# A skinned Polygon2D must be a SIBLING of the Skeleton2D, never its
+		# child: when it is a child, Godot's skinning double-applies the skeleton
+		# transform and collapses every vertex to a point (the mesh vanishes).
+		# Parent it under the skeleton's parent (the rig root) and point its
+		# `skeleton` NodePath back at the Skeleton2D.
+		var host: Node = skeleton.get_parent()
+		if host == null:
+			host = skeleton
+		host.add_child(poly)
+		_apply_skinning(poly, skeleton, weights)
+		return
+
+	# Slot attachment wins; otherwise rigid meshes parent to their Bone2D.
+	# Lookup uses ``poly.name``, already Godot-sanitized by the Node.name setter.
 	var sanitized_name := String(poly.name)
 	var routing := SpriteAttachUtil.resolve_sprite_parent(
 		skeleton, sanitized_name, bone_name, slot_map, not is_skinned
 	)
 	poly.visible = routing.visible
 	routing.node.add_child(poly)
-
-	if is_skinned:
-		_apply_skinning(poly, skeleton, weights)

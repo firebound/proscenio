@@ -131,6 +131,7 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
   uv.data[2].uv = (1.0, 1.0)
   uv.data[3].uv = (0.0, 1.0)
   ```
+
 - **Sprite quads (multi-frame)**: a `sprite` element renders in Godot as a `Sprite2D` showing ONE frame at its native pixel size (`region_px / hframes`), while Blender shows the whole authored quad. To keep the BOUNDS matching, size the quad `w = frame_px / PIXELS_PER_UNIT` (see `blink_eyes`). Sprite UVs do NOT enter the golden (only region + frame metadata do), so they affect the Blender preview only; map them onto the sprite's atlas region so the preview shows the right cells. Pixel-exact Blender==Godot is not achievable for multi-frame sprites by design - the invariant is geometry/bounds, not pixels.
 
 - **Image Texture interpolation**: set `tex.interpolation = "Closest"` on every `ShaderNodeTexImage`. Blender defaults to bilinear (`"Linear"`), which smears 32x32 pixel-art cells in Eevee's Material Preview. Closest (nearest-neighbor) keeps edges crisp:

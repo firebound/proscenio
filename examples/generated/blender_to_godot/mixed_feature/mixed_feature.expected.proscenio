@@ -20,12 +20,12 @@
       },
       {
         "name": "spine",
-        "parent": null,
+        "parent": "root",
         "position": [
-          0.0,
-          10.0
+          30.0,
+          -0.0
         ],
-        "rotation": -1.570796,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
@@ -34,12 +34,12 @@
       },
       {
         "name": "head",
-        "parent": null,
+        "parent": "spine",
         "position": [
-          0.0,
-          -50.0
+          60.0,
+          -0.0
         ],
-        "rotation": -1.570796,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
@@ -48,12 +48,12 @@
       },
       {
         "name": "mouth",
-        "parent": null,
+        "parent": "head",
         "position": [
-          0.0,
-          -46.0
+          -4.0,
+          0.0
         ],
-        "rotation": -0.0,
+        "rotation": 1.570796,
         "scale": [
           1.0,
           1.0
@@ -62,12 +62,12 @@
       },
       {
         "name": "jaw",
-        "parent": null,
+        "parent": "head",
         "position": [
-          40.0,
-          -50.0
+          0.0,
+          40.0
         ],
-        "rotation": -1.570796,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
@@ -302,22 +302,22 @@
             {
               "time": 0.0,
               "position": [
-                0.0,
-                10.0
+                30.0,
+                -0.0
               ]
             },
             {
               "time": 0.458333,
               "position": [
-                0.0,
-                -5.000001
+                30.0,
+                -15.000001
               ]
             },
             {
               "time": 0.958333,
               "position": [
-                0.0,
-                10.0
+                30.0,
+                -0.0
               ]
             }
           ]

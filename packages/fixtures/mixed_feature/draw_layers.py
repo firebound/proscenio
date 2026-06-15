@@ -41,7 +41,6 @@ _EYE = (0.25, 0.20, 0.18, 1.0)
 _MOUTH = (0.55, 0.20, 0.20, 1.0)
 _BODY = (0.40, 0.70, 0.45, 1.0)
 _GLOW_RING = (1.0, 0.75, 0.30, 1.0)
-_TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
 
 
 def _draw_head(canvas: Canvas, ox: int, oy: int, glow: bool) -> None:

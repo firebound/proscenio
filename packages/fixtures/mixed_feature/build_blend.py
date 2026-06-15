@@ -8,9 +8,11 @@ Stacks every Blender-to-Godot feature into one rig so the golden catches
 interactions a single-feature fixture cannot:
 
 - **Armature** ``mixed_rig`` with five flat bones in the XZ picture plane
-  (the 2D-cutout convention): ``root`` / ``spine`` skin the body and
-  ``spine`` bobs it, ``head`` carries the face slot, ``mouth`` (+X, upright)
-  anchors the mouth sprite, ``jaw`` drives the mouth frame.
+  (the 2D-cutout convention), chained ``root`` -> ``spine`` -> ``head`` ->
+  {``mouth``, ``jaw``}: ``root`` / ``spine`` skin the body and ``spine``
+  bobs it (carrying the head, face slot, mouth and jaw with it through the
+  chain), ``head`` carries the face slot, ``mouth`` (+X, upright) anchors
+  the mouth sprite, ``jaw`` drives the mouth frame.
 - **Skinned body** ``body`` - a 2-face polygon weighted across ``root``
   (lower) and ``spine`` (upper), so the export carries per-bone weights
   and the per-face ``polygons`` index arrays.
@@ -104,11 +106,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Flat bones (no hierarchy) in the XZ picture plane - never into depth (Y).
-    # root / spine / head climb the screen as a +Z spine; spine animates (a
-    # vertical bob) and deforms the skinned body. `mouth` is +X (lateral) so the
-    # mouth Sprite2D, a child of its Bone2D, exports rotation 0 and sits upright.
-    # `jaw` is the invisible driver source for the mouth frame.
+    # Flat bones in the XZ picture plane - never into depth (Y). root / spine /
+    # head climb the screen as a +Z spine; spine animates (a vertical bob) and
+    # deforms the skinned body. `mouth` is +X (lateral) so the mouth Sprite2D, a
+    # child of its Bone2D, exports rotation 0 and sits upright. `jaw` is the
+    # invisible driver source for the mouth frame.
+    edit_bones: dict[str, bpy.types.EditBone] = {}
     for name, head, tail in (
         ("root", (0.0, 0.0, -0.4), (0.0, 0.0, -0.1)),
         ("spine", (0.0, 0.0, -0.1), (0.0, 0.0, 0.3)),
@@ -119,6 +122,16 @@ def _build_armature() -> bpy.types.Object:
         b = arm_data.edit_bones.new(name)
         b.head = head
         b.tail = tail
+        edit_bones[name] = b
+    # Wire the chain so the spine bob carries the head, the face slot, the mouth
+    # and the jaw with it (root -> spine -> head -> {mouth, jaw}). use_connect
+    # stays False, so each bone keeps its authored head/tail rather than snapping
+    # to its parent's tail; only the rest hierarchy (and thus pose propagation)
+    # changes.
+    edit_bones["spine"].parent = edit_bones["root"]
+    edit_bones["head"].parent = edit_bones["spine"]
+    edit_bones["mouth"].parent = edit_bones["head"]
+    edit_bones["jaw"].parent = edit_bones["head"]
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

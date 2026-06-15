@@ -7,8 +7,9 @@ Run with::
 Loads 9 PNGs produced by ``draw_layers.py`` from disk and builds:
 
 - 1-bone armature (``root``).
-- 9 sprite quad meshes (``sprite_1`` .. ``sprite_9``), each parented to
-  ``root`` bone, arranged in a 3x3 grid.
+- 9 sprite quad meshes (``sprite_1`` .. ``sprite_9``), each object-parented
+  to the armature (the in-plane convention keeps the flat quads from tilting
+  out of the picture plane), arranged in a 3x3 grid.
 - 9 materials (one per sprite), each with its own Image Texture node
   pointing at the matching ``pillow_layers/sprite_N.png``. Each mesh's
   UVs span 0..1 across its own texture.

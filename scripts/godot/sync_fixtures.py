@@ -6,7 +6,7 @@ Godot importer + wrapper scenes expect a runtime-named ``<name>.proscenio``
 sitting alongside its textures + wrapper script under ``res://<name>/`` inside
 the dev project at ``apps/godot/``.
 
-This script populates ``apps/godot/<name>/`` for each canonical fixture by
+This script populates ``apps/godot/examples/<name>/`` for each canonical fixture by
 **linking** (symlink first, hardlink fallback) the consumable files from the
 canonical source under ``examples/``. No duplication on disk: edits in
 ``examples/`` propagate live.
@@ -18,7 +18,9 @@ canonical source under ``examples/``. No duplication on disk: edits in
    into the same dest directory so the Godot importer + Sprite2D / Polygon2D
    builders can find them via filename lookup.
 3. Link ``examples/<name>/godot/<Name>.tscn`` + ``<Name>.gd`` (the wrapper
-   scene pattern) into ``apps/godot/<name>/godot/``.
+   scene pattern) FLAT into ``apps/godot/examples/<name>/`` (the ``godot/``
+   subdir is dropped), so the wrapper TSCN must reference its script as
+   ``res://examples/<name>/<Name>.gd`` (root, not ``godot/<Name>.gd``).
 
 Link strategy:
 - Try ``os.symlink`` first (works on POSIX always; Windows needs Developer

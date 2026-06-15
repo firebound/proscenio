@@ -21,6 +21,11 @@ PROSCENIO_IS_SLOT = "proscenio_is_slot"
 # ProscenioObjectProps.slot_default.
 PROSCENIO_SLOT_DEFAULT = "proscenio_slot_default"
 
+# Per-Object bone the slot follows (slot Empty CP). Mirrors
+# ProscenioObjectProps.slot_bone; the Godot importer parents the slot Node2D
+# under that Bone2D so attachments track the bone.
+PROSCENIO_SLOT_BONE = "proscenio_slot_bone"
+
 # Per-Object outliner-favorite pin (the outliner subpanel). Mirrors
 # ProscenioObjectProps.is_outliner_favorite.
 PROSCENIO_OUTLINER_FAVORITE = "proscenio_outliner_favorite"

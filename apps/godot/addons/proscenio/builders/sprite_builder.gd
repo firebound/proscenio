@@ -49,18 +49,27 @@ static func _build_sprite(
 		sprite.offset = Vector2(sprite_res.offset[0], sprite_res.offset[1])
 
 	# Optional atlas sub-rect; absent means the full texture. Sprite2D divides
-	# region_rect into hframes x vframes when region_enabled is true.
+	# region_rect into hframes x vframes when region_enabled is true. Whether the
+	# sprite uses a region is a property of the data, so enable it (and the seam
+	# clip) whenever the .proscenio carries one - independent of whether the
+	# texture is loaded yet. The .proscenio region is normalized [0, 1] (the same
+	# convention as mesh UVs); Sprite2D.region_rect wants texture pixels, so the
+	# pixel rect can only be computed once the texture size is known. Without a
+	# texture (e.g. the headless builder unit tests) the flag stands and the rect
+	# is filled in by the importer's real load.
 	if sprite_res.texture_region.size() >= 4:
 		sprite.region_enabled = true
 		# Clip the texture filter to the region edge so neighbouring atlas frames
 		# do not bleed in at the seam (rides the region path for free).
 		sprite.region_filter_clip_enabled = true
-		sprite.region_rect = Rect2(
-			sprite_res.texture_region[0],
-			sprite_res.texture_region[1],
-			sprite_res.texture_region[2],
-			sprite_res.texture_region[3],
-		)
+		if sprite_tex != null:
+			var tex_size := sprite_tex.get_size()
+			sprite.region_rect = Rect2(
+				sprite_res.texture_region[0] * tex_size.x,
+				sprite_res.texture_region[1] * tex_size.y,
+				sprite_res.texture_region[2] * tex_size.x,
+				sprite_res.texture_region[3] * tex_size.y,
+			)
 
 	# CanvasItem appearance plus the Sprite2D-only flips. An absent modulate
 	# keeps Godot's default white; z_index / flips default to 0 / false.

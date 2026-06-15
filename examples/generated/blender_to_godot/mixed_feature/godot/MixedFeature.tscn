@@ -11,7 +11,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://examples/mixed_feature/mixed_feature.proscenio" id="1_mixed"]
-[ext_resource type="Script" path="res://examples/mixed_feature/godot/MixedFeature.gd" id="2_mixed"]
+[ext_resource type="Script" path="res://examples/mixed_feature/MixedFeature.gd" id="2_mixed"]
 
 [node name="MixedFeature" type="Node2D"]
 script = ExtResource("2_mixed")

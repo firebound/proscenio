@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..._shared.region import manual_region_or_none
+
 SLICER_GROUP_NAME = "Proscenio.SpriteFrameSlicer"
 SLICER_NODE_LABEL = "Proscenio Sprite Frame Slicer"
 
@@ -21,22 +23,48 @@ _SOCK_UV = "UV"
 _SOCK_FRAME = "Frame"
 _SOCK_HFRAMES = "H Frames"
 _SOCK_VFRAMES = "V Frames"
+# Texture sub-region (normalized, y=0 at the PNG top) the frame grid lives in.
+# A full-image spritesheet uses (0, 0, 1, 1) and the remap is a no-op; a sprite
+# packed into a shared atlas uses its manual region so the slice lands in the
+# right quadrant instead of the whole atlas.
+_SOCK_RX = "Region X"
+_SOCK_RY = "Region Y"
+_SOCK_RW = "Region W"
+_SOCK_RH = "Region H"
 
 
 def ensure_slicer_group(node_groups: Any) -> Any:
     """Create or fetch the reusable ``Proscenio.SpriteFrameSlicer`` node group.
 
-    The group exposes inputs ``Frame`` / ``H Frames`` / ``V Frames`` plus
-    a single ``UV`` socket, and outputs a UV vector remapped onto the
-    addressed cell. Idempotent: subsequent calls return the existing
-    group untouched.
+    The group exposes inputs ``Frame`` / ``H Frames`` / ``V Frames`` + the
+    region (``Region X/Y/W/H``) plus a single ``UV`` socket, and outputs a UV
+    vector remapped onto the addressed cell within the region. A group cached
+    in an older .blend (before the region sockets existed) is rebuilt in place
+    so materials keep their reference but gain region support.
     """
     group = node_groups.get(SLICER_GROUP_NAME)
     if group is not None:
+        if _group_has_region(group):
+            return group
+        group.nodes.clear()
+        _clear_group_interface(group)
+        _populate_slicer_group(group)
         return group
     group = node_groups.new(name=SLICER_GROUP_NAME, type="ShaderNodeTree")
     _populate_slicer_group(group)
     return group
+
+
+def _group_has_region(group: Any) -> bool:
+    """True if the slicer group already exposes the region sockets."""
+    return any(getattr(item, "name", "") == _SOCK_RX for item in group.interface.items_tree)
+
+
+def _clear_group_interface(group: Any) -> None:
+    """Drop every interface socket so the group can be repopulated cleanly."""
+    interface = group.interface
+    for item in list(interface.items_tree):
+        interface.remove(item)
 
 
 def _populate_slicer_group(group: Any) -> None:
@@ -46,6 +74,8 @@ def _populate_slicer_group(group: Any) -> None:
     interface.new_socket(_SOCK_FRAME, in_out="INPUT", socket_type="NodeSocketFloat")
     interface.new_socket(_SOCK_HFRAMES, in_out="INPUT", socket_type="NodeSocketFloat")
     interface.new_socket(_SOCK_VFRAMES, in_out="INPUT", socket_type="NodeSocketFloat")
+    for region_sock in (_SOCK_RX, _SOCK_RY, _SOCK_RW, _SOCK_RH):
+        interface.new_socket(region_sock, in_out="INPUT", socket_type="NodeSocketFloat")
     interface.new_socket(_SOCK_UV, in_out="OUTPUT", socket_type="NodeSocketVector")
 
     nodes = group.nodes
@@ -123,10 +153,40 @@ def _populate_slicer_group(group: Any) -> None:
     links.new(inv_v.outputs[0], sliced_y.inputs[1])
     links.new(off_y.outputs[0], sliced_y.inputs[2])
 
+    # Remap the sliced cell UV (0..1 over the whole image) into the texture
+    # region. A full-image spritesheet passes region (0, 0, 1, 1) so this is a
+    # no-op; an atlas-packed sprite passes its manual region so the slice lands
+    # in the right quadrant. The region is normalized with y=0 at the PNG top,
+    # but Blender samples v bottom-up, so the v-origin is 1 - ry - rh.
+    final_x = nodes.new("ShaderNodeMath")
+    final_x.operation = "MULTIPLY_ADD"
+    final_x.location = (500, 200)
+    links.new(sliced_x.outputs[0], final_x.inputs[0])
+    links.new(grp_in.outputs[_SOCK_RW], final_x.inputs[1])
+    links.new(grp_in.outputs[_SOCK_RX], final_x.inputs[2])
+
+    one_minus_ry = nodes.new("ShaderNodeMath")
+    one_minus_ry.operation = "SUBTRACT"
+    one_minus_ry.location = (100, -620)
+    one_minus_ry.inputs[0].default_value = 1.0
+    links.new(grp_in.outputs[_SOCK_RY], one_minus_ry.inputs[1])
+    ry_bl = nodes.new("ShaderNodeMath")
+    ry_bl.operation = "SUBTRACT"
+    ry_bl.location = (300, -620)
+    links.new(one_minus_ry.outputs[0], ry_bl.inputs[0])
+    links.new(grp_in.outputs[_SOCK_RH], ry_bl.inputs[1])
+
+    final_y = nodes.new("ShaderNodeMath")
+    final_y.operation = "MULTIPLY_ADD"
+    final_y.location = (500, -100)
+    links.new(sliced_y.outputs[0], final_y.inputs[0])
+    links.new(grp_in.outputs[_SOCK_RH], final_y.inputs[1])
+    links.new(ry_bl.outputs[0], final_y.inputs[2])
+
     combine = nodes.new("ShaderNodeCombineXYZ")
-    combine.location = (500, 0)
-    links.new(sliced_x.outputs[0], combine.inputs["X"])
-    links.new(sliced_y.outputs[0], combine.inputs["Y"])
+    combine.location = (650, 0)
+    links.new(final_x.outputs[0], combine.inputs["X"])
+    links.new(final_y.outputs[0], combine.inputs["Y"])
     links.new(combine.outputs["Vector"], grp_out.inputs["UV"])
 
 
@@ -155,7 +215,22 @@ def apply_slicer_to_material(
     slicer = _ensure_slicer_node_in_tree(nt, group)
     _wire_slicer_to_tex(nt, slicer, tex_node)
     _wire_slicer_drivers(slicer, obj)
+    _set_slicer_region(slicer, obj)
     return True
+
+
+def _set_slicer_region(slicer: Any, obj: Any) -> None:
+    """Feed the sprite's texture region into the slicer.
+
+    A manual region (an atlas-packed sprite) confines the frame grid to that
+    quadrant; otherwise the full image (0, 0, 1, 1) makes the region remap a
+    no-op (a dedicated spritesheet slices over the whole image, as before).
+    """
+    region = manual_region_or_none(obj) or [0.0, 0.0, 1.0, 1.0]
+    for socket_name, value in zip((_SOCK_RX, _SOCK_RY, _SOCK_RW, _SOCK_RH), region, strict=True):
+        socket = slicer.inputs.get(socket_name)
+        if socket is not None:
+            socket.default_value = value
 
 
 def remove_slicer_from_material(material: Any) -> bool:

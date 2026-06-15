@@ -141,14 +141,17 @@ func _run_skinned_checks() -> void:
 	var character := _build_character(data)
 	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
 
-	var sprites := _collect_descendants_of_type(skeleton, "Polygon2D")
+	# A skinned Polygon2D is a SIBLING of the Skeleton2D (child of the rig root),
+	# never its child: a child topology double-applies the skeleton transform and
+	# collapses the mesh. Weights move the vertices via the skeleton NodePath.
+	var host: Node = skeleton.get_parent()
+	var sprites := _collect_descendants_of_type(host, "Polygon2D")
 	_assert_eq(sprites.size(), 1, "skinned: Polygon2D count")
 	if sprites.size() == 1:
 		var torso: Polygon2D = sprites[0]
 		_assert_eq(torso.name, "torso", "skinned: sprite name")
-		# Skinned polygons parent to the skeleton, not a bone - weights move
-		# vertices, not the parent transform.
-		_assert_true(torso.get_parent() == skeleton, "skinned: parented to skeleton")
+		_assert_true(torso.get_parent() == host, "skinned: sibling of skeleton (rig root)")
+		_assert_true(torso.get_parent() != skeleton, "skinned: not a child of skeleton")
 		_assert_true(not torso.skeleton.is_empty(), "skinned: skeleton NodePath set")
 		_assert_eq(torso.get_bone_count(), 2, "skinned: bone count = 2")
 		if torso.get_bone_count() >= 2:
@@ -271,12 +274,15 @@ func _run_mixed_checks() -> void:
 	bone_names.sort()
 	_assert_eq(", ".join(bone_names), "head, jaw, root, spine", "mixed: bone names")
 
-	# Skinned body: a Polygon2D parented to the skeleton, two bone weights, two faces.
-	var body := skeleton.find_child("body", true, false)
+	# Skinned body: a Polygon2D that is a SIBLING of the skeleton (child of the
+	# rig root), two bone weights, two faces.
+	var rig_root: Node = skeleton.get_parent()
+	var body := rig_root.find_child("body", true, false)
 	_assert_true(body != null and body is Polygon2D, "mixed: body is Polygon2D")
 	if body is Polygon2D:
 		var poly: Polygon2D = body
-		_assert_true(poly.get_parent() == skeleton, "mixed: body parented to skeleton (skinned)")
+		_assert_true(poly.get_parent() == rig_root, "mixed: body is sibling of skeleton (skinned)")
+		_assert_true(poly.get_parent() != skeleton, "mixed: body not a child of skeleton")
 		_assert_eq(poly.get_bone_count(), 2, "mixed: body bone count = 2")
 		_assert_eq(poly.polygons.size(), 2, "mixed: body multi-face polygons = 2")
 

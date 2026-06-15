@@ -62,3 +62,15 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 **Arquivo:** `apps/blender/.../planes.py` (caminho de re-import), `tests/.../test_psd_reimport.py`, doc `docs/00-guides/01-advanced/01-photoshop.md`.
 
 **Severity:** medium - não é crash, mas é uma divergência doc-vs-código numa área (weights) historicamente propensa a confusão; deixa o oráculo de teste ambíguo.
+
+### Sprite multi-frame: preview no Blender != frame no Godot (diferença inerente, não-bug mas pegadinha de autoria)
+
+**Status:** observado na spec 039. Não é defeito de código; é consequência do modelo (Blender mostra a região da atlas no quad; Godot `Sprite2D` mostra UMA célula no tamanho nativo de pixel da região/`hframes`).
+
+**Sintoma:** um elemento `sprite` (ex: `mixed_feature.mouth`, region 64x64, hframes=4) aparece no Blender como o quad inteiro mapeado na região (4 frames espremidos), e no Godot como 1 frame no tamanho nativo (16x64 px). Se o quad autorado não casar com o aspecto do frame (`frame_px/ppu`), os BOUNDS divergem entre Blender e Godot. UVs de sprite NÃO entram no golden (o `build_sprite` só emite region/frames), então só afetam o preview do Blender.
+
+**Por que importa:** "Blender == Godot exato" vale pra geometria/posição e pra meshes; pra sprites multi-frame a igualdade pixel-a-pixel é impossível por design. A regra de autoria pra manter os BOUNDS casando é `quad_units = frame_px / ppu` (vide `blink_eyes`: quad = tamanho do frame, UVs 0..1 sobre a spritesheet). Documentar isso evita "recriar" sprites tentando casar pixel que nunca vai casar.
+
+**Arquivo:** convenção - `packages/fixtures/README.md` (seção sprites) e `apps/godot/addons/proscenio/builders/sprite_builder.gd`. Sem fix de código; é doc/autoria.
+
+**Severity:** low - pegadinha de autoria/expectativa, sem crash nem perda de dado.

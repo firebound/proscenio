@@ -7,8 +7,9 @@ Run with::
 Loads 9 PNGs produced by ``draw_layers.py`` from disk and builds:
 
 - 1-bone armature (``root``).
-- 9 sprite quad meshes (``sprite_1`` .. ``sprite_9``), each parented to
-  ``root`` bone, arranged in a 3x3 grid.
+- 9 sprite quad meshes (``sprite_1`` .. ``sprite_9``), each object-parented
+  to the armature (the in-plane convention keeps the flat quads from tilting
+  out of the picture plane), arranged in a 3x3 grid.
 - 9 materials (one per sprite), each with its own Image Texture node
   pointing at the matching ``pillow_layers/sprite_N.png``. Each mesh's
   UVs span 0..1 across its own texture.
@@ -83,7 +84,12 @@ def _build_armature() -> bpy.types.Object:
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.5, 0.0)
+    # Tail along +Z (UP, in the XZ picture plane) - the 2D-cutout convention:
+    # bones lie in the picture plane (lateral or up), never into depth (Y). The
+    # quads are object-parented (below), not bone-parented, so they stay in the
+    # plane regardless of the bone; bone-parenting to an in-plane bone would
+    # tilt them out of plane and collapse them on import.
+    bone.tail = (0.0, 0.0, 0.5)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -125,9 +131,15 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (cx, 0.0, cz)
+    # Skinned 1.0 to `root` (armature modifier + vertex group), object-parented:
+    # the bone controls the quad and it stays flat. Bone-parenting to the in-
+    # plane bone would tilt it out of plane.
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "root"
+    obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="root")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

@@ -11,8 +11,8 @@ swaps mid-animation.
 Layout:
 
 - **Armature** ``arm_rig`` with a single bone ``arm`` perpendicular
-  to the XZ picture plane (tail along -Y, toward the Front Ortho
-  camera - Spine convention).
+  to the XZ picture plane (tail along +Y, into the screen away from the
+  Front Ortho camera at -Y; bone-parented cutouts stay un-flipped).
 - **Polygon mesh** ``arm`` parented to the bone - the visible 16x32
   arm sprite.
 - **Empty** ``weapon`` parented to the bone tip; flagged
@@ -111,7 +111,11 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Single horizontal bone perpendicular to the XZ picture plane."""
+    """Single lateral arm bone, in the XZ picture plane (+X, never into depth).
+
+    The bone points +X (shoulder at origin, hand at the tip); the arm mesh is
+    skinned to it so a pose rotation swings the whole arm in the plane.
+    """
     arm_data = bpy.data.armatures.new("arm_rig")
     arm_obj = bpy.data.objects.new("arm_rig", arm_data)
     bpy.context.scene.collection.objects.link(arm_obj)
@@ -120,7 +124,7 @@ def _build_armature() -> bpy.types.Object:
 
     bone = arm_data.edit_bones.new(ARM_BONE)
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.3, 0.0)
+    bone.tail = (0.32, 0.0, 0.0)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
@@ -179,11 +183,17 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
     mesh = _quad_mesh("arm", ARM_W_PX, ARM_H_PX)
     obj = bpy.data.objects.new("arm", mesh)
     bpy.context.scene.collection.objects.link(obj)
+    # Skinned (not bone-parented): object-parent to the armature and weight every
+    # vertex 1.0 to the arm bone. The mesh stays flat in the plane and follows
+    # the bone`s swing; bone-parenting to the in-plane bone would tilt it out of
+    # plane and collapse it. Centred on the bone (shoulder 0 -> hand 0.32).
+    obj.location = (0.16, 0.0, 0.0)
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = ARM_BONE
-    # Hard-coded offset dialled in by hand and verified visually.
-    obj.location = (-0.16, 0.0, 0.0)
+    obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name=ARM_BONE)
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
     mat = _build_material("arm.mat", ARM_PATH)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)
@@ -191,24 +201,27 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """Empty parented to the arm bone tip; flagged as a slot.
+    """Empty at the hand, flagged as a slot that follows the arm bone.
 
-    Hard-coded offset dialled in by hand: weapon at (-0.3, 0, 0.2).
+    Object-parented (not bone-parented) so the attachment quads stay flat in the
+    plane; `slot_bone="arm"` tells the importer to parent the slot Node2D under
+    the arm Bone2D, so the weapon follows the swinging arm in Godot.
     """
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
     bpy.context.scene.collection.objects.link(empty)
     empty.parent = armature_obj
-    empty.parent_type = "BONE"
-    empty.parent_bone = ARM_BONE
-    empty.location = (-0.3, 0.0, 0.2)
+    empty.parent_type = "OBJECT"
+    empty.location = (0.32, 0.0, 0.0)
 
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
         empty.proscenio.slot_default = "club"
+        empty.proscenio.slot_bone = ARM_BONE
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = "club"
+    empty["proscenio_slot_bone"] = ARM_BONE
     empty["proscenio_slot_index"] = 0
     return empty
 
@@ -258,6 +271,8 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
     """
     import math
 
+    from mathutils import Matrix
+
     armature_obj.animation_data_create()
     action = bpy.data.actions.new(name="swing")
     armature_obj.animation_data.action = action
@@ -266,8 +281,12 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
 
     arm_pose = armature_obj.pose.bones[ARM_BONE]
     arm_pose.rotation_mode = "XYZ"
-
-    # Y rotation = camera-axis rotation in Front Ortho = visible 2D rotation.
+    # Swing about the camera axis (world Y) = visible 2D rotation in the front
+    # view. The bone points +X (in plane), so a local-Y key would not swing it;
+    # matrix_basis = rest^-1 . Ry(theta) . rest expresses the world-Y rotation in
+    # bone-local space (see mouth_drive / mixed_feature).
+    rest = arm_pose.bone.matrix_local
+    rest_inv = rest.inverted()
     swing_keys = (
         (1, -math.pi / 6),
         (12, math.pi / 6),
@@ -275,8 +294,8 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
     )
     for frame, value in swing_keys:
         bpy.context.scene.frame_set(frame)
-        arm_pose.rotation_euler = (0.0, value, 0.0)
-        arm_pose.keyframe_insert(data_path="rotation_euler", frame=frame, index=1)
+        arm_pose.matrix_basis = rest_inv @ Matrix.Rotation(value, 4, "Y") @ rest
+        arm_pose.keyframe_insert(data_path="rotation_euler", frame=frame)
 
 
 def _build_swap_action(slot_empty: bpy.types.Object) -> None:

@@ -23,11 +23,13 @@ from dataclasses import dataclass
 import bpy
 from proscenio_models import Animation, Key, Track
 
+from ....core._shared.action_fcurves import action_fcurves
 from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import (
     iter_driver_targets,
     iter_driver_variables,
     iter_drivers,
+    iter_keyframe_points,
     iter_objects,
     pose_bone_by_name,
 )
@@ -187,34 +189,97 @@ def _bake_track(
     return Track(type="sprite_frame", target=fd.sprite.name, keys=keys)
 
 
-def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Animation]:
-    """Bake every bone-driven sprite frame into a ``sprite_frame`` animation.
+def _action_length(action: bpy.types.Action, fps: int) -> float:
+    frame_start = float(action.frame_range[0])
+    frame_end = float(action.frame_range[1])
+    return round(max(0.001, (frame_end - frame_start) / float(fps)), 6)
 
-    One animation per armature action, named to match ``build_animations`` so
-    the by-name merge folds the track in beside the bone_transform tracks.
-    Restores the current frame so the bake leaves no scene-state trace.
+
+def _direct_frame_track(
+    sprite: bpy.types.Object, action: bpy.types.Action, fps: int
+) -> Track | None:
+    """Emit a ``sprite_frame`` track from keyframes set directly on the sprite's
+    ``proscenio.frame`` (the blink_eyes shape: a frame cycle, no driver).
+
+    Reads the fcurve keyframe values straight off the action, so it does not
+    need the addon PropertyGroup registered. Clamps to the sprite grid, constant
+    interpolation, ``(frame - 1) / fps`` time base - same as the driven bake.
     """
-    drivers = _collect_frame_drivers(scene)
-    if not drivers:
-        return []
-    saved_frame = scene.frame_current
+    # Prefer the PropertyGroup curve over the raw CP curve when both exist, so a
+    # direct keyframe export honours the same PG-first contract the rest of the
+    # writer uses (first-match over the tuple would be order-dependent).
+    frame_curve_pg: bpy.types.FCurve | None = None
+    frame_curve_cp: bpy.types.FCurve | None = None
+    for fc in action_fcurves(action):
+        if fc.data_path == _FRAME_DRIVER_PATH and frame_curve_pg is None:
+            frame_curve_pg = fc
+        elif fc.data_path == '["proscenio_frame"]' and frame_curve_cp is None:
+            frame_curve_cp = fc
+    fcurve = frame_curve_pg or frame_curve_cp
+    if fcurve is None:
+        return None
+    max_frame = _grid_max_frame(sprite)
+    keys: list[Key] = []
+    last: int | None = None
+    for kp in iter_keyframe_points(fcurve):
+        value = min(max(round(float(kp.co[1])), 0), max_frame)
+        time = round(max(0.0, (float(kp.co[0]) - 1.0) / float(fps)), 6)
+        if value != last:
+            keys.append(Key(time=time, interp="constant", frame=value))
+            last = value
+    if not keys:
+        return None
+    return Track(type="sprite_frame", target=sprite.name, keys=keys)
+
+
+def _is_sprite(obj: bpy.types.Object) -> bool:
+    return str(
+        read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
+    ) == ("sprite")
+
+
+def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Animation]:
+    """Bake sprite-frame animations: bone-driven frames AND frames keyed directly
+    on ``proscenio.frame``.
+
+    One animation per action, named to match ``build_animations`` so the by-name
+    merge folds the track in beside any bone_transform tracks. Restores the
+    current frame so the driven bake leaves no scene-state trace.
+    """
     by_action: dict[str, list[Track]] = {}
     lengths: dict[str, float] = {}
-    try:
-        for fd in drivers:
-            anim_data = fd.armature.animation_data
-            action = anim_data.action if anim_data is not None else None
-            if action is None:
-                continue
-            track = _bake_track(scene, fd, action, fps)
-            if track is None:
-                continue
+
+    # Direct keyframes on the sprite's own action (no scene stepping needed).
+    for obj in iter_objects(scene):
+        if obj.type != "MESH" or not _is_sprite(obj):
+            continue
+        anim_data = obj.animation_data
+        action = anim_data.action if anim_data is not None else None
+        if action is None:
+            continue
+        track = _direct_frame_track(obj, action, fps)
+        if track is not None:
             by_action.setdefault(action.name, []).append(track)
-            frame_start = float(action.frame_range[0])
-            frame_end = float(action.frame_range[1])
-            lengths[action.name] = round(max(0.001, (frame_end - frame_start) / float(fps)), 6)
-    finally:
-        scene.frame_set(saved_frame)
+            lengths[action.name] = _action_length(action, fps)
+
+    # Bone-driven frames (steps the scene to evaluate each driver).
+    drivers = _collect_frame_drivers(scene)
+    if drivers:
+        saved_frame = scene.frame_current
+        try:
+            for fd in drivers:
+                anim_data = fd.armature.animation_data
+                action = anim_data.action if anim_data is not None else None
+                if action is None:
+                    continue
+                track = _bake_track(scene, fd, action, fps)
+                if track is None:
+                    continue
+                by_action.setdefault(action.name, []).append(track)
+                lengths[action.name] = _action_length(action, fps)
+        finally:
+            scene.frame_set(saved_frame)
+
     return [
         Animation(name=name, length=lengths[name], loop=True, tracks=tracks)
         for name, tracks in by_action.items()

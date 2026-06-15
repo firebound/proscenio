@@ -41,7 +41,7 @@ export type Polygons = number[][] | null;
  */
 export type Texture = string | null;
 /**
- * [x, y, width, height] in atlas pixels.
+ * [x, y, width, height] as fractions of the atlas size, normalized to [0, 1] (same convention as mesh UVs). Consumers scale by the atlas pixel size - e.g. the Godot Sprite2D builder multiplies region_rect by the texture dimensions. Not range-constrained in the schema yet: the hand-authored Godot test fixtures still carry pixel-space regions, normalized only when those are retired (see the deferred test-godot-goldens item).
  *
  * @minItems 4
  * @maxItems 4

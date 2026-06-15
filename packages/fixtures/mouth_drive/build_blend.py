@@ -100,13 +100,11 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Two bones with tail at -Y, pointing toward the Front Ortho camera
-    (which looks along world -Y); the 2D-cutout convention.
-
-    A pose-mode R Y rotates the bone around the camera axis (the
-    visible "rotation in the picture"); WORLD_SPACE + ROT_Y on a driver
-    reads back the same value. Bones are spaced apart on world X so they
-    stay individually selectable from front-ortho despite overlapping.
+    """Two bones along +Z (UP, in the XZ picture plane); the mouth is
+    object-parented (stays flat) and the drive bone is an invisible driver
+    source. Spinning the drive bone about its own axis (world Z for a +Z bone)
+    is read back by the driver via WORLD_SPACE + ROT_Z. Bones are spaced apart
+    on world X so they stay individually selectable from front-ortho.
     """
     arm_data = bpy.data.armatures.new("mouth_rig")
     arm_obj = bpy.data.objects.new("mouth_rig", arm_data)
@@ -114,13 +112,18 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
 
+    # Bones in the XZ picture plane (never into depth). `mouth_pos` is LATERAL
+    # (+X) so the mouth Sprite2D - a child of its Bone2D - inherits rotation 0
+    # and stays upright; the mouth is skinned 1.0 to it so moving mouth_pos moves
+    # the mouth. `mouth_drive` is an invisible driver source spun about its own
+    # axis (+Z), read via ROT_Z.
     pos = arm_data.edit_bones.new(POS_BONE)
     pos.head = (-0.2, 0.0, 0.0)
-    pos.tail = (-0.2, -0.3, 0.0)
+    pos.tail = (0.1, 0.0, 0.0)
 
     drive = arm_data.edit_bones.new(DRIVE_BONE)
     drive.head = (0.2, 0.0, 0.0)
-    drive.tail = (0.2, -0.3, 0.0)
+    drive.tail = (0.2, 0.0, 0.3)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
@@ -149,9 +152,15 @@ def _build_sprite_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
     obj = bpy.data.objects.new("mouth", mesh)
     bpy.context.scene.collection.objects.link(obj)
+    # Skinned 1.0 to mouth_pos (armature modifier + vertex group): the bone
+    # moves the mouth, the quad stays flat. Sits at the mouth_pos head.
+    obj.location = (-0.2, 0.0, 0.0)
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = POS_BONE
+    obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name=POS_BONE)
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name="mouth.mat")
     mat.use_nodes = True
@@ -211,7 +220,7 @@ def _install_driver(
     target = var.targets[0]
     target.id = armature_obj
     target.bone_target = DRIVE_BONE
-    target.transform_type = "ROT_Y"
+    target.transform_type = "ROT_Z"
     target.transform_space = "WORLD_SPACE"
     target.rotation_mode = "XYZ"
 
@@ -219,7 +228,7 @@ def _install_driver(
         sprite_obj.proscenio.driver_target = "frame"
         sprite_obj.proscenio.driver_source_armature = armature_obj
         sprite_obj.proscenio.driver_source_bone = DRIVE_BONE
-        sprite_obj.proscenio.driver_source_axis = "ROT_Y"
+        sprite_obj.proscenio.driver_source_axis = "ROT_Z"
         sprite_obj.proscenio.driver_expression = "var * 2 + 2"
 
 
@@ -242,7 +251,12 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
 
     drive_pose = armature_obj.pose.bones[DRIVE_BONE]
     drive_pose.rotation_mode = "XYZ"
-
+    # The drive bone is an invisible driver source pointing +Z. Spinning it about
+    # its own axis (local Y, which equals world Z for a +Z bone) is a clean
+    # single-channel rotation the driver reads via ROT_Z WORLD_SPACE - the same
+    # value the old +Y rig read via ROT_Y, so the driven frame sequence is
+    # unchanged. The spin is invisible (rotating a bone about its length axis),
+    # so it adds no bone_transform rotation.
     drive_keys = (
         (1, 0.0),
         (8, -math.pi / 2),

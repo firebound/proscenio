@@ -120,7 +120,7 @@ def _build_armature() -> bpy.types.Object:
 
     bone = arm_data.edit_bones.new(ARM_BONE)
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.3, 0.0)
+    bone.tail = (0.0, 0.3, 0.0)  # +Y into screen: bone-parented cutouts stay un-flipped (see atlas_pack)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

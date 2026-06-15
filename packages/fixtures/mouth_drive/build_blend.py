@@ -116,11 +116,11 @@ def _build_armature() -> bpy.types.Object:
 
     pos = arm_data.edit_bones.new(POS_BONE)
     pos.head = (-0.2, 0.0, 0.0)
-    pos.tail = (-0.2, -0.3, 0.0)
+    pos.tail = (-0.2, 0.3, 0.0)  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
 
     drive = arm_data.edit_bones.new(DRIVE_BONE)
     drive.head = (0.2, 0.0, 0.0)
-    drive.tail = (0.2, -0.3, 0.0)
+    drive.tail = (0.2, 0.3, 0.0)  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

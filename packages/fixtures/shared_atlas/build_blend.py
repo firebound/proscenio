@@ -82,7 +82,7 @@ def _build_armature() -> bpy.types.Object:
     # -90deg-rotated bone that collapses each polygon to a line on import.
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.5, 0.0)
+    bone.tail = (0.0, 0.5, 0.0)  # +Y into screen: bone-parented cutouts stay un-flipped + camera-facing (see atlas_pack)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

@@ -83,7 +83,14 @@ def _build_armature() -> bpy.types.Object:
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.5, 0.0)
+    # Tail along +Y (INTO the screen, away from the Front Ortho camera at -Y).
+    # A -Y tail makes Blender bone-parenting rotate children 180deg about Z,
+    # which mirrors every attached cutout in X (3,2,1 reversed + flipped glyphs)
+    # both in Blender world space and in the export. +Y keeps bone-parented
+    # quads in the XZ picture plane, un-flipped, facing the camera. The bone
+    # projects to angle 0 (rests +X in Godot) either way - cosmetic, the bone
+    # is runtime-invisible; what matters is the cutout renders identically.
+    bone.tail = (0.0, 0.5, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

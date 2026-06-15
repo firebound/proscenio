@@ -36,7 +36,7 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_val
 
 Vec2 = Annotated[list[float], Field(min_length=2, max_length=2)]
 Rect = Annotated[
-    list[float],
+    list[Annotated[float, Field(ge=0, le=1)]],
     Field(
         min_length=4,
         max_length=4,

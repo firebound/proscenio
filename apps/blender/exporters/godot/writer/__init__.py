@@ -117,7 +117,10 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     anim_data = armature_obj.animation_data
     saved_action = anim_data.action if anim_data is not None else None
     saved_basis: dict[str, Matrix] = {}
-    if saved_action is not None and anim_data is not None and pose is not None:
+    # Reset bases whenever the rig is posable, not only when an action is
+    # attached: a rig posed without an active action would otherwise bake its
+    # pose into the geometry.
+    if anim_data is not None and pose is not None:
         anim_data.action = None
         # Detaching the action does not reset pose_bone.matrix_basis - it keeps
         # the last evaluated value - so zero each basis to drop to the rest pose
@@ -144,7 +147,7 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     finally:
         for obj in hidden_state:
             obj.hide_viewport = True
-        if saved_action is not None and anim_data is not None and pose is not None:
+        if anim_data is not None and pose is not None:
             for pose_bone in pose.bones:
                 if pose_bone.name in saved_basis:
                     pose_bone.matrix_basis = saved_basis[pose_bone.name]

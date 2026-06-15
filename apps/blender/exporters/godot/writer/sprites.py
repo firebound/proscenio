@@ -195,13 +195,18 @@ def build_element(
 
     bone_name = resolve_sprite_bone(obj)
     # Bake polygon vertices in bone-local space ONLY for a rigid bone-parented
-    # mesh (a Polygon2D child of that Bone2D in Godot). A skinned mesh (object-
-    # parented with vertex groups) is a sibling of the Skeleton2D and Godot's
-    # skinning deforms it from skeleton space - baking it bone-local would
-    # pre-rotate it by the bone rest (e.g. a +Z spine bone rotates the torso
-    # 90deg). Object-parented meshes likewise bake in absolute screen space.
-    is_bone_parented = obj.parent_type == "BONE" and bool(obj.parent_bone)
-    bone_world = world_godot.get(bone_name) if is_bone_parented else None
+    # mesh (a Polygon2D child of that Bone2D in Godot). A skinned mesh is a
+    # sibling of the Skeleton2D and Godot's skinning deforms it from skeleton
+    # space - baking it bone-local would pre-rotate it by the bone rest (e.g. a
+    # +Z spine bone rotates the torso 90deg). A bone-parented mesh that ALSO
+    # carries vertex groups exports weights and so imports as a skinned sibling
+    # too, so it must bake absolute as well. Object-parented meshes likewise bake
+    # in absolute screen space.
+    has_vertex_groups = bool(obj.vertex_groups)
+    is_rigid_bone_parented = (
+        obj.parent_type == "BONE" and bool(obj.parent_bone) and not has_vertex_groups
+    )
+    bone_world = world_godot.get(bone_name) if is_rigid_bone_parented else None
     uv_layer = mesh.uv_layers.active
 
     # Whole-mesh emission: every face's vertices, deduplicated, plus per-face

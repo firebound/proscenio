@@ -189,9 +189,6 @@ def _bake_track(
     return Track(type="sprite_frame", target=fd.sprite.name, keys=keys)
 
 
-_FRAME_FCURVE_PATHS = (_FRAME_DRIVER_PATH, '["proscenio_frame"]')
-
-
 def _action_length(action: bpy.types.Action, fps: int) -> float:
     frame_start = float(action.frame_range[0])
     frame_end = float(action.frame_range[1])
@@ -208,9 +205,17 @@ def _direct_frame_track(
     need the addon PropertyGroup registered. Clamps to the sprite grid, constant
     interpolation, ``(frame - 1) / fps`` time base - same as the driven bake.
     """
-    fcurve = next(
-        (fc for fc in action_fcurves(action) if fc.data_path in _FRAME_FCURVE_PATHS), None
-    )
+    # Prefer the PropertyGroup curve over the raw CP curve when both exist, so a
+    # direct keyframe export honours the same PG-first contract the rest of the
+    # writer uses (first-match over the tuple would be order-dependent).
+    frame_curve_pg: bpy.types.FCurve | None = None
+    frame_curve_cp: bpy.types.FCurve | None = None
+    for fc in action_fcurves(action):
+        if fc.data_path == _FRAME_DRIVER_PATH and frame_curve_pg is None:
+            frame_curve_pg = fc
+        elif fc.data_path == '["proscenio_frame"]' and frame_curve_cp is None:
+            frame_curve_cp = fc
+    fcurve = frame_curve_pg or frame_curve_cp
     if fcurve is None:
         return None
     max_frame = _grid_max_frame(sprite)

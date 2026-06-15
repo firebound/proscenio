@@ -13,6 +13,8 @@ git show <commit>:specs/NNN-slug/STUDY.md
 
 The 027-035 wave was pruned together on 2026-06-11 (PRs #104-#113): the resolved work left the backlogs, the not-now work moved to [deferred.md](deferred.md) / [gated.md](gated.md) / [dropped.md](dropped.md), and the locked calls landed in [decisions.md](decisions.md). Per-spec PR mapping: 027 #104, 028 #105, 029 #106, 030 #107, 031 #108, 032 #109, 033 #110, 034 #111, 035 #112 / #113.
 
+Spec 039 was pruned 2026-06-15 (PR #116): the examples open, texture, render and animate faithfully - wrapper script paths, texture import-order, the in-plane bone convention, skinned-sibling render, rest-pose geometry bake and the rest-matrix animation builder all shipped. The remaining test-infra item (point test-godot at the real baked goldens, retire the drifting hand-authored mixed_feature copy) moved to [deferred.md](deferred.md).
+
 Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet reader + shared-adaptation dedup moved to [deferred.md](deferred.md), the large-doc windowing to [gated.md](gated.md), and the locked calls to [decisions.md](decisions.md).
 
 Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped the whole product's manual-test surface, so its two outputs are living data rather than a prunable plan. They moved into the QA Companion tool ([tools/qa-companion/checklist/](../tools/qa-companion/checklist/) for the walkable surface, [findings.md](../tools/qa-companion/findings.md) for the code-read audit) and the spec folder was removed. See [decisions.md](decisions.md).
@@ -58,6 +60,7 @@ Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped th
 | 036 | ui-help-surfaces | Editor UI polish, help/docs system, and new panels (materials, onion-skin) | planned |
 | 037 | storage-split | Collapse dual PG-vs-CP storage to one canonical home per field (1.0.0) | planned |
 | 038 | reach | Additional DCC exporters (Krita, GIMP) and the GDExtension escape hatch | planned |
-| 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, goldens-as-test | planned |
+| 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, in-plane bones, skinned-sibling render | pruned |
 | 040 | end-to-end-verification | Automatic pass mapping the whole manual-test surface (452 items) + a code-read audit (176 findings); both now owned by the QA Companion tool (`tools/qa-companion`) | retired |
 | 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |
+| 042 | slot-bone-follow | Slot bone-follow authoring parity: a Bind Slot to Bone operator (Child Of + slot_bone), create_slot migrated off bone-parenting, resolver reads slot_bone, fixtures author the constraint | planned |

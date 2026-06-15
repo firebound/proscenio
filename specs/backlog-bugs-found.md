@@ -63,19 +63,17 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 **Severity:** medium - não é crash, mas é uma divergência doc-vs-código numa área (weights) historicamente propensa a confusão; deixa o oráculo de teste ambíguo.
 
-### Mesh skinned (Polygon2D + Skeleton2D) não renderiza no Godot via build programático
+### Slot cujos anexos seguem um bone precisa de propriedade slot-bone (deferido)
 
-**Status:** encontrado na spec 039 (example-fidelity) ao validar o `mixed_feature` no Godot com render headless real. O `body` (mesh skinned, weights `root`/`spine`) colapsa pra uma linha/desaparece, enquanto os elementos rígidos (bone-parented) e de slot renderizam certos. Aberto: precisa decidir se o fix é no caminho de import ou se a verificação tem de passar pelo editor.
+**Status:** deferido na spec 039. Não é bug ativo; é um limite de design que força um trade-off no `slot_swap`.
 
-**Sintoma:** um `Polygon2D` com `skeleton` setado + `add_bone(path, weights)` aplicados em runtime não deforma na pose de rest (deveria ser identidade) - colapsa pra área ~zero (linha) e some. Reproduzido com setup mínimo (1 Bone2D em (0,0), rot 0, scale 1, quadrado 100x100, weight 1.0): mesmo um caso rígido-equivalente fica em branco. Persiste em `gl_compatibility` E `forward_plus`/vulkan, e sobrevive a um round-trip `PackedScene.pack()` -> `instantiate()`.
+**Sintoma:** o `slot.bone` no export vem SÓ de `obj.parent_bone` quando o Empty do slot é `parent_type="BONE"` (vide `slots.py:28`). Mas bone-parentear o Empty a um bone in-plane inclina os anexos (mesh) pra fora do plano no preview do Blender (mesmo problema do cutout bone-parented). Então hoje, pra manter o preview flat, o Empty do slot é object-parented (`bone=""`) e os anexos NÃO seguem o bone - no `slot_swap` o braço (skinned) balança mas a arma fica parada na mão.
 
-**Por que importa:** `mixed_feature` é o único fixture consumido pelo Godot que exercita skinning; nunca foi validado visualmente antes (era "garbage"). Se o skinning de `Polygon2D` só liga via bind do editor (o workflow UV->Bones->Sync Bones to Polygon), então o `MeshBuilder._apply_skinning` programático pode não ser suficiente e o `.scn` importado precisa ser verificado abrindo no editor / rodando o jogo de verdade. Alternativa: o exporter bakeia o polygon do mesh skinned relativo ao bone resolvido (`root`), mas no Godot o mesh skinned fica sob o `Skeleton2D` (espaço do skeleton) - patch de teste pra coords absolutas NÃO resolveu (continuou colapsando), então o problema é o bind do skinning, não o espaço das coords.
+**Por que importa:** no Godot um `Polygon2D` rígido sob um `Bone2D` segue a rotação 2D sem colapsar (Bone2D é 2D). O problema é só o preview 3D do Blender. Uma propriedade `slot_bone` (lida pelo writer em vez de exigir bone-parent) deixaria o Empty ser object-parented (flat no Blender) E rotear sob o Bone2D no Godot (segue + flat). Aí a arma seguiria o braço.
 
-**Repro:** `mixed_feature` no Godot (build via `MeshBuilder.attach_elements` ou import do `.proscenio`) -> `body` Polygon2D some. Setup mínimo confirma fora do fixture.
+**Arquivo:** `apps/blender/exporters/godot/writer/slots.py:28` (resolução de `bone`), `apps/blender/properties/object_props.py` (nova prop), `apps/godot/addons/proscenio/builders/slot_builder.gd`.
 
-**Arquivo:** `apps/godot/addons/proscenio/builders/mesh_builder.gd:8-29` (`_apply_skinning`), `apps/godot/addons/proscenio/builders/skeleton_builder.gd` (rest dos bones). Verificação pendente via editor import + game run (bloqueada parcialmente pelo item 2 da spec 039, texturas em branco no import do editor).
-
-**Severity:** medium-high - skinning é feature central do pipeline 2D-cutout; render do mesh skinned no Godot está não-verificado e aparenta quebrado no caminho programático/headless. Não bloqueia export (golden 8/8 ok), bloqueia paridade visual Blender==Godot pro caso skinned.
+**Severity:** low - `slot_swap` testa slot-swap + animação de bone coexistindo (ambos funcionam); só a arma-segue-braço fica de fora.
 
 ### Sprite multi-frame: preview no Blender != frame no Godot (diferença inerente, não-bug mas pegadinha de autoria)
 

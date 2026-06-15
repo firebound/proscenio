@@ -7,14 +7,15 @@ Run with::
 Stacks every Blender-to-Godot feature into one rig so the golden catches
 interactions a single-feature fixture cannot:
 
-- **Armature** ``mixed_rig`` with four flat bones (tails along +Z, up, in
-  the XZ picture plane - the 2D-cutout convention): ``root`` / ``spine``
-  skin the body, ``head`` marks the face, ``jaw`` drives the mouth frame.
+- **Armature** ``mixed_rig`` with five flat bones in the XZ picture plane
+  (the 2D-cutout convention): ``root`` / ``spine`` skin the body and
+  ``spine`` bobs it, ``head`` carries the face slot, ``mouth`` (+X, upright)
+  anchors the mouth sprite, ``jaw`` drives the mouth frame.
 - **Skinned body** ``body`` - a 2-face polygon weighted across ``root``
   (lower) and ``spine`` (upper), so the export carries per-bone weights
   and the per-face ``polygons`` index arrays.
-- **sprite_frame mouth** ``mouth`` - a 4-frame Sprite2D object-parented at
-  the face, its cell driven from ``jaw`` rotation.
+- **sprite_frame mouth** ``mouth`` - a 4-frame Sprite2D skinned to the
+  ``mouth`` bone, its cell driven from ``jaw`` rotation.
 - **Drive-from-Bone** - a scripted driver on ``mouth.proscenio.frame``
   reading the ``jaw`` spin (ROT_Z for the +Z bone).
 - **Slot with mixed attachments** ``face.slot`` - one mesh attachment
@@ -226,13 +227,11 @@ def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
     rotation 0) and carried along when the head/spine move. The frame is driven
     from ``jaw`` rotation. Local Y = -0.004 keeps it the frontmost element.
     """
-    # Godot reads `texture_region` (top-left 32x32) + the frame grid; these UVs
-    # only drive the Blender preview - map the quad onto the mouth cells (PNG
-    # top-left -> Blender UV top-left, v flipped).
+    # Godot reads `texture_region` (top-left 32x32) + the frame grid. The quad
+    # UV is 0..1: the Setup Preview slicer maps it into the region + active cell
+    # (region-aware), and the export ignores sprite UVs.
     w = 0.16
-    mesh = _quad_mesh(
-        "mouth", w, w, [(0.0, 0.75), (0.25, 0.75), (0.25, 1.0), (0.0, 1.0)]
-    )
+    mesh = _quad_mesh("mouth", w, w, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
     obj = bpy.data.objects.new("mouth", mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.location = (0.0, -0.004, 0.46)

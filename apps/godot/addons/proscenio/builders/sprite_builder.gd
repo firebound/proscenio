@@ -49,17 +49,21 @@ static func _build_sprite(
 		sprite.offset = Vector2(sprite_res.offset[0], sprite_res.offset[1])
 
 	# Optional atlas sub-rect; absent means the full texture. Sprite2D divides
-	# region_rect into hframes x vframes when region_enabled is true.
-	if sprite_res.texture_region.size() >= 4:
+	# region_rect into hframes x vframes when region_enabled is true. The
+	# .proscenio region is normalized [0, 1] (the same convention as mesh UVs);
+	# Sprite2D.region_rect wants texture pixels, so scale by the texture size -
+	# without this the rect is a fraction of a pixel and the sprite vanishes.
+	if sprite_res.texture_region.size() >= 4 and sprite_tex != null:
 		sprite.region_enabled = true
 		# Clip the texture filter to the region edge so neighbouring atlas frames
 		# do not bleed in at the seam (rides the region path for free).
 		sprite.region_filter_clip_enabled = true
+		var tex_size := sprite_tex.get_size()
 		sprite.region_rect = Rect2(
-			sprite_res.texture_region[0],
-			sprite_res.texture_region[1],
-			sprite_res.texture_region[2],
-			sprite_res.texture_region[3],
+			sprite_res.texture_region[0] * tex_size.x,
+			sprite_res.texture_region[1] * tex_size.y,
+			sprite_res.texture_region[2] * tex_size.x,
+			sprite_res.texture_region[3] * tex_size.y,
 		)
 
 	# CanvasItem appearance plus the Sprite2D-only flips. An absent modulate

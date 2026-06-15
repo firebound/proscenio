@@ -40,7 +40,12 @@ Rect = Annotated[
     Field(
         min_length=4,
         max_length=4,
-        description="[x, y, width, height] in atlas pixels.",
+        description=(
+            "[x, y, width, height] as fractions of the atlas size, normalized "
+            "to [0, 1] (same convention as mesh UVs). Consumers scale by the "
+            "atlas pixel size - e.g. the Godot Sprite2D builder multiplies "
+            "region_rect by the texture dimensions."
+        ),
     ),
 ]
 Color = Annotated[

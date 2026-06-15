@@ -315,7 +315,7 @@
           "title": "Texture"
         },
         "texture_region": {
-          "description": "[x, y, width, height] in atlas pixels.",
+          "description": "[x, y, width, height] as fractions of the atlas size, normalized to [0, 1] (same convention as mesh UVs). Consumers scale by the atlas pixel size - e.g. the Godot Sprite2D builder multiplies region_rect by the texture dimensions.",
           "items": {
             "type": "number"
           },
@@ -552,7 +552,7 @@
         "texture_region": {
           "anyOf": [
             {
-              "description": "[x, y, width, height] in atlas pixels.",
+              "description": "[x, y, width, height] as fractions of the atlas size, normalized to [0, 1] (same convention as mesh UVs). Consumers scale by the atlas pixel size - e.g. the Godot Sprite2D builder multiplies region_rect by the texture dimensions.",
               "items": {
                 "type": "number"
               },

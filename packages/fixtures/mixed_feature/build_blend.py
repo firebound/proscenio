@@ -7,9 +7,10 @@ Run with::
 Stacks every Blender-to-Godot feature into one rig so the golden catches
 interactions a single-feature fixture cannot:
 
-- **Armature** ``mixed_rig`` with four flat bones (tails along -Y, the
-  2D-cutout convention): ``root`` / ``spine`` skin the body, ``head``
-  anchors the mouth, ``jaw`` drives it.
+- **Armature** ``mixed_rig`` with four flat bones (tails along +Y, into
+  the screen, so the bone-parented mouth stays un-flipped - see atlas_pack):
+  ``root`` / ``spine`` skin the body, ``head`` anchors the mouth, ``jaw``
+  drives it.
 - **Skinned body** ``body`` - a 2-face polygon weighted across ``root``
   (lower) and ``spine`` (upper), so the export carries per-bone weights
   and the per-face ``polygons`` index arrays.
@@ -38,7 +39,9 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "blender_to_godot" / "mixed_feature"
+FIXTURE_DIR = (
+    REPO_ROOT / "examples" / "generated" / "blender_to_godot" / "mixed_feature"
+)
 ATLAS_PATH = FIXTURE_DIR / "atlas.png"
 BLEND_PATH = FIXTURE_DIR / "mixed_feature.blend"
 
@@ -101,17 +104,22 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Flat bones (no hierarchy), tails along -Y toward the Front Ortho
-    # camera so each exports with rotation 0. Z places them up the screen.
+    # Flat bones (no hierarchy), tails along +Y (INTO the screen, away from the
+    # Front Ortho camera at -Y). A -Y tail makes Blender bone-parenting rotate
+    # the bone-parented `mouth` 180deg about Z, mirroring it in X; +Y keeps it
+    # un-flipped in the XZ picture plane (see atlas_pack). Each bone still
+    # exports at angle 0 - they are runtime-invisible. Z stacks them up the
+    # screen: root at the hips, spine at the chest, head at the face, jaw beside
+    # it as the (invisible) driver source for the mouth frame.
     for name, (hx, hz) in (
         ("root", (0.0, -0.3)),
         ("spine", (0.0, 0.1)),
-        ("head", (0.0, 0.5)),
+        ("head", (0.0, 0.6)),
         ("jaw", (0.4, 0.3)),
     ):
         bone = arm_data.edit_bones.new(name)
         bone.head = (hx, 0.0, hz)
-        bone.tail = (hx, -0.5, hz)
+        bone.tail = (hx, 0.5, hz)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
@@ -134,7 +142,9 @@ def _atlas_material(name: str) -> bpy.types.Material:
     return mat
 
 
-def _quad_mesh(name: str, w: float, h: float, uvs: list[tuple[float, float]]) -> bpy.types.Mesh:
+def _quad_mesh(
+    name: str, w: float, h: float, uvs: list[tuple[float, float]]
+) -> bpy.types.Mesh:
     """A single-face quad in the XZ plane with the four corner UVs given."""
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(
@@ -207,11 +217,22 @@ def _build_skinned_body(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """A 4-frame Sprite2D bone-parented to ``head``, region = atlas top-left."""
-    w = 0.32
-    mesh = _quad_mesh("mouth", w, w, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+    """A 4-frame Sprite2D bone-parented to ``head``, region = atlas top-left.
+
+    Centred on the face disc (the ``head`` bone sits at the face). Local Y =
+    -0.004 pushes it the frontmost of the stack (z_index 4 > slot face at 2 >
+    torso at 0) so the mouth always draws over the face it sits on; the bone
+    tail already places it at the face's screen position, so no XZ offset.
+    """
+    # Godot Sprite2D draws from `texture_region` (atlas top-left quadrant) and
+    # ignores these UVs, but Blender samples the shared atlas through them - map
+    # the quad onto the mouth quadrant so the Blender preview shows the mouth
+    # strip, not the whole atlas. Sprite UVs do not enter the golden.
+    w = 0.2
+    mesh = _quad_mesh("mouth", w, w, [(0.0, 0.0), (0.5, 0.0), (0.5, 0.5), (0.0, 0.5)])
     obj = bpy.data.objects.new("mouth", mesh)
     bpy.context.scene.collection.objects.link(obj)
+    obj.location = (0.0, -0.004, 0.0)
     obj.parent = armature_obj
     obj.parent_type = "BONE"
     obj.parent_bone = "head"
@@ -237,28 +258,37 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.1
     bpy.context.scene.collection.objects.link(empty)
+    # The face sits at the head, just above the torso (the body spans z[-0.5,
+    # 0.5]); object-parented so the attachment quads keep their screen-plane
+    # orientation (the slot's `bone` field stays empty).
+    empty.location = (0.0, 0.0, 0.6)
     empty.parent = armature_obj
     empty.parent_type = "OBJECT"
     _dual(empty, "is_slot", "proscenio_is_slot", True)
     _dual(empty, "slot_default", "proscenio_slot_default", "face_neutral")
 
-    # Mesh attachment: UVs into the atlas bottom-right quadrant.
+    # Mesh attachment: UVs into the atlas bottom-right quadrant. Local Y =
+    # -0.002 -> z_index 2, in front of the torso (0) and behind the mouth (4).
     neutral_mesh = _quad_mesh(
         "face_neutral", 0.32, 0.32, [(0.5, 0.0), (1.0, 0.0), (1.0, 0.5), (0.5, 0.5)]
     )
     neutral = bpy.data.objects.new("face_neutral", neutral_mesh)
     bpy.context.scene.collection.objects.link(neutral)
+    neutral.location = (0.0, -0.002, 0.0)
     neutral.parent = empty
     neutral.parent_type = "OBJECT"
     neutral_mesh.materials.append(_atlas_material("face_neutral.mat"))
     _dual(neutral, "element_type", "proscenio_type", "mesh")
 
-    # Sprite attachment: 2-frame strip, region = atlas top-right quadrant.
+    # Sprite attachment: 2-frame strip, region = atlas top-right quadrant. UVs
+    # map the quad onto that quadrant for the Blender preview (Godot reads
+    # `texture_region`, not these UVs; sprite UVs do not enter the golden).
     glow_mesh = _quad_mesh(
-        "face_glow", 0.32, 0.32, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+        "face_glow", 0.32, 0.32, [(0.5, 0.0), (1.0, 0.0), (1.0, 0.5), (0.5, 0.5)]
     )
     glow = bpy.data.objects.new("face_glow", glow_mesh)
     bpy.context.scene.collection.objects.link(glow)
+    glow.location = (0.0, -0.002, 0.0)
     glow.parent = empty
     glow.parent_type = "OBJECT"
     glow_mesh.materials.append(_atlas_material("face_glow.mat"))
@@ -271,7 +301,9 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     return empty
 
 
-def _apply_manual_region(obj: bpy.types.Object, region: tuple[float, float, float, float]) -> None:
+def _apply_manual_region(
+    obj: bpy.types.Object, region: tuple[float, float, float, float]
+) -> None:
     rx, ry, rw, rh = region
     _dual(obj, "region_mode", "proscenio_region_mode", "manual")
     _dual(obj, "region_x", "proscenio_region_x", rx)
@@ -280,7 +312,9 @@ def _apply_manual_region(obj: bpy.types.Object, region: tuple[float, float, floa
     _dual(obj, "region_h", "proscenio_region_h", rh)
 
 
-def _install_mouth_driver(mouth_obj: bpy.types.Object, armature_obj: bpy.types.Object) -> None:
+def _install_mouth_driver(
+    mouth_obj: bpy.types.Object, armature_obj: bpy.types.Object
+) -> None:
     """Wire ``jaw`` ROT_Y to ``mouth.proscenio.frame`` (Drive-from-Bone shape)."""
     data_path = "proscenio.frame"
     if (

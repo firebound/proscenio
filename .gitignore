@@ -85,3 +85,6 @@ out/
 node_modules/
 package-lock.json
 yarn.lock
+
+# Local scratch (renders, throwaway scripts) - never committed
+.scratch/

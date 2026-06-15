@@ -11,8 +11,8 @@ swaps mid-animation.
 Layout:
 
 - **Armature** ``arm_rig`` with a single bone ``arm`` perpendicular
-  to the XZ picture plane (tail along -Y, toward the Front Ortho
-  camera - Spine convention).
+  to the XZ picture plane (tail along +Y, into the screen away from the
+  Front Ortho camera at -Y; bone-parented cutouts stay un-flipped).
 - **Polygon mesh** ``arm`` parented to the bone - the visible 16x32
   arm sprite.
 - **Empty** ``weapon`` parented to the bone tip; flagged
@@ -120,7 +120,11 @@ def _build_armature() -> bpy.types.Object:
 
     bone = arm_data.edit_bones.new(ARM_BONE)
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.3, 0.0)  # +Y into screen: bone-parented cutouts stay un-flipped (see atlas_pack)
+    bone.tail = (
+        0.0,
+        0.3,
+        0.0,
+    )  # +Y into screen: bone-parented cutouts stay un-flipped (see atlas_pack)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

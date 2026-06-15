@@ -100,8 +100,8 @@ def _wipe_blend() -> None:
 
 
 def _build_armature() -> bpy.types.Object:
-    """Two bones with tail at -Y, pointing toward the Front Ortho camera
-    (which looks along world -Y); the 2D-cutout convention.
+    """Two bones with tail along +Y (into the screen, away from the Front
+    Ortho camera at -Y); bone-parented cutouts stay un-flipped (see atlas_pack).
 
     A pose-mode R Y rotates the bone around the camera axis (the
     visible "rotation in the picture"); WORLD_SPACE + ROT_Y on a driver
@@ -116,11 +116,19 @@ def _build_armature() -> bpy.types.Object:
 
     pos = arm_data.edit_bones.new(POS_BONE)
     pos.head = (-0.2, 0.0, 0.0)
-    pos.tail = (-0.2, 0.3, 0.0)  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
+    pos.tail = (
+        -0.2,
+        0.3,
+        0.0,
+    )  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
 
     drive = arm_data.edit_bones.new(DRIVE_BONE)
     drive.head = (0.2, 0.0, 0.0)
-    drive.tail = (0.2, 0.3, 0.0)  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
+    drive.tail = (
+        0.2,
+        0.3,
+        0.0,
+    )  # +Y depth: bone-parented cutout un-flipped (see atlas_pack)
 
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj

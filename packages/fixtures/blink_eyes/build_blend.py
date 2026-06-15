@@ -70,11 +70,11 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Bone tail at -Y points it toward the Front Ortho camera (looks
-    # along world -Y); the 2D-cutout convention.
+    # Tail along +Y (INTO the screen, away from the Front Ortho camera at -Y):
+    # bone-parented cutouts stay un-flipped + camera-facing (see atlas_pack).
     bone = arm_data.edit_bones.new("head")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, 0.5, 0.0)  # +Y into screen: bone-parented cutouts stay un-flipped + camera-facing (see atlas_pack)
+    bone.tail = (0.0, 0.5, 0.0)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 

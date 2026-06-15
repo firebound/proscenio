@@ -62,3 +62,29 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 **Arquivo:** `apps/blender/.../planes.py` (caminho de re-import), `tests/.../test_psd_reimport.py`, doc `docs/00-guides/01-advanced/01-photoshop.md`.
 
 **Severity:** medium - não é crash, mas é uma divergência doc-vs-código numa área (weights) historicamente propensa a confusão; deixa o oráculo de teste ambíguo.
+
+### Mesh skinned (Polygon2D + Skeleton2D) não renderiza no Godot via build programático
+
+**Status:** encontrado na spec 039 (example-fidelity) ao validar o `mixed_feature` no Godot com render headless real. O `body` (mesh skinned, weights `root`/`spine`) colapsa pra uma linha/desaparece, enquanto os elementos rígidos (bone-parented) e de slot renderizam certos. Aberto: precisa decidir se o fix é no caminho de import ou se a verificação tem de passar pelo editor.
+
+**Sintoma:** um `Polygon2D` com `skeleton` setado + `add_bone(path, weights)` aplicados em runtime não deforma na pose de rest (deveria ser identidade) - colapsa pra área ~zero (linha) e some. Reproduzido com setup mínimo (1 Bone2D em (0,0), rot 0, scale 1, quadrado 100x100, weight 1.0): mesmo um caso rígido-equivalente fica em branco. Persiste em `gl_compatibility` E `forward_plus`/vulkan, e sobrevive a um round-trip `PackedScene.pack()` -> `instantiate()`.
+
+**Por que importa:** `mixed_feature` é o único fixture consumido pelo Godot que exercita skinning; nunca foi validado visualmente antes (era "garbage"). Se o skinning de `Polygon2D` só liga via bind do editor (o workflow UV->Bones->Sync Bones to Polygon), então o `MeshBuilder._apply_skinning` programático pode não ser suficiente e o `.scn` importado precisa ser verificado abrindo no editor / rodando o jogo de verdade. Alternativa: o exporter bakeia o polygon do mesh skinned relativo ao bone resolvido (`root`), mas no Godot o mesh skinned fica sob o `Skeleton2D` (espaço do skeleton) - patch de teste pra coords absolutas NÃO resolveu (continuou colapsando), então o problema é o bind do skinning, não o espaço das coords.
+
+**Repro:** `mixed_feature` no Godot (build via `MeshBuilder.attach_elements` ou import do `.proscenio`) -> `body` Polygon2D some. Setup mínimo confirma fora do fixture.
+
+**Arquivo:** `apps/godot/addons/proscenio/builders/mesh_builder.gd:8-29` (`_apply_skinning`), `apps/godot/addons/proscenio/builders/skeleton_builder.gd` (rest dos bones). Verificação pendente via editor import + game run (bloqueada parcialmente pelo item 2 da spec 039, texturas em branco no import do editor).
+
+**Severity:** medium-high - skinning é feature central do pipeline 2D-cutout; render do mesh skinned no Godot está não-verificado e aparenta quebrado no caminho programático/headless. Não bloqueia export (golden 8/8 ok), bloqueia paridade visual Blender==Godot pro caso skinned.
+
+### Sprite multi-frame: preview no Blender != frame no Godot (diferença inerente, não-bug mas pegadinha de autoria)
+
+**Status:** observado na spec 039. Não é defeito de código; é consequência do modelo (Blender mostra a região da atlas no quad; Godot `Sprite2D` mostra UMA célula no tamanho nativo de pixel da região/`hframes`).
+
+**Sintoma:** um elemento `sprite` (ex: `mixed_feature.mouth`, region 64x64, hframes=4) aparece no Blender como o quad inteiro mapeado na região (4 frames espremidos), e no Godot como 1 frame no tamanho nativo (16x64 px). Se o quad autorado não casar com o aspecto do frame (`frame_px/ppu`), os BOUNDS divergem entre Blender e Godot. UVs de sprite NÃO entram no golden (o `build_sprite` só emite region/frames), então só afetam o preview do Blender.
+
+**Por que importa:** "Blender == Godot exato" vale pra geometria/posição e pra meshes; pra sprites multi-frame a igualdade pixel-a-pixel é impossível por design. A regra de autoria pra manter os BOUNDS casando é `quad_units = frame_px / ppu` (vide `blink_eyes`: quad = tamanho do frame, UVs 0..1 sobre a spritesheet). Documentar isso evita "recriar" sprites tentando casar pixel que nunca vai casar.
+
+**Arquivo:** convenção - `packages/fixtures/README.md` (seção sprites) e `apps/godot/addons/proscenio/builders/sprite_builder.gd`. Sem fix de código; é doc/autoria.
+
+**Severity:** low - pegadinha de autoria/expectativa, sem crash nem perda de dado.

@@ -36,17 +36,35 @@ _SOCK_RH = "Region H"
 def ensure_slicer_group(node_groups: Any) -> Any:
     """Create or fetch the reusable ``Proscenio.SpriteFrameSlicer`` node group.
 
-    The group exposes inputs ``Frame`` / ``H Frames`` / ``V Frames`` plus
-    a single ``UV`` socket, and outputs a UV vector remapped onto the
-    addressed cell. Idempotent: subsequent calls return the existing
-    group untouched.
+    The group exposes inputs ``Frame`` / ``H Frames`` / ``V Frames`` + the
+    region (``Region X/Y/W/H``) plus a single ``UV`` socket, and outputs a UV
+    vector remapped onto the addressed cell within the region. A group cached
+    in an older .blend (before the region sockets existed) is rebuilt in place
+    so materials keep their reference but gain region support.
     """
     group = node_groups.get(SLICER_GROUP_NAME)
     if group is not None:
+        if _group_has_region(group):
+            return group
+        group.nodes.clear()
+        _clear_group_interface(group)
+        _populate_slicer_group(group)
         return group
     group = node_groups.new(name=SLICER_GROUP_NAME, type="ShaderNodeTree")
     _populate_slicer_group(group)
     return group
+
+
+def _group_has_region(group: Any) -> bool:
+    """True if the slicer group already exposes the region sockets."""
+    return any(getattr(item, "name", "") == _SOCK_RX for item in group.interface.items_tree)
+
+
+def _clear_group_interface(group: Any) -> None:
+    """Drop every interface socket so the group can be repopulated cleanly."""
+    interface = group.interface
+    for item in list(interface.items_tree):
+        interface.remove(item)
 
 
 def _populate_slicer_group(group: Any) -> None:

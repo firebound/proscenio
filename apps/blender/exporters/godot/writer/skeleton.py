@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 from proscenio_models import Bone, Skeleton
 
 from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
@@ -16,11 +16,18 @@ from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
 class BoneRestLocal:
     """Bone2D-local rest pose. Carried between the skeleton builder and the
     animation builder so animation tracks can emit absolute Godot values
-    (rest + delta) instead of raw fcurve deltas."""
+    (rest + delta) instead of raw fcurve deltas.
+
+    ``rest_basis`` is the bone's 3x3 rest orientation in armature space; the
+    animation builder rotates the bone-local Y axis by it (and by a keyframe's
+    local rotation) to recover the bone's screen direction for any in-plane bone
+    orientation, instead of assuming bone-Y aligns with the camera axis.
+    """
 
     position: tuple[float, float]
     rotation: float
     scale: tuple[float, float]
+    rest_basis: Matrix | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -117,6 +124,7 @@ def build_skeleton(
             position=(local_pos[0], local_pos[1]),
             rotation=local_rot,
             scale=(1.0, 1.0),
+            rest_basis=bone.matrix_local.to_3x3(),
         )
 
     return Skeleton(bones=bones_out), rest_local

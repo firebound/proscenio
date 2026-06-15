@@ -201,18 +201,16 @@ def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """Empty parented to the arm bone tip; flagged as a slot.
+    """Empty at the hand, flagged as a slot that follows the arm bone.
 
-    Hard-coded offset dialled in by hand: weapon at (-0.3, 0, 0.2).
+    Object-parented (not bone-parented) so the attachment quads stay flat in the
+    plane; `slot_bone="arm"` tells the importer to parent the slot Node2D under
+    the arm Bone2D, so the weapon follows the swinging arm in Godot.
     """
     empty = bpy.data.objects.new(SLOT_NAME, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
     bpy.context.scene.collection.objects.link(empty)
-    # Object-parent at the hand (the arm bone tip). Object-parenting keeps the
-    # attachment quads flat in the plane (a bone-parented Empty would tilt them
-    # out of plane); the slot therefore carries no `bone` and the arm swings
-    # under it independently - both systems coexist, which is the fixture`s point.
     empty.parent = armature_obj
     empty.parent_type = "OBJECT"
     empty.location = (0.32, 0.0, 0.0)
@@ -220,8 +218,10 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     if hasattr(empty, "proscenio"):
         empty.proscenio.is_slot = True
         empty.proscenio.slot_default = "club"
+        empty.proscenio.slot_bone = ARM_BONE
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = "club"
+    empty["proscenio_slot_bone"] = ARM_BONE
     empty["proscenio_slot_index"] = 0
     return empty
 

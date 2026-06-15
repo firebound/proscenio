@@ -183,6 +183,7 @@
         "club",
         "sword"
       ],
+      "bone": "arm",
       "default": "club"
     }
   ],

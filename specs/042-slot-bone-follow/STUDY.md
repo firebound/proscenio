@@ -41,9 +41,10 @@ Counts: **4 now, 0 gate, 0 drop**. The work is a single coherent slice: author t
 
 ### Decisions (locked)
 
-- **Follow convention: object-parent + `Child Of` constraint + `slot_bone` field.** Keeps the attachment quads in the picture plane and mirrors the Godot cancel-rest exactly. Not real bone-parenting.
+- **Preferred follow convention: object-parent + `Child Of` constraint + `slot_bone` field.** Keeps the attachment quads in the picture plane and mirrors the Godot cancel-rest exactly. Chosen over keep-transform bone-parenting (which is math-equivalent at the rest pose) because the bind lives in a separate, removable constraint layer instead of a baked parent-inverse: unbinding returns the Empty to its clean authored transform rather than stranding it with the bone's rest baked into local. Preferred and reinforced - but not the only supported shape (see below).
+- **Both authoring shapes stay supported; the constraint shape is the facilitated default.** The writer, the resolver, the validators, and the panel each recognize *either* a `slot_bone`-bound slot (object-parent + constraint) *or* a real bone-parented Empty (`parent_type == "BONE"` + `parent_bone`); both export to the same bone name and Godot rebuilds them identically. Real bone-parenting is a permanently supported hand-authored shape, not a deprecation - the operator and `create_slot` only *default to* the constraint shape, they never forbid or strip the other.
 - **Set-inverse covers location, rotation, and scale (full).** Godot cancels the whole rest via `get_skeleton_rest().affine_inverse()`, so the Blender inverse matches the full rest, not a location-only subset.
-- **`create_slot` migrates to the convention.** Its pose-bone path stops bone-parenting and instead object-parents plus binds via the new operator's shared helper.
+- **`create_slot` defaults to the constraint convention.** Its pose-bone path stops *auto* bone-parenting and instead object-parents plus binds via the new operator's shared helper, so new bone-anchored slots are born flat and already following. A user who deliberately bone-parents an Empty by hand still gets a recognized, exportable slot (dual-support above).
 - **The shared resolver reads `slot_bone` first, then `parent_bone`.** Same order as the writer, so the panel, the validators, and the export never disagree about the followed bone.
 - **Unbind is reversible.** Removes the `Child Of` constraint and clears `slot_bone`, leaving the Empty object-parented and inert (the pre-bind state).
 

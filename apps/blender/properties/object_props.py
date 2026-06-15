@@ -276,3 +276,15 @@ class ProscenioObjectProps(PropertyGroup):
         default="",
         update=on_any_update,
     )
+    slot_bone: StringProperty(  # type: ignore[valid-type]
+        name="Slot bone",
+        description=(
+            "Bone this slot follows. The Godot importer parents the slot Node2D "
+            "under that Bone2D so the attachments track the bone (e.g. a weapon "
+            "following an arm). Set this instead of bone-parenting the Empty, "
+            "which would tilt the attachment quads out of the picture plane. "
+            "Empty string anchors the slot at the skeleton root."
+        ),
+        default="",
+        update=on_any_update,
+    )

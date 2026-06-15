@@ -104,10 +104,23 @@ static func _build_mesh(
 		# child: when it is a child, Godot's skinning double-applies the skeleton
 		# transform and collapses every vertex to a point (the mesh vanishes).
 		# Parent it under the skeleton's parent (the rig root) and point its
-		# `skeleton` NodePath back at the Skeleton2D.
+		# `skeleton` NodePath back at the Skeleton2D. If the Skeleton2D has no
+		# parent there is no sibling slot to use; falling back to the skeleton
+		# itself would recreate the collapse, so fail clearly instead.
 		var host: Node = skeleton.get_parent()
 		if host == null:
-			host = skeleton
+			push_error(
+				(
+					(
+						"Proscenio: skinned mesh '%s' needs the Skeleton2D to have a parent "
+						+ "(the rig root) to attach as a sibling; skipping to avoid a "
+						+ "collapsed mesh."
+					)
+					% poly.name
+				)
+			)
+			poly.queue_free()
+			return
 		host.add_child(poly)
 		_apply_skinning(poly, skeleton, weights)
 		return

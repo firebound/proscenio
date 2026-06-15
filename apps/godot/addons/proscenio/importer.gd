@@ -35,7 +35,13 @@ func _get_priority() -> float:
 
 
 func _get_import_order() -> int:
-	return 0
+	# Import AFTER textures. _import bakes the .scn and resolves the atlas /
+	# per-sprite PNGs through ResourceLoader against the sibling files; at the
+	# default order (0, same as textures) the .proscenio can bake before its
+	# PNGs are imported, so the load returns null and the baked scene has blank
+	# textures. 100 (the engine's scene-import order) runs us after all
+	# default-order resources, so the textures exist when we bake.
+	return 100
 
 
 func _get_preset_count() -> int:

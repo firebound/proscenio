@@ -44,10 +44,12 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 
 	var bone_name := NodeNameUtil.sanitize(slot_res.bone)
 	var parent: Node = skeleton
+	var follow_bone: Bone2D = null
 	if bone_name != "":
 		var bone := skeleton.find_child(bone_name, true, false)
-		if bone != null:
+		if bone is Bone2D:
 			parent = bone
+			follow_bone = bone
 		else:
 			push_warning(
 				(
@@ -59,6 +61,12 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 				)
 			)
 	parent.add_child(node)
+	if follow_bone != null:
+		# Attachments are baked in absolute screen space, but the slot now lives
+		# under the Bone2D. Cancel the bone`s rest transform so the attachments
+		# render at their absolute rest position and only the bone`s pose DELTA
+		# (the swing) moves them.
+		node.transform = follow_bone.get_skeleton_rest().affine_inverse()
 
 	var info := SlotInfo.new()
 	info.node = node

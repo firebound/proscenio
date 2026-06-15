@@ -31,5 +31,55 @@
       "centered": true
     }
   ],
-  "atlas": "eye_spritesheet.png"
+  "atlas": "eye_spritesheet.png",
+  "animations": [
+    {
+      "name": "blink",
+      "length": 0.458333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "sprite_frame",
+          "target": "eye",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
+              "time": 0.083333,
+              "interp": "constant",
+              "frame": 1
+            },
+            {
+              "time": 0.166667,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.25,
+              "interp": "constant",
+              "frame": 3
+            },
+            {
+              "time": 0.333333,
+              "interp": "constant",
+              "frame": 2
+            },
+            {
+              "time": 0.416667,
+              "interp": "constant",
+              "frame": 1
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "frame": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

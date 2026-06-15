@@ -94,7 +94,16 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
 
 - Run with `blender --background --python packages/fixtures/<name>/build_blend.py` (no input .blend; the script wipes and rebuilds from scratch).
 - `_wipe_blend()` clears `objects`, `meshes`, `armatures`, `materials`, `images`, `actions` first so re-runs are deterministic.
-- **Bone orientation**: tail along **-Y** from head (so the bone points TOWARD the Front Orthographic camera, which sits at +Y looking down -Y). Bones appear as small octahedral dots from the front - the Spine / 2D-cutout convention. Authoring rotations: pose-mode `R Y` rotates around the camera axis (visible 2D rotation); pose-mode `R Z` is for spin-in-plan-view; pose-mode `R X` tilts out of plane.
+- **Axis convention**: the Front Orthographic camera sits at **-Y looking toward +Y**; **+Z is up**, **+X is screen RIGHT**. The XZ plane is the picture plane; Y is depth (into the screen is +Y, away from camera). The exporter projects `world_to_godot_xy(p) = (p.x*ppu, -p.z*ppu)` (drops Y, flips Z because Godot Y is down).
+- **Bone orientation**: bones lie **in the XZ picture plane** - tail **+Z (up)** for a spine / anchor, **+X (lateral)** for a limb or a sprite attach. Never tail into depth (+Y or -Y): a depth bone reads as a dot from the front and cannot carry a visible 2D rotation.
+- **Attaching objects to bones**: **skin them** (Armature modifier targeting the armature + a vertex group), `parent_type="OBJECT"`. Do NOT bone-parent: bone-parenting a flat (XZ) quad to an in-plane bone inherits the bone's 3D orientation and tilts it out of the plane (collapses on import). A skinned object stays flat at rest and the bone actually moves/deforms it in Blender too.
+  - **mesh that deforms** (`mixed_feature` body): a vertex group per bone, weighted. Exports `weights`; Godot makes a `Polygon2D` skinned as a **sibling** of the `Skeleton2D` (never a child - a child collapses).
+  - **mesh / static stamp, rigid** (`atlas_pack`, `shared_atlas`, `slot_cycle`, `slot_swap` arm): one vertex group, weight 1, to its bone. Same Polygon2D-skinned path.
+  - **sprite** (`blink_eyes` eye, `mouth_drive` mouth): one vertex group, weight 1, to a **+X (lateral)** bone. The Godot `Sprite2D` is a child of that `Bone2D` and inherits its rotation, so the bone must export rotation 0 (a +X bone does; a +Z bone exports -90deg and lays the sprite on its side). The vertex group only names the attach bone for the export; the Armature modifier is what lets the bone move the sprite in the Blender preview.
+  - **slot attachments** (`slot_cycle`, `slot_swap` club/sword): object-parented under the slot Empty (the slot groups + swaps them). A slot that should *follow* a bone is a deferred feature (needs a slot-bone property; see backlog).
+  - **invisible driver-source bones** (`mouth_drive` drive, `mixed_feature` jaw): spin about the bone's own axis (local Y) and read it with a `ROT_Z` driver. The spin is invisible and adds no `bone_transform` rotation.
+
+  (History: before this convention the fixtures used **-Y** then **+Y** depth bones with bone-parenting; -Y mirrored every cutout 180deg about Z, +Y was a hack papering over the collapse, and an interim pass left objects object-parented with no Armature modifier so bones drove nothing. All gone - bones are in-plane and objects are skinned.)
 - **Image filepath relativeization**: after `bpy.ops.wm.save_as_mainfile(...)`, walk `bpy.data.images` and assign `img.filepath = bpy.path.relpath(...)`, then `bpy.ops.wm.save_mainfile()` again to persist. Without this, the absolute path bakes into the .blend and the fixture breaks on any other machine. Pattern:
 
   ```python
@@ -105,27 +114,25 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
               img.filepath = rel
   ```
 
-- **UV layout for asymmetric content**: in Blender's Front Orthographic view, the camera convention maps world `+X` to screen LEFT. A naive UV mapping (`uv[v0] = (0,0)` at vertex `(-w/2, 0, -h/2)`) renders the PIL image MIRRORED horizontally on screen. Symmetric sprites (`blink_eyes` eye, `mouth_drive` mouth, `slot_swap` arm with horizontally-symmetric club / sword) hide this. Asymmetric content (digits, text, anything with handedness) needs the U axis flipped:
+- **UV layout**: object-parented (or skinned) quads stay in the picture plane, so the standard quad maps directly - `+X` is screen RIGHT, no U-flip needed. `atlas_pack` proves it: each cell uses direct UVs (`uv[v0] = (0,0)` at `(-w/2, 0, -h/2)`) and the digits 1-9 read correctly, un-mirrored, in both Blender and Godot.
 
   ```python
-  # Standard quad with face normal toward camera (-Y):
+  # Standard quad in the XZ picture plane, face normal toward the camera (-Y):
   vertices = [
-      (-w/2, 0, -h/2),  # v0
-      (+w/2, 0, -h/2),  # v1
-      (+w/2, 0, +h/2),  # v2
-      (-w/2, 0, +h/2),  # v3
+      (-w/2, 0, -h/2),  # v0 bottom-left
+      (+w/2, 0, -h/2),  # v1 bottom-right
+      (+w/2, 0, +h/2),  # v2 top-right
+      (-w/2, 0, +h/2),  # v3 top-left
   ]
   faces = [(0, 1, 2, 3)]
-  # U flipped (1.0 / 0.0 swapped) so PIL image renders unmirrored
-  # in Front Ortho. See atlas_pack/build_blend.py for the canonical
-  # example.
-  uv.data[0].uv = (1.0, 0.0)
-  uv.data[1].uv = (0.0, 0.0)
-  uv.data[2].uv = (0.0, 1.0)
-  uv.data[3].uv = (1.0, 1.0)
+  # Direct UVs - no flip. See atlas_pack/build_blend.py.
+  uv.data[0].uv = (0.0, 0.0)
+  uv.data[1].uv = (1.0, 0.0)
+  uv.data[2].uv = (1.0, 1.0)
+  uv.data[3].uv = (0.0, 1.0)
   ```
 
-  The existing symmetric fixtures keep the un-flipped UVs because regenerating their goldens for a cosmetic-only fix is busywork. New fixtures should adopt the flipped layout by default.
+- **Sprite quads (multi-frame)**: a `sprite` element renders in Godot as a `Sprite2D` showing ONE frame at its native pixel size (`region_px / hframes`), while Blender shows the whole authored quad. To keep the BOUNDS matching, size the quad `w = frame_px / PIXELS_PER_UNIT` (see `blink_eyes`). Sprite UVs do NOT enter the golden (only region + frame metadata do), so they affect the Blender preview only; map them onto the sprite's atlas region so the preview shows the right cells. Pixel-exact Blender==Godot is not achievable for multi-frame sprites by design - the invariant is geometry/bounds, not pixels.
 
 - **Image Texture interpolation**: set `tex.interpolation = "Closest"` on every `ShaderNodeTexImage`. Blender defaults to bilinear (`"Linear"`), which smears 32x32 pixel-art cells in Eevee's Material Preview. Closest (nearest-neighbor) keeps edges crisp:
 

@@ -85,12 +85,22 @@ def _install_bpy_stub() -> None:
 
 
 def _install_mathutils_stub() -> None:
-    """Register a minimal ``mathutils`` with a 3-component ``Vector``.
+    """Register a minimal ``mathutils`` with ``Vector`` / ``Matrix`` / ``Euler`` /
+    ``Quaternion``.
 
     Installed unconditionally (like the bpy stub) so it wins over any
-    earlier ``MagicMock`` and the writer captures a real ``Vector`` at
-    import time.
+    earlier ``MagicMock`` and the writer captures the real classes at
+    import time. The standalone ``mathutils`` PyPI wheel needs a C toolchain
+    and is not available on every CI runner, so the writer's linear-algebra
+    surface (3x3 ``Matrix`` with ``@``, ``Euler``/``Quaternion`` ``to_matrix``)
+    is reimplemented here with the same conventions Blender uses, verified
+    against Blender 5.1: ``Matrix @ Vector`` / ``Matrix @ Matrix`` are the
+    standard products, and ``Euler((x, y, z), "XYZ").to_matrix()`` composes as
+    ``Rz @ Ry @ Rx``. That keeps the pure-pytest tests exercising the real
+    projection math rather than a fake.
     """
+    import math
+
     mathutils = types.ModuleType("mathutils")
 
     class Vector:
@@ -113,7 +123,90 @@ def _install_mathutils_stub() -> None:
                 return NotImplemented
             return (self.x, self.y, self.z) == (other.x, other.y, other.z)
 
+    class Matrix:
+        """3x3 matrix supporting ``@`` against a ``Matrix`` or a ``Vector``."""
+
+        def __init__(self, rows: object = None) -> None:
+            if rows is None:
+                self.rows = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+            else:
+                self.rows = [[float(c) for c in row] for row in rows]  # type: ignore[union-attr]
+
+        def __matmul__(self, other: object) -> object:
+            if isinstance(other, Vector):
+                v = (other.x, other.y, other.z)
+                return Vector(tuple(sum(self.rows[i][j] * v[j] for j in range(3)) for i in range(3)))
+            if isinstance(other, Matrix):
+                return Matrix(
+                    [
+                        [sum(self.rows[i][k] * other.rows[k][j] for k in range(3)) for j in range(3)]
+                        for i in range(3)
+                    ]
+                )
+            return NotImplemented
+
+        def __getitem__(self, index: int) -> list[float]:
+            return self.rows[index]
+
+        def __iter__(self) -> object:
+            return iter(self.rows)
+
+        def to_3x3(self) -> "Matrix":
+            return self
+
+    def _rot_x(a: float) -> Matrix:
+        c, s = math.cos(a), math.sin(a)
+        return Matrix([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
+
+    def _rot_y(a: float) -> Matrix:
+        c, s = math.cos(a), math.sin(a)
+        return Matrix([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]])
+
+    def _rot_z(a: float) -> Matrix:
+        c, s = math.cos(a), math.sin(a)
+        return Matrix([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+    class Euler:
+        """Euler angles with ``to_matrix``; only the ``XYZ`` order is supported
+        (the only order the writer constructs)."""
+
+        def __init__(self, angles: object = (0.0, 0.0, 0.0), order: str = "XYZ") -> None:
+            a = list(angles)  # type: ignore[call-overload]
+            self.x, self.y, self.z = float(a[0]), float(a[1]), float(a[2])
+            self.order = order
+
+        def to_matrix(self) -> Matrix:
+            if self.order != "XYZ":
+                raise NotImplementedError(f"stub Euler supports XYZ only, got {self.order!r}")
+            # Blender composes order "XYZ" as Rz @ Ry @ Rx (verified vs Blender 5.1).
+            return _rot_z(self.z) @ _rot_y(self.y) @ _rot_x(self.x)  # type: ignore[return-value]
+
+    class Quaternion:
+        """Quaternion ``(w, x, y, z)`` with the standard ``to_matrix``."""
+
+        def __init__(self, components: object = (1.0, 0.0, 0.0, 0.0)) -> None:
+            c = list(components)  # type: ignore[call-overload]
+            self.w, self.x, self.y, self.z = (
+                float(c[0]),
+                float(c[1]),
+                float(c[2]),
+                float(c[3]),
+            )
+
+        def to_matrix(self) -> Matrix:
+            w, x, y, z = self.w, self.x, self.y, self.z
+            return Matrix(
+                [
+                    [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
+                    [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
+                    [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)],
+                ]
+            )
+
     mathutils.Vector = Vector  # type: ignore[attr-defined]
+    mathutils.Matrix = Matrix  # type: ignore[attr-defined]
+    mathutils.Euler = Euler  # type: ignore[attr-defined]
+    mathutils.Quaternion = Quaternion  # type: ignore[attr-defined]
     sys.modules["mathutils"] = mathutils
 
 

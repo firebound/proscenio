@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import bpy  # conftest stub
 import pytest
-from mathutils import Vector  # conftest stub
+from mathutils import Matrix, Vector  # conftest stub
 
 from blender.exporters.godot.writer.skeleton import (
     BoneWorld,
@@ -21,6 +21,10 @@ from blender.exporters.godot.writer.skeleton import (
     world_to_godot_xy,
     wrap_pi,
 )
+
+# Identity rest orientation for fake bones; build_skeleton reads
+# ``bone.matrix_local.to_3x3()`` for the rest_basis these tests do not assert.
+_I = Matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
 
 
 @pytest.mark.parametrize(
@@ -43,7 +47,9 @@ def test_world_to_godot_xy_flips_z_into_y() -> None:
 
 def test_godot_world_angle_from_dir() -> None:
     assert godot_world_angle_from_dir(Vector((1.0, 0.0, 0.0))) == pytest.approx(0.0)
-    assert godot_world_angle_from_dir(Vector((0.0, 0.0, 1.0))) == pytest.approx(-math.pi / 2)
+    assert godot_world_angle_from_dir(Vector((0.0, 0.0, 1.0))) == pytest.approx(
+        -math.pi / 2
+    )
 
 
 def _armature_obj(bones: list[SimpleNamespace]) -> SimpleNamespace:
@@ -53,7 +59,7 @@ def _armature_obj(bones: list[SimpleNamespace]) -> SimpleNamespace:
 
 
 def test_build_skeleton_root_bone_uses_world_transform() -> None:
-    root = SimpleNamespace(name="root", parent=None)
+    root = SimpleNamespace(name="root", parent=None, matrix_local=_I)
     world = {"root": BoneWorld(x=5.0, y=7.0, rot=0.25, length=3.0)}
     skeleton, rest = build_skeleton(_armature_obj([root]), world)
     bone = skeleton.bones[0]
@@ -66,8 +72,8 @@ def test_build_skeleton_root_bone_uses_world_transform() -> None:
 
 
 def test_build_skeleton_child_is_relative_to_parent() -> None:
-    root = SimpleNamespace(name="root", parent=None)
-    child = SimpleNamespace(name="child", parent=root)
+    root = SimpleNamespace(name="root", parent=None, matrix_local=_I)
+    child = SimpleNamespace(name="child", parent=root, matrix_local=_I)
     world = {
         "root": BoneWorld(x=0.0, y=0.0, rot=0.0, length=1.0),
         "child": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),

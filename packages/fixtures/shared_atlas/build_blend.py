@@ -29,17 +29,20 @@ ATLAS_W = 256
 ATLAS_H = 256
 PIXELS_PER_UNIT = 100.0
 
-# (sprite_name, uv_min_x, uv_min_y, uv_max_x, uv_max_y)
+# (sprite_name, uv_min_x, uv_min_y, uv_max_x, uv_max_y, screen_x)
 # UVs are Blender-style (bottom-up): v=0 at bottom, v=1 at top.
 # The PNG was drawn top-down; Blender flips on load so v=[0.5, 1.0]
 # corresponds to the PNG's top half, matching where each shape was drawn.
+# screen_x spreads the three quads along +X (screen right) so they read as
+# three separate shapes side by side instead of stacking at the origin; each
+# quad is 1.28 units wide, so 1.5 spacing leaves a clean gap between them.
 SPRITES = (
     # Red circle drawn at top-left of the PNG → top-left UV quadrant.
-    ("red_circle", 0.0, 0.5, 0.5, 1.0),
+    ("red_circle", 0.0, 0.5, 0.5, 1.0, -1.5),
     # Green triangle drawn at top-right of the PNG → top-right UV quadrant.
-    ("green_triangle", 0.5, 0.5, 1.0, 1.0),
+    ("green_triangle", 0.5, 0.5, 1.0, 1.0, 0.0),
     # Blue square drawn at bottom-left of the PNG → bottom-left UV quadrant.
-    ("blue_square", 0.0, 0.0, 0.5, 0.5),
+    ("blue_square", 0.0, 0.0, 0.5, 0.5, 1.5),
 )
 
 
@@ -77,20 +80,21 @@ def _build_armature() -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(arm_obj)
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode="EDIT")
-    # Bone tail along -Y (toward Front Ortho camera at +Y looking -Y);
-    # the 2D-cutout convention. A +Z tail makes the writer emit a
-    # -90deg-rotated bone that collapses each polygon to a line on import.
+    # Tail along +Z (UP, in the XZ picture plane) - bones lie in the plane
+    # (lateral or up), never into depth (Y). The quads are object-parented (not
+    # bone-parented), so they stay in plane regardless of the bone (see
+    # atlas_pack).
     bone = arm_data.edit_bones.new("root")
     bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.0, -0.5, 0.0)
+    bone.tail = (0.0, 0.0, 0.5)
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
 
 
 def _build_sprite_plane(
-    spec: tuple[str, float, float, float, float], armature_obj: bpy.types.Object
+    spec: tuple[str, float, float, float, float, float], armature_obj: bpy.types.Object
 ) -> bpy.types.Object:
-    name, uv_x0, uv_y0, uv_x1, uv_y1 = spec
+    name, uv_x0, uv_y0, uv_x1, uv_y1, screen_x = spec
     slice_w_px = (uv_x1 - uv_x0) * ATLAS_W
     slice_h_px = (uv_y1 - uv_y0) * ATLAS_H
     w = slice_w_px / PIXELS_PER_UNIT
@@ -117,9 +121,15 @@ def _build_sprite_plane(
 
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
+    obj.location = (screen_x, 0.0, 0.0)
+    # Skinned 1.0 to `root` (armature modifier + vertex group): bone controls
+    # the quad, stays flat.
     obj.parent = armature_obj
-    obj.parent_type = "BONE"
-    obj.parent_bone = "root"
+    obj.parent_type = "OBJECT"
+    vg = obj.vertex_groups.new(name="root")
+    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
+    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
+    arm_mod.object = armature_obj
 
     mat = bpy.data.materials.new(name=f"{name}.mat")
     mat.use_nodes = True

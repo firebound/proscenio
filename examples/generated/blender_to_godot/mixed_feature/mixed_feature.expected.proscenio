@@ -9,56 +9,70 @@
         "parent": null,
         "position": [
           0.0,
-          30.000002
+          40.0
         ],
-        "rotation": -0.0,
+        "rotation": -1.570796,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 50.0
+        "length": 30.000001
       },
       {
         "name": "spine",
-        "parent": null,
+        "parent": "root",
         "position": [
-          0.0,
-          -10.0
+          30.0,
+          -0.0
         ],
-        "rotation": -0.0,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 50.0
+        "length": 40.000001
       },
       {
         "name": "head",
-        "parent": null,
+        "parent": "spine",
         "position": [
-          0.0,
-          -50.0
+          60.0,
+          -0.0
         ],
-        "rotation": -0.0,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 50.0
+        "length": 30.000001
+      },
+      {
+        "name": "mouth",
+        "parent": "head",
+        "position": [
+          -4.0,
+          0.0
+        ],
+        "rotation": 1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 30.000001
       },
       {
         "name": "jaw",
-        "parent": null,
+        "parent": "head",
         "position": [
-          40.0,
-          -30.000002
+          0.0,
+          40.0
         ],
-        "rotation": -0.0,
+        "rotation": 0.0,
         "scale": [
           1.0,
           1.0
         ],
-        "length": 50.0
+        "length": 30.000001
       }
     ]
   },
@@ -75,27 +89,27 @@
       "polygon": [
         [
           -20.0,
-          19.999998
+          50.0
         ],
         [
           20.0,
-          19.999998
+          50.0
         ],
         [
           20.0,
-          -30.000002
+          -0.0
         ],
         [
           -20.0,
-          -30.000002
+          -0.0
         ],
         [
           20.0,
-          -80.0
+          -50.0
         ],
         [
           -20.0,
-          -80.0
+          -50.0
         ]
       ],
       "uv": [
@@ -168,7 +182,7 @@
       "type": "sprite",
       "name": "face_glow",
       "bone": "",
-      "hframes": 2,
+      "hframes": 1,
       "vframes": 1,
       "frame": 0,
       "centered": true,
@@ -177,7 +191,8 @@
         0.0,
         0.5,
         0.5
-      ]
+      ],
+      "z_index": 2
     },
     {
       "name": "face_neutral",
@@ -191,19 +206,19 @@
       "polygon": [
         [
           -16.0,
-          16.0
+          -39.0
         ],
         [
           16.0,
-          16.0
+          -39.0
         ],
         [
           16.0,
-          -16.0
+          -71.0
         ],
         [
           -16.0,
-          -16.0
+          -71.0
         ]
       ],
       "uv": [
@@ -224,22 +239,24 @@
           0.5
         ]
       ],
-      "texture": "atlas.png"
+      "texture": "atlas.png",
+      "z_index": 2
     },
     {
       "type": "sprite",
       "name": "mouth",
-      "bone": "head",
-      "hframes": 4,
-      "vframes": 1,
+      "bone": "mouth",
+      "hframes": 2,
+      "vframes": 2,
       "frame": 2,
       "centered": true,
       "texture_region": [
         0.0,
         0.0,
-        0.5,
-        0.5
-      ]
+        0.25,
+        0.25
+      ],
+      "z_index": 4
     }
   ],
   "slots": [
@@ -249,6 +266,7 @@
         "face_glow",
         "face_neutral"
       ],
+      "bone": "head",
       "default": "face_neutral"
     }
   ],
@@ -264,20 +282,43 @@
           "target": "jaw",
           "keys": [
             {
+              "time": 0.0
+            },
+            {
+              "time": 0.291667
+            },
+            {
+              "time": 0.625
+            },
+            {
+              "time": 0.958333
+            }
+          ]
+        },
+        {
+          "type": "bone_transform",
+          "target": "spine",
+          "keys": [
+            {
               "time": 0.0,
-              "rotation": 0.0
+              "position": [
+                30.0,
+                -0.0
+              ]
             },
             {
-              "time": 0.291667,
-              "rotation": -1.570796
-            },
-            {
-              "time": 0.625,
-              "rotation": 1.570796
+              "time": 0.458333,
+              "position": [
+                30.0,
+                -15.000001
+              ]
             },
             {
               "time": 0.958333,
-              "rotation": 0.0
+              "position": [
+                30.0,
+                -0.0
+              ]
             }
           ]
         },

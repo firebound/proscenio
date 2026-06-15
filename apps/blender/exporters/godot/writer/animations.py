@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import NotRequired, TypedDict
 
 import bpy
+from mathutils import Euler, Matrix, Quaternion, Vector
 from proscenio_models import Animation, Key, Track
 
 from ....core._shared.action_fcurves import action_fcurves
@@ -34,6 +35,10 @@ _REST_FALLBACK = BoneRestLocal(
     position=(0.0, 0.0),
     rotation=0.0,
     scale=(1.0, 1.0),
+    # World-aligned identity so a bone missing from the skeleton dict (e.g. a
+    # bare `root` handle keyed at rest) still projects through the same path
+    # rather than silently dropping its channels.
+    rest_basis=Matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))),
 )
 
 
@@ -91,11 +96,20 @@ def build_bone_track(
     dropped so the Bone2D rest pose is preserved on import. A bone keyed at
     rest still gets a track (timing markers only) - useful for ``root`` handles.
     """
-    resolved = {t: _resolve_pose_entry(entry, ppu) for t, entry in by_time.items()}
+    rest = rest_local.get(bone_name, _REST_FALLBACK)
+    # rest_basis is required for the location/rotation projection. Every bone the
+    # skeleton builds carries one and the fallback is identity, so a None here is
+    # a contract break (a stale BoneRestLocal); surface it instead of silently
+    # emitting a motionless track.
+    if rest.rest_basis is None and any(
+        "location" in entry or "rotation_euler" in entry or "rotation_quaternion" in entry
+        for entry in by_time.values()
+    ):
+        raise ValueError(f"missing rest_basis for animated bone {bone_name!r}")
+    resolved = {t: _resolve_pose_entry(entry, ppu, rest) for t, entry in by_time.items()}
     has_position = any(r.position is not None for r in resolved.values())
     has_rotation = any(r.rotation is not None for r in resolved.values())
     has_scale = any(r.scale is not None for r in resolved.values())
-    rest = rest_local.get(bone_name, _REST_FALLBACK)
 
     keys: list[Key] = []
     for t in sorted(resolved.keys()):
@@ -149,29 +163,59 @@ def build_animations(fps: int, ppu: float, rest_local: dict[str, BoneRestLocal])
     return animations
 
 
-def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> PoseDelta:
+def _local_rotation_matrix(entry: dict[str, dict[int, float]]) -> Matrix | None:
+    """Bone-local rotation matrix (3x3) from euler or quaternion fcurve samples."""
+    if "rotation_euler" in entry:
+        e = entry["rotation_euler"]
+        return Euler((e.get(0, 0.0), e.get(1, 0.0), e.get(2, 0.0)), "XYZ").to_matrix()
+    if "rotation_quaternion" in entry:
+        q = entry["rotation_quaternion"]
+        return Quaternion((q.get(0, 1.0), q.get(1, 0.0), q.get(2, 0.0), q.get(3, 0.0))).to_matrix()
+    return None
+
+
+def _screen_rotation_delta(entry: dict[str, dict[int, float]], rest: BoneRestLocal) -> float | None:
+    """Godot screen-rotation delta (radians) for a keyframe's bone-local rotation.
+
+    Rotates the bone-local Y axis (head->tail) by the rest orientation and the
+    keyed local rotation to get the bone's screen direction, then takes the
+    angle change from rest. Works for any in-plane bone (lateral or up), unlike
+    reading a single euler axis - that only matched bones whose local Y was the
+    camera axis. Returns None when the screen direction does not move.
+    """
+    local_rot = _local_rotation_matrix(entry)
+    if local_rot is None or rest.rest_basis is None:
+        return None
+    basis = rest.rest_basis
+    y = Vector((0.0, 1.0, 0.0))
+    posed_dir = basis @ (local_rot @ y)
+    rest_dir = basis @ y
+    posed_angle = math.atan2(-posed_dir.z, posed_dir.x)
+    rest_angle = math.atan2(-rest_dir.z, rest_dir.x)
+    delta = wrap_pi(posed_angle - rest_angle)
+    return round(delta, 6) if abs(delta) > 1e-6 else None
+
+
+def _resolve_pose_entry(
+    entry: dict[str, dict[int, float]], ppu: float, rest: BoneRestLocal
+) -> PoseDelta:
     """Reduce a per-time bucket of fcurve samples to (position, rotation, scale)."""
     position: list[float] | None = None
     rotation: float | None = None
     scale: list[float] | None = None
 
-    if "location" in entry:
+    if "location" in entry and rest.rest_basis is not None:
         loc = entry["location"]
-        bx = float(loc.get(0, 0.0))
-        bz = float(loc.get(2, 0.0))
-        # Y is the depth axis (XZ picture plane), so a Y-only keyframe has no
-        # visible motion and must not promote a position channel.
-        if max(abs(bx), abs(bz)) > 1e-6:
-            position = [round(bx * ppu, 6), round(-bz * ppu, 6)]
+        # The keyed location is in bone-local space; rotate it by the bone's rest
+        # orientation to get the world delta, then project to the Godot screen
+        # (drop Y depth, flip Z). Works for any in-plane bone, unlike reading
+        # local X/Z directly (that only matched world-aligned bones).
+        local = Vector((loc.get(0, 0.0), loc.get(1, 0.0), loc.get(2, 0.0)))
+        world = rest.rest_basis @ local
+        if max(abs(world.x), abs(world.z)) > 1e-6:
+            position = [round(world.x * ppu, 6), round(-world.z * ppu, 6)]
 
-    if "rotation_euler" in entry:
-        ry = float(entry["rotation_euler"].get(1, 0.0))
-        if abs(ry) > 1e-6:
-            rotation = round(ry, 6)
-    if "rotation_quaternion" in entry:
-        angle = _quat_to_screen_angle(entry["rotation_quaternion"])
-        if abs(angle) > 1e-6:
-            rotation = round(angle, 6)
+    rotation = _screen_rotation_delta(entry, rest)
 
     if "scale" in entry:
         sc = entry["scale"]
@@ -183,29 +227,6 @@ def _resolve_pose_entry(entry: dict[str, dict[int, float]], ppu: float) -> PoseD
             scale = [round(sx, 6), round(sz, 6)]
 
     return PoseDelta(position=position, rotation=rotation, scale=scale)
-
-
-def _quat_to_screen_angle(quat_axes: dict[int, float]) -> float:
-    """Bone-local quaternion -> Godot 2D screen rotation in radians.
-
-    Project convention (codified in packages/fixtures/README.md): bones
-    are authored with tail along -Y from head, so bone-Y aligns with
-    -world Y (camera axis) and bone-Z aligns with +world Z. Rotating a
-    bone with `R Y theta` in pose mode produces a bone-local quaternion
-    ``(cos(theta/2), 0, sin(theta/2), 0)`` -> w + y components.
-
-    Godot 2D uses Y-down with CW-positive rotation. World Z maps to
-    -screen-Y, so `R Y +theta` is visually CW in the front view, i.e.
-    +theta in Godot:
-
-        godot_angle = 2 * atan2(q.y, q.w) = +theta
-
-    Breaks down for rigs not aligned with the XZ plane - a future
-    spec will generalize via the bone's rest matrix.
-    """
-    w = float(quat_axes.get(0, 1.0))
-    y = float(quat_axes.get(2, 0.0))
-    return 2.0 * math.atan2(y, w)
 
 
 def _parse_bone_data_path(data_path: str) -> tuple[str | None, str | None]:

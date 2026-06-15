@@ -134,6 +134,11 @@ def _build_attachment_mesh(name: str, slot_empty: bpy.types.Object) -> bpy.types
 
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
+    # Object-parented under the slot Empty - NOT skinned. A slot attachment must
+    # stay a child of the slot so the slot_attachment track can toggle its
+    # visibility; a skinned mesh is re-parented as a sibling of the Skeleton2D
+    # and leaves the slot, breaking the cycle/swap animation. The slot itself
+    # follows a bone via its `bone` field, not the attachments.
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
 

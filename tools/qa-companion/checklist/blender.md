@@ -400,7 +400,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:58-78
 
 ### BL-SLOTS-PARENT-01 · Create Slot makes a slot Empty
-- status: pending
+- status: pass
 - review: keep
 - pre: A scene is open. Optionally: Pose Mode with an active bone, or Object Mode with meshes selected.
 - steps:
@@ -410,7 +410,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:78 -> operators/slot/create.py:68-114
 
 ### BL-SLOTS-PARENT-02 · Create Slot redo can rename the Empty
-- status: pending
+- status: pass
 - review: keep
 - pre: Just ran Create Slot.
 - steps:
@@ -420,7 +420,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/slot/create.py:58-62,116-119
 
 ### BL-SLOTS-PARENT-03 · Clicking a slot row activates that slot
-- status: pending
+- status: pass
 - review: keep
 - pre: At least one slot in the scene.
 - steps:
@@ -439,7 +439,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: reescrito - antes estava ilegível ("incompreensível o que é pra observar").
 
 ### BL-SLOTS-ACTIVE-01 · Active Slot subpanel appears only for a slot Empty
-- status: pending
+- status: pass
 - review: keep
 - steps:
   1. Make a slot Empty active, then make a non-slot object active.
@@ -448,7 +448,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:96-99
 
 ### BL-SLOTS-ACTIVE-02 · Warning row when the slot has no parent bone
-- status: pending
+- status: pass
 - review: keep
 - pre: A slot Empty active.
 - observe: A red alert row, 'no parent bone - attachments will not follow any bone', appears only when the active slot is unparented; it is absent when the slot is bone-parented.
@@ -456,7 +456,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:122-128
 
 ### BL-SLOTS-ACTIVE-03 · Warning row when the slot has no children
-- status: pending
+- status: pass
 - review: keep
 - pre: A slot Empty active.
 - observe: A red alert row, 'empty slot - add child meshes', appears only when the active slot has no mesh children.
@@ -464,7 +464,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:132-135
 
 ### BL-SLOTS-ACTIVE-04 · Star marks the slot's default attachment
-- status: pending
+- status: pass
 - review: keep
 - pre: A slot Empty active with at least one mesh child.
 - steps:
@@ -474,7 +474,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:138-148 -> operators/slot/attachment.py:70-104
 
 ### BL-SLOTS-ACTIVE-05 · Add Selected Mesh attaches meshes to the slot
-- status: pending
+- status: pass
 - review: keep
 - pre: A slot Empty active and at least one other mesh also selected.
 - steps:
@@ -484,7 +484,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:159-165 -> operators/slot/attachment.py:40-67
 
 ### BL-SLOTS-ACTIVE-06 · Per-slot validation issue rows are clickable
-- status: pending
+- status: pass
 - review: keep
 - pre: A slot Empty active that has a validation issue (no children, broken default, child/bone mismatch, or transform keys on a child).
 - observe: Validation issue rows render under the attachments; error rows tint red and warning rows stay plain. Rows that name an object are clickable and select that object when clicked.
@@ -494,7 +494,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Skeleton panel: armature picker, bone list, pose helpers, Quick Armature, IK, authoring camera, pose library
 
 ### BL-SKEL-PARENT-SWEEP · Skeleton parent panel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: Skeleton panel expanded; toggle scene state (armature present or absent, rig picked or not) to surface each read-out.
 - observe: The parent panel shows the Active Armature picker (armatures only) and an 'Exports: <name>' line that says '(picked)' when an armature is chosen or '(first in scene - no rig picked)' otherwise. When no armature exists it warns 'no Armature in scene - use Quick Armature below'. When armatures exist but none is picked it shows a boxed note 'no rig picked - skeleton ops will create a new Proscenio.QuickRig' with a 'Use existing instead' list.
@@ -502,7 +502,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:94-112
 
 ### BL-SKEL-PARENT-01 · Active Armature picker sets the project rig
-- status: pending
+- status: pass
 - review: keep
 - steps:
   1. Pick an armature in the Active Armature picker, then clear it.
@@ -511,7 +511,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:94-96 -> scene_props.py:496-509
 
 ### BL-SKEL-PARENT-02 · 'Use existing' buttons pick a scene armature
-- status: pending
+- status: pass
 - review: keep
 - pre: Armatures exist but the picker is empty (the 'no rig picked' box is showing).
 - steps:
@@ -521,7 +521,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:113-120 -> skeleton_target.py:36-52
 
 ### BL-SKEL-ARMATURE-SWEEP · Armature subpanel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: A rig picked.
 - observe: The Armature subpanel shows a header naming the rig and its exact bone count ("Armature '<name>' - N bone(s)") and a read-only bone list where each bone is indented by its depth, named, and tagged 'connected' or 'relative' where those flags apply.
@@ -529,7 +529,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:25-65,148-158
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
-- status: pending
+- status: pass
 - review: keep
 - pre: A rig picked with bones; a bone row visible.
 - steps:
@@ -539,7 +539,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:52-58 -> selection.py:62-93
 
 ### BL-SKEL-POSE-SWEEP · Pose Mode subpanel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: A rig picked; toggle in and out of Pose mode.
 - observe: Out of Pose mode the subpanel shows a gate label 'enter Pose mode to bake / save poses' and the four pose operators (Bake Current Pose, Toggle IK, Bake IK to Keyframes, Save Pose to Library) are hidden. In Pose mode the gate label is hidden and the four operators appear.
@@ -548,7 +548,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: pose-op behavior -> GAP-POSE-BAKE, GAP-IK, GAP-POSELIB.
 
 ### BL-SKEL-POSE-01 · Bake Current Pose keys every bone at the playhead
-- status: pending
+- status: pass
 - review: keep
 - pre: In Pose mode with the armature active.
 - steps:
@@ -559,7 +559,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-SKEL-POSE-02 · Toggle IK adds and removes a test IK constraint
 - status: pending
-- review: keep
+- review: todo
 - pre: In Pose mode with an active pose bone.
 - steps:
   1. Select a pose bone and click Toggle IK, then click it again.
@@ -569,7 +569,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-SKEL-POSE-03 · Bake IK to Keyframes bakes and clears the chain
 - status: pending
-- review: keep
+- review: todo
 - pre: In Pose mode with an active pose bone that has an IK constraint.
 - steps:
   1. Select an IK-constrained bone and click Bake IK to Keyframes.
@@ -579,7 +579,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-SKEL-POSE-04 · Save Pose to Library stores the pose as an asset
 - status: pending
-- review: keep
+- review: todo
 - pre: In Pose mode with a writable Asset Library configured.
 - steps:
   1. In Pose mode, click Save Pose to Library.
@@ -588,7 +588,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:183-187 -> pose_library.py:27-94
 
 ### BL-SKEL-QUICKARM-SWEEP · Quick Armature subpanel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: Quick Armature subpanel expanded.
 - observe: The subpanel shows the Quick Armature launch button and four option fields that each keep their value: Lock to Front Orthographic, Default = chain connected, Bone name prefix, and Snap increment.
@@ -596,7 +596,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:217-220 -> scene_props.py:29-67
 
 ### BL-SKEL-QUICKARM-01 · Quick Armature modal walk (consolidated)
-- status: pending
+- status: pass
 - review: keep
 - pre: The mouse is over a 3D viewport; the Quick Armature subpanel is open.
 - steps:
@@ -645,7 +645,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Mesh Generation panel: automesh one-click + interactive modal + debug pipeline
 
 ### BL-MESH-PARENT-SWEEP · Mesh Generation parent panel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: Mesh Generation panel expanded; switch the active object between a mesh, a sprite, and nothing to surface each guard.
 - observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the Interior Mode selector (Simple / Dense).
@@ -653,7 +653,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/mesh_generation.py:63-74 -> _helpers.py:111
 
 ### BL-MESH-ALPHA-SWEEP · Automesh-from-Alpha subpanel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: A mesh element active; Automesh from Alpha subpanel expanded.
 - observe: The subpanel shows the trace settings (Trace resolution, Alpha threshold, Margin in pixels, Contour vertices, Interior spacing), the Preserve base quad and Preserve weights on regen checkboxes, and the dense-only column 'Density follows bones' with its Bone influence radius and Bone density factor sub-fields. The dense-only column is greyed in Simple mode, and the bone sub-fields are active only in Dense mode with density on. At the bottom is the Automesh button, greyed unless the mesh has an image texture.
@@ -662,7 +662,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: Preserve weights on regen behavior -> GAP-REGEN-PRESERVE.
 
 ### BL-MESH-ALPHA-01 · Automesh from Alpha rebuilds the mesh from the image
-- status: pending
+- status: pass
 - review: keep
 - pre: A mesh element whose material has an image texture of nonzero size.
 - steps:
@@ -673,7 +673,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-MESH-ALPHA-02 · Automesh from Alpha preflight guards
 - status: pending
-- review: keep
+- review: todo
 - pre: A mesh with no material image, or a zero-size image, or a sprite element.
 - steps:
   1. Run Automesh from Alpha on each failure case (for a sprite, via F3 search since the panel hides the button).
@@ -682,7 +682,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/automesh/automesh.py:195-209,257-279
 
 ### BL-MESH-INTERACTIVE-SWEEP · Interactive subpanel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: Automesh Interactive subpanel expanded.
 - observe: The subpanel shows a label 'Interactive trace and edit', the Loops, Spacing, and Cut margin fields, the Preserve weights on regen toggle, and the Author Mesh (interactive) button. The button is enabled only when a mesh with an image texture is active; otherwise a 'select a mesh first' label shows.
@@ -692,7 +692,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-MESH-INTERACTIVE-01 · Author Mesh launches the interactive modal
 - status: pending
-- review: keep
+- review: todo
 - pre: A mesh element with an image texture active.
 - steps:
   1. Click Author Mesh (interactive).
@@ -702,7 +702,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-MESH-INTERACTIVE-02 · Author Mesh invoke guards
 - status: pending
-- review: keep
+- review: todo
 - pre: A non-mesh object active, or a sprite element, or a mesh without an image.
 - steps:
   1. Try to launch Author Mesh on each invalid case.
@@ -712,7 +712,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-MESH-INTERACTIVE-03 · Author Mesh stage machine (consolidated)
 - status: pending
-- review: keep
+- review: todo
 - pre: The Author Mesh modal is running.
 - steps:
   1. Press Enter to advance through the stages (OUTER, edit outline, inner loops, edit interior points, preview interior, apply); the stage label counts up and the overlay refreshes each step with a count report.
@@ -726,7 +726,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-MESH-INTERACTIVE-04 · Author Mesh pen editing (consolidated)
 - status: pending
-- review: keep
+- review: todo
 - pre: The Author Mesh modal is on a pen stage.
 - steps:
   1. On the edit-outline stage, tap Shift for the extend pen or Ctrl for the cut pen; click to place points or drag to free-draw, then right-click or Enter to finish. The tooltip names the active pen; extend reshapes the outline, cut marks a corridor that is carved at apply.
@@ -737,7 +737,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/automesh/automesh_authoring.py:365,452,458,486,539,599-624,933,1305; _status_bar.py:19-43
 
 ### BL-MESH-DEBUG-01 · Debug stage leaves a wireframe companion
-- status: pending
+- status: pass
 - review: keep
 - pre: Debug mode on so the Debug Pipeline subpanel is visible.
 - steps:
@@ -747,7 +747,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/mesh_generation.py:244 -> scene_props.py:346 -> automesh.py:150,308
 
 ### BL-MESH-DEBUG-02 · Clear Debug Companions removes the wireframes
-- status: pending
+- status: pass
 - review: keep
 - pre: Debug Pipeline subpanel open with debug companions present for the active object.
 - steps:
@@ -759,16 +759,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Weight Paint panel: five bind modes, Edit Weights modal, brush preset, copy weights, sidecar IO, snapshot restore
 
 ### BL-WPAINT-SWEEP · Weight Paint inventory across subpanels (visual pass)
-- status: pending
+- status: fail
 - review: keep
 - pre: A mesh element active with a picker armature set and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
 - observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), a target line, a per-bone Soft/Hard overrides box, and a Bone Heat hint; Edit Weights has an active-group label, the Edit Weights button (with a 'bind first to enable' hint when disabled), and modal status chips; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
 - code: apps/blender/panels/weight_paint.py:51-53,174-339; _helpers.py:111
-- note: Preserve weights on regen behavior -> GAP-REGEN-PRESERVE; modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
+- note:
+  Preserve weights on regen behavior -> GAP-REGEN-PRESERVE; modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
+  o painel do weight paint mode não tem as duas opções de max_distance e falloff_power que aparecem no painel de redo
 
 ### BL-WPAINT-BIND-01 · Mode dropdown picks the bind algorithm
-- status: pending
+- status: pass
 - review: keep
 - steps:
   1. Open the Bind Mode dropdown and pick each of the five modes.
@@ -777,7 +779,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:174 (prop); properties/scene_props.py:218 (enum def)
 
 ### BL-WPAINT-BIND-02 · Per-bone Soft / Hard / Clear overrides (consolidated)
-- status: pending
+- status: pass
 - review: keep
 - pre: A picker with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
 - steps:
@@ -789,7 +791,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:225,232,241 -> operators/skinning/set_bone_mode.py:52,56
 
 ### BL-WPAINT-BIND-03 · Bind to Picker Armature builds the weights
-- status: pending
+- status: pass
 - review: keep
 - pre: A mesh element active; a picker armature set (the button is greyed without one).
 - steps:
@@ -799,7 +801,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:186 -> operators/skinning/bind_mesh.py:176 execute
 
 ### BL-WPAINT-BIND-04 · Bind redo panel re-binds with new settings
-- status: pending
+- status: pass
 - review: keep
 - pre: Just ran Bind.
 - steps:
@@ -809,7 +811,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/bind_mesh.py:49-94 (props), 104 invoke
 
 ### BL-WPAINT-EDIT-01 · Edit Weights paint stroke marks verts as user-painted
-- status: pending
+- status: fail
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
@@ -817,9 +819,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: When you finish the stroke, the vertices you touched are marked as user-painted (shown white) and the provenance overlay updates.
 - intent: Painting a stroke tags the touched vertices as hand-edited in the snapshot.
 - code: apps/blender/operators/skinning/edit_weights.py:114-127 modal
+- note: the verts are only painted white if i exit and re-enter the weight paint mode
 
 ### BL-WPAINT-EDIT-02 · Edit Weights Esc exits and restores
-- status: pending
+- status: pass
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
@@ -829,7 +832,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/edit_weights.py:112,133 _finish(cancel=True)
 
 ### BL-WPAINT-BRUSH-01 · Brush curve presets (consolidated)
-- status: pending
+- status: pass
 - review: keep
 - pre: An active weight-paint brush exists (otherwise the preset buttons are greyed).
 - steps:
@@ -839,7 +842,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:278 -> operators/skinning/brush_preset.py:88 execute
 
 ### BL-WPAINT-SNAP-01 · Reset to Last Saved Weights restores the snapshot
-- status: pending
+- status: pass
 - review: keep
 - pre: A mesh active with a saved weight snapshot (the button is disabled without one).
 - steps:
@@ -849,7 +852,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:352 -> operators/skinning/restore_weight_snapshot.py:49
 
 ### BL-WPAINT-SNAP-02 · Export and Import weight snapshot (consolidated)
-- status: pending
+- status: pass
 - review: keep
 - pre: A mesh element active; Export needs an existing snapshot, Import only needs a mesh.
 - steps:
@@ -860,7 +863,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:359,360 -> operators/skinning/sidecar_io.py:50,66,84,101
 
 ### BL-WPAINT-XFER-01 · Copy Weights to Selected transfers weights
-- status: pending
+- status: pass
 - review: keep
 - pre: An active mesh plus at least one other selected mesh.
 - steps:
@@ -873,7 +876,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Animation panel (read-only action summary)
 
 ### BL-ANIM-SWEEP · Animation panel inventory (visual pass)
-- status: pending
+- status: pass
 - review: keep
 - pre: Animation subpanel expanded; test with zero actions and with at least one action.
 - observe: With no actions it shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
@@ -881,7 +884,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/animation.py:12-36,56-68
 
 ### BL-ANIM-01 · Clicking an action row assigns it to the armature
-- status: pending
+- status: pass
 - review: keep
 - pre: At least one action and at least one armature in the scene.
 - steps:
@@ -891,17 +894,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/animation.py:28-36 (draw), apps/blender/operators/selection.py:96-132 (handler)
 
 ### BL-ANIM-02 · Assigning with multiple armatures warns and uses the first
-- status: pending
-- review: keep
+- status: pass
+- review: drop
 - pre: At least one action and two or more armatures in the scene; report log level at 'info' or higher.
 - steps:
   1. With two or more armatures present, click an action row.
 - observe: A warning appears ('N armatures in scene - assigning to <name>') and the action is assigned to the first armature only. With log level set to 'errors' the warning is suppressed.
 - intent: With more than one armature, assignment warns and falls back to the first armature.
 - code: apps/blender/operators/selection.py:117-127
+- note: isso sequer deveria ser uma ação, já estabelecemos que a armature trabalhada é definida em Skeleton
 
 ### BL-ANIM-03 · Assigning with no armature cancels with a warning
-- status: pending
+- status: pass
 - review: keep
 - pre: At least one action but no armature in the scene; report log level 'info' or higher.
 - steps:
@@ -909,10 +913,11 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: Nothing is assigned and a warning appears ('no armature in scene to receive the action'). With log level set to 'errors' the warning is suppressed.
 - intent: With no armature to receive it, assignment cancels with a warning instead of erroring.
 - code: apps/blender/operators/selection.py:117-120
+- note: possível manter, porém deve avisar quando o picker estiver sem armature
 
 ### BL-ANIM-04 · Clicking a stale action row cancels safely
 - status: pending
-- review: keep
+- review: todo
 - pre: An action exists that could be renamed or deleted between the panel drawing and your click.
 - steps:
   1. Rename or delete the action via the Python console after the panel drew, then click the now-stale row.

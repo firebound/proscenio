@@ -33,10 +33,8 @@ The Spine-parity expressiveness wave. The format carries the day-one appearance 
 
 ## Rigging and posing
 
-The Quick-Armature / skeleton / pose extensions whose value is authoring convenience the native tools or the shipped now-work already cover.
+The Quick-Armature / skeleton / pose extensions whose value is authoring convenience the native tools or the shipped now-work already cover. (2026-06-16: **qa-rotation-mode** and **qa-pick-parent-viewport** promoted to [backlog.md](backlog.md#fila-da-sprint).)
 
-- **qa-rotation-mode** - Quick Armature rotation-mode choice (Euler-Y vs quaternion) + safe swap. Gated: export is already correct either way (the writer collapses both via `_quat_to_screen_angle`), so the value is only authoring clarity, and the safe-swap can silently break animations if wrong. Trigger: a quaternion-default rig measurably hurts authoring on a real character (the four opaque Graph Editor channels or a clumsy Drive-from-Bone target).
-- **qa-pick-parent-viewport** - Pick-parent-in-viewport during the modal. Gated: bone-tip hit-testing lands inside an already-saturated chord vocabulary (Shift/Alt/Ctrl/X/Z all taken) and adds a new stateful modal surface. Trigger: a real rigging session shows mid-sketch reparenting often enough to pay for bone-tip hit-testing and a new chord.
 - **qa-chain-naming-suffixes** - Chain-aware bone naming suffixes. Gated: the flat counter works; per-chain counters plus new-root detection widen modal state, and after-the-fact batch rename covers the gap. Trigger: after-the-fact batch rename stops covering on a real multi-chain rig.
 - **qa-mirror-suffix** - Auto `_L`/`_R` suffix with X-Mirror. Gated: no symmetric rig fixture exists end to end, 2D cutouts are commonly authored asymmetric, and mirrored create entangles the in-modal undo stack. Trigger: a bilaterally symmetric rig fixture ships end to end.
 - **sticky-panel** - Drive from Bone sticky / pinned panel while editing a pose bone. Gated: the pain is real but the fix is a poll-architecture change, and the two-ranges rework may have reduced the pain, so re-measure first. Trigger: re-measure the mesh-to-pose-bone swap pain after the two-ranges rework landed; proceed only if it still hurts.
@@ -47,7 +45,7 @@ The Quick-Armature / skeleton / pose extensions whose value is authoring conveni
 
 ## Slot attachments
 
-- **skin-coordination** - Named attachment sets across slots (Spine-style "skin"): one switch flips one attachment per slot across many slots at once. Gated: the only genuinely new capability in the slot spec, a three-app coordination surface (schema + writer + Godot runtime selector) with unresolved runtime semantics, leaning on the runtime layer the importer-only Godot plugin deliberately lacks; per-slot defaults plus the shipped keyframe button cover a single-variant character. Trigger: a real character ships two or more costume variants on one rig (in Firebound or a user report); the first-class `skins[]` shape additionally waits on the format-migration path, while the additive generated-animations shape can land without it but carries override-fragile runtime semantics.
+(2026-06-16: **skin-coordination** promoted to [backlog.md](backlog.md#fila-da-sprint).)
 
 ## Atlas packing
 
@@ -78,7 +76,6 @@ CI / coverage / fixture / repo gates whose cost is not yet justified by a real e
 - **flat-fixture-buckets** - Migrate the flat fixtures into the `psd_to_blender` / `blender_to_godot` buckets. Gated: pure reorganization whose move ripples through spec TODOs, the fixtures index, wrapper paths, and the sync script. Trigger: piggyback the move onto the next edit of a flat fixture (locked backlog decision).
 - **origin-pivot-fixture** - Dedicated origin / pivot fixture. Gated: origin paths are triple-covered today (doll oracle, tag_smoke, pytest). Trigger: ship together with the sprite-pivot-offset writer work, or on the first regression where origin handling diverges between PSD authoring styles.
 - **issue-pr-templates** - Issue + PR templates. Gated: zero protection for a solo repo. Trigger: the repo opens to outside contributors.
-- **install-dev-script** - `scripts/install-dev.ps1` to automate dev junctions. Gated: convenience, not a gate, and a twice-a-year script rots silently. Trigger: the next fresh-machine dev setup; author the script during that setup so it is tested by construction.
 
 ## Photoshop overhaul
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from .._shared.action_fcurves import action_fcurves
-from .._shared.cp_keys import PROSCENIO_SLOT_DEFAULT
+from .._shared.cp_keys import PROSCENIO_SLOT_BONE, PROSCENIO_SLOT_DEFAULT
 from .._shared.pg_cp_fallback import read_field
 from ..slot.slot_emit import is_slot_empty
 from ._shared import name_of
@@ -61,13 +61,21 @@ def _check_slot_default(obj: object, children: list[object], obj_name: str) -> l
 
 
 def slot_parent_bone(obj: object) -> str:
-    """The bone ``obj`` is parented to, or "" when it is not bone-parented.
+    """The bone ``obj`` follows, or "" when it follows none.
 
-    Requires ``parent_type == "BONE"``: a leftover ``parent_bone`` string on an
-    OBJECT-parented slot is not a live bone parent. Shared by the slot
-    validators and the Active Slot panel so the "no parent bone" notion has a
-    single definition rather than a forked inline check.
+    Reads the ``slot_bone`` field first (the object-parent + Child Of
+    convention), then a real ``parent_type == "BONE"`` parent - the same
+    order the writer emits (``writer/slots.py``), so the Active Slot panel,
+    the slot validators, and the export never disagree about the followed
+    bone. A leftover ``parent_bone`` on an OBJECT-parented slot with no
+    field is not a live follow.
+
+    Shared by the validators and the panel so the "no parent bone" notion
+    has a single definition.
     """
+    slot_bone = str(read_field(obj, pg_field="slot_bone", cp_key=PROSCENIO_SLOT_BONE, default=""))
+    if slot_bone:
+        return slot_bone
     if getattr(obj, "parent_type", "") != "BONE":
         return ""
     return str(getattr(obj, "parent_bone", ""))

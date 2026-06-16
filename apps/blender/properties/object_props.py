@@ -281,9 +281,12 @@ class ProscenioObjectProps(PropertyGroup):
         description=(
             "Bone this slot follows. The Godot importer parents the slot Node2D "
             "under that Bone2D so the attachments track the bone (e.g. a weapon "
-            "following an arm). Set this instead of bone-parenting the Empty, "
-            "which would tilt the attachment quads out of the picture plane. "
-            "Empty string anchors the slot at the skeleton root."
+            "following an arm). Bind to Bone sets this and adds a Child Of "
+            "constraint that keeps the flat attachment quads in the picture "
+            "plane for any bone orientation. Hand bone-parenting the Empty "
+            "(Ctrl+P > Bone) also sets the followed bone and exports, but only "
+            "for bones pointing into the screen - an in-plane bone tilts the "
+            "quads edge-on. Empty string anchors the slot at the skeleton root."
         ),
         default="",
         update=on_any_update,

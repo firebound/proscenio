@@ -17,9 +17,10 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
     Bpy walker - delegates the schema-shaped projection to
     ``core.slot.slot_emit.build_slots`` so the slot logic can be exercised
     under plain pytest. Per the slot system, ``bone`` is the Empty's
-    ``parent_bone`` when ``parent_type == "BONE"``. Attachments
-    are mesh names only - the meshes themselves still emit normally
-    in ``elements[]``.
+    ``slot_bone`` field (the object-parent + Child Of follow convention),
+    falling back to ``parent_bone`` when it is bone-parented the old way.
+    Attachments are mesh names only - the meshes themselves still emit
+    normally in ``elements[]``.
     """
     slot_inputs: list[SlotInput] = []
     for obj in iter_objects(scene):

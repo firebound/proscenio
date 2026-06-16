@@ -1,8 +1,8 @@
 # Backlog: IK authoring ergonomics
 
-Feedback de sessão manual (2026-06-11) sobre o fluxo IK pós-spec 031 (PRs 2-3 shipparam target wiring + bake gate). Separado de `backlog-ui-feedback.md` pra não criar ruído no trabalho em andamento lá. Referência de design: Rigify (custom property + drivers pro IK/FK blend, snap ops, rig_ui.py gerado, bone collections coloridas).
+Feedback de sessão manual (2026-06-11) sobre o fluxo IK depois do target wiring + bake gate (PRs 2-3 do rigging/IK). Separado de `backlog-ui-feedback.md` pra não criar ruído no trabalho em andamento lá. Referência de design: Rigify (custom property + drivers pro IK/FK blend, snap ops, rig_ui.py gerado, bone collections coloridas).
 
-Nota de status: as duas entradas IK antigas em `backlog-ui-feedback.md#toggle-ik--ik-workflow` ("cria constraint sem target" e "sem bake-action gate") shipparam na spec 031 (PRs 2 e 3) - marcar lá quando aquele arquivo sair do trabalho atual.
+Nota de status: as duas entradas IK antigas em `backlog-ui-feedback.md#toggle-ik--ik-workflow` ("cria constraint sem target" e "sem bake-action gate") shipparam nos PRs 2 e 3 do rigging/IK - marcar lá quando aquele arquivo sair do trabalho atual.
 
 ## Entradas
 

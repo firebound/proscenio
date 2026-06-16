@@ -17,8 +17,12 @@ sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 from core.validation import slot_parent_bone, validate_active_slot  # noqa: E402
 
 
-def _slot_props(*, is_slot: bool = True, slot_default: str = "") -> SimpleNamespace:
-    return SimpleNamespace(is_slot=is_slot, slot_default=slot_default)
+def _slot_props(
+    *, is_slot: bool = True, slot_default: str = "", slot_bone: str = ""
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        is_slot=is_slot, slot_default=slot_default, slot_bone=slot_bone
+    )
 
 
 def _empty(
@@ -185,3 +189,39 @@ def test_slot_parent_bone_empty_when_object_parented() -> None:
 def test_slot_parent_bone_empty_when_unparented() -> None:
     empty = _empty("free.swap")
     assert slot_parent_bone(empty) == ""
+
+
+def test_slot_parent_bone_reads_slot_bone_field_when_object_parented() -> None:
+    # The new convention: object-parented Empty + slot_bone field set. The
+    # resolver must report the field's bone, not "(unparented)".
+    empty = _empty(
+        "face.slot", parent_type="OBJECT", props=_slot_props(slot_bone="head")
+    )
+    assert slot_parent_bone(empty) == "head"
+
+
+def test_slot_parent_bone_prefers_slot_bone_over_parent_bone() -> None:
+    # slot_bone wins over a leftover bone parent, matching the writer's order.
+    empty = _empty(
+        "face.slot",
+        parent_bone="jaw",
+        parent_type="BONE",
+        props=_slot_props(slot_bone="head"),
+    )
+    assert slot_parent_bone(empty) == "head"
+
+
+def test_slot_parent_bone_falls_back_to_bone_parent_when_no_field() -> None:
+    empty = _empty("forearm.swap", parent_bone="forearm.L", parent_type="BONE")
+    assert slot_parent_bone(empty) == "forearm.L"
+
+
+def test_bound_slot_with_field_emits_no_unparented_error() -> None:
+    # The whole point: a slot_bone-bound slot with a child is fully valid.
+    empty = _empty(
+        "face.slot",
+        parent_type="OBJECT",
+        children=[_mesh("face_neutral")],
+        props=_slot_props(slot_bone="head"),
+    )
+    assert validate_active_slot(empty) == []

@@ -223,6 +223,18 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty["proscenio_slot_default"] = "club"
     empty["proscenio_slot_bone"] = ARM_BONE
     empty["proscenio_slot_index"] = 0
+
+    # Author the Blender-side follow so the weapon swings with the arm in the
+    # viewport, mirroring the Godot importer. Baked at rest (no action yet), so
+    # the writer's rest read leaves the golden unchanged. Name matches
+    # core.bpy_helpers.slot.bone_follow.SLOT_FOLLOW_CONSTRAINT.
+    con = empty.constraints.new(type="CHILD_OF")
+    con.name = "Proscenio Slot Follow"
+    con.target = armature_obj
+    con.subtarget = ARM_BONE
+    bpy.context.view_layer.update()
+    pose_bone = armature_obj.pose.bones[ARM_BONE]
+    con.inverse_matrix = (armature_obj.matrix_world @ pose_bone.matrix).inverted()
     return empty
 
 

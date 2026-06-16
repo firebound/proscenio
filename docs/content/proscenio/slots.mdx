@@ -14,3 +14,7 @@ A sprite-swap group: one named anchor with N alternate attachments, exactly one 
 ## Slot
 
 <JSONSchemaViewer schema={withDefs(schema, "Slot")} />
+
+## Active Slot
+
+**Bind to Bone** makes the slot follow a bone inside Blender the way the Godot importer already makes it follow at runtime: it keeps the Empty object-parented (so the flat attachment quads stay in the picture plane) and adds a `Child Of` constraint whose inverse cancels the bone rest, so the slot rides only the bone's pose delta. The bone line and the unparented warning in the Active Slot subpanel reflect the bound bone once set. **Unbind** removes the follow. Because the inverse is baked when you bind, rebind after moving the slot.

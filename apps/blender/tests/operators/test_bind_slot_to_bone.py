@@ -40,6 +40,25 @@ def _make_slot(arm: bpy.types.Object, name: str = "weapon") -> bpy.types.Object:
     return empty
 
 
+def _make_legacy_bone_parented_slot(
+    arm: bpy.types.Object, name: str = "legacy_slot"
+) -> bpy.types.Object:
+    """A slot Empty real-bone-parented the old way (parent_type == 'BONE')."""
+    empty = bpy.data.objects.new(name, None)
+    bpy.context.scene.collection.objects.link(empty)
+    empty.parent = arm
+    empty.parent_type = "BONE"
+    empty.parent_bone = "arm"
+    empty.proscenio.is_slot = True
+    child = bpy.data.objects.new(name + "_att", bpy.data.meshes.new("att"))
+    bpy.context.scene.collection.objects.link(child)
+    child.parent = empty
+    child.parent_type = "OBJECT"
+    bpy.context.view_layer.objects.active = empty
+    bpy.context.view_layer.update()
+    return empty
+
+
 def _activate(obj: bpy.types.Object) -> None:
     for o in list(bpy.context.selected_objects):
         o.select_set(False)
@@ -140,3 +159,36 @@ def test_create_slot_pose_bone_uses_follow_not_bone_parent(automesh_fixture):
     bpy.context.view_layer.update()
     tail = empty.matrix_world.translation
     assert tail.y == pytest.approx(1.0, abs=1e-4)
+
+
+def test_bind_normalizes_legacy_bone_parent(automesh_fixture):
+    arm = _make_rig()
+    empty = _make_legacy_bone_parented_slot(arm)
+    _activate(empty)
+    assert empty.parent_type == "BONE"  # precondition: legacy real bone parent
+
+    result = bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    assert "FINISHED" in result
+    # The legacy bone parent is dropped, leaving object-parent + a single follow
+    # constraint - no double-drive from a bone parent layered under the Child Of.
+    assert empty.parent is arm
+    assert empty.parent_type == "OBJECT"
+    assert empty.parent_bone == ""
+    follow = [c for c in empty.constraints if c.name == "Proscenio Slot Follow"]
+    assert len(follow) == 1
+    assert empty.proscenio.slot_bone == "arm"
+
+
+def test_unbind_drops_legacy_bone_parent(automesh_fixture):
+    arm = _make_rig()
+    empty = _make_legacy_bone_parented_slot(arm)
+    _activate(empty)
+
+    result = bpy.ops.proscenio.unbind_slot_from_bone()
+    assert "FINISHED" in result
+    # Unbinding a legacy slot must also drop the real bone parent, or it would
+    # stay bone-driven.
+    assert empty.parent_type == "OBJECT"
+    assert empty.parent_bone == ""
+    assert empty.constraints.get("Proscenio Slot Follow") is None
+    assert empty.proscenio.slot_bone == ""

@@ -43,6 +43,25 @@ def _follow_constraint(empty: bpy.types.Object) -> bpy.types.Constraint | None:
     return con if con is not None and con.type == "CHILD_OF" else None
 
 
+def _drop_legacy_bone_parent(empty: bpy.types.Object) -> None:
+    """Convert a legacy real BONE parent to an object parent, preserving world.
+
+    A slot authored by the old create_slot bone path is ``parent_type ==
+    "BONE"``. Layering a Child Of follow on top of that would double-drive the
+    slot, and unbinding would leave it bone-driven; flip it to the object-parent
+    convention first so the follow (or its removal) is the only bone influence.
+    No-op on a slot already on the convention.
+    """
+    if empty.parent_type != "BONE":
+        return
+    world = empty.matrix_world.copy()
+    empty.parent_type = "OBJECT"
+    empty.parent_bone = ""
+    if empty.parent is not None:
+        empty.matrix_parent_inverse = empty.parent.matrix_world.inverted()
+    empty.matrix_world = world
+
+
 def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_name: str) -> None:
     """Wire ``empty`` to follow ``bone_name`` of ``armature`` in Blender.
 
@@ -57,6 +76,7 @@ def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_
     if pose_bone is None:
         raise RuntimeError(f"armature '{armature.name}' has no bone '{bone_name}'")
 
+    _drop_legacy_bone_parent(empty)
     existing = _follow_constraint(empty)
     if existing is not None:
         empty.constraints.remove(existing)
@@ -76,8 +96,11 @@ def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_
 def unbind_slot_from_bone(empty: bpy.types.Object) -> None:
     """Reverse :func:`bind_slot_to_bone`: drop the constraint + clear slot_bone.
 
-    Leaves the Empty object-parented and inert (the pre-bind state).
+    Leaves the Empty object-parented and inert (the pre-bind state). A legacy
+    real BONE parent is dropped too, so a slot from the old convention does not
+    stay bone-driven after unbind.
     """
+    _drop_legacy_bone_parent(empty)
     existing = _follow_constraint(empty)
     if existing is not None:
         empty.constraints.remove(existing)

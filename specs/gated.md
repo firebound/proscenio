@@ -1,10 +1,10 @@
 # Gated work
 
-Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out of specs 027-035 during the 2026-06-11 reconciliation, where those specs shipped their near-term work and their folders were pruned (see [_index.md](_index.md)). Organized by originating domain.
+Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out during the 2026-06-11 reconciliation, when shipped work had its folders pruned (the durable number-to-topic map is [_index.md](_index.md)). Organized by domain.
 
-Companion homes: deferred work (real value, sequenced second-stage, no trigger) is in [deferred.md](deferred.md); dropped work (value below cost) in [dropped.md](dropped.md); locked calls in [decisions.md](decisions.md). The not-yet-started specs 036-038 keep their own items in [backlog.md](backlog.md) until they are worked.
+Companion homes: deferred work (real value, sequenced second-stage, no trigger) is in [deferred.md](deferred.md); dropped work (value below cost) in [dropped.md](dropped.md); locked calls in [decisions.md](decisions.md). Per-domain product backlog is indexed from [backlog.md](backlog.md).
 
-## 028 - schema-expressiveness
+## Schema expressiveness
 
 The Spine-parity expressiveness wave. The format carries the day-one appearance slice already (modulate / z_index / flip shipped); the rest waits on real demand, and several share the same design pass.
 
@@ -21,17 +21,17 @@ The Spine-parity expressiveness wave. The format carries the day-one appearance 
 - **rig-orientation full-XY support** - Generalize the transform math for XY-authored rigs (the full-generalization half of `rig-orientation-detection` / `auto-detect-2d-vs-3d`; the warn-only detection guards shipped in #105). Gated: generalizing the transform math for a convention no user has asked for; the warn-only guard covers detection until then. Trigger: a real user authors a rig in the XY plane.
 - **format-migration-path** - Version detection + a v1-to-v2 migrator. Gated: a migrator for a v2 that does not exist yet is speculative scaffolding, and gating it preserves the storage-split ordering (no `migrations/` directory exists in the tree). Trigger: the first breaking schema bump is scheduled (the storage split is the known candidate); build version detection + the v1-to-v2 migrator inside that bump's PR series. The storage-split spec (037) stays blocked behind this row.
 
-## 029 - mesh-authoring
+## Mesh authoring
 
 - **manual-hull-pen-tool** - Manual mesh authoring: click-to-place pen tool to draw a hull by hand (Spine Create-mode analog). Gated: the demand class is confirmed across the genre (Spine New/Trace, Live2D, Moho), but a new interactive modal is the maximum GUI test-burden plus bug-surface, and Blender Edit Mode plus this addon's Reproject UV is a workable fallback today, so capability is not blocked, only gesture convenience. Trigger: an artist authoring real game art hits a hull alpha-trace cannot produce AND the Edit Mode + Reproject UV fallback proves too clumsy in a logged session; revisit only after the extend/cut splice it would reuse has soaked. If the trigger has not fired by 1.0, prune the entry.
 
-## 030 - skinning-weight-paint
+## Skinning and weight paint
 
 - **auto-patch-joint-cover** - Auto-Patch joint cover at articulations (seam / joint-cover generator). Gated: the art-prep convention (overlap caps at joints) plus seam weighting already covers the need, so building a generator ahead of a real gap is speculative. Trigger: a humanoid fixture ships end to end AND the artist reports articulation gaps that overlapping art plus seam weighting cannot hide.
 - **bone-heat-override-post-pass** (extension of the shipped per-bone-override gating fix; no separate backlog row) - Recompute overridden bone columns planar-side and splice into the Bone Heat result, so per-bone Soft/Hard works on the default bind path. Gated: new capability on the default bind path; the merge machinery exists but should not be built without demand. Trigger: a user binding with Bone Heat (Blender native) asks for per-bone Soft/Hard control instead of switching the mode to Proximity.
 - **custom-weight-overlay** (extension of the shipped flat-mesh-display; no separate backlog row) - A Spine-style custom weight overlay. Gated: the native overlay opacity already shipped as the cheap answer; a custom overlay is the expensive alternative. Trigger: a real skinning session judges the native overlay opacity insufficient on flat meshes.
 
-## 031 - rigging-and-posing
+## Rigging and posing
 
 The Quick-Armature / skeleton / pose extensions whose value is authoring convenience the native tools or the shipped now-work already cover.
 
@@ -45,17 +45,17 @@ The Quick-Armature / skeleton / pose extensions whose value is authoring conveni
 - **ik-round-trip** - IK constraints round-trip Blender to Godot as live constraints. Gated: Godot's 2D `SkeletonModification2D` stack is flagged Experimental and breaks under negative X scale (issues #79960, #75224), exactly the flipped-rig cases 2D games hit; the bake gate already covers the export need. Trigger: Godot's 2D SkeletonModification stack graduates from experimental and the flipped-rig bugs close.
 - **pose-auto-categorise** - Auto-categorise poses by armature name. Gated: Blender's native catalogs already cover a single rig; auto-assign only pays off across multiple characters. Trigger: a second character's poses enter the library.
 
-## 032 - slot-attachments
+## Slot attachments
 
 - **skin-coordination** - Named attachment sets across slots (Spine-style "skin"): one switch flips one attachment per slot across many slots at once. Gated: the only genuinely new capability in the slot spec, a three-app coordination surface (schema + writer + Godot runtime selector) with unresolved runtime semantics, leaning on the runtime layer the importer-only Godot plugin deliberately lacks; per-slot defaults plus the shipped keyframe button cover a single-variant character. Trigger: a real character ships two or more costume variants on one rig (in Firebound or a user report); the first-class `skins[]` shape additionally waits on the format-migration path, while the additive generated-animations shape can land without it but carries override-fragile runtime semantics.
 
-## 033 - atlas-packing
+## Atlas packing
 
 - **per-asset-ppu** - Per-asset / per-layer pixels-per-unit end to end. Gated: a schema bump plus three tools for a workflow the engine-side practice avoids (uniform PPU across all sprites is the Unity guidance); per-asset divergence is a normalization problem, not the norm. Trigger: the mixed-PPU case recurs on a real project after uniform-PPU normalization is rejected.
 - **per-object-pack-state** - Per-object pack / unpack state visibility. Gated: a new stateful UI surface against today's single-shared-atlas reality, with no multi-atlas page support yet to justify per-object badges. Trigger: multi-atlas pages ship (schema-expressiveness) or a manual session logs hybrid pack-state confusion against today's single shared atlas.
 - **atlas-region-helper** - Atlas region authoring helper (snap UV by name). Gated: an authoring operator for a workflow with no logged friction; only reproject + region-from-UV ops exist and no snap-by-name demand has surfaced. Trigger: a manual-testing session logs UV-snap friction during atlas region authoring.
 
-## 034 - photoshop-plugin
+## Photoshop plugin
 
 New tag types and roundtrip hardening with no consuming runtime yet; each reserved name costs nothing until its concept exists.
 
@@ -66,7 +66,7 @@ New tag types and roundtrip hardening with no consuming runtime yet; each reserv
 - **stable-layer-identity** - Stable layer identity in `PngWrite.layerPath` for duplicate sibling names. Gated: first-match resolution is real, but the existing `duplicate-path` warning already catches the common dup-sibling case and no wrong-PNG report has ever surfaced; the `{name, index}` hint is on record. Trigger: a wrong-PNG export report from duplicate sibling names, or a feature that must address layers by stable handle.
 - **spectrum-shadow-dom** - Spectrum web-component shadow-DOM init cost. Gated: a profiling session for a lag threshold (>100 layers) no document has hit (the largest real doc is 22 layers); the plain-HTML swap is the proven first response. Trigger: a lag report opening the Tags tab on a >100-layer PSD; the first response swaps the hot widgets to plain HTML (precedent `5c6bef2`), measuring only if the swap is contested.
 
-## 035 - project-health
+## Project health
 
 CI / coverage / fixture / repo gates whose cost is not yet justified by a real exposure.
 
@@ -80,6 +80,6 @@ CI / coverage / fixture / repo gates whose cost is not yet justified by a real e
 - **issue-pr-templates** - Issue + PR templates. Gated: zero protection for a solo repo. Trigger: the repo opens to outside contributors.
 - **install-dev-script** - `scripts/install-dev.ps1` to automate dev junctions. Gated: convenience, not a gate, and a twice-a-year script rots silently. Trigger: the next fresh-machine dev setup; author the script during that setup so it is tested by construction.
 
-## 041 - photoshop-overhaul
+## Photoshop overhaul
 
 - **large-doc collapse-by-default + windowed rendering** - Collapse top-level groups on document open, and window the Tags row list for very large PSDs. Gated: Proscenio characters are flat (the doll is 22 layers), so this is the speculative large-doc tail; UXP has no `react-window` guarantee, so the full fix is a hand-rolled scroll window. Trigger: a real Proscenio-scale-or-larger PSD makes the Tags panel painful after the IPC fixes (deferred) land; re-measure first, since the multiGet reader may make it unnecessary.

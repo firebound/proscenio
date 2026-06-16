@@ -28,11 +28,11 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 **Arquivo:** `apps/blender/operators/uv_authoring.py:39-66` (`PROSCENIO_OT_reproject_sprite_uv`).
 
-**Severity:** medium - operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art). Owned pela spec ui-help-surfaces (036).
+**Severity:** medium - operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art). Owned pelo trabalho de UI/help surfaces.
 
 ### Help topic `sprite_frame_preview` é orphan - sem entry point na UI
 
-**Status:** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da spec 022 (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. O help button está ausente de novo; re-wirar nos `_draw_*.py` das sub-boxes. (Item `[blocking]` da spec ui-help-surfaces / 036.)
+**Status:** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da sidebar (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. O help button está ausente de novo; re-wirar nos `_draw_*.py` das sub-boxes. (Item `[blocking]` do trabalho de UI/help surfaces.)
 
 **Repro:** abre fixture com sprite_frame mesh (ex: `examples/generated/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
 
@@ -65,7 +65,7 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 ### Sprite multi-frame: preview no Blender != frame no Godot (diferença inerente, não-bug mas pegadinha de autoria)
 
-**Status:** observado na spec 039. Não é defeito de código; é consequência do modelo (Blender mostra a região da atlas no quad; Godot `Sprite2D` mostra UMA célula no tamanho nativo de pixel da região/`hframes`).
+**Status:** observado durante a validação de fidelidade dos exemplos (jun-2026). Não é defeito de código; é consequência do modelo (Blender mostra a região da atlas no quad; Godot `Sprite2D` mostra UMA célula no tamanho nativo de pixel da região/`hframes`).
 
 **Sintoma:** um elemento `sprite` (ex: `mixed_feature.mouth`, region 64x64, hframes=4) aparece no Blender como o quad inteiro mapeado na região (4 frames espremidos), e no Godot como 1 frame no tamanho nativo (16x64 px). Se o quad autorado não casar com o aspecto do frame (`frame_px/ppu`), os BOUNDS divergem entre Blender e Godot. UVs de sprite NÃO entram no golden (o `build_sprite` só emite region/frames), então só afetam o preview do Blender.
 

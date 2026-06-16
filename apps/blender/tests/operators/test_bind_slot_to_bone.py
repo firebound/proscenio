@@ -112,8 +112,11 @@ def test_bind_unknown_bone_cancels(automesh_fixture):
     arm = _make_rig()
     empty = _make_slot(arm)
     _activate(empty)
-    with pytest.raises(RuntimeError, match="no bone"):
-        bpy.ops.proscenio.bind_slot_to_bone(bone_name="ghost")
+    # An unknown bone is reported + cancelled the way driver.py / selection.py
+    # guard a bad bone_name, not raised as a Blender traceback.
+    result = bpy.ops.proscenio.bind_slot_to_bone(bone_name="ghost")
+    assert "CANCELLED" in result
+    assert empty.constraints.get("Proscenio Slot Follow") is None
 
 
 def test_create_slot_pose_bone_uses_follow_not_bone_parent(automesh_fixture):

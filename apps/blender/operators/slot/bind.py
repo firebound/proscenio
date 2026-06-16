@@ -75,6 +75,9 @@ class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
         if not self.bone_name:
             report_warn(self, "pick a bone for the slot to follow")
             return {"CANCELLED"}
+        if self.bone_name not in armature.data.bones:
+            report_warn(self, f"bone '{self.bone_name}' not in armature '{armature.name}'")
+            return {"CANCELLED"}
         context.view_layer.update()
         bind_slot_to_bone(empty, armature, str(self.bone_name))
         report_info(self, f"slot '{empty.name}' follows bone '{self.bone_name}'")

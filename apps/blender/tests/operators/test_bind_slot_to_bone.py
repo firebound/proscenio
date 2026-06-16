@@ -104,14 +104,28 @@ def test_bind_keeps_slot_at_rest_then_follows_pose(automesh_fixture):
     assert (posed - at_rest).length > 1e-3, "slot did not follow the posed bone"
 
 
-def test_rebind_does_not_stack_constraints(automesh_fixture):
+def test_bind_refuses_when_already_bound(automesh_fixture):
     arm = _make_rig()
     empty = _make_slot(arm)
     _activate(empty)
     bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    # A second Bind refuses (two-click flow: Unbind first); no stacked constraint.
+    result = bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    assert "CANCELLED" in result
+    follow = [c for c in empty.constraints if c.name == "Proscenio Slot Follow"]
+    assert len(follow) == 1
+
+
+def test_unbind_then_bind_rebinds_without_stacking(automesh_fixture):
+    arm = _make_rig()
+    empty = _make_slot(arm)
+    _activate(empty)
+    bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    bpy.ops.proscenio.unbind_slot_from_bone()
     bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
     follow = [c for c in empty.constraints if c.name == "Proscenio Slot Follow"]
     assert len(follow) == 1
+    assert empty.proscenio.slot_bone == "arm"
 
 
 def test_unbind_removes_constraint_and_clears_field(automesh_fixture):
@@ -161,21 +175,30 @@ def test_create_slot_pose_bone_uses_follow_not_bone_parent(automesh_fixture):
     assert tail.y == pytest.approx(1.0, abs=1e-4)
 
 
-def test_bind_normalizes_legacy_bone_parent(automesh_fixture):
+def test_bind_refuses_when_bone_parented(automesh_fixture):
     arm = _make_rig()
     empty = _make_legacy_bone_parented_slot(arm)
     _activate(empty)
-    assert empty.parent_type == "BONE"  # precondition: legacy real bone parent
-
+    # Bind never strips a hand-authored bone parent - it refuses, leaving the
+    # bone parent intact, and points the user to Unbind first.
     result = bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
-    assert "FINISHED" in result
-    # The legacy bone parent is dropped, leaving object-parent + a single follow
-    # constraint - no double-drive from a bone parent layered under the Child Of.
-    assert empty.parent is arm
+    assert "CANCELLED" in result
+    assert empty.parent_type == "BONE"
+    assert empty.constraints.get("Proscenio Slot Follow") is None
+
+
+def test_unbind_then_bind_converts_bone_parent(automesh_fixture):
+    arm = _make_rig()
+    empty = _make_legacy_bone_parented_slot(arm)
+    _activate(empty)
+    # The explicit two-click conversion: Unbind drops the bone parent, Bind adds
+    # the constraint follow.
+    bpy.ops.proscenio.unbind_slot_from_bone()
     assert empty.parent_type == "OBJECT"
     assert empty.parent_bone == ""
-    follow = [c for c in empty.constraints if c.name == "Proscenio Slot Follow"]
-    assert len(follow) == 1
+    bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    assert empty.parent_type == "OBJECT"
+    assert empty.constraints.get("Proscenio Slot Follow") is not None
     assert empty.proscenio.slot_bone == "arm"
 
 
@@ -192,3 +215,43 @@ def test_unbind_drops_legacy_bone_parent(automesh_fixture):
     assert empty.parent_bone == ""
     assert empty.constraints.get("Proscenio Slot Follow") is None
     assert empty.proscenio.slot_bone == ""
+
+
+def test_slot_follow_shape_reports_each_state(automesh_fixture):
+    from proscenio.core.bpy_helpers.slot import slot_follow_shape  # type: ignore[import-not-found]
+
+    arm = _make_rig()
+    free = _make_slot(arm, name="free")
+    assert slot_follow_shape(free) == "none"
+    _activate(free)
+    bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    assert slot_follow_shape(free) == "constraint"
+
+    boned = _make_legacy_bone_parented_slot(arm, name="boned")
+    assert slot_follow_shape(boned) == "bone_parent"
+
+    inert = _make_slot(arm, name="inert")
+    inert.proscenio.slot_bone = "arm"
+    assert slot_follow_shape(inert) == "field_inert"
+
+
+def test_bone_parent_collapses_only_for_in_plane_bone(automesh_fixture):
+    from proscenio.core.bpy_helpers.slot import (
+        bone_parent_collapses,  # type: ignore[import-not-found]
+    )
+
+    # +Y bone points into the screen - a bone parent stays flat.
+    arm_y = _make_rig()
+    assert bone_parent_collapses(_make_legacy_bone_parented_slot(arm_y, name="boned_y")) is False
+
+    # +Z bone lies in the picture plane - a bone parent collapses the quads.
+    arm_z_data = bpy.data.armatures.new("rig_z")
+    arm_z = bpy.data.objects.new("rig_z", arm_z_data)
+    bpy.context.scene.collection.objects.link(arm_z)
+    bpy.context.view_layer.objects.active = arm_z
+    bpy.ops.object.mode_set(mode="EDIT")
+    ebz = arm_z_data.edit_bones.new("arm")
+    ebz.head = (0.0, 0.0, 0.0)
+    ebz.tail = (0.0, 0.0, 1.0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    assert bone_parent_collapses(_make_legacy_bone_parented_slot(arm_z, name="boned_z")) is True

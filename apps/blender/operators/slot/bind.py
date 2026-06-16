@@ -17,10 +17,18 @@ from ...core._shared.report import report_info, report_warn  # type: ignore[impo
 from ...core.bpy_helpers.slot import (  # type: ignore[import-not-found]
     bind_slot_to_bone,
     resolve_slot_armature,
+    slot_follow_shape,
     unbind_slot_from_bone,
 )
 from ...core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 from ...core.validation import slot_parent_bone  # type: ignore[import-not-found]
+
+_FOLLOW_VIA = {"constraint": "the Proscenio constraint", "bone_parent": "a bone parent"}
+
+
+def _already_following(empty: bpy.types.Object) -> str:
+    """The user-facing 'via X' phrase when the slot already follows, else ""."""
+    return _FOLLOW_VIA.get(slot_follow_shape(empty), "")
 
 
 class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
@@ -30,9 +38,11 @@ class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
     bl_label = "Proscenio: Bind Slot to Bone"
     bl_description = (
         "Make the active slot follow a bone in Blender the way it already does "
-        "in Godot: keeps the Empty object-parented, adds a Child Of constraint "
-        "whose inverse cancels the bone rest, and writes the slot_bone field. "
-        "Re-run to rebind after moving the slot"
+        "in Godot: keeps the Empty object-parented and adds a Child Of "
+        "constraint whose inverse cancels the bone rest, staying flat for any "
+        "bone orientation. Hand bone-parenting the Empty (Ctrl+P > Bone) also "
+        "exports, but only for bones pointing into the screen. If the slot "
+        "already follows, Unbind first (moving a bound slot needs a rebind)"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -51,6 +61,10 @@ class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         empty = context.active_object
+        via = _already_following(empty)
+        if via:
+            report_warn(self, f"slot already follows via {via} - Unbind first, then Bind")
+            return {"CANCELLED"}
         active_bone = getattr(context, "active_pose_bone", None)
         if active_bone is not None:
             self.bone_name = active_bone.name
@@ -68,6 +82,10 @@ class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         empty = context.active_object
+        via = _already_following(empty)
+        if via:
+            report_warn(self, f"slot already follows via {via} - Unbind first, then Bind")
+            return {"CANCELLED"}
         armature = resolve_slot_armature(context, empty)
         if armature is None:
             report_warn(self, "no armature found for this slot")
@@ -90,8 +108,9 @@ class PROSCENIO_OT_unbind_slot_from_bone(bpy.types.Operator):
     bl_idname = "proscenio.unbind_slot_from_bone"
     bl_label = "Proscenio: Unbind Slot from Bone"
     bl_description = (
-        "Remove the slot's bone-follow constraint and clear slot_bone; the "
-        "Empty stays object-parented and inert"
+        "Stop the active slot following a bone: removes the Proscenio Child Of "
+        "constraint or a hand-authored bone parent (whichever it uses) and "
+        "clears slot_bone, leaving the Empty object-parented and inert"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 

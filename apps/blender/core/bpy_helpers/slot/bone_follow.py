@@ -13,9 +13,16 @@ from __future__ import annotations
 import bpy
 
 from ..._shared.cp_keys import PROSCENIO_SLOT_BONE
+from ..._shared.pg_cp_fallback import read_field
 from ..._shared.props_access import active_armature, resolve_export_armature
 
 SLOT_FOLLOW_CONSTRAINT = "Proscenio Slot Follow"
+
+# A bone whose world direction lies within this much of the picture plane (XZ)
+# collapses a bone-parented attachment quad edge-on. The camera looks down -Y,
+# so a bone pointing into the screen (world +/-Y) stays flat; abs(dir.y) below
+# this cosine threshold (~45 degrees off Y) is the collapse-risk band.
+_INTO_SCREEN_MIN_Y = 0.7
 
 
 def resolve_slot_armature(
@@ -43,6 +50,57 @@ def _follow_constraint(empty: bpy.types.Object) -> bpy.types.Constraint | None:
     return con if con is not None and con.type == "CHILD_OF" else None
 
 
+def slot_follow_shape(empty: bpy.types.Object) -> str:
+    """How the slot currently follows a bone: the live authoring shape.
+
+    - ``"constraint"`` - the Proscenio object-parent + Child Of follow (the safe
+      route, flat for any bone orientation).
+    - ``"bone_parent"`` - a hand-authored real bone parent (``parent_type ==
+      "BONE"``). Exports fine, but collapses the attachment quads when the bone
+      lies in the picture plane (see :func:`bone_parent_collapses`).
+    - ``"field_inert"`` - a ``slot_bone`` field is set but nothing drives the
+      Empty in Blender (object-parented, no constraint): exports, yet the
+      authoring view does not follow. Bind to Bone wires the live follow.
+    - ``"none"`` - the slot follows no bone.
+
+    Both ``constraint`` and ``bone_parent`` are first-class exportable shapes;
+    this is the single definition the panel and the bind operator read so they
+    never disagree about which one is live.
+    """
+    if _follow_constraint(empty) is not None:
+        return "constraint"
+    if getattr(empty, "parent_type", "") == "BONE" and getattr(empty, "parent_bone", ""):
+        return "bone_parent"
+    field = str(read_field(empty, pg_field="slot_bone", cp_key=PROSCENIO_SLOT_BONE, default=""))
+    return "field_inert" if field else "none"
+
+
+def bone_parent_collapses(empty: bpy.types.Object) -> bool:
+    """True when a bone-parented slot's bone lies in the picture plane.
+
+    A real bone parent inherits the bone's rest orientation. For a bone pointing
+    into the screen (world +/-Y, the slot/cutout convention) the flat attachment
+    quads stay flat; for an in-plane bone (+X / +Z) the parent rotation tilts the
+    quads edge-on and the export collapses them to zero area. The constraint
+    follow cancels the rest, so it never collapses - this flags the bone-parent
+    case that should switch to it.
+    """
+    if getattr(empty, "parent_type", "") != "BONE":
+        return False
+    armature = getattr(empty, "parent", None)
+    if armature is None or getattr(armature, "type", None) != "ARMATURE":
+        return False
+    pose_bone = armature.pose.bones.get(empty.parent_bone)
+    if pose_bone is None:
+        return False
+    world = armature.matrix_world
+    direction = (world @ pose_bone.tail) - (world @ pose_bone.head)
+    if direction.length == 0.0:
+        return False
+    direction.normalize()
+    return abs(direction.y) < _INTO_SCREEN_MIN_Y
+
+
 def _drop_legacy_bone_parent(empty: bpy.types.Object) -> None:
     """Convert a legacy real BONE parent to an object parent, preserving world.
 
@@ -65,10 +123,13 @@ def _drop_legacy_bone_parent(empty: bpy.types.Object) -> None:
 def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_name: str) -> None:
     """Wire ``empty`` to follow ``bone_name`` of ``armature`` in Blender.
 
-    Re-runnable: an existing follow constraint is removed first so the inverse
-    recomputes at the current pose (the Set-Inverse caveat - rebind after
-    moving the slot). Writes ``slot_bone`` dual (PG + Custom Property) so the
-    writer's preferred field carries the follow even on a headless re-open.
+    Assumes ``empty`` is object-parented or unparented - never a live BONE
+    parent (the bind operator refuses that, routing the user through Unbind
+    first, and ``create_slot`` object-parents before calling here). Any prior
+    Proscenio follow constraint is removed first so a standalone re-call
+    recomputes the inverse at the current pose. Writes ``slot_bone`` dual (PG +
+    Custom Property) so the writer's preferred field carries the follow even on
+    a headless re-open.
 
     Raises ``RuntimeError`` when the armature lacks ``bone_name``.
     """
@@ -76,7 +137,6 @@ def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_
     if pose_bone is None:
         raise RuntimeError(f"armature '{armature.name}' has no bone '{bone_name}'")
 
-    _drop_legacy_bone_parent(empty)
     existing = _follow_constraint(empty)
     if existing is not None:
         empty.constraints.remove(existing)

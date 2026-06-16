@@ -28,6 +28,8 @@ Polish the editor UI that is not tied to one tool, finish the help/docs system, 
 - **An onion-skin overlay** for animators.
 - **A joystick / slider multi-pose blend widget**.
 
+_Added 2026-06-16 from the QA-walk reconciliation (fold into the Study and assessment when this spec is next opened): hide the Texture Region subpanel for mesh elements; revise the tooltip copy so each panel's `?` explains the panel and subpanels explain their own specifics without leaking, and fix the stale status-badge legend that still names `TOOL_SETTINGS`; surface the shared Automesh parameters used by both Automesh from Alpha and the Interactive modal. Also: the **Materials panel** is assessed "drop" below, but that verdict was reopened — the panel is kept as a spec-sized item in [`backlog.md`](../backlog.md) and will get its own STUDY, so treat the drop here as superseded._
+
 ## Study
 
 ### Surface notes

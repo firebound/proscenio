@@ -16,6 +16,10 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.bpy_helpers.slot import (  # type: ignore[import-not-found]
+    bone_parent_collapses,
+    slot_follow_shape,
+)
 from ..core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 from ._helpers import draw_issue_row, draw_subpanel_header
 
@@ -35,6 +39,58 @@ def _attachment_kind_for(mesh_obj: bpy.types.Object) -> str:
 
 def _attachment_icon_for(kind: str) -> str:
     return "MESH_DATA" if kind == "mesh" else "IMAGE_DATA"
+
+
+def _draw_follow_state(
+    col: bpy.types.UILayout, empty: bpy.types.Object, bone: str, shape: str
+) -> None:
+    """Draw how the slot follows its bone, the parent line, and any warning.
+
+    Both the constraint follow and a hand-authored bone parent are valid,
+    exportable shapes; the bone-parent one only warns when its bone lies in the
+    picture plane (where it collapses the attachment quads edge-on).
+    """
+    if shape == "constraint":
+        col.label(text=f"follows bone '{bone}' (Proscenio constraint)", icon="CONSTRAINT")
+    elif shape == "bone_parent":
+        col.label(text=f"follows bone '{bone}' (bone parent)", icon="BONE_DATA")
+    elif shape == "field_inert":
+        col.label(text=f"bound to '{bone}' - not following yet", icon="BONE_DATA")
+    else:
+        col.label(text="bone: (unparented)", icon="BONE_DATA")
+
+    parent = empty.parent
+    if parent is not None:
+        kind = "bone" if empty.parent_type == "BONE" else "object"
+        col.label(text=f"parent: {parent.name} ({kind})", icon="OUTLINER_OB_EMPTY")
+
+    if shape == "none":
+        row = col.row()
+        row.alert = True
+        row.label(text="no bone - attachments will not follow any bone", icon="ERROR")
+    elif shape == "field_inert":
+        row = col.row()
+        row.alert = True
+        row.label(text="slot_bone set but inert - Bind to Bone to follow in Blender", icon="ERROR")
+    elif shape == "bone_parent" and bone_parent_collapses(empty):
+        box = col.box().column(align=True)
+        box.alert = True
+        box.label(text=f"bone '{bone}' lies in the picture plane", icon="ERROR")
+        box.label(text="bone-parenting collapses the quads edge-on", icon="BLANK1")
+        box.label(text="Unbind, then Bind to Bone for a flat follow", icon="BLANK1")
+
+
+def _draw_follow_button(col: bpy.types.UILayout, shape: str) -> None:
+    """Bind when nothing live follows; Unbind when the slot already follows.
+
+    The two-click flow (Unbind then Bind) keeps each shape explicit and never
+    silently strips a hand-authored bone parent.
+    """
+    row = col.row(align=True)
+    if shape in {"constraint", "bone_parent"}:
+        row.operator("proscenio.unbind_slot_from_bone", text="Unbind from Bone", icon="X")
+    else:  # none / field_inert - wire the live follow
+        row.operator("proscenio.bind_slot_to_bone", text="Bind to Bone", icon="BONE_DATA")
 
 
 class PROSCENIO_PT_slots(bpy.types.Panel):
@@ -112,33 +168,12 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             key=lambda c: c.name,
         )
 
-        parent_bone = validation.slot_parent_bone(empty)
+        bone = validation.slot_parent_bone(empty)
+        shape = slot_follow_shape(empty)
         col = layout.column()
         col.label(text=f"Slot '{empty.name}'", icon="LINK_BLEND")
-        col.label(
-            text=f"bone: {parent_bone or '(unparented)'}",
-            icon="BONE_DATA",
-        )
-        if not parent_bone:
-            warn = col.row()
-            warn.alert = True
-            warn.label(
-                text="no parent bone - attachments will not follow any bone",
-                icon="ERROR",
-            )
-
-        bind_row = col.row(align=True)
-        bind_row.operator(
-            "proscenio.bind_slot_to_bone",
-            text="Rebind to Bone" if parent_bone else "Bind to Bone",
-            icon="BONE_DATA",
-        )
-        if parent_bone:
-            bind_row.operator(
-                "proscenio.unbind_slot_from_bone",
-                text="",
-                icon="X",
-            )
+        _draw_follow_state(col, empty, bone, shape)
+        _draw_follow_button(col, shape)
 
         layout.separator()
         layout.label(text=f"Attachments ({len(children)}):", icon="OUTLINER_OB_MESH")

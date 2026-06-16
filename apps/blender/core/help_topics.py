@@ -807,9 +807,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             _section(
                 "Bind to Bone / Unbind",
                 "Bind to Bone makes the slot follow a bone in the viewport the same",
-                "way it follows at runtime in Godot (object-parent + a Child Of",
-                "constraint that cancels the bone rest); Unbind removes it. Rebind",
-                "after moving the slot - the inverse is baked at bind time.",
+                "way it follows at runtime in Godot: object-parent + a Child Of",
+                "constraint that cancels the bone rest, staying flat for any bone",
+                "orientation. Hand bone-parenting the Empty (Ctrl+P > Bone) also",
+                "works and exports, but only for bones pointing into the screen - an",
+                "in-plane bone collapses the attachment quads, and the panel warns",
+                "when it does. The panel shows how the slot follows (constraint or",
+                "bone parent) and its parent. Bind refuses when a slot already",
+                "follows; to rebind after moving it, Unbind then Bind (two clicks).",
             ),
             _section(
                 "Editing raw Custom Properties",

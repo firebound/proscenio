@@ -127,6 +127,19 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
                 icon="ERROR",
             )
 
+        bind_row = col.row(align=True)
+        bind_row.operator(
+            "proscenio.bind_slot_to_bone",
+            text="Rebind to Bone" if parent_bone else "Bind to Bone",
+            icon="BONE_DATA",
+        )
+        if parent_bone:
+            bind_row.operator(
+                "proscenio.unbind_slot_from_bone",
+                text="",
+                icon="X",
+            )
+
         layout.separator()
         layout.label(text=f"Attachments ({len(children)}):", icon="OUTLINER_OB_MESH")
         if not children:

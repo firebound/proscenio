@@ -287,6 +287,15 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     # The face follows the head bone: the importer parents the slot Node2D under
     # the head Bone2D (object-parented Empty keeps the attachment quads flat).
     _dual(empty, "slot_bone", "proscenio_slot_bone", "head")
+    # Author the Blender-side follow so the face tracks the head bone in the
+    # viewport (mirrors the Godot importer). Baked at rest, golden-neutral.
+    con = empty.constraints.new(type="CHILD_OF")
+    con.name = "Proscenio Slot Follow"
+    con.target = armature_obj
+    con.subtarget = "head"
+    bpy.context.view_layer.update()
+    head_bone = armature_obj.pose.bones["head"]
+    con.inverse_matrix = (armature_obj.matrix_world @ head_bone.matrix).inverted()
 
     # Mesh attachment: UVs into the atlas bottom-right quadrant. Local Y =
     # -0.002 -> z_index 2, in front of the torso (0) and behind the mouth (4).

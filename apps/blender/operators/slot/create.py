@@ -16,6 +16,7 @@ from ...core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-f
     parent_keep_world,
 )
 from ...core.bpy_helpers._shared.select import select_only  # type: ignore[import-not-found]
+from ...core.bpy_helpers.slot import bind_slot_to_bone  # type: ignore[import-not-found]
 
 
 def _slot_bone_target(
@@ -77,9 +78,17 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
         scene.collection.objects.link(empty)
 
         if armature is not None and bone_name:
+            # Object-parent + a Child Of follow (not a real bone parent, which
+            # would tilt the flat attachment quads out of the picture plane).
+            # Anchor at the bone tail, matching the old bone-parent placement,
+            # then bind so the slot rides the bone's pose delta.
             empty.parent = armature
-            empty.parent_type = "BONE"
-            empty.parent_bone = bone_name
+            empty.parent_type = "OBJECT"
+            context.view_layer.update()
+            pose_bone = armature.pose.bones[bone_name]
+            empty.matrix_world = Matrix.Translation(armature.matrix_world @ pose_bone.tail)
+            context.view_layer.update()
+            bind_slot_to_bone(empty, armature, bone_name)
         elif selected_meshes:
             seed = selected_meshes[0]
             if seed.parent is not None:

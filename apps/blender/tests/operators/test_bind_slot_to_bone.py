@@ -114,3 +114,26 @@ def test_bind_unknown_bone_cancels(automesh_fixture):
     _activate(empty)
     with pytest.raises(RuntimeError, match="no bone"):
         bpy.ops.proscenio.bind_slot_to_bone(bone_name="ghost")
+
+
+def test_create_slot_pose_bone_uses_follow_not_bone_parent(automesh_fixture):
+    arm = _make_rig()
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="POSE")
+    arm.data.bones.active = arm.data.bones["arm"]
+
+    result = bpy.ops.proscenio.create_slot()
+    assert "FINISHED" in result
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    empty = bpy.context.view_layer.objects.active
+    assert empty.proscenio.is_slot is True
+    # The migrated path object-parents + follows; it never bone-parents.
+    assert empty.parent is arm
+    assert empty.parent_type == "OBJECT"
+    assert empty.constraints.get("Proscenio Slot Follow") is not None
+    assert empty.proscenio.slot_bone == "arm"
+    # Anchored at the bone tail (world (0,1,0)).
+    bpy.context.view_layer.update()
+    tail = empty.matrix_world.translation
+    assert tail.y == pytest.approx(1.0, abs=1e-4)

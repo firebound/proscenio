@@ -1,18 +1,18 @@
 # Dropped work
 
-Items where the value does not justify the cost. Removed from the live backlog during the 2026-06-11 reconciliation of specs 027-035 (those specs shipped their near-term work and their folders were pruned; see [_index.md](_index.md)). Kept here, not deleted, so a pruned item never loses its reasoning: a future reader sees it was considered and consciously declined, not forgotten. Organized by originating domain.
+Items where the value does not justify the cost. Removed from the live backlog during the 2026-06-11 reconciliation (the durable number-to-topic map is [_index.md](_index.md)). Kept here, not deleted, so a pruned item never loses its reasoning: a future reader sees it was considered and consciously declined, not forgotten. Organized by originating domain.
 
 Re-propose any of these only if its premise changes (a new consuming runtime, a schema feature it would ride, a real demand signal). Companion homes: [gated.md](gated.md) (held behind a trigger), [deferred.md](deferred.md) (sequenced second-stage), [decisions.md](decisions.md) (locked calls).
 
-## 028 - schema-expressiveness
+## Schema expressiveness
 
 - **visibility-track-both-sides** - The visibility animation track (implement both sides or retire). Dropped and executed: the format advertised a track neither side implemented (the writer never emitted it, the importer only logged "not implemented yet"), and slot-attachment tracks already animate show/hide, so finishing it would build a duplicate mechanism plus hide-keyframe authoring that collides with the writer's `hide_viewport` export dance. The retirement (schema literal + importer stub removed) shipped in #105; this row records why the track will not come back.
 
-## 029 - mesh-authoring
+## Mesh authoring
 
 - **sprite-rigid-single-bone-bind** - A dedicated bind path / operator for sprites (since weight paint is mesh-only). Dropped: native Blender bone-parenting (Ctrl+P > Bone) already is the rigid single-bone bind, so a dedicated operator would wrap a one-keystroke native action. The element-gating warning plus the help sentence pointing sprites at native bone-parenting (both shipped in #106) cover the discovery need with zero new operators.
 
-## 030 - skinning-weight-paint
+## Skinning and weight paint
 
 The aspirational weight-paint cluster: high test burden, no demand signal, and several cannot round-trip through the importer-only Godot runtime.
 
@@ -23,7 +23,7 @@ The aspirational weight-paint cluster: high test burden, no demand signal, and s
 - **mirror-humanoid-binding** - Mirror humanoid binding. Dropped: cutout limbs are separate asymmetric drawings (3/4-view standard), so there is no symmetric mesh to mirror and no symmetric fixture, and brush X-mirror already covers the single-mesh case.
 - **bezier-brush-stroke** - Bezier brush stroke for alpha-boundary trace. Dropped: silhouette authoring belongs to the mesh-authoring spec, polyline strokes plus arc-length resample already smooth contours, and it is the highest-burden test class (stroke feel) with zero demand signal.
 
-## 031 - rigging-and-posing
+## Rigging and posing
 
 The Quick-Armature precision cluster (Blender Edit Mode is its precision tier) plus the panel features that duplicate a native one editor away.
 
@@ -38,13 +38,13 @@ The Quick-Armature precision cluster (Blender Edit Mode is its precision tier) p
 - **pose-apply-to-selection** - One-click apply-pose-to-selection. Dropped: the native Asset Shelf apply already targets selected bones.
 - **pose-thumbnails** - Pose-asset thumbnails via the preview camera. Dropped: native auto-preview ships with pose assets; flat-render swatches are cosmetic.
 
-## 033 - atlas-packing
+## Atlas packing
 
 - **packing-controls (strip whitespace)** - Strip transparent pixels around each sprite before packing. Dropped: sources already arrive trimmed (UXP trim plus UV-bounds slices), no offset channel exists to compensate the geometry shift, and stripping would corrupt sprite_frame full-sheet grids. (The edge-padding sibling of this control shipped in #110; only strip-whitespace and rotation are dropped.)
 - **packing-controls (rotation)** - Rotate sprites 90 degrees for denser packing. Dropped: Godot cannot consume rotated atlas regions (`AtlasTexture` / `region_rect` cannot express rotation), so rotation is a Polygon2D-only footgun bought for marginal density.
 - **maxrects-heuristics** - Try multiple MaxRects heuristics for density. Dropped: BSSF is already the strongest single heuristic (~94% occupancy); trying them all buys low single-digit density at multiplied pack time.
 
-## 034 - photoshop-plugin
+## Photoshop plugin
 
 Tag types with no consuming runtime, mostly Adobe Character Animator face-puppetry concepts that contradict the locked explicit-bracket design.
 
@@ -52,7 +52,7 @@ Tag types with no consuming runtime, mostly Adobe Character Animator face-puppet
 - **head-turner-groups** - Head-turner view groups (Character Animator). Dropped: Character Animator face puppetry bound to a face-rig template and a head-turn runtime Proscenio does not have; slot attachments already express view swapping in this model.
 - **pseudo-keyword-tagging** - Pseudo-keyword auto-tagging (Head, Mouth, Eye). Dropped: implicit match-inside-name tagging (Character Animator matches "Ah" inside "My Ah") collides with arbitrary artist naming and contradicts the locked explicit-bracket design that already shipped.
 
-## 035 - project-health
+## Project health
 
 Coverage / CI bookkeeping that protects no behavior, plus one duplicate ledger row.
 

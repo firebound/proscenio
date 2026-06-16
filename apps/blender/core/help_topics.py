@@ -805,6 +805,13 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "selected mesh as a new attachment. See the Slots help for the overview.",
             ),
             _section(
+                "Bind to Bone / Unbind",
+                "Bind to Bone makes the slot follow a bone in the viewport the same",
+                "way it follows at runtime in Godot (object-parent + a Child Of",
+                "constraint that cancels the bone rest); Unbind removes it. Rebind",
+                "after moving the slot - the inverse is baked at bind time.",
+            ),
+            _section(
                 "Editing raw Custom Properties",
                 "The SOLO star sets the default through the panel. Editing the raw",
                 "proscenio_slot_default Custom Property directly exports and validates",

@@ -19,6 +19,8 @@ Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet
 
 Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped the whole product's manual-test surface, so its two outputs are living data rather than a prunable plan. They moved into the QA Companion tool ([tools/qa-companion/checklist/](../tools/qa-companion/checklist/) for the walkable surface, [findings.md](../tools/qa-companion/findings.md) for the code-read audit) and the spec folder was removed. See [decisions.md](decisions.md).
 
+Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped complete - the Bind / Unbind operators (object-parent + a Child Of constraint that cancels the bone rest + the `slot_bone` field), `create_slot` migrated off real bone-parenting, the shared resolver reading `slot_bone`, legacy bone-parent normalization on bind and unbind, and the `mixed_feature` + `slot_swap` fixtures authoring the constraint. Nothing was deferred or gated - the STUDY's four items were all "now" and all shipped; the locked calls landed in [decisions.md](decisions.md).
+
 | # | Spec | Summary | Status |
 | --- | --- | --- | --- |
 | 000 | initial-plan | Initial plan: what Proscenio is, settled vs open decisions; drove the Phase 0 to Phase 1 work | pruned |
@@ -63,4 +65,4 @@ Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped th
 | 039 | example-fidelity | Example pipeline fidelity: wrapper script paths, texture import-order, in-plane bones, skinned-sibling render | pruned |
 | 040 | end-to-end-verification | Automatic pass mapping the whole manual-test surface (452 items) + a code-read audit (176 findings); both now owned by the QA Companion tool (`tools/qa-companion`) | retired |
 | 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |
-| 042 | slot-bone-follow | Slot bone-follow authoring parity: a Bind Slot to Bone operator (Child Of + slot_bone), create_slot migrated off bone-parenting, resolver reads slot_bone, fixtures author the constraint | planned |
+| 042 | slot-bone-follow | Slot bone-follow authoring parity: a Bind Slot to Bone operator (Child Of + slot_bone), create_slot migrated off bone-parenting, resolver reads slot_bone, fixtures author the constraint | pruned |

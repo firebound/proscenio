@@ -66,3 +66,9 @@ Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped com
 | 040 | end-to-end-verification | Automatic pass mapping the whole manual-test surface (452 items) + a code-read audit (176 findings); both now owned by the QA Companion tool (`tools/qa-companion`) | retired |
 | 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |
 | 042 | slot-bone-follow | Slot bone-follow authoring parity: a Bind Slot to Bone operator (Child Of + slot_bone), create_slot migrated off bone-parenting, resolver reads slot_bone, fixtures author the constraint | pruned |
+| 043 | outliner-selection | Outliner follows the viewport selection, no crash on stale rows, single native search | planned |
+| 044 | weight-paint-mode-sync | Edit Weights tracks the weight-paint mode; expose the Proximity bind params in the panel | planned |
+| 045 | skeleton-quick-armature | Quick Armature Esc cancels properly, Animation uses the picked armature, Skeleton chrome polish | planned |
+| 046 | slots-list-ux | Native searchable slot/attachment lists (reusable list component) + attach-to-existing-slot picker | planned |
+| 047 | godot-import-verify | Verify the sprite manual-region scaling with a test + two model-quirk doc notes | planned |
+| 048 | photoshop-read-perf | Tag-list busy-flag scoping + a batchPlay multiGet document reader | planned |

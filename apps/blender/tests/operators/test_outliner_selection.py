@@ -63,6 +63,65 @@ def test_select_outliner_object_selects_when_in_view_layer(automesh_fixture):
     assert obj.select_get() is True
 
 
+# --- multi-select: Shift extends, Ctrl toggles ----------------------------
+
+
+def test_plain_click_replaces_the_selection(automesh_fixture):
+    a = _mesh_obj("ms_replace_a")
+    b = _mesh_obj("ms_replace_b")
+    bpy.context.view_layer.update()
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_replace_a")
+
+    # A plain click on b (no extend/toggle) clears a and selects only b.
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_replace_b")
+
+    assert b.select_get() is True
+    assert a.select_get() is False
+    assert bpy.context.view_layer.objects.active is b
+
+
+def test_extend_keeps_the_prior_selection(automesh_fixture):
+    a = _mesh_obj("ms_ext_a")
+    b = _mesh_obj("ms_ext_b")
+    bpy.context.view_layer.update()
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_ext_a")
+
+    # Shift-click (extend=True) adds b without dropping a.
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_ext_b", extend=True)
+
+    assert a.select_get() is True
+    assert b.select_get() is True
+    assert bpy.context.view_layer.objects.active is b
+
+
+def test_toggle_deselects_an_already_selected_row(automesh_fixture):
+    a = _mesh_obj("ms_tog_a")
+    b = _mesh_obj("ms_tog_b")
+    bpy.context.view_layer.update()
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_tog_a")
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_tog_b", extend=True)
+
+    # Ctrl-click (toggle=True) on b, already selected, deselects only b.
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_tog_b", toggle=True)
+
+    assert b.select_get() is False
+    assert a.select_get() is True
+
+
+def test_toggle_adds_an_unselected_row(automesh_fixture):
+    a = _mesh_obj("ms_toggle_on_a")
+    b = _mesh_obj("ms_toggle_on_b")
+    bpy.context.view_layer.update()
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_toggle_on_a")
+
+    # Ctrl-click on b, not yet selected, adds it and makes it active.
+    bpy.ops.proscenio.select_outliner_object(obj_name="ms_toggle_on_b", toggle=True)
+
+    assert a.select_get() is True
+    assert b.select_get() is True
+    assert bpy.context.view_layer.objects.active is b
+
+
 # --- identity -> source-index helper --------------------------------------
 
 

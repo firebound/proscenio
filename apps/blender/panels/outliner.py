@@ -51,6 +51,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # star keeps the right edge in the split remainder. (Owned by spec
         # 036, landed here since this PR already restructures these rows.)
         row = layout.row(align=True)
+        # Multi-select marker: the template_list active highlight marks only
+        # one row, so selected-but-not-active rows need their own cue. Read
+        # the real object selection (Shift/Ctrl-click drive it through
+        # proscenio.select_outliner_object). filter_items already drops
+        # out-of-view-layer rows, so select_get() is safe to call here.
+        sel_icon = "RADIOBUT_ON" if obj.select_get() else "RADIOBUT_OFF"
+        row.label(text="", icon=sel_icon)
         split = row.split(factor=0.92, align=True)
         name_row = split.row()
         name_row.alignment = "LEFT"

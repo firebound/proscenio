@@ -213,7 +213,18 @@ def _resolve_pose_entry(
         local = Vector((loc.get(0, 0.0), loc.get(1, 0.0), loc.get(2, 0.0)))
         world = rest.rest_basis @ local
         if max(abs(world.x), abs(world.z)) > 1e-6:
-            position = [round(world.x * ppu, 6), round(-world.z * ppu, 6)]
+            # Project to the Godot screen, then rotate into the parent-local
+            # frame the rest position lives in (Bone2D.position is parent-local).
+            # Skipping this leaves a screen-space delta on a parent-local track:
+            # correct only when the parent is unrotated, sideways otherwise.
+            screen_x = world.x * ppu
+            screen_y = -world.z * ppu
+            cos_p = math.cos(-rest.parent_world_rot)
+            sin_p = math.sin(-rest.parent_world_rot)
+            position = [
+                round(screen_x * cos_p - screen_y * sin_p, 6),
+                round(screen_x * sin_p + screen_y * cos_p, 6),
+            ]
 
     rotation = _screen_rotation_delta(entry, rest)
 

@@ -103,13 +103,15 @@ def test_sync_outliner_follows_active_proscenio_object(automesh_fixture):
     bpy.context.view_layer.update()
     bpy.context.view_layer.objects.active = obj
     scene = bpy.context.scene
-    scene.proscenio.active_outliner_index = 0
+    # Seed a value guaranteed to differ from the target so the early-out
+    # cannot make this a false pass - the write path must run.
+    idx = source_index_for_name(bpy.data.objects, "follow_me")
+    assert idx is not None
+    scene.proscenio.active_outliner_index = idx + 1
 
     sync_outliner_to_active_object(scene)
 
-    assert scene.proscenio.active_outliner_index == source_index_for_name(
-        bpy.data.objects, "follow_me"
-    )
+    assert scene.proscenio.active_outliner_index == idx
 
 
 def test_sync_outliner_ignores_non_proscenio_active(automesh_fixture):

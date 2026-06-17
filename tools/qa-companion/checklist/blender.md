@@ -772,7 +772,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-SWEEP · Weight Paint inventory across subpanels (visual pass)
 - status: todo
 - review: keep
-- pre: A mesh element active with a picker armature set and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
+- pre: A mesh element active with a target armature set in Skeleton and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
 - observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
 - code: apps/blender/panels/weight_paint.py:51-53,174-360; _helpers.py:111
@@ -792,7 +792,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-BIND-02 · Per-bone Soft / Hard / Clear overrides (consolidated)
 - status: pass
 - review: keep
-- pre: A picker with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
+- pre: A target armature with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
 - steps:
   1. Click Soft next to a bone.
   2. Click Hard next to the same bone.
@@ -801,13 +801,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Soft blends a bone's weight smoothly with neighbours, Hard gives a crisp single-bone boundary, and Clear drops back to the bind-mode default.
 - code: apps/blender/panels/weight_paint.py:225,232,241 -> operators/skinning/set_bone_mode.py:52,56
 
-### BL-WPAINT-BIND-03 · Bind to Picker Armature builds the weights
-- status: pass
+### BL-WPAINT-BIND-03 · Bind to Target Armature builds the weights
+- status: todo
 - review: keep
-- pre: A mesh element active; a picker armature set (the button is greyed without one).
+- pre: A mesh element active; a target armature set in Skeleton (the button is greyed without one).
 - steps:
-  1. With the picker set and a mesh selected, click Bind to Picker Armature.
-- observe: The mesh is bound to the armature using the chosen Mode: vertex groups are created and a weight snapshot is written, with a confirmation reporting how many meshes were bound and per-mesh vertex/bone counts. With no picker the button is greyed out.
+  1. With the target set and a mesh selected, click Bind to Target Armature.
+- observe: The mesh is bound to the armature using the chosen Mode: vertex groups are created and a weight snapshot is written, with a confirmation reporting how many meshes were bound and per-mesh vertex/bone counts. With no target armature the button is greyed out.
 - intent: Bind builds the vertex weights that deform the mesh, using the selected Mode, and stores the snapshot exported to the Polygon2D. (basic bind path also exercised by FLOW-DOLL-02)
 - code: apps/blender/panels/weight_paint.py:186 -> operators/skinning/bind_mesh.py:176 execute
 
@@ -845,7 +845,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-EDIT-03 · Edit Weights button flips to Exit Painting Mode
 - status: todo
 - review: keep
-- pre: A mesh bound to a picker armature.
+- pre: A mesh bound to a target armature.
 - steps:
   1. Click Edit Weights to enter the modal.
   2. Read the button label, then click it.

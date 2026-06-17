@@ -108,8 +108,13 @@ func _run_effect_checks() -> void:
 		_assert_eq(glint.z_index, 5, "effect: z_index stamped")
 		_assert_true(glint.flip_h, "effect: flip_h stamped")
 		_assert_true(glint.flip_v, "effect: flip_v stamped")
-		_assert_true(glint.region_enabled, "effect: region enabled")
-		_assert_true(glint.region_filter_clip_enabled, "effect: region filter clip enabled")
+		# Null atlas in the harness + no per-sprite/by-name texture means the
+		# no-texture path: the region cannot be sized, so it stays disabled and
+		# the sprite ships plain (the scaled-rect path is in test_sprite_region.gd).
+		_assert_eq(glint.region_enabled, false, "effect: region disabled without a texture")
+		_assert_eq(
+			glint.region_filter_clip_enabled, false, "effect: region clip off without a texture"
+		)
 
 	var leaked_polygons := _collect_descendants_of_type(skeleton, "Polygon2D")
 	_assert_eq(leaked_polygons.size(), 0, "effect: dispatcher kept Polygon2D path off")

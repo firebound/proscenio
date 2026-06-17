@@ -12,4 +12,12 @@ A GDScript editor plugin: a single [`EditorImportPlugin`](https://docs.godotengi
 
 Small and focused: one import plugin and five builders, each handling only the node types it recognizes by reading the `type` field on each element. No inheritance or polymorphism, just functions called in sequence. The typed read layer is generated from the schema.
 
+## Node names
+
+Builders set each node's name to its element name verbatim. When two siblings collide, Godot's `add_child` auto-appends a numeric suffix (`_001`, `_002`, ...) - that suffix is Godot's, not something the plugin writes. The importer never disambiguates by *prefixing* a kind (no `sprite_foo` / `mesh_foo`), because animation tracks resolve their targets by leaf name through `find_child(target, ...)`: a prefix would change the name a track looks for and break the lookup, while a numeric suffix only ever lands on a name that was already ambiguous.
+
+## Sprite preview differs from Blender
+
+A multi-frame `sprite` element renders in Godot as a `Sprite2D` showing one frame at its native pixel size (`region_px / hframes`), while Blender shows the whole authored quad. This is inherent to the model, not an import bug: pixel-exact Blender and Godot previews are not achievable for multi-frame sprites by design, the invariant is geometry and bounds rather than pixels. The authoring rule that keeps the bounds matching, `quad_units = frame_px / pixels_per_unit`, lives with the fixtures (`packages/fixtures/README.md`, "Sprite quads (multi-frame)").
+
 See [Architecture](../01-project/01-architecture.md) for how the plugin fits the pipeline, and the [Schema reference](../content/proscenio/document.mdx) for the `.proscenio` format it reads.

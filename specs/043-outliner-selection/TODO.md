@@ -30,6 +30,7 @@ Assessment in [STUDY.md](STUDY.md): 5 rows land now, one defers. Implemented in 
 ## Deferred
 
 - **List source: `scene.objects` vs `bpy.data.objects`** - sourcing the list from `scene.objects`/`view_layer.objects` would eliminate the stale-row crash by construction (only selectable objects ever appear), but it perturbs the `_outliner_category_rank` / `filter_items` / active-index logic the PR 2 fixes depend on. Gate: revisit only after the PR 2 identity fix is stable, and only if the source swap does not disturb the rank/sort/index mapping. The explicit guard in PR 1 is the safe minimum and ships regardless.
+  - **Resolved 2026-06-17 the light way (follow-up PR `fix/outliner-hide-stale-rows`):** rather than migrate the source collection, `filter_items` now hides any row whose object is not in the current view layer (a deleted/undone datablock lingers in `bpy.data.objects` but leaves the view layer). The list stays bound to `bpy.data.objects`, so the rank/sort/active-index mapping is untouched; the visibility rule lives in the bpy-free `outliner_view.row_visible` (unit-tested). The PR 1 click-guard stays as defense in depth. The full `scene.objects` source migration is no longer needed for the stale-row symptom.
 
 ## Cross-spec coordination
 

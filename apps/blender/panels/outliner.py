@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import bpy
 
-from ..core.outliner_view import RANK_HIDDEN, category_rank
+from ..core.outliner_view import category_rank, row_visible
 from ._helpers import draw_subpanel_header
 
 
@@ -77,7 +77,8 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         data: bpy.types.AnyType,
         propname: str,
     ) -> tuple[list[int], list[int]]:
-        """Hide non-Proscenio objects, apply text + favorites filter, sort by category."""
+        """Hide non-Proscenio + out-of-view-layer objects, apply text + favorites
+        filter, sort by category."""
         objects = list(getattr(data, propname))
         scene_props = getattr(context.scene, "proscenio", None)
         # One search field: Blender's native "Filter by Name" (self.filter_name).
@@ -87,23 +88,30 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )
+        # Names linked into the current view layer. The list is sourced from
+        # bpy.data.objects, which keeps a deleted/undone object's datablock for
+        # the rest of the session; a row whose object left the view layer must
+        # drop out (it is no longer in the scene).
+        view_layer_names = {o.name for o in context.view_layer.objects}
         n = len(objects)
         flt_flags = [0] * n
         ranks: list[int] = [0] * n
         for i, obj in enumerate(objects):
             rank = category_rank(obj)
             ranks[i] = rank
-            if rank == RANK_HIDDEN:
-                continue
             obj_props = getattr(obj, "proscenio", None)
             is_fav = bool(
                 obj_props is not None and getattr(obj_props, "is_outliner_favorite", False)
             )
-            if favorites_only and not is_fav:
-                continue
-            if flt_text and flt_text not in obj.name.lower():
-                continue
-            flt_flags[i] = self.bitflag_filter_item
+            if row_visible(
+                obj,
+                in_view_layer=obj.name in view_layer_names,
+                rank=rank,
+                is_favorite=is_fav,
+                favorites_only=favorites_only,
+                filter_text=flt_text,
+            ):
+                flt_flags[i] = self.bitflag_filter_item
         order = sorted(range(n), key=lambda i: (ranks[i], objects[i].name.lower()))
         flt_neworder = [0] * n
         for new_i, orig_i in enumerate(order):

@@ -173,6 +173,13 @@ def _draw_bind(
     if skinning_props is not None:
         layout.prop(skinning_props, "bind_init_mode", text="Mode")
         bind_mode = skinning_props.bind_init_mode
+        # max_distance / falloff_power feed only the Proximity bind; the other
+        # modes ignore both, so drawing them elsewhere would be inert UI. The
+        # data path (operator props, invoke seeding, apply) is already wired -
+        # this is layout-only.
+        if bind_mode == "PROXIMITY":
+            layout.prop(skinning_props, "bind_max_distance", text="Max Distance")
+            layout.prop(skinning_props, "bind_falloff_power", text="Falloff Power")
     layout.label(
         text=f"Target: {picker.name}" if picker is not None else "Target: (no picker armature)",
         icon="ARMATURE_DATA",
@@ -261,12 +268,19 @@ def _draw_edit_weights(
     active_label = _active_group_label(obj)
     layout.label(text=f"Active group: {active_label}")
     row = layout.row()
-    row.enabled = _edit_weights_button_enabled(obj, picker)
-    row.operator(
-        "proscenio.edit_weights",
-        text="Edit Weights",
-        icon="BRUSHES_ALL",
-    )
+    if obj is not None and obj.mode == "WEIGHT_PAINT":
+        # In the mode: the button exits. Setting Object mode is enough - the
+        # Edit Weights modal's own mode-watch timer then runs _finish, so the
+        # teardown stays on a single code path.
+        op = row.operator("object.mode_set", text="Exit Painting Mode", icon="CHECKMARK")
+        op.mode = "OBJECT"
+    else:
+        row.enabled = _edit_weights_button_enabled(obj, picker)
+        row.operator(
+            "proscenio.edit_weights",
+            text="Edit Weights",
+            icon="BRUSHES_ALL",
+        )
     if obj is None or obj.type != "MESH":
         return
     if obj.get(PROSCENIO_WEIGHT_SIDECAR) is None:
@@ -277,6 +291,15 @@ def _draw_edit_weights(
     for preset_name in PRESETS:
         op = row.operator("proscenio.set_brush_preset", text=PRESET_LABELS[preset_name])
         op.preset_name = preset_name
+
+    # Maintenance: drop vertex groups left empty by re-binds or edits. The
+    # operator polls for a mesh with groups, so it disables itself otherwise.
+    layout.separator()
+    layout.operator(
+        "proscenio.clear_empty_vertex_groups",
+        text="Clear Empty Vertex Groups",
+        icon="TRASH",
+    )
 
 
 def _active_group_label(obj: bpy.types.Object | None) -> str:

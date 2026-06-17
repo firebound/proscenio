@@ -22,6 +22,12 @@ def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
     return scene_props.active_armature if scene_props is not None else None
 
 
+# Below this N-panel width the Skeleton header drops the picked-armature name
+# and keeps just "Skeleton" (a custom draw_header label cannot truncate, so the
+# name is dropped wholesale rather than left to vanish mid-word). GUI-tunable.
+_SKELETON_HEADER_NAME_MIN_WIDTH = 220
+
+
 class PROSCENIO_UL_bones(bpy.types.UIList):
     """List view for ``Armature.bones`` - the Armature subpanel uses this."""
 
@@ -82,12 +88,13 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
     """Skeleton - the project-wide armature selector + presence checks."""
 
-    # Native bl_label so the header truncates (loses characters) like every
-    # other panel when the N-panel is narrow. A custom draw_header label does
-    # NOT get Blender's native truncation - it vanishes entirely once cramped -
-    # so the picked armature name is not shown here; it already reads in the
-    # body (the Active Armature picker widget + the "Exports: <name>" line).
-    bl_label = "Skeleton"
+    # The full "Skeleton: <name>" title is drawn in draw_header (bl_label
+    # blank) because Blender renders draw_header LEFT of bl_label here, so the
+    # whole title must live in one place to read in order. A custom draw_header
+    # label has no native truncation, so instead of letting "Skeleton: <name>"
+    # vanish when narrow, draw_header drops the <name> below a width threshold
+    # and keeps the short "Skeleton" - which survives narrow widths fine.
+    bl_label = ""
     bl_idname = "PROSCENIO_PT_skeleton"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -98,6 +105,21 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        target = _explicit_target(context)
+        try:
+            name = target.name if target is not None else None
+        except ReferenceError:
+            name = None
+        region = getattr(bpy.context, "region", None)
+        width = getattr(region, "width", 9999)
+        # Keep "Skeleton: <name>" while there is room; drop the name (the base
+        # "Skeleton" stays) once the panel is too narrow to fit it.
+        if name and width >= _SKELETON_HEADER_NAME_MIN_WIDTH:
+            self.layout.label(text=f"Skeleton: {name}")
+        else:
+            self.layout.label(text="Skeleton")
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "skeleton", "skeleton")

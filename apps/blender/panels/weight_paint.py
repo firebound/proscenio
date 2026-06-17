@@ -195,13 +195,6 @@ def _draw_bind(
         text="Bind to Picker Armature",
         icon="MOD_ARMATURE",
     )
-    # Maintenance: drop vertex groups left empty by re-binds or edits. The
-    # operator polls for a mesh with groups, so it disables itself otherwise.
-    layout.operator(
-        "proscenio.clear_empty_vertex_groups",
-        text="Clear Empty Vertex Groups",
-        icon="TRASH",
-    )
 
 
 def _draw_bone_overrides(
@@ -298,6 +291,15 @@ def _draw_edit_weights(
     for preset_name in PRESETS:
         op = row.operator("proscenio.set_brush_preset", text=PRESET_LABELS[preset_name])
         op.preset_name = preset_name
+
+    # Maintenance: drop vertex groups left empty by re-binds or edits. The
+    # operator polls for a mesh with groups, so it disables itself otherwise.
+    layout.separator()
+    layout.operator(
+        "proscenio.clear_empty_vertex_groups",
+        text="Clear Empty Vertex Groups",
+        icon="TRASH",
+    )
 
 
 def _active_group_label(obj: bpy.types.Object | None) -> str:

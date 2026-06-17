@@ -16,7 +16,7 @@ Shipped together - all three turn on `obj.mode` and route exit through the singl
 ### Proximity params panel draw + clear-empty-vgroups
 
 - [x] `bind_max_distance` + `bind_falloff_power` now draw in `_draw_bind` guarded by `bind_mode == "PROXIMITY"` (data path was already wired - layout only). Closes the `BL-WPAINT-SWEEP` note.
-- [x] New `proscenio.clear_empty_vertex_groups` operator ([`clear_empty_vgroups.py`](../../apps/blender/operators/skinning/clear_empty_vgroups.py)): `empty_vertex_group_names` collects groups with no weight > 0 in one vert pass; `invoke_props_dialog` lists the names with the "empty = safe to drop" note; `execute` removes them. Polls for a mesh with groups. Surfaced as a Bind-subpanel button.
+- [x] New `proscenio.clear_empty_vertex_groups` operator ([`clear_empty_vgroups.py`](../../apps/blender/operators/skinning/clear_empty_vgroups.py)): `empty_vertex_group_names` collects groups with no weight > 0 in one vert pass; `invoke_props_dialog` lists the names with the "empty = safe to drop" note; `execute` removes them. Polls for a mesh with groups. Surfaced as an Edit Weights-subpanel button (below the brush presets).
 - [x] Headless tests (`test_clear_empty_vgroups.py`): removes only the empty group (weighted survives), cancels when none empty, poll requires groups. (The panel-shape Proximity test is GUI-smoke - this codebase does not render panels headlessly.)
 
 ## Gated

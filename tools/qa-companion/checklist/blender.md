@@ -178,6 +178,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The star pins a row as a favorite so it survives the favorites-only filter.
 - code: apps/blender/panels/outliner.py:78-84 + operators/selection.py:170-197
 
+### BL-OUTLN-09 · Deleted / undone objects leave the list
+- status: todo
+- review: keep
+- pre: Outliner expanded with a Proscenio object listed (e.g. a Quick Armature rig).
+- steps:
+  1. Select the object and delete it (X / Delete), or undo its creation with Ctrl+Z.
+- observe: The row disappears from the Outliner immediately - a deleted/undone object that lingers in bpy.data is no longer in the view layer, so it is filtered out. (It does not stay as a ghost row that warns 'not in the current view layer' on click.)
+- intent: The list reflects the real scene; objects removed from the view layer drop out.
+- code: apps/blender/panels/outliner.py filter_items (view-layer membership) + core/outliner_view.py row_visible
+
 ## Element panel (Active Sprite / Active Mesh, type, region, drive-from-bone, reproject UV)
 
 ### BL-ELEM-ROOT-SWEEP · Element panel root inventory (visual pass)

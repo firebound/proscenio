@@ -52,6 +52,10 @@ Tag types with no consuming runtime, mostly Adobe Character Animator face-puppet
 - **head-turner-groups** - Head-turner view groups (Character Animator). Dropped: Character Animator face puppetry bound to a face-rig template and a head-turn runtime Proscenio does not have; slot attachments already express view swapping in this model.
 - **pseudo-keyword-tagging** - Pseudo-keyword auto-tagging (Head, Mouth, Eye). Dropped: implicit match-inside-name tagging (Character Animator matches "Ah" inside "My Ah") collides with arbitrary artist naming and contradicts the locked explicit-bracket design that already shipped.
 
+## Blender UI
+
+- **outliner-hierarchy-tree** - A parent-nested Outliner tree (armature as root) with expand/collapse foldables, replacing the category-sorted flat list. Dropped 2026-06-17 (user call): Blender exposes no tree widget to Python - its native Tree View is C-only ([blender #118201](https://projects.blender.org/blender/blender/issues/118201)) - so a foldable tree can only be *simulated* inside the flat `UIList` (store depth + expanded flag, hide collapsed subtrees in `filter_items`, draw a `TRIA` toggle per node). Rather than build that non-native simulation, keep the standard Blender `UIList` with its native "Filter by Name" search, scroll, and the category sort, and left-align the row labels only (the left-align ships with spec 036, landed via the 043 PR). Re-propose only if Blender exposes a Python tree widget, or if the flat list proves unworkable on a real deep rig.
+
 ## Project health
 
 Coverage / CI bookkeeping that protects no behavior, plus one duplicate ledger row.

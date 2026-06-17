@@ -98,19 +98,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Outliner subpanel expanded, with a scene that has at least one slot, attachment, sprite mesh, and armature.
-- observe: The Outliner shows, in order: a filter text field (magnifier icon), a favorites-only toggle (star icon) next to it, and the object list (up to 8 rows). Each row is labeled by category: slots as '[slot] <name>', attachments indented as '-> <name>', sprite meshes as '<name>' (with '@ <bone>' when bone-parented), and armatures as '[arm] <name>'. Cameras, lights, and other objects do not appear.
-- intent: Confirm the Outliner renders its filter, favorites toggle, and category-labeled list; behavior lives in the named tests.
-- code: apps/blender/panels/outliner.py:40-84,148-158
+- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row is labeled by category: slots as '[slot] <name>', attachments indented as '-> <name>', sprite meshes as '<name>' (with '@ <bone>' when bone-parented), and armatures as '[arm] <name>'. Cameras, lights, and other objects do not appear.
+- intent: Confirm the Outliner renders its favorites toggle and category-labeled list; behavior lives in the named tests.
+- code: apps/blender/panels/outliner.py:40-69,118-137
 
 ### BL-OUTLN-01 · Filter the list by typing
 - status: pass
 - review: keep
 - steps:
-  1. Type part of an object's name into the Outliner filter field.
+  1. Open the list's native 'Filter by Name' field (the expand arrows at the bottom of the list) and type part of an object's name.
   2. Clear the field.
 - observe: As you type, rows whose name does not contain what you typed disappear; only matching rows stay. Clearing the field brings every Proscenio-relevant row back.
-- intent: Typing in the filter narrows the list live to matching objects; an empty filter shows everything relevant.
-- code: apps/blender/panels/outliner.py:148 (prop) + filter_items:95,117
+- intent: Typing in Blender's native filter narrows the list live to matching objects; an empty filter shows everything relevant. (Spec 043 removed the separate Proscenio search field; the native one is now the only search.)
+- code: apps/blender/panels/outliner.py filter_items (self.filter_name)
 
 ### BL-OUTLN-02 · Favorites-only toggle hides the rest
 - status: pass
@@ -130,15 +130,15 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The list always shows a fixed category order (slots, then sprites, then armatures) regardless of scene order.
 - code: apps/blender/panels/outliner.py:150-158 (template_list) + draw_item:40-84
 
-### BL-OUTLN-04 · Proscenio filter wins over Blender's native filter
+### BL-OUTLN-04 · Native 'Filter by Name' is the only search
 - status: pass
 - review: keep
 - steps:
-  1. Type into Blender's native 'Filter by Name' field (the expand arrows on the list) and leave the Proscenio filter empty.
-  2. Now type into the Proscenio filter as well.
-- observe: When the Proscenio filter is empty, the native filter applies. When both are set, the Proscenio filter wins.
-- intent: The Proscenio search bar takes precedence over Blender's built-in list filter.
-- code: apps/blender/panels/outliner.py:96-99 (self.filter_name honored)
+  1. Confirm the panel header shows only the favorites-only star toggle - no separate Proscenio search text field.
+  2. Type into Blender's native 'Filter by Name' field (the expand arrows on the list).
+- observe: There is no Proscenio search box in the header; the native 'Filter by Name' is the single search and it filters the list as you type.
+- intent: Spec 043 removed the redundant Proscenio search bar; only Blender's built-in list filter remains (no precedence to reconcile).
+- code: apps/blender/panels/outliner.py filter_items (self.filter_name only)
 
 ### BL-OUTLN-05 · Custom sort overrides Blender's native sort
 - status: pass
@@ -147,15 +147,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The custom category-then-name order overrides Blender's native list sort.
 - code: apps/blender/panels/outliner.py:150-158 (template_list) + filter_items:120-124
 
-### BL-OUTLN-06 · Active row highlight follows the clicked object
-- status: pass
+### BL-OUTLN-06 · Active row highlight follows click and viewport selection
+- status: todo
 - review: keep
+- pre: a scene with several Proscenio objects; type something into the native 'Filter by Name' so the list is sorted/filtered (not raw scene order).
 - steps:
   1. Click different rows in the list.
-- observe: The list keeps a highlighted active row that follows whichever object you last clicked.
-- intent: The list shows a persistent active-row highlight synced to the clicked object (undocumented behaviour).
-- code: apps/blender/properties/scene_props.py:484-489 + selection.py:153-167
-- note: o índice é calculado contra a ordem de bpy.data.objects, não a ordem exibida (achado conhecido).
+  2. Now select one of those objects directly in the 3D viewport.
+- observe: The highlighted active row follows whichever object you last clicked, landing on the correct visual row even with the list filtered/sorted. Selecting an object in the viewport moves the highlight to that object's row too. Selecting a non-Proscenio object (camera, light) leaves the highlight where it was.
+- intent: The active-row highlight stays in sync with the active object in both directions - clicking a row and selecting in the viewport (spec 043).
+- code: apps/blender/properties/_handlers.py sync_outliner_to_active_object + core/outliner_view.py source_index_for_name + selection.py:153-167
 
 ### BL-OUTLN-07 · Clicking a row selects that object
 - status: pass

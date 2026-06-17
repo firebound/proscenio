@@ -49,7 +49,14 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
         while parent is not None:
             depth += 1
             parent = parent.parent
-        op = row.operator(
+        # A bare operator button stretches and centers its text, which hid the
+        # depth indent. Split the row and draw the name in a LEFT-aligned
+        # sub-row so it hugs the left edge (same fix as the Outliner); the
+        # connectivity flags take the right side.
+        split = row.split(factor=0.7, align=True)
+        name_row = split.row()
+        name_row.alignment = "LEFT"
+        op = name_row.operator(
             "proscenio.select_bone_by_name",
             text=("  " * depth) + item.name,
             icon="BONE_DATA",
@@ -67,13 +74,19 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
             flags.append("disconnected")
         if getattr(item, "use_relative_parent", False):
             flags.append("relative")
-        row.label(text=", ".join(flags))
+        flag_row = split.row()
+        flag_row.alignment = "RIGHT"
+        flag_row.label(text=", ".join(flags))
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
     """Skeleton - the project-wide armature selector + presence checks."""
 
-    bl_label = "Skeleton"
+    # Blank label: the visible title is drawn by draw_header so it can carry
+    # the picked armature name. (A non-empty bl_label would render before the
+    # draw_header text - "...: name Skeleton" - so the whole title lives in
+    # draw_header instead.) bl_idname is the identity Blender uses for parenting.
+    bl_label = ""
     bl_idname = "PROSCENIO_PT_skeleton"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -86,17 +99,15 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         return context.mode in _POSE_FRIENDLY_MODES
 
     def draw_header(self, context: bpy.types.Context) -> None:
-        # Append the picked armature name to the static "Skeleton" label.
-        # bl_label is a class constant Blender cannot vary, so the name is
-        # drawn here. Falls back to nothing (plain "Skeleton") when the
-        # picker is empty or its target was freed.
+        # Draw the full title here so it reads "Skeleton: <name>" in order.
+        # Falls back to plain "Skeleton" when the picker is empty or its
+        # target was freed.
         target = _explicit_target(context)
         try:
             name = target.name if target is not None else None
         except ReferenceError:
             name = None
-        if name:
-            self.layout.label(text=f": {name}")
+        self.layout.label(text=f"Skeleton: {name}" if name else "Skeleton")
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "skeleton", "skeleton")

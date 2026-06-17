@@ -17,8 +17,8 @@ from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[impo
 from ._helpers import (
     _active_armature,
     _scene_skinning,
-    draw_picker_readout,
     draw_subpanel_header,
+    draw_target_readout,
 )
 
 
@@ -50,7 +50,7 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
         if not _is_mesh_element(context):
             layout.label(text="select a mesh element (Weight Paint is mesh-only)", icon="INFO")
             return
-        draw_picker_readout(layout, _active_armature(context))
+        draw_target_readout(layout, _active_armature(context))
 
 
 class PROSCENIO_PT_bind(bpy.types.Panel):
@@ -180,10 +180,8 @@ def _draw_bind(
         if bind_mode == "PROXIMITY":
             layout.prop(skinning_props, "bind_max_distance", text="Max Distance")
             layout.prop(skinning_props, "bind_falloff_power", text="Falloff Power")
-    layout.label(
-        text=f"Target: {picker.name}" if picker is not None else "Target: (no picker armature)",
-        icon="ARMATURE_DATA",
-    )
+    # No own "Target:" line - the Weight Paint parent panel already shows the
+    # "Target: Skeleton <name>" readout above this subpanel.
 
     if picker is not None and obj is not None and obj.type == "MESH":
         _draw_bone_overrides(layout, obj, picker, bind_mode)

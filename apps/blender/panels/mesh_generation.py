@@ -24,8 +24,8 @@ from ..core._shared.props_access import element_type_of  # type: ignore[import-n
 from ._helpers import (
     _active_armature,
     _scene_skinning,
-    draw_picker_readout,
     draw_subpanel_header,
+    draw_target_readout,
 )
 
 
@@ -69,7 +69,7 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
             layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
             return
         skinning_props = _scene_skinning(context)
-        draw_picker_readout(layout, _active_armature(context))
+        draw_target_readout(layout, _active_armature(context))
         if skinning_props is not None:
             layout.prop(skinning_props, "automesh_interior_mode")
 

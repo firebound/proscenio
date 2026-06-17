@@ -108,20 +108,28 @@ def draw_subbox_header(
     op.topic = help_topic
 
 
-def draw_picker_readout(layout: bpy.types.UILayout, picker: bpy.types.Object | None) -> None:
-    """Draw the one-line "Picker: <armature>" readout row.
+def draw_target_readout(
+    layout: bpy.types.UILayout,
+    target: bpy.types.Object | None,
+    *,
+    source: str = "Skeleton",
+) -> None:
+    """Draw the one-line "Target: <source> <name>" readout row.
 
-    ARMATURE_DATA icon then the picker name, or an INFO-marked
-    "(none - set in Skeleton panel)" prompt when no armature is set.
-    Shared by the Mesh Generation + Weight Paint panels so the picker
-    affordance reads identically in both.
+    For a panel that acts on a selection owned by *another* panel (the
+    armature picked in the Skeleton panel). The readout names both what
+    the panel targets and where that target is chosen, so the dependency
+    is explicit. ARMATURE_DATA icon then "Target: Skeleton <name>", or an
+    INFO-marked empty prompt when nothing is picked. Shared by Mesh
+    Generation, Weight Paint, and Animation so the affordance reads
+    identically across the panels that depend on the picked rig.
     """
     row = layout.row(align=True)
     row.label(text="", icon="ARMATURE_DATA")
-    if picker is not None:
-        row.label(text=f"Picker: {picker.name}")
+    if target is not None:
+        row.label(text=f"Target: {source} {target.name}")
     else:
-        row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
+        row.label(text=f"Target: {source} (none - pick a rig there)", icon="INFO")
 
 
 def draw_issue_row(layout: bpy.types.UILayout, issue: Issue) -> None:

@@ -24,8 +24,8 @@ from ..core._shared.props_access import element_type_of  # type: ignore[import-n
 from ._helpers import (
     _active_armature,
     _scene_skinning,
-    draw_picker_readout,
     draw_subpanel_header,
+    draw_target_readout,
 )
 
 
@@ -43,7 +43,7 @@ def _active_is_mesh_element(context: bpy.types.Context) -> bool:
 
 
 class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
-    """Mesh Generation - isolated Interior Mode + picker readout; body in subpanels."""
+    """Mesh Generation - isolated Interior Mode + target readout; body in subpanels."""
 
     bl_label = "Mesh Generation"
     bl_idname = "PROSCENIO_PT_mesh_generation"
@@ -53,8 +53,8 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
     bl_order = 5
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "mesh_generation", "mesh_generation")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "mesh_generation", "mesh_generation")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -69,7 +69,7 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
             layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
             return
         skinning_props = _scene_skinning(context)
-        draw_picker_readout(layout, _active_armature(context))
+        draw_target_readout(layout, _active_armature(context))
         if skinning_props is not None:
             layout.prop(skinning_props, "automesh_interior_mode")
 
@@ -89,8 +89,8 @@ class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _active_is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "automesh_alpha", "automesh_alpha")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "automesh_alpha", "automesh_alpha")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_automesh_alpha(self.layout, _scene_skinning(context))
@@ -112,8 +112,8 @@ class PROSCENIO_PT_automesh_interactive(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _active_is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "automesh_interactive", "automesh_interactive")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "automesh_interactive", "automesh_interactive")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_automesh_interactive(self.layout, _scene_skinning(context), context.active_object)
@@ -135,8 +135,8 @@ class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _active_is_mesh_element(context) and debug_mode_enabled(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "debug_pipeline", "debug_pipeline")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "debug_pipeline", "debug_pipeline")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_debug_pipeline(self.layout, _scene_skinning(context))

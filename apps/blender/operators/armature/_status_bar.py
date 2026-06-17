@@ -43,5 +43,12 @@ def emit_chord_layout(
     chord(layout, ("EVENT_X", ""), ("", "/"), ("EVENT_Z", ""), ("", "axis lock"))
     chord(layout, ("EVENT_CTRL", ""), ("", "grid snap"))
     chord(layout, ("EVENT_CTRL", ""), ("", "+"), ("EVENT_Z", ""), ("", "undo"))
-    chord(layout, ("EVENT_RETURN", ""), ("", "confirm"))
-    chord(layout, ("EVENT_ESC", ""), ("", "exit"))
+    # Confirm / exit read as synonyms and never change, so the two gestures
+    # looked identical. Relabel and make the Esc hint track session state: a
+    # bare Esc discards the empty auto-rig, but once a bone is authored both
+    # Esc and Enter keep the bones (only the report verb differs today).
+    chord(layout, ("EVENT_RETURN", ""), ("", "finish"))
+    if cls._last_bone_name:
+        chord(layout, ("EVENT_ESC", ""), ("", "exit (keeps bones)"))
+    else:
+        chord(layout, ("EVENT_ESC", ""), ("", "cancel (discards empty rig)"))

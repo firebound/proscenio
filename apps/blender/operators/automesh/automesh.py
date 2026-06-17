@@ -291,7 +291,7 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         if picker is None:
             report_info(
                 self,
-                "no picker armature - automesh uses uniform interior density "
+                "no target armature - automesh uses uniform interior density "
                 "(pick an armature in the Skeleton panel for density-under-bones)",
             )
             return None
@@ -299,7 +299,7 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         if not segments:
             report_info(
                 self,
-                f"picker armature '{picker.name}' has no deform bones - "
+                f"target armature '{picker.name}' has no deform bones - "
                 "automesh falls back to uniform density",
             )
             return None

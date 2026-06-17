@@ -1,32 +1,34 @@
 # Spec 045: Skeleton, Quick Armature and Animation fixes - TODO
 
-Sequenced from the assessment in [STUDY.md](STUDY.md): 7 rows land now across two PR-sized chunks plus a repro session that gates one decision; one row stays gated on the repro outcome.
+From the assessment in [STUDY.md](STUDY.md): 7 rows land now (implemented in one PR), one stays gated. The Esc repro is a manual GUI session (a headless harness cannot pump the modal); the code read already confirms the data behaviour, so the decision was made **labels-only** (see the STUDY decision note). The destructive-cancel stays gated.
 
-## First - the repro that gates the Esc work
+## Now (implemented - one PR)
 
-- [ ] Run the BL-SKEL-QUICKARM-01 repro in a GUI session and record the scene state vs the report verb for three cases: (a) bare Esc with nothing drawn, (b) Esc after authoring one bone, (c) Enter after authoring one bone. Confirm against the code read: case (a) sweeps the empty auto-rig on both Esc and Enter; cases (b)/(c) both keep the bones today, so Esc and Enter differ only by the report verb (`_exit`, [`quick_armature.py`](../../apps/blender/operators/armature/quick_armature.py) lines 803-822) and not in the scene.
-- [ ] Decide from the repro: labels-only (default - keep current data behaviour, fix the hints) or destructive cancel (Esc discards the whole auto-created `Proscenio.QuickRig` even with bones). Write the decision into the STUDY before coding PR 2.
+### Animation panel uses the picked armature (bug)
 
-## Now
+- [x] `PROSCENIO_OT_set_active_action` ([`selection.py`](../../apps/blender/operators/selection.py)) now resolves the target via `resolve_skeleton_target(context)` instead of scanning `context.scene.objects`; `report_warn` + cancel when the picker is empty ("no armature picked - pick one in the Skeleton panel"). Multi-armature heuristic dropped; `bl_description` updated off "the first armature in the scene".
+- [x] Headless tests in `tests/operators/test_set_active_action.py`: assigns to the picked armature; warns + cancels when the picker is empty; ignores a non-picked second armature.
 
-### PR 1 - Animation panel uses the picked armature (bug)
+### Quick Armature + Skeleton chrome
 
-- [ ] Rework `PROSCENIO_OT_set_active_action` in [`selection.py`](../../apps/blender/operators/selection.py) (lines 96-132) to resolve the target via `resolve_skeleton_target(context)` from [`core/armature/skeleton_target.py`](../../apps/blender/core/armature/skeleton_target.py) instead of `context.scene.objects` armature scan; `report_warn` and cancel when it returns `None` (message in the Skeleton panel's "no rig picked" vocabulary).
-- [ ] Drop the multi-armature heuristic (lines 117-127) - the picker disambiguates - and update the `bl_description` (lines 101-104) that still advertises "the first armature in the scene".
-- [ ] Headless test in a new `tests/operators/test_set_active_action.py`: assigns to the picked armature when set; warns + cancels (no assignment) when the picker is empty; ignores a non-picked second armature in the scene.
+- [x] Dynamic confirm / exit chords in `emit_chord_layout` ([`_status_bar.py`](../../apps/blender/operators/armature/_status_bar.py)): Return relabeled "finish"; the Esc chord reads "cancel (discards empty rig)" while `_last_bone_name` is empty, "exit (keeps bones)" once a bone is authored. Labels-only - no destructive branch (gated).
+- [x] `PROSCENIO_UL_bones.draw_item` ([`skeleton.py`](../../apps/blender/panels/skeleton.py)) flags "disconnected" when `item.parent is not None and not use_connect`.
+- [x] Skeleton header shows "Skeleton: <name>" via `draw_header` (bl_label blank, since Blender renders draw_header left of bl_label here so the whole title lives in one place). A custom draw_header label has no native truncation, so a width gate drops the `<name>` (keeping the short "Skeleton") below `_SKELETON_HEADER_NAME_MIN_WIDTH` rather than letting the long title vanish. See Review feedback.
+- [x] `PROSCENIO_PT_armature` `bl_label` renamed "Armature" -> "Active Armature" (`bl_idname` / `bl_parent_id` untouched); the in-body label trimmed to the bone count.
+- [x] Removed the 3D-viewport-header hint surface from [`quick_armature.py`](../../apps/blender/operators/armature/quick_armature.py) (all six references: ClassVar, double-invoke guard, register append, `_unregister_handlers` teardown, `_sweep_orphan_handlers` sweep, and `_draw_view3d_header_quick_armature`). The status bar keeps the chords.
+- [ ] GUI smoke (manual - the modal/panels do not render headless): `BL-SKEL-*`, `BL-ANIM-01..03`, `BL-SKEL-QUICKARM-01` - dynamic Esc/finish hints, disconnected flag, header name, renamed subpanel, and the viewport header no longer showing the chord strip (no leaked handler after reload).
 
-### PR 2 - Quick Armature + Skeleton chrome (one GUI smoke verifies all)
+## Review feedback (2026-06-17, folded into this PR)
 
-- [ ] Make the confirm / exit chords differ and change with session state in `emit_chord_layout` ([`_status_bar.py`](../../apps/blender/operators/armature/_status_bar.py) lines 46-47), reusing the existing `_default_chain`-swap pattern (lines 33-38) to read a session-state flag (e.g. `cls._last_bone_name`): relabel Return as "keep" / "finish", and while nothing is drawn let the Esc chord read "cancel (discards empty rig)". (Apply the destructive-cancel branch in [`quick_armature.py`](../../apps/blender/operators/armature/quick_armature.py) `_exit` / `_sweep_empty_armature` only if the repro chose it - keep the `_created_armature_this_session` picked-target guard either way.)
-- [ ] Flag "disconnected" child bones in `PROSCENIO_UL_bones.draw_item` ([`skeleton.py`](../../apps/blender/panels/skeleton.py) lines 60-65): append "disconnected" when `item.parent is not None and not getattr(item, "use_connect", False)`.
-- [ ] Add a `draw_header` override to `PROSCENIO_PT_skeleton` ([`skeleton.py`](../../apps/blender/panels/skeleton.py) beside `draw_header_preset`, lines 83-84) showing "Skeleton: <name>" from `_explicit_target(context)`; fall back to the plain "Skeleton" label when the picker is empty or the target is gone.
-- [ ] Rename `PROSCENIO_PT_armature` `bl_label` from "Armature" to "Active Armature" ([`skeleton.py`](../../apps/blender/panels/skeleton.py) line 126); leave `bl_idname` / `bl_parent_id` untouched; trim the redundant in-body label (line 149) if the header name makes it redundant.
-- [ ] Remove the 3D-viewport-header hint surface from [`quick_armature.py`](../../apps/blender/operators/armature/quick_armature.py): the append branch (lines 756-758), the `_view3d_header_appended` ClassVar (line 136) and its double-invoke guard (lines 163-164), the teardown in `_unregister_handlers` (lines 774-777), the sweep in `_sweep_orphan_handlers` (lines 942-945), and `_draw_view3d_header_quick_armature` (lines 904-917). The status bar keeps the same chords via `_draw_statusbar_quick_armature`.
-- [ ] One GUI smoke pass over `BL-SKEL-*`, `BL-ANIM-01..03`, and `BL-SKEL-QUICKARM-01`: confirm the dynamic Esc / confirm hints, the disconnected flag, the header name, the renamed subpanel, and that the viewport header no longer shows the chord strip (no leaked handler after a reload).
+- [x] Skeleton header "Skeleton: <name>" - took three iterations. (1) `bl_label="Skeleton"` + `draw_header ": name"` rendered reversed (": name Skeleton") because Blender draws draw_header LEFT of bl_label here. (2) `bl_label=""` + full title in draw_header read in order but the whole label vanished when narrow (custom draw_header labels have no native truncation). (3) Final: keep `bl_label=""` + full title in draw_header, and width-gate the name - below `_SKELETON_HEADER_NAME_MIN_WIDTH` draw_header drops to the short "Skeleton" (which survives narrow widths), restoring "Skeleton: <name>" when wide. This matches the user's "Skeleton: stays, name disappears when small" intent; a true per-part native truncation is not possible (only bl_label truncates, and it is forced right of draw_header).
+- [x] **Cross-panel target convention.** Panels that act on a selection owned by another panel now declare it uniformly: `draw_picker_readout` renamed to `draw_target_readout` and reads "Target: Skeleton <name>" (was "Picker: <name>"). The owner panel (Skeleton) is excluded - it holds the picker widget. Applied to Mesh Generation, Weight Paint, and **Animation** (which had no read-out before).
+- [x] Weight Paint Bind dropped its own "Target:" line - the Weight Paint parent read-out already covers it.
+- [x] Bone list names were centered (UIList operator-button centering, same as the Outliner); left-aligned via a split + LEFT sub-row so the depth indent is visible.
+- [x] Narrow N-panel: the header status + `?` icons overlapped the title. `draw_subpanel_header` now drops the icons below `_HEADER_ICONS_MIN_WIDTH` (region width), so headers shed their extras and the native `bl_label` titles truncate like Blender's own. Threshold is GUI-tunable (`BL-CHROME-09`). (The Skeleton header vanishing was fixed separately by reverting to a native `bl_label` - see the bullet above.)
 
 ## Gated
 
-- **Destructive Esc cancel** - Esc deletes the whole auto-created `Proscenio.QuickRig` even when it has bones (never the user-picked target). Real bug surface (a misfired Esc discards a session). Trigger: the repro above showing users expect Esc to throw the rig away; otherwise the labels-only outcome stands.
+- **Destructive Esc cancel** - Esc deletes the whole auto-created `Proscenio.QuickRig` even when it has bones (never the user-picked target). Real bug surface (a misfired Esc discards a session). Trigger: a GUI repro showing users expect Esc to throw the rig away; otherwise the labels-only outcome stands.
 
 ## Out of scope (own backlog items)
 

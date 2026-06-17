@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import bpy
 
-from ._helpers import draw_subpanel_header
+from ._helpers import _active_armature, draw_subpanel_header, draw_target_readout
 
 
 class PROSCENIO_UL_actions(bpy.types.UIList):
@@ -47,11 +47,15 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
     bl_order = 7
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "animation", "animation")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "animation", "animation")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        # Clicking an action assigns it to the Skeleton-picked armature, so
+        # declare that target first - same readout as Mesh Generation and
+        # Weight Paint.
+        draw_target_readout(layout, _active_armature(context))
         actions = bpy.data.actions
         if not actions:
             layout.label(text="no actions to export", icon="INFO")

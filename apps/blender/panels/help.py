@@ -40,8 +40,8 @@ class PROSCENIO_PT_help(bpy.types.Panel):
     bl_order = 12
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "help", "pipeline_overview")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "help", "pipeline_overview")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

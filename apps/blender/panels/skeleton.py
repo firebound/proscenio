@@ -22,6 +22,12 @@ def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
     return scene_props.active_armature if scene_props is not None else None
 
 
+# Below this N-panel width the Skeleton header drops the picked-armature name
+# and keeps just "Skeleton" (a custom draw_header label cannot truncate, so the
+# name is dropped wholesale rather than left to vanish mid-word). GUI-tunable.
+_SKELETON_HEADER_NAME_MIN_WIDTH = 220
+
+
 class PROSCENIO_UL_bones(bpy.types.UIList):
     """List view for ``Armature.bones`` - the Armature subpanel uses this."""
 
@@ -49,7 +55,14 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
         while parent is not None:
             depth += 1
             parent = parent.parent
-        op = row.operator(
+        # A bare operator button stretches and centers its text, which hid the
+        # depth indent. Split the row and draw the name in a LEFT-aligned
+        # sub-row so it hugs the left edge (same fix as the Outliner); the
+        # connectivity flags take the right side.
+        split = row.split(factor=0.7, align=True)
+        name_row = split.row()
+        name_row.alignment = "LEFT"
+        op = name_row.operator(
             "proscenio.select_bone_by_name",
             text=("  " * depth) + item.name,
             icon="BONE_DATA",
@@ -60,15 +73,28 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
         flags = []
         if getattr(item, "use_connect", False):
             flags.append("connected")
+        elif item.parent is not None:
+            # A child bone not connected to its parent. Disconnected parenting
+            # is a legitimate, common topology, not a mistake - but it was
+            # silent before, so flag it for parity with "connected".
+            flags.append("disconnected")
         if getattr(item, "use_relative_parent", False):
             flags.append("relative")
-        row.label(text=", ".join(flags))
+        flag_row = split.row()
+        flag_row.alignment = "RIGHT"
+        flag_row.label(text=", ".join(flags))
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
     """Skeleton - the project-wide armature selector + presence checks."""
 
-    bl_label = "Skeleton"
+    # The full "Skeleton: <name>" title is drawn in draw_header (bl_label
+    # blank) because Blender renders draw_header LEFT of bl_label here, so the
+    # whole title must live in one place to read in order. A custom draw_header
+    # label has no native truncation, so instead of letting "Skeleton: <name>"
+    # vanish when narrow, draw_header drops the <name> below a width threshold
+    # and keeps the short "Skeleton" - which survives narrow widths fine.
+    bl_label = ""
     bl_idname = "PROSCENIO_PT_skeleton"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -80,8 +106,23 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "skeleton", "skeleton")
+    def draw_header(self, context: bpy.types.Context) -> None:
+        target = _explicit_target(context)
+        try:
+            name = target.name if target is not None else None
+        except ReferenceError:
+            name = None
+        region = getattr(context, "region", None)
+        width = getattr(region, "width", 9999)
+        # Keep "Skeleton: <name>" while there is room; drop the name (the base
+        # "Skeleton" stays) once the panel is too narrow to fit it.
+        if name and width >= _SKELETON_HEADER_NAME_MIN_WIDTH:
+            self.layout.label(text=f"Skeleton: {name}")
+        else:
+            self.layout.label(text="Skeleton")
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "skeleton", "skeleton")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -121,9 +162,9 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
 
 
 class PROSCENIO_PT_armature(bpy.types.Panel):
-    """Armature subpanel - the bone hierarchy of the picked armature."""
+    """Active Armature subpanel - the bone hierarchy of the picked armature."""
 
-    bl_label = "Armature"
+    bl_label = "Active Armature"
     bl_idname = "PROSCENIO_PT_armature"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -136,8 +177,8 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         target = _explicit_target(context)
         return target is not None and bool(getattr(target.data, "bones", None))
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "armature", "armature")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "armature", "armature")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -146,7 +187,9 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         if target is None or scene_props is None:
             return
         bones = getattr(target.data, "bones", [])
-        layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
+        # The armature name now rides the Skeleton header; the body just
+        # carries the bone count.
+        layout.label(text=f"{len(bones)} bone(s)")
         layout.template_list(
             "PROSCENIO_UL_bones",
             "",
@@ -169,8 +212,8 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_skeleton"
     bl_order = 1
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "pose_mode", "pose_mode")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "pose_mode", "pose_mode")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -204,8 +247,8 @@ class PROSCENIO_PT_quick_armature(bpy.types.Panel):
     bl_order = 2
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "quick_armature", "quick_armature")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "quick_armature", "quick_armature")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

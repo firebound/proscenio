@@ -92,6 +92,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The debug-only developer surface is hidden until Debug mode is enabled.
 - code: apps/blender/addon_prefs.py:50-58,67-80; apps/blender/panels/diagnostics.py:24-26; apps/blender/panels/mesh_generation.py:135
 
+### BL-CHROME-09 · Header icons drop and titles truncate when the N-panel is narrow
+- status: todo
+- review: keep
+- pre: Any Proscenio panel; drag the N-panel divider to narrow it.
+- steps:
+  1. Narrow the N-panel until the headers get cramped.
+- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the native bl_label titles truncate (lose characters) like Blender's own. The Skeleton header (a custom draw_header) instead drops its '<name>' suffix and keeps the base 'Skeleton' when narrow. Widening brings the icons and the name back.
+- intent: Narrow headers shed their extra icons; native titles truncate and the Skeleton header drops its name suffix, matching Blender's narrow-header behaviour; nothing overlaps.
+- code: apps/blender/panels/_helpers.py draw_subpanel_header (_HEADER_ICONS_MIN_WIDTH gate)
+
 ## Outliner panel
 
 ### BL-OUTLN-SWEEP · Outliner panel inventory (visual pass)
@@ -531,12 +541,12 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The 'Use existing' buttons let you set the project rig to a named scene armature in one click. (also FLOW-DOLL-02)
 - code: apps/blender/panels/skeleton.py:113-120 -> skeleton_target.py:36-52
 
-### BL-SKEL-ARMATURE-SWEEP · Armature subpanel inventory (visual pass)
-- status: pass
+### BL-SKEL-ARMATURE-SWEEP · Active Armature subpanel inventory (visual pass)
+- status: todo
 - review: keep
 - pre: A rig picked.
-- observe: The Armature subpanel shows a header naming the rig and its exact bone count ("Armature '<name>' - N bone(s)") and a read-only bone list where each bone is indented by its depth, named, and tagged 'connected' or 'relative' where those flags apply.
-- intent: Confirm the Armature subpanel renders the bone-count header and the indented bone list; it is read-only and behavior lives in the named test.
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply.
+- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, and the connected/disconnected/relative flags; behavior lives in the named test.
 - code: apps/blender/panels/skeleton.py:25-65,148-158
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
@@ -607,7 +617,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:217-220 -> scene_props.py:29-67
 
 ### BL-SKEL-QUICKARM-01 · Quick Armature modal walk (consolidated)
-- status: pass
+- status: todo
 - review: keep
 - pre: The mouse is over a 3D viewport; the Quick Armature subpanel is open.
 - steps:
@@ -618,12 +628,12 @@ Each block answers three questions in plain language: what passing it proves (`i
   5. Press X then Z to lock drawing to the X or Z axis (press again to clear); a coloured guideline shows the locked axis.
   6. Hold Ctrl while drawing to snap the bone ends to the grid increment; the preview follows the snapped point.
   7. Press Ctrl+Z to undo the last bone you drew, Ctrl+Shift+Z to redo it; undoing or redoing past the ends reports there is nothing to do.
-  8. Press Enter to confirm: the overlays clear, your view and selection are restored, and a confirmation reports how many bones you authored.
-  9. Press Esc or right-click to cancel: with nothing drawn it cancels, removes the auto-created empty rig, and restores your view and selection.
+  8. Press Enter to finish (the status-bar hint reads 'finish'): the overlays clear, your view and selection are restored, and a confirmation reports how many bones you authored.
+  9. Press Esc or right-click: with nothing drawn the hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored the hint reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Your view and selection are restored either way.
   10. The redo panel's 'Lock to Front Orthographic' option, when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone.
-- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport), and the cheat-sheet of chords stays on screen throughout.
-- intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, confirm, cancel, the front-ortho option, and the live overlay and cheat-sheet feedback.
-- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py:150-231,236-275,364-636,803-917; _overlay.py:47-167; _status_bar.py:23-47
+- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored.
+- intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, and the status-bar-only cheat-sheet with dynamic finish/exit hints.
+- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + _exit + _draw_statusbar_quick_armature); _overlay.py:47-167; _status_bar.py emit_chord_layout
 
 ### BL-SKEL-03 · Active Armature picker
 - status: pass
@@ -659,7 +669,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Mesh Generation panel expanded; switch the active object between a mesh, a sprite, and nothing to surface each guard.
-- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the Interior Mode selector (Simple / Dense).
+- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the Interior Mode selector (Simple / Dense).
 - intent: Confirm the parent panel renders the empty-state and sprite guards, the picker read-out, and the Interior Mode selector; behavior lives in the named tests.
 - code: apps/blender/panels/mesh_generation.py:63-74 -> _helpers.py:111
 
@@ -772,8 +782,8 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-SWEEP · Weight Paint inventory across subpanels (visual pass)
 - status: todo
 - review: keep
-- pre: A mesh element active with a picker armature set and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
-- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a target line, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button; Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
+- pre: A mesh element active with a target armature set in Skeleton and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
+- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
 - code: apps/blender/panels/weight_paint.py:51-53,174-360; _helpers.py:111
 - note:
@@ -792,7 +802,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-BIND-02 · Per-bone Soft / Hard / Clear overrides (consolidated)
 - status: pass
 - review: keep
-- pre: A picker with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
+- pre: A target armature with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
 - steps:
   1. Click Soft next to a bone.
   2. Click Hard next to the same bone.
@@ -801,13 +811,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Soft blends a bone's weight smoothly with neighbours, Hard gives a crisp single-bone boundary, and Clear drops back to the bind-mode default.
 - code: apps/blender/panels/weight_paint.py:225,232,241 -> operators/skinning/set_bone_mode.py:52,56
 
-### BL-WPAINT-BIND-03 · Bind to Picker Armature builds the weights
-- status: pass
+### BL-WPAINT-BIND-03 · Bind to Target Armature builds the weights
+- status: todo
 - review: keep
-- pre: A mesh element active; a picker armature set (the button is greyed without one).
+- pre: A mesh element active; a target armature set in Skeleton (the button is greyed without one).
 - steps:
-  1. With the picker set and a mesh selected, click Bind to Picker Armature.
-- observe: The mesh is bound to the armature using the chosen Mode: vertex groups are created and a weight snapshot is written, with a confirmation reporting how many meshes were bound and per-mesh vertex/bone counts. With no picker the button is greyed out.
+  1. With the target set and a mesh selected, click Bind to Target Armature.
+- observe: The mesh is bound to the armature using the chosen Mode: vertex groups are created and a weight snapshot is written, with a confirmation reporting how many meshes were bound and per-mesh vertex/bone counts. With no target armature the button is greyed out.
 - intent: Bind builds the vertex weights that deform the mesh, using the selected Mode, and stores the snapshot exported to the Polygon2D. (basic bind path also exercised by FLOW-DOLL-02)
 - code: apps/blender/panels/weight_paint.py:186 -> operators/skinning/bind_mesh.py:176 execute
 
@@ -845,7 +855,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-WPAINT-EDIT-03 · Edit Weights button flips to Exit Painting Mode
 - status: todo
 - review: keep
-- pre: A mesh bound to a picker armature.
+- pre: A mesh bound to a target armature.
 - steps:
   1. Click Edit Weights to enter the modal.
   2. Read the button label, then click it.
@@ -898,44 +908,42 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Animation panel (read-only action summary)
 
 ### BL-ANIM-SWEEP · Animation panel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: Animation subpanel expanded; test with zero actions and with at least one action.
-- observe: With no actions it shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
-- intent: Confirm the Animation panel renders the empty state, the action list with frame ranges, and the total count; row-click behavior lives in the named tests.
+- observe: A target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') heads the panel, matching Mesh Generation and Weight Paint. With no actions it then shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
+- intent: Confirm the Animation panel renders the target read-out, the empty state, the action list with frame ranges, and the total count; row-click behavior lives in the named tests.
 - code: apps/blender/panels/animation.py:12-36,56-68
 
-### BL-ANIM-01 · Clicking an action row assigns it to the armature
-- status: pass
+### BL-ANIM-01 · Clicking an action row assigns it to the picked armature
+- status: todo
 - review: keep
-- pre: At least one action and at least one armature in the scene.
+- pre: At least one action; an armature picked in the Skeleton panel.
 - steps:
   1. Expand the Animation subpanel and click an action's name.
-- observe: The clicked action is assigned to the first scene armature (which now plays it when you scrub the timeline), and that row becomes active. The action looks like a plain label but acts as a button. It is undoable.
-- intent: The action rows are click-to-assign, even though the panel reads as read-only: clicking one plays that action on the first armature.
-- code: apps/blender/panels/animation.py:28-36 (draw), apps/blender/operators/selection.py:96-132 (handler)
+- observe: The clicked action is assigned to the Skeleton-picked armature (which then plays it when you scrub the timeline), and that row becomes active. The action looks like a plain label but acts as a button. It is undoable.
+- intent: The action rows are click-to-assign and target the picker (the single source of truth), even though the panel reads as read-only.
+- code: apps/blender/panels/animation.py:28-36 (draw), apps/blender/operators/selection.py (handler -> resolve_skeleton_target)
 
-### BL-ANIM-02 · Assigning with multiple armatures warns and uses the first
-- status: pass
-- review: drop
-- pre: At least one action and two or more armatures in the scene; report log level at 'info' or higher.
-- steps:
-  1. With two or more armatures present, click an action row.
-- observe: A warning appears ('N armatures in scene - assigning to <name>') and the action is assigned to the first armature only. With log level set to 'errors' the warning is suppressed.
-- intent: With more than one armature, assignment warns and falls back to the first armature.
-- code: apps/blender/operators/selection.py:117-127
-- note: isso sequer deveria ser uma ação, já estabelecemos que a armature trabalhada é definida em Skeleton
-
-### BL-ANIM-03 · Assigning with no armature cancels with a warning
-- status: pass
+### BL-ANIM-02 · Assigning targets the picked armature, not the first in scene
+- status: todo
 - review: keep
-- pre: At least one action but no armature in the scene; report log level 'info' or higher.
+- pre: At least one action; two or more armatures in the scene; one of them picked in the Skeleton panel.
 - steps:
-  1. Delete all armatures, then click an action row.
-- observe: Nothing is assigned and a warning appears ('no armature in scene to receive the action'). With log level set to 'errors' the warning is suppressed.
-- intent: With no armature to receive it, assignment cancels with a warning instead of erroring.
-- code: apps/blender/operators/selection.py:117-120
-- note: possível manter, porém deve avisar quando o picker estiver sem armature
+  1. With two or more armatures present and one picked, click an action row.
+- observe: The action is assigned to the picked armature regardless of scene order; the other armatures are untouched, and there is no 'N armatures in scene' warning (the picker disambiguates). (Spec 045 removed the first-armature heuristic.)
+- intent: The Skeleton picker, not a scene scan, decides which armature receives the action.
+- code: apps/blender/operators/selection.py (resolve_skeleton_target)
+
+### BL-ANIM-03 · Assigning with no armature picked cancels with a warning
+- status: todo
+- review: keep
+- pre: At least one action; the Skeleton picker empty (clear it via the 'x').
+- steps:
+  1. Clear the Active Armature picker, then click an action row.
+- observe: Nothing is assigned and a warning appears ('no armature picked - pick one in the Skeleton panel'). With log level set to 'errors' the warning is suppressed.
+- intent: With no rig picked, assignment cancels with a warning instead of guessing a scene armature.
+- code: apps/blender/operators/selection.py (resolve_skeleton_target is None -> warn + cancel)
 
 ### BL-ANIM-04 · Clicking a stale action row cancels safely
 - status: pending

@@ -40,7 +40,7 @@ A numbered how-to step leads with an italic imperative label and a colon, then t
 
 ```markdown
 1. *Set the picker armature*: in the **Skeleton** subpanel, pick your armature as the active armature.
-2. *Bind*: in the **Skinning** subpanel, click `Bind to Picker Armature`.
+2. *Bind*: in the **Skinning** subpanel, click `Bind to Target Armature`.
 ```
 
 The italic label is the action a reader scans for; the detail is how. Keep one label style across a guide - do not mix `*Label*:` with `**Label**:` or bare sentences.

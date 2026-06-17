@@ -130,8 +130,8 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
     bl_order = 1
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "outliner", "outliner")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "outliner", "outliner")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

@@ -47,7 +47,7 @@
         "length": 30.000001
       },
       {
-        "name": "mouth",
+        "name": "mouth_anchor",
         "parent": "head",
         "position": [
           -4.0,
@@ -245,7 +245,7 @@
     {
       "type": "sprite",
       "name": "mouth",
-      "bone": "mouth",
+      "bone": "mouth_anchor",
       "hframes": 2,
       "vframes": 2,
       "frame": 2,
@@ -309,8 +309,8 @@
             {
               "time": 0.458333,
               "position": [
-                30.0,
-                -15.000001
+                45.000001,
+                -0.0
               ]
             },
             {

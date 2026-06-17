@@ -20,6 +20,10 @@ import bpy
 from ..core._shared.hydrate import hydrate_object  # type: ignore[import-not-found]
 from ..core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
+from ..core.outliner_view import (  # type: ignore[import-not-found]
+    is_outliner_relevant,
+    source_index_for_name,
+)
 
 
 def hydrate_existing_objects() -> None:
@@ -68,36 +72,72 @@ def on_blend_load(_filepath: str) -> None:
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
 def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph) -> None:
-    """Keep ``scene.proscenio.active_armature`` in sync with reality.
-
-    Blender nulls the PointerProperty when the referenced Object is
-    deleted, but not when the user only unlinks it from the scene (or
-    renames via Outliner): the pointer then dangles, resolving to an
-    Object no longer in this scene. The handler clears that case.
+    """Per-tick scene hygiene: armature pointer + Outliner highlight follow.
 
     Wrapped in a broad ``Exception`` guard because depsgraph callbacks
     fire inside Blender's draw / event loop, where a bubbling Python
     exception can leave the C side mid-state and crash the next draw.
+    Both jobs are cheap guarded comparisons that early-out unless
+    something actually changed; this callback fires on every transform
+    and frame change, so it must never do real work on the common path.
     """
     try:
         proscenio = getattr(scene, "proscenio", None)
         if proscenio is None:
             return
-        pointer = proscenio.active_armature
-        if pointer is None:
-            return
-        try:
-            if pointer.name in scene.objects and pointer.type == "ARMATURE":
-                return
-        except ReferenceError:
-            # Pointer references a freed datablock. Treat as stale.
-            pass
-        proscenio.active_armature = None
-        _tag_view3d_areas_redraw()
+        _clear_dangling_active_armature(scene, proscenio)
+        sync_outliner_to_active_object(scene)
     except Exception:  # depsgraph hook safety - swallow to protect draw cycle
         # No logging: the operator INFO bar is not reachable from a
         # depsgraph callback, so there is nowhere to surface it.
         pass
+
+
+def _clear_dangling_active_armature(scene: bpy.types.Scene, proscenio: bpy.types.AnyType) -> None:
+    """Null ``active_armature`` when it dangles outside the scene.
+
+    Blender nulls the PointerProperty when the referenced Object is
+    deleted, but not when the user only unlinks it from the scene (or
+    renames via Outliner): the pointer then dangles, resolving to an
+    Object no longer in this scene. This clears that case.
+    """
+    pointer = proscenio.active_armature
+    if pointer is None:
+        return
+    try:
+        if pointer.name in scene.objects and pointer.type == "ARMATURE":
+            return
+    except ReferenceError:
+        # Pointer references a freed datablock. Treat as stale.
+        pass
+    proscenio.active_armature = None
+    _tag_view3d_areas_redraw()
+
+
+def sync_outliner_to_active_object(scene: bpy.types.Scene) -> None:
+    """Move the Outliner highlight to follow the viewport's active object.
+
+    Closes the selection loop the Outliner click already drives the other
+    way: selecting an object in the 3D viewport points
+    ``active_outliner_index`` at that object's source-collection row.
+    Early-outs keep the depsgraph callback cheap - it does nothing unless
+    the active object is a Proscenio-relevant row whose index differs from
+    what the panel already shows. A non-Proscenio active object (camera,
+    light) leaves the highlight untouched rather than pointing it at a
+    hidden row.
+    """
+    proscenio = getattr(scene, "proscenio", None)
+    if proscenio is None or not hasattr(proscenio, "active_outliner_index"):
+        return
+    view_layer = getattr(bpy.context, "view_layer", None)
+    active = getattr(getattr(view_layer, "objects", None), "active", None)
+    if active is None or not is_outliner_relevant(active):
+        return
+    idx = source_index_for_name(bpy.data.objects, active.name)
+    if idx is None or proscenio.active_outliner_index == idx:
+        return
+    proscenio.active_outliner_index = idx
+    _tag_view3d_areas_redraw()
 
 
 def _tag_view3d_areas_redraw() -> None:

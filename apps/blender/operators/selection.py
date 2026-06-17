@@ -53,6 +53,15 @@ class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         if not self.obj_name:
             return {"CANCELLED"}
+        # The list is sourced from bpy.data.objects, which keeps blocks left
+        # behind by a delete/undo. Such a row points at an object not linked
+        # into the view layer; select_set(True) on it raises. Skip-and-warn
+        # at this boundary keeps the shared select_only contract intact for
+        # the slot/camera/bone callers (a blanket suppress there would make
+        # an object that genuinely cannot be selected no-op silently).
+        if context.view_layer.objects.get(self.obj_name) is None:
+            report_warn(self, f"'{self.obj_name}' is not in the current view layer")
+            return {"CANCELLED"}
         if select_named_or_warn(self, context, self.obj_name) is None:
             return {"CANCELLED"}
         _sync_active_index(context, "active_outliner_index", bpy.data.objects, self.obj_name)

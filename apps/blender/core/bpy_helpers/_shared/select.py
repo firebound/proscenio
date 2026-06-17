@@ -35,6 +35,33 @@ def select_only(context: bpy.types.Context, obj: bpy.types.Object) -> None:
     context.view_layer.objects.active = obj
 
 
+def select_add(context: bpy.types.Context, obj: bpy.types.Object) -> None:
+    """Add ``obj`` to the current selection and make it active.
+
+    The extend (Shift-click) half of multi-selection: it never deselects
+    anything, so a sequence of extend calls accumulates a selection. The
+    clicked object always becomes active so the panels that key off the
+    active object track the last row touched.
+    """
+    obj.select_set(True)
+    context.view_layer.objects.active = obj
+
+
+def select_toggle(context: bpy.types.Context, obj: bpy.types.Object) -> bool:
+    """Flip ``obj``'s selection and return its new state.
+
+    The toggle (Ctrl-click) half of multi-selection. Selecting makes ``obj``
+    active; deselecting leaves the active object alone (clearing it would
+    blank every active-object-driven panel on a mere deselect, which is not
+    what a Ctrl-click communicates).
+    """
+    new_state = not obj.select_get()
+    obj.select_set(new_state)
+    if new_state:
+        context.view_layer.objects.active = obj
+    return new_state
+
+
 def restore_selection(
     context: bpy.types.Context,
     prior_selected_names: list[str],

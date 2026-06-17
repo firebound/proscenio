@@ -535,7 +535,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A rig picked.
-- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig. The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone is indented by its depth, named, and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' where those flags apply.
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig. The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply.
 - intent: Confirm the renamed subpanel, the armature name in the Skeleton header, the bone-count body, and the connected/disconnected/relative flags; behavior lives in the named test.
 - code: apps/blender/panels/skeleton.py:25-65,148-158
 
@@ -659,7 +659,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Mesh Generation panel expanded; switch the active object between a mesh, a sprite, and nothing to surface each guard.
-- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the Interior Mode selector (Simple / Dense).
+- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the Interior Mode selector (Simple / Dense).
 - intent: Confirm the parent panel renders the empty-state and sprite guards, the picker read-out, and the Interior Mode selector; behavior lives in the named tests.
 - code: apps/blender/panels/mesh_generation.py:63-74 -> _helpers.py:111
 
@@ -773,7 +773,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A mesh element active with a picker armature set and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
-- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a target line, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button; Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
+- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
 - code: apps/blender/panels/weight_paint.py:51-53,174-360; _helpers.py:111
 - note:
@@ -898,11 +898,11 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Animation panel (read-only action summary)
 
 ### BL-ANIM-SWEEP · Animation panel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: Animation subpanel expanded; test with zero actions and with at least one action.
-- observe: With no actions it shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
-- intent: Confirm the Animation panel renders the empty state, the action list with frame ranges, and the total count; row-click behavior lives in the named tests.
+- observe: A target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') heads the panel, matching Mesh Generation and Weight Paint. With no actions it then shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
+- intent: Confirm the Animation panel renders the target read-out, the empty state, the action list with frame ranges, and the total count; row-click behavior lives in the named tests.
 - code: apps/blender/panels/animation.py:12-36,56-68
 
 ### BL-ANIM-01 · Clicking an action row assigns it to the picked armature

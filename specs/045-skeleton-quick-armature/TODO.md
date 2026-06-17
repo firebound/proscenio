@@ -18,6 +18,13 @@ From the assessment in [STUDY.md](STUDY.md): 7 rows land now (implemented in one
 - [x] Removed the 3D-viewport-header hint surface from [`quick_armature.py`](../../apps/blender/operators/armature/quick_armature.py) (all six references: ClassVar, double-invoke guard, register append, `_unregister_handlers` teardown, `_sweep_orphan_handlers` sweep, and `_draw_view3d_header_quick_armature`). The status bar keeps the chords.
 - [ ] GUI smoke (manual - the modal/panels do not render headless): `BL-SKEL-*`, `BL-ANIM-01..03`, `BL-SKEL-QUICKARM-01` - dynamic Esc/finish hints, disconnected flag, header name, renamed subpanel, and the viewport header no longer showing the chord strip (no leaked handler after reload).
 
+## Review feedback (2026-06-17, folded into this PR)
+
+- [x] Skeleton header rendered ": <name> Skeleton" (Blender draws `draw_header` before `bl_label`). Fixed: `bl_label = ""` and `draw_header` renders the whole "Skeleton: <name>" title in order.
+- [x] **Cross-panel target convention.** Panels that act on a selection owned by another panel now declare it uniformly: `draw_picker_readout` renamed to `draw_target_readout` and reads "Target: Skeleton <name>" (was "Picker: <name>"). The owner panel (Skeleton) is excluded - it holds the picker widget. Applied to Mesh Generation, Weight Paint, and **Animation** (which had no read-out before).
+- [x] Weight Paint Bind dropped its own "Target:" line - the Weight Paint parent read-out already covers it.
+- [x] Bone list names were centered (UIList operator-button centering, same as the Outliner); left-aligned via a split + LEFT sub-row so the depth indent is visible.
+
 ## Gated
 
 - **Destructive Esc cancel** - Esc deletes the whole auto-created `Proscenio.QuickRig` even when it has bones (never the user-picked target). Real bug surface (a misfired Esc discards a session). Trigger: a GUI repro showing users expect Esc to throw the rig away; otherwise the labels-only outcome stands.

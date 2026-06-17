@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 import bpy
-from bpy.props import StringProperty
+from bpy.props import BoolProperty, StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.report import report_warn  # type: ignore[import-not-found]
@@ -13,8 +13,10 @@ from ..core.armature.skeleton_target import (  # type: ignore[import-not-found]
     resolve_skeleton_target,
 )
 from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
+    select_add,
     select_named_or_warn,
     select_only,
+    select_toggle,
 )
 
 
@@ -41,17 +43,42 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
 
 
 class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
-    """Select + activate the object clicked in the Proscenio outliner."""
+    """Select + activate the object clicked in the Proscenio outliner.
+
+    A plain click replaces the selection (Blender's single-click default);
+    Shift-click extends it and Ctrl-click toggles the clicked row, mirroring
+    the viewport / native-Outliner modifiers. ``invoke`` reads the click
+    event to set ``extend`` / ``toggle``; calling ``execute`` directly with
+    the flags drives the same paths headlessly.
+    """
 
     bl_idname = "proscenio.select_outliner_object"
     bl_label = "Proscenio: Select Outliner Object"
-    bl_description = "Selects and activates the object represented by this outliner row"
+    bl_description = (
+        "Selects the object for this outliner row. Shift extends the "
+        "selection, Ctrl toggles the row"
+    )
     bl_options: ClassVar[set[str]] = {"REGISTER"}
 
     obj_name: StringProperty(  # type: ignore[valid-type]
         name="Object name",
         default="",
     )
+    extend: BoolProperty(  # type: ignore[valid-type]
+        name="Extend",
+        description="Add to the current selection instead of replacing it (Shift)",
+        default=False,
+    )
+    toggle: BoolProperty(  # type: ignore[valid-type]
+        name="Toggle",
+        description="Toggle this row's selection (Ctrl)",
+        default=False,
+    )
+
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        self.extend = event.shift
+        self.toggle = event.ctrl
+        return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         if not self.obj_name:
@@ -65,7 +92,15 @@ class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
         if context.view_layer.objects.get(self.obj_name) is None:
             report_warn(self, f"'{self.obj_name}' is not in the current view layer")
             return {"CANCELLED"}
-        if select_named_or_warn(self, context, self.obj_name) is None:
+        obj = bpy.data.objects.get(self.obj_name)
+        if obj is None:
+            report_warn(self, f"object '{self.obj_name}' not found")
+            return {"CANCELLED"}
+        if self.toggle:
+            select_toggle(context, obj)
+        elif self.extend:
+            select_add(context, obj)
+        elif select_named_or_warn(self, context, self.obj_name) is None:
             return {"CANCELLED"}
         _sync_active_index(context, "active_outliner_index", bpy.data.objects, self.obj_name)
         return {"FINISHED"}

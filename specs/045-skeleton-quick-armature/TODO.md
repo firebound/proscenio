@@ -24,6 +24,7 @@ From the assessment in [STUDY.md](STUDY.md): 7 rows land now (implemented in one
 - [x] **Cross-panel target convention.** Panels that act on a selection owned by another panel now declare it uniformly: `draw_picker_readout` renamed to `draw_target_readout` and reads "Target: Skeleton <name>" (was "Picker: <name>"). The owner panel (Skeleton) is excluded - it holds the picker widget. Applied to Mesh Generation, Weight Paint, and **Animation** (which had no read-out before).
 - [x] Weight Paint Bind dropped its own "Target:" line - the Weight Paint parent read-out already covers it.
 - [x] Bone list names were centered (UIList operator-button centering, same as the Outliner); left-aligned via a split + LEFT sub-row so the depth indent is visible.
+- [x] Narrow N-panel: the header status + `?` icons overlapped the title and squeezed the Skeleton custom header to nothing. `draw_subpanel_header` now drops the icons below `_HEADER_ICONS_MIN_WIDTH` (region width), so headers shed their extras and titles truncate like native Blender headers; the freed width lets the Skeleton title truncate instead of vanish. Threshold is GUI-tunable (`BL-CHROME-09`).
 
 ## Gated
 

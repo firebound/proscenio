@@ -92,6 +92,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The debug-only developer surface is hidden until Debug mode is enabled.
 - code: apps/blender/addon_prefs.py:50-58,67-80; apps/blender/panels/diagnostics.py:24-26; apps/blender/panels/mesh_generation.py:135
 
+### BL-CHROME-09 · Header icons drop and titles truncate when the N-panel is narrow
+- status: todo
+- review: keep
+- pre: Any Proscenio panel; drag the N-panel divider to narrow it.
+- steps:
+  1. Narrow the N-panel until the headers get cramped.
+- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the titles truncate (lose characters) like Blender's native panels. The Skeleton header ('Skeleton: <name>') truncates instead of vanishing once the icons make room. Widening brings the icons back.
+- intent: Narrow headers shed their extra icons and truncate the title, matching Blender's native narrow-header behaviour; nothing overlaps.
+- code: apps/blender/panels/_helpers.py draw_subpanel_header (_HEADER_ICONS_MIN_WIDTH gate)
+
 ## Outliner panel
 
 ### BL-OUTLN-SWEEP · Outliner panel inventory (visual pass)

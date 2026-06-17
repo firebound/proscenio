@@ -32,6 +32,14 @@ _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
 _STATUS_OP_IDNAME = "proscenio.status_info"
 
+# Below this N-panel width the header is too cramped to fit the status + help
+# icons without overlapping the (already truncating) title, so they are
+# dropped - mirroring how a narrow Blender header sheds its right-side
+# affordances and keeps just the clipping label. Freeing this space also lets
+# a custom draw_header title (Skeleton) truncate instead of being squeezed to
+# nothing. Tune against a real N-panel if it hides too early / too late.
+_HEADER_ICONS_MIN_WIDTH = 200
+
 
 def _scene_skinning(context: bpy.types.Context) -> bpy.types.PropertyGroup | None:
     """Return ``scene.proscenio.skinning`` defaults group, or None."""
@@ -78,8 +86,12 @@ def draw_subpanel_header(
 
     Called from ``draw_header_preset`` (NOT ``draw_header``): Blender
     renders ``draw_header_preset`` content RIGHT of the auto-drawn
-    ``bl_label``.
+    ``bl_label``. Skipped when the N-panel is narrower than
+    ``_HEADER_ICONS_MIN_WIDTH`` so the icons do not overlap the title.
     """
+    region = getattr(bpy.context, "region", None)
+    if region is not None and region.width < _HEADER_ICONS_MIN_WIDTH:
+        return
     _draw_status_button(layout, feature_id)
     op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic

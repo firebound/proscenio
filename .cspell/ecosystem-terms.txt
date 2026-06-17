@@ -78,6 +78,7 @@ dejavu
 delaunay
 densification
 desync
+desyncs
 devs
 devtalk
 diffable

@@ -10,6 +10,7 @@ from bpy.props import StringProperty
 from ...core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
     select_named_or_warn,
 )
+from ...core.outliner_view import source_index_for_name  # type: ignore[import-not-found]
 from ...core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 
 
@@ -41,7 +42,17 @@ class PROSCENIO_OT_select_slot(bpy.types.Operator):
             not_found_message=f"slot '{self.slot_name}' not found",
             predicate=is_slot_empty,
         )
-        return {"CANCELLED"} if obj is None else {"FINISHED"}
+        if obj is None:
+            return {"CANCELLED"}
+        # Keep the Slots UIList highlight on the clicked row. active_slot_index
+        # is a source-collection index (bpy.data.objects); Blender maps it to
+        # the visible row through filter_items' flt_neworder.
+        scene_props = getattr(context.scene, "proscenio", None)
+        if scene_props is not None and hasattr(scene_props, "active_slot_index"):
+            idx = source_index_for_name(bpy.data.objects, self.slot_name)
+            if idx is not None:
+                scene_props.active_slot_index = idx
+        return {"FINISHED"}
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_select_slot,)

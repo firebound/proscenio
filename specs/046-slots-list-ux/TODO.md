@@ -1,34 +1,44 @@
 # Spec 046: Slots list and attachment UX - TODO
 
-Sequenced from the assessment in [STUDY.md](STUDY.md): five rows land now across four PR-sized chunks, one (the synced-collection attachment backing) gates on a written trigger. Sequence after spec 043's identity-based index fix lands, or share its corrected `_sync_active_index` — the slot list inherits the F-06 filter-reorder bug the moment it has a slot-only filter.
+Sequenced from the assessment in [STUDY.md](STUDY.md): five rows land now across four PR-sized chunks, one (the synced-collection attachment backing) gates on a written trigger. Sequence after spec 043's identity-based index fix lands, or share its corrected `_sync_active_index` - the slot list inherits the F-06 filter-reorder bug the moment it has a slot-only filter.
 
 ## Now
 
 ### PR 1 - the reusable native-list component (structural keystone)
 
-- [ ] Add a list wrapper to [`_helpers.py`](../../apps/blender/panels/_helpers.py) next to the existing affordance drawers: a collection-backed mode (thin `template_list` wrapper taking `dataptr`/`propname`/active-index, matching the Outliner / Skeleton / Animation shape) and a custom-draw mode for sequence-backed lists (a bounded, scroll-capped `column` over a Python sequence, so the attachment list and spec 044's override list can adopt it).
-- [ ] Make the active-index sync **identity-based and filter-aware**: map the scene-prop index through the UIList's `flt_neworder` so the highlight lands on the right row under a filter/sort, fixing the spec 043 / F-06 bug once instead of per panel. Coordinate with [`_sync_active_index`](../../apps/blender/operators/selection.py) (lines 153-167) — share the corrected version, do not fork it.
-- [ ] Add a **selection mode (single vs multi)** to the wrapper (backlog `list-multiselect`): single is the default; multi honors Shift/Ctrl on the row-click operator and keeps a per-item selected state with a custom per-row marker (since `template_list` shows only one active row). Decided adopters — multi: Outliner (objects, via `obj.select_set`), Skeleton (bones, via `bone.select`), Weight Paint overrides (batch mode-set); single: Animation, the slot list, slot default attachment. This is where the Outliner Shift-select request lands.
-- [ ] Headless tests for the index mapping (raw-collection index in, filtered display index out) so the F-06 class of bug is pinned for every adopter.
+Deferred, not built. The two near-term `template_list` consumers (the migrated slot list and the Outliner) share only the eight-line `template_list` call; their `draw_item` bodies differ entirely (slot name + child count vs the category-ranked label, favorite star, and now the multi-select marker), so a wrapper would abstract the one line they have in common and fork on everything that matters. The repo's no-premature-abstraction rule wants a real second consumer first. The identity-based, filter-aware index sync the component was meant to carry already exists as `source_index_for_name` in [`outliner_view.py`](../../apps/blender/core/outliner_view.py) (the bpy-free helper both the slot list and the Outliner select operators route through) and is unit-tested there, so the F-06 class of bug is already pinned without the wrapper. Trigger to build the wrapper: spec 044's Weight Paint override list lands as the genuine third consumer and wants the same shape.
 
-### PR 2 - migrate the project slot list
+- [x] ~~Add a list wrapper to `_helpers.py`~~ - deferred (see above); the shared index logic lives in `outliner_view.source_index_for_name` instead.
+- [x] Active-index sync is identity-based and filter-aware via `source_index_for_name`, mapping through the UIList's `flt_neworder`; the slot list and Outliner select operators both use it.
+- [x] Selection mode (single vs multi) shipped as a capability of the Outliner select operator itself (Shift extends, Ctrl toggles, per-row marker reads `obj.select_get()`), not on a wrapper - see the Outliner multi-select follow-up PR below.
+- [x] Headless tests for the index mapping live with `source_index_for_name` and the slot/outliner select operators.
 
-- [ ] Add an `active_slot_index` `IntProperty(min=0)` to [`scene_props.py`](../../apps/blender/properties/scene_props.py) alongside `active_outliner_index` / `active_bone_index` / `active_action_index`.
-- [ ] Add a `PROSCENIO_UL_slots` UIList whose `filter_items` keeps only slot Empties (a strict subset of the Outliner's `filter_items` at [`outliner.py`](../../apps/blender/panels/outliner.py) lines 86-124) and honors a name filter.
-- [ ] Replace the hand-rolled slot loop in [`slots.py`](../../apps/blender/panels/slots.py) (lines 117-128) with the PR 1 collection-backed wrapper bound to `scene.objects` + `active_slot_index`, keeping the child-count readout per row.
-- [ ] Route `proscenio.select_slot` ([`operators/slot/select.py`](../../apps/blender/operators/slot/select.py)) through the corrected identity-based sync so clicking a row and selecting in the viewport stay in agreement.
+### PR 2 - migrate the project slot list (done)
 
-### PR 3 - migrate the attachment list + drop the duplicate warning
+- [x] Added an `active_slot_index` `IntProperty(min=0)` to [`scene_props.py`](../../apps/blender/properties/scene_props.py) alongside `active_outliner_index` / `active_bone_index` / `active_action_index`.
+- [x] Added `PROSCENIO_UL_slots` ([`slots.py`](../../apps/blender/panels/slots.py)) whose `filter_items` keeps only slot Empties in the view layer, name-filtered, sorted by name.
+- [x] Replaced the hand-rolled slot loop with `template_list("PROSCENIO_UL_slots", ...)` bound to `bpy.data, "objects"` + `active_slot_index`, keeping the child-count readout per row (left-aligned name via split).
+- [x] Routed `proscenio.select_slot` ([`operators/slot/select.py`](../../apps/blender/operators/slot/select.py)) through `source_index_for_name` so clicking a row and selecting in the viewport stay in agreement.
 
-- [ ] Move the per-child attachment rows in [`slots.py`](../../apps/blender/panels/slots.py) (lines 186-205) into the PR 1 custom-draw mode (option 2 backing — the derived `empty.children` view, no synced collection), with a bounded scroll height so the list stops growing the panel unboundedly. Preserve every affordance: the `set_slot_default` `SOLO_ON`/`SOLO_OFF` toggle, the name, the kind label/icon, and the `keyframe_slot_attachment` button.
-- [ ] Remove the redundant inline empty-slot INFO line (`slots.py` lines 180-183); the validator's `slot '...' has no MESH children` error ([`core/validation/active_slot.py`](../../apps/blender/core/validation/active_slot.py) lines 28-29), already drawn by the issue loop at `slots.py` lines 215-216, carries the message with the correct severity.
-- [ ] Confirm the validator still early-returns on the no-children case so nothing else regresses; assert in a headless test that an empty slot yields exactly one surfaced message.
+### PR 3 - migrate the attachment list + drop the duplicate warning (done)
 
-### PR 4 - attach-to-existing-slot mesh picker
+- [x] Moved the per-child attachment rows into a boxed custom-draw column with a `scale_y` cap (option 2 backing - the derived `empty.children` view, no synced collection). The cap bounds growth rate; it is not a native scrollbar (that is the gated synced-collection upgrade). Every affordance preserved: the `set_slot_default` `SOLO_ON`/`SOLO_OFF` toggle, the name, the kind label/icon, and the `keyframe_slot_attachment` button.
+- [x] Removed the redundant inline empty-slot INFO line; the validator's `slot '...' has no MESH children` error ([`core/validation/active_slot.py`](../../apps/blender/core/validation/active_slot.py)), drawn by the panel's issue loop, carries the message with the correct severity.
+- [x] The validator early-returns on the no-children case; `test_slot_with_no_children_emits_error` in [`tests/test_slot_validation.py`](../../tests/test_slot_validation.py) asserts exactly one surfaced message.
 
-- [ ] Add a mesh-picker operator (mesh-only — the bone half is already shipped via `proscenio.bind_slot_to_bone` in [`operators/slot/bind.py`](../../apps/blender/operators/slot/bind.py) and is out of scope) that opens an `invoke_props_dialog` with a `prop_search` over scene meshes, mirroring the Bind to Bone dialog (`bind.py` lines 75-81), and re-parents the picked mesh into the active slot via `parent_keep_world`.
-- [ ] Keep `proscenio.add_slot_attachment` ([`operators/slot/attachment.py`](../../apps/blender/operators/slot/attachment.py) lines 40-67) as the already-selected fast path; surface both in the Active Slot panel.
-- [ ] Headless test: the picker attaches a named mesh with the slot active and nothing else selected (the single-selection deadlock the picker exists to break).
+### PR 4 - attach-to-existing-slot mesh picker (done)
+
+- [x] Added `proscenio.attach_mesh_to_slot` ([`operators/slot/attachment.py`](../../apps/blender/operators/slot/attachment.py)) - mesh-only; opens `invoke_props_dialog` with a `prop_search` over scene objects and re-parents the picked mesh into the active slot via `parent_keep_world`.
+- [x] Kept `proscenio.add_slot_attachment` as the already-selected fast path; both surface in the Active Slot panel ("Attach Mesh" + "Add Selected").
+- [x] Headless test [`test_attach_mesh_to_slot.py`](../../apps/blender/tests/operators/test_attach_mesh_to_slot.py): the picker attaches a named mesh with the slot active and nothing else selected.
+
+### Outliner multi-select (follow-up PR, off main)
+
+The Shift-select request the spec routed through the component's selection mode, shipped on the Outliner directly since the wrapper was deferred:
+
+- [ ] `proscenio.select_outliner_object` reads the click event in `invoke`: Shift extends the selection, Ctrl toggles the clicked object, a plain click replaces (today's behavior).
+- [ ] A per-row selection marker in `draw_item` reads `obj.select_get()` so multi-selected rows read back (the `template_list` active highlight only marks one row).
+- [ ] Headless tests for the extend / toggle / replace selection paths.
 
 ## Gated
 

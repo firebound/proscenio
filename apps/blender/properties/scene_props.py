@@ -174,7 +174,7 @@ class ProscenioSkinningProps(PropertyGroup):
     automesh_density_under_bones: BoolProperty(  # type: ignore[valid-type]
         name="Density follows bones",
         description=(
-            "When ON and the picker armature has deform bones, add "
+            "When ON and the target armature has deform bones, add "
             "extra interior triangles near each bone segment so the "
             "mesh has more density where deformation actually happens. "
             "OFF (default) falls back to uniform interior density."
@@ -218,7 +218,7 @@ class ProscenioSkinningProps(PropertyGroup):
     bind_init_mode: EnumProperty(  # type: ignore[valid-type]
         name="Bind mode",
         description=(
-            "Algorithm used by Bind to Picker Armature. BONE_HEAT delegates "
+            "Algorithm used by Bind to Target Armature. BONE_HEAT delegates "
             "to Blender's native Parent w/ Auto Weights (recommended for "
             "sprites with bones co-planar with the picture plane). PROXIMITY "
             "/ ENVELOPE / SINGLE_NEAREST / EMPTY are Proscenio fallbacks for "
@@ -228,7 +228,7 @@ class ProscenioSkinningProps(PropertyGroup):
             (
                 "BONE_HEAT",
                 "Bone Heat (Blender native)",
-                "Delegate to Blender's Parent w/ Auto Weights. Default; best for 2D pickers",
+                "Delegate to Blender's Parent w/ Auto Weights. Default; best for 2D rigs",
             ),
             (
                 "PROXIMITY",

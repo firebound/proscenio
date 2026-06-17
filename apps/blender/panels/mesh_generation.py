@@ -43,7 +43,7 @@ def _active_is_mesh_element(context: bpy.types.Context) -> bool:
 
 
 class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
-    """Mesh Generation - isolated Interior Mode + picker readout; body in subpanels."""
+    """Mesh Generation - isolated Interior Mode + target readout; body in subpanels."""
 
     bl_label = "Mesh Generation"
     bl_idname = "PROSCENIO_PT_mesh_generation"

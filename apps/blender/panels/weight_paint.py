@@ -54,7 +54,7 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
 
 
 class PROSCENIO_PT_bind(bpy.types.Panel):
-    """Bind subpanel - bind the active mesh to the picker armature."""
+    """Bind subpanel - bind the active mesh to the target armature."""
 
     bl_label = "Bind"
     bl_idname = "PROSCENIO_PT_bind"
@@ -190,7 +190,7 @@ def _draw_bind(
     row.enabled = picker is not None
     row.operator(
         "proscenio.bind_mesh_to_armature",
-        text="Bind to Picker Armature",
+        text="Bind to Target Armature",
         icon="MOD_ARMATURE",
     )
 

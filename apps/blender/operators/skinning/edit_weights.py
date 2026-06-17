@@ -53,7 +53,7 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
     bl_description = (
         "Enter a 2D-safe weight paint context for the active mesh. Applies a "
         "weight-paint preset tuned for 2D sprites (Front Faces off, mirror from "
-        "picker rig), shows the provenance overlay (cyan=reprojected / white=user "
+        "target rig), shows the provenance overlay (cyan=reprojected / white=user "
         "paint / gray=auto seed), and tags brushed verts as user_paint in the "
         "sidecar via per-stroke diff. ESC hard-exits and restores brush + bone "
         "visibility + mode + selection"
@@ -189,11 +189,11 @@ def _validate_invoke_preconditions(
     scene_props = getattr(context.scene, "proscenio", None)
     armature = active_armature(context)
     if armature is None:
-        report_error(operator, "no picker armature - pick one in Skeleton panel first")
+        report_error(operator, "no target armature - pick one in the Skeleton panel first")
         return None
     payload = obj.get(_SIDECAR_KEY)
     if payload is None:
-        report_error(operator, "no sidecar - run Bind to Picker Armature first")
+        report_error(operator, "no sidecar - run Bind to Target Armature first")
         return None
     try:
         sidecar = from_json(payload)
@@ -267,7 +267,7 @@ def _draw_statusbar_edit_weights(self: bpy.types.Header, _context: bpy.types.Con
     row.label(text="exit")
     row = layout.row(align=True)
     row.label(text="", icon="MOD_MIRROR")
-    row.label(text="mirror = picker.proscenio_mirror_x")
+    row.label(text="mirror = target.proscenio_mirror_x")
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_edit_weights_modal,)

@@ -189,3 +189,7 @@ jobs:
         run: |
           ~/godot/godot --headless --path apps/godot \
             --script res://tests/test_sprite_region.gd
+      - name: Run slot-anchor test
+        run: |
+          ~/godot/godot --headless --path apps/godot \
+            --script res://tests/test_slot_anchor.gd

@@ -63,10 +63,17 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 	parent.add_child(node)
 	if follow_bone != null:
 		# Attachments are baked in absolute screen space, but the slot now lives
-		# under the Bone2D. Cancel the bone`s rest transform so the attachments
-		# render at their absolute rest position and only the bone`s pose DELTA
-		# (the swing) moves them.
-		node.transform = follow_bone.get_skeleton_rest().affine_inverse()
+		# under the Bone2D. Cancel the bone`s FULL cumulative rest (skeleton-space)
+		# so the attachments render at their absolute rest position and only the
+		# bone`s pose DELTA (the swing) moves them. get_skeleton_rest() returns the
+		# parent-LOCAL rest here, not the cumulative one, so a slot under a bone
+		# whose parent is rotated would land off-origin; derive the skeleton-space
+		# rest from the live rest-pose globals instead (the bones carry no pose yet
+		# at build time, so global_transform is the rest transform).
+		var bone_in_skeleton := (
+			skeleton.global_transform.affine_inverse() * follow_bone.global_transform
+		)
+		node.transform = bone_in_skeleton.affine_inverse()
 
 	var info := SlotInfo.new()
 	info.node = node

@@ -22,6 +22,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
 )
+from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     StrokeDiffTracker,
     apply_paint_preset,
@@ -37,6 +38,11 @@ from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     from_json,
 )
 from .._status_bar import append_statusbar_draw, remove_statusbar_draw
+
+# Poll cadence for the mode-watch timer. A native mode exit (header dropdown,
+# tab, pie) delivers no event to this modal, so a timer is the only signal
+# that the user left WEIGHT_PAINT. 0.2s is imperceptible yet cheap.
+_MODE_WATCH_INTERVAL = 0.2
 
 
 class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
@@ -56,6 +62,7 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
 
     _overlay_handle: object | None = None
     _statusbar_appended: bool = False
+    _timer: object | None = None
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -99,6 +106,9 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
             self._overlay_handle = register_handler(obj, mode="provenance")
             self._stroke_tracker = StrokeDiffTracker(obj, sidecar)
             self._append_statusbar()
+            self._timer = context.window_manager.event_timer_add(
+                _MODE_WATCH_INTERVAL, window=context.window
+            )
         except Exception as exc:
             report_error(self, f"Edit Weights setup failed: {exc} - restoring state")
             self._finish(context, cancel=True)
@@ -111,19 +121,29 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         try:
             if event.type == "ESC":
                 return self._finish(context, cancel=True)
+            if event.type == "TIMER":
+                # A native exit from weight-paint mode (header dropdown, tab,
+                # pie) sends no event here, so poll the mode. Calling _finish
+                # from inside modal() is the one context where its mode_set /
+                # undo_push are legal (a depsgraph handler is not).
+                active = context.active_object
+                if active is None or active.mode != "WEIGHT_PAINT":
+                    return self._finish(context, cancel=False)
+                return {"PASS_THROUGH"}
             if event.type == "LEFTMOUSE" and event.value == "PRESS":
                 self._stroke_tracker.snapshot_active_vg()
                 return {"PASS_THROUGH"}
             if event.type == "LEFTMOUSE" and event.value == "RELEASE":
-                touched = self._stroke_tracker.flip_touched_after_stroke()
-                if touched and context.area is not None:
-                    context.area.tag_redraw()
+                if self._stroke_tracker.flip_touched_after_stroke():
+                    _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}
             if event.type == "WINDOW_DEACTIVATE":
-                self._stroke_tracker.flip_touched_after_stroke()
+                if self._stroke_tracker.flip_touched_after_stroke():
+                    _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}
             if event.type == "MOUSEMOVE" and getattr(event, "pressure", 1.0) < 1e-6:
-                self._stroke_tracker.flip_touched_after_stroke()
+                if self._stroke_tracker.flip_touched_after_stroke():
+                    _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}
         except Exception:
             traceback.print_exc()
@@ -134,6 +154,10 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         try:
             with contextlib.suppress(RuntimeError):
                 bpy.ops.ed.undo_push(message="Edit Weights")
+            if self._timer is not None:
+                with contextlib.suppress(RuntimeError):
+                    context.window_manager.event_timer_remove(self._timer)
+                self._timer = None
             if self._overlay_handle is not None:
                 unregister_handler(self._overlay_handle)
                 self._overlay_handle = None
@@ -223,6 +247,14 @@ def _is_pose_bone_selected(pose_bone: bpy.types.PoseBone) -> bool:
     if bone is not None and hasattr(bone, "select"):
         return bool(bone.select)
     return bool(getattr(pose_bone, "select", False))
+
+
+def _tag_redraw_view3d(context: bpy.types.Context) -> None:
+    """Repaint every VIEW_3D area so the provenance overlay updates after a
+    stroke. A single ``context.area.tag_redraw()`` tags only the active area,
+    and a weight-paint stroke can release over a different region - which is
+    why touched verts appeared white only after re-entering the mode."""
+    tag_redraw_areas(getattr(context, "window_manager", None), {"VIEW_3D"})
 
 
 def _draw_statusbar_edit_weights(self: bpy.types.Header, _context: bpy.types.Context) -> None:

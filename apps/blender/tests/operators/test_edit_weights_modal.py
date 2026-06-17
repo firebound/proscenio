@@ -116,6 +116,38 @@ def test_session_capture_restore_round_trip(automesh_fixture):
     assert obj.mode == prior_mode
 
 
+def test_restore_returns_overlay_flag_to_prior(automesh_fixture):
+    # The external-exit fix relies on _finish -> restore_session putting the
+    # provenance-overlay flag back to its pre-modal value. Lock that contract:
+    # whatever the modal turned it to, restore returns it to what was captured.
+    obj = _activate("hand")
+    armature = bpy.data.objects["automesh.hand_rig"]
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    from proscenio.core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+        capture_session,
+        restore_session,
+        snapshot_bone_visibility,
+        snapshot_paint_preset,
+    )
+
+    skinning = bpy.context.scene.proscenio.skinning
+    skinning.show_provenance_overlay = False
+    session = capture_session(
+        bpy.context,
+        obj,
+        armature,
+        snapshot_paint_preset(bpy.context),
+        snapshot_bone_visibility(armature),
+        overlay_flag=False,
+    )
+    skinning.show_provenance_overlay = True  # modal turns it on
+
+    restore_session(bpy.context, session)
+
+    assert skinning.show_provenance_overlay is False
+
+
 def test_panel_button_present_when_sidecar_populated(automesh_fixture):
     _activate("hand")
     _set_picker("automesh.hand_rig")

@@ -9,6 +9,7 @@ Subpackage with:
 - sidecar_io               - export / import the weight sidecar
 - brush_preset             - brush curve presets for weight paint
 - copy_weights_to_selected - KNN weight copy across meshes
+- clear_empty_vgroups      - drop vertex groups with no nonzero weight
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from __future__ import annotations
 from . import (
     bind_mesh,
     brush_preset,
+    clear_empty_vgroups,
     copy_weights_to_selected,
     edit_weights,
     restore_weight_snapshot,
@@ -32,9 +34,11 @@ def register() -> None:
     sidecar_io.register()
     brush_preset.register()
     copy_weights_to_selected.register()
+    clear_empty_vgroups.register()
 
 
 def unregister() -> None:
+    clear_empty_vgroups.unregister()
     copy_weights_to_selected.unregister()
     brush_preset.unregister()
     sidecar_io.unregister()

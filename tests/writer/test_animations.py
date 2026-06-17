@@ -125,6 +125,34 @@ def test_resolve_location_rotates_through_rest_basis() -> None:
     assert delta.position == [10.0, 0.0]
 
 
+def test_resolve_location_rotates_delta_into_parent_local_frame() -> None:
+    # Godot applies a Bone2D position track in PARENT-local space, and the rest
+    # position is emitted parent-local too. So a screen-space delta must be
+    # rotated by the parent's world rotation before it is added to the rest.
+    # Parent rotated -90deg (a +Z `root`): a local-Z (screen-vertical) delta of
+    # 0.15 -> screen (0, -15) -> rotated by +90deg -> (15, 0) on the parent-local
+    # X axis. Without the rotation it would stay (0, -15) and read sideways in
+    # Godot once the parent's rotation is applied.
+    rotated_parent_rest = BoneRestLocal(
+        position=(30.0, 0.0),
+        rotation=0.0,
+        scale=(1.0, 1.0),
+        rest_basis=_IDENTITY,
+        parent_world_rot=-math.pi / 2,
+    )
+    delta = anim._resolve_pose_entry(
+        {"location": {2: 0.15}}, 100.0, rotated_parent_rest
+    )
+    assert delta.position == [15.0, 0.0]
+
+
+def test_resolve_location_unrotated_parent_is_unchanged() -> None:
+    # parent_world_rot defaults to 0 (root / world-aligned parent): the screen
+    # projection is emitted as-is, so the prior behaviour is preserved.
+    delta = anim._resolve_pose_entry({"location": {0: 0.1, 2: 0.2}}, 100.0, _IDENT_REST)
+    assert delta.position == [10.0, -20.0]
+
+
 def test_resolve_euler_below_threshold_is_dropped() -> None:
     delta = anim._resolve_pose_entry({"rotation_euler": {0: 1e-9}}, 1.0, _PLUS_X_REST)
     assert delta.rotation is None

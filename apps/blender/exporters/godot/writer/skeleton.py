@@ -22,12 +22,20 @@ class BoneRestLocal:
     animation builder rotates the bone-local Y axis by it (and by a keyframe's
     local rotation) to recover the bone's screen direction for any in-plane bone
     orientation, instead of assuming bone-Y aligns with the camera axis.
+
+    ``parent_world_rot`` is the parent bone's Godot world rotation (0.0 when
+    there is no parent). ``Bone2D.position`` is parent-local, so the animation
+    builder rotates the screen-space position delta by it before adding to the
+    rest - matching how the rest position itself was rotated into parent-local
+    space. Without it, a screen-vertical bob on a bone whose parent is rotated
+    lands on the wrong local axis and reads sideways in Godot.
     """
 
     position: tuple[float, float]
     rotation: float
     scale: tuple[float, float]
     rest_basis: Matrix | None = field(default=None, compare=False)
+    parent_world_rot: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -125,6 +133,7 @@ def build_skeleton(
             rotation=local_rot,
             scale=(1.0, 1.0),
             rest_basis=bone.matrix_local.to_3x3(),
+            parent_world_rot=world_godot[bone.parent.name].rot if bone.parent else 0.0,
         )
 
     return Skeleton(bones=bones_out), rest_local

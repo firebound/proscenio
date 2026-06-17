@@ -33,7 +33,7 @@ The Spine-parity expressiveness wave. The format carries the day-one appearance 
 
 ## Rigging and posing
 
-The Quick-Armature / skeleton / pose extensions whose value is authoring convenience the native tools or the shipped now-work already cover. (2026-06-16: **qa-rotation-mode** and **qa-pick-parent-viewport** promoted to [backlog.md](backlog.md#fila-da-sprint).)
+The Quick-Armature / skeleton / pose extensions whose value is authoring convenience the native tools or the shipped now-work already cover. (2026-06-16: **qa-rotation-mode** promoted to [backlog.md](backlog.md#fila-da-sprint); the old **qa-pick-parent-viewport** was folded into **qa-quickarm-interaction-revision** there.)
 
 - **qa-chain-naming-suffixes** - Chain-aware bone naming suffixes. Gated: the flat counter works; per-chain counters plus new-root detection widen modal state, and after-the-fact batch rename covers the gap. Trigger: after-the-fact batch rename stops covering on a real multi-chain rig.
 - **qa-mirror-suffix** - Auto `_L`/`_R` suffix with X-Mirror. Gated: no symmetric rig fixture exists end to end, 2D cutouts are commonly authored asymmetric, and mirrored create entangles the in-modal undo stack. Trigger: a bilaterally symmetric rig fixture ships end to end.

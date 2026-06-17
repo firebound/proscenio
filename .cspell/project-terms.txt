@@ -123,3 +123,13 @@ viewzoom
 wheeldownmouse
 wheelupmouse
 WPAINT
+booleano
+churnaria
+dropado
+foldables
+indentada
+keyframado
+multiframe
+multiget
+reparentar
+wirar

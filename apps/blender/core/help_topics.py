@@ -643,13 +643,13 @@ HELP_TOPICS: dict[str, HelpTopic] = {
     ),
     "bind": HelpTopic(
         title="Bind",
-        summary="Bind the active mesh to the picker armature's bones.",
+        summary="Bind the active mesh to the target armature's bones.",
         sections=(
             _section(
                 _SECTION_WHAT,
                 "Builds the vertex weights that let the rig deform this mesh. Mode picks",
                 "the algorithm; Bone Heat (Blender native) is the default and best for",
-                "most 2D pickers. Proximity / Envelope / Single-nearest / Empty are",
+                "most 2D rigs. Proximity / Envelope / Single-nearest / Empty are",
                 "fallbacks exposed via F3 redo.",
             ),
             _section(
@@ -755,7 +755,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "  outline fidelity, not vertex count.",
                 "- Interior Mode (parent panel): Simple (sparse) or Dense (filled).",
                 "- Density follows bones (Dense only, off by default): pack more",
-                "  triangles near the picker's bones, where deformation happens.",
+                "  triangles near the target's bones, where deformation happens.",
             ),
         ),
         see_also=(),

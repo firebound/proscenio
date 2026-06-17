@@ -9,6 +9,9 @@ from bpy.props import StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.report import report_warn  # type: ignore[import-not-found]
+from ..core.armature.skeleton_target import (  # type: ignore[import-not-found]
+    resolve_skeleton_target,
+)
 from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
     select_named_or_warn,
     select_only,
@@ -103,13 +106,13 @@ class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
 
 
 class PROSCENIO_OT_set_active_action(bpy.types.Operator):
-    """Assign an action to the scene's primary armature from the Animation panel."""
+    """Assign an action to the Skeleton-picked armature from the Animation panel."""
 
     bl_idname = "proscenio.set_active_action"
     bl_label = "Proscenio: Set Active Action"
     bl_description = (
-        "Assigns this Animation-panel row's action to the first armature "
-        "in the scene so the timeline plays it"
+        "Assigns this Animation-panel row's action to the armature picked in "
+        "the Skeleton panel so the timeline plays it"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -123,17 +126,13 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
         if action is None:
             report_warn(self, f"action '{self.action_name}' not found")
             return {"CANCELLED"}
-        armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
-        if not armatures:
-            report_warn(self, "no armature in scene to receive the action")
+        # The Skeleton picker is the single source of truth, same as every
+        # other skeleton op. Do not scan the scene for an armature - that
+        # silently targeted the wrong rig when more than one existed.
+        armature = resolve_skeleton_target(context)
+        if armature is None:
+            report_warn(self, "no armature picked - pick one in the Skeleton panel")
             return {"CANCELLED"}
-        if len(armatures) > 1:
-            # Mirror the writer's heuristic: warn + use the first armature only.
-            report_warn(
-                self,
-                f"{len(armatures)} armatures in scene - assigning to '{armatures[0].name}'",
-            )
-        armature = armatures[0]
         if armature.animation_data is None:
             armature.animation_data_create()
         armature.animation_data.action = action

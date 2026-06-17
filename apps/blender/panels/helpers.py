@@ -24,8 +24,8 @@ class PROSCENIO_PT_helpers(bpy.types.Panel):
     bl_order = 11
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "helpers", "helpers")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "helpers", "helpers")
 
     def draw(self, _context: bpy.types.Context) -> None:
         self.layout.operator(

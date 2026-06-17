@@ -1,4 +1,4 @@
-"""Bind mesh to picker armature.
+"""Bind mesh to target armature.
 
 Defaults to Blender's bone-heat solver. Surfaces 5 pre-flight
 diagnoses before touching geometry. Writes a WeightSidecar stub
@@ -33,13 +33,14 @@ from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
-    """Bind the active mesh to the picker armature."""
+    """Bind the active mesh to the target armature."""
 
     bl_idname = "proscenio.bind_mesh_to_armature"
-    bl_label = "Proscenio: Bind Mesh to Picker Armature"
+    bl_label = "Proscenio: Bind Mesh to Target Armature"
     bl_description = (
-        "Bind the active mesh to the Proscenio picker armature. Default mode "
-        "delegates to Blender's bone heat (best for 2D pickers); Proscenio's "
+        "Bind the active mesh to the Proscenio target armature (picked in the "
+        "Skeleton panel). Default mode "
+        "delegates to Blender's bone heat (best for 2D rigs); Proscenio's "
         "planar proximity / envelope / single-nearest / empty modes are "
         "available as F3-redo fallbacks. Surfaces 5 pre-flight diagnoses + "
         "writes a sidecar stub the reproject step consumes"
@@ -176,12 +177,12 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         armature = active_armature(context)
         if armature is None:
-            report_error(self, "no picker armature set - pick one in Skeleton panel first")
+            report_error(self, "no target armature - pick one in the Skeleton panel first")
             return {"CANCELLED"}
         if not any(b.use_deform for b in armature.data.bones):
             report_error(
                 self,
-                f"picker '{armature.name}' has no deform bones - enable deform on bones first",
+                f"target '{armature.name}' has no deform bones - enable deform on bones first",
             )
             return {"CANCELLED"}
 

@@ -32,8 +32,8 @@ class PROSCENIO_PT_pipeline(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_order = 10
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "pipeline", "pipeline_overview")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "pipeline", "pipeline_overview")
 
     def draw(self, context: bpy.types.Context) -> None:
         if _scene_props(context) is None:
@@ -51,8 +51,8 @@ class PROSCENIO_PT_import(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_pipeline"
     bl_order = 0
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "import", "import_photoshop")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "import", "import_photoshop")
 
     def draw(self, _context: bpy.types.Context) -> None:
         self.layout.operator(
@@ -77,8 +77,8 @@ class PROSCENIO_PT_export(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_pipeline"
     bl_order = 1
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "export", "export")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "export", "export")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

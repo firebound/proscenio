@@ -32,6 +32,14 @@ _POSE_FRIENDLY_MODES = {"OBJECT", "POSE", "EDIT_ARMATURE"}
 _HELP_OP_IDNAME = "proscenio.help"
 _STATUS_OP_IDNAME = "proscenio.status_info"
 
+# Below this N-panel width the header is too cramped to fit the status + help
+# icons without overlapping the (already truncating) title, so they are
+# dropped - mirroring how a narrow Blender header sheds its right-side
+# affordances and keeps just the clipping label. Freeing this space also lets
+# a custom draw_header title (Skeleton) truncate instead of being squeezed to
+# nothing. Tune against a real N-panel if it hides too early / too late.
+_HEADER_ICONS_MIN_WIDTH = 200
+
 
 def _scene_skinning(context: bpy.types.Context) -> bpy.types.PropertyGroup | None:
     """Return ``scene.proscenio.skinning`` defaults group, or None."""
@@ -71,6 +79,7 @@ def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
 
 def draw_subpanel_header(
     layout: bpy.types.UILayout,
+    context: bpy.types.Context,
     feature_id: str,
     help_topic: str,
 ) -> None:
@@ -78,8 +87,15 @@ def draw_subpanel_header(
 
     Called from ``draw_header_preset`` (NOT ``draw_header``): Blender
     renders ``draw_header_preset`` content RIGHT of the auto-drawn
-    ``bl_label``.
+    ``bl_label``. Skipped when the N-panel is narrower than
+    ``_HEADER_ICONS_MIN_WIDTH`` so the icons do not overlap the title.
+    The panel-callback ``context`` is used for the width read (not global
+    ``bpy.context``, which can resolve to a different region in a
+    multi-editor layout).
     """
+    region = getattr(context, "region", None)
+    if region is not None and region.width < _HEADER_ICONS_MIN_WIDTH:
+        return
     _draw_status_button(layout, feature_id)
     op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
@@ -108,20 +124,28 @@ def draw_subbox_header(
     op.topic = help_topic
 
 
-def draw_picker_readout(layout: bpy.types.UILayout, picker: bpy.types.Object | None) -> None:
-    """Draw the one-line "Picker: <armature>" readout row.
+def draw_target_readout(
+    layout: bpy.types.UILayout,
+    target: bpy.types.Object | None,
+    *,
+    source: str = "Skeleton",
+) -> None:
+    """Draw the one-line "Target: <source> <name>" readout row.
 
-    ARMATURE_DATA icon then the picker name, or an INFO-marked
-    "(none - set in Skeleton panel)" prompt when no armature is set.
-    Shared by the Mesh Generation + Weight Paint panels so the picker
-    affordance reads identically in both.
+    For a panel that acts on a selection owned by *another* panel (the
+    armature picked in the Skeleton panel). The readout names both what
+    the panel targets and where that target is chosen, so the dependency
+    is explicit. ARMATURE_DATA icon then "Target: Skeleton <name>", or an
+    INFO-marked empty prompt when nothing is picked. Shared by Mesh
+    Generation, Weight Paint, and Animation so the affordance reads
+    identically across the panels that depend on the picked rig.
     """
     row = layout.row(align=True)
     row.label(text="", icon="ARMATURE_DATA")
-    if picker is not None:
-        row.label(text=f"Picker: {picker.name}")
+    if target is not None:
+        row.label(text=f"Target: {source} {target.name}")
     else:
-        row.label(text="Picker: (none - set in Skeleton panel)", icon="INFO")
+        row.label(text=f"Target: {source} (none - pick a rig there)", icon="INFO")
 
 
 def draw_issue_row(layout: bpy.types.UILayout, issue: Issue) -> None:

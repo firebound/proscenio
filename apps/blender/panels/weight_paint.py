@@ -17,8 +17,8 @@ from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[impo
 from ._helpers import (
     _active_armature,
     _scene_skinning,
-    draw_picker_readout,
     draw_subpanel_header,
+    draw_target_readout,
 )
 
 
@@ -42,19 +42,19 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
     bl_order = 6
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "weight_paint", "weight_paint")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "weight_paint", "weight_paint")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         if not _is_mesh_element(context):
             layout.label(text="select a mesh element (Weight Paint is mesh-only)", icon="INFO")
             return
-        draw_picker_readout(layout, _active_armature(context))
+        draw_target_readout(layout, _active_armature(context))
 
 
 class PROSCENIO_PT_bind(bpy.types.Panel):
-    """Bind subpanel - bind the active mesh to the picker armature."""
+    """Bind subpanel - bind the active mesh to the target armature."""
 
     bl_label = "Bind"
     bl_idname = "PROSCENIO_PT_bind"
@@ -68,8 +68,8 @@ class PROSCENIO_PT_bind(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "bind", "bind")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "bind", "bind")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_bind(
@@ -93,8 +93,8 @@ class PROSCENIO_PT_edit_weights(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "edit_weights", "edit_weights")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "edit_weights", "edit_weights")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_edit_weights(self.layout, context.active_object, _active_armature(context))
@@ -117,8 +117,8 @@ class PROSCENIO_PT_snapshot(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "snapshot", "snapshot")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "snapshot", "snapshot")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_snapshot(self.layout, _scene_skinning(context), context.active_object)
@@ -140,8 +140,8 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "weight_transfer", "weight_transfer")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "weight_transfer", "weight_transfer")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -180,10 +180,8 @@ def _draw_bind(
         if bind_mode == "PROXIMITY":
             layout.prop(skinning_props, "bind_max_distance", text="Max Distance")
             layout.prop(skinning_props, "bind_falloff_power", text="Falloff Power")
-    layout.label(
-        text=f"Target: {picker.name}" if picker is not None else "Target: (no picker armature)",
-        icon="ARMATURE_DATA",
-    )
+    # No own "Target:" line - the Weight Paint parent panel already shows the
+    # "Target: Skeleton <name>" readout above this subpanel.
 
     if picker is not None and obj is not None and obj.type == "MESH":
         _draw_bone_overrides(layout, obj, picker, bind_mode)
@@ -192,7 +190,7 @@ def _draw_bind(
     row.enabled = picker is not None
     row.operator(
         "proscenio.bind_mesh_to_armature",
-        text="Bind to Picker Armature",
+        text="Bind to Target Armature",
         icon="MOD_ARMATURE",
     )
 

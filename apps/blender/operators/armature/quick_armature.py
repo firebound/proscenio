@@ -133,7 +133,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_screen_y: ClassVar[int] = 0
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
-    _view3d_header_appended: ClassVar[bool] = False
     # Chord vocabulary, axis lock, grid snap, undo state.
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
@@ -161,7 +160,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             cls._preview_handle_3d is not None
             or cls._cursor_warning_handle_2d is not None
             or cls._statusbar_appended
-            or cls._view3d_header_appended
         ):
             self._unregister_handlers()
 
@@ -744,18 +742,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._cursor_warning_handle_2d = bpy.types.SpaceView3D.draw_handler_add(
             draw_cursor_warning_2d, (cls,), "WINDOW", "POST_PIXEL"
         )
-        # Two icon-rich hint surfaces, both via Blender's native UILayout
-        # API so the icons match the editor: the bottom STATUSBAR (the
-        # canonical modal hint home) and the 3D viewport header.
+        # The chord cheatsheet lives on the bottom STATUSBAR (Blender's
+        # canonical modal hint home). Prepend (left) so it sits where
+        # Blender's own modal tools place their hints; the right side stays
+        # for Blender's statistics widgets.
         if not cls._statusbar_appended:
-            # Prepend (left) so the cheatsheet sits where Blender's
-            # own modal tools place their hints; right side stays for
-            # Blender's statistics widgets.
             bpy.types.STATUSBAR_HT_header.prepend(_draw_statusbar_quick_armature)
             cls._statusbar_appended = True
-        if not cls._view3d_header_appended:
-            bpy.types.VIEW3D_HT_header.append(_draw_view3d_header_quick_armature)
-            cls._view3d_header_appended = True
 
     def _unregister_handlers(self) -> None:
         cls = type(self)
@@ -771,10 +764,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             with contextlib.suppress(ValueError, RuntimeError):
                 bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
             cls._statusbar_appended = False
-        if cls._view3d_header_appended:
-            with contextlib.suppress(ValueError, RuntimeError):
-                bpy.types.VIEW3D_HT_header.remove(_draw_view3d_header_quick_armature)
-            cls._view3d_header_appended = False
 
     def _count_session_bones(self) -> int:
         cls = type(self)
@@ -901,22 +890,6 @@ def _draw_statusbar_quick_armature(
     layout.separator_spacer()
 
 
-def _draw_view3d_header_quick_armature(
-    self: bpy.types.Header,
-    _context: bpy.types.Context,
-) -> None:
-    """Render the chord cheatsheet inside the 3D viewport's own header.
-
-    Same vocabulary + icons as the status bar; placed past Blender's
-    existing header content via ``separator_spacer()`` so the hint
-    sits on the right edge of the viewport header instead of pushing
-    Blender's mode / select / view dropdowns around.
-    """
-    layout = self.layout
-    layout.separator_spacer()
-    emit_chord_layout(layout, PROSCENIO_OT_quick_armature)
-
-
 def _sweep_orphan_handlers() -> None:
     """Remove draw handlers leaked across script reloads.
 
@@ -939,10 +912,6 @@ def _sweep_orphan_handlers() -> None:
         with contextlib.suppress(ValueError, RuntimeError):
             bpy.types.STATUSBAR_HT_header.remove(_draw_statusbar_quick_armature)
         PROSCENIO_OT_quick_armature._statusbar_appended = False
-    if getattr(PROSCENIO_OT_quick_armature, "_view3d_header_appended", False):
-        with contextlib.suppress(ValueError, RuntimeError):
-            bpy.types.VIEW3D_HT_header.remove(_draw_view3d_header_quick_armature)
-        PROSCENIO_OT_quick_armature._view3d_header_appended = False
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_quick_armature,)

@@ -55,7 +55,7 @@ class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
         if payload is None:
             report_error(
                 self,
-                "no sidecar found on active mesh - run Bind to Picker Armature first",
+                "no sidecar found on active mesh - run Bind to Target Armature first",
             )
             return {"CANCELLED"}
         try:

@@ -60,6 +60,11 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
         flags = []
         if getattr(item, "use_connect", False):
             flags.append("connected")
+        elif item.parent is not None:
+            # A child bone not connected to its parent. Disconnected parenting
+            # is a legitimate, common topology, not a mistake - but it was
+            # silent before, so flag it for parity with "connected".
+            flags.append("disconnected")
         if getattr(item, "use_relative_parent", False):
             flags.append("relative")
         row.label(text=", ".join(flags))
@@ -79,6 +84,19 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        # Append the picked armature name to the static "Skeleton" label.
+        # bl_label is a class constant Blender cannot vary, so the name is
+        # drawn here. Falls back to nothing (plain "Skeleton") when the
+        # picker is empty or its target was freed.
+        target = _explicit_target(context)
+        try:
+            name = target.name if target is not None else None
+        except ReferenceError:
+            name = None
+        if name:
+            self.layout.label(text=f": {name}")
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "skeleton", "skeleton")
@@ -121,9 +139,9 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
 
 
 class PROSCENIO_PT_armature(bpy.types.Panel):
-    """Armature subpanel - the bone hierarchy of the picked armature."""
+    """Active Armature subpanel - the bone hierarchy of the picked armature."""
 
-    bl_label = "Armature"
+    bl_label = "Active Armature"
     bl_idname = "PROSCENIO_PT_armature"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -146,7 +164,9 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         if target is None or scene_props is None:
             return
         bones = getattr(target.data, "bones", [])
-        layout.label(text=f"Armature '{target.name}' - {len(bones)} bone(s)")
+        # The armature name now rides the Skeleton header; the body just
+        # carries the bone count.
+        layout.label(text=f"{len(bones)} bone(s)")
         layout.template_list(
             "PROSCENIO_UL_bones",
             "",

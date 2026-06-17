@@ -9,15 +9,17 @@ interactions a single-feature fixture cannot:
 
 - **Armature** ``mixed_rig`` with five flat bones in the XZ picture plane
   (the 2D-cutout convention), chained ``root`` -> ``spine`` -> ``head`` ->
-  {``mouth``, ``jaw``}: ``root`` / ``spine`` skin the body and ``spine``
+  {``mouth_anchor``, ``jaw``}: ``root`` / ``spine`` skin the body and ``spine``
   bobs it (carrying the head, face slot, mouth and jaw with it through the
-  chain), ``head`` carries the face slot, ``mouth`` (+X, upright) anchors
-  the mouth sprite, ``jaw`` drives the mouth frame.
+  chain), ``head`` carries the face slot, ``mouth_anchor`` (+X, upright) anchors
+  the mouth sprite, ``jaw`` drives the mouth frame. The anchor bone is named
+  ``mouth_anchor`` (not ``mouth``) so it does not collide with the ``mouth``
+  sprite element - the Godot importer resolves track targets by name.
 - **Skinned body** ``body`` - a 2-face polygon weighted across ``root``
   (lower) and ``spine`` (upper), so the export carries per-bone weights
   and the per-face ``polygons`` index arrays.
 - **sprite_frame mouth** ``mouth`` - a 4-frame Sprite2D skinned to the
-  ``mouth`` bone, its cell driven from ``jaw`` rotation.
+  ``mouth_anchor`` bone, its cell driven from ``jaw`` rotation.
 - **Drive-from-Bone** - a scripted driver on ``mouth.proscenio.frame``
   reading the ``jaw`` spin (ROT_Z for the +Z bone).
 - **Slot with mixed attachments** ``face.slot`` - one mesh attachment
@@ -108,15 +110,18 @@ def _build_armature() -> bpy.types.Object:
     bpy.ops.object.mode_set(mode="EDIT")
     # Flat bones in the XZ picture plane - never into depth (Y). root / spine /
     # head climb the screen as a +Z spine; spine animates (a vertical bob) and
-    # deforms the skinned body. `mouth` is +X (lateral) so the mouth Sprite2D, a
-    # child of its Bone2D, exports rotation 0 and sits upright. `jaw` is the
-    # invisible driver source for the mouth frame.
+    # deforms the skinned body. `mouth_anchor` is +X (lateral) so the mouth
+    # Sprite2D, a child of its Bone2D, exports rotation 0 and sits upright. It is
+    # named distinctly from the `mouth` sprite element on purpose: the Godot
+    # importer resolves animation-track targets by name, so a bone and a sprite
+    # sharing "mouth" makes the sprite_frame track resolve to the Bone2D. `jaw`
+    # is the invisible driver source for the mouth frame.
     edit_bones: dict[str, bpy.types.EditBone] = {}
     for name, head, tail in (
         ("root", (0.0, 0.0, -0.4), (0.0, 0.0, -0.1)),
         ("spine", (0.0, 0.0, -0.1), (0.0, 0.0, 0.3)),
         ("head", (0.0, 0.0, 0.5), (0.0, 0.0, 0.8)),
-        ("mouth", (0.0, 0.0, 0.46), (0.3, 0.0, 0.46)),
+        ("mouth_anchor", (0.0, 0.0, 0.46), (0.3, 0.0, 0.46)),
         ("jaw", (0.4, 0.0, 0.5), (0.4, 0.0, 0.8)),
     ):
         b = arm_data.edit_bones.new(name)
@@ -124,13 +129,13 @@ def _build_armature() -> bpy.types.Object:
         b.tail = tail
         edit_bones[name] = b
     # Wire the chain so the spine bob carries the head, the face slot, the mouth
-    # and the jaw with it (root -> spine -> head -> {mouth, jaw}). use_connect
-    # stays False, so each bone keeps its authored head/tail rather than snapping
-    # to its parent's tail; only the rest hierarchy (and thus pose propagation)
-    # changes.
+    # and the jaw with it (root -> spine -> head -> {mouth_anchor, jaw}).
+    # use_connect stays False, so each bone keeps its authored head/tail rather
+    # than snapping to its parent's tail; only the rest hierarchy (and thus pose
+    # propagation) changes.
     edit_bones["spine"].parent = edit_bones["root"]
     edit_bones["head"].parent = edit_bones["spine"]
-    edit_bones["mouth"].parent = edit_bones["head"]
+    edit_bones["mouth_anchor"].parent = edit_bones["head"]
     edit_bones["jaw"].parent = edit_bones["head"]
     bpy.ops.object.mode_set(mode="OBJECT")
     return arm_obj
@@ -233,12 +238,14 @@ def _build_skinned_body(armature_obj: bpy.types.Object) -> bpy.types.Object:
 
 
 def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """A 4-frame mouth Sprite2D on the ``mouth`` bone (top-left atlas quadrant).
+    """A 4-frame mouth Sprite2D on the ``mouth_anchor`` bone (top-left atlas quadrant).
 
-    Skinned 1.0 to the ``mouth`` bone (a +X child of ``head``): the Sprite2D
-    becomes a child of that Bone2D in Godot - upright (the +X bone exports
-    rotation 0) and carried along when the head/spine move. The frame is driven
-    from ``jaw`` rotation. Local Y = -0.004 keeps it the frontmost element.
+    Skinned 1.0 to the ``mouth_anchor`` bone (a +X child of ``head``): the
+    Sprite2D becomes a child of that Bone2D in Godot - upright (the +X bone
+    exports rotation 0) and carried along when the head/spine move. The bone is
+    named ``mouth_anchor``, not ``mouth``, so it does not collide with this
+    sprite element's name (the importer resolves track targets by name). The
+    frame is driven from ``jaw`` rotation. Local Y = -0.004 keeps it frontmost.
     """
     # Godot reads `texture_region` (top-left 32x32) + the frame grid. The quad
     # UV is 0..1: the Setup Preview slicer maps it into the region + active cell
@@ -250,7 +257,7 @@ def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
     obj.location = (0.0, -0.004, 0.46)
     obj.parent = armature_obj
     obj.parent_type = "OBJECT"
-    vg = obj.vertex_groups.new(name="mouth")
+    vg = obj.vertex_groups.new(name="mouth_anchor")
     vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
     arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
     arm_mod.object = armature_obj

@@ -487,6 +487,12 @@ class ProscenioSceneProps(PropertyGroup):
         default=0,
         min=0,
     )
+    active_slot_index: IntProperty(  # type: ignore[valid-type]
+        name="Active slot row",
+        description="Selected row in the Proscenio slots UIList",
+        default=0,
+        min=0,
+    )
     quick_armature: PointerProperty(  # type: ignore[valid-type]
         type=ProscenioQuickArmatureProps,
     )

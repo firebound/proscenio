@@ -29,6 +29,67 @@ def _is_slot(obj: bpy.types.Object) -> bool:
     return is_slot_empty(obj)
 
 
+class PROSCENIO_UL_slots(bpy.types.UIList):
+    """Native list of the scene's slot Empties - replaces the hand-rolled loop.
+
+    Binds to ``bpy.data.objects`` (like the Outliner) and filters to slot
+    Empties in the current view layer, so it gets native search + scroll. The
+    active row is driven by ``scene.proscenio.active_slot_index``, written by
+    ``proscenio.select_slot`` through the identity-based index helper.
+    """
+
+    bl_idname = "PROSCENIO_UL_slots"
+
+    def draw_item(
+        self,
+        _context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        _data: bpy.types.AnyType,
+        item: bpy.types.AnyType,
+        _icon: int,
+        _active_data: bpy.types.AnyType,
+        _active_propname: str,
+    ) -> None:
+        obj = item
+        n_children = sum(1 for c in obj.children if c.type == "MESH")
+        # Left-align the name (panel-UI convention - a bare operator centers);
+        # child count on the right.
+        split = layout.split(factor=0.75, align=True)
+        name_row = split.row()
+        name_row.alignment = "LEFT"
+        op = name_row.operator(
+            "proscenio.select_slot", text=obj.name, icon="LINK_BLEND", emboss=False
+        )
+        op.slot_name = obj.name
+        count_row = split.row()
+        count_row.alignment = "RIGHT"
+        count_row.label(text=str(n_children), icon="OUTLINER_OB_MESH")
+
+    def filter_items(
+        self,
+        context: bpy.types.Context,
+        data: bpy.types.AnyType,
+        propname: str,
+    ) -> tuple[list[int], list[int]]:
+        """Keep only slot Empties in the view layer, name-filtered, sorted by name."""
+        objects = list(getattr(data, propname))
+        flt_text = (self.filter_name or "").lower()
+        view_layer_names = {o.name for o in context.view_layer.objects}
+        n = len(objects)
+        flt_flags = [0] * n
+        for i, obj in enumerate(objects):
+            if not is_slot_empty(obj) or obj.name not in view_layer_names:
+                continue
+            if flt_text and flt_text not in obj.name.lower():
+                continue
+            flt_flags[i] = self.bitflag_filter_item
+        order = sorted(range(n), key=lambda i: objects[i].name.lower())
+        flt_neworder = [0] * n
+        for new_i, orig_i in enumerate(order):
+            flt_neworder[orig_i] = new_i
+        return flt_flags, flt_neworder
+
+
 def _attachment_kind_for(mesh_obj: bpy.types.Object) -> str:
     """Read the kind ("mesh" / "sprite") of a slot attachment mesh."""
     props = getattr(mesh_obj, "proscenio", None)
@@ -109,23 +170,20 @@ class PROSCENIO_PT_slots(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        active = context.active_object
-        slots = sorted((o for o in context.scene.objects if _is_slot(o)), key=lambda o: o.name)
-        if not slots:
+        scene_props = getattr(context.scene, "proscenio", None)
+        has_slots = any(_is_slot(o) for o in context.scene.objects)
+        if not has_slots or scene_props is None:
             layout.label(text="no slots yet - select meshes and Create Slot", icon="INFO")
         else:
-            col = layout.column(align=True)
-            for slot in slots:
-                row = col.row(align=True)
-                op = row.operator(
-                    "proscenio.select_slot",
-                    text=slot.name,
-                    icon="LINK_BLEND",
-                    depress=slot is active,
-                )
-                op.slot_name = slot.name
-                n_children = sum(1 for c in slot.children if c.type == "MESH")
-                row.label(text=str(n_children), icon="OUTLINER_OB_MESH")
+            layout.template_list(
+                "PROSCENIO_UL_slots",
+                "",
+                bpy.data,
+                "objects",
+                scene_props,
+                "active_slot_index",
+                rows=5,
+            )
         layout.separator()
         tip = layout.box().column(align=True)
         tip.scale_y = 0.8
@@ -177,14 +235,21 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
 
         layout.separator()
         layout.label(text=f"Attachments ({len(children)}):", icon="OUTLINER_OB_MESH")
-        if not children:
-            row = layout.row()
-            row.alert = True
-            row.label(text="empty slot - add child meshes", icon="INFO")
+        # No inline empty-slot warning here: the validator already raises
+        # "slot '<name>' has no MESH children" (with error severity), drawn by
+        # the issue loop below, so an inline INFO line would just duplicate it.
 
         current_default = props.slot_default or (children[0].name if children else "")
+        # Custom-draw column over the derived empty.children view (option 2 in
+        # the spec - no synced CollectionProperty, so it cannot desync). A
+        # template_list cannot bind here: empty.children is a computed sequence,
+        # not a CollectionProperty. The box + scale_y caps how fast a long list
+        # grows the panel; it is not a true native scrollbar (that is the gated
+        # synced-collection upgrade in the spec).
+        attach_col = layout.box().column(align=True)
+        attach_col.scale_y = 0.9
         for child in children:
-            row = layout.row(align=True)
+            row = attach_col.row(align=True)
             is_default = child.name == current_default
             icon = "SOLO_ON" if is_default else "SOLO_OFF"
             op = row.operator(
@@ -205,11 +270,19 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             key_op.attachment_name = child.name
 
         layout.separator()
-        row = layout.row()
+        row = layout.row(align=True)
+        # The picker (pick a mesh by name) breaks the single-selection
+        # deadlock; Add Selected Mesh stays as the fast path when a mesh is
+        # already selected.
+        row.operator(
+            "proscenio.attach_mesh_to_slot",
+            text="Attach Mesh",
+            icon="ADD",
+        )
         row.operator(
             "proscenio.add_slot_attachment",
-            text="Add Selected Mesh",
-            icon="ADD",
+            text="Add Selected",
+            icon="RESTRICT_SELECT_OFF",
         )
 
         for issue in validation.validate_active_slot(empty):
@@ -217,6 +290,7 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
 
 
 _classes: tuple[type, ...] = (
+    PROSCENIO_UL_slots,
     PROSCENIO_PT_slots,
     PROSCENIO_PT_active_slot,
 )

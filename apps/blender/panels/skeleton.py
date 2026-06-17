@@ -82,11 +82,12 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
     """Skeleton - the project-wide armature selector + presence checks."""
 
-    # Blank label: the visible title is drawn by draw_header so it can carry
-    # the picked armature name. (A non-empty bl_label would render before the
-    # draw_header text - "...: name Skeleton" - so the whole title lives in
-    # draw_header instead.) bl_idname is the identity Blender uses for parenting.
-    bl_label = ""
+    # Native bl_label so the header truncates (loses characters) like every
+    # other panel when the N-panel is narrow. A custom draw_header label does
+    # NOT get Blender's native truncation - it vanishes entirely once cramped -
+    # so the picked armature name is not shown here; it already reads in the
+    # body (the Active Armature picker widget + the "Exports: <name>" line).
+    bl_label = "Skeleton"
     bl_idname = "PROSCENIO_PT_skeleton"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -97,17 +98,6 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.mode in _POSE_FRIENDLY_MODES
-
-    def draw_header(self, context: bpy.types.Context) -> None:
-        # Draw the full title here so it reads "Skeleton: <name>" in order.
-        # Falls back to plain "Skeleton" when the picker is empty or its
-        # target was freed.
-        target = _explicit_target(context)
-        try:
-            name = target.name if target is not None else None
-        except ReferenceError:
-            name = None
-        self.layout.label(text=f"Skeleton: {name}" if name else "Skeleton")
 
     def draw_header_preset(self, _context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, "skeleton", "skeleton")

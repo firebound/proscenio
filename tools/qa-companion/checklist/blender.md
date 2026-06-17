@@ -98,8 +98,8 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: Any Proscenio panel; drag the N-panel divider to narrow it.
 - steps:
   1. Narrow the N-panel until the headers get cramped.
-- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the titles truncate (lose characters) like Blender's native panels. The Skeleton header ('Skeleton: <name>') truncates instead of vanishing once the icons make room. Widening brings the icons back.
-- intent: Narrow headers shed their extra icons and truncate the title, matching Blender's native narrow-header behaviour; nothing overlaps.
+- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the titles truncate (lose characters) like Blender's native panels - including the Skeleton header, which now uses a native label and clips instead of vanishing. Widening brings the icons back.
+- intent: Narrow headers shed their extra icons and truncate the title, matching Blender's native narrow-header behaviour; nothing overlaps or vanishes.
 - code: apps/blender/panels/_helpers.py draw_subpanel_header (_HEADER_ICONS_MIN_WIDTH gate)
 
 ## Outliner panel
@@ -545,8 +545,8 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A rig picked.
-- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig. The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply.
-- intent: Confirm the renamed subpanel, the armature name in the Skeleton header, the bone-count body, and the connected/disconnected/relative flags; behavior lives in the named test.
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header is the plain 'Skeleton' (the picked rig name reads in the body - the Active Armature picker widget and the 'Exports: <name>' line - not in the header). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply.
+- intent: Confirm the renamed subpanel, the bone-count body, and the connected/disconnected/relative flags; behavior lives in the named test.
 - code: apps/blender/panels/skeleton.py:25-65,148-158
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport

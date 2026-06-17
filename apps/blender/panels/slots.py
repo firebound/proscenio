@@ -262,11 +262,19 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             key_op.attachment_name = child.name
 
         layout.separator()
-        row = layout.row()
+        row = layout.row(align=True)
+        # The picker (pick a mesh by name) breaks the single-selection
+        # deadlock; Add Selected Mesh stays as the fast path when a mesh is
+        # already selected.
+        row.operator(
+            "proscenio.attach_mesh_to_slot",
+            text="Attach Mesh",
+            icon="ADD",
+        )
         row.operator(
             "proscenio.add_slot_attachment",
-            text="Add Selected Mesh",
-            icon="ADD",
+            text="Add Selected",
+            icon="RESTRICT_SELECT_OFF",
         )
 
         for issue in validation.validate_active_slot(empty):

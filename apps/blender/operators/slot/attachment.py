@@ -67,6 +67,58 @@ class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_attach_mesh_to_slot(bpy.types.Operator):
+    """Pick a mesh by name and re-parent it into the active slot.
+
+    The picker breaks the single-selection deadlock: you cannot have the
+    slot active AND a target mesh selected at the same time, so
+    ``add_slot_attachment`` (which re-parents the selection) has no path
+    when the slot is what you just clicked. This dialog chooses the target
+    by name instead, leaving the active object alone.
+    """
+
+    bl_idname = "proscenio.attach_mesh_to_slot"
+    bl_label = "Proscenio: Attach Mesh to Slot"
+    bl_description = (
+        "Pick a mesh by name and attach it to the active slot, without having to select it first"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    mesh_name: StringProperty(  # type: ignore[valid-type]
+        name="Mesh",
+        description="Mesh to attach to the active slot",
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        empty = context.active_object
+        if empty is None or empty.type != "EMPTY":
+            return False
+        props = getattr(empty, "proscenio", None)
+        return props is not None and bool(getattr(props, "is_slot", False))
+
+    def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context: bpy.types.Context) -> None:
+        # prop_search over the scene's objects; execute validates the pick is
+        # a mesh. (There is no mesh-only collection to search directly.)
+        self.layout.prop_search(self, "mesh_name", context.scene, "objects", text="Mesh")
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        empty = context.active_object
+        if empty is None or empty.type != "EMPTY":
+            return {"CANCELLED"}
+        mesh = bpy.data.objects.get(self.mesh_name)
+        if mesh is None or mesh.type != "MESH":
+            report_warn(self, f"'{self.mesh_name}' is not a mesh")
+            return {"CANCELLED"}
+        parent_keep_world(mesh, empty)
+        report_info(self, f"attached '{mesh.name}' to slot '{empty.name}'")
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_set_slot_default(bpy.types.Operator):
     """Mark the named attachment as the slot's default."""
 
@@ -154,6 +206,7 @@ class PROSCENIO_OT_keyframe_slot_attachment(bpy.types.Operator):
 
 _classes: tuple[type, ...] = (
     PROSCENIO_OT_add_slot_attachment,
+    PROSCENIO_OT_attach_mesh_to_slot,
     PROSCENIO_OT_set_slot_default,
     PROSCENIO_OT_keyframe_slot_attachment,
 )

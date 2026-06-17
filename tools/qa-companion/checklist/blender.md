@@ -760,15 +760,15 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Weight Paint panel: five bind modes, Edit Weights modal, brush preset, copy weights, sidecar IO, snapshot restore
 
 ### BL-WPAINT-SWEEP · Weight Paint inventory across subpanels (visual pass)
-- status: fail
+- status: todo
 - review: keep
 - pre: A mesh element active with a picker armature set and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
-- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), a target line, a per-bone Soft/Hard overrides box, and a Bone Heat hint; Edit Weights has an active-group label, the Edit Weights button (with a 'bind first to enable' hint when disabled), and modal status chips; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
+- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a picker read-out ('Picker: <armature>' or '(none - set in Skeleton panel)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a target line, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button; Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
-- code: apps/blender/panels/weight_paint.py:51-53,174-339; _helpers.py:111
+- code: apps/blender/panels/weight_paint.py:51-53,174-360; _helpers.py:111
 - note:
   Preserve weights on regen behavior -> GAP-REGEN-PRESERVE; modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
-  o painel do weight paint mode não tem as duas opções de max_distance e falloff_power que aparecem no painel de redo
+  (2026-06-17 spec 044: max_distance + falloff_power now draw under Proximity; Clear Empty Vertex Groups button added to Bind.)
 
 ### BL-WPAINT-BIND-01 · Mode dropdown picks the bind algorithm
 - status: pass
@@ -812,25 +812,36 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/bind_mesh.py:49-94 (props), 104 invoke
 
 ### BL-WPAINT-EDIT-01 · Edit Weights paint stroke marks verts as user-painted
-- status: fail
+- status: todo
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
   1. Press and drag the left mouse button to paint a stroke, then release.
-- observe: When you finish the stroke, the vertices you touched are marked as user-painted (shown white) and the provenance overlay updates.
-- intent: Painting a stroke tags the touched vertices as hand-edited in the snapshot.
-- code: apps/blender/operators/skinning/edit_weights.py:114-127 modal
-- note: the verts are only painted white if i exit and re-enter the weight paint mode
+- observe: At the end of the stroke (on release), the vertices you touched turn white (user-painted) and the provenance overlay updates without having to leave and re-enter the mode. Live-during-the-stroke is not expected - the overlay refreshes at stroke end.
+- intent: Painting a stroke tags the touched vertices as hand-edited in the snapshot and the overlay repaints at stroke end.
+- code: apps/blender/operators/skinning/edit_weights.py modal (RELEASE -> _tag_redraw_view3d, all VIEW_3D areas)
 
-### BL-WPAINT-EDIT-02 · Edit Weights Esc exits and restores
-- status: pass
+### BL-WPAINT-EDIT-02 · Edit Weights exits and restores (Esc + native mode exit)
+- status: todo
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
   1. Press Esc during the modal.
-- observe: The modal exits and your prior state is restored (mode, brush preset, bone visibility, selection, overlay), with a confirmation that the session was restored. A single Ctrl+Z then reverts the whole session.
-- intent: Esc cleanly exits Edit Weights and restores the brush, bone visibility, mode, and selection.
-- code: apps/blender/operators/skinning/edit_weights.py:112,133 _finish(cancel=True)
+  2. Re-enter, then this time leave weight-paint mode via Blender's own control (Tab, the mode dropdown, or a pie menu) instead of Esc.
+- observe: Both exits restore your prior state (mode, brush preset, bone visibility, selection, overlay), with a confirmation that the session was restored; a single Ctrl+Z then reverts the whole session. After a native-control exit the provenance overlay and its flag do not linger (the modal's mode-watch timer ends the session).
+- intent: Esc and a native mode exit both cleanly end Edit Weights and restore brush, bone visibility, mode, selection, and the overlay flag.
+- code: apps/blender/operators/skinning/edit_weights.py modal (ESC + TIMER mode-watch) -> _finish
+
+### BL-WPAINT-EDIT-03 · Edit Weights button flips to Exit Painting Mode
+- status: todo
+- review: keep
+- pre: A mesh bound to a picker armature.
+- steps:
+  1. Click Edit Weights to enter the modal.
+  2. Read the button label, then click it.
+- observe: While in weight-paint mode the button reads 'Exit Painting Mode'; clicking it leaves the mode and ends the modal (state restored). Out of the mode it reads 'Edit Weights' again.
+- intent: The entry button doubles as the exit while in the mode, so there is one obvious in/out control.
+- code: apps/blender/panels/weight_paint.py _draw_edit_weights (obj.mode == 'WEIGHT_PAINT' branch -> object.mode_set)
 
 ### BL-WPAINT-BRUSH-01 · Brush curve presets (consolidated)
 - status: pass

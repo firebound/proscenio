@@ -104,8 +104,8 @@ class PROSCENIO_PT_slots(bpy.types.Panel):
     bl_order = 3
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "slot_system", "slot_system")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "slot_system", "slot_system")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -154,8 +154,8 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         obj = context.active_object
         return obj is not None and _is_slot(obj)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "active_slot", "active_slot")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "active_slot", "active_slot")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

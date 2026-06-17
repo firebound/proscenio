@@ -42,8 +42,8 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
     bl_order = 6
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "weight_paint", "weight_paint")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "weight_paint", "weight_paint")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -68,8 +68,8 @@ class PROSCENIO_PT_bind(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "bind", "bind")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "bind", "bind")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_bind(
@@ -93,8 +93,8 @@ class PROSCENIO_PT_edit_weights(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "edit_weights", "edit_weights")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "edit_weights", "edit_weights")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_edit_weights(self.layout, context.active_object, _active_armature(context))
@@ -117,8 +117,8 @@ class PROSCENIO_PT_snapshot(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "snapshot", "snapshot")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "snapshot", "snapshot")
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_snapshot(self.layout, _scene_skinning(context), context.active_object)
@@ -140,8 +140,8 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
     def poll(cls, context: bpy.types.Context) -> bool:
         return _is_mesh_element(context)
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "weight_transfer", "weight_transfer")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "weight_transfer", "weight_transfer")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

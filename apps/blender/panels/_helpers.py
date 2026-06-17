@@ -79,6 +79,7 @@ def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
 
 def draw_subpanel_header(
     layout: bpy.types.UILayout,
+    context: bpy.types.Context,
     feature_id: str,
     help_topic: str,
 ) -> None:
@@ -88,8 +89,11 @@ def draw_subpanel_header(
     renders ``draw_header_preset`` content RIGHT of the auto-drawn
     ``bl_label``. Skipped when the N-panel is narrower than
     ``_HEADER_ICONS_MIN_WIDTH`` so the icons do not overlap the title.
+    The panel-callback ``context`` is used for the width read (not global
+    ``bpy.context``, which can resolve to a different region in a
+    multi-editor layout).
     """
-    region = getattr(bpy.context, "region", None)
+    region = getattr(context, "region", None)
     if region is not None and region.width < _HEADER_ICONS_MIN_WIDTH:
         return
     _draw_status_button(layout, feature_id)

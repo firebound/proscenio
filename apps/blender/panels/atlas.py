@@ -24,8 +24,8 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
     bl_order = 8
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "atlas", "atlas")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "atlas", "atlas")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

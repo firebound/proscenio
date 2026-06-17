@@ -47,8 +47,8 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
     bl_order = 7
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "animation", "animation")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "animation", "animation")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

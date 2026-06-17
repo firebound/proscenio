@@ -112,7 +112,7 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             name = target.name if target is not None else None
         except ReferenceError:
             name = None
-        region = getattr(bpy.context, "region", None)
+        region = getattr(context, "region", None)
         width = getattr(region, "width", 9999)
         # Keep "Skeleton: <name>" while there is room; drop the name (the base
         # "Skeleton" stays) once the panel is too narrow to fit it.
@@ -121,8 +121,8 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         else:
             self.layout.label(text="Skeleton")
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "skeleton", "skeleton")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "skeleton", "skeleton")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -177,8 +177,8 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         target = _explicit_target(context)
         return target is not None and bool(getattr(target.data, "bones", None))
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "armature", "armature")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "armature", "armature")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -212,8 +212,8 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     bl_parent_id = "PROSCENIO_PT_skeleton"
     bl_order = 1
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "pose_mode", "pose_mode")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "pose_mode", "pose_mode")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
@@ -247,8 +247,8 @@ class PROSCENIO_PT_quick_armature(bpy.types.Panel):
     bl_order = 2
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
-    def draw_header_preset(self, _context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, "quick_armature", "quick_armature")
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "quick_armature", "quick_armature")
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout

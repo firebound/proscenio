@@ -240,8 +240,16 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         # the issue loop below, so an inline INFO line would just duplicate it.
 
         current_default = props.slot_default or (children[0].name if children else "")
+        # Custom-draw column over the derived empty.children view (option 2 in
+        # the spec - no synced CollectionProperty, so it cannot desync). A
+        # template_list cannot bind here: empty.children is a computed sequence,
+        # not a CollectionProperty. The box + scale_y caps how fast a long list
+        # grows the panel; it is not a true native scrollbar (that is the gated
+        # synced-collection upgrade in the spec).
+        attach_col = layout.box().column(align=True)
+        attach_col.scale_y = 0.9
         for child in children:
-            row = layout.row(align=True)
+            row = attach_col.row(align=True)
             is_default = child.name == current_default
             icon = "SOLO_ON" if is_default else "SOLO_OFF"
             op = row.operator(

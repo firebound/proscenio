@@ -108,9 +108,9 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Outliner subpanel expanded, with a scene that has at least one slot, attachment, sprite mesh, and armature.
-- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row is labeled by category: slots as '[slot] <name>', attachments indented as '-> <name>', sprite meshes as '<name>' (with '@ <bone>' when bone-parented), and armatures as '[arm] <name>'. Cameras, lights, and other objects do not appear.
-- intent: Confirm the Outliner renders its favorites toggle and category-labeled list; behavior lives in the named tests.
-- code: apps/blender/panels/outliner.py:40-69,118-137
+- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the category-labeled name, and the favorite star. Names are labeled by category: slots as '[slot] <name>', attachments indented as '-> <name>', sprite meshes as '<name>' (with '@ <bone>' when bone-parented), and armatures as '[arm] <name>'. Cameras, lights, and other objects do not appear.
+- intent: Confirm the Outliner renders its favorites toggle, the per-row selection marker, and the category-labeled list; behavior lives in the named tests.
+- code: apps/blender/panels/outliner.py draw_item (sel marker + name + star) + filter_items
 
 ### BL-OUTLN-01 · Filter the list by typing
 - status: pass
@@ -197,6 +197,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: The row disappears from the Outliner immediately - a deleted/undone object that lingers in bpy.data is no longer in the view layer, so it is filtered out. (It does not stay as a ghost row that warns 'not in the current view layer' on click.)
 - intent: The list reflects the real scene; objects removed from the view layer drop out.
 - code: apps/blender/panels/outliner.py filter_items (view-layer membership) + core/outliner_view.py row_visible
+
+### BL-OUTLN-10 · Shift extends, Ctrl toggles the selection
+- status: todo
+- review: keep
+- pre: Outliner expanded with at least three visible rows.
+- steps:
+  1. Click a row (plain click).
+  2. Shift-click a second row.
+  3. Ctrl-click a third row, then Ctrl-click it again.
+- observe: The plain click selects only that object (its selection marker fills, the others empty), and it becomes active. Shift-click on the second row keeps the first selected and adds the second, which becomes active - both markers now filled. Ctrl-click on the third row adds it (marker fills, it becomes active); a second Ctrl-click on it removes it (marker empties) while the rest stay as they were. The viewport selection matches the markers throughout. Clicking a stale row (object left the view layer) warns and changes nothing, in every mode.
+- intent: A plain click replaces the selection; Shift extends it and Ctrl toggles the clicked row, mirroring the viewport and native Outliner (spec 046). The per-row marker tracks the real object selection.
+- code: apps/blender/operators/selection.py PROSCENIO_OT_select_outliner_object (invoke reads event.shift/ctrl) + core/bpy_helpers/_shared/select.py select_add/select_toggle
 
 ## Element panel (Active Sprite / Active Mesh, type, region, drive-from-bone, reproject UV)
 
@@ -416,9 +428,9 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Slots panel expanded with at least one slot present.
-- observe: When there are no slots it shows 'no slots yet - select meshes and Create Slot'. Otherwise each slot is a row with its name, a slot icon, and a badge counting its direct mesh children. A tip box explains the two ways to create a slot ('Pose Mode + active bone: slot anchored to the bone' and 'Object Mode + meshes: slot wraps the selection'). At the bottom is the Create Slot button.
-- intent: Confirm the Slots parent panel renders the empty state, the per-slot rows with child counts, the tip box, and the Create Slot button.
-- code: apps/blender/panels/slots.py:58-78
+- observe: When there are no slots it shows 'no slots yet - select meshes and Create Slot'. Otherwise the slots render in a native list widget (up to 5 rows, with the standard expand arrows for search/scroll); each row shows the slot name left-aligned with a slot icon, and a badge counting its direct mesh children on the right. A tip box explains the two ways to create a slot ('Pose Mode + active bone: slot anchored to the bone' and 'Object Mode + meshes: slot wraps the selection'). At the bottom is the Create Slot button.
+- intent: Confirm the Slots parent panel renders the empty state, the native slot list with per-row child counts, the tip box, and the Create Slot button.
+- code: apps/blender/panels/slots.py PROSCENIO_PT_slots.draw (template_list) + PROSCENIO_UL_slots
 
 ### BL-SLOTS-PARENT-01 · Create Slot makes a slot Empty
 - status: pass
@@ -448,16 +460,27 @@ Each block answers three questions in plain language: what passing it proves (`i
   1. Open the Slots panel and click a slot row.
 - observe: That slot becomes the only selected and active object, its row looks pressed, and the Active Slot subpanel appears below. If the named slot no longer exists, a warning appears and nothing changes.
 - intent: Each row selects and activates its slot so the Active Slot subpanel shows its attachments. (also exercised by FLOW-SLOTSWAP-01)
-- code: apps/blender/panels/slots.py:62-70 -> operators/slot/select.py:36-44
+- code: apps/blender/panels/slots.py PROSCENIO_UL_slots.draw_item -> operators/slot/select.py:36-55
+
+### BL-SLOTS-PARENT-04 · Filter and scroll the slot list
+- status: todo
+- review: keep
+- pre: A scene with several slots (more than fit in the visible rows is ideal).
+- steps:
+  1. Open the list's native 'Filter by Name' field (the expand arrows at the bottom of the list) and type part of a slot's name.
+  2. Clear the field; with many slots, drag the list scrollbar.
+- observe: As you type, only slots whose name contains the text stay; non-slot objects never appear regardless. Clearing the field brings every slot back, sorted by name. With more slots than visible rows the list scrolls within its fixed height instead of growing the panel. Clicking a row still highlights and activates the correct slot even while a filter is active.
+- intent: The slot list is the native widget (spec 046): name filter, scroll, and a highlight that lands on the right row under a filter. The slot-only filter is a strict subset of the Outliner's.
+- code: apps/blender/panels/slots.py PROSCENIO_UL_slots.filter_items + core/outliner_view.py source_index_for_name
 
 ### BL-SLOTS-ACTIVE-SWEEP · Active Slot subpanel inventory (visual pass)
 - status: pass
 - review: keep
 - pre: A slot Empty active with at least one mesh child.
-- observe: The Active Slot subpanel shows a header naming the slot ('Slot "<name>"'), a line saying which bone it is parented to (or '(unparented)'), an 'Attachments (N):' heading with the child count, and one row per attachment showing the child's name and whether it is a mesh or a sprite. Alert rows appear for an unparented slot or a slot with no children.
-- intent: Confirm the Active Slot subpanel renders the slot header, parent-bone line, attachment count and rows, and the alert rows; behavior lives in the named tests.
-- code: apps/blender/panels/slots.py:115-151
-- note: reescrito - antes estava ilegível ("incompreensível o que é pra observar").
+- observe: The Active Slot subpanel shows a header naming the slot ('Slot "<name>"'), the follow state and Bind/Unbind button, an 'Attachments (N):' heading with the child count, then a boxed attachment list - one row per child with a default-star toggle, the child name, a mesh/sprite kind label, and a keyframe button. The box holds the rows at a slightly reduced height so a long list grows the panel slowly rather than unboundedly. Below it a button row offers 'Attach Mesh' and 'Add Selected'. A validator error row appears under the list for a slot with no children.
+- intent: Confirm the Active Slot subpanel renders the slot header, follow state, attachment count, the boxed attachment list with its per-row affordances, the Attach Mesh / Add Selected buttons, and the validator rows; behavior lives in the named tests.
+- code: apps/blender/panels/slots.py PROSCENIO_PT_active_slot.draw
+- note: reescrito - antes estava ilegível ("incompreensível o que é pra observar"); atualizado para a lista de attachments em caixa e os dois botões de anexar (spec 046).
 
 ### BL-SLOTS-ACTIVE-01 · Active Slot subpanel appears only for a slot Empty
 - status: pass
@@ -476,13 +499,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: An unparented slot is flagged so you know its attachments will not follow any bone.
 - code: apps/blender/panels/slots.py:122-128
 
-### BL-SLOTS-ACTIVE-03 · Warning row when the slot has no children
-- status: pass
+### BL-SLOTS-ACTIVE-03 · Error row when the slot has no children
+- status: todo
 - review: keep
 - pre: A slot Empty active.
-- observe: A red alert row, 'empty slot - add child meshes', appears only when the active slot has no mesh children.
-- intent: An empty slot is flagged so you know to add attachments to it.
-- code: apps/blender/panels/slots.py:132-135
+- observe: A red validator error row, 'slot "<name>" has no MESH children', appears under the attachments only when the active slot has no mesh children. (Spec 046 removed the older inline 'empty slot - add child meshes' INFO line - the validator's error row is now the single signal, and it carries error severity.)
+- intent: An empty slot is flagged once, by the validator, so you know to add attachments to it.
+- code: apps/blender/core/validation/active_slot.py:28-29 (drawn by PROSCENIO_PT_active_slot.draw validation loop)
 
 ### BL-SLOTS-ACTIVE-04 · Star marks the slot's default attachment
 - status: pass
@@ -494,15 +517,15 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The star marks which attachment is visible when the scene loads (the default visible child). (default attachment exercised by FLOW-SLOTCYCLE-01)
 - code: apps/blender/panels/slots.py:138-148 -> operators/slot/attachment.py:70-104
 
-### BL-SLOTS-ACTIVE-05 · Add Selected Mesh attaches meshes to the slot
+### BL-SLOTS-ACTIVE-05 · Add Selected re-parents selected meshes into the slot
 - status: pass
 - review: keep
 - pre: A slot Empty active and at least one other mesh also selected.
 - steps:
-  1. Select a slot Empty (active) plus a mesh, then click Add Selected Mesh.
+  1. Select a slot Empty (active) plus a mesh, then click Add Selected.
 - observe: Each selected mesh is re-parented into the slot Empty, keeping its on-screen position, and a confirmation reports how many were added. With no qualifying mesh selected, the button is greyed out.
-- intent: Add Selected Mesh re-parents the selected meshes into the active slot as new attachments.
-- code: apps/blender/panels/slots.py:159-165 -> operators/slot/attachment.py:40-67
+- intent: Add Selected re-parents the selected meshes into the active slot as new attachments (the fast path when a mesh is already selected; the picker is BL-SLOTS-ACTIVE-07).
+- code: apps/blender/panels/slots.py PROSCENIO_PT_active_slot.draw -> operators/slot/attachment.py PROSCENIO_OT_add_slot_attachment
 
 ### BL-SLOTS-ACTIVE-06 · Per-slot validation issue rows are clickable
 - status: pass
@@ -510,7 +533,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: A slot Empty active that has a validation issue (no children, broken default, child/bone mismatch, or transform keys on a child).
 - observe: Validation issue rows render under the attachments; error rows tint red and warning rows stay plain. Rows that name an object are clickable and select that object when clicked.
 - intent: Per-slot validation issues are surfaced and let you jump to the offending object.
-- code: apps/blender/panels/slots.py:167-168 -> _helpers.py:127-150 -> validation/active_slot.py:15-35
+- code: apps/blender/panels/slots.py PROSCENIO_PT_active_slot.draw validation loop -> _helpers.py draw_issue_row -> validation/active_slot.py:15-35
+
+### BL-SLOTS-ACTIVE-07 · Attach Mesh picker attaches by name
+- status: todo
+- review: keep
+- pre: A slot Empty active and nothing else selected (the single-selection case the picker exists for).
+- steps:
+  1. With only the slot active, click Attach Mesh.
+  2. In the dialog, pick a mesh by name from the search field and confirm.
+- observe: A dialog opens with a mesh-name search field. Confirming re-parents the chosen mesh into the active slot, keeping its on-screen position, and a confirmation names it. Picking a non-mesh (or a name that is not a mesh) warns and changes nothing. The button is available whenever a slot is active, even with no other object selected - unlike Add Selected, which needs a mesh selected first.
+- intent: The picker breaks the single-selection deadlock (you cannot have the slot active AND a target mesh selected at once), attaching a mesh chosen by name without touching the active object (spec 046). The bone half stays the separate Bind to Bone dialog.
+- code: apps/blender/operators/slot/attachment.py PROSCENIO_OT_attach_mesh_to_slot (invoke_props_dialog + prop_search)
 
 ## Skeleton panel: armature picker, bone list, pose helpers, Quick Armature, IK, authoring camera, pose library
 

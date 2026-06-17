@@ -6,30 +6,8 @@ from typing import ClassVar
 
 import bpy
 
-from ..core.slot.slot_emit import is_slot_empty
+from ..core.outliner_view import RANK_HIDDEN, category_rank
 from ._helpers import draw_subpanel_header
-
-_OUTLINER_RANK_HIDDEN = 9
-
-
-def _outliner_category_rank(obj: bpy.types.Object) -> int:
-    """Rank the object for the outliner's sort-by-category pass.
-
-    0 = slot Empty (top of the list, drives a slot).
-    1 = slot attachment mesh (rendered indented under its slot).
-    2 = element mesh (Proscenio mesh / sprite, parented to bone or floating).
-    3 = armature.
-    9 = irrelevant for Proscenio (cameras, lights, etc.) - hidden by ``filter_items``.
-    """
-    if is_slot_empty(obj):
-        return 0
-    if obj.type == "ARMATURE":
-        return 3
-    if obj.type == "MESH":
-        if is_slot_empty(obj.parent):
-            return 1
-        return 2
-    return _OUTLINER_RANK_HIDDEN
 
 
 class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
@@ -50,7 +28,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         obj = item
         obj_props = getattr(obj, "proscenio", None)
         is_fav = bool(obj_props is not None and getattr(obj_props, "is_outliner_favorite", False))
-        rank = _outliner_category_rank(obj)
+        rank = category_rank(obj)
         if rank == 0:
             row_icon = "LINK_BLEND"
             label = f"[slot] {obj.name}"
@@ -67,15 +45,25 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         else:
             row_icon = "OBJECT_DATA"
             label = obj.name
+        # A bare operator button stretches across the row and centers its
+        # text. Split the row and draw the label in a LEFT-aligned sub-row so
+        # names hug the left edge (spec 036 left-align-names); the favorite
+        # star keeps the right edge in the split remainder. (Owned by spec
+        # 036, landed here since this PR already restructures these rows.)
         row = layout.row(align=True)
-        op = row.operator(
+        split = row.split(factor=0.92, align=True)
+        name_row = split.row()
+        name_row.alignment = "LEFT"
+        op = name_row.operator(
             "proscenio.select_outliner_object",
             text=label,
             icon=row_icon,
             emboss=False,
         )
         op.obj_name = obj.name
-        fav = row.operator(
+        fav_row = split.row()
+        fav_row.alignment = "RIGHT"
+        fav = fav_row.operator(
             "proscenio.toggle_outliner_favorite",
             text="",
             icon="SOLO_ON" if is_fav else "SOLO_OFF",
@@ -92,11 +80,10 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         """Hide non-Proscenio objects, apply text + favorites filter, sort by category."""
         objects = list(getattr(data, propname))
         scene_props = getattr(context.scene, "proscenio", None)
-        proscenio_text = (getattr(scene_props, "outliner_filter", "") or "").lower()
-        # Honor the UIList's native "Filter by Name" field (self.filter_name)
-        # as well as the Proscenio search bar; the bar wins when both are set.
-        native_text = (self.filter_name or "").lower()
-        flt_text = proscenio_text or native_text
+        # One search field: Blender's native "Filter by Name" (self.filter_name).
+        # The Proscenio drawer was removed in spec 043, so there is no second
+        # source to reconcile here.
+        flt_text = (self.filter_name or "").lower()
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )
@@ -104,9 +91,9 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         flt_flags = [0] * n
         ranks: list[int] = [0] * n
         for i, obj in enumerate(objects):
-            rank = _outliner_category_rank(obj)
+            rank = category_rank(obj)
             ranks[i] = rank
-            if rank == _OUTLINER_RANK_HIDDEN:
+            if rank == RANK_HIDDEN:
                 continue
             obj_props = getattr(obj, "proscenio", None)
             is_fav = bool(
@@ -144,8 +131,10 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
         if scene_props is None:
             layout.label(text="Proscenio scene props not registered", icon="ERROR")
             return
+        # Search is Blender's native "Filter by Name" (the UIList's expand
+        # arrows); spec 043 dropped the redundant Proscenio search drawer.
+        # Only the favorites-only toggle stays in the panel header row.
         row = layout.row(align=True)
-        row.prop(scene_props, "outliner_filter", text="", icon="VIEWZOOM")
         row.prop(scene_props, "outliner_show_favorites", text="", icon="SOLO_ON")
         layout.template_list(
             "PROSCENIO_UL_sprite_outliner",

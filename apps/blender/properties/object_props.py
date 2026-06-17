@@ -250,8 +250,9 @@ class ProscenioObjectProps(PropertyGroup):
     is_outliner_favorite: BoolProperty(  # type: ignore[valid-type]
         name="Outliner favorite",
         description=(
-            "Pin this object to the top of the Proscenio outliner (the outliner subpanel). "
-            "Toggle 'Show favorites only' on the panel to hide everything else."
+            "Flag this object as a favorite in the Proscenio outliner (the outliner subpanel). "
+            "Toggle 'Show favorites only' on the panel to hide everything else; "
+            "favorites keep their normal category order, they do not move to the top."
         ),
         default=False,
         update=on_any_update,

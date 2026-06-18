@@ -124,6 +124,18 @@ def draw_subbox_header(
     op.topic = help_topic
 
 
+def draw_help_button(layout: bpy.types.UILayout, help_topic: str) -> None:
+    """Draw a standalone help ``?`` button bound to a help topic.
+
+    For a single operator row that needs its own help affordance when
+    there is no subpanel or sub-box header to host it (e.g. the Save Pose
+    to Library row, whose subpanel header explains Pose Mode, not the
+    pose-library asset flow).
+    """
+    op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = help_topic
+
+
 def draw_target_readout(
     layout: bpy.types.UILayout,
     target: bpy.types.Object | None,

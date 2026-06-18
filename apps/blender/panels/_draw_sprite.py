@@ -12,6 +12,7 @@ import bpy
 from ..core._shared.material_images import (  # type: ignore[import-not-found]
     iter_material_images,
 )
+from ._helpers import draw_subbox_header
 
 
 def draw_body(
@@ -64,9 +65,24 @@ def _discover_atlas_size_for(obj: bpy.types.Object) -> tuple[int, int] | None:
 
 
 def _draw_preview_shader_buttons(layout: bpy.types.UILayout, obj: bpy.types.Object) -> None:
-    """Render Material Preview slicer setup/remove buttons."""
+    """Render the Material Preview slicer setup/remove buttons.
+
+    Wrapped in a sub-box whose header carries the ``sprite_frame_preview``
+    help topic - the shader-preview caveats the Active Sprite subpanel
+    header (the ``active_sprite`` fields topic) does not cover. The header
+    is this block's only entry point to that topic, which the #96 sidebar
+    restructure left orphaned.
+    """
+    box = layout.box().column(align=True)
+    draw_subbox_header(
+        box,
+        "Material Preview",
+        "SHADERFX",
+        "sprite_frame_preview",
+        "sprite_frame_preview",
+    )
     has_slicer = _material_has_slicer(obj)
-    row = layout.row(align=True)
+    row = box.row(align=True)
     setup = row.row()
     setup.enabled = not has_slicer
     setup.operator(

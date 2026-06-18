@@ -89,3 +89,24 @@ def test_known_topic_ids_returns_registration_order() -> None:
 
 def test_no_duplicate_topic_ids() -> None:
     assert len(HELP_TOPICS) == len(set(HELP_TOPICS.keys()))
+
+
+def test_every_topic_has_a_panel_or_operator_caller() -> None:
+    """Reverse coverage: every topic id is referenced under panels/ or operators/.
+
+    The forward test above checks that wired ids resolve; this one checks
+    the other direction - that no topic in the table is orphaned with no UI
+    entry point. A sidebar restructure that drops a ``?`` wiring then fails
+    here instead of silently stranding the topic (the #96 regression that
+    orphaned ``sprite_frame_preview`` and ``pose_library``).
+    """
+    addon = REPO_ROOT / "apps" / "blender"
+    blob_parts: list[str] = []
+    for sub in ("panels", "operators"):
+        for path in sorted((addon / sub).rglob("*.py")):
+            blob_parts.append(path.read_text(encoding="utf-8"))
+    blob = "\n".join(blob_parts)
+    missing = [
+        tid for tid in HELP_TOPICS if f'"{tid}"' not in blob and f"'{tid}'" not in blob
+    ]
+    assert not missing, f"help topics with no panel/operator caller: {missing}"

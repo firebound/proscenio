@@ -12,7 +12,7 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 
 ## Fila da sprint
 
-Issues nomeadas para a próxima sprint/spec, por app → painel. Formato: `**slug** [cat] - descrição` + refs de código (`F-xx` de [`findings.md`](../tools/qa-companion/findings.md), `arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`.
+Issues nomeadas para a próxima sprint/spec, por app → painel. Formato: `**slug** [cat] - descrição` + refs de código (`F-xx` do audit, agora em [`backlog-docs.md`](backlog-docs.md) / [`backlog-bugs-found.md`](backlog-bugs-found.md), `arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`.
 
 **`DECIDIR (STUDY):`** marca pergunta de design em aberto - resolver no STUDY, não no palpite. Fluxo: issue → STUDY → implementar (este arquivo não é spec).
 

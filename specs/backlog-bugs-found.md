@@ -77,7 +77,7 @@ Open follow-ups surfaced during the sprite-frame wrap investigation (the main bu
 
 ## apps/blender (code-read audit, 2026-06-15, not yet reproduced)
 
-Promoted from the QA Companion audit ([findings.md](../tools/qa-companion/findings.md)) - found by reading current `main`, each cites the code. Dead-code and the duplicated driver-axis enum went to [backlog-code-quality.md](backlog-code-quality.md); the doc-coverage rows stay in findings.md for the grouped documentation pass.
+Promoted from the QA Companion code-read audit (2026-06-15) - found by reading current `main`, each cites the code. Dead-code and the duplicated driver-axis enum went to [backlog-code-quality.md](backlog-code-quality.md); the doc-coverage rows went to [backlog-docs.md](backlog-docs.md).
 
 ### Export ignores the panel pixels-per-unit on the first export
 

@@ -12,7 +12,7 @@ Validate: Proscenio Exporter on `examples/authored/doll/02_photoshop_setup/debug
 
 ### [ ] ps-tag-writes-in-renamed-group - tag edits target by layerID, survive a renamed parent group
 
-Fix shipped in PR #115: the `object null is not iterable` crash hardened at every PS-API null boundary, and tag-write targets resolve by `findLayerById` (node.id threaded through all five Row handlers - ignore / merge / kind / blend / advanced). The null-crash + flat-layer tag writes were GUI-confirmed 2026-06-13; the renamed-group path is the remaining smoke. This closes the tag-edit half of finding F-24; the click-to-select + legacy-migration paths still resolve by name (tracked in the QA Companion findings).
+Fix shipped in PR #115: the `object null is not iterable` crash hardened at every PS-API null boundary, and tag-write targets resolve by `findLayerById` (node.id threaded through all five Row handlers - ignore / merge / kind / blend / advanced). The null-crash + flat-layer tag writes were GUI-confirmed 2026-06-13; the renamed-group path is the remaining smoke. This closes the tag-edit half of the duplicate-name finding; the click-to-select + legacy-migration paths still resolve by name (tracked in [backlog-photoshop.md](backlog-photoshop.md)).
 
 Validate: Proscenio Tags on `debug/doll_tagged_debug.psd`. Group two layers, rename the group, then on a child run each of the five controls (X / M / kind / blend / `+` Apply). Expect every edit to apply with no `no match at depth 0` warning and no stale-path miss. With the Debug panel log level at `trace`, a null collection surfaces as `[proscenio:layer-find] normalized null .layers to []`.
 

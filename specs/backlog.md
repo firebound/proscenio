@@ -8,7 +8,7 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 - **Held behind a trigger** - [`gated.md`](gated.md). Real value, built only when a written demand signal fires.
 - **Sequenced second-stage** - [`deferred.md`](deferred.md). Real value waiting its turn, usually to ride a related change so its cost is shared.
 - **Declined** - [`dropped.md`](dropped.md). Value below cost, kept with its reasoning so a pruned item is never re-litigated.
-- **Per-domain product homes** - [`backlog-ui-feedback.md`](backlog-ui-feedback.md) (UI polish), [`backlog-bugs-found.md`](backlog-bugs-found.md) (still-broken bugs), [`backlog-code-quality.md`](backlog-code-quality.md) (type/lint health), [`backlog-ik-ergonomics.md`](backlog-ik-ergonomics.md) (IK authoring), [`backlog-blender-6.md`](backlog-blender-6.md) (Blender 6 forward-compat).
+- **Per-domain product homes** - [`backlog-ui-feedback.md`](backlog-ui-feedback.md) (UI polish), [`backlog-bugs-found.md`](backlog-bugs-found.md) (still-broken bugs), [`backlog-code-quality.md`](backlog-code-quality.md) (type/lint health), [`backlog-ik-ergonomics.md`](backlog-ik-ergonomics.md) (IK authoring), [`backlog-blender-6.md`](backlog-blender-6.md) (Blender 6 forward-compat), [`backlog-godot-importer.md`](backlog-godot-importer.md) (Godot import builders), [`backlog-photoshop.md`](backlog-photoshop.md) (Photoshop plugin), [`backlog-docs.md`](backlog-docs.md) (doc/help-text coverage). The last three were carved from the 2026-06-15 QA Companion audit; each is sized for a future area STUDY, not per-issue tracking.
 
 ## Fila da sprint
 

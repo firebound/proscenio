@@ -75,110 +75,31 @@ Open follow-ups surfaced during the sprite-frame wrap investigation (the main bu
 
 **Severity:** low - the visible sprite-frame wrap break is fixed; these are robustness/fidelity polish with no current visible divergence.
 
-## apps/blender (code-read audit, 2026-06-15, not yet reproduced)
+## apps/blender - code-read audit (2026-06-15, not reproduced)
 
-Promoted from the QA Companion code-read audit (2026-06-15) - found by reading current `main`, each cites the code. Dead-code and the duplicated driver-axis enum went to [backlog-code-quality.md](backlog-code-quality.md); the doc-coverage rows went to [backlog-docs.md](backlog-docs.md).
+From the QA Companion audit, verified against current `main`; read-not-reproduced, so confirm a repro before fixing. Dead code + the duplicated driver-axis enum went to [backlog-code-quality.md](backlog-code-quality.md); doc gaps to [backlog-docs.md](backlog-docs.md). Grouped by area for a future robustness STUDY.
 
-### Export ignores the panel pixels-per-unit on the first export
+**Export / atlas correctness.**
 
-**What:** the first Export uses the operator's own ExportHelper `pixels_per_unit` FloatProperty (default 100), not the `scene.proscenio.pixels_per_unit` the panel edits; only Re-export reads the scene value. Editing the panel field has no effect on the initial Export, contradicting the doc's "Pixels per unit sets the ratio" - a silently wrong-scale export.
+- **Pixels-per-unit ignored on the first export** (high) - the operator uses its own ExportHelper default (100), not the panel's `scene.proscenio.pixels_per_unit`; only Re-export reads the scene value, so editing the panel field silently does nothing on the first export. `export_flow.py:158-167`, `pipeline.py:89`.
+- **Apply Packed Atlas counts a no-UV sprite as rewritten** (med) - `_apply_to_object` returns True for `element_type=="sprite"` regardless of whether `_rewrite_uvs` succeeded; the "skipped (no UV layer)" guard only fires for non-sprite meshes. `atlas_pack/apply.py:165-216`.
 
-**Where:** `apps/blender/operators/export_flow.py:158-163,167`; `apps/blender/panels/pipeline.py:89`.
+**Operator robustness + feedback.**
 
-**Fix:** seed the operator's `pixels_per_unit` from the scene prop in `invoke`, or read the scene value directly. **Severity high.**
+- **Select Issue Object can traceback on an out-of-view object** (med) - `select_issue_object` -> `select_named_or_warn` -> `select_only` has no view-layer guard (spec 043 guarded only the outliner path); selecting an object outside the active view layer raises. `selection.py:40`, `_shared/select.py:23-35`.
+- **Bake Current Pose keys both quaternion and euler** (med) - inserts on both rotation channels for every bone regardless of `bone.rotation_mode`, leaving garbage fcurves on the unused channel. `pose_library.py:143-145`.
+- **Quick Armature lock-to-front-ortho ignored at invoke** (low) - `invoke` reads the other options from the PG but not `lock_to_front_ortho`, so the panel toggle has no effect unless overridden via F3. `quick_armature.py:200-221`.
+- **Copy Weights to Selected returns FINISHED on a zero-coverage transfer** (low) - a fully-uncovered transfer registers as a successful undo step with no weights applied (only the report downgrades to WARNING). `copy_weights_to_selected.py:49-51`.
+- **Bake IK to Keyframes leaves the selection altered** (low) - mutates per-bone selection to scope `nla.bake`, never restores it. `authoring_ik.py:201-213`.
+- **Action-row CANCELLED feedback suppressed at log level "errors"** (low) - the no-armature/not-found/multi-armature warnings go through the gated `report_warn`, so a failed click is silent. `report.py:50-53`, `selection.py`.
 
-### Apply Packed Atlas counts a sprite with no UV layer as rewritten
+**Inert / wrong-target controls.**
 
-**What:** `_apply_to_object` returns True for `element_type == "sprite"` regardless of whether `_rewrite_uvs` succeeded; a sprite with no/empty active UV layer is still counted rewritten, gets region props set, and its material relinked. The "skipped (no UV layer)" guard only fires for non-sprite meshes.
+- **Show-provenance-overlay panel toggle is inert outside the modal** (med) - the toggle registers no draw handler; the overlay only exists inside the Edit Weights modal, so as a standalone toggle it does nothing. `weight_paint.py:338`, `edit_weights.py:97-99`.
+- **Diagnostics / Help "?" open the wrong help topic** (low) - both hard-code `help_topic="pipeline_overview"` with no matching HELP_TOPICS entry. `diagnostics.py:29`, `help.py:44`.
+- **Run Smoke Test bypasses the report gate + prefix** (low) - raw `self.report` instead of `report_info`. `help_dispatch.py:110`.
 
-**Where:** `apps/blender/operators/atlas_pack/apply.py:165-171,206-216`.
+**Photoshop-import side effects (Blender side).**
 
-**Fix:** honour `rewrote` for the sprite path too. Severity medium.
-
-### Select Issue Object can raise a traceback on an out-of-view object
-
-**What:** clicking a validation issue row routes through `select_named_or_warn` to `select_only`, which calls `select_set`/`objects.active` with no view-layer guard; on an object outside the active view layer this raises a RuntimeError traceback in the info bar. The pruned spec 043 added the view-layer pre-check only to the outliner select operator; this path and the slot-select path are still unguarded.
-
-**Where:** `apps/blender/operators/selection.py:36-42` -> `core/bpy_helpers/_shared/select.py` (`select_named_or_warn` -> `select_only`).
-
-**Fix:** add the same view-layer pre-check (or wrap the select in `contextlib.suppress`) on this path. Severity medium.
-
-### Bake Current Pose keys both quaternion and euler regardless of rotation mode
-
-**What:** the bake inserts keyframes on both `rotation_quaternion` and `rotation_euler` for every bone irrespective of `bone.rotation_mode`, producing redundant/garbage fcurves on the unused rotation channel.
-
-**Where:** `apps/blender/operators/pose_library.py:143-145`.
-
-**Fix:** gate the channel on `bone.rotation_mode`. Severity medium.
-
-### Show-provenance-overlay panel toggle is inert outside the Edit Weights modal
-
-**What:** toggling `show_provenance_overlay` in the Snapshot subpanel registers/unregisters no draw handler; the handler exists only inside the Edit Weights modal (which also force-sets the flag on). As a standalone panel toggle the control does nothing - it lies about its effect.
-
-**Where:** `apps/blender/panels/weight_paint.py:338`; `operators/skinning/edit_weights.py:97-99`.
-
-**Fix:** wire the toggle to register/unregister the handler, or hide it outside the modal. Severity medium.
-
-### Quick Armature lock-to-front-ortho panel option is ignored at invoke
-
-**What:** `invoke()` reads `default_chain`/`name_prefix`/`snap_increment` from the PropertyGroup but not `lock_to_front_ortho`; the operator's own BoolProperty default (True) governs each run, so toggling the panel option has no effect unless overridden via F3-redo.
-
-**Where:** `apps/blender/operators/armature/quick_armature.py:200-221`.
-
-**Fix:** read `lock_to_front_ortho` from the PG in `invoke` like the other options. Severity low.
-
-### Copy Weights to Selected returns FINISHED on a zero-coverage transfer
-
-**What:** `execute` always returns FINISHED even when no target verts were covered (it only downgrades the report to WARNING); a fully-uncovered transfer registers as a successful undo step with no weights applied.
-
-**Where:** `apps/blender/operators/skinning/copy_weights_to_selected.py:49-51`.
-
-**Fix:** return CANCELLED when zero verts are covered. Severity low.
-
-### Bake IK to Keyframes leaves the viewport selection altered
-
-**What:** the bake mutates per-bone selection to scope `nla.bake` and never restores the user's prior pose-bone selection afterwards.
-
-**Where:** `apps/blender/operators/armature/authoring_ik.py:201-213`.
-
-**Fix:** wrap the bake in a save/restore of the bone selection. Severity low.
-
-### Action-row warnings are suppressed at log level "errors"
-
-**What:** the action-assign operator's CANCELLED feedback (no-armature / not-found / multi-armature) goes through `report_warn`, which is gated by the addon log level; at "errors" the warnings are fully suppressed, so a failed click gives zero feedback and the panel looks unresponsive.
-
-**Where:** `apps/blender/core/_shared/report.py:50-53`; `operators/selection.py` (action-assign CANCELLED paths).
-
-**Fix:** route user-facing CANCELLED feedback through an ungated channel (or `report_error`). Severity low.
-
-### Import silently overwrites the panel pixels-per-unit
-
-**What:** `_sync_scene_pixels_per_unit` unconditionally overwrites `scene.proscenio.pixels_per_unit` with the manifest value on every import, discarding any user-set panel value with no report or warning.
-
-**Where:** `apps/blender/importers/photoshop/__init__.py:94-107`.
-
-**Fix:** report the override, or only set when the scene value is unset/default. Severity low.
-
-### Re-import always rebuilds the armature (re-import-reuse claim unverified)
-
-**What:** the doc states re-importing the same manifest "reuses existing meshes, so rotation, parenting, and weights survive", but `import_manifest` unconditionally calls `build_root_armature` to create a fresh armature every run; weights/parenting tied to the old rig likely do not survive. Either the reuse is broken or the doc overstates it.
-
-**Where:** `apps/blender/importers/photoshop/__init__.py:68-91`.
-
-**Fix:** verify the round-trip reuse; implement armature reuse or correct the doc. Severity low. Tied to the Godot reimporter-stub decision in [backlog-godot-importer.md](backlog-godot-importer.md).
-
-### Diagnostics and Help "?" buttons open the wrong help topic
-
-**What:** both panels hard-code `help_topic="pipeline_overview"` and there is no `diagnostics`/`help` entry in HELP_TOPICS, so the "?" opens the generic pipeline overview instead of panel-specific help (the doc promises the "?" opens the matching help).
-
-**Where:** `apps/blender/panels/diagnostics.py:29`; `apps/blender/panels/help.py:44`.
-
-**Fix:** add the matching help topics, or correct the doc promise. Severity low.
-
-### Run Smoke Test bypasses the report gate and prefix
-
-**What:** the smoke test reports via raw `self.report({'INFO'}, ...)` instead of `report_info`, so it ignores the log-level gate (prints even at "errors only") and omits the standard "Proscenio: " prefix every other operator uses.
-
-**Where:** `apps/blender/operators/help_dispatch.py:110`.
-
-**Fix:** route through `report_info`. Severity low.
+- **Re-import always rebuilds the armature** (low) - `import_manifest` calls `build_root_armature` every run, so the doc's "rotation, parenting, weights survive" reuse claim is likely false; verify the round-trip or correct the doc. `importers/photoshop/__init__.py:68-91`. Tied to the Godot reimporter decision in [backlog-godot-importer.md](backlog-godot-importer.md).
+- **Import silently overwrites the panel pixels-per-unit** (low) - `_sync_scene_pixels_per_unit` overwrites the scene value with the manifest's on every import, no warning. `importers/photoshop/__init__.py:94-107`.

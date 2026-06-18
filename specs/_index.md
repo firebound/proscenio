@@ -19,6 +19,8 @@ Spec 041 was pruned 2026-06-13 (PR #115): the plugin fixes shipped, the multiGet
 
 Spec 040 was retired 2026-06-13: it was a one-time automatic pass that mapped the whole product's manual-test surface, so its two outputs are living data rather than a prunable plan. They moved into the QA Companion tool ([tools/qa-companion/checklist/](../tools/qa-companion/checklist/) for the walkable surface, [findings.md](../tools/qa-companion/findings.md) for the code-read audit) and the spec folder was removed. See [decisions.md](decisions.md).
 
+Specs 043-048 (the 2026-06-16 polish sprint) were pruned together 2026-06-18 after a per-spec audit confirmed each shipped with implementing code, behavior-locking tests, and a CI step (the deferred remainders moved to [deferred.md](deferred.md) / [gated.md](gated.md), the locked calls to [decisions.md](decisions.md), and the resolved backlog issues left [backlog.md](backlog.md)). 043 outliner-selection: viewport-follow + stale-row crash guard + single native search + the shared identity-to-index resolver (PRs #119-#123, #125). 044 weight-paint-mode-sync: modal-timer mode exit, stroke-end overlay refresh, Proximity bind params, clear-empty-vgroups; override-list scroll + named snapshots stayed in the backlog. 045 skeleton-quick-armature: labels-only Quick Armature chords, picker-driven assign-action, skeleton chrome; destructive Esc cancel gated. 046 slots-list-ux: native slot `template_list` + custom-draw attachment column + attach-via-picker; the synced-CollectionProperty backing gated. 047 godot-import-verify (PRs #127-#132): texture-gated sprite region + the four baked-golden regression guards + two model-quirk doc notes; the generic eight-golden walk stays a partial in [deferred.md](deferred.md). 048 photoshop-read-perf (PR #133): async multiGet document reader behind a DOM-walk fallback + busy-flag re-render scope; the single shared snapshot per tick stayed deferred.
+
 Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped complete - the Bind / Unbind operators (object-parent + a Child Of constraint that cancels the bone rest + the `slot_bone` field), `create_slot` migrated off real bone-parenting, the shared resolver reading `slot_bone`, legacy bone-parent normalization on bind and unbind, and the `mixed_feature` + `slot_swap` fixtures authoring the constraint. Nothing was deferred or gated - the STUDY's four items were all "now" and all shipped; the locked calls landed in [decisions.md](decisions.md).
 
 | # | Spec | Summary | Status |
@@ -66,9 +68,9 @@ Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped com
 | 040 | end-to-end-verification | Automatic pass mapping the whole manual-test surface (452 items) + a code-read audit (176 findings); both now owned by the QA Companion tool (`tools/qa-companion`) | retired |
 | 041 | photoshop-overhaul | Make the UXP plugin usable: null-crash fix + export-writer resilience (the 040 trigger), layerID targeting, adaptive poll, debug toggle; multiGet + dedup deferred | pruned |
 | 042 | slot-bone-follow | Slot bone-follow authoring parity: a Bind Slot to Bone operator (Child Of + slot_bone), create_slot migrated off bone-parenting, resolver reads slot_bone, fixtures author the constraint | pruned |
-| 043 | outliner-selection | Outliner follows the viewport selection, no crash on stale rows, single native search | planned |
-| 044 | weight-paint-mode-sync | Edit Weights tracks the weight-paint mode; expose the Proximity bind params in the panel | planned |
-| 045 | skeleton-quick-armature | Quick Armature Esc cancels properly, Animation uses the picked armature, Skeleton chrome polish | planned |
-| 046 | slots-list-ux | Native searchable slot/attachment lists (reusable list component) + attach-to-existing-slot picker | planned |
-| 047 | godot-import-verify | Verify the sprite manual-region scaling with a test + two model-quirk doc notes | planned |
-| 048 | photoshop-read-perf | Tag-list busy-flag scoping + a batchPlay multiGet document reader | planned |
+| 043 | outliner-selection | Outliner follows the viewport selection, no crash on stale rows, single native search | pruned |
+| 044 | weight-paint-mode-sync | Edit Weights tracks the weight-paint mode; expose the Proximity bind params in the panel | pruned |
+| 045 | skeleton-quick-armature | Quick Armature Esc cancels properly, Animation uses the picked armature, Skeleton chrome polish | pruned |
+| 046 | slots-list-ux | Native searchable slot/attachment lists (reusable list component) + attach-to-existing-slot picker | pruned |
+| 047 | godot-import-verify | Verify the sprite manual-region scaling with a test + two model-quirk doc notes | pruned |
+| 048 | photoshop-read-perf | Tag-list busy-flag scoping + a batchPlay multiGet document reader | pruned |

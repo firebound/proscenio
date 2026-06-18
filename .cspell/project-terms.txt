@@ -52,6 +52,7 @@ mainfile
 mathutils
 matmul
 metarig
+msgbus
 NEXTWAVE
 occluder
 onready

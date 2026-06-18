@@ -24,9 +24,9 @@ Items with real value, sequenced for a second stage but not held behind a writte
 
 ## Photoshop overhaul
 
-(2026-06-16: **multiGet document reader** promoted to [backlog.md](backlog.md#fila-da-sprint). Spec 041 reworked the PS plugin but deliberately deferred multiGet - the index line says so ("multiGet + dedup deferred"); it is now pulled into the sprint.)
+(2026-06-16: **multiGet document reader** promoted to the backlog; 2026-06-18: shipped in spec 048 - async reader behind the DOM-walk fallback, validated against a real PSD in a live session and threaded through both read paths.)
 
-- **shared adaptation per tick / lazy preview** - Adapt the document once per `version` bump and feed the tag-tree + export-preview + active-layer consumers from one snapshot (or defer the preview off the tag-paint path). Deferred: it removes the redundant second walk per event, but it is React-hook timing only a real panel can validate; the layerID-key + adaptive-poll wins already cut the felt jank. Its sibling (multiGet reader) was promoted to the backlog on 2026-06-16; this one rode the same session, so consider pulling it along when the multiGet work is scheduled.
+- **shared adaptation per tick / lazy preview (narrowed - the multiGet reader landed)** - The spec-048 live session (2026-06-18) landed the async multiGet reader behind the DOM-walk fallback and threaded it through BOTH read paths (`useTagTree` and `useExportPreview` via `previewExportAsync`), so the redundant second walk per `version` bump is now two cheap one-round-trip reads rather than two slow per-property DOM walks. Still deferred: collapsing those into a SINGLE `adaptDocument` snapshot per tick that feeds the tag tree, the export preview, and the active-layer consumers from one read. That last redundancy is a React-hook timing refactor only a real panel can validate; with both paths already on the fast read the remaining win is small, so it rides the next read-path touch rather than triggering its own session.
 
 (2026-06-16: **scope the busy flag off the whole tag list** promoted to [backlog.md](backlog.md#fila-da-sprint) as a quick win - it was tagged "cheap and self-contained".)
 

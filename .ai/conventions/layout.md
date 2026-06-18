@@ -46,14 +46,16 @@ Rules:
 
 ## Versioning
 
-Three independent SemVer streams plus one integer schema version per cross-component format:
+One product version in lockstep across the three apps, plus one integer schema version per cross-component format.
 
-| Stream | Tag prefix |
-| --- | --- |
-| Photoshop plugin | `photoshop-vX.Y.Z` |
-| Blender addon | `blender-vX.Y.Z` |
-| Godot plugin | `godot-vX.Y.Z` |
+The Blender addon, Photoshop plugin, and Godot plugin ship under a single SemVer number, tagged `vX.Y.Z` (no per-component prefix). The version is a compatibility coordinate, not a per-app change counter: the same number across all three means they are guaranteed to work together. A release carries one CHANGELOG; the per-app detail (what actually changed, what rode along untouched) lives in that CHANGELOG, not in the number.
 
-Each cross-component JSON schema carries its own integer `format_version`, independent of component versions. Bump only on a breaking change to the document shape.
+- **Bump by the highest severity across components.** A breaking change in any one app makes the product MAJOR; a feature in any app makes it MINOR; the unchanged apps ride along to the same number. Pre-1.0 is `0.MINOR.PATCH` with a `-beta` suffix on the beta channel.
+- **Carry-along bumps are expected and cheap.** An app with no functional change still re-stamps to the new version and republishes (one manifest line). The CHANGELOG records it as "no functional change (version aligned)". This is the price of "same number = compatible" - paid once per release, it removes the compatibility-matrix question entirely.
+- **One source of truth.** The release version is held in a single place (the git tag / a root `VERSION`) and stamped into all three manifests (`blender_manifest.toml`, the Godot `plugin.cfg`, the Photoshop `manifest.json`) at release time.
+
+Why lockstep over independent per-component SemVer: the three apps are one coupled pipeline (the addon emits a `format_version`, the importer reads the same one - they must match), so independent streams would force a compatibility matrix no small team should maintain. The locked decision is in [`specs/decisions.md`](../../specs/decisions.md).
+
+Each cross-component JSON schema carries its own integer `format_version`, independent of the product version. Bump only on a breaking change to the document shape.
 
 A schema change is a multi-component PR by definition (schema bump + producer + consumer guard).

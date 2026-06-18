@@ -8,47 +8,6 @@ Bugs whose fix already shipped and only await a GUI confirmation are walkable it
 
 ## apps/blender
 
-### Reproject UV: segunda chamada lenta + UV resultante rotacionada/flipada
-
-**Repro:** Active Sprite > polygon mode > "Reproject UV". Sintomas em primeira E segunda chamadas.
-
-**Sintoma 1 (perf):** segunda chamada demora vários segundos como se fosse crashar (testes anteriores em doll).
-
-**Sintoma 2 (orientação):** UV resultante fica rotacionada 90° + horizontalmente invertida. Confirmado em atlas_pack_workbench sprite_1 (11-mai-2026): após Reproject UV, layout precisou de `R -90 S X -1` (rotate -90° + scale X = -1 no UV editor) pra voltar ao mapeamento original.
-
-**Suspeita 1:** mode_set OBJECT<->EDIT chained com smart_project + restore loop pode estar deselecionando todo mundo + reselecionando, causando spike de cost. Ou `bpy.ops.uv.smart_project` cacheia algo problemático.
-
-**Suspeita 2:** `bpy.ops.uv.smart_project` (uv_authoring.py:53) usa face normal pra escolher projeção. Para um quad no plano XZ (Front Ortho convention), a normal aponta -Y - smart_project pode estar interpretando isso como "back side" e flipar U + rotacionar 90° pra alinhar. UVs originais (autorados manualmente em build_blend.py com layout específico pra evitar mirror em Front Ortho) são SOBRESCRITAS por essa projeção automática que não respeita o setup original.
-
-**Fix proposto:**
-
-- Substituir `bpy.ops.uv.smart_project` por reprojeção manual: detectar plano do mesh (X, Y ou Z aligned), mapear UVs naive (face vertices em world space → UV [0..1] baseado em bounding box no plano detectado), respeitando o flip-U-pra-Front-Ortho que `build_blend.py` faz.
-- Alternativa: `bpy.ops.uv.unwrap` (cube/cylinder/sphere projection explícita) em vez de smart_project, com config determinística.
-- Mínimo (parcialmente feito): limitação documentada no docstring + tooltip, e o start em Edit Mode é rejeitado. O fix de orientação em si NÃO foi aplicado - ainda usa smart_project.
-
-**Arquivo:** `apps/blender/operators/uv_authoring.py:39-66` (`PROSCENIO_OT_reproject_sprite_uv`).
-
-**Severity:** medium - operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art). Sequenciado como o PR 2 da spec 036 (substituir `smart_project` por projeção planar determinística); fica aqui até a correção entrar.
-
-### Help topic `sprite_frame_preview` é orphan - sem entry point na UI
-
-**Status:** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da sidebar (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. O help button está ausente de novo; re-wirar nos `_draw_*.py` das sub-boxes. (PR 1 da spec 036, junto com o orphan `pose_library` + teste de cobertura reversa; fica aqui até entrar.)
-
-**Repro:** abre fixture com sprite_frame mesh (ex: `examples/generated/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
-
-**Sintoma:** sub-box "Sprite frame" tem só label header + fields (hframes / vframes / frame / centered) + Setup/Remove Preview buttons. **NÃO tem ícone `?`** pra abrir help topic. Visual confirmado em screenshot do usuário (10-mai-2026 sessão 1.13 item 9).
-
-**Causa:** `apps/blender/panels/_draw_sprite_frame.py:26` desenha `box.label(text="Sprite frame", icon="IMAGE_DATA")` - label puro, sem operator. Não chama `draw_subpanel_header` nem invoca `proscenio.help` com `topic="sprite_frame_preview"`. Help topic está definido em `apps/blender/core/help_topics.py:432` + tem FeatureStatus entry em `apps/blender/core/feature_status.py:115`, mas inacessível via UI - só dá pra abrir programaticamente via `bpy.ops.proscenio.help(topic="sprite_frame_preview")`.
-
-**Fix proposto:**
-
-- Em `_draw_sprite_frame.py:24-26`, trocar `box.label(text="Sprite frame", icon="IMAGE_DATA")` por header row com label + status icon + help button análogo a `draw_subpanel_header(layout, feature_id, help_topic)`. Adicionar helper `_helpers.draw_subbox_header()` pra reuso (Active Sprite sub-boxes não são panels, headers funcionam diferente).
-- Mesma família de gap aplica a outras sub-boxes (Sprite frame / Polygon body / Texture region / Drive from Bone). Inventário: confirmar quais tópicos já têm entry visível e quais são orphan.
-
-**Arquivo:** `apps/blender/panels/_draw_sprite_frame.py:24-26`, e provavelmente outros `_draw_*.py`.
-
-**Severity:** low-medium - não é crash, mas help topic existe e foi documentado/testado como acessível via UI; checklist 1.13 item 9 falha por causa disso. Indica que o pattern de "help button per sub-box" está incompleto.
-
 ### Re-import de PSD: doc diz "perde weights", código reprojeta de sidecar (divergência)
 
 **Status:** encontrado durante a curadoria do QA surface (jun-2026), ao escrever o fluxo `FLOW-REIMPORT-WEIGHTS-01`. Precisa decidir qual lado é a verdade antes de o fluxo virar oráculo.
@@ -92,7 +51,6 @@ From the QA Companion audit, verified against current `main`; read-not-reproduce
 
 **Operator robustness + feedback.**
 
-- **Select Issue Object can traceback on an out-of-view object** (med) - `select_issue_object` -> `select_named_or_warn` -> `select_only` has no view-layer guard (spec 043 guarded only the outliner path); selecting an object outside the active view layer raises. `selection.py:40`, `_shared/select.py:23-35`. _Spec 036, PR 3: same `select_issue_object` edit as the frame-unhide change._
 - **Bake Current Pose keys both quaternion and euler** (med) - inserts on both rotation channels for every bone regardless of `bone.rotation_mode`, leaving garbage fcurves on the unused channel. `pose_library.py:143-145`.
 - **Quick Armature lock-to-front-ortho ignored at invoke** (low) - `invoke` reads the other options from the PG but not `lock_to_front_ortho`, so the panel toggle has no effect unless overridden via F3. `quick_armature.py:200-221`.
 - **Copy Weights to Selected returns FINISHED on a zero-coverage transfer** (low) - a fully-uncovered transfer registers as a successful undo step with no weights applied (only the report downgrades to WARNING). `copy_weights_to_selected.py:49-51`.
@@ -102,9 +60,6 @@ From the QA Companion audit, verified against current `main`; read-not-reproduce
 **Inert / wrong-target controls.**
 
 - **Show-provenance-overlay panel toggle is inert outside the modal** (med) - the toggle registers no draw handler; the overlay only exists inside the Edit Weights modal, so as a standalone toggle it does nothing. `weight_paint.py:338`, `edit_weights.py:97-99`.
-- **Diagnostics / Help "?" open the wrong help topic** (low) - both hard-code `help_topic="pipeline_overview"` with no matching HELP_TOPICS entry. `diagnostics.py:29`, `help.py:44`. _Spec 036, PR 4: the Help + Diagnostics merge fixes this._
-- **Run Smoke Test bypasses the report gate + prefix** (low) - raw `self.report` instead of `report_info`. `help_dispatch.py:110`. _Spec 036, PR 4._
-
 **Photoshop-import side effects (Blender side).**
 
 - **Re-import always rebuilds the armature** (low) - `import_manifest` calls `build_root_armature` every run, so the doc's "rotation, parenting, weights survive" reuse claim is likely false; verify the round-trip or correct the doc. `importers/photoshop/__init__.py:68-91`. Tied to the Godot reimporter decision in [backlog-godot-importer.md](backlog-godot-importer.md).

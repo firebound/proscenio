@@ -53,6 +53,9 @@ Tag types with no consuming runtime, mostly Character Animator face-puppetry con
 ## Blender UI
 
 - **outliner-hierarchy-tree** - Dropped 2026-06-17 (user call): Blender exposes no Python tree widget (native Tree View is C-only, [blender #118201](https://projects.blender.org/blender/blender/issues/118201)), so a foldable tree could only be simulated inside the flat `UIList`. Kept the standard `UIList` with native name-search + scroll + category sort, left-aligned rows only (spec 036). Re-propose only if Blender exposes a Python tree widget, or the flat list proves unworkable on a real deep rig.
+- **subpanel-drag-reorder** - Sibling top-level panels already reorder by native header-drag (`bl_order` only sets the initial order); `bl_parent_id` subpanels cannot be reordered, an upstream Blender limit. Both halves are closed - one ships free, one is not ours to fix.
+- **onion-skin-overlay** - Free extensions (B Onion Skin) already ghost rigged characters and Blender has an open upstream design task ([T102217](https://developer.blender.org/T102217)); a Proscenio overlay would be the largest GUI-test surface in the addon for zero pipeline impact. Re-propose only if a cutout-animation session proves the ecosystem tools insufficient.
+- **texture-region-hide-for-mesh** - The premise was false: `resolve_region` honours a mesh's manual region and Snap-to-UV bounds is mesh-only, so hiding the Texture Region subpanel for a mesh element would drop a working control. Re-propose only if `Polygon2D` stops consuming the region.
 
 ## Project health
 

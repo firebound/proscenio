@@ -5,7 +5,7 @@
 
 import React from "react";
 
-import { previewExport, type ExportPreview } from "../api/export-flow";
+import { previewExportAsync, type ExportPreview } from "../api/export-flow";
 import type { ExportOptions } from "../lib/planner";
 import { log } from "../utils/log";
 
@@ -16,21 +16,32 @@ export interface UseExportPreview {
 
 export function useExportPreview(): UseExportPreview {
     const [preview, setPreview] = React.useState<ExportPreview | null>(null);
+    // The preview read is now async (spec-048 multiGet fast path). A
+    // monotonic token drops a slow refresh that resolves after a newer one
+    // so the displayed preview always reflects the latest request; the ref
+    // also lets a write after unmount be skipped.
+    const tokenRef = React.useRef<number>(0);
+    const mountedRef = React.useRef<boolean>(true);
+    React.useEffect(() => () => { mountedRef.current = false; }, []);
 
     const refresh = React.useCallback((opts: ExportOptions) => {
-        const result = previewExport(opts);
-        log.debug(
-            "useExportPreview",
-            "refresh",
-            result.kind,
-            "entries=",
-            result.manifest?.layers.length ?? 0,
-            "warnings=",
-            result.warnings?.length ?? 0,
-            "skipped=",
-            result.skipped?.length ?? 0,
-        );
-        setPreview(result);
+        const token = ++tokenRef.current;
+        void (async () => {
+            const result = await previewExportAsync(opts);
+            if (!mountedRef.current || token !== tokenRef.current) return;
+            log.debug(
+                "useExportPreview",
+                "refresh",
+                result.kind,
+                "entries=",
+                result.manifest?.layers.length ?? 0,
+                "warnings=",
+                result.warnings?.length ?? 0,
+                "skipped=",
+                result.skipped?.length ?? 0,
+            );
+            setPreview(result);
+        })();
     }, []);
 
     return { preview, refresh };

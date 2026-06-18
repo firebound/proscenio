@@ -25,17 +25,36 @@ from ._helpers import (
     draw_subpanel_header,
 )
 
+# Below this N-panel width the Element header drops the active-object name and
+# keeps just "Element" (a custom draw_header label cannot truncate, so the name
+# is dropped wholesale rather than left to vanish mid-word). Mirrors the
+# Skeleton header. GUI-tunable.
+_ELEMENT_HEADER_NAME_MIN_WIDTH = 220
+
 
 class PROSCENIO_PT_element(bpy.types.Panel):
     """Per-element settings - element-type selector; the body lives in subpanels."""
 
-    bl_label = "Element"
+    # bl_label blank: the full "Element: <name>" title is drawn in draw_header
+    # (Blender renders draw_header LEFT of bl_label), matching the Skeleton
+    # header so the active element name reads in the header, not a body row.
+    bl_label = ""
     bl_idname = "PROSCENIO_PT_element"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_order = 2
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        obj = context.active_object
+        name = obj.name if (obj is not None and obj.type == "MESH") else None
+        region = getattr(context, "region", None)
+        width = getattr(region, "width", 9999)
+        if name and width >= _ELEMENT_HEADER_NAME_MIN_WIDTH:
+            self.layout.label(text=f"Element: {name}")
+        else:
+            self.layout.label(text="Element")
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "element", "active_element")
@@ -81,7 +100,6 @@ class PROSCENIO_PT_active_mesh(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
-        self.layout.label(text=obj.name, icon="OBJECT_DATA")
         _draw_mesh.draw_body(self.layout, obj, obj.proscenio)
 
 
@@ -106,7 +124,6 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
-        self.layout.label(text=obj.name, icon="OBJECT_DATA")
         _draw_sprite.draw_body(self.layout, obj, obj.proscenio)
 
 

@@ -1,6 +1,8 @@
-"""Validation subpanel."""
+"""Validate subpanel - lives under the Pipeline panel (Import / Validate / Export)."""
 
 from __future__ import annotations
+
+from typing import ClassVar
 
 import bpy
 
@@ -8,14 +10,20 @@ from ._helpers import draw_issue_row, draw_subpanel_header
 
 
 class PROSCENIO_PT_validation(bpy.types.Panel):
-    """Lazy validation results - populated by the Validate operator."""
+    """Lazy validation results - populated by the Validate operator.
 
-    bl_label = "Validation"
+    A subpanel of Pipeline, sitting between Import and Export so the run
+    order reads top to bottom.
+    """
+
+    bl_label = "Validate"
     bl_idname = "PROSCENIO_PT_validation"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_order = 9
+    bl_parent_id = "PROSCENIO_PT_pipeline"
+    bl_order = 1
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "validation", "validation")

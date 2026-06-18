@@ -18,20 +18,22 @@ Submodules per concern:
 - outliner.py        - PROSCENIO_PT_outliner + UL_sprite_outliner
 - animation.py       - PROSCENIO_PT_animation + UL_actions
 - atlas.py           - PROSCENIO_PT_atlas + packer box
-- validation.py      - PROSCENIO_PT_validation
-- pipeline.py        - PROSCENIO_PT_pipeline + Import/Export subpanels
-- help.py            - PROSCENIO_PT_help (Open help + the debug smoke test)
+- pipeline.py        - PROSCENIO_PT_pipeline (first panel) + Import/Validate/Export
+- validation.py      - PROSCENIO_PT_validation (the Validate subpanel of Pipeline)
+
+The About footer (``PROSCENIO_PT_main``) hosts Open help + the debug smoke
+test; there is no standalone Help panel (it would clash with Helpers).
 """
 
 from __future__ import annotations
 
 import bpy
 
+from ..addon_prefs import debug_mode_enabled
 from . import (
     animation,
     atlas,
     element,
-    help,
     helpers,
     mesh_generation,
     outliner,
@@ -53,7 +55,7 @@ class PROSCENIO_PT_main(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_order = 100
 
-    def draw(self, _context: bpy.types.Context) -> None:
+    def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         row = layout.row(align=True)
         row.label(text="Pipeline v0.1.0")
@@ -61,8 +63,11 @@ class PROSCENIO_PT_main(bpy.types.Panel):
         right.alignment = "RIGHT"
         gh = right.operator("wm.url_open", text="", icon="URL", emboss=False)
         gh.url = "https://github.com/firebound/proscenio"
-        op = right.operator("proscenio.help", text="", icon="QUESTION", emboss=False)
+        # Help lives here (no standalone Help panel - it clashed with Helpers).
+        op = layout.operator("proscenio.help", text="Open help", icon="HELP")
         op.topic = "pipeline_overview"
+        if debug_mode_enabled(context):
+            layout.operator("proscenio.smoke_test", text="Run Smoke Test", icon="PLAY")
 
 
 _main_classes: tuple[type, ...] = (PROSCENIO_PT_main,)
@@ -77,10 +82,11 @@ def register() -> None:
     weight_paint.register()
     animation.register()
     atlas.register()
-    validation.register()
+    # Pipeline before validation: the Validate panel is now a subpanel of
+    # Pipeline, so its parent class must be registered first.
     pipeline.register()
+    validation.register()
     helpers.register()
-    help.register()
     for cls in _main_classes:
         bpy.utils.register_class(cls)
 
@@ -88,10 +94,10 @@ def register() -> None:
 def unregister() -> None:
     for cls in reversed(_main_classes):
         bpy.utils.unregister_class(cls)
-    help.unregister()
     helpers.unregister()
-    pipeline.unregister()
+    # Validate subpanel before its Pipeline parent.
     validation.unregister()
+    pipeline.unregister()
     atlas.unregister()
     animation.unregister()
     weight_paint.unregister()

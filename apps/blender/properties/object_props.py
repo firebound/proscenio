@@ -18,10 +18,29 @@ from bpy.props import (
     PointerProperty,
     StringProperty,
 )
+from bpy.types import Context, PropertyGroup
 from bpy.types import Object as _Object
-from bpy.types import PropertyGroup
 
+from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-not-found]
+from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
+    DRIVER_SOURCE_AXIS_ITEMS,
+)
 from ._dynamic_items import driver_bone_items, is_armature, on_any_update
+
+
+def _clamp_frame_and_update(self: ProscenioObjectProps, context: Context) -> None:
+    """Clamp ``frame`` into the sprite grid, then run the shared mirror update.
+
+    Written through ``self["frame"]`` (the idprop) so it does not re-enter this
+    callback. Wired onto ``frame``, ``hframes``, and ``vframes`` so shrinking
+    the grid pulls a now-out-of-range initial frame back in - the static
+    ``max=`` cannot express a bound that depends on two other fields.
+    """
+    clamped = clamp_frame_index(self.frame, self.hframes, self.vframes)
+    if clamped != int(self.frame):
+        self["frame"] = clamped
+    on_any_update(self, context)
+
 
 ELEMENT_TYPE_ITEMS = (
     ("mesh", "Mesh", "Deformable cutout - Polygon2D vertices + UV (default)", 0),
@@ -56,15 +75,6 @@ DRIVER_TARGET_ITEMS = (
     ("region_h", "Region H", "Texture region height (0..1)", 4),
 )
 
-DRIVER_SOURCE_AXIS_ITEMS = (
-    ("ROT_Z", "Bone Rot Z", "Pose bone local rotation around Z (typical 2D plane)", 0),
-    ("ROT_X", "Bone Rot X", "Pose bone local rotation around X", 1),
-    ("ROT_Y", "Bone Rot Y", "Pose bone local rotation around Y", 2),
-    ("LOC_X", "Bone Loc X", "Pose bone local translation X", 3),
-    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y", 4),
-    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z", 5),
-)
-
 
 class ProscenioObjectProps(PropertyGroup):
     """Per-Object Proscenio settings - one PropertyGroup per mesh."""
@@ -82,7 +92,7 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=on_any_update,
+        update=_clamp_frame_and_update,
     )
     vframes: IntProperty(  # type: ignore[valid-type]
         name="Vertical frames",
@@ -90,16 +100,16 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=on_any_update,
+        update=_clamp_frame_and_update,
     )
     frame: IntProperty(  # type: ignore[valid-type]
-        name="Initial frame",
+        name="Frame",
         description=(
             "Frame index shown at rest pose (sprite only). Animation tracks override at runtime."
         ),
         default=0,
         min=0,
-        update=on_any_update,
+        update=_clamp_frame_and_update,
     )
     centered: BoolProperty(  # type: ignore[valid-type]
         name="Centered",

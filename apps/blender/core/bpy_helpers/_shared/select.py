@@ -2,7 +2,7 @@
 
 Replaces the 5+ inline copies of the deselect-all-then-select-one
 idiom across operators (select_issue_object, select_outliner_object,
-create_ortho_camera, reproject_sprite_uv, create_slot, etc).
+create_ortho_camera, create_slot, etc).
 
 Lives in ``core/`` for now; will move to ``core/bpy_helpers/`` once
 the code-modularity split lands. The bpy import here is intentional and acknowledged

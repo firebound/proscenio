@@ -9,8 +9,9 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
-from ..core.armature.driver_expression import (
-    build_driver_expression,  # type: ignore[import-not-found]
+from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
+    DRIVER_SOURCE_AXIS_ITEMS,
+    build_driver_expression,
 )
 
 _DRIVER_VAR_NAME = "var"
@@ -20,14 +21,6 @@ _DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
     ("region_y", "Region Y", "Texture region origin Y (0..1)"),
     ("region_w", "Region W", "Texture region width (0..1)"),
     ("region_h", "Region H", "Texture region height (0..1)"),
-)
-_DRIVER_SOURCE_AXES: tuple[tuple[str, str, str], ...] = (
-    ("ROT_Y", "Bone Rot Y", "Rotation around world Y - front-ortho camera axis (visible 2D)"),
-    ("ROT_Z", "Bone Rot Z", "Rotation around world Z - vertical (spin in plan view)"),
-    ("ROT_X", "Bone Rot X", "Rotation around world X - horizontal (tilt out of plane)"),
-    ("LOC_X", "Bone Loc X", "Pose bone local translation X"),
-    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y"),
-    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z"),
 )
 
 
@@ -114,7 +107,7 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
     source_axis: EnumProperty(  # type: ignore[valid-type]
         name="Source",
         description="Pose bone transform channel feeding the driver",
-        items=_DRIVER_SOURCE_AXES,
+        items=DRIVER_SOURCE_AXIS_ITEMS,
         default="ROT_Y",
     )
     expression: StringProperty(  # type: ignore[valid-type]

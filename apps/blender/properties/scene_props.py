@@ -299,11 +299,11 @@ class ProscenioSkinningProps(PropertyGroup):
     show_provenance_overlay: BoolProperty(  # type: ignore[valid-type]
         name="Show provenance overlay",
         description=(
-            "When ON, the Weight Paint viewport colors each vert by its "
+            "When ON, the Edit Weights session colors each vert by its "
             "weight source: cyan = reprojected (came from a regen), white "
             "= user paint, gray = auto seed (untouched bind output). The "
-            "GPU draw handler ships later; this surface provides "
-            "the data + toggle so the panel layout is stable."
+            "GPU overlay renders inside the Edit Weights modal and refreshes "
+            "at stroke end."
         ),
         default=False,
     )

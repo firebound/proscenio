@@ -12,6 +12,8 @@ Each is a reconcile pass: diff the live surface against the page, add the missin
 - **`docs/04-godot-plugin/index.md` (~10 gaps).** Document the `type:"mesh"` element, the per-element sprite/mesh fields, slot routing + default visibility, the three animation track types, and the import options/preset surface.
 - **`docs/03-photoshop-plugin/index.md` (~15 gaps).** Document the Tags / Validate / Debug / Import / Migration sections and the pixels-per-unit / filename-template / forget-folder controls; fix the v1/v2 manifest comment drift.
 
-## In-code help strings to fix in the same pass
+## In-code help strings to fix
 
-Stale strings the audit flagged as doc-only (the code behaves correctly, the text lies): the driver-axis PropertyGroup labels (say "local rotation" though the operator forces world space), the `show_provenance_overlay` prop description ("GPU draw handler ships later" - it shipped), and the bind error string ("Skinning panel > Bind mode" - the panel is now Weight Paint).
+_Now in spec 036, PR 5 (the help-text + tooltip revision sweep) - listed here for the record until it ships._ Stale strings the audit flagged as doc-only (the code behaves correctly, the text lies): the driver-axis PropertyGroup labels (say "local rotation" though the operator forces world space; the duplicated axis enum behind them is unified in the same edit), the `show_provenance_overlay` prop description ("GPU draw handler ships later" - it shipped), and the bind error string ("Skinning panel > Bind mode" - the panel is now Weight Paint).
+
+The broader per-doc-home reconcile above stays here as a future documentation pass; only these in-code strings were pulled into spec 036.

@@ -2,7 +2,7 @@
 
 Reproducible bugs whose fix is **not yet applied** - the defect still reproduces. Each cites a reproducer + suspect + affected file, and promotes into a PR fix or a dedicated issue.
 
-Bugs whose fix already shipped and only await a GUI confirmation live in [`manual-testing.md`](manual-testing.md) (the 2026-06-12 reconciliation moved them out of here). This file is exclusively still-broken behavior. Distinct from [backlog-ui-feedback.md](backlog-ui-feedback.md) (polish, not behavior).
+Bugs whose fix already shipped and only await a GUI confirmation are walkable items in the QA Companion checklist ([`tools/qa-companion/checklist/`](../tools/qa-companion/checklist/)) - the locked owner of the manual-test surface (see [decisions.md](decisions.md)). This file is exclusively still-broken behavior. Distinct from [backlog-ui-feedback.md](backlog-ui-feedback.md) (polish, not behavior).
 
 ---
 
@@ -28,11 +28,11 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 **Arquivo:** `apps/blender/operators/uv_authoring.py:39-66` (`PROSCENIO_OT_reproject_sprite_uv`).
 
-**Severity:** medium - operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art). Owned pelo trabalho de UI/help surfaces.
+**Severity:** medium - operator funciona (não crash), mas resultado é destrutivo de UVs autoradas. Usuário precisa transformar manualmente pra recuperar layout original. Bloqueante pra workflow onde UVs foram cuidadosamente alinhadas (típico em pixel art). Sequenciado como o PR 2 da spec 036 (substituir `smart_project` por projeção planar determinística); fica aqui até a correção entrar.
 
 ### Help topic `sprite_frame_preview` é orphan - sem entry point na UI
 
-**Status:** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da sidebar (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. O help button está ausente de novo; re-wirar nos `_draw_*.py` das sub-boxes. (Item `[blocking]` do trabalho de UI/help surfaces.)
+**Status:** o fix `6749412` chegou a wirar um help button via `draw_subbox_header`, mas o restructure da sidebar (#96) regrediu silenciosamente - `panels/_helpers.py` ainda define `draw_subbox_header` com ZERO callers. O help button está ausente de novo; re-wirar nos `_draw_*.py` das sub-boxes. (PR 1 da spec 036, junto com o orphan `pose_library` + teste de cobertura reversa; fica aqui até entrar.)
 
 **Repro:** abre fixture com sprite_frame mesh (ex: `examples/generated/mouth_drive/mouth_drive.blend` ou blink_eyes) > select sprite_frame mesh > N-panel > Proscenio > Active Sprite > sub-box "Sprite frame" expandido.
 
@@ -75,6 +75,12 @@ Open follow-ups surfaced during the sprite-frame wrap investigation (the main bu
 
 **Severity:** low - the visible sprite-frame wrap break is fixed; these are robustness/fidelity polish with no current visible divergence.
 
+### Doll roundtrip waivers: waist 1px size drift + PPU=100 baseline (re-measure before a release tag)
+
+Not a confirmed defect - a measurement to re-verify through the UXP path. The JSX reader that logged the -1px drift (Blender manifest `255x173` vs JSX-era `255x172`) is retired; the UXP png-writer now trims via `Document.trim(TRANSPARENT)`, a different bbox engine. Re-measure the `waist` element size on the doll roundtrip: on a persisting drift, align rounding (round-half-up on both sides) or re-document the waiver with the fresh number; on a match, close it. PPU=100 is the doll fixture's baseline assumption, re-measured alongside. (Moved here when `manual-testing.md` was retired; the smoke itself is the QA Companion `FLOW-DOLL` walk.)
+
+**Severity:** low - known waiver, no visible break; re-measure only gates a clean release number.
+
 ## apps/blender - code-read audit (2026-06-15, not reproduced)
 
 From the QA Companion audit, verified against current `main`; read-not-reproduced, so confirm a repro before fixing. Dead code + the duplicated driver-axis enum went to [backlog-code-quality.md](backlog-code-quality.md); doc gaps to [backlog-docs.md](backlog-docs.md). Grouped by area for a future robustness STUDY.
@@ -86,7 +92,7 @@ From the QA Companion audit, verified against current `main`; read-not-reproduce
 
 **Operator robustness + feedback.**
 
-- **Select Issue Object can traceback on an out-of-view object** (med) - `select_issue_object` -> `select_named_or_warn` -> `select_only` has no view-layer guard (spec 043 guarded only the outliner path); selecting an object outside the active view layer raises. `selection.py:40`, `_shared/select.py:23-35`.
+- **Select Issue Object can traceback on an out-of-view object** (med) - `select_issue_object` -> `select_named_or_warn` -> `select_only` has no view-layer guard (spec 043 guarded only the outliner path); selecting an object outside the active view layer raises. `selection.py:40`, `_shared/select.py:23-35`. _Spec 036, PR 3: same `select_issue_object` edit as the frame-unhide change._
 - **Bake Current Pose keys both quaternion and euler** (med) - inserts on both rotation channels for every bone regardless of `bone.rotation_mode`, leaving garbage fcurves on the unused channel. `pose_library.py:143-145`.
 - **Quick Armature lock-to-front-ortho ignored at invoke** (low) - `invoke` reads the other options from the PG but not `lock_to_front_ortho`, so the panel toggle has no effect unless overridden via F3. `quick_armature.py:200-221`.
 - **Copy Weights to Selected returns FINISHED on a zero-coverage transfer** (low) - a fully-uncovered transfer registers as a successful undo step with no weights applied (only the report downgrades to WARNING). `copy_weights_to_selected.py:49-51`.
@@ -96,8 +102,8 @@ From the QA Companion audit, verified against current `main`; read-not-reproduce
 **Inert / wrong-target controls.**
 
 - **Show-provenance-overlay panel toggle is inert outside the modal** (med) - the toggle registers no draw handler; the overlay only exists inside the Edit Weights modal, so as a standalone toggle it does nothing. `weight_paint.py:338`, `edit_weights.py:97-99`.
-- **Diagnostics / Help "?" open the wrong help topic** (low) - both hard-code `help_topic="pipeline_overview"` with no matching HELP_TOPICS entry. `diagnostics.py:29`, `help.py:44`.
-- **Run Smoke Test bypasses the report gate + prefix** (low) - raw `self.report` instead of `report_info`. `help_dispatch.py:110`.
+- **Diagnostics / Help "?" open the wrong help topic** (low) - both hard-code `help_topic="pipeline_overview"` with no matching HELP_TOPICS entry. `diagnostics.py:29`, `help.py:44`. _Spec 036, PR 4: the Help + Diagnostics merge fixes this._
+- **Run Smoke Test bypasses the report gate + prefix** (low) - raw `self.report` instead of `report_info`. `help_dispatch.py:110`. _Spec 036, PR 4._
 
 **Photoshop-import side effects (Blender side).**
 

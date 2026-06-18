@@ -51,3 +51,4 @@ Only 036 remains before the beta gate closes (043-048 audited done; see [`_index
 - [ ] One version source of truth (a root `VERSION` or the git tag) stamped into `blender_manifest.toml`, the Godot `plugin.cfg`, and the Photoshop `manifest.json` at release.
 - [ ] Single `CHANGELOG.md` with per-app sub-bullets per release.
 - [ ] Re-run the gated `blender-multi-version-matrix` check before the first public `v*` tag (its trigger was keyed to `blender-v*`; see [`gated.md`](gated.md)).
+- [ ] Walk the QA Companion checklist ([`tools/qa-companion/checklist/`](../tools/qa-companion/checklist/)) for any `pending` / `regressed` item in the changed areas before a `v*` tag - a failure there is a new blocking bug. (This is the GUI-smoke gate that `manual-testing.md` used to carry; the retests are now walkable items in the checklist, the locked owner of the manual-test surface.)

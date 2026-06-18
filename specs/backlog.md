@@ -18,8 +18,7 @@ Issues nomeadas para a próxima sprint/spec, por app → painel. Formato: `**slu
 
 ### Blender · Global chrome
 
-- **status-badge-tooltip-scope** `[ui]` - A tooltip de uma status badge deve mostrar só o que aquela badge representa; hoje qualquer badge abre o texto inteiro da legenda, ainda desatualizado (menciona `TOOL_SETTINGS`, que não representa mais "só funciona no Blender"). Finding F-116.
-- **tooltip-copy-revision** `[ui]` - Revisar o texto de todas as tooltips: o `?` do painel explica o painel no geral; subpanels explicam suas funcionalidades específicas, sem vazar entre subpanels salvo estritamente necessário. (As quebras de linha indevidas em tooltips são o repro de `docs-no-hard-wrap-rule`, nos quick wins abaixo.)
+- _Na spec 036 (UI/help/surfaces):_ `status-badge-tooltip-scope` (F-116, legenda que ainda diz `TOOL_SETTINGS`) e `tooltip-copy-revision` foram para o pass de revisão de help-text da spec 036. (As quebras de linha indevidas em tooltips seguem como repro de `docs-no-hard-wrap-rule`, nos quick wins abaixo.)
 - **native-list-standardization** `[ui]` - Padronizar as listas de todos os painéis no estilo outliner nativo do Blender: foldable items / accordion em hierarquia clara, busca nativa, marcações custom por painel. Caso concreto que resta: `wpaint-override-list-scroll` (a lista de slots já migrou para `template_list` na pruned 046; o `outliner-hierarchy-tree` foi dropado - ver [`dropped.md`](dropped.md): UIList do Blender não tem árvore nativa em Python).
 - **list-multiselect** `[feature]` - Seleção múltipla (Shift/Ctrl) por lista, conforme o que o clique significa: multi nas listas que mapeiam seleção real do Blender, single nas que são "escolher um". O Outliner já entregou multi (extend/toggle por `event.shift`/`event.ctrl`); resta a seleção de bones do Skeleton e o set-em-lote nos overrides per-bone do Weight Paint, que dependem do componente de lista ainda não construído (cf. `wpaint-override-list-scroll`). Trava técnica: o `template_list` só tem um `active_index`, então multi exige estado de selecionado por item + marcador custom (o highlight múltiplo é aproximação, não nativo).
 
@@ -30,13 +29,9 @@ Issues nomeadas para a próxima sprint/spec, por app → painel. Formato: `**slu
 ### Blender · Element
 
 - **incorporate-blender-mesh-as-element** `[feature]` - Botão para incorporar uma malha criada no Blender como elemento do fluxo do Proscenio, quando o ativo for um objeto do Blender. **`DECIDIR (STUDY):`** o que "incorporar" seta (`element_type`, props default, material) e quais pré-condições.
-- **element-header-active-name** `[ui]` - Header do painel mostrar `: <nome>` do elemento ativo ("Active Sprite: <obj_name>"), deixando claro que é o ativo.
 - **element-driver-management** `[ui]` - Lista de todos os "drive from bone" do elemento, permitindo excluir / alterar / adicionar vários; hoje só substitui e é impossível remover um driver pelo painel. (distinto do gated `sticky-panel`, que é o painel fixo durante a edição de pose)
-- **texture-region-hide-for-mesh** `[ui]` - Ocultar o subpanel Texture Region quando o tipo for mesh (Polygon2D não usa). Finding F-18.
-- **reproject-uv-purpose-clarity** `[ui]` - O propósito de Reproject UV / UV bounds / Texture Region não está claro (a projeção funciona). cf. o bug aberto em [`backlog-bugs-found.md`](backlog-bugs-found.md) ("Reproject UV: UV resultante rotacionada/flipada") e o gated `atlas-region-helper` (mesmo território de UV/region authoring).
-- **sprite-frame-clamp** `[ui]` - Clampar `Initial frame` em `[0, hframes*vframes-1]` (hoje aceita qualquer int; `min=0` existe, falta `max`/`soft_max`). Idem o campo `frame`. `object_props.py:124`.
-- **sprite-frame-label-rename** `[ui]` - Renomear a label `Initial frame` para `Frame` (em animação, quando keyframado, não é "initial" - é o frame value sendo animado; alinha com o Sprite2D do Godot). Manter a description atual. `object_props.py:124`.
-- **sprite-centered-vs-origin-doc** `[ui]` - `centered` (`object_props.py:104`) só existe para `sprite`, não `mesh`; confunde com a origin vinda do `[origin]` do PS (são pivots separados). Documentar a distinção no help do Active Sprite. **`DECIDIR (STUDY):`** `centered` deve derivar da origin importada ou continuar toggle manual?
+- **sprite-centered-vs-origin-doc** `[ui]` - **`DECIDIR (STUDY):`** `centered` (`object_props.py:104`, só existe para `sprite`) deve derivar da origin importada do `[origin]` do PS ou continuar toggle manual? (A linha de help que documenta a distinção `centered` vs origin já está na spec 036; aqui resta só a pergunta de design.)
+- _Na spec 036 (UI/help/surfaces):_ `element-header-active-name`, `texture-region-hide-for-mesh` (F-18), `reproject-uv-purpose-clarity`, `sprite-frame-clamp`, `sprite-frame-label-rename`. O bug que a clareza-do-reproject referenciava segue em [`backlog-bugs-found.md`](backlog-bugs-found.md) (a correção do operador é o PR 2 da spec 036); o gated `atlas-region-helper` continua em [`gated.md`](gated.md).
 
 ### Blender · Skeleton
 
@@ -63,5 +58,5 @@ Cada um é grande o bastante para virar spec próprio; estão aqui só para não
 
 Issues simples/baratas que já vivem num home de backlog; **permanecem lá** e aqui ficam só como ponteiro para a fila.
 
-- **sprite-frame-preview-help-orphan** `[bug]` `[quick win]` - O help topic `sprite_frame_preview` é orphan (sem entry point na UI); re-wirar o botão `?` nos `_draw_*.py` das sub-boxes (`draw_subbox_header` ficou sem callers após o restructure #96). Fecha o item 1.13/9 do checklist. → [`backlog-bugs-found.md`](backlog-bugs-found.md).
+- **sprite-frame-preview-help-orphan** `[bug]` `[quick win]` - Na spec 036 (PR 1): re-wirar o `?` órfão do topic `sprite_frame_preview` (junto com o `pose_library`) + um teste de cobertura reversa que prende a família inteira de topics. Fecha o item 1.13/9 do checklist.
 - **docs-no-hard-wrap-rule** `[code]` `[quick win]` - Codificar a regra no-hard-wrap em [`.ai/conventions/docs.md`](../.ai/conventions/docs.md) ("prosa é uma linha por parágrafo/bullet; deixar o editor soft-wrap; nunca hand-wrap markdown ou parágrafos de comentário"); o reflow em si segue oportunista. → [`backlog-code-quality.md`](backlog-code-quality.md). cf. `tooltip-copy-revision`.

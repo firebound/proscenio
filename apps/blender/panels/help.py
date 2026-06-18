@@ -1,4 +1,10 @@
-"""Help subpanel - shortcut cheat-sheet for F3 search."""
+"""Help panel - opens the in-panel help popup; carries the debug smoke test.
+
+Replaces the old F3 operator cheat-sheet (which the panel rendered as an
+unusable wall of idnames) with a single Open help button onto the existing
+``proscenio.help`` popup. The Diagnostics panel folded in here: its lone
+smoke-test button now shows under this panel when ``debug_mode`` is on.
+"""
 
 from __future__ import annotations
 
@@ -6,31 +12,12 @@ from typing import ClassVar
 
 import bpy
 
+from ..addon_prefs import debug_mode_enabled
 from ._helpers import draw_subpanel_header
-
-_OPERATOR_REFERENCE: tuple[tuple[str, str], ...] = (
-    ("proscenio.validate_export", "Validate"),
-    ("proscenio.export_godot", "Export Proscenio (.proscenio)"),
-    ("proscenio.reexport_godot", "Re-export"),
-    ("proscenio.import_photoshop", "Import Photoshop Manifest"),
-    ("proscenio.create_ortho_camera", "Preview Camera"),
-    ("proscenio.bake_current_pose", "Bake Current Pose"),
-    ("proscenio.toggle_ik_chain", "Toggle IK"),
-    ("proscenio.quick_armature", "Quick Armature"),
-    ("proscenio.reproject_sprite_uv", "Reproject UV"),
-    ("proscenio.snap_region_to_uv", "Snap region to UV bounds"),
-    ("proscenio.pack_atlas", "Pack Atlas"),
-    ("proscenio.apply_packed_atlas", "Apply Packed Atlas"),
-    ("proscenio.unpack_atlas", "Unpack Atlas"),
-    ("proscenio.select_issue_object", "Select Issue Object"),
-    ("proscenio.select_outliner_object", "Select Outliner Object"),
-    ("proscenio.toggle_outliner_favorite", "Toggle Outliner Favorite"),
-    ("proscenio.smoke_test", "Smoke test (Hello Proscenio)"),
-)
 
 
 class PROSCENIO_PT_help(bpy.types.Panel):
-    """Shortcut cheat-sheet - every Proscenio operator with its idname."""
+    """Help - opens the pipeline help popup; hosts the debug smoke test."""
 
     bl_label = "Help"
     bl_idname = "PROSCENIO_PT_help"
@@ -45,11 +32,11 @@ class PROSCENIO_PT_help(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
-        layout.label(text="Operators (use F3 to search):", icon="QUESTION")
-        for idname, label in _OPERATOR_REFERENCE:
-            row = layout.row(align=True)
-            row.label(text=label)
-            row.label(text=idname)
+        op = layout.operator("proscenio.help", text="Open help", icon="HELP")
+        op.topic = "pipeline_overview"
+        if debug_mode_enabled(context):
+            layout.separator()
+            layout.operator("proscenio.smoke_test", text="Run Smoke Test", icon="PLAY")
 
 
 _classes: tuple[type, ...] = (PROSCENIO_PT_help,)

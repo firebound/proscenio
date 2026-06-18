@@ -12,7 +12,6 @@ from typing import ClassVar
 
 import bpy
 
-from ..core._shared.props_access import describe_export_target
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 
 
@@ -135,11 +134,8 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
             row = layout.row(align=True)
             row.label(text="", icon="ARMATURE_DATA")
             row.prop(scene_props, "active_armature", text="")
-        described = describe_export_target(context.scene)
-        if described is not None:
-            name, picked = described
-            source = "picked" if picked else "first in scene - no rig picked"
-            layout.label(text=f"Exports: {name} ({source})", icon="EXPORT")
+        # The "Exports: <name>" read-out moved to Pipeline > Export (the panel
+        # that actually exports); Skeleton just picks the rig.
         explicit_target = _explicit_target(context)
         if not armatures:
             row = layout.row()

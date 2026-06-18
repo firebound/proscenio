@@ -1,19 +1,18 @@
-"""Pipeline panel - Import + Export accordion subpanels.
+"""Pipeline panel - Import + Validate + Export accordion subpanels.
 
-Was the Export panel. The parent is a grouper; the work lives in two
-subpanels: Import (the Photoshop manifest importer) and Export (the
-.proscenio writer + sticky path + pixels-per-unit). Validate + Preview
-Camera ride along in the Export subpanel until Phase 3 relocates them to
-the Validation + Helpers panels. The status badge + help button on each
-subpanel header land with the header-convention pass (a later phase); the
-parent keeps the existing ``export`` badge until the feature-id rename in
-that same phase.
+The first panel in the Proscenio tab and the grouper for the whole
+PSD -> Blender -> Godot flow: Import (the Photoshop manifest importer),
+Validate (the lazy validator + issue list), and Export (the .proscenio
+writer + sticky path + pixels-per-unit + the export-target read-out).
 """
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import bpy
 
+from ..core._shared.props_access import describe_export_target  # type: ignore[import-not-found]
 from ._helpers import draw_subpanel_header
 
 
@@ -23,14 +22,15 @@ def _scene_props(context: bpy.types.Context) -> bpy.types.AnyType | None:
 
 
 class PROSCENIO_PT_pipeline(bpy.types.Panel):
-    """Pipeline - groups the Import + Export subpanels."""
+    """Pipeline - the first panel; groups Import + Validate + Export."""
 
     bl_label = "Pipeline"
     bl_idname = "PROSCENIO_PT_pipeline"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Proscenio"
-    bl_order = 10
+    bl_order = 0
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "pipeline", "pipeline_overview")
@@ -63,11 +63,7 @@ class PROSCENIO_PT_import(bpy.types.Panel):
 
 
 class PROSCENIO_PT_export(bpy.types.Panel):
-    """Export subpanel - sticky path, ppu, validate, export, re-export.
-
-    Validate + Preview Camera live here until Phase 3 moves them to the
-    Validation + Helpers panels.
-    """
+    """Export subpanel - the export-target read-out, sticky path, ppu, export."""
 
     bl_label = "Export"
     bl_idname = "PROSCENIO_PT_export"
@@ -75,7 +71,7 @@ class PROSCENIO_PT_export(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_pipeline"
-    bl_order = 1
+    bl_order = 2
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "export", "export")
@@ -85,6 +81,13 @@ class PROSCENIO_PT_export(bpy.types.Panel):
         scene_props = _scene_props(context)
         if scene_props is None:
             return
+        # The export-target read-out lives here (the panel that exports), not on
+        # the Skeleton panel: "Exports: <name> (picked / first in scene)".
+        described = describe_export_target(context.scene)
+        if described is not None:
+            name, picked = described
+            source = "picked" if picked else "first in scene - no rig picked"
+            layout.label(text=f"Exports: {name} ({source})", icon="ARMATURE_DATA")
         layout.prop(scene_props, "last_export_path")
         layout.prop(scene_props, "pixels_per_unit")
         layout.prop(scene_props, "bundle_textures")

@@ -74,3 +74,15 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 **Arquivo:** convenção - `packages/fixtures/README.md` (seção sprites) e `apps/godot/addons/proscenio/builders/sprite_builder.gd`. Sem fix de código; é doc/autoria.
 
 **Severity:** low - pegadinha de autoria/expectativa, sem crash nem perda de dado.
+
+### Sprite-frame import polish: discrete update mode, animation step/fps, bezier handles
+
+Open follow-ups surfaced during the sprite-frame wrap investigation (the main bug - exporter clamped out-of-range frames while Blender wraps, which froze `mouth_drive` in Godot - was fixed by switching the exporter to modulo wrap; see `sprite_frame_animations._wrap_frame` and its tests). These three are still open robustness/fidelity gaps, no visible break today:
+
+- **sprite_frame track imported as CONTINUOUS, not DISCRETE:** `apps/godot/addons/proscenio/builders/animation_builder.gd:148-154` sets interp NEAREST but never the update mode. A discrete frame index should be `UPDATE_DISCRETE`. Works today because of NEAREST, but is fragile under blend/seek. Set `value_track_set_update_mode(idx, UPDATE_DISCRETE)`.
+- **imported animation keeps Godot's default `step = 1/30`:** the importer never sets `anim.step`, while Blender authored at 24fps. Cosmetic only (playback is in seconds, duration identical) but the editor's frame GRID reads 30 vs 24. For WYSIWYG on the grid, carry `scene.render.fps` through the schema (the `.proscenio` format currently drops fps, keeps only seconds) and set `anim.step = 1.0/fps` on import.
+- **bezier handle fidelity gap (general, not this fixture):** `bone_transform` tracks export only value+time per key, dropping Blender's bezier handles; the importer hardcodes CUBIC (position/scale) and CUBIC_ANGLE (rotation). Godot's auto-tangent CUBIC != Blender's handle-driven bezier, so bone-motion easing can diverge. Investigate only when a case shows visibly different bone motion.
+
+**Arquivos:** `apps/godot/addons/proscenio/builders/animation_builder.gd:148-154`; (fps) the importer + the `.proscenio` schema (no fps field today).
+
+**Severity:** low - the visible sprite-frame wrap break is fixed; these are robustness/fidelity polish with no current visible divergence.

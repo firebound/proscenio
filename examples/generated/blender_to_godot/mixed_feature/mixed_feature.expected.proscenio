@@ -342,12 +342,42 @@
               "frame": 0
             },
             {
+              "time": 0.291667,
+              "interp": "constant",
+              "frame": 3
+            },
+            {
+              "time": 0.333333,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
               "time": 0.458333,
               "interp": "constant",
               "frame": 2
             },
             {
               "time": 0.5,
+              "interp": "constant",
+              "frame": 3
+            },
+            {
+              "time": 0.541667,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
+              "time": 0.625,
+              "interp": "constant",
+              "frame": 1
+            },
+            {
+              "time": 0.708333,
+              "interp": "constant",
+              "frame": 0
+            },
+            {
+              "time": 0.791667,
               "interp": "constant",
               "frame": 3
             },

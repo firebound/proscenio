@@ -25,9 +25,12 @@ Loads PNGs produced by ``draw_layers.py`` and builds:
   ``var * 2 + 2`` reading ``mouth_drive`` Z rotation in world space.
   - World space + XYZ Euler so ``var`` is radians, not quaternion
     components.
-  - The expression maps [-pi/2, +pi/2] rad -> [1, 5] - with the
-    IntProperty's [0, hframes*vframes-1] = [0, 3] clamp, that yields
-    a clean cell sweep across the rotation range.
+  - The expression maps [-pi/2, +pi/2] rad -> [1, 5], which OVERSHOOTS
+    the 4-cell grid (valid frames 0..3). The overshoot is intentional:
+    Blender's preview shader picks the cell with a MODULO, so frames 4
+    and 5 wrap back to cells 0 and 1, and this fixture exercises that
+    out-of-range wrap. The exporter wraps to match (it must not clamp to
+    the last cell, which would drop the wrapped motion).
 - **Action** ``mouth_drive_anim`` keyframing ``mouth_drive`` Z rotation
   -pi/2 -> +pi/2 -> 0 over 24 frames, plus a small translation cycle
   on ``mouth_pos`` to demonstrate position-vs-driver separation.

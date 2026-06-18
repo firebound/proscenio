@@ -152,6 +152,22 @@ def _grid_max_frame(sprite: bpy.types.Object) -> int:
     return max(0, hframes * vframes - 1)
 
 
+def _wrap_frame(raw: int, max_frame: int) -> int:
+    """Wrap an out-of-range frame index into the grid, matching Blender's preview.
+
+    The driven (or keyed) value can overshoot the grid, and Godot's
+    ``Sprite2D.frame`` rejects an out-of-range index. Blender's spritesheet
+    preview shader picks the cell with a ``MODULO`` on the frame, so an index
+    past the last cell wraps back to the start (``4 -> 0``, ``5 -> 1`` for a
+    4-cell grid) rather than sticking on the last cell. Wrap here too so the
+    export matches what the author saw in Blender; clamping instead collapsed
+    the overshoot into one repeated cell and dropped the motion. Python's
+    modulo keeps the result in ``[0, max_frame]`` for negative indices as well
+    (``-1 -> max_frame``), the same cell Blender's texture-repeat lands on.
+    """
+    return raw % (max_frame + 1)
+
+
 def _bake_track(
     scene: bpy.types.Scene, fd: _FrameDriver, action: bpy.types.Action, fps: int
 ) -> Track | None:
@@ -159,10 +175,11 @@ def _bake_track(
 
     The driven value can overshoot the sprite grid (the expression is
     arbitrary), and Godot's ``Sprite2D.frame`` rejects an out-of-range index,
-    so clamp to ``[0, hframes * vframes - 1]``. A key lands only where the
-    frame changes - frames are discrete, so the keys carry constant
-    interpolation (hard cuts). Times use the ``(frame - 1) / fps`` base shared
-    with the bone tracks so the two play in lockstep.
+    so wrap into ``[0, hframes * vframes - 1]`` - matching Blender's preview
+    (see :func:`_wrap_frame`). A key lands only where the frame changes -
+    frames are discrete, so the keys carry constant interpolation (hard cuts).
+    Times use the ``(frame - 1) / fps`` base shared with the bone tracks so the
+    two play in lockstep.
     """
     lo = int(action.frame_range[0])
     hi = int(action.frame_range[1])
@@ -177,7 +194,7 @@ def _bake_track(
         raw = _eval_frame(fd.driver.expression, values)
         if raw is None:
             return None
-        value = min(max(raw, 0), max_frame)
+        value = _wrap_frame(raw, max_frame)
         if value != last:
             # (frame - 1) / fps matches the bone tracks; clamp at 0 so an action
             # starting at frame 0 does not emit a negative time (Key.time is ge=0).
@@ -202,8 +219,9 @@ def _direct_frame_track(
     ``proscenio.frame`` (the blink_eyes shape: a frame cycle, no driver).
 
     Reads the fcurve keyframe values straight off the action, so it does not
-    need the addon PropertyGroup registered. Clamps to the sprite grid, constant
-    interpolation, ``(frame - 1) / fps`` time base - same as the driven bake.
+    need the addon PropertyGroup registered. Wraps into the sprite grid (see
+    :func:`_wrap_frame`), constant interpolation, ``(frame - 1) / fps`` time
+    base - same as the driven bake.
     """
     # Prefer the PropertyGroup curve over the raw CP curve when both exist, so a
     # direct keyframe export honours the same PG-first contract the rest of the
@@ -222,7 +240,7 @@ def _direct_frame_track(
     keys: list[Key] = []
     last: int | None = None
     for kp in iter_keyframe_points(fcurve):
-        value = min(max(round(float(kp.co[1])), 0), max_frame)
+        value = _wrap_frame(round(float(kp.co[1])), max_frame)
         time = round(max(0.0, (float(kp.co[0]) - 1.0) / float(fps)), 6)
         if value != last:
             keys.append(Key(time=time, interp="constant", frame=value))

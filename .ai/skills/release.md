@@ -7,13 +7,15 @@ description: Package and publish each component
 
 ## Versioning
 
-SemVer per component. Tag format: `<component>-vX.Y.Z`.
+One product version in lockstep across the three apps. Tag format: `vX.Y.Z` (no per-component prefix). The Blender addon, Photoshop plugin, and Godot plugin all carry this same number.
 
-- `apps/blender-v0.1.0`
-- `apps/godot-v0.1.0`
-- `apps/photoshop-v0.1.0`
+- Bump by the highest severity across components (a breaking change in any app makes the product MAJOR); unchanged apps re-stamp and ride along.
+- Pre-1.0: `0.MINOR.PATCH`, `-beta` suffix on the beta channel.
+- One source of truth (the tag / a root `VERSION`) stamps all three manifests at release.
 
-`packages/models/schemas/proscenio.schema.json` carries its own integer `format_version`, **independent** of component versions. Bumping the schema version is a separate decision documented in the PR.
+Full rationale and the carry-along rule are in [`../conventions/layout.md`](../conventions/layout.md) "Versioning" and the locked decision in [`../../specs/decisions.md`](../../specs/decisions.md).
+
+`packages/models/schemas/proscenio.schema.json` carries its own integer `format_version`, **independent** of the product version. Bumping the schema version is a separate decision documented in the PR.
 
 ## Blender addon
 
@@ -47,10 +49,11 @@ Output: `proscenio-photoshop-X.Y.Z.ccx` (rename to `.zip` if `.ccx` packaging is
 
 ## CI release flow
 
-1. Push a tag matching `<component>-v*`.
-2. The `release.yml` workflow builds the right zip(s) for that component.
-3. The workflow attaches artifacts to the GitHub Release for the tag.
-4. Manual final step: submit to the Blender or Godot platform store.
+1. Push a single tag matching `v*` (e.g. `v0.9.0-beta`).
+2. The `release.yml` workflow builds all three zips and attaches them to the GitHub Release for the tag.
+3. Manual final step: submit the changed artifacts to the Blender Extensions Platform and the Godot Asset Library (skip a store whose bundle did not change).
+
+> The workflow's tag trigger still matches the retired per-component prefixes (`blender-v*` / `godot-v*` / `photoshop-v*`); retargeting it to a single `v*` and building all three zips per tag is the implementation follow-up tracked in the release plan.
 
 ## Pre-release checklist
 

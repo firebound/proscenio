@@ -53,16 +53,18 @@ So edit through the panel. A Custom Property you poke by hand mid-session is ign
 
 Open the sidebar with <kbd>N</kbd> and switch to the **Proscenio** tab. Its subpanels:
 
-- **Active Sprite** - sprite type (`polygon` / `sprite_frame`), spritesheet metadata, texture region, `Drive from Bone`, `Import Photoshop Manifest`.
-- **Active Slot** - the slot anchor, default-attachment picker, and attachment list (shown when an `is_slot` [Empty](https://docs.blender.org/manual/en/latest/modeling/empties.html) is selected).
-- **Skeleton** - bone count plus the pose helpers (`Bake Current Pose`, `Toggle IK`, `Save Pose to Library`, `Quick Armature`, `Create Slot`).
-- **Skinning** - `Automesh from Sprite`, `Bind to Picker Armature`, `Edit Weights`, weight transfer, and snapshots.
+- **Element** - the element-type selector (`Mesh` / `Sprite`); the per-kind **Active Mesh** / **Active Sprite** subpanels (Polygon2D fields / Sprite2D spritesheet metadata), plus **Texture Region** and **Drive from Bone**.
+- **Slots** - the project slot list and `Create Slot`; the **Active Slot** subpanel carries the default-attachment picker, attachment list, and `Bind to Bone` (shown when an `is_slot` [Empty](https://docs.blender.org/manual/en/latest/modeling/empties.html) is selected).
+- **Skeleton** - the armature picker plus the bone hierarchy, the **Pose Mode** helpers (`Bake Current Pose`, `Toggle IK`, `Save Pose to Library`), and **Quick Armature**.
+- **Mesh Generation** - `Automesh from Alpha` (one shot) and `Automesh Interactive` (the modal authoring entry), plus the debug pipeline.
+- **Weight Paint** - `Bind to Target Armature`, `Edit Weights`, weight transfer, and snapshots.
 - **Outliner** - a sprite-centric flat list with a substring filter and favorites.
 - **Animation** - a read-only summary of the actions the exporter will emit.
 - **Atlas** - the atlas filename plus `Pack Atlas` / `Unpack Atlas` / `Apply Packed Atlas`.
 - **Validation** - the issue list, click-to-select.
-- **Export** - the sticky path, `pixels_per_unit`, `Validate` / `Export` / `Re-export`, and `Preview Camera`.
-- **Diagnostics** - a smoke test.
+- **Pipeline** - `Import Photoshop Manifest`, plus the **Export** section: the sticky path, `pixels_per_unit`, `Validate` / `Export` / `Re-export`.
+- **Helpers** - `Preview Camera`.
+- **Help** - `Open help` (the topic popup); under `debug_mode` it also carries the smoke test.
 
 Every subpanel header has a status badge and a `?` button that opens topic-specific help.
 
@@ -84,10 +86,10 @@ So rename from the bone side, keep your deform meshes bound, and the match holds
 ### First rig from a Photoshop manifest
 
 1. *Export from Photoshop*: run the plugin and export to a folder.
-2. *Import in Blender*: open the target `.blend`, then click `Import Photoshop Manifest` in the **Active Sprite** subpanel and point at the manifest. Planes land at their PSD positions, materials linked, with a single `root` bone.
+2. *Import in Blender*: open the target `.blend`, then click `Import Photoshop Manifest` in the **Pipeline** panel and point at the manifest. Planes land at their PSD positions, materials linked, with a single `root` bone.
 3. *Add the bones*: in [Edit Mode](https://docs.blender.org/manual/en/latest/animation/armatures/bones/editing/introduction.html), or with `Quick Armature` for a modal click-drag.
-4. *Bind the meshes*: select them and press <kbd>Ctrl+P</kbd>, then [`Armature Deform`](https://docs.blender.org/manual/en/latest/animation/armatures/skinning/parenting.html) (or use the **Skinning** subpanel). Paint the weights.
-5. *Set each sprite's type* in **Active Sprite**.
+4. *Bind the meshes*: select them and press <kbd>Ctrl+P</kbd>, then [`Armature Deform`](https://docs.blender.org/manual/en/latest/animation/armatures/skinning/parenting.html) (or use the **Weight Paint** panel). Paint the weights.
+5. *Set each element's type* in the **Element** panel.
 6. *Validate and export*: `Validate`, then `Export`.
 
 ### Iterate

@@ -8,7 +8,8 @@
 import { app, core } from "photoshop";
 import type { UxpFolder } from "uxp";
 
-import { adaptDocument } from "./adapt-document";
+import { adaptDocument, type AdaptedDocument } from "./adapt-document";
+import { adaptDocumentFast } from "./active-document";
 import {
     buildExportPlan,
     type EntryRef,
@@ -57,38 +58,58 @@ export function previewExport(opts: ExportOptions): ExportPreview {
     try {
         const doc = app.activeDocument;
         if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
-        const adapted = adaptDocument(doc);
-        log.trace("export-flow", "previewExport opts", opts, "layers", adapted.layers.length);
-        const plan = buildExportPlan(adapted.info, adapted.layers, {
-            ...opts,
-            ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
-        });
-        const errors = validateManifest(plan.manifest);
-        if (errors.length > 0) {
-            return {
-                kind: "validation-failed",
-                manifest: plan.manifest,
-                skipped: plan.skipped,
-                warnings: plan.warnings,
-                writes: plan.writes,
-                entryRefs: plan.entryRefs,
-                errors,
-            };
-        }
-        return {
-            kind: "ok",
-            manifest: plan.manifest,
-            skipped: plan.skipped,
-            warnings: plan.warnings,
-            writes: plan.writes,
-            entryRefs: plan.entryRefs,
-        };
+        return previewFromAdapted(adaptDocument(doc), opts);
     } catch (err) {
         return {
             kind: "validation-failed",
             errors: [`preview failed: ${err instanceof Error ? err.message : String(err)}`],
         };
     }
+}
+
+/** Async sibling of `previewExport` using the spec-048 multiGet fast read
+ *  (one round trip, falling back to the synchronous DOM walk). The plan +
+ *  validation legs are identical; only the document read differs. */
+export async function previewExportAsync(opts: ExportOptions): Promise<ExportPreview> {
+    try {
+        const doc = app.activeDocument;
+        if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
+        const adapted = await adaptDocumentFast(doc);
+        return previewFromAdapted(adapted, opts);
+    } catch (err) {
+        return {
+            kind: "validation-failed",
+            errors: [`preview failed: ${err instanceof Error ? err.message : String(err)}`],
+        };
+    }
+}
+
+function previewFromAdapted(adapted: AdaptedDocument, opts: ExportOptions): ExportPreview {
+    log.trace("export-flow", "preview opts", opts, "layers", adapted.layers.length);
+    const plan = buildExportPlan(adapted.info, adapted.layers, {
+        ...opts,
+        ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
+    });
+    const errors = validateManifest(plan.manifest);
+    if (errors.length > 0) {
+        return {
+            kind: "validation-failed",
+            manifest: plan.manifest,
+            skipped: plan.skipped,
+            warnings: plan.warnings,
+            writes: plan.writes,
+            entryRefs: plan.entryRefs,
+            errors,
+        };
+    }
+    return {
+        kind: "ok",
+        manifest: plan.manifest,
+        skipped: plan.skipped,
+        warnings: plan.warnings,
+        writes: plan.writes,
+        entryRefs: plan.entryRefs,
+    };
 }
 
 export async function runExport(

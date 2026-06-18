@@ -20,11 +20,10 @@ import { log } from "../../../utils/log";
 interface TagDetailsProps {
     indentPx: number;
     node: TagTreeNode;
-    busy: boolean;
     onChange: (changes: TagChanges) => void;
 }
 
-export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, onChange }) => {
+export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange }) => {
     const baseline = React.useMemo(() => formFromTags(node.tags), [node.tags]);
     const [form, setForm] = React.useState<DetailForm>(baseline);
     const lastRawName = React.useRef(node.rawName);
@@ -103,7 +102,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     className="tag-input"
                     value={form.folder}
                     placeholder="(none)"
-                    disabled={busy}
                     onChange={onFolder}
                 />
             </DetailRow>
@@ -113,7 +111,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     className="tag-input"
                     value={form.path}
                     placeholder="(layer name)"
-                    disabled={busy}
                     onChange={onPath}
                 />
             </DetailRow>
@@ -123,7 +120,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     className="tag-input"
                     value={form.scale}
                     placeholder="1"
-                    disabled={busy}
                     onChange={onScale}
                 />
             </DetailRow>
@@ -133,7 +129,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     className="tag-input narrow"
                     value={form.originX}
                     placeholder="x"
-                    disabled={busy}
                     onChange={onOriginX}
                 />
                 <input
@@ -141,12 +136,10 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                     className="tag-input narrow"
                     value={form.originY}
                     placeholder="y"
-                    disabled={busy}
                     onChange={onOriginY}
                 />
                 <sp-action-button
                     onClick={onUseSelection}
-                    disabled={busy ? true : undefined}
                     title="Fill X / Y from the centre of the current Photoshop marquee selection"
                 >
                     From selection
@@ -156,7 +149,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                 <input
                     type="checkbox"
                     checked={form.originMarker}
-                    disabled={busy}
                     onChange={onOriginMarker}
                 />
             </DetailRow>
@@ -167,16 +159,15 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, busy, on
                         className="tag-input"
                         value={form.namePattern}
                         placeholder="(none)"
-                        disabled={busy}
                         onChange={onNamePattern}
                     />
                 </DetailRow>
             )}
             <div className="tag-detail-actions">
-                <sp-action-button onClick={onRevert} disabled={!dirty || busy ? true : undefined}>
+                <sp-action-button onClick={onRevert} disabled={!dirty ? true : undefined}>
                     Revert
                 </sp-action-button>
-                <sp-action-button onClick={onApply} disabled={!dirty || busy ? true : undefined}>
+                <sp-action-button onClick={onApply} disabled={!dirty ? true : undefined}>
                     Apply
                 </sp-action-button>
             </div>

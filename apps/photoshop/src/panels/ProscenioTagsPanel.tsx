@@ -66,7 +66,6 @@ export const ProscenioTagsPanel: React.FC = () => {
                 tree={tags.tree}
                 activeLayerPath={activeLayerPath}
                 collapsed={collapsed}
-                busy={tags.busy}
                 lastError={tags.lastError}
                 onRename={onRename}
                 onToggleCollapse={onToggleCollapse}

@@ -15,7 +15,7 @@
 
 import React from "react";
 
-import { readActiveLayerTree } from "../api/active-document";
+import { readActiveLayerTreeAsync } from "../api/active-document";
 import { buildTagTreeReusing, type TagTreeNode } from "../lib/tag-tree";
 import { renameLayer, type RenameResult } from "../api/layer-rename";
 import { elementsEqual } from "../utils/arrays";
@@ -32,7 +32,6 @@ const HIDDEN_SAFETY_POLL_MS = 60000;
 export interface UseTagTree {
     tree: TagTreeNode[];
     noDocument: boolean;
-    busy: boolean;
     lastError: string | null;
     rename: (layerPath: readonly string[], newName: string, id?: number) => Promise<void>;
     refresh: () => void;
@@ -41,7 +40,6 @@ export interface UseTagTree {
 export function useTagTree(version: number): UseTagTree {
     const [tree, setTree] = React.useState<TagTreeNode[]>([]);
     const [noDocument, setNoDocument] = React.useState(true);
-    const [busy, setBusy] = React.useState(false);
     const [lastError, setLastError] = React.useState<string | null>(null);
     const [tick, setTick] = React.useState(0);
     // Derived, not state: `version` starts at 0 and bumps on every PS
@@ -52,25 +50,61 @@ export function useTagTree(version: number): UseTagTree {
     const treeRef = React.useRef<TagTreeNode[]>([]);
     const noDocRef = React.useRef<boolean>(true);
     const lastSyncAtRef = React.useRef<number>(0);
+    // The read is now async (spec-048 multiGet), so guard the classic
+    // stale-async hazards. `inFlightRef` stops a second read starting
+    // before the current one resolves - on a deep PSD two overlapping
+    // batchPlay walks would double the IPC load. `pendingRef` records that
+    // a trigger (version bump / poll) arrived mid-flight so the loop does
+    // exactly one more read afterwards rather than dropping the update.
+    // `mountedRef` drops a resolved write after unmount.
+    const inFlightRef = React.useRef<boolean>(false);
+    const pendingRef = React.useRef<boolean>(false);
+    const mountedRef = React.useRef<boolean>(true);
+    React.useEffect(() => () => { mountedRef.current = false; }, []);
+
+    const runLoop = React.useCallback(async () => {
+        inFlightRef.current = true;
+        try {
+            do {
+                pendingRef.current = false;
+                if (typeof document !== "undefined" && document.hidden) break;
+                // Stamp the time of the actual IPC read so the poll can skip a
+                // tick when an event-driven sync already covered this interval.
+                lastSyncAtRef.current = Date.now();
+                const snap = await readTree(treeRef.current);
+                if (!mountedRef.current) return;
+                // buildTagTreeReusing preserves node refs for unchanged
+                // subtrees, so a top-level element-wise compare suffices to
+                // bail when nothing structural moved.
+                if (
+                    snap.noDocument === noDocRef.current
+                    && elementsEqual(treeRef.current, snap.tree)
+                ) continue;
+                noDocRef.current = snap.noDocument;
+                treeRef.current = snap.tree;
+                setTree(snap.tree);
+                setNoDocument(snap.noDocument);
+                // pendingRef is set true by `syncOnce` from outside this
+                // closure (a trigger that arrived mid-flight) and mountedRef
+                // by the unmount cleanup; eslint cannot see those cross-
+                // closure mutations and wrongly flags the condition.
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            } while (pendingRef.current && mountedRef.current);
+        } finally {
+            inFlightRef.current = false;
+        }
+    }, []);
 
     const syncOnce = React.useCallback(() => {
         if (typeof document !== "undefined" && document.hidden) return;
-        // Stamp the time of the actual IPC read so the poll can skip a tick
-        // when an event-driven sync already covered this interval.
-        lastSyncAtRef.current = Date.now();
-        const snap = readTree(treeRef.current);
-        // buildTagTreeReusing preserves node refs for unchanged
-        // subtrees, so a top-level element-wise compare suffices to
-        // bail when nothing structural moved.
-        if (
-            snap.noDocument === noDocRef.current
-            && elementsEqual(treeRef.current, snap.tree)
-        ) return;
-        noDocRef.current = snap.noDocument;
-        treeRef.current = snap.tree;
-        setTree(snap.tree);
-        setNoDocument(snap.noDocument);
-    }, []);
+        // A read is already running: record the request so the loop reads
+        // once more when it finishes, instead of starting a second walk.
+        if (inFlightRef.current) {
+            pendingRef.current = true;
+            return;
+        }
+        void runLoop();
+    }, [runLoop]);
 
     React.useEffect(() => {
         syncOnce();
@@ -119,7 +153,6 @@ export function useTagTree(version: number): UseTagTree {
 
     const rename = React.useCallback(
         async (layerPath: readonly string[], newName: string, id?: number) => {
-            setBusy(true);
             setLastError(null);
             try {
                 const result: RenameResult = await renameLayer(layerPath, newName, id);
@@ -127,18 +160,19 @@ export function useTagTree(version: number): UseTagTree {
             } catch (err) {
                 setLastError(err instanceof Error ? err.message : "rename threw exception");
             } finally {
-                setBusy(false);
                 refresh();
             }
         },
         [refresh],
     );
 
-    return { tree, noDocument, busy, lastError, rename, refresh };
+    return { tree, noDocument, lastError, rename, refresh };
 }
 
-function readTree(prev: TagTreeNode[]): { tree: TagTreeNode[]; noDocument: boolean } {
-    const adapted = readActiveLayerTree();
+async function readTree(
+    prev: TagTreeNode[],
+): Promise<{ tree: TagTreeNode[]; noDocument: boolean }> {
+    const adapted = await readActiveLayerTreeAsync();
     if (adapted === null) return { tree: [], noDocument: true };
     return { tree: buildTagTreeReusing(adapted.layers, prev), noDocument: false };
 }

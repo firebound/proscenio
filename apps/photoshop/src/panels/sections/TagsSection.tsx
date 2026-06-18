@@ -12,7 +12,6 @@ interface Props {
     tree: TagTreeNode[];
     activeLayerPath: readonly string[] | null;
     collapsed: ReadonlySet<string>;
-    busy: boolean;
     lastError: string | null;
     onRename: (layerPath: readonly string[], newName: string, id?: number) => void;
     onToggleCollapse: (displayPath: readonly string[]) => void;
@@ -22,7 +21,6 @@ export const TagsSection: React.FC<Props> = ({
     tree,
     activeLayerPath,
     collapsed,
-    busy,
     lastError,
     onRename,
     onToggleCollapse,
@@ -48,7 +46,6 @@ export const TagsSection: React.FC<Props> = ({
                     nodes={tree}
                     activeLayerPath={activeLayerPath}
                     collapsed={collapsed}
-                    busy={busy}
                     onRename={onRename}
                     onToggleCollapse={onToggleCollapse}
                 />
@@ -61,7 +58,6 @@ interface NodeListProps {
     nodes: TagTreeNode[];
     activeLayerPath: readonly string[] | null;
     collapsed: ReadonlySet<string>;
-    busy: boolean;
     onRename: Props["onRename"];
     onToggleCollapse: Props["onToggleCollapse"];
 }
@@ -70,7 +66,6 @@ const TagNodeList: React.FC<NodeListProps> = ({
     nodes,
     activeLayerPath,
     collapsed,
-    busy,
     onRename,
     onToggleCollapse,
 }) => (
@@ -81,7 +76,6 @@ const TagNodeList: React.FC<NodeListProps> = ({
                 node={node}
                 activeLayerPath={activeLayerPath}
                 collapsed={collapsed}
-                busy={busy}
                 onRename={onRename}
                 onToggleCollapse={onToggleCollapse}
             />
@@ -102,7 +96,6 @@ interface BranchProps {
     node: TagTreeNode;
     activeLayerPath: readonly string[] | null;
     collapsed: ReadonlySet<string>;
-    busy: boolean;
     onRename: Props["onRename"];
     onToggleCollapse: Props["onToggleCollapse"];
 }
@@ -111,7 +104,6 @@ const TagNodeBranch: React.FC<BranchProps> = ({
     node,
     activeLayerPath,
     collapsed,
-    busy,
     onRename,
     onToggleCollapse,
 }) => {
@@ -126,7 +118,6 @@ const TagNodeBranch: React.FC<BranchProps> = ({
                 node={node}
                 selected={selected}
                 collapsed={isCollapsed}
-                busy={busy}
                 onRename={onRename}
                 onToggleCollapse={onToggleCollapse}
             />
@@ -135,7 +126,6 @@ const TagNodeBranch: React.FC<BranchProps> = ({
                     nodes={node.children}
                     activeLayerPath={activeLayerPath}
                     collapsed={collapsed}
-                    busy={busy}
                     onRename={onRename}
                     onToggleCollapse={onToggleCollapse}
                 />

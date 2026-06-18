@@ -33,6 +33,15 @@ export function adaptDocument(doc: PsDocument): AdaptedDocument {
     }
     const layers = toLayerArray(doc.layers).map(adaptLayer);
     log.trace("adapt-document", "adapted", layers.length, "top-level layer(s)");
+    return assembleAdapted(doc, layers);
+}
+
+// Assembles the AdaptedDocument from an already-resolved layer tree plus
+// the document's synchronous header + anchor reads. Shared by the
+// synchronous DOM walk above and the spec-048 multiGet fast path, which
+// resolves `layers` asynchronously but reads name / size / guides the same
+// cheap synchronous way.
+export function assembleAdapted(doc: PsDocument, layers: Layer[]): AdaptedDocument {
     return {
         info: {
             name: doc.name,

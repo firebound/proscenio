@@ -33,7 +33,6 @@ export interface TagRowProps {
     node: TagTreeNode;
     selected: boolean;
     collapsed: boolean;
-    busy: boolean;
     onRename: (layerPath: readonly string[], newName: string, id?: number) => void;
     onToggleCollapse: (displayPath: readonly string[]) => void;
 }
@@ -42,7 +41,6 @@ const TagRowImpl: React.FC<TagRowProps> = ({
     node,
     selected,
     collapsed,
-    busy,
     onRename,
     onToggleCollapse,
 }) => {
@@ -144,21 +142,20 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         glyph={GLYPH_IGNORE}
                         title={node.tags.ignore === true ? "Remove [ignore]" : "Add [ignore] (skip on export)"}
                         active={node.tags.ignore === true}
-                        disabled={busy}
+                        disabled={false}
                         onClick={onToggleIgnore}
                     />
                     <GlyphToggle
                         glyph={GLYPH_MERGE}
                         title={mergeTitle}
                         active={node.tags.merge === true}
-                        disabled={busy || !node.isGroup}
+                        disabled={!node.isGroup}
                         onClick={onToggleMerge}
                     />
                     <select
                         key="kind"
                         className="tag-select tag-select-kind"
                         value={node.tags.kind ?? ""}
-                        disabled={busy}
                         onChange={onKindChange}
                         title="Kind override - mesh (Polygon2D), sprite (Sprite2D)"
                     >
@@ -170,7 +167,6 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         key="blend"
                         className="tag-select tag-select-blend"
                         value={blendSelectValue(node.tags.blend)}
-                        disabled={busy}
                         onChange={onBlendChange}
                         title="Composite blend (none = no [blend] tag written)"
                     >
@@ -183,7 +179,7 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         glyph={expanded ? GLYPH_COLLAPSE : GLYPH_EXPAND}
                         title={expanded ? "Hide advanced fields" : "Edit folder / path / scale / origin / name pattern"}
                         active={expanded}
-                        disabled={busy}
+                        disabled={false}
                         onClick={onClickExpand}
                     />
                 </div>
@@ -192,7 +188,6 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                 <TagDetails
                     indentPx={indentPx}
                     node={node}
-                    busy={busy}
                     onChange={onAdvancedChange}
                 />
             )}
@@ -202,13 +197,12 @@ const TagRowImpl: React.FC<TagRowProps> = ({
 
 export const TagRow = React.memo(TagRowImpl, tagRowEqual);
 
-function tagRowEqual(prev: TagRowProps, next: TagRowProps): boolean {
+export function tagRowEqual(prev: TagRowProps, next: TagRowProps): boolean {
     // Node-ref equality skips the structural walk below.
     if (
         prev.node === next.node
         && prev.selected === next.selected
         && prev.collapsed === next.collapsed
-        && prev.busy === next.busy
         && prev.onRename === next.onRename
         && prev.onToggleCollapse === next.onToggleCollapse
     ) {
@@ -217,7 +211,6 @@ function tagRowEqual(prev: TagRowProps, next: TagRowProps): boolean {
     return (
         prev.selected === next.selected
         && prev.collapsed === next.collapsed
-        && prev.busy === next.busy
         && prev.onRename === next.onRename
         && prev.onToggleCollapse === next.onToggleCollapse
         && prev.node.rawName === next.node.rawName

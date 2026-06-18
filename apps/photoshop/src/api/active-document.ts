@@ -2,8 +2,10 @@
 // writes or schedules an export.
 
 import { app } from "photoshop";
+import type { PsDocument } from "photoshop";
 
-import { adaptDocument, type AdaptedDocument } from "./adapt-document";
+import { adaptDocument, assembleAdapted, type AdaptedDocument } from "./adapt-document";
+import { readLayersViaMultiGet } from "./multiget-read";
 
 export interface DocSnapshot {
     name: string;
@@ -25,4 +27,22 @@ export function readActiveLayerTree(): AdaptedDocument | null {
     const doc = app.activeDocument;
     if (doc === null) return null;
     return adaptDocument(doc);
+}
+
+/** Adapts a document via the spec-048 multiGet fast path (one round trip),
+ *  falling back to the synchronous DOM walk when the multiGet read fails or
+ *  returns an unusable shape. The header + anchor are read synchronously
+ *  either way. */
+export async function adaptDocumentFast(doc: PsDocument): Promise<AdaptedDocument> {
+    const layers = await readLayersViaMultiGet(doc);
+    if (layers !== null) return assembleAdapted(doc, layers);
+    return adaptDocument(doc);
+}
+
+/** Async sibling of `readActiveLayerTree` using the multiGet fast path.
+ *  Returns `null` when no document is open. */
+export async function readActiveLayerTreeAsync(): Promise<AdaptedDocument | null> {
+    const doc = app.activeDocument;
+    if (doc === null) return null;
+    return adaptDocumentFast(doc);
 }

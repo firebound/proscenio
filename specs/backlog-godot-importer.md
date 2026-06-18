@@ -1,6 +1,6 @@
 # Godot importer robustness backlog
 
-Code-read defects in the Godot import path (`apps/godot/addons/proscenio/`), promoted from the QA Companion audit on 2026-06-15 ([findings.md](../tools/qa-companion/findings.md)). These were found by reading, not yet reproduced in the editor; each cites the exact code. Most share one root: the builders trust the document shape with no validation, so malformed or duplicate-name input silently corrupts the rig or aborts the whole import. A single defensive pass over the builders closes the cluster.
+Code-read defects in the Godot import path (`apps/godot/addons/proscenio/`), promoted from the QA Companion code-read audit on 2026-06-15 (the doc-coverage half of that audit is in [backlog-docs.md](backlog-docs.md)). These were found by reading, not yet reproduced in the editor; each cites the exact code. Most share one root: the builders trust the document shape with no validation, so malformed or duplicate-name input silently corrupts the rig or aborts the whole import. A single defensive pass over the builders closes the cluster.
 
 ## Non-destructive reimporter is an empty stub (decision needed)
 

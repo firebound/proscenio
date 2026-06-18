@@ -1,6 +1,6 @@
 # Photoshop plugin backlog
 
-Code-read defects in the Photoshop UXP plugin (`apps/photoshop/src/`), promoted from the QA Companion audit on 2026-06-15 ([findings.md](../tools/qa-companion/findings.md)). Found by reading, not yet reproduced. The export-side crash pair and the live-PPU/async-preview items already shipped via specs 041/048 and are not repeated here. Distinct from the doc-coverage pass (the undocumented sections live in [backlog-code-quality.md](backlog-code-quality.md)).
+Code-read defects in the Photoshop UXP plugin (`apps/photoshop/src/`), promoted from the QA Companion code-read audit on 2026-06-15 (the doc-coverage half is in [backlog-docs.md](backlog-docs.md)). Found by reading, not yet reproduced. The export-side crash pair and the live-PPU/async-preview items already shipped via specs 041/048 and are not repeated here. Distinct from the doc-coverage pass (the undocumented sections live in [backlog-code-quality.md](backlog-code-quality.md)).
 
 ## Spritesheet group silently rewritten to sprite on any tag edit
 

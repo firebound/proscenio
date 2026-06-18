@@ -1,31 +1,14 @@
-# Audit findings
+# Documentation and help-text backlog
 
-Produced by the spec 040 pass that mapped the whole product surface (automatic,
-code-read), now maintained beside the QA Companion checklist. Kept out of the
-verification surface on purpose: [checklist/](checklist/) is the walkable
-manual-test surface (controls a human checks off before a release tag), and this
-file is the audit - every place the documented *intent* and the implemented
-*reality* diverge. A checklist item that touches a finding carries a
-`(see finding)` pointer here.
+The doc/help-text coverage gaps from the QA Companion code-read audit (the 2026-06-15 triage of the retired `tools/qa-companion/findings.md`, which lived under the QA Companion tool until this file replaced it). Each row is a control or behavior the docs / in-panel help never describe, or a doc sentence that drifted while the code is correct - the remedy is an editorial pass per doc home, not a code change. The real code issues from the same audit were promoted to [backlog-bugs-found.md](backlog-bugs-found.md), [backlog-godot-importer.md](backlog-godot-importer.md), and [backlog-photoshop.md](backlog-photoshop.md); the discarded findings (already fixed, by-design, or incorrect) were dropped, recoverable from git history. The walkable manual-test surface stays in the [QA Companion checklist](../tools/qa-companion/checklist/).
 
-Finding types: `drift` (doc says X, code does Y) | `undocumented` (control exists,
-no doc) | `unimplemented` (doc promises, code absent) | `dead` (unreachable / no-op
-control) | `suspected-bug` (a likely defect found by reading, not yet reproduced).
+Row types (the audit's original tags): `drift` (doc says X, code does Y) | `undocumented` (control exists, no doc) | `dead` (unreachable / no-op control). The `unimplemented` / `suspected-bug` rows were code issues and have been promoted out.
 
-**Audit pass (2026-06-15).** A re-audit verified every row against current `main` and
-sorted each into doc/help-text-only, real code issue, or ignorable. This file now holds
-only the **doc/help-text** rows - a control or behavior the docs/help never describe, or
-a doc sentence that drifted while the code is correct. They are the source list for the
-grouped documentation pass recorded in
-[backlog-code-quality.md](../../specs/backlog-code-quality.md). The real code issues were
-promoted to their own backlogs ([backlog-bugs-found.md](../../specs/backlog-bugs-found.md)
-for Blender behavior, [backlog-godot-importer.md](../../specs/backlog-godot-importer.md),
-[backlog-photoshop.md](../../specs/backlog-photoshop.md)); the already-fixed / by-design /
-incorrect findings were dropped (recoverable from git history). The earlier Photoshop
-manifest-export pair shipped via spec 041 (photoshop-overhaul, since pruned; see
-[decisions.md](../../specs/decisions.md)).
+**Why it matters:** the doc pages and in-panel help describe an older, smaller surface than ships - whole controls (status badges, `?` help buttons, atlas/region readouts, driver In/Out range, bundle-textures, import placement, the entire Photoshop Tags/Validate/Debug panels) are absent, and several doc sentences state the opposite of the code (the validation check list, "next to the .blend", "validates against the schema", the driver axis "local rotation", the weight-overlay "ships later"). A reader is misled, and the help-surfaces specs (023/036) are left half-done. Grouping avoids ~100 micro-issues for what is one editorial pass per doc home.
 
-Counts after the pass (2026-06-15): 79 Blender, 10 Godot, 15 Photoshop; all doc/help-text.
+**Scope:** one pass per doc home, source-of-truth = the table below. (1) Blender `docs/02-blender-addon/*` - reconcile each panel page against its panel module, add the missing controls, fix the stale `drift` sentences (notably 09-validation.md's check list, 10-pipeline.md's export claims), document the header badge/`?` convention once. (2) Godot `docs/04-godot-plugin/index.md` - document the `type:"mesh"` element, per-element fields, slot routing, track types, import options. (3) Photoshop `docs/03-photoshop-plugin/index.md` - document the Tags/Validate/Debug/Import/Migration sections and the PPU/template/forget controls, fix the v1/v2 comment drift. Also fix the stale in-code help/description strings flagged below (the driver-axis PropertyGroup labels, the weight-overlay prop description, the bind error string). Tick a row off as its doc lands. The earlier Photoshop manifest-export pair shipped via spec 041 (since pruned; see [decisions.md](decisions.md)).
+
+**Counts (2026-06-15):** 79 Blender, 10 Godot, 15 Photoshop. The `ID` / `Type` / `Sev` columns are the audit's original tags; they no longer cross-link anywhere now that `findings.md` is retired.
 
 ## Blender addon
 

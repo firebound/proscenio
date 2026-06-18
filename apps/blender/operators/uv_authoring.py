@@ -2,79 +2,62 @@
 
 from __future__ import annotations
 
-import contextlib
 from typing import ClassVar
 
 import bpy
-from bpy.props import FloatProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
 from ..core._shared.region import compute_region_from_uvs  # type: ignore[import-not-found]
 from ..core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 from ..core.bpy_helpers._shared.mesh_uvs import (  # type: ignore[import-not-found]
     collect_mesh_loop_uvs,
-)
-from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
-    preserve_selection,
+    planar_uv_from_positions,
 )
 
 
 class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
-    """Re-unwrap the active mesh's UVs against its first image-textured material.
+    """Re-unwrap the active mesh's UVs with a deterministic planar projection.
 
-    Known limitation: smart_project derives the projection from face
-    normals. For XZ-picture-plane quads the normal points -Y, so it can
-    rotate/mirror the result relative to a hand-authored layout. Use only
-    on meshes whose UVs were never hand-authored, or restore from the
-    pre_pack snapshot afterwards.
+    Maps each loop's vertex position onto the mesh's dominant plane: for the
+    standard XZ picture-plane quad, U follows X and V follows Z, normalized
+    over the bounding box - the same mapping the PSD importer and the fixtures
+    author. Unlike Smart UV Project (whose face-normal frame rotated and
+    mirrored an XZ quad), it never disturbs a hand-authored orientation, and
+    it runs entirely in Object Mode with no mode toggle or selection change.
     """
 
     bl_idname = "proscenio.reproject_sprite_uv"
     bl_label = "Proscenio: Reproject UV"
     bl_description = (
-        "Re-projects the active mesh's UVs (Smart UV Project) so the texture "
-        "lines up after vertex edits. Active object only. May rotate / "
-        "mirror UVs relative to hand-authored layouts."
+        "Re-projects the active mesh's UVs with a deterministic planar "
+        "projection (U follows X, V follows Z for a picture-plane mesh) so the "
+        "texture lines up after vertex edits without rotating or mirroring the "
+        "layout. Active object only."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
-
-    angle_limit: FloatProperty(  # type: ignore[valid-type]
-        name="Angle limit",
-        description="Smart UV Project angle limit (radians)",
-        default=1.15192,
-        min=0.0,
-        max=3.14159,
-    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
-        # Toggles Edit Mode internally; starting in Edit Mode leaks the
-        # user's in-progress selection. Object Mode only.
+        # Reads mesh.vertices[].co, which is the BMesh-stale pre-edit copy in
+        # Edit Mode; Object Mode only so the projection sees live geometry.
         return bool(context.mode == "OBJECT")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
-        prior_mode = context.mode
+        mesh = obj.data
+        uv_layer = mesh.uv_layers.active or mesh.uv_layers.new(name="UVMap")
+        if not mesh.loops:
+            report_warn(self, f"'{obj.name}' has no geometry to project")
+            return {"CANCELLED"}
 
-        # preserve_selection restores selection + active; the inner finally
-        # only handles the Edit-Mode toggle below.
-        with preserve_selection(context):
-            try:
-                for other in context.scene.objects:
-                    other.select_set(False)
-                obj.select_set(True)
-                context.view_layer.objects.active = obj
-                if prior_mode != "EDIT_MESH":
-                    bpy.ops.object.mode_set(mode="EDIT")
-                bpy.ops.mesh.select_all(action="SELECT")
-                bpy.ops.uv.smart_project(angle_limit=self.angle_limit)
-            finally:
-                if prior_mode != "EDIT_MESH":
-                    with contextlib.suppress(RuntimeError):
-                        bpy.ops.object.mode_set(mode="OBJECT")
+        positions = [tuple(mesh.vertices[loop.vertex_index].co) for loop in mesh.loops]
+        uvs = planar_uv_from_positions(positions)
+        for loop_index, (u, v) in enumerate(uvs):
+            uv_layer.data[loop_index].uv = (u, v)
+        mesh.update()
 
         report_info(self, f"reprojected UVs on '{obj.name}'")
         return {"FINISHED"}

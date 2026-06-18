@@ -20,26 +20,13 @@ from typing import ClassVar
 import bpy
 
 from ..addon_prefs import debug_mode_enabled
-from ..core._shared.props_access import element_type_of  # type: ignore[import-not-found]
 from ._helpers import (
     _active_armature,
+    _is_mesh_element,
     _scene_skinning,
     draw_subpanel_header,
     draw_target_readout,
 )
-
-
-def _active_is_mesh_element(context: bpy.types.Context) -> bool:
-    """True when the active object is a MESH whose element_type is "mesh".
-
-    A sprite element is also a Blender MESH, but running a mesh tool on it
-    replaces its single quad - so the mesh-generation gate matches the
-    weight_paint panel and excludes sprites. Mirrors weight_paint._is_mesh_element.
-    """
-    obj = context.active_object
-    if obj is None or obj.type != "MESH":
-        return False
-    return element_type_of(obj) == "mesh"
 
 
 class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
@@ -62,7 +49,7 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
         if obj is None or obj.type != "MESH":
             layout.label(text="select a mesh to generate or edit", icon="INFO")
             return
-        if not _active_is_mesh_element(context):
+        if not _is_mesh_element(context):
             # warn-not-hide: a sprite element is a mesh in Blender, but meshing
             # it would replace its single quad. Point at native bone-parenting.
             layout.label(text="mesh tools are mesh-only (this is a sprite)", icon="INFO")
@@ -87,7 +74,7 @@ class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh_element(context)
+        return _is_mesh_element(context)
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "automesh_alpha", "automesh_alpha")
@@ -110,7 +97,7 @@ class PROSCENIO_PT_automesh_interactive(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh_element(context)
+        return _is_mesh_element(context)
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "automesh_interactive", "automesh_interactive")
@@ -133,7 +120,7 @@ class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return _active_is_mesh_element(context) and debug_mode_enabled(context)
+        return _is_mesh_element(context) and debug_mode_enabled(context)
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "debug_pipeline", "debug_pipeline")

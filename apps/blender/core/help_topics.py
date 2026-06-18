@@ -179,7 +179,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Skeleton2DIK.",
             ),
         ),
-        see_also=("specs/decisions.md",),
+        see_also=(),
     ),
     "animation": HelpTopic(
         title="Animation",
@@ -340,7 +340,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "into your main rig as usual.",
             ),
         ),
-        see_also=("specs/decisions.md",),
+        see_also=(),
     ),
     "outliner": HelpTopic(
         title="Outliner",
@@ -518,7 +518,9 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "parenting, and weights survive the round trip.",
             ),
         ),
-        see_also=("examples/generated/simple_psd",),
+        see_also=(
+            "https://github.com/firebound/proscenio/tree/main/examples/generated/simple_psd",
+        ),
     ),
     "mesh_generation": HelpTopic(
         title="Mesh Generation",
@@ -624,6 +626,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "- frame: the cell shown at rest pose; animation tracks override it.",
                 "- centered: Godot Sprite2D.centered - texture centered on the node",
                 "  origin (on) or top-left at the origin (off).",
+            ),
+            _section(
+                "Centered vs origin",
+                "'centered' is the Sprite2D pivot toggle - it sets where the texture",
+                "sits within the node (centered on the origin, or top-left at it). It is",
+                "a manual choice on this sprite, independent of the object origin the PSD",
+                "[origin] tag imported. The imported origin places the whole element in",
+                "the scene; 'centered' only moves the texture relative to that point.",
             ),
         ),
         see_also=(),

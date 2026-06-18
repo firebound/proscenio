@@ -66,18 +66,19 @@ def test_panel_topic_ids_present() -> None:
         assert tid in HELP_TOPICS, f"missing topic {tid!r}"
 
 
-def test_see_also_references_exist_on_disk() -> None:
-    """Cross-references must point at real directories or files.
+def test_see_also_references_are_urls() -> None:
+    """Cross-references must be http(s) URLs, not local paths.
 
-    Catches drift - if a referenced path is renamed or removed, the help
-    topic surfaces a broken pointer.
+    The help popup renders an http(s) ref as a clickable ``wm.url_open``
+    button; a local path cannot resolve inside an installed (zipped) extension,
+    so a non-URL ref is a dead button. This replaced the old disk-existence
+    check when the three local-path refs were migrated to GitHub URLs.
     """
     for topic_id, topic in HELP_TOPICS.items():
         for ref in topic.see_also:
-            target = REPO_ROOT / ref
-            assert target.exists(), (
-                f"topic {topic_id!r} references missing path {ref!r} "
-                f"(resolved to {target})"
+            assert ref.startswith(("http://", "https://")), (
+                f"topic {topic_id!r} see_also {ref!r} is not an http(s) URL "
+                f"(a local path cannot resolve in an installed extension)"
             )
 
 

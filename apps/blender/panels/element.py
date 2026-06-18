@@ -18,15 +18,12 @@ import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
 from . import _draw_driver_shortcut, _draw_mesh, _draw_region, _draw_sprite
-from ._helpers import draw_issue_row, draw_subpanel_header
-
-
-def _active_mesh_props(context: bpy.types.Context) -> bpy.types.AnyType | None:
-    """Return the active MESH object's Proscenio props, or None."""
-    obj = context.active_object
-    if obj is None or obj.type != "MESH":
-        return None
-    return getattr(obj, "proscenio", None)
+from ._helpers import (
+    _active_mesh_props,
+    _is_mesh_element,
+    draw_issue_row,
+    draw_subpanel_header,
+)
 
 
 class PROSCENIO_PT_element(bpy.types.Panel):
@@ -77,14 +74,14 @@ class PROSCENIO_PT_active_mesh(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        props = _active_mesh_props(context)
-        return props is not None and props.element_type == "mesh"
+        return _is_mesh_element(context)
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "active_mesh", "active_mesh")
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
+        self.layout.label(text=obj.name, icon="OBJECT_DATA")
         _draw_mesh.draw_body(self.layout, obj, obj.proscenio)
 
 
@@ -109,6 +106,7 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         obj = context.active_object
+        self.layout.label(text=obj.name, icon="OBJECT_DATA")
         _draw_sprite.draw_body(self.layout, obj, obj.proscenio)
 
 

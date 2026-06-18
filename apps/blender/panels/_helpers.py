@@ -51,6 +51,26 @@ def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     return active_armature(context)
 
 
+def _active_mesh_props(context: bpy.types.Context) -> bpy.types.AnyType | None:
+    """Return the active MESH object's Proscenio props, or None."""
+    obj = context.active_object
+    if obj is None or obj.type != "MESH":
+        return None
+    return getattr(obj, "proscenio", None)
+
+
+def _is_mesh_element(context: bpy.types.Context) -> bool:
+    """True when the active object is a MESH whose element_type is "mesh".
+
+    A sprite element is also a Blender MESH, but a mesh tool would replace its
+    single quad, so the Mesh Generation + Weight Paint gates exclude sprites.
+    Shared by those panels and the Element panel's Active Mesh subpanel so the
+    "is this a mesh element" test has one definition.
+    """
+    props = _active_mesh_props(context)
+    return props is not None and props.element_type == "mesh"
+
+
 def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
     """Draw the status-badge button.
 

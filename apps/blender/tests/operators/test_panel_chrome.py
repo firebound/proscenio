@@ -40,6 +40,6 @@ def test_top_level_panels_open_collapsed() -> None:
         cls.bl_idname
         for cls in panels
         if cls.bl_idname not in _ALWAYS_OPEN
-        and "DEFAULT_CLOSED" not in set(getattr(cls, "bl_options", set()))
+        and "DEFAULT_CLOSED" not in getattr(cls, "bl_options", set())
     ]
     assert not offenders, f"top-level panels missing DEFAULT_CLOSED: {sorted(offenders)}"

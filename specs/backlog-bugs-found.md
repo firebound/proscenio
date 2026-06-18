@@ -75,56 +75,14 @@ Bugs whose fix already shipped and only await a GUI confirmation live in [`manua
 
 **Severity:** low - pegadinha de autoria/expectativa, sem crash nem perda de dado.
 
-### Sprite frame out-of-range: Blender faz modulo (wrap), exporter faz clamp - animação diverge
+### Sprite-frame import polish: discrete update mode, animation step/fps, bezier handles
 
-**Status:** RESOLVIDO (A+C aplicados) - exporter passou a fazer wrap (modulo) em vez de clamp, casando o preview do Blender. Paridade negativa fechada por medição: a textura do sprite é `extension=REPEAT`, então a célula exibida no Blender pra overflow positivo E negativo = `frame mod (hframes*vframes)`, exatamente o `%` do Python (`-1 -> célula 3`); não precisou replicar fmod. Probe Godot da cena importada confirma as células 0/1 reaparecendo no overflow. Achados secundários abaixo (UPDATE_DISCRETE, anim.step/fps, bezier) seguem ABERTOS. (Investigação original jun-2026 sessão mouth_drive, dois lados medidos.)
+Open follow-ups surfaced during the sprite-frame wrap investigation (the main bug - exporter clamped out-of-range frames while Blender wraps, which froze `mouth_drive` in Godot - was fixed by switching the exporter to modulo wrap; see `sprite_frame_animations._wrap_frame` and its tests). These three are still open robustness/fidelity gaps, no visible break today:
 
-**Sintoma (relatado pelo usuário):** a animação `mouth_drive_anim` parece diferente no Blender e no Godot. No Blender a boca abre e fecha num ciclo; no Godot ela "trava" e o movimento some. O usuário, mexendo no editor do Godot, percebeu que trocar a interpolação da track de NEAREST pra CUBIC fazia ficar "parecido" - mas isso era ilusão (CUBIC borra as keys sobreviventes; não recupera frames perdidos). NÃO é problema de framerate nem de curva de interpolação.
+- **sprite_frame track imported as CONTINUOUS, not DISCRETE:** `apps/godot/addons/proscenio/builders/animation_builder.gd:148-154` sets interp NEAREST but never the update mode. A discrete frame index should be `UPDATE_DISCRETE`. Works today because of NEAREST, but is fragile under blend/seek. Set `value_track_set_update_mode(idx, UPDATE_DISCRETE)`.
+- **imported animation keeps Godot's default `step = 1/30`:** the importer never sets `anim.step`, while Blender authored at 24fps. Cosmetic only (playback is in seconds, duration identical) but the editor's frame GRID reads 30 vs 24. For WYSIWYG on the grid, carry `scene.render.fps` through the schema (the `.proscenio` format currently drops fps, keeps only seconds) and set `anim.step = 1.0/fps` on import.
+- **bezier handle fidelity gap (general, not this fixture):** `bone_transform` tracks export only value+time per key, dropping Blender's bezier handles; the importer hardcodes CUBIC (position/scale) and CUBIC_ANGLE (rotation). Godot's auto-tangent CUBIC != Blender's handle-driven bezier, so bone-motion easing can diverge. Investigate only when a case shows visibly different bone motion.
 
-**Causa raiz (medida nos dois lados):** o Blender e o exporter DISCORDAM sobre o que fazer quando o índice de frame estoura o grid do spritesheet.
+**Arquivos:** `apps/godot/addons/proscenio/builders/animation_builder.gd:148-154`; (fps) the importer + the `.proscenio` schema (no fps field today).
 
-- O driver do fixture mouth_drive é `var * 2 + 2` (`packages/fixtures/mouth_drive/build_blend.py:216`), que mapeia a rotação do osso `mouth_drive` em [-pi/2, +pi/2] para valores de frame de 0 ate **5**. O spritesheet tem so 4 celulas (128x32, `hframes=4`, frames validos 0..3). Logo o driver pede celulas 4 e 5 que nao existem.
-- **Blender (preview shader):** `apps/blender/core/bpy_helpers/spritesheet/spritesheet_shader.py:104-108` usa operacao `MODULO` pra escolher a coluna (`col = frame % hframes`). Entao frame fora de range DA A VOLTA: `4 % 4 = 0`, `5 % 4 = 1`. No viewport do Blender a boca volta pra celula 0 (aberta) / 1 (meio) - movimento visivel.
-- **Exporter:** `apps/blender/exporters/godot/writer/sprite_frame_animations.py:180` (caminho driver, `_bake_track`) faz `value = min(max(raw, 0), max_frame)` com `max_frame = hframes*vframes-1 = 3`. CLAMPA: 4 e 5 viram 3. Depois o dedup de consecutivos colapsa a sequencia inteira de "3,3,3,..." numa unica key. O movimento some.
-- O mesmo clamp existe no caminho de keyframe direto: `_direct_frame_track` em `sprite_frame_animations.py:225` (`value = min(max(round(...), 0), max_frame)`). Precisa do mesmo tratamento pra consistencia (ex: se uma fixture tipo blink_eyes algum dia estourar o range).
-
-**Evidencia medida - valor cru do driver no Blender, frames 12-21 = `2,3,4,4,5,5,4,4,3,2`. Celula visivel resultante:**
-
-| frame Blender | valor driver | celula Blender (modulo) | celula Godot (clamp) |
-| --- | --- | --- | --- |
-| 12 | 2 | 2 (fechada) | 2 |
-| 13 | 3 | 3 (falando) | 3 |
-| 14-15 | 4 | 0 (ABERTA) | 3 |
-| 16-17 | 5 | 1 (meio) | 3 |
-| 18-19 | 4 | 0 (ABERTA) | 3 |
-| 20 | 3 | 3 | 3 |
-| 21 | 2 | 2 | 2 |
-
-No Godot, depois do clamp+dedup, as keys de sprite_frame exportadas sao so `frame 2,1,0,2,3,2` (confirmado em `examples/generated/mouth_drive/mouth_drive.expected.proscenio` e na cena importada). Os frames de boca aberta sumiram.
-
-**Bonus - docstring mentirosa:** `packages/fixtures/mouth_drive/build_blend.py:28-30` afirma que "a IntProperty clampa pra [0, hframes*vframes-1] = [0,3], o que da um sweep limpo". Isso e FALSO: o preview do Blender faz modulo (wrap), nao clamp. O autor do fixture entendeu errado o comportamento. A IntProperty `proscenio.frame` nao tem clamp efetivo na leitura (a medicao leu 4 e 5 cruas).
-
-**Fix decidido (recomendacao A + C; B descartada):**
-
-- **A (conserta o pipeline - obrigatorio):** trocar o `clamp` do exporter por `modulo` pra casar com o Blender. Em `sprite_frame_animations.py:180` e `:225`, usar `value = raw % (max_frame + 1)` (com guarda pra `max_frame+1 > 0`; tratar negativo com modulo Python que ja retorna nao-negativo, diferente do fmod do Blender - VERIFICAR paridade com o `ShaderNodeMath MODULO` do Blender pra valores negativos, que usa fmod e pode dar negativo). Modulo (wrap) e a convencao padrao de spritesheet e e o que o Blender ja faz. Isso alinha as duas pontas na mesma regra - qualquer animacao que estoure o range passa a sair igual nos dois.
-- **C (higiene do fixture - junto com A):** corrigir o driver do mouth_drive pra um mapeamento honesto que fique dentro de [0,3] OU manter o estouro de proposito mas corrigir a docstring (linhas 28-30) pra dizer "modulo/wrap", nao "clamp". Decidir se o fixture quer testar o wrap (ai mantem o estouro, com doc correta) ou um sweep limpo (ai conserta o driver). Sozinha, C so mascara: a discordancia wrap-vs-clamp continua latente pra outros exemplos.
-- **B (descartada):** mudar o preview do Blender pra clampar igual ao exporter. Rejeitada porque tira do Godot a capacidade de wrap (conserta pra baixo).
-
-**Atencao paridade negativa:** o `MODULO` do Blender (ShaderNodeMath) usa fmod C (mantem o sinal: `-1 % 4 = -1`). Python `%` retorna nao-negativo (`-1 % 4 = 3`). Se o driver puder gerar frame negativo (o `var*2+2` no extremo `var=-pi/2` da ~-1.14 -> int -1), o exporter com Python `%` divergiria do Blender de novo. Replicar fmod no exporter (ou clampar negativo a 0 nos dois lados) pra fechar isso. CONFIRMAR como o Blender renderiza frame negativo antes de escolher.
-
-**Verificacao visual pendente (nao feita):** li o shader e MEDI o valor do frame (0..5) no Blender, mas NAO renderizei os frames do Blender pra confirmar com os olhos que a celula 0/1 aparece via wrap. Confianca alta pela leitura do node group (operacao MODULO explicita). Se quiser certeza antes de mexer, renderizar 2-3 frames do Blender (ex: f15, f17) e comparar com o Godot.
-
-**Como reproduzir (scripts headless usados):**
-
-- Blender (valor por frame): `blender --background examples/generated/mouth_drive/mouth_drive.blend --python <script>` setando `scene.frame_set(f)` no range e lendo `obj.proscenio.frame` por frame. Confirma valores 0..5.
-- Godot (cena importada): carregar `res://examples/mouth_drive/mouth_drive.proscenio` via `--headless --script`, pegar o `AnimationPlayer`, `get_animation("mouth_drive_anim")`, e amostrar `Sprite2D.frame` com `ap.seek(t, true)`. Confirma so 0..3. (Binario: `E:/godot/godot_std_console.exe`, 4.6.3; GDScript do projeto trata warning como erro - tipar tudo explicitamente.)
-
-**Achados secundarios (mesma investigacao, prioridade menor, registrar pra nao perder):**
-
-- A track de sprite_frame e importada como `update_mode = CONTINUOUS` (`apps/godot/addons/proscenio/builders/animation_builder.gd:148-154` - so seta interp NEAREST, nunca o update mode). Pra indice de frame discreto o correto e `UPDATE_DISCRETE`. Funciona hoje por causa do NEAREST, mas e fragil em blend/seek. Setar `value_track_set_update_mode(idx, UPDATE_DISCRETE)`.
-- A animacao importada fica com `step = 1/30` (default do Godot; o importer nunca seta `anim.step`). O Blender autorou a 24fps. Isso muda a GRADE de frames do editor do Godot (30 vs 24), e so cosmetico (playback e em segundos, duracao identica), mas se quiser WYSIWYG na grade do editor: carregar `scene.render.fps` no schema/proscenio (hoje o formato descarta fps - so guarda segundos) e setar `anim.step = 1.0/fps` no importer.
-- Gap de fidelidade bezier (geral, nao neste fixture): tracks de bone_transform exportam so valor+tempo das keys, descartam os handles bezier do Blender; o importer hardcoda CUBIC (position/scale) e CUBIC_ANGLE (rotation). CUBIC auto-tangente do Godot != bezier-com-handles do Blender, entao o easing de movimento de osso pode divergir. So vale investigar quando aparecer um caso com movimento de osso visivelmente diferente.
-
-**Arquivos:** `apps/blender/exporters/godot/writer/sprite_frame_animations.py:180,225`; `apps/blender/core/bpy_helpers/spritesheet/spritesheet_shader.py:104-108`; `packages/fixtures/mouth_drive/build_blend.py:28-30,216`; (secundarios) `apps/godot/addons/proscenio/builders/animation_builder.gd:148-154`.
-
-**Severity:** medium - animacao de sprite-frame sai visivelmente errada no Godot vs Blender sempre que o frame estoura o grid. Sem crash, mas quebra o WYSIWYG que e a promessa central do pipeline. Inclui uma fixture (mouth_drive) que exercita exatamente o caminho quebrado, entao da pra escrever teste de regressao golden + headline visual.
+**Severity:** low - the visible sprite-frame wrap break is fixed; these are robustness/fidelity polish with no current visible divergence.

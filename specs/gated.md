@@ -41,6 +41,16 @@ Quick-Armature / skeleton / pose extensions whose value is convenience the nativ
 - **ik-round-trip** - Godot's 2D `SkeletonModification2D` is Experimental and breaks under negative X scale (#79960, #75224); the bake gate covers the export. **Trigger:** Godot's 2D SkeletonModification graduates from experimental and the flipped-rig bugs close.
 - **pose-auto-categorise** - Blender's native catalogs cover a single rig; auto-assign pays off across multiple characters. **Trigger:** a second character's poses enter the library.
 
+## UI, help and surfaces
+
+Editor chrome and help extensions whose value is real but waits on a demand signal or a stable surface. Carved out when spec 036 was pruned (2026-06-18).
+
+- **validator-element-rename** - The cosmetic `SpritePayload` -> `ElementPayload` rename in `packages/validator`; the `Element` vocabulary is wired everywhere else, this is the last internal hold-out. **Trigger:** the next change that touches `packages/validator` carries it.
+- **i18n-locale-tables** - `core/i18n.py` registers an empty `TRANSLATIONS`; populating means translating every label and multi-line help body, then re-maintaining the table on every copy change, and the docs site is English-only. **Trigger:** the first non-English user request or a contributed translation PR; never populate before a copy-churn spec lands.
+- **addon-docs-screenshots** - The `docs/02-blender-addon/*` pages carry no captures; any set goes stale within a release while the panels still churn. **Trigger:** a panel-layout freeze at the 1.0 tag.
+- **docs-url-preference** - `_DOCS_BASE` stays a constant (the spec 024 D3 locked deferral); a preference is speculative against one docs target. **Trigger:** a second docs target (a mirror or a version switch) appears.
+- **joystick-slider-blend** - A 2D pose-blend gizmo + a pose-set PropertyGroup + a `BlendSpace2D` export path; a real animator staple (AE Joysticks 'n Sliders, Cubism parameters) but maximum cost on every axis. **Trigger:** the first character with parametric facial expressions enters production AND 1D Drive-from-Bone proves insufficient; design schema-first, the widget last.
+
 ## Atlas packing
 
 - **per-asset-ppu** - A schema bump + three tools for a workflow the engine-side practice avoids (uniform PPU is the Unity guidance). **Trigger:** the mixed-PPU case recurs on a real project after uniform-PPU normalization is rejected.

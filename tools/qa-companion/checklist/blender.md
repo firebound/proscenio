@@ -83,15 +83,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: não está claro como reproduzir isso.
 
 ### BL-CHROME-08 · Debug mode reveals the developer-only surface
-- status: pass
+- status: regressed
 - review: keep
 - pre: The addon Preferences open.
 - steps:
   1. Turn 'Debug mode' ON in addon prefs, then redraw the N-panel.
   2. Turn it OFF and redraw again.
-- observe: With Debug mode ON the Diagnostics panel and the automesh Debug Pipeline subpanel appear; with it OFF both disappear. The change shows up on the next panel redraw, not instantly.
+- observe: With Debug mode ON a 'Run Smoke Test' button appears in the About footer and the automesh Debug Pipeline subpanel appears; with it OFF both disappear. There is no standalone Diagnostics panel anymore. The change shows up on the next panel redraw, not instantly.
 - intent: The debug-only developer surface is hidden until Debug mode is enabled.
-- code: apps/blender/addon_prefs.py:50-58,67-80; apps/blender/panels/diagnostics.py:24-26; apps/blender/panels/mesh_generation.py:135
+- code: apps/blender/addon_prefs.py:50-58,67-80; apps/blender/panels/__init__.py (About draw, debug_mode_enabled); apps/blender/panels/mesh_generation.py:135
+- note: panel-restructure removed the Diagnostics panel; the smoke test now lives in the About footer (BL-DIAG-01). Re-walk.
 
 ### BL-CHROME-09 · Header icons drop and titles truncate when the N-panel is narrow
 - status: todo
@@ -99,8 +100,8 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: Any Proscenio panel; drag the N-panel divider to narrow it.
 - steps:
   1. Narrow the N-panel until the headers get cramped.
-- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the native bl_label titles truncate (lose characters) like Blender's own. The Skeleton header (a custom draw_header) instead drops its '<name>' suffix and keeps the base 'Skeleton' when narrow. Widening brings the icons and the name back.
-- intent: Narrow headers shed their extra icons; native titles truncate and the Skeleton header drops its name suffix, matching Blender's narrow-header behaviour; nothing overlaps.
+- observe: As the panel narrows, the right-side status badge + '?' help icons drop out of every Proscenio panel header (rather than overlapping the title), and the native bl_label titles truncate (lose characters) like Blender's own. The Skeleton and Element headers (custom draw_header) instead drop their '<name>' suffix and keep the base 'Skeleton' / 'Element' when narrow. Widening brings the icons and the name back.
+- intent: Narrow headers shed their extra icons; native titles truncate and the Skeleton and Element headers drop their name suffix, matching Blender's narrow-header behaviour; nothing overlaps.
 - code: apps/blender/panels/_helpers.py draw_subpanel_header (_HEADER_ICONS_MIN_WIDTH gate)
 
 ## Outliner panel
@@ -214,13 +215,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Element panel (Active Sprite / Active Mesh, type, region, drive-from-bone, reproject UV)
 
 ### BL-ELEM-ROOT-SWEEP · Element panel root inventory (visual pass)
-- status: pass
+- status: regressed
 - review: keep
 - pre: A mesh or sprite element active.
-- observe: With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite). With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
-- intent: Confirm the Element root renders the type dropdown, the empty-state and locked-state labels, and inline validation rows.
-- code: apps/blender/panels/element.py:49-64; apps/blender/core/validation/active_element.py:9
-- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02.
+- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite). With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
+- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the empty-state and locked-state labels, and inline validation rows.
+- code: apps/blender/panels/element.py:49-80; apps/blender/core/validation/active_element.py:9
+- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. Re-walk.
 
 ### BL-ELEM-ROOT-01 · Element type chooses the subpanel and the Godot node
 - status: pass

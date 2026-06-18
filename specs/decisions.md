@@ -60,6 +60,14 @@ The calls made while building each feature that crossed a component boundary or 
 
 - **Validation is lazy + inline.** Heavy scene walk behind the Validate button; per-subpanel status badges are O(1) per redraw. (Storage split: see Core architecture.)
 
+### Blender N-panel layout and help surface
+
+- **`bl_order` fixes the panel order and every top-level panel opens `DEFAULT_CLOSED` except the About footer** - Pipeline leads (Import / Validate / Export subpanels), then Element, Slots, Skeleton, Mesh Generation, Weight Paint, Outliner, Animation, Atlas, Helpers; a panel-chrome test pins the collapsed invariant so a panel never ships expanded by accident. Revisit: a panel earns always-open status.
+- **Help is one `Open help` popup in the About footer, not a panel** - the unusable Help cheat-sheet and the Diagnostics panel were removed (the smoke test rides the footer behind `debug_mode`), ending the Helpers / Help clash; every `HELP_TOPICS` id must have a caller in `panels/` or `operators/`, pinned by a reverse-coverage test so a restructure cannot orphan a topic silently.
+- **The Element and Skeleton panels title themselves "<Panel>: <name>" via `draw_header`** (blank `bl_label`, the name dropped wholesale below a width threshold) - the active name reads in the header, never a duplicated body row.
+- **Reproject UV is deterministic planar projection** (dominant-plane detect + bounding-box map, keeping the Front-Ortho U-flip the fixtures author), never `bpy.ops.uv.smart_project` - face-normal projection came back rotated and mirrored, destructive to hand-authored UVs.
+- **`see_also` references are https URLs, never repo-local paths** - a local path cannot resolve inside an installed zipped extension, so the help dispatcher only buttons `http(s)` refs; the topic test enforces the URL shape.
+
 ### Photoshop to Blender importer
 
 - **Blender reads the manifest, never the PSD.** Direct `.psd` parsing is fragile across versions and duplicates the exporter; the manifest is the stable contract.

@@ -172,6 +172,14 @@ jobs:
           unzip /tmp/godot.zip -d ~/godot
           mv ~/godot/Godot_v4.6.2-stable_linux.x86_64 ~/godot/godot
           chmod +x ~/godot/godot
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Sync baked fixtures into the dev project
+        # apps/godot/examples/ is gitignored (derived); populate it from the
+        # committed examples/generated/**/*.expected.proscenio goldens so the
+        # importer + test_golden_scenes.gd walk the real baked output.
+        run: python scripts/godot/sync_fixtures.py
       - name: Prime Godot class_name cache
         # The test_importer.gd script and the schema_bindings/ Resources
         # reference each other via class_name. The cache that maps those
@@ -193,3 +201,7 @@ jobs:
         run: |
           ~/godot/godot --headless --path apps/godot \
             --script res://tests/test_slot_anchor.gd
+      - name: Run golden-scenes walk
+        run: |
+          ~/godot/godot --headless --path apps/godot \
+            --script res://tests/test_golden_scenes.gd

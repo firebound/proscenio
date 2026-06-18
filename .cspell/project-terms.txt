@@ -1,6 +1,7 @@
 # Terms that only make sense inside this project's domain: the Blender ->
 # Godot 2D-cutout-animation / rigging / spritesheet pipeline, plus the
 # Proscenio / Firebound code names. Industry-wide jargon -> ecosystem-terms.txt.
+absf
 actionbutton
 atlased
 autocalc

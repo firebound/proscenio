@@ -51,9 +51,10 @@ So edit through the panel. A Custom Property you poke by hand mid-session is ign
 
 ## The authoring panel
 
-Open the sidebar with <kbd>N</kbd> and switch to the **Proscenio** tab. Its subpanels:
+Open the sidebar with <kbd>N</kbd> and switch to the **Proscenio** tab. Every panel opens collapsed. Its panels, top to bottom:
 
-- **Element** - the element-type selector (`Mesh` / `Sprite`); the per-kind **Active Mesh** / **Active Sprite** subpanels (Polygon2D fields / Sprite2D spritesheet metadata), plus **Texture Region** and **Drive from Bone**.
+- **Pipeline** (first) - the whole PSD -> Blender -> Godot flow in three subpanels: **Import** (`Import Photoshop Manifest`), **Validate** (the issue list, click-to-select), and **Export** (the export-target read-out "Exports: \<name\>", the sticky path, `pixels_per_unit`, `Export` / `Re-export`).
+- **Element** - the element-type selector (`Mesh` / `Sprite`); the header reads "Element: \<name\>" of the active element. The per-kind **Active Mesh** / **Active Sprite** subpanels (Polygon2D fields / Sprite2D spritesheet metadata), plus **Texture Region** and **Drive from Bone**.
 - **Slots** - the project slot list and `Create Slot`; the **Active Slot** subpanel carries the default-attachment picker, attachment list, and `Bind to Bone` (shown when an `is_slot` [Empty](https://docs.blender.org/manual/en/latest/modeling/empties.html) is selected).
 - **Skeleton** - the armature picker plus the bone hierarchy, the **Pose Mode** helpers (`Bake Current Pose`, `Toggle IK`, `Save Pose to Library`), and **Quick Armature**.
 - **Mesh Generation** - `Automesh from Alpha` (one shot) and `Automesh Interactive` (the modal authoring entry), plus the debug pipeline.
@@ -61,10 +62,8 @@ Open the sidebar with <kbd>N</kbd> and switch to the **Proscenio** tab. Its subp
 - **Outliner** - a sprite-centric flat list with a substring filter and favorites.
 - **Animation** - a read-only summary of the actions the exporter will emit.
 - **Atlas** - the atlas filename plus `Pack Atlas` / `Unpack Atlas` / `Apply Packed Atlas`.
-- **Validation** - the issue list, click-to-select.
-- **Pipeline** - `Import Photoshop Manifest`, plus the **Export** section: the sticky path, `pixels_per_unit`, `Validate` / `Export` / `Re-export`.
 - **Helpers** - `Preview Camera`.
-- **Help** - `Open help` (the topic popup); under `debug_mode` it also carries the smoke test.
+- **About** (footer) - the version + repo link, the `Open help` button (the topic popup), and the smoke test under `debug_mode`. There is no separate Help panel - it would clash with Helpers.
 
 Every subpanel header has a status badge and a `?` button that opens topic-specific help.
 

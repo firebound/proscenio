@@ -139,6 +139,6 @@ Big rigs drown Blender's native outliner - the doll fixture alone has 64 bones a
 
 ## Validate and export
 
-1. *Validate*: `Export > Validate` checks every sprite against the armature, the atlas, and the required fields. → Any error blocks the export until you fix it.
+1. *Validate*: `Pipeline > Validate` checks every sprite against the armature, the atlas, and the required fields. → Any error blocks the export until you fix it.
 
-2. *Export*: `Export > Export (.proscenio)` writes the `.proscenio` JSON next to the source `.blend`. On later saves, `Re-export` reuses the sticky path with no dialog.
+2. *Export*: `Pipeline > Export (.proscenio)` writes the `.proscenio` JSON next to the source `.blend`. On later saves, `Re-export` reuses the sticky path with no dialog.

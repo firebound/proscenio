@@ -55,10 +55,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: Each panel/subpanel header that has a '?' button.
 - steps:
   1. Click '?' on each panel and confirm the popup title matches that panel.
-- observe: Every header opens the help topic for its own panel (Outliner, Element, Slots, Skeleton, Mesh Generation, Weight Paint, Animation, Atlas, Validation, Pipeline, Helpers, and their subpanels). The Help panel's '?' opens the pipeline overview, which is now correct - that panel is the overview launcher. The standalone Diagnostics panel (which used to open the wrong topic) no longer exists.
-- intent: Each panel routes its '?' to the correct help topic; the old Diagnostics/Help wrong-topic defect is resolved.
-- code: apps/blender/panels/_helpers.py:84-85; apps/blender/operators/help_dispatch.py:50-97; apps/blender/panels/help.py
-- note: spec 036 PR4 removed the Diagnostics panel and made the Help panel's pipeline-overview topic intentional; re-walk the panel sweep.
+- observe: Every header opens the help topic for its own panel (Pipeline first, with its Import / Validate / Export subpanels, then Element, Slots, Skeleton, Mesh Generation, Weight Paint, Outliner, Animation, Atlas, Helpers, and their subpanels). There is no standalone Validation panel (it is the Pipeline > Validate subpanel) and no standalone Help/Diagnostics panel - the About footer carries an 'Open help' button (not a '?' header), which opens the pipeline overview.
+- intent: Each panel routes its '?' to the correct help topic after the panel restructure.
+- code: apps/blender/panels/_helpers.py:84-85; apps/blender/operators/help_dispatch.py:50-97
+- note: panel-restructure: Pipeline is first + absorbs Validate; Help panel removed (Open help moved to About). Re-walk the sweep.
 
 ### BL-CHROME-06 · Help popup handles an unknown topic gracefully
 - status: n/a
@@ -557,9 +557,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pass
 - review: keep
 - pre: Skeleton panel expanded; toggle scene state (armature present or absent, rig picked or not) to surface each read-out.
-- observe: The parent panel shows the Active Armature picker (armatures only) and an 'Exports: <name>' line that says '(picked)' when an armature is chosen or '(first in scene - no rig picked)' otherwise. When no armature exists it warns 'no Armature in scene - use Quick Armature below'. When armatures exist but none is picked it shows a boxed note 'no rig picked - skeleton ops will create a new Proscenio.QuickRig' with a 'Use existing instead' list.
-- intent: Confirm the Skeleton parent panel renders the picker, the exports read-out, and the no-armature/no-rig notices; behavior lives in the named tests.
+- observe: The parent panel shows the Active Armature picker (armatures only). When no armature exists it warns 'no Armature in scene - use Quick Armature below'. When armatures exist but none is picked it shows a boxed note 'no rig picked - skeleton ops will create a new Proscenio.QuickRig' with a 'Use existing instead' list. The 'Exports: <name>' read-out is NO longer here - it moved to Pipeline > Export.
+- intent: Confirm the Skeleton parent panel renders the picker and the no-armature/no-rig notices; behavior lives in the named tests.
 - code: apps/blender/panels/skeleton.py:94-112
+- note: panel-restructure moved the 'Exports: <name>' read-out to Pipeline > Export; re-walk to confirm it is gone here and present there (BL-PIPE-SWEEP).
 
 ### BL-SKEL-PARENT-01 · Active Armature picker sets the project rig
 - status: pass
@@ -1191,14 +1192,14 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The restore snapshot survives save/reload, and Unpack is undoable (Ctrl+Z does not revert the original Apply).
 - code: apps/blender/operators/atlas_pack/unpack.py:47
 
-## Validation panel (export-blocking issues list)
+## Pipeline > Validate subpanel (export-blocking issues list)
 
-### BL-VALID-SWEEP · Validation panel inventory (visual pass)
-- status: pending
+### BL-VALID-SWEEP · Validate subpanel inventory (visual pass)
+- status: regressed
 - review: keep
-- pre: Validation subpanel expanded; surface each state (before Validate, a clean scene, and a scene with issues).
-- observe: The subpanel shows the Validate button, a 'run Validate to see issues' label before the first run, a 'no issues - ready to export' label on a clean scene, and issue rows otherwise (object rows render '[Name] message', scene-wide rows render a plain non-clickable label, with errors tinted red and warnings plain).
-- intent: Confirm the Validation panel renders the button, the before/clean labels, and the issue rows; the Validate run and clickable rows live in the named tests.
+- pre: Pipeline panel expanded, the Validate subpanel (between Import and Export) expanded; surface each state (before Validate, a clean scene, and a scene with issues).
+- observe: Validate is now a subpanel of Pipeline (Import / Validate / Export). It shows the Validate button, a 'run Validate to see issues' label before the first run, a 'no issues - ready to export' label on a clean scene, and issue rows otherwise (object rows render '[Name] message', scene-wide rows render a plain non-clickable label, with errors tinted red and warnings plain).
+- intent: Confirm the Validate subpanel renders the button, the before/clean labels, and the issue rows under Pipeline; the Validate run and clickable rows live in the named tests.
 - code: apps/blender/panels/validation.py:30-43; _helpers.py:142-150
 
 ### BL-VALID-01 · Validate lists export-blocking issues
@@ -1223,15 +1224,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/validation.py:43 -> _helpers.py (draw_issue_row) -> selection.py (PROSCENIO_OT_select_issue_object + _frame_selected)
 - note: spec 036 PR3 added the unhide + frame + view-layer guard; re-walk the reveal-hidden and out-of-view-layer paths. Deferred by the user at the post-merge walk - still needs a GUI pass.
 
-## Pipeline panel: import Photoshop manifest + export/re-export .proscenio
+## Pipeline panel: import manifest + validate + export/re-export .proscenio
 
 ### BL-PIPE-SWEEP · Pipeline panel inventory (visual pass)
-- status: pending
+- status: regressed
 - review: keep
 - pre: Pipeline panel expanded with the scene properties registered.
-- observe: The panel groups an Import subpanel and an Export subpanel. The Export subpanel shows the Last export path field, the Pixels-per-unit field, and the Bundle textures checkbox. The Import dialog's Placement and Root Bone Name fields are covered in the named tests below.
-- intent: Confirm the Pipeline panel renders its Import/Export structure and the Export fields; field semantics live in the named tests.
-- code: apps/blender/panels/pipeline.py:88-95
+- observe: Pipeline is the FIRST panel in the tab and opens collapsed. It groups three subpanels in order: Import, Validate, Export. The Export subpanel leads with the 'Exports: <name> (picked / first in scene)' read-out (moved here from Skeleton), then the Last export path field, the Pixels-per-unit field, and the Bundle textures checkbox. The Import dialog and the Validate behavior are covered in the named tests below.
+- intent: Confirm the Pipeline panel is first, opens collapsed, and renders its Import/Validate/Export structure incl. the export-target read-out; field semantics live in the named tests.
+- code: apps/blender/panels/pipeline.py; apps/blender/panels/validation.py
+- note: panel-restructure: Pipeline moved to first + DEFAULT_CLOSED, absorbed the Validate subpanel, and gained the 'Exports:' read-out in Export.
 
 ### BL-PIPE-IMPORT-01 · Import Placement (Landed vs Centered)
 - status: pending
@@ -1302,14 +1304,14 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ## Help system + Addon Preferences
 
-### BL-HELP-PANEL-SWEEP · Help panel inventory (visual pass)
-- status: pending
+### BL-HELP-PANEL-SWEEP · About footer inventory (visual pass)
+- status: regressed
 - review: keep
-- pre: Help subpanel expanded.
-- observe: The Help subpanel shows a single 'Open help' button. With Debug mode on it also shows a 'Run Smoke Test' button below it; with Debug mode off only Open help is present. The old F3 operator cheat-sheet (the wall of 18 idname rows) is gone - that reference moved into the Open help popup's pipeline overview.
-- intent: Confirm the Help panel is the Open-help launcher plus the debug-only smoke test, not the retired cheat-sheet, and that the standalone Diagnostics panel no longer exists.
-- code: apps/blender/panels/help.py
-- note: spec 036 PR4 replaced the cheat-sheet with Open help and folded the Diagnostics smoke test in under debug_mode.
+- pre: About panel (the footer, last in the tab) expanded.
+- observe: There is no standalone Help panel anymore (it clashed with Helpers). The About footer shows the version line + repo-link icon, an 'Open help' button (opens the pipeline-overview popup), and - with Debug mode on - a 'Run Smoke Test' button below it. With Debug mode off only Open help shows.
+- intent: Confirm Open help + the debug smoke test live in the About footer and no separate Help panel exists.
+- code: apps/blender/panels/__init__.py (PROSCENIO_PT_main)
+- note: panel-restructure removed the Help panel and folded Open help + the smoke test into About.
 
 ### BL-HELP-AFFORD · Re-wired per-section help buttons resolve
 - status: pending
@@ -1334,13 +1336,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 ### BL-DIAG-01 · Run Smoke Test prints a gated sanity check
 - status: regressed
 - review: keep
-- pre: Debug mode on so the Help panel shows the Run Smoke Test button.
+- pre: Debug mode on so the About footer shows the Run Smoke Test button.
 - steps:
-  1. Open the Help subpanel and click Run Smoke Test.
-- observe: A 'Proscenio smoke test OK' message appears in the info area and the system console, and the operator finishes successfully. With Debug mode off the button is absent (it used to live on the removed Diagnostics panel).
-- intent: Run Smoke Test confirms the addon is registered and dispatching operators correctly; it now lives in the Help panel and reports through the gated reporter.
-- code: apps/blender/panels/help.py -> apps/blender/operators/help_dispatch.py (PROSCENIO_OT_smoke_test, report_info)
-- note: spec 036 PR4 moved the smoke test from Diagnostics into Help (debug-only) and routed it through report_info instead of raw self.report.
+  1. Open the About panel (footer) and click Run Smoke Test.
+- observe: A 'Proscenio smoke test OK' message appears in the info area and the system console, and the operator finishes successfully. With Debug mode off the button is absent.
+- intent: Run Smoke Test confirms the addon is registered and dispatching operators correctly; it lives in the About footer and reports through the gated reporter.
+- code: apps/blender/panels/__init__.py (About) -> apps/blender/operators/help_dispatch.py (PROSCENIO_OT_smoke_test, report_info)
+- note: panel-restructure moved the smoke test from the Help panel into the About footer (still debug-only, still report_info).
 
 ### BL-DIAG-02 · Log level controls how much operators report
 - status: pending

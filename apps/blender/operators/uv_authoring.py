@@ -48,10 +48,12 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object
         mesh = obj.data
-        uv_layer = mesh.uv_layers.active or mesh.uv_layers.new(name="UVMap")
         if not mesh.loops:
             report_warn(self, f"'{obj.name}' has no geometry to project")
             return {"CANCELLED"}
+        # Create the layer only after the guard, so a cancel never mutates the
+        # datablock (no stray UVMap, no empty undo step).
+        uv_layer = mesh.uv_layers.active or mesh.uv_layers.new(name="UVMap")
 
         positions = [tuple(mesh.vertices[loop.vertex_index].co) for loop in mesh.loops]
         uvs = planar_uv_from_positions(positions)

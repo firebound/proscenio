@@ -13,7 +13,7 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.props_access import describe_export_target
-from ._helpers import _POSE_FRIENDLY_MODES, draw_subpanel_header
+from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 
 
 def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
@@ -223,11 +223,16 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
         layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
         layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
         layout.operator("proscenio.bake_ik_chain", text="Bake IK to Keyframes", icon="KEYFRAME_HLT")
-        layout.operator(
+        # The subpanel header explains Pose Mode; the pose-library asset flow
+        # (writable-library precheck, where the asset lands) has its own topic,
+        # so the row carries its own ? - the orphan the #96 restructure left.
+        pose_row = layout.row(align=True)
+        pose_row.operator(
             "proscenio.save_pose_asset",
             text="Save Pose to Library",
             icon="ASSET_MANAGER",
         )
+        draw_help_button(pose_row, "pose_library")
 
 
 class PROSCENIO_PT_quick_armature(bpy.types.Panel):

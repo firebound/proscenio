@@ -20,8 +20,7 @@ Submodules per concern:
 - atlas.py           - PROSCENIO_PT_atlas + packer box
 - validation.py      - PROSCENIO_PT_validation
 - pipeline.py        - PROSCENIO_PT_pipeline + Import/Export subpanels
-- help.py            - PROSCENIO_PT_help
-- diagnostics.py     - PROSCENIO_PT_diagnostics
+- help.py            - PROSCENIO_PT_help (Open help + the debug smoke test)
 """
 
 from __future__ import annotations
@@ -31,7 +30,6 @@ import bpy
 from . import (
     animation,
     atlas,
-    diagnostics,
     element,
     help,
     helpers,
@@ -83,7 +81,6 @@ def register() -> None:
     pipeline.register()
     helpers.register()
     help.register()
-    diagnostics.register()
     for cls in _main_classes:
         bpy.utils.register_class(cls)
 
@@ -91,7 +88,6 @@ def register() -> None:
 def unregister() -> None:
     for cls in reversed(_main_classes):
         bpy.utils.unregister_class(cls)
-    diagnostics.unregister()
     help.unregister()
     helpers.unregister()
     pipeline.unregister()

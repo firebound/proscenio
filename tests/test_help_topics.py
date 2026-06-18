@@ -66,18 +66,21 @@ def test_panel_topic_ids_present() -> None:
         assert tid in HELP_TOPICS, f"missing topic {tid!r}"
 
 
-def test_see_also_references_exist_on_disk() -> None:
-    """Cross-references must point at real directories or files.
+def test_see_also_references_are_urls() -> None:
+    """Cross-references must be https URLs, not local paths or plaintext http.
 
-    Catches drift - if a referenced path is renamed or removed, the help
-    topic surfaces a broken pointer.
+    The help popup renders an http(s) ref as a clickable ``wm.url_open``
+    button; a local path cannot resolve inside an installed (zipped) extension,
+    so a non-URL ref is a dead button, and a clickable help link should not be
+    plaintext http. This replaced the old disk-existence check when the
+    local-path refs were migrated to GitHub https URLs.
     """
     for topic_id, topic in HELP_TOPICS.items():
         for ref in topic.see_also:
-            target = REPO_ROOT / ref
-            assert target.exists(), (
-                f"topic {topic_id!r} references missing path {ref!r} "
-                f"(resolved to {target})"
+            assert ref.startswith("https://"), (
+                f"topic {topic_id!r} see_also {ref!r} is not an https URL "
+                f"(a local path cannot resolve in an installed extension, and "
+                f"clickable help links should not be plaintext http)"
             )
 
 
@@ -89,3 +92,24 @@ def test_known_topic_ids_returns_registration_order() -> None:
 
 def test_no_duplicate_topic_ids() -> None:
     assert len(HELP_TOPICS) == len(set(HELP_TOPICS.keys()))
+
+
+def test_every_topic_has_a_panel_or_operator_caller() -> None:
+    """Reverse coverage: every topic id is referenced under panels/ or operators/.
+
+    The forward test above checks that wired ids resolve; this one checks
+    the other direction - that no topic in the table is orphaned with no UI
+    entry point. A sidebar restructure that drops a ``?`` wiring then fails
+    here instead of silently stranding the topic (the #96 regression that
+    orphaned ``sprite_frame_preview`` and ``pose_library``).
+    """
+    addon = REPO_ROOT / "apps" / "blender"
+    blob_parts: list[str] = []
+    for sub in ("panels", "operators"):
+        for path in sorted((addon / sub).rglob("*.py")):
+            blob_parts.append(path.read_text(encoding="utf-8"))
+    blob = "\n".join(blob_parts)
+    missing = [
+        tid for tid in HELP_TOPICS if f'"{tid}"' not in blob and f"'{tid}'" not in blob
+    ]
+    assert not missing, f"help topics with no panel/operator caller: {missing}"

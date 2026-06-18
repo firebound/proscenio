@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import ClassVar
 
 import bpy
@@ -37,8 +38,24 @@ class PROSCENIO_OT_select_issue_object(bpy.types.Operator):
         if not self.obj_name:
             report_warn(self, "issue has no object name")
             return {"CANCELLED"}
-        if select_named_or_warn(self, context, self.obj_name) is None:
+        # Guard at the operator boundary (not inside shared select_only): an
+        # object not linked into the active view layer cannot be selected, and
+        # select_set would raise. Same guard the outliner select path uses;
+        # keeping it here leaves select_only's contract intact for the other
+        # callers (a blanket suppress there would silently no-op them).
+        if context.view_layer.objects.get(self.obj_name) is None:
+            report_warn(self, f"'{self.obj_name}' is not in the current view layer")
             return {"CANCELLED"}
+        obj = bpy.data.objects.get(self.obj_name)
+        if obj is None:
+            report_warn(self, f"object '{self.obj_name}' not found")
+            return {"CANCELLED"}
+        # Reveal then frame: clicking an issue is meant to surface the offending
+        # object, and a hidden object cannot be selected.
+        obj.hide_set(False)
+        obj.hide_viewport = False
+        select_only(context, obj)
+        _frame_selected(context)
         return {"FINISHED"}
 
 
@@ -173,6 +190,28 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
         armature.animation_data.action = action
         _sync_active_index(context, "active_action_index", bpy.data.actions, self.action_name)
         return {"FINISHED"}
+
+
+def _frame_selected(context: bpy.types.Context) -> None:
+    """Frame the current selection in the first VIEW_3D area (best effort).
+
+    ``view3d.view_selected`` needs a VIEW_3D WINDOW-region context, but the
+    issue click runs in the N-panel UI region, so override to the area's
+    WINDOW region. A headless run (or a layout with no VIEW_3D) simply skips
+    framing; a RuntimeError from the override is suppressed for the same reason.
+    """
+    screen = getattr(context, "screen", None)
+    if screen is None:
+        return
+    for area in screen.areas:
+        if area.type != "VIEW_3D":
+            continue
+        region = next((r for r in area.regions if r.type == "WINDOW"), None)
+        if region is None:
+            continue
+        with contextlib.suppress(RuntimeError), context.temp_override(area=area, region=region):
+            bpy.ops.view3d.view_selected()
+        return
 
 
 def _sync_pose_bone_selection(armature: bpy.types.Object, bone_name: str) -> None:

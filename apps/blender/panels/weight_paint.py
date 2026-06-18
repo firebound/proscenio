@@ -16,19 +16,11 @@ import bpy
 from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
 from ._helpers import (
     _active_armature,
+    _is_mesh_element,
     _scene_skinning,
     draw_subpanel_header,
     draw_target_readout,
 )
-
-
-def _is_mesh_element(context: bpy.types.Context) -> bool:
-    """True when the active object is a MESH whose element_type is "mesh"."""
-    obj = context.active_object
-    if obj is None or obj.type != "MESH":
-        return False
-    props = getattr(obj, "proscenio", None)
-    return props is not None and props.element_type == "mesh"
 
 
 class PROSCENIO_PT_weight_paint(bpy.types.Panel):

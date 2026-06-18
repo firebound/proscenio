@@ -51,6 +51,26 @@ def _active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     return active_armature(context)
 
 
+def _active_mesh_props(context: bpy.types.Context) -> bpy.types.AnyType | None:
+    """Return the active MESH object's Proscenio props, or None."""
+    obj = context.active_object
+    if obj is None or obj.type != "MESH":
+        return None
+    return getattr(obj, "proscenio", None)
+
+
+def _is_mesh_element(context: bpy.types.Context) -> bool:
+    """True when the active object is a MESH whose element_type is "mesh".
+
+    A sprite element is also a Blender MESH, but a mesh tool would replace its
+    single quad, so the Mesh Generation + Weight Paint gates exclude sprites.
+    Shared by those panels and the Element panel's Active Mesh subpanel so the
+    "is this a mesh element" test has one definition.
+    """
+    props = _active_mesh_props(context)
+    return props is not None and props.element_type == "mesh"
+
+
 def _draw_status_button(layout: bpy.types.UILayout, feature_id: str) -> None:
     """Draw the status-badge button.
 
@@ -121,6 +141,18 @@ def draw_subbox_header(
     spacer.alignment = "RIGHT"
     _draw_status_button(spacer, feature_id)
     op = spacer.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
+    op.topic = help_topic
+
+
+def draw_help_button(layout: bpy.types.UILayout, help_topic: str) -> None:
+    """Draw a standalone help ``?`` button bound to a help topic.
+
+    For a single operator row that needs its own help affordance when
+    there is no subpanel or sub-box header to host it (e.g. the Save Pose
+    to Library row, whose subpanel header explains Pose Mode, not the
+    pose-library asset flow).
+    """
+    op = layout.operator(_HELP_OP_IDNAME, text="", icon="QUESTION", emboss=False)
     op.topic = help_topic
 
 

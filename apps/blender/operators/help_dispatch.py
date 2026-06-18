@@ -11,6 +11,7 @@ from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     STATUS_BADGES,
     FeatureStatus,
 )
+from ..core._shared.report import report_info  # type: ignore[import-not-found]
 from ..core.help_topics import topic_for  # type: ignore[import-not-found]
 
 
@@ -107,7 +108,7 @@ class PROSCENIO_OT_smoke_test(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         message = "Proscenio smoke test OK"
-        self.report({"INFO"}, message)
+        report_info(self, message)
         print(f"[Proscenio] {message}")
         return {"FINISHED"}
 

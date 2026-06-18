@@ -10,7 +10,7 @@ Proscenio subpanels are contextual and poll on the current selection.
 
 1. *Open the target `.blend`*: your Blender file for this character.
 
-2. *Import the manifest*: in the **Active Sprite** subpanel, click `Import Photoshop Manifest` and point it at the manifest you exported.
+2. *Import the manifest*: in the **Pipeline** panel, click `Import Photoshop Manifest` and point it at the manifest you exported.
 
 Each layer becomes a quad sprite (pivot, atlas region, and naming already filled accordingly to what was done in Photoshop side). The import also builds a stub armature named `<psd>.rig` with a single bone and parents every mesh to it, so the figure moves as one piece - the meshes are not weighted for bending yet (that is the skinning step below).
 
@@ -21,7 +21,7 @@ The import dialog has two options worth setting deliberately:
 - `Root Bone Name`: names that single armature bone (default `root`; override with `spine` or your own convention).
 
 > [!NOTE]
-> Authoring meshes by hand instead of importing? Model them directly, then pick up from [Set each sprite's type](#set-each-sprites-type) - the rest of the Blender flow is identical.
+> Authoring meshes by hand instead of importing? Model them directly, then pick up from [Set each element's type](#set-each-elements-type) - the rest of the Blender flow is identical.
 
 ## Build the skeleton
 
@@ -51,8 +51,8 @@ While the session is live, an on-screen cheatsheet mirrors these inputs:
 
 A flat imported quad cannot bend, so we need to add vertices to get cutout deformation. The more vertices, the smoother the bend - but also the heavier the rig. The exact recipe depends on the art and the animation, but here are some starting points:
 
-To get cutout deformation, turn the sprite into a denser mesh with the **Skinning** subpanel:
-`Automesh from Sprite` (one shot) or `Automesh (modal)` (interactive preview).
+To get cutout deformation, turn the sprite into a denser mesh with the **Mesh Generation** panel:
+`Automesh from Alpha` (one shot) or `Automesh Interactive` (modal preview).
 
 This is independent of the skeleton - the automesh only reshapes the geometry, it does not touch bones. Skip it for sprites that only need rigid motion or sprite-frame swapping.
 
@@ -60,9 +60,9 @@ This is independent of the skeleton - the automesh only reshapes the geometry, i
 
 Binding ties each mesh's vertices to bones so the mesh follows the pose.
 
-1. *Set the picker armature*: in the **Skeleton** subpanel, pick your armature as the active armature - the Skinning bind targets it.
+1. *Set the target armature*: in the **Skeleton** subpanel, pick your armature as the active armature - the Weight Paint bind targets it.
 
-2. *Bind*: in the **Skinning** subpanel, click `Bind to Picker Armature` (pick a bind mode if needed).
+2. *Bind*: in the **Weight Paint** panel's Bind subpanel, click `Bind to Target Armature` (pick a bind mode if needed).
 
    Native alternative: select the meshes, press <kbd>Ctrl+P</kbd>, then `Armature Deform`.
 
@@ -77,25 +77,25 @@ Binding ties each mesh's vertices to bones so the mesh follows the pose.
 >
 > So: name bones meaningfully early, and always rename from the bone side, never the vertex group. The auto-rename only reaches meshes the armature deforms - a mesh that is still only object-parented (as imported meshes are until you bind them) is skipped, so rename its vertex group by hand. See the [skinning weights rules](../../../specs/decisions.md#skinning-weights-export).
 
-## Set each sprite's type
+## Set each element's type
 
-Imported layers arrive with their type already set from photoshop if you properly tagged them, but hand-authored meshes can be set here.
+Imported layers arrive with their type already set from Photoshop if you tagged them properly, but hand-authored meshes can be set here.
 
-Select a mesh and work in the **Active Sprite** subpanel.
+Select a mesh and work in the **Element** panel - it hosts the element-type selector, and the per-kind subpanels (Active Mesh / Active Sprite), Texture Region, and Drive from Bone live under it.
 
-1. *Choose the sprite type*: there are two, and each maps to a Godot node:
-   - `Polygon` (default) - a cutout mesh that exports to a [`Polygon2D`](https://docs.godotengine.org/en/stable/classes/class_polygon2d.html).
-   - `Sprite Frame` - a spritesheet that exports to a [`Sprite2D`](https://docs.godotengine.org/en/stable/classes/class_sprite2d.html). For `Sprite Frame`, set `hframes` / `vframes` / `frame`; the in-panel preview slicer shows the chosen cell in the 3D viewport without exporting.
+1. *Choose the element type*: there are two, and each maps to a Godot node:
+   - `Mesh` (default) - a cutout mesh that exports to a [`Polygon2D`](https://docs.godotengine.org/en/stable/classes/class_polygon2d.html).
+   - `Sprite` - a rigid quad that exports to a [`Sprite2D`](https://docs.godotengine.org/en/stable/classes/class_sprite2d.html). For a `Sprite`, the **Active Sprite** subpanel sets `hframes` / `vframes` / `Frame`; the in-panel preview slicer shows the chosen cell in the 3D viewport without exporting.
 
-   A layer tagged `[mesh]` in Photoshop lands here as a `Polygon` - "mesh" is just an authoring flag, not a third type.
+   A layer tagged `[mesh]` in Photoshop lands here as a `Mesh` - "mesh" is just an authoring flag, not a third type.
 
-2. *Set the texture region*: `auto` computes the region from UV bounds at export; `manual` lets you slice an atlas by hand. Click `Snap to UV bounds` to populate the region from the current UV.
+2. *Set the texture region*: in the **Texture Region** subpanel, `auto` computes the region from UV bounds at export; `manual` lets you slice an atlas by hand. Click `Snap to UV bounds` to populate the region from the current UV.
 
 ## Refine the rig (optional)
 
 These polish the rig and are all optional.
 
-- *Drive a sprite property from a bone (soft swap)*: click `Drive from Bone` in the **Active Sprite** subpanel to wire a Blender driver between a pose bone and a sprite property - good for changes that vary continuously with rotation, for example.
+- *Drive a sprite property from a bone (soft swap)*: use the **Drive from Bone** subpanel to wire a Blender driver between a pose bone and a sprite property - good for changes that vary continuously with rotation, for example.
 
 - *Pose helpers*: in Pose Mode the **Skeleton** subpanel adds `Bake Current Pose`, `Toggle IK`, and `Save Pose to Library`, all Blender-side. `Bake Current Pose` keyframes every bone at the playhead - those keys export like any other, so it is how you commit a posed (or IK-driven) frame into the animation. `Toggle IK` and `Save Pose to Library` stay in Blender: a pose asset just lands in your Asset Browser.
 
@@ -125,11 +125,11 @@ Proscenio does not author animation - the **Animation** subpanel is a read-only 
 
 ## Pack the atlas (optional)
 
-Packing is optional. Skip it and each sprite keeps its own texture - the per-layer PNG, or the composed spritesheet for a `Sprite Frame` - and the export references those as-is.
+Packing is optional. Skip it and each sprite keeps its own texture - the per-layer PNG, or the composed spritesheet for a multi-frame `Sprite` - and the export references those as-is.
 
-If you do pack, the **Atlas** subpanel composes textures into one sheet: `Pack Atlas` builds the atlas and rewrites each sprite's `texture_region`, `Unpack Atlas` reverses it, and `Apply Packed Atlas` rebinds to an atlas you packed externally. `Pack Atlas` takes every sprite with a texture - `polygon` and `sprite_frame` alike - there is no per-sprite opt-out from the atlas itself. Set `Isolated material` on a sprite to keep its own shader (additive, custom); it still draws from the packed atlas, just not through the shared material.
+If you do pack, the **Atlas** subpanel composes textures into one sheet: `Pack Atlas` builds the atlas and rewrites each sprite's `texture_region`, `Unpack Atlas` reverses it, and `Apply Packed Atlas` rebinds to an atlas you packed externally. `Pack Atlas` takes every element with a texture - `Mesh` and `Sprite` alike - there is no per-sprite opt-out from the atlas itself. Set `Isolated material` on a sprite to keep its own shader (additive, custom); it still draws from the packed atlas, just not through the shared material.
 
-A `Sprite Frame` packed this way still slices correctly: the whole sheet stays one contiguous block in the atlas (the sprite quad's UVs cover the full sheet, so the packer takes it whole), and Godot subdivides that block - the sprite's `region_rect` - by `hframes` / `vframes`, not the whole atlas. So `frame` indices stay identical to Blender; a 4-frame mouth is still frames 0-3 of its own block, wherever that block landed.
+A multi-frame `Sprite` packed this way still slices correctly: the whole sheet stays one contiguous block in the atlas (the sprite quad's UVs cover the full sheet, so the packer takes it whole), and Godot subdivides that block - the sprite's `region_rect` - by `hframes` / `vframes`, not the whole atlas. So `frame` indices stay identical to Blender; a 4-frame mouth is still frames 0-3 of its own block, wherever that block landed.
 
 The export references whatever atlas is packed in the scene rather than generating one.
 

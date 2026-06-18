@@ -117,7 +117,6 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "active_slot": FeatureStatus.GODOT_READY,
     "helpers": FeatureStatus.BLENDER_ONLY,
     "help": FeatureStatus.BLENDER_ONLY,
-    "diagnostics": FeatureStatus.BLENDER_ONLY,
 }
 
 

@@ -142,15 +142,15 @@ def test_automesh_from_alpha_refuses_a_sprite_element(automesh_fixture):
 def test_mesh_generation_gate_excludes_a_sprite_element(automesh_fixture):
     """The Mesh Generation panel gate (and the subpanel polls) treat a sprite
     element as out of scope even though it is a Blender MESH."""
-    from proscenio.panels.mesh_generation import (
-        _active_is_mesh_element,  # type: ignore[import-not-found]
+    from proscenio.panels._helpers import (
+        _is_mesh_element,  # type: ignore[import-not-found]
     )
 
     obj = _activate("hand")
     obj.proscenio.element_type = "mesh"
-    assert _active_is_mesh_element(bpy.context) is True
+    assert _is_mesh_element(bpy.context) is True
     obj.proscenio.element_type = "sprite"
-    assert _active_is_mesh_element(bpy.context) is False
+    assert _is_mesh_element(bpy.context) is False
 
 
 def test_stage2_cut_overlay_color_is_red_not_orange(automesh_fixture):

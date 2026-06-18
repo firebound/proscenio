@@ -50,14 +50,15 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/help_dispatch.py:64-97
 
 ### BL-CHROME-05 · Each panel's '?' opens the matching help topic
-- status: pass
+- status: regressed
 - review: keep
 - pre: Each panel/subpanel header that has a '?' button.
 - steps:
   1. Click '?' on each panel and confirm the popup title matches that panel.
-- observe: Every header opens the help topic for its own panel (Outliner, Active Element, Slots, Skeleton, Mesh Generation, Weight Paint, Animation, Atlas, Validation, Pipeline, Helpers, and their subpanels). Known defect: the Diagnostics and Help headers both open the generic 'pipeline overview' topic instead of their own.
-- intent: Each panel routes its '?' to the correct help topic; this also surfaces the Diagnostics/Help wrong-topic defect.
-- code: apps/blender/panels/_helpers.py:84-85; apps/blender/operators/help_dispatch.py:50-97; apps/blender/panels/diagnostics.py:29; apps/blender/panels/help.py:44
+- observe: Every header opens the help topic for its own panel (Outliner, Element, Slots, Skeleton, Mesh Generation, Weight Paint, Animation, Atlas, Validation, Pipeline, Helpers, and their subpanels). The Help panel's '?' opens the pipeline overview, which is now correct - that panel is the overview launcher. The standalone Diagnostics panel (which used to open the wrong topic) no longer exists.
+- intent: Each panel routes its '?' to the correct help topic; the old Diagnostics/Help wrong-topic defect is resolved.
+- code: apps/blender/panels/_helpers.py:84-85; apps/blender/operators/help_dispatch.py:50-97; apps/blender/panels/help.py
+- note: spec 036 PR4 removed the Diagnostics panel and made the Help panel's pipeline-overview topic intentional; re-walk the panel sweep.
 
 ### BL-CHROME-06 · Help popup handles an unknown topic gracefully
 - status: n/a
@@ -249,15 +250,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: Isolated material and Exclude from atlas behavior is covered in FLOW-ATLAS-01; Reproject behavior is BL-ELEM-MESH-01..02.
 
 ### BL-ELEM-MESH-01 · Reproject UV re-unwraps the mesh
-- status: pass
+- status: regressed
 - review: keep
-- pre: A mesh element (type Mesh) selected in Object Mode.
+- pre: A mesh element (type Mesh) selected in Object Mode, with a known UV layout (e.g. an imported quad).
 - steps:
   1. With the mesh selected in Object Mode, open Active Mesh and click Reproject UV.
-- observe: The mesh's UVs are re-unwrapped (Smart UV Project), and your selection and active object are left as they were. A confirmation names the mesh. The redo panel lets you tweak the Angle limit. The UVs may end up rotated or mirrored.
-- intent: Reproject UV recomputes the mesh UVs so the texture lines up again after editing vertices.
-- code: apps/blender/panels/_draw_mesh.py:23; apps/blender/operators/uv_authoring.py:22-80
-- note: a projeção funciona, mas a utilidade da ferramenta não está clara.
+  2. Open the UV editor and compare the result against the original layout.
+- observe: The mesh's UVs are re-projected with a deterministic planar projection - U follows X, V follows Z for the picture-plane quad, so the texture is upright and NOT rotated or mirrored (the old Smart UV Project rotated/flipped it). Selection and active object are unchanged; no Edit-Mode flicker. A confirmation names the mesh. There is no Angle-limit field in the redo panel anymore.
+- intent: Reproject UV recomputes the mesh UVs from its geometry so the texture lines up again after editing vertices, without disturbing the authored orientation.
+- code: apps/blender/panels/_draw_mesh.py:23; apps/blender/operators/uv_authoring.py (planar_uv_from_positions)
+- note: spec 036 PR2 replaced Smart UV Project with the deterministic planar projection; re-walk to confirm the orientation no longer flips. The purpose is now documented in the Texture Region help (Reproject-UV-vs-region).
 
 ### BL-ELEM-MESH-02 · Reproject UV is Object-Mode only
 - status: pass
@@ -289,14 +291,17 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/_draw_sprite.py:23-24; object_props.py:79-94
 - note: era teste só do tipo sprite (escrita ruim corrigida).
 
-### BL-ELEM-SPRITE-02 · Frame sets the resting cell
-- status: pass
+### BL-ELEM-SPRITE-02 · Frame sets the resting cell and clamps to the grid
+- status: regressed
 - review: keep
 - steps:
-  1. In Active Sprite, set Frame to a cell index.
-- observe: The field accepts a frame index (0 or higher) and keeps it.
-- intent: Frame chooses which cell the sprite shows at rest pose; animation tracks override it at export.
-- code: apps/blender/panels/_draw_sprite.py:25; object_props.py:95-103
+  1. In Active Sprite, set Frame to a cell index inside the grid.
+  2. Set Frame above the last cell index (e.g. 99 on a 2x2 grid, whose last index is 3).
+  3. Shrink hframes or vframes so the current Frame falls outside the new grid.
+- observe: The field is labelled Frame (was 'Initial frame'). It accepts an in-range index and keeps it. An out-of-range value clamps to the last valid cell (hframes x vframes, minus 1). Shrinking the grid pulls a now-out-of-range Frame back into range automatically.
+- intent: Frame chooses which cell the sprite shows at rest pose (animation tracks override it at export), clamped to the valid grid so the export never carries an index Godot rejects.
+- code: apps/blender/panels/_draw_sprite.py:25; object_props.py (frame + _clamp_frame_and_update); core/_shared/sprite_grid.py
+- note: spec 036 PR3 renamed Initial frame to Frame and added the grid clamp; re-walk the clamp + reclamp.
 
 ### BL-ELEM-SPRITE-03 · Centered places the sprite on its origin
 - status: pass
@@ -1206,15 +1211,17 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Validate scans the scene and lists problems that would block an export (e.g. missing armature for weighted sprites, dead bone references, missing atlas files, sprite meshes without a frame grid).
 - code: apps/blender/panels/validation.py:30 -> export_flow.py:121 (PROSCENIO_OT_validate_export.execute:132)
 
-### BL-VALID-02 · Clicking an issue row selects the offending object
-- status: pending
+### BL-VALID-02 · Clicking an issue row selects, reveals, and frames the offending object
+- status: regressed
 - review: keep
-- pre: Validate has been run and produced at least one object-scoped issue.
+- pre: Validate has been run and produced at least one object-scoped issue. For step 2, hide the offending object (eye icon / H) before clicking.
 - steps:
   1. Run Validate, then click a row showing '[Name] message'.
-- observe: That object becomes the only selected and active object. Error rows show in red, warnings plain. If the named object no longer exists, a warning appears and the selection is unchanged.
-- intent: Clicking an object-scoped issue row jumps your selection to the offending object.
-- code: apps/blender/panels/validation.py:43 -> _helpers.py:142 (draw_issue_row) -> selection.py:18 (PROSCENIO_OT_select_issue_object.execute:31)
+  2. Hide the offending object, then click its issue row again.
+- observe: That object becomes the only selected and active object, and the viewport frames it. A hidden object is revealed (hide and hide-in-viewport cleared) before selecting. Error rows show in red, warnings plain. If the named object no longer exists, a warning appears and the selection is unchanged; an object outside the active view layer warns instead of raising a traceback.
+- intent: Clicking an object-scoped issue row jumps your selection to the offending object, revealing and framing it so the fix is one click away.
+- code: apps/blender/panels/validation.py:43 -> _helpers.py (draw_issue_row) -> selection.py (PROSCENIO_OT_select_issue_object + _frame_selected)
+- note: spec 036 PR3 added the unhide + frame + view-layer guard; re-walk the reveal-hidden and out-of-view-layer paths.
 
 ## Pipeline panel: import Photoshop manifest + export/re-export .proscenio
 
@@ -1293,15 +1300,28 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Preview Camera drops an orthographic front camera framed the way the Godot importer expects, so the viewport matches the runtime framing.
 - code: apps/blender/panels/helpers.py:31-35 (button); operator at apps/blender/operators/armature/authoring_camera.py:16-53
 
-## Diagnostics + Help system + Addon Preferences
+## Help system + Addon Preferences
 
-### BL-HELP-PANEL-SWEEP · Help cheat-sheet inventory (visual pass)
+### BL-HELP-PANEL-SWEEP · Help panel inventory (visual pass)
 - status: pending
 - review: keep
-- pre: Help subpanel expanded (always present, sitting just above Diagnostics).
-- observe: The Help subpanel shows an 'Operators (use F3 to search):' heading and exactly 18 two-label rows (a friendly name and its operator id, e.g. 'Validate' / 'proscenio.validate_export'). The rows are plain read-only labels, not clickable buttons.
-- intent: Confirm the Help cheat-sheet renders its heading and the 18 operator reference rows.
-- code: apps/blender/panels/help.py:11-29,32-52
+- pre: Help subpanel expanded.
+- observe: The Help subpanel shows a single 'Open help' button. With Debug mode on it also shows a 'Run Smoke Test' button below it; with Debug mode off only Open help is present. The old F3 operator cheat-sheet (the wall of 18 idname rows) is gone - that reference moved into the Open help popup's pipeline overview.
+- intent: Confirm the Help panel is the Open-help launcher plus the debug-only smoke test, not the retired cheat-sheet, and that the standalone Diagnostics panel no longer exists.
+- code: apps/blender/panels/help.py
+- note: spec 036 PR4 replaced the cheat-sheet with Open help and folded the Diagnostics smoke test in under debug_mode.
+
+### BL-HELP-AFFORD · Re-wired per-section help buttons resolve
+- status: pending
+- review: keep
+- pre: A sprite element active (for step 1); Pose Mode on the picked armature (for step 2).
+- steps:
+  1. In Active Sprite, expand the Material Preview sub-box and click its '?' button.
+  2. In Skeleton > Pose Mode, click the '?' beside Save Pose to Library.
+- observe: Each '?' opens a help popup for that specific feature - the Material Preview '?' explains the sprite-frame preview shader (its caveats), and the Save Pose '?' explains the pose-library asset flow - rather than the generic panel topic. Neither shows 'unknown help topic'.
+- intent: The two help topics the #96 restructure orphaned (sprite_frame_preview, pose_library) have working in-UI entry points again.
+- code: apps/blender/panels/_draw_sprite.py (Material Preview sub-box header); apps/blender/panels/skeleton.py (draw_help_button on Save Pose)
+- note: spec 036 PR1 re-wired both; a reverse-coverage pytest now pins every topic to a panel/operator caller.
 
 ### BL-PREFS-SWEEP · Addon Preferences inventory (visual pass)
 - status: pending
@@ -1311,15 +1331,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Confirm the addon preferences render the Developer box with the Log level and Debug mode controls; their effects live in BL-DIAG-02 and BL-CHROME-08.
 - code: apps/blender/addon_prefs.py:29-62
 
-### BL-DIAG-01 · Run Smoke Test prints a sanity check
-- status: pending
+### BL-DIAG-01 · Run Smoke Test prints a gated sanity check
+- status: regressed
 - review: keep
-- pre: Debug mode on so the Diagnostics panel is visible.
+- pre: Debug mode on so the Help panel shows the Run Smoke Test button.
 - steps:
-  1. Open the Diagnostics subpanel and click Run Smoke Test.
-- observe: A 'Proscenio smoke test OK' message appears in the info area and the system console, and the operator finishes successfully.
-- intent: Run Smoke Test confirms the addon is registered and dispatching operators correctly.
-- code: apps/blender/panels/diagnostics.py:33 -> apps/blender/operators/help_dispatch.py:108-112
+  1. Open the Help subpanel and click Run Smoke Test.
+- observe: A 'Proscenio smoke test OK' message appears in the info area and the system console, and the operator finishes successfully. With Debug mode off the button is absent (it used to live on the removed Diagnostics panel).
+- intent: Run Smoke Test confirms the addon is registered and dispatching operators correctly; it now lives in the Help panel and reports through the gated reporter.
+- code: apps/blender/panels/help.py -> apps/blender/operators/help_dispatch.py (PROSCENIO_OT_smoke_test, report_info)
+- note: spec 036 PR4 moved the smoke test from Diagnostics into Help (debug-only) and routed it through report_info instead of raw self.report.
 
 ### BL-DIAG-02 · Log level controls how much operators report
 - status: pending

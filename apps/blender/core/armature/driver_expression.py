@@ -14,6 +14,21 @@ flagship driver looked broken on first contact.
 
 from __future__ import annotations
 
+# Single source for the Drive-from-Bone axis choices, shared by the
+# ProscenioObjectProps picker and the create-driver operator's redo panel so
+# their order, labels, and default cannot drift. Descriptions match what the
+# operator actually wires: ROT_* read WORLD_SPACE rotation (the visible 2D
+# angle), LOC_* read LOCAL_SPACE translation (the pose offset). The earlier
+# PropertyGroup copy mislabeled the ROT_* axes "local rotation".
+DRIVER_SOURCE_AXIS_ITEMS: tuple[tuple[str, str, str, int], ...] = (
+    ("ROT_Y", "Bone Rot Y", "Rotation around world Y - front-ortho camera axis (visible 2D)", 0),
+    ("ROT_Z", "Bone Rot Z", "Rotation around world Z - vertical (spin in plan view)", 1),
+    ("ROT_X", "Bone Rot X", "Rotation around world X - horizontal (tilt out of plane)", 2),
+    ("LOC_X", "Bone Loc X", "Pose bone local translation X", 3),
+    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y", 4),
+    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z", 5),
+)
+
 
 def _fmt(value: float) -> str:
     """Round-trippable float literal for embedding in the expression string."""

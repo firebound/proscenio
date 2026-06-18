@@ -147,7 +147,7 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
             if self.bind_init_mode == "BONE_HEAT":
                 raise RuntimeError(
                     f"bone-heat failed: {exc}. Try mode=PROXIMITY as fallback "
-                    "(Skinning panel > Bind mode dropdown)"
+                    "(Weight Paint panel > Bind > Mode)"
                 ) from exc
             raise
 

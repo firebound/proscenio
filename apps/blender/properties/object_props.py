@@ -22,6 +22,9 @@ from bpy.types import Context, PropertyGroup
 from bpy.types import Object as _Object
 
 from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-not-found]
+from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
+    DRIVER_SOURCE_AXIS_ITEMS,
+)
 from ._dynamic_items import driver_bone_items, is_armature, on_any_update
 
 
@@ -70,15 +73,6 @@ DRIVER_TARGET_ITEMS = (
     ("region_y", "Region Y", "Texture region origin Y (0..1)", 2),
     ("region_w", "Region W", "Texture region width (0..1)", 3),
     ("region_h", "Region H", "Texture region height (0..1)", 4),
-)
-
-DRIVER_SOURCE_AXIS_ITEMS = (
-    ("ROT_Z", "Bone Rot Z", "Pose bone local rotation around Z (typical 2D plane)", 0),
-    ("ROT_X", "Bone Rot X", "Pose bone local rotation around X", 1),
-    ("ROT_Y", "Bone Rot Y", "Pose bone local rotation around Y", 2),
-    ("LOC_X", "Bone Loc X", "Pose bone local translation X", 3),
-    ("LOC_Y", "Bone Loc Y", "Pose bone local translation Y", 4),
-    ("LOC_Z", "Bone Loc Z", "Pose bone local translation Z", 5),
 )
 
 

@@ -12,41 +12,9 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 
 ## Fila da sprint
 
-Issues nomeadas para a próxima sprint/spec, por app → painel. Formato: `**slug** [cat] - descrição` + refs de código (`F-xx` do audit, agora em [`backlog-docs.md`](backlog-docs.md) / [`backlog-bugs-found.md`](backlog-bugs-found.md), `arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`.
+Vazia. As issues de UI/UX mapeadas nos walks pós-spec-036 foram promovidas para dois specs em 2026-06-18: os 10 itens now-able (component de lista compartilhado + consumidores, help popup + revisão de cópia, e os fixes pequenos de painel) para [spec 049](049-blender-ui-polish/STUDY.md), e as 5 perguntas de design (sprite-centered-vs-origin, Quick Armature interaction, rotation-mode, Y-depth layers, incorporate-blender-mesh) para [spec 050](050-blender-authoring-design/STUDY.md). O `show-provenance-overlay` toggle inerte saiu de [`backlog-bugs-found.md`](backlog-bugs-found.md) no mesmo movimento (agora no spec 049).
 
-**`DECIDIR (STUDY):`** marca pergunta de design em aberto - resolver no STUDY, não no palpite. Fluxo: issue → STUDY → implementar (este arquivo não é spec).
-
-### Blender · Global chrome
-
-- **tooltip-copy-revision** `[ui]` - Revisar a cópia dos textos de help/tooltip: hoje longos e com informação dispersa. O `?` do painel explica o painel no geral; subpanels explicam o seu específico sem vazar. Cortar verborragia, conferir precisão. (A spec 036 já corrigiu a legenda de status - não cita mais `TOOL_SETTINGS` - e as três strings que mentiam; o que resta aqui é a revisão editorial de concisão/precisão.)
-- **help-popup-text-width** `[ui]` - O popup do `?` não ocupa toda a largura: o conteúdo é hand-wrapped em linhas curtas renderizadas por `layout.label` (que não faz wrap), então fica numa coluna estreita com margem direita vazia (img do walk). Reflow o conteúdo pra largura do popup (ou dimensionar o popup pelo conteúdo). Liga a `tooltip-copy-revision` + `docs-no-hard-wrap-rule`.
-- **proscenio-list-cross-deselect** `[ui]` - Selecionar um item numa lista do Proscenio não limpa o highlight de active-row das OUTRAS listas: seleciono um bone no Skeleton, depois um element no Outliner, e o bone segue destacado na lista anterior (confuso). Cada lista tem seu `active_*_index` independente; sincronizar pro objeto/bone realmente ativo (estende o identity-sync do outliner da 043). Verificado no walk pós-merge.
-- **native-list-standardization** `[ui]` - Padronizar as listas de todos os painéis no estilo outliner nativo do Blender: foldable items / accordion em hierarquia clara, busca nativa, marcações custom por painel. Caso concreto que resta: `wpaint-override-list-scroll` (a lista de slots já migrou para `template_list` na pruned 046; o `outliner-hierarchy-tree` foi dropado - ver [`dropped.md`](dropped.md): UIList do Blender não tem árvore nativa em Python).
-- **list-multiselect** `[feature]` - Seleção múltipla (Shift/Ctrl) por lista, conforme o que o clique significa: multi nas listas que mapeiam seleção real do Blender, single nas que são "escolher um". O Outliner já entregou multi (extend/toggle por `event.shift`/`event.ctrl`); resta a seleção de bones do Skeleton e o set-em-lote nos overrides per-bone do Weight Paint, que dependem do componente de lista ainda não construído (cf. `wpaint-override-list-scroll`). Trava técnica: o `template_list` só tem um `active_index`, então multi exige estado de selecionado por item + marcador custom (o highlight múltiplo é aproximação, não nativo).
-
-### Blender · Outliner
-
-- **proscenio-y-depth-layers** `[feature]` - Controle de profundidade em Y dos objetos (meshes e sprites) para evitar z-fight entre planos após o import do Photoshop; ex.: organizar em "camadas" estilo Photoshop, com uma distância aplicada conforme a profundidade. **`DECIDIR (STUDY):`** mecanismo (auto pela ordem de camada do PS vs manual) e se isso entra no schema/export ou é só authoring no Blender.
-
-### Blender · Element
-
-- **incorporate-blender-mesh-as-element** `[feature]` - Botão para incorporar uma malha criada no Blender como elemento do fluxo do Proscenio, quando o ativo for um objeto do Blender. **`DECIDIR (STUDY):`** o que "incorporar" seta (`element_type`, props default, material) e quais pré-condições.
-- **element-driver-management** `[ui]` - Lista de todos os "drive from bone" do elemento, permitindo excluir / alterar / adicionar vários; hoje só substitui e é impossível remover um driver pelo painel. (distinto do gated `sticky-panel`, que é o painel fixo durante a edição de pose)
-- **sprite-centered-vs-origin-doc** `[ui]` - **`DECIDIR (STUDY):`** `centered` (`object_props.py:104`, só existe para `sprite`) deve derivar da origin importada do `[origin]` do PS ou continuar toggle manual? (A linha de help que documenta a distinção `centered` vs origin já existe; aqui resta só a pergunta de design.)
-
-### Blender · Skeleton
-
-- **qa-rotation-mode** `[feature]` - Escolha de rotation-mode no Quick Armature (Euler-Y vs quaternion) + safe swap. O export já está correto dos dois jeitos (o writer colapsa ambos via `_quat_to_screen_angle`), então o valor é só clareza de autoria. **`DECIDIR (STUDY):`** o safe-swap pode quebrar animações silenciosamente se errado - validar a estratégia antes de implementar.
-- **qa-quickarm-interaction-revision** `[feature]` - Revisar o vocabulário de interação do modal do Quick Armature: os taps de modificador (Shift/Ctrl/etc.) são ruins e precisam ser repensados, e o esquema de chords está saturado (Shift/Alt/Ctrl/X/Z ocupados). No esquema revisto, incluir o pick-parent na viewport (hit-testing de ponta de bone para reparentar mid-sketch) - há demanda. A "saturação de chords" não é bloqueio, é o escopo. **`DECIDIR (STUDY):`** o novo vocabulário de interação (o que substitui os taps) antes de encaixar o pick-parent. Absorve o antigo `qa-pick-parent-viewport`.
-
-### Blender · Mesh Generation
-
-- **automesh-shared-params-surfacing** `[ui]` - Elevar/reorganizar os parâmetros que hoje só vivem no subpanel Automesh-from-Alpha mas afetam também o Automesh Interactive. Findings F-47 e F-48.
-
-### Blender · Weight Paint
-
-- **wpaint-override-list-scroll** `[ui]` - A lista de override per-bone fica gigantesca e empurra todo o resto do Bind para baixo; usar a lista padrão do projeto ou, no mínimo, uma scrollbar. Caso concreto de `native-list-standardization`.
-- **wpaint-named-snapshots** `[ui]` - Snapshots nomeados / save points com escolha de para onde voltar; o snapshot atual é confuso (não dá pra saber se volta para antes ou depois da pintura). Findings F-55/F-66.
+Formato para novas issues, por app → painel: `**slug** [cat] - descrição` + refs de código (`arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`. **`DECIDIR (STUDY):`** marca pergunta de design em aberto - resolver no STUDY, não no palpite. Fluxo: issue → STUDY → implementar (este arquivo não é spec).
 
 ## Itens spec-sized (não cabem numa sprint de polish)
 

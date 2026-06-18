@@ -57,9 +57,6 @@ From the QA Companion audit, verified against current `main`; read-not-reproduce
 - **Bake IK to Keyframes leaves the selection altered** (low) - mutates per-bone selection to scope `nla.bake`, never restores it. `authoring_ik.py:201-213`.
 - **Action-row CANCELLED feedback suppressed at log level "errors"** (low) - the no-armature/not-found/multi-armature warnings go through the gated `report_warn`, so a failed click is silent. `report.py:50-53`, `selection.py`.
 
-**Inert / wrong-target controls.**
-
-- **Show-provenance-overlay panel toggle is inert outside the modal** (med) - the toggle registers no draw handler; the overlay only exists inside the Edit Weights modal, so as a standalone toggle it does nothing. `weight_paint.py:338`, `edit_weights.py:97-99`.
 **Photoshop-import side effects (Blender side).**
 
 - **Re-import always rebuilds the armature** (low) - `import_manifest` calls `build_root_armature` every run, so the doc's "rotation, parenting, weights survive" reuse claim is likely false; verify the round-trip or correct the doc. `importers/photoshop/__init__.py:68-91`. Tied to the Godot reimporter decision in [backlog-godot-importer.md](backlog-godot-importer.md).

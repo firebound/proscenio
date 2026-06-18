@@ -67,18 +67,20 @@ def test_panel_topic_ids_present() -> None:
 
 
 def test_see_also_references_are_urls() -> None:
-    """Cross-references must be http(s) URLs, not local paths.
+    """Cross-references must be https URLs, not local paths or plaintext http.
 
     The help popup renders an http(s) ref as a clickable ``wm.url_open``
     button; a local path cannot resolve inside an installed (zipped) extension,
-    so a non-URL ref is a dead button. This replaced the old disk-existence
-    check when the three local-path refs were migrated to GitHub URLs.
+    so a non-URL ref is a dead button, and a clickable help link should not be
+    plaintext http. This replaced the old disk-existence check when the
+    local-path refs were migrated to GitHub https URLs.
     """
     for topic_id, topic in HELP_TOPICS.items():
         for ref in topic.see_also:
-            assert ref.startswith(("http://", "https://")), (
-                f"topic {topic_id!r} see_also {ref!r} is not an http(s) URL "
-                f"(a local path cannot resolve in an installed extension)"
+            assert ref.startswith("https://"), (
+                f"topic {topic_id!r} see_also {ref!r} is not an https URL "
+                f"(a local path cannot resolve in an installed extension, and "
+                f"clickable help links should not be plaintext http)"
             )
 
 

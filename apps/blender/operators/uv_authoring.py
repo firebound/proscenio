@@ -51,9 +51,19 @@ class PROSCENIO_OT_reproject_sprite_uv(bpy.types.Operator):
         if not mesh.loops:
             report_warn(self, f"'{obj.name}' has no geometry to project")
             return {"CANCELLED"}
-        # Create the layer only after the guard, so a cancel never mutates the
-        # datablock (no stray UVMap, no empty undo step).
-        uv_layer = mesh.uv_layers.active or mesh.uv_layers.new(name="UVMap")
+        # Resolve the layer only after the guard, so a cancel never mutates the
+        # datablock (no stray UVMap, no empty undo step). A freshly created
+        # layer is loop-length; an active layer can be shorter than the loop
+        # count in a partially-initialized mesh (the same short-data state
+        # collect_mesh_loop_uvs guards), so fall back to a new layer and bail if
+        # it is still short rather than indexing past the end of uv_layer.data.
+        loop_count = len(mesh.loops)
+        uv_layer = mesh.uv_layers.active
+        if uv_layer is None or len(uv_layer.data) < loop_count:
+            uv_layer = mesh.uv_layers.new(name="UVMap")
+        if len(uv_layer.data) < loop_count:
+            report_warn(self, f"'{obj.name}' has inconsistent UV data; recreate UVs and retry")
+            return {"CANCELLED"}
 
         positions = [tuple(mesh.vertices[loop.vertex_index].co) for loop in mesh.loops]
         uvs = planar_uv_from_positions(positions)

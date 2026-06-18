@@ -1221,7 +1221,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: That object becomes the only selected and active object, and the viewport frames it. A hidden object is revealed (hide and hide-in-viewport cleared) before selecting. Error rows show in red, warnings plain. If the named object no longer exists, a warning appears and the selection is unchanged; an object outside the active view layer warns instead of raising a traceback.
 - intent: Clicking an object-scoped issue row jumps your selection to the offending object, revealing and framing it so the fix is one click away.
 - code: apps/blender/panels/validation.py:43 -> _helpers.py (draw_issue_row) -> selection.py (PROSCENIO_OT_select_issue_object + _frame_selected)
-- note: spec 036 PR3 added the unhide + frame + view-layer guard; re-walk the reveal-hidden and out-of-view-layer paths.
+- note: spec 036 PR3 added the unhide + frame + view-layer guard; re-walk the reveal-hidden and out-of-view-layer paths. Deferred by the user at the post-merge walk - still needs a GUI pass.
 
 ## Pipeline panel: import Photoshop manifest + export/re-export .proscenio
 

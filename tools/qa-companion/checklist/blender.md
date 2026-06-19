@@ -155,13 +155,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Spec 043 removed the redundant Proscenio search bar; only Blender's built-in list filter remains (no precedence to reconcile).
 - code: apps/blender/panels/outliner.py filter_items (self.filter_name only)
 
-### BL-OUTLN-05 · Custom sort overrides Blender's native sort
+### BL-OUTLN-05 · Native 'sort by name' switches tree vs alphabetical
 - status: pending
 - review: keep
-- observe: The list always shows the Proscenio parenting-tree order, even with the native sort toggles open. The native invert-filter toggle can still flip which rows are shown.
-- intent: The custom parenting-tree order overrides Blender's native list sort.
-- code: apps/blender/panels/outliner.py filter_items (sort_key=hierarchy_sort_key)
-- note: blender-authoring-ux: custom order is now the parenting tree, not category-then-name. Re-walk.
+- steps:
+  1. With the native sort controls (the list's expand arrows) showing, leave 'sort by name' (the A-Z button) off and read the order.
+  2. Turn the A-Z button on and read the order again.
+- observe: Off, the list is the parenting-tree order (armature -> slot -> attachments -> loose, indented by depth). On, the list flattens to a plain alphabetical order by name (every kind interleaved, the depth indent dropped). The native reverse arrow is not wired (no effect). The native invert-filter toggle can still flip which rows are shown.
+- intent: The native A-Z 'sort by name' toggle switches the order between the parenting tree (off) and a flat alphabetical list (on); reverse is not wired.
+- code: apps/blender/core/outliner_view.py outliner_sort_key; apps/blender/panels/outliner.py filter_items + draw_item (use_filter_sort_alpha)
+- note: blender-authoring-ux: the A-Z toggle now works (was inert). Re-walk both states.
 
 ### BL-OUTLN-11 · Only Proscenio members are listed
 - status: pending

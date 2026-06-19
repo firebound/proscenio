@@ -13,9 +13,9 @@ from ..core.outliner_view import (
     RANK_ELEMENT_MESH,
     RANK_SLOT,
     category_rank,
-    hierarchy_sort_key,
     is_proscenio_member,
     outliner_depth,
+    outliner_sort_key,
     row_visible,
 )
 from ._helpers import draw_subpanel_header
@@ -57,9 +57,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         else:
             row_icon = "OBJECT_DATA"
             label = obj.name
-        # Indent by tree depth so the flat list reads as the parenting tree:
-        # armature (root) -> slot -> its attachments; loose meshes under the rig.
-        label = ("    " * outliner_depth(rank)) + label
+        # Indent by tree depth so the flat list reads as the parenting tree
+        # (armature root -> slot -> its attachments; loose meshes under the rig).
+        # With the native 'sort by name' toggle on the tree is dropped for a flat
+        # alphabetical order, so the indent goes too.
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
+        depth = 0 if sort_alpha else outliner_depth(rank)
+        label = ("    " * depth) + label
         # A bare operator button stretches across the row and centers its
         # text. Split the row and draw the label in a LEFT-aligned sub-row so
         # names hug the left edge (spec 036 left-align-names); the favorite
@@ -145,13 +149,18 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
                 filter_text="",
             )
 
+        # The native 'sort by name' toggle (A-Z) flattens the list to plain
+        # alphabetical; off, the rows keep the parenting-tree order.
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
         return compute_list_filter(
             objects,
             bitflag=self.bitflag_filter_item,
             name_filter=self.filter_name or "",
             name_of=lambda obj: obj.name,
             visible=_visible,
-            sort_key=lambda obj: hierarchy_sort_key(obj, rank=ranks[obj.name]),
+            sort_key=lambda obj: outliner_sort_key(
+                obj, rank=ranks[obj.name], sort_alpha=sort_alpha
+            ),
         )
 
 

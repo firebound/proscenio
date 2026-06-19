@@ -27,6 +27,7 @@ from core.outliner_view import (  # noqa: E402
     hierarchy_sort_key,
     is_proscenio_member,
     outliner_depth,
+    outliner_sort_key,
     row_visible,
 )
 
@@ -255,6 +256,30 @@ def test_hierarchy_sort_lays_out_the_parenting_tree() -> None:
         "sword",
         "torso",
     ]
+
+
+def test_outliner_sort_key_alpha_flattens_to_plain_name_order() -> None:
+    # With the native 'sort by name' toggle on, the parenting tree is dropped:
+    # every kind sorts together by name (case-insensitive).
+    arm = SimpleNamespace(name="Zebra", type="ARMATURE")
+    hand = _slot("hand")
+    sword = SimpleNamespace(name="sword", type="MESH", parent=hand)
+    torso = SimpleNamespace(name="alpha_torso", type="MESH", parent=arm)
+    objs = [arm, hand, sword, torso]
+    ordered = sorted(
+        objs, key=lambda o: outliner_sort_key(o, rank=category_rank(o), sort_alpha=True)
+    )
+    assert [o.name for o in ordered] == ["alpha_torso", "hand", "sword", "Zebra"]
+
+
+def test_outliner_sort_key_tree_when_alpha_off() -> None:
+    # Toggle off: the key is exactly the parenting-tree key.
+    hand = _slot("hand")
+    glove = SimpleNamespace(name="glove", type="MESH", parent=hand)
+    rank = category_rank(glove)
+    assert outliner_sort_key(glove, rank=rank, sort_alpha=False) == hierarchy_sort_key(
+        glove, rank=rank
+    )
 
 
 def test_hierarchy_sort_keeps_a_slot_with_its_attachments() -> None:

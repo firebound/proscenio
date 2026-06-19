@@ -107,6 +107,20 @@ def hierarchy_sort_key(obj: object, *, rank: int) -> tuple[int, str, int, str]:
     return (2, "", 0, name)
 
 
+def outliner_sort_key(obj: object, *, rank: int, sort_alpha: bool) -> tuple[int, str, int, str]:
+    """Sort key for the Outliner, honouring the native 'sort by name' toggle.
+
+    With ``sort_alpha`` on (the UIList A-Z button), every row collapses into one
+    bucket keyed by name, so the list is a plain alphabetical order and the
+    parenting tree is dropped - the native toggle reads naturally. Off, the rows
+    lay out as the parenting tree (:func:`hierarchy_sort_key`). The caller drops
+    the depth indent in alpha mode too (see :func:`outliner_depth`).
+    """
+    if sort_alpha:
+        return (0, "", 0, (getattr(obj, "name", "") or "").lower())
+    return hierarchy_sort_key(obj, rank=rank)
+
+
 def row_visible(
     obj: object,
     *,

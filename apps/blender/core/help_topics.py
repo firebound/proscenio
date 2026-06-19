@@ -646,16 +646,15 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "Fields",
                 "- hframes / vframes: the spritesheet grid (columns x rows).",
                 "- frame: the cell shown at rest pose; animation tracks override it.",
-                "- centered: Godot Sprite2D.centered - the texture is centered on the node"
-                " origin (on) or its top-left sits at the origin (off).",
             ),
             _section(
-                "Centered vs origin",
-                "'centered' is the Sprite2D pivot toggle - it sets where the texture sits"
-                " within the node (centered on the origin, or top-left at it). It is a manual"
-                " choice on this sprite, independent of the object origin the PSD [origin]"
-                " tag imported. The imported origin places the whole element in the scene;"
-                " 'centered' only moves the texture relative to that point.",
+                "Origin and the pivot",
+                "A sprite is always centered on its node (Godot Sprite2D.centered is a fixed"
+                " internal constant - flipping it would break the exporter's offset math, so"
+                " it is no longer an authoring toggle). The PSD [origin] tag sets the pivot:"
+                " the importer places the object origin there and the exporter writes a"
+                " Sprite2D offset that shifts the texture so it lines up with that origin."
+                " [origin] is sprite-only - on a Mesh it has no pivot to set and is ignored.",
             ),
         ),
     ),

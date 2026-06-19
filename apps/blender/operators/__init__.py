@@ -9,6 +9,7 @@ Submodules / subpackages:
 
 - help_dispatch     - status badge proxy, help popup, smoke test
 - export_flow       - Validate, Export, Re-export
+- incorporate       - adopt a hand-authored Blender mesh as an element
 - selection         - select issue, select outliner, toggle favorite
 - armature/         - Preview Camera, Toggle IK, set active armature, Quick Armature
 - uv_authoring      - Reproject UV, Snap region to UV
@@ -31,6 +32,7 @@ from . import (
     export_flow,
     help_dispatch,
     import_photoshop,
+    incorporate,
     pose_library,
     selection,
     skinning,
@@ -42,6 +44,7 @@ from . import (
 def register() -> None:
     help_dispatch.register()
     export_flow.register()
+    incorporate.register()
     selection.register()
     armature.register()
     uv_authoring.register()
@@ -65,5 +68,6 @@ def unregister() -> None:
     uv_authoring.unregister()
     armature.unregister()
     selection.unregister()
+    incorporate.unregister()
     export_flow.unregister()
     help_dispatch.unregister()

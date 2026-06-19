@@ -10,6 +10,7 @@ from mathutils import Vector
 from proscenio_models import MeshElement, SpriteElement, Weight
 
 from ....core._shared import region as region_core
+from ....core._shared.cp_keys import PROSCENIO_DEPTH_OFFSET
 from ....core._shared.material_images import iter_material_images
 from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import (
@@ -110,13 +111,20 @@ def _derive_modulate(obj: bpy.types.Object) -> list[float] | None:
 
 
 def _derive_z_index(obj: bpy.types.Object) -> int | None:
-    """Draw order from the PSD-stamped depth (object Y), or None at the front.
+    """Draw order from the PSD-stamped depth (object Y) plus the manual offset.
 
     The PSD import stamps ``object.location.y = z_order * Z_EPSILON`` with
     z_order 0 = front; Godot draws a higher ``z_index`` on top, so negate to
-    keep the authored stacking. A flat rig (Y = 0) emits nothing.
+    keep the authored stacking. The authoring-only ``depth_offset`` (in
+    PSD-layer units) adds to the depth before the negate, letting the artist
+    reorder a plane without moving the object or re-importing - a positive
+    value pushes the element further back. A net-zero depth (Y = 0, no offset)
+    emits nothing.
     """
-    z = -round(obj.location.y / _DEPTH_EPSILON)
+    depth_offset = float(
+        read_field(obj, pg_field="depth_offset", cp_key=PROSCENIO_DEPTH_OFFSET, default=0.0)
+    )
+    z = -round(obj.location.y / _DEPTH_EPSILON + depth_offset)
     return z or None
 
 

@@ -8,20 +8,20 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty
 
 from ..core._shared.props_access import object_props  # type: ignore[import-not-found]
-from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
+from ..core._shared.report import (  # type: ignore[import-not-found]
+    report_error,
+    report_info,
+    report_warn,
+)
 from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
     DRIVER_SOURCE_AXIS_ITEMS,
     build_driver_expression,
 )
+from ..core.armature.driver_targets import (  # type: ignore[import-not-found]
+    DRIVER_TARGET_PROPERTIES,
+)
 
 _DRIVER_VAR_NAME = "var"
-_DRIVER_TARGET_PROPERTIES: tuple[tuple[str, str, str], ...] = (
-    ("frame", "Frame index", "Sprite-frame index - driven 0..hframes*vframes"),
-    ("region_x", "Region X", "Texture region origin X (0..1)"),
-    ("region_y", "Region Y", "Texture region origin Y (0..1)"),
-    ("region_w", "Region W", "Texture region width (0..1)"),
-    ("region_h", "Region H", "Texture region height (0..1)"),
-)
 
 
 def _ensure_single_driver(
@@ -101,7 +101,7 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
     target_property: EnumProperty(  # type: ignore[valid-type]
         name="Target",
         description="Sprite proscenio property the driver writes to",
-        items=_DRIVER_TARGET_PROPERTIES,
+        items=DRIVER_TARGET_PROPERTIES,
         default="region_x",
     )
     source_axis: EnumProperty(  # type: ignore[valid-type]
@@ -255,7 +255,41 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         return {"FINISHED"}
 
 
-_classes: tuple[type, ...] = (PROSCENIO_OT_create_driver,)
+class PROSCENIO_OT_remove_driver(bpy.types.Operator):
+    """Remove one ``proscenio.*`` bone driver from the active sprite."""
+
+    bl_idname = "proscenio.remove_driver"
+    bl_label = "Proscenio: Remove Driver"
+    bl_description = "Removes this bone driver from the active sprite's proscenio property"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    data_path: StringProperty(  # type: ignore[valid-type]
+        name="Data path",
+        description="The proscenio.<prop> data path whose driver is removed",
+        default="",
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        sprite = context.active_object
+        if sprite is None or sprite.type != "MESH":
+            report_error(self, "select a sprite mesh as the active object")
+            return {"CANCELLED"}
+        if not self.data_path:
+            report_warn(self, "no driver data path given")
+            return {"CANCELLED"}
+        anim = sprite.animation_data
+        if anim is None or anim.drivers.find(self.data_path) is None:
+            report_warn(self, f"no driver on '{self.data_path}'")
+            return {"CANCELLED"}
+        sprite.driver_remove(self.data_path)
+        report_info(self, f"removed driver on '{sprite.name}.{self.data_path}'")
+        return {"FINISHED"}
+
+
+_classes: tuple[type, ...] = (
+    PROSCENIO_OT_create_driver,
+    PROSCENIO_OT_remove_driver,
+)
 
 
 def register() -> None:

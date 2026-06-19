@@ -14,6 +14,11 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
+from ..core.list_view import clamped_rows  # type: ignore[import-not-found]
+from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
+    overrides_apply_under_bind_mode,
+    read_bone_modes,
+)
 from ._helpers import (
     _active_armature,
     _is_mesh_element,
@@ -21,6 +26,7 @@ from ._helpers import (
     draw_subpanel_header,
     draw_target_readout,
 )
+from ._list import ProscenioListMixin
 
 
 class PROSCENIO_PT_weight_paint(bpy.types.Panel):
@@ -65,7 +71,11 @@ class PROSCENIO_PT_bind(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         _draw_bind(
-            self.layout, _scene_skinning(context), _active_armature(context), context.active_object
+            self.layout,
+            context,
+            _scene_skinning(context),
+            _active_armature(context),
+            context.active_object,
         )
 
 
@@ -149,6 +159,7 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
 
 def _draw_bind(
     layout: bpy.types.UILayout,
+    context: bpy.types.Context,
     skinning_props: bpy.types.PropertyGroup | None,
     picker: bpy.types.Object | None,
     obj: bpy.types.Object | None,
@@ -176,7 +187,7 @@ def _draw_bind(
     # "Target: Skeleton <name>" readout above this subpanel.
 
     if picker is not None and obj is not None and obj.type == "MESH":
-        _draw_bone_overrides(layout, obj, picker, bind_mode)
+        _draw_bone_overrides(layout, context, picker, bind_mode)
 
     row = layout.row()
     row.enabled = picker is not None
@@ -187,22 +198,58 @@ def _draw_bind(
     )
 
 
+class PROSCENIO_UL_bone_overrides(ProscenioListMixin, bpy.types.UIList):
+    """Per-bone Soft / Hard / Clear override rows with native scroll + search.
+
+    Bound to the target armature's bones; Soft / Hard set the active mesh's
+    per-bone bind mode and the X clears it back to the operator default. The
+    shared mixin gives it the native name filter and source (hierarchy) order;
+    ``template_list`` caps the height so a many-bone rig scrolls instead of
+    pushing the Bind button off-screen.
+    """
+
+    bl_idname = "PROSCENIO_UL_bone_overrides"
+
+    def draw_item(
+        self,
+        context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        _data: bpy.types.AnyType,
+        item: bpy.types.AnyType,
+        _icon: int,
+        _active_data: bpy.types.AnyType,
+        _active_propname: str,
+    ) -> None:
+        obj = context.active_object
+        current = read_bone_modes(obj).get(item.name, "") if obj is not None else ""
+        row = layout.row(align=True)
+        row.label(text=item.name)
+        op_soft = row.operator("proscenio.set_bone_mode", text="Soft", depress=(current == "SOFT"))
+        op_soft.bone_name = item.name
+        op_soft.mode = "SOFT"
+        op_hard = row.operator("proscenio.set_bone_mode", text="Hard", depress=(current == "HARD"))
+        op_hard.bone_name = item.name
+        op_hard.mode = "HARD"
+        clear_sub = row.row(align=True)
+        clear_sub.enabled = current != ""
+        op_clear = clear_sub.operator("proscenio.set_bone_mode", text="", icon="X")
+        op_clear.bone_name = item.name
+        op_clear.mode = "CLEAR"
+
+
 def _draw_bone_overrides(
     layout: bpy.types.UILayout,
-    obj: bpy.types.Object,
+    context: bpy.types.Context,
     picker: bpy.types.Object,
     bind_mode: str,
 ) -> None:
-    """Per-bone Soft / Hard / Clear rows, or a hint when the mode ignores them.
+    """Draw the per-bone Soft/Hard override list, or a hint when the mode ignores it.
 
     A missing entry means the bone uses the operator-level default
-    (bind_init_mode); the per-row clear button drops an override back to it.
+    (bind_init_mode); the per-row clear button drops an override back to it. The
+    list is a native ``template_list`` so a many-bone rig scrolls inside a capped
+    box instead of growing the panel unbounded.
     """
-    from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
-        overrides_apply_under_bind_mode,
-        read_bone_modes,
-    )
-
     bones = picker.data.bones if picker.data is not None else []
     if not bones:
         return
@@ -214,30 +261,18 @@ def _draw_bone_overrides(
             icon="INFO",
         )
         return
-    modes = read_bone_modes(obj)
-    for bone in bones:
-        current = modes.get(bone.name, "")
-        bone_row = override_box.row(align=True)
-        bone_row.label(text=bone.name)
-        op_soft = bone_row.operator(
-            "proscenio.set_bone_mode",
-            text="Soft",
-            depress=(current == "SOFT"),
-        )
-        op_soft.bone_name = bone.name
-        op_soft.mode = "SOFT"
-        op_hard = bone_row.operator(
-            "proscenio.set_bone_mode",
-            text="Hard",
-            depress=(current == "HARD"),
-        )
-        op_hard.bone_name = bone.name
-        op_hard.mode = "HARD"
-        clear_sub = bone_row.row(align=True)
-        clear_sub.enabled = current != ""
-        op_clear = clear_sub.operator("proscenio.set_bone_mode", text="", icon="X")
-        op_clear.bone_name = bone.name
-        op_clear.mode = "CLEAR"
+    scene_props = getattr(context.scene, "proscenio", None)
+    if scene_props is None:
+        return
+    override_box.template_list(
+        "PROSCENIO_UL_bone_overrides",
+        "",
+        picker.data,
+        "bones",
+        scene_props,
+        "active_bone_index",
+        rows=clamped_rows(len(bones), minimum=3, maximum=6),
+    )
 
 
 def _draw_edit_weights(
@@ -395,6 +430,7 @@ def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
 
 
 _classes: tuple[type, ...] = (
+    PROSCENIO_UL_bone_overrides,
     PROSCENIO_PT_weight_paint,
     PROSCENIO_PT_bind,
     PROSCENIO_PT_edit_weights,

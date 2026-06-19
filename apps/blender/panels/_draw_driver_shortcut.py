@@ -12,12 +12,17 @@ from __future__ import annotations
 
 import bpy
 
+from ..core.bpy_helpers.armature.driver_list import (  # type: ignore[import-not-found]
+    proscenio_driver_rows,
+)
+
 
 def draw_box(
     layout: bpy.types.UILayout,
-    props: bpy.types.AnyType,
+    sprite: bpy.types.Object,
 ) -> None:
-    """Render the driver-shortcut fields inside the Drive from Bone subpanel."""
+    """Render the driver-shortcut fields + the existing-driver list."""
+    props = sprite.proscenio
     layout.prop(props, "driver_target", text="Target")
     layout.prop(props, "driver_source_armature", text="Armature")
     layout.prop(props, "driver_source_bone", text="Bone")
@@ -41,6 +46,29 @@ def draw_box(
     has_bones = armature is not None and bool(getattr(armature.data, "bones", None))
     row.enabled = has_bones and bool(props.driver_source_bone)
     row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
+
+    _draw_driver_list(layout, sprite)
+
+
+def _draw_driver_list(layout: bpy.types.UILayout, sprite: bpy.types.Object) -> None:
+    """List the element's existing proscenio bone drivers, each with a remove X.
+
+    The create path only ever replaces the one driver per source bone; this is
+    the management surface that view-and-removes them. Hidden when the element
+    has none so the subpanel stays compact until a driver exists.
+    """
+    rows = proscenio_driver_rows(sprite)
+    if not rows:
+        return
+    layout.separator()
+    layout.label(text=f"Drivers ({len(rows)}):", icon="DRIVER")
+    col = layout.box().column(align=True)
+    for driver_row in rows:
+        item = col.row(align=True)
+        source = f"<- {driver_row.bone}" if driver_row.bone else "(no bone)"
+        item.label(text=f"{driver_row.label}  {source}")
+        remove = item.operator("proscenio.remove_driver", text="", icon="X", emboss=False)
+        remove.data_path = driver_row.data_path
 
 
 def _draw_value_readout(layout: bpy.types.UILayout, props: bpy.types.AnyType) -> None:

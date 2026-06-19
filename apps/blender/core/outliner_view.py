@@ -73,6 +73,40 @@ def is_proscenio_member(obj: object, *, rank: int, picked_armature_name: str | N
     return rank != RANK_HIDDEN
 
 
+def outliner_depth(rank: int) -> int:
+    """Indent depth for the Outliner's parenting-tree layout.
+
+    The armature is the root (0); slots and loose element meshes sit under it
+    (1); a slot's attachments sit under the slot (2).
+    """
+    if rank == RANK_ARMATURE:
+        return 0
+    if rank == RANK_ATTACHMENT:
+        return 2
+    return 1
+
+
+def hierarchy_sort_key(obj: object, *, rank: int) -> tuple[int, str, int, str]:
+    """Sort key laying the flat Outliner out as a scene-parenting tree.
+
+    Order: the picked armature first, then each slot immediately followed by
+    its own attachments (grouped by slot name), then the loose element meshes -
+    armature, then slot -> its mesh/sprite, then the free meshes - rather than a
+    flat by-category grouping. Names are lower-cased so the order is
+    case-insensitive (matching the panel's prior sort).
+    """
+    name = (getattr(obj, "name", "") or "").lower()
+    if rank == RANK_ARMATURE:
+        return (0, "", 0, name)
+    if rank == RANK_SLOT:
+        return (1, name, 0, "")
+    if rank == RANK_ATTACHMENT:
+        parent = getattr(obj, "parent", None)
+        slot_name = (getattr(parent, "name", "") or "").lower()
+        return (1, slot_name, 1, name)
+    return (2, "", 0, name)
+
+
 def row_visible(
     obj: object,
     *,

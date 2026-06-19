@@ -23,7 +23,10 @@ from core.outliner_view import (  # noqa: E402
     RANK_ELEMENT_MESH,
     RANK_HIDDEN,
     RANK_SLOT,
+    category_rank,
+    hierarchy_sort_key,
     is_proscenio_member,
+    outliner_depth,
     row_visible,
 )
 
@@ -213,3 +216,51 @@ def test_member_slot_and_attachment_always() -> None:
         )
         is True
     )
+
+
+# --- hierarchy ordering -------------------------------------------------------
+
+
+def test_outliner_depth_by_rank() -> None:
+    assert outliner_depth(RANK_ARMATURE) == 0  # root
+    assert outliner_depth(RANK_SLOT) == 1  # under the armature
+    assert outliner_depth(RANK_ELEMENT_MESH) == 1  # loose, under the armature
+    assert outliner_depth(RANK_ATTACHMENT) == 2  # under its slot
+
+
+def _slot(name: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        name=name, type="EMPTY", proscenio=SimpleNamespace(is_slot=True)
+    )
+
+
+def test_hierarchy_sort_lays_out_the_parenting_tree() -> None:
+    # armature, then each slot followed by its attachments (by slot name), then
+    # the loose meshes - armature -> slot -> slot mesh, then free meshes.
+    arm = SimpleNamespace(name="Rig", type="ARMATURE")
+    hand = _slot("hand")
+    sword = SimpleNamespace(name="sword", type="MESH", parent=hand)
+    back = _slot("back")
+    shield = SimpleNamespace(name="shield", type="MESH", parent=back)
+    torso = SimpleNamespace(name="torso", type="MESH", parent=arm)
+    objs = [torso, shield, arm, sword, back, hand]
+    ordered = sorted(objs, key=lambda o: hierarchy_sort_key(o, rank=category_rank(o)))
+    # "back" sorts before "hand"; each slot is immediately followed by its
+    # attachment; the loose "torso" lands last.
+    assert [o.name for o in ordered] == [
+        "Rig",
+        "back",
+        "shield",
+        "hand",
+        "sword",
+        "torso",
+    ]
+
+
+def test_hierarchy_sort_keeps_a_slot_with_its_attachments() -> None:
+    # An attachment groups under its parent slot's name, not its own.
+    hand = _slot("hand")
+    glove = SimpleNamespace(name="aaa_glove", type="MESH", parent=hand)
+    key = hierarchy_sort_key(glove, rank=category_rank(glove))
+    # Section 1 (slots), grouped by the slot name "hand", sub-rank 1 (after the slot).
+    assert key == (1, "hand", 1, "aaa_glove")

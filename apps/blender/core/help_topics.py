@@ -1,47 +1,57 @@
 """In-panel help-topic dispatch table for Proscenio.
 
-Powers the ``?`` button surfaced next to every Proscenio subpanel.
-Each topic carries a title + ordered sections of plain-text content
-that the help operator renders inside a ``invoke_popup`` window. Pure
-Python - no bpy imports - so the dispatch can be unit-tested + so
-the panel module can read content without a draw-time import cycle.
+Powers the ``?`` button surfaced next to every Proscenio subpanel. Each topic
+carries a title + ordered sections of plain-text content that the help operator
+renders inside an ``invoke_popup`` window. Pure Python - no bpy imports - so the
+dispatch can be unit-tested and so the panel module can read content without a
+draw-time import cycle.
 
 Adding a new help topic:
 
 1. Add a ``HelpTopic`` row to ``HELP_TOPICS`` keyed by a stable id.
-2. Reference the id from the panel via ``_help_button(layout, topic)``.
-3. Optionally cross-link to a planning doc or example under ``see_also``.
+2. Reference the id from the panel via the subpanel header / help button.
+3. Optionally cross-link to a docs page or example under ``see_also``.
 
 Content guidelines:
 
-- Lead with "What it does" so the user gets the answer in 1 line.
+- Lead with "What it does" so the user gets the answer in one line.
 - Follow with "How to use it" - click order, expected selection state.
 - Close with "Where it fits" mapping the feature to the
   Photoshop -> Blender -> Godot pipeline.
 - Optionally "Caveats" for known foot-guns.
 
-Plain-text only. No Markdown - Blender's UILayout renders one line
-per ``layout.label``. Bullet lists are emulated with leading ``- ``.
+Each ``HelpSection.body`` is one paragraph string. Prose flows free and is
+reflowed to the popup width at draw time (:func:`reflow_paragraph`); a bullet or
+numbered list keeps an explicit ``\\n`` between items so the structure survives
+the reflow. No Markdown - the popup renders one ``layout.label`` per wrapped line.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
+#: The help popup width passed to ``invoke_popup``, in pixels.
+POPUP_WIDTH = 480
+
+#: Greedy word-wrap budget tuned to ``POPUP_WIDTH``: ``layout.label`` cannot wrap
+#: and Blender exposes no draw-time text metrics in a popup, so prose is reflowed
+#: against a fixed character count that fills the popup at default UI scale. The
+#: old hand-wrapping sat near 55 chars, leaving the right third of the popup empty.
+POPUP_WRAP_CHARS = 72
+
 
 @dataclass(frozen=True)
 class HelpSection:
     heading: str
-    body: tuple[str, ...]
+    body: str  # one paragraph; "\n" separates explicit list items / steps
 
 
 @dataclass(frozen=True)
 class HelpTopic:
     """One help entry surfaced via the ``?`` button.
 
-    Sections render in order. ``see_also`` is rendered as a tail list
-    of relative paths to a planning doc or example for users who want
-    to dive deeper.
+    Sections render in order. ``see_also`` is rendered as a tail list of docs /
+    example URLs for users who want to dive deeper.
     """
 
     title: str
@@ -55,76 +65,116 @@ _SECTION_WHAT = "What it does"
 _SECTION_HOW = "How to use it"
 
 
-def _section(heading: str, *lines: str) -> HelpSection:
-    return HelpSection(heading=heading, body=tuple(lines))
+def _section(heading: str, *parts: str) -> HelpSection:
+    """A prose section: ``parts`` join with spaces into one reflowed paragraph."""
+    return HelpSection(heading=heading, body=" ".join(parts))
+
+
+def _list_section(heading: str, *items: str) -> HelpSection:
+    """A list/step section: ``items`` join with newlines so each keeps its own line."""
+    return HelpSection(heading=heading, body="\n".join(items))
+
+
+def _is_list_item(text: str) -> bool:
+    """True when a paragraph is a bullet (``- ``) or numbered (``1. ``) item."""
+    stripped = text.lstrip()
+    if stripped.startswith("- "):
+        return True
+    head = stripped.split(" ", 1)[0]
+    return len(head) > 1 and head.endswith(".") and head[:-1].isdigit()
+
+
+def reflow_paragraph(text: str, width: int) -> list[str]:
+    """Greedy word-wrap one logical line to ``width`` characters.
+
+    ``layout.label`` does not wrap, so the popup reflows each paragraph here. A
+    bullet / numbered item keeps a two-space hanging indent on its wrapped
+    continuation lines so the marker stays visually distinct. Blank input yields
+    no lines.
+    """
+    words = text.split()
+    if not words:
+        return []
+    cont = "  " if _is_list_item(text) else ""
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        indent = cont if lines else ""
+        if len(indent) + len(current) + 1 + len(word) > width:
+            lines.append((cont if lines else "") + current)
+            current = word
+        else:
+            current = f"{current} {word}"
+    lines.append((cont if lines else "") + current)
+    return lines
 
 
 HELP_TOPICS: dict[str, HelpTopic] = {
     "status_legend": HelpTopic(
         title="Status badges",
-        summary="Quick legend for the icons next to every Proscenio panel header.",
+        summary="Legend for the icons next to every Proscenio panel header.",
         sections=(
             _section(
                 "godot-ready",
-                "Exports to .proscenio + ships in the Godot importer. Edits to",
-                "fields under this panel reach the runtime scene.",
+                "Exports to .proscenio and ships in the Godot importer. Edits to fields"
+                " under this panel reach the runtime scene.",
             ),
             _section(
                 "blender-only",
-                "Authoring shortcut. Lives entirely on the Blender side - the",
-                ".proscenio export ignores these. Useful for posing, IK chains,",
-                "preview cameras, driver shortcuts.",
+                "An authoring shortcut. Lives entirely on the Blender side - the"
+                " .proscenio export ignores it. Posing, IK chains, preview cameras,"
+                " driver shortcuts.",
             ),
             _section(
                 "planned",
-                "Designed but not yet implemented. The UI surface exists today",
-                "as a placeholder so the future feature has a discoverable home.",
+                "Designed but not yet implemented. The UI surface exists today as a"
+                " placeholder so the future feature has a discoverable home.",
             ),
             _section(
                 "out-of-scope",
-                "Intentionally not exported. Authored in Blender for the user's",
-                "own workflow only - IK constraints, shape keys, anything Godot",
-                "does not consume.",
+                "Intentionally not exported. Authored in Blender for the user's own"
+                " workflow only - IK constraints, shape keys, anything Godot does not"
+                " consume.",
             ),
             _section(
                 "Per-feature status",
-                "Each panel header shows the badge for that feature. Hover it for",
-                "the band of THIS feature; click it to re-open this legend.",
+                "Each panel header shows the badge for that feature. Hover it for that"
+                " feature's band; click it to re-open this legend.",
             ),
         ),
-        see_also=(),
     ),
     "pipeline_overview": HelpTopic(
         title="Proscenio pipeline overview",
         summary="Photoshop -> Blender -> Godot, one JSON contract between every step.",
         sections=(
-            _section(
+            _list_section(
                 "The pipeline",
-                "1. Photoshop authors layered art (or skip + author meshes in Blender).",
-                "2. UXP plugin writes a manifest - Blender importer stamps planes.",
-                "3. Blender authors armature, weights, actions, regions.",
-                "4. Proscenio writer emits .proscenio (JSON Schema v1).",
-                "5. Godot EditorImportPlugin reads .proscenio -> .scn",
-                "   (Skeleton2D + Polygon2D + AnimationPlayer).",
-                "6. User wraps .scn in a Wrapper.tscn for scripts/extra nodes.",
+                "1. Photoshop authors layered art (or skip it and author meshes in Blender).",
+                "2. The UXP plugin writes a manifest; the Blender importer stamps planes.",
+                "3. Blender authors the armature, weights, actions, regions.",
+                "4. The Proscenio writer emits .proscenio (JSON Schema v1).",
+                "5. The Godot import plugin reads .proscenio into a .scn"
+                " (Skeleton2D + Polygon2D + AnimationPlayer).",
+                "6. You wrap the .scn in a Wrapper.tscn for scripts and extra nodes.",
             ),
             _section(
                 "Why a JSON contract",
-                "The .proscenio file is the single source of truth between the three sides.",
-                "Photoshop never knows about Blender; Blender never knows about Godot.",
-                "Schema bumps require a coordinated multi-component PR + format_version bump.",
+                "The .proscenio file is the single source of truth between the three"
+                " sides. Photoshop never knows about Blender; Blender never knows about"
+                " Godot. A schema change needs a coordinated multi-component PR and a"
+                " format_version bump.",
             ),
-            _section(
+            _list_section(
                 "Status badges",
-                "godot-ready  - exports to .proscenio + ships in the Godot importer.",
-                "blender-only - editor authoring shortcut, never reaches the .proscenio.",
-                "planned      - designed on paper, UI placeholder, not yet implemented.",
+                "godot-ready - exports to .proscenio and ships in the Godot importer.",
+                "blender-only - an editor authoring shortcut, never reaches the .proscenio.",
+                "planned - designed on paper, a UI placeholder, not yet implemented.",
                 "out-of-scope - intentionally not exported.",
             ),
-            _section(
+            _list_section(
                 "Operators (F3 to search)",
-                "Every Proscenio action is also an operator, searchable in the F3 menu",
-                "by its 'Proscenio: ...' label:",
+                "Every Proscenio action is also an operator, searchable in the F3 menu by"
+                " its 'Proscenio: ...' label:",
                 "- Validate, Export Proscenio, Re-export, Import Photoshop Manifest.",
                 "- Preview Camera, Bake Current Pose, Toggle IK, Quick Armature.",
                 "- Reproject UV, Snap region to UV bounds.",
@@ -132,83 +182,78 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "- Select Issue Object, Select Outliner Object, Toggle Outliner Favorite.",
             ),
         ),
-        see_also=(),
     ),
     "active_element": HelpTopic(
         title="Active Element",
-        summary="Per-element Proscenio settings - drives writer behavior + Godot node choice.",
+        summary="Per-element settings that drive writer behavior and Godot node choice.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Surfaces every per-mesh field the writer reads when emitting an element",
-                "entry into the .proscenio. Shown only when the active object is a MESH.",
+                "Surfaces every per-mesh field the writer reads when emitting an element"
+                " into the .proscenio. Shown only when the active object is a mesh.",
             ),
-            _section(
+            _list_section(
                 "Element type",
-                "Mesh   -> Polygon2D (cutout, deformable, weight paint).",
+                "Mesh -> Polygon2D (cutout, deformable, weight paint).",
                 "Sprite -> Sprite2D (spritesheet, hframes x vframes grid + frame index).",
-                "Pick by use case - Mesh for deformable cutout, Sprite",
-                "for grid-cycled animations.",
+                "Pick by use case: Mesh for a deformable cutout, Sprite for grid-cycled"
+                " animations.",
             ),
-            _section(
+            _list_section(
                 "Texture region",
-                "Auto   - writer computes from the mesh UV bounds at export time.",
-                "Manual - writer reads region_x/y/w/h verbatim. Use for atlas slicing.",
-                "Snap to UV bounds populates the manual fields from the current UV.",
+                "Auto - the writer computes it from the mesh UV bounds at export.",
+                "Manual - the writer reads region_x/y/w/h verbatim; use it for atlas slicing.",
+                "Snap to UV bounds fills the manual fields from the current UV.",
             ),
             _section(
                 "Drive from bone",
-                "Wires a Blender driver between the picked pose bone and a sprite",
-                "proscenio.* property. Useful for iris-scrolling or threshold flags.",
-                "For HARD texture swaps (forearm front/back), use the slot system",
-                "instead.",
+                "Wires a Blender driver between the picked pose bone and a sprite"
+                " proscenio.* property - useful for iris scrolling or threshold flags. For"
+                " HARD texture swaps (forearm front/back) use the slot system instead.",
             ),
         ),
-        see_also=(),
     ),
     "skeleton": HelpTopic(
         title="Skeleton",
-        summary="Read-only summary of the armature the writer would export.",
+        summary="The project-wide armature picker plus a read-only bone summary.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Lists every bone the writer will emit + flags multi-armature scenes.",
-                "Pose-mode helpers (Bake Pose / Toggle IK) are blender-only conveniences",
-                "and never affect the .proscenio output.",
+                "Picks the armature every Proscenio skeleton operation targets and lists"
+                " the bones the writer will emit. The pose-mode helpers (Bake Pose, Toggle"
+                " IK) are blender-only conveniences and never affect the .proscenio.",
             ),
             _section(
                 "Bake Current Pose",
-                "Inserts location/rotation/scale keyframes on every pose bone at the",
-                "playhead. Shortcut to author rest-pose + key offsets in one click.",
+                "Inserts location/rotation/scale keyframes on every pose bone at the"
+                " playhead - a shortcut to author a rest pose plus key offsets in one click.",
             ),
             _section(
                 "Toggle IK",
-                "Adds (or removes) a 'Proscenio IK' constraint on the active pose bone",
-                "so you can pose-test with IK while authoring. The constraint never",
-                "reaches the .proscenio - IK in Godot is added post-import via",
-                "Skeleton2DIK.",
+                "Adds or removes a 'Proscenio IK' constraint on the active pose bone so you"
+                " can pose-test with IK while authoring. The constraint never reaches the"
+                " .proscenio; IK in Godot is added post-import via Skeleton2D IK.",
             ),
         ),
-        see_also=(),
     ),
     "animation": HelpTopic(
         title="Animation",
-        summary="List of actions the writer would emit as Godot AnimationLibrary entries.",
+        summary="The actions the writer would emit as Godot AnimationLibrary entries.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Read-only summary of every Action in bpy.data.actions. The writer",
-                "iterates them and emits a track per fcurve, mapping bone_transform",
-                "and sprite_frame paths to Godot AnimationPlayer tracks.",
+                "A read-only summary of every action in the file. The writer iterates them"
+                " and emits a track per fcurve, mapping bone-transform and sprite-frame"
+                " paths to Godot AnimationPlayer tracks. Click an action to assign it to the"
+                " Skeleton-picked armature so the timeline plays it.",
             ),
             _section(
                 "Where they go",
-                "All actions land in the imported scene's AnimationPlayer under the",
-                "default ('') AnimationLibrary. The wrapper Wrapper.tscn can host its",
-                "own second AnimationPlayer for game-side animations without colliding.",
+                "All actions land in the imported scene's AnimationPlayer under the default"
+                " ('') library. Your Wrapper.tscn can host a second AnimationPlayer for"
+                " game-side animations without colliding.",
             ),
         ),
-        see_also=(),
     ),
     "atlas": HelpTopic(
         title="Atlas",
@@ -216,52 +261,49 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 "Pack Atlas",
-                "Walks every sprite mesh, collects its source image, runs MaxRects-BSSF",
-                "packing, writes <blend>.atlas.png + <blend>.atlas.json. Non-destructive",
-                "-- UVs + materials are NOT touched yet.",
+                "Walks every sprite mesh, collects its source image, runs MaxRects-BSSF"
+                " packing, and writes <blend>.atlas.png + <blend>.atlas.json."
+                " Non-destructive - UVs and materials are not touched yet.",
             ),
             _section(
                 "Apply Packed Atlas",
-                "Reads the manifest, snapshots pre-Apply state into a Custom Property",
-                "(proscenio_pre_pack), then rewrites every sprite's UVs + material to",
-                "address the packed atlas.",
+                "Reads the manifest, snapshots the pre-Apply state into a Custom Property"
+                " (proscenio_pre_pack), then rewrites every sprite's UVs and material to"
+                " address the packed atlas.",
             ),
             _section(
                 "Unpack Atlas",
-                "Reverts a previous Apply by reading the snapshot back. Survives",
-                ".blend save/reload - Ctrl+Z does not. Use this when you need to",
-                "edit a source image and re-pack from scratch.",
+                "Reverts a previous Apply by reading the snapshot back. It survives a .blend"
+                " save/reload (Ctrl+Z does not). Use it when you need to edit a source image"
+                " and re-pack from scratch.",
             ),
             _section(
                 "Renamed materials",
-                "The snapshot stores each material by name. Apply also stamps an",
-                "origin marker, so a material renamed between Apply and Unpack is",
-                "still rescued. Two cases the marker cannot cover: a deleted",
-                "material (Unpack restores UVs only), and an old name reused by a",
-                "different material (the by-name match wins and links the wrong",
-                "material).",
+                "The snapshot stores each material by name and Apply also stamps an origin"
+                " marker, so a material renamed between Apply and Unpack is still rescued."
+                " Two cases the marker cannot cover: a deleted material (Unpack restores UVs"
+                " only), and an old name reused by a different material (the by-name match"
+                " wins and links the wrong material).",
             ),
         ),
-        see_also=(),
     ),
     "validation": HelpTopic(
         title="Validation",
-        summary="Walks the scene, reports issues that would block export.",
+        summary="Walks the scene and reports issues that would block export.",
         sections=(
-            _section(
+            _list_section(
                 "What it catches",
-                "- Missing armature when sprites carry vertex groups.",
+                "- A missing armature when sprites carry vertex groups.",
                 "- Bone references that no longer exist on the armature.",
                 "- Atlas image files missing from disk.",
-                "- sprite meshes without hframes/vframes.",
+                "- Sprite meshes without hframes/vframes.",
             ),
             _section(
                 _SECTION_HOW,
-                "Click Validate; rows render below with click-to-select on the",
-                "offending object. Errors block Export; warnings are informational.",
+                "Click Validate; rows render below, each click-to-select on the offending"
+                " object. Errors block Export; warnings are informational.",
             ),
         ),
-        see_also=(),
     ),
     "export": HelpTopic(
         title="Export",
@@ -269,56 +311,55 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Runs the writer, validates against packages/models/schemas/proscenio.schema.json,",
-                "writes the result. Sticky - the path is remembered next to the",
-                ".blend so Re-export skips the file dialog.",
+                "Runs the writer, validates the result against the Proscenio JSON schema,"
+                " and writes the file. The path is sticky - remembered next to the .blend so"
+                " Re-export skips the file dialog.",
             ),
             _section(
                 "Pixels per unit",
-                "Conversion ratio between Blender world units and Godot pixels.",
-                "Default 100 - 1 m in Blender = 100 px in Godot.",
+                "The conversion ratio between Blender world units and Godot pixels. Default"
+                " 100, so 1 m in Blender = 100 px in Godot.",
             ),
             _section(
                 "What lands in Godot",
-                "The .proscenio is read by the EditorImportPlugin. A .scn is generated",
-                "with Skeleton2D + Bone2D + Polygon2D/Sprite2D + AnimationPlayer - all",
-                "native nodes, no GDExtension, no plugin runtime dependency.",
+                "The .proscenio is read by the import plugin into a .scn of Skeleton2D +"
+                " Bone2D + Polygon2D/Sprite2D + AnimationPlayer - all native nodes, no"
+                " GDExtension, no plugin runtime dependency.",
             ),
         ),
-        see_also=(),
     ),
     "drive_from_bone": HelpTopic(
         title="Drive from Bone",
-        summary="Wire a Blender driver between a pose bone and a sprite Proscenio property.",
+        summary="Wire a Blender driver between a pose bone and a sprite property.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Adds a TRANSFORMS driver variable that feeds the picked bone channel",
-                "into the chosen proscenio.* property. Re-running on the same",
-                "(sprite, target) pair replaces the existing driver - no duplicates.",
+                "Adds a TRANSFORMS driver variable that feeds the picked bone channel into"
+                " the chosen proscenio.* property. Re-running on the same (sprite, target)"
+                " pair replaces the existing driver, so there are no duplicates. The"
+                " existing drivers list below removes them one at a time.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Select the sprite mesh as the active object.",
-                "2. Pick an Armature in the box (any object, no need for selection).",
+                "2. Pick an Armature in the box (any object, no selection needed).",
                 "3. Pick a Bone from the dropdown (lists every bone of the armature).",
-                "4. Pick the source axis (default ROT_Z = local 2D rotation).",
-                "5. Click Drive from Bone. The driver lands in the Drivers Editor.",
+                "4. Pick the source axis (default ROT_Y = rotation into the screen).",
+                "5. Click Drive from Bone; the driver lands in the Drivers Editor.",
             ),
             _section(
                 "Caveats",
-                "Driver expression defaults to 'var' (raw radians/units). FloatProperty",
-                "fields like region_x are clamped [0,1] - bone rotation > 1 rad will",
-                "saturate. Edit the expression in the Drivers Editor for scaling/offsets.",
+                "The two-range map covers most cases; the Advanced toggle swaps in a raw"
+                " expression. region_x and friends are clamped [0,1], so a large bone"
+                " rotation saturates - tune the input/output ranges or the expression.",
             ),
             _section(
                 "Hard swap vs gradual",
-                "This shortcut is for GRADUAL parameter mapping (iris scroll, region",
-                "nudge). For HARD texture swaps (forearm front/back), the slot system",
-                "is the right primitive.",
+                "This shortcut is for GRADUAL parameter mapping (iris scroll, region nudge)."
+                " For HARD texture swaps (forearm front/back), the slot system is the right"
+                " primitive.",
             ),
         ),
-        see_also=(),
     ),
     "quick_armature": HelpTopic(
         title="Quick Armature",
@@ -326,146 +367,125 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Modal viewport tool that creates or extends a 'Proscenio.QuickRig'",
-                "armature one bone per click-drag. Each press records the bone head",
-                "on the world Y=0 picture plane (Proscenio 2D-cutout convention);",
-                "each release records the tail and lands the bone. Speeds up the",
-                "rough-sketch phase before refining in Edit Mode.",
+                "A modal viewport tool that creates or extends a 'Proscenio.QuickRig'"
+                " armature, one bone per click-drag. Each press records the bone head on the"
+                " world Y=0 picture plane; each release records the tail and lands the bone."
+                " It speeds up the rough-sketch phase before refining in Edit Mode.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Click 'Quick Armature' in the Skeleton subpanel.",
                 "2. Click-drag in the 3D viewport: press = head, release = tail.",
-                "3. Hold Shift on press to auto-parent the new bone to the previous",
-                "   one in the chain (use_connect=False - head stays where you",
-                "   clicked rather than snapping onto the parent's tail).",
-                "4. Esc or right-click exits the modal session.",
+                "3. Hold Shift on press to start a new root instead of chaining"
+                " (chaining is the default; see the subpanel toggle).",
+                "4. Hold Ctrl to snap to the world grid; Esc or right-click exits.",
             ),
             _section(
                 "Caveats",
-                "Bones are flat on the Y=0 plane (this is a 2D pipeline). Drags",
-                "shorter than 1e-4 world units are skipped to avoid degenerate",
-                "zero-length bones. The QuickRig armature is identical to any",
-                "hand-built one - rename, parent meshes, weight-paint, or merge",
-                "into your main rig as usual.",
+                "Bones are flat on the Y=0 plane (this is a 2D pipeline). Drags shorter than"
+                " 1e-4 world units are skipped to avoid degenerate zero-length bones. The"
+                " QuickRig armature is identical to any hand-built one - rename it, parent"
+                " meshes, weight-paint, or merge it into your main rig as usual.",
             ),
         ),
-        see_also=(),
     ),
     "outliner": HelpTopic(
         title="Outliner",
-        summary="Sprite-centric flat list of slots, sprite meshes, and armatures.",
+        summary="A sprite-centric flat list of slots, sprite meshes, and armatures.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Filters every Blender object down to the ones Proscenio cares",
-                "about, sorts them by category (slots first, then attachments,",
-                "then sprite meshes, then armatures), and lets you click a row",
-                "to make that object active. Replaces / supplements Blender's",
-                "native outliner for big rigs (the doll fixture has 64 bones +",
-                "22 sprite meshes + several slots - finding 'brow.L mesh' in",
-                "the native outliner requires scroll + expand every time).",
+                "Filters every Blender object down to the ones Proscenio cares about, sorts"
+                " them by category (slots, then attachments, then sprite meshes, then"
+                " armatures), and lets you click a row to make that object active. It"
+                " replaces Blender's native outliner for big rigs where finding one mesh"
+                " means scrolling and expanding every time.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
-                "1. Type a substring into the filter input - live filter on object",
-                "   names. Empty string shows everything Proscenio-relevant.",
-                "2. Click a row -> object becomes active + selected (the active",
-                "   sprite / skeleton subpanels populate accordingly).",
-                "3. Click the SOLO icon next to a row -> pin it as a favorite.",
-                "4. Toggle 'Favorites only' (the SOLO icon next to the filter",
-                "   input) to hide everything except your favorites.",
-            ),
-            _section(
-                "Layout",
-                "Slots render with a [slot] prefix at the top. Their attachment",
-                "meshes render right after, indented with a '↳'. Floating sprite",
-                "meshes render unprefixed; armatures render with [arm] last.",
+                "1. Type in the filter input - a live filter on object names.",
+                "2. Click a row to make that object active + selected (the active-element"
+                " and skeleton subpanels populate accordingly).",
+                "3. Shift / Ctrl-click extends or toggles the selection; the radio dot marks"
+                " every selected row, not just the active one.",
+                "4. Click the SOLO icon to pin a favorite; toggle 'Favorites only' to hide"
+                " everything else.",
             ),
             _section(
                 "Where it fits",
-                "Pure authoring shortcut - edits to favorites or filter state",
-                "live entirely on the Blender side. The .proscenio export is",
-                "untouched.",
+                "A pure authoring shortcut - favorites and filter state live entirely on the"
+                " Blender side. The .proscenio export is untouched.",
             ),
         ),
-        see_also=(),
     ),
     "slot_system": HelpTopic(
         title="Slot system",
-        summary="Empty Object + child meshes = one slot. Animation flips visibility per key.",
+        summary="Empty + child meshes = one slot; animation flips visibility per key.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "A slot presents one of N attachment meshes at a time. Use it for",
-                "hard texture swaps - forearm front/back, sword/staff/empty, brow",
-                "up/down, expression swap. Different from the driver shortcut,",
-                "which is for gradual parameter mapping.",
+                "A slot presents one of N attachment meshes at a time. Use it for hard"
+                " texture swaps - forearm front/back, sword/staff/empty, brow up/down,"
+                " expression swap. It differs from the driver shortcut, which is for gradual"
+                " parameter mapping.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
-                "1. Pose-mode (or any mode): click 'Create Slot' in the Skeleton",
-                "   panel. With meshes selected, they wrap into the new Empty as",
-                "   attachments; without, an empty slot anchors at the active bone.",
-                "2. Promote selected meshes into an existing slot via 'Add Selected",
-                "   Mesh' in the Active Slot panel.",
-                "3. Pick which attachment is visible at scene load (default) by",
-                "   clicking the SOLO icon next to its row.",
-                "4. Animate slot_attachment by keyframing the slot's attachment",
-                "   value in the Action editor.",
+                "1. Click 'Create Slot'. With meshes selected they wrap into the new Empty"
+                " as attachments; without, an empty slot anchors at the active bone.",
+                "2. Promote selected meshes into an existing slot via 'Add Selected' in the"
+                " Active Slot panel.",
+                "3. Click the SOLO icon next to a row to pick the attachment shown at scene"
+                " load (the default).",
+                "4. Animate the swap by keyframing the slot's attachment value in the Action"
+                " editor.",
             ),
             _section(
                 "Mixing mesh + sprite attachments",
-                "Slots are kind-agnostic. A single slot can hold mesh",
-                "(weight-painted) AND sprite (texture-sliced) children",
-                "freely - e.g. an eye slot with two mesh attachments",
-                "(open / closed) plus one sprite attachment (4-cell glow",
-                "cycle). The Photoshop import flow that produced each child",
-                "(layer stack vs sprite group) does not matter.",
+                "Slots are kind-agnostic: one slot can hold mesh (weight-painted) AND sprite"
+                " (texture-sliced) children - say an eye slot with two mesh attachments"
+                " (open/closed) plus one sprite (a 4-cell glow cycle). How each child was"
+                " produced in Photoshop does not matter.",
             ),
             _section(
                 "What lands in Godot",
-                "Each slot becomes a Node2D parent under the bone, with N sibling",
-                "Polygon2D / Sprite2D children. Default attachment starts",
-                "visible=true, others false. The slot_attachment animation track",
-                "flips visibility per key with constant interpolation.",
+                "Each slot becomes a Node2D parent under the bone with N sibling"
+                " Polygon2D/Sprite2D children. The default attachment starts visible, the"
+                " others hidden; the slot_attachment track flips visibility per key with"
+                " constant interpolation.",
             ),
         ),
-        see_also=(),
     ),
     "sprite_frame_preview": HelpTopic(
-        title="Sprite_frame preview material",
-        summary="Slice the spritesheet live in Material Preview mode via shader nodes + drivers.",
+        title="Sprite-frame preview material",
+        summary="Slice the spritesheet live in Material Preview via shader nodes + drivers.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Inserts a SpriteFrameSlicer node group between the material's",
-                "TexCoord and ImageTexture nodes. Drivers wire",
-                "obj.proscenio.frame / hframes / vframes onto the slicer inputs",
-                "so the visible cell tracks the panel + animation values.",
-                "Without the slicer, Blender shows the full atlas on the quad.",
+                "Inserts a SpriteFrameSlicer node group between the material's TexCoord and"
+                " ImageTexture nodes, then drives the slicer inputs from"
+                " obj.proscenio.frame/hframes/vframes so the visible cell tracks the panel"
+                " and animation values. Without it, Blender shows the full atlas on the quad.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Select a sprite mesh.",
                 "2. Click 'Setup Preview' in the Active Element panel.",
-                "3. Z-key cycles to Material Preview mode - the active cell",
-                "   shows on the quad, updating live as 'frame' animates.",
-                "4. 'Remove Preview' un-wires the slicer + drops the drivers,",
-                "   restoring the full-atlas render.",
+                "3. Switch to Material Preview - the active cell shows on the quad and"
+                " updates live as 'frame' animates.",
+                "4. 'Remove Preview' un-wires the slicer and drops the drivers, restoring the"
+                " full-atlas render.",
             ),
-            _section(
+            _list_section(
                 "Caveats",
-                "- Solid / Workbench engines only honor diffuse_color - the",
-                "  slicer is invisible there. The render_layers fixture script",
-                "  uses Workbench so its output is unchanged.",
-                "- Atlases with padding between cells are not yet supported;",
-                "  the slicer assumes contiguous cells.",
-                "- Re-runs of Setup Preview are idempotent: existing slicer",
-                "  + drivers are refreshed without duplicating nodes.",
+                "- Solid / Workbench engines only honor diffuse_color, so the slicer is"
+                " invisible there.",
+                "- Atlases with padding between cells are not yet supported; the slicer"
+                " assumes contiguous cells.",
+                "- Setup Preview is idempotent: an existing slicer + drivers are refreshed"
+                " without duplicating nodes.",
             ),
         ),
-        see_also=(),
     ),
     "pose_library": HelpTopic(
         title="Save Pose to Library",
@@ -473,59 +493,55 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Tiny shim over Blender's native poselib.create_pose_asset.",
-                "Wraps the call with sensible defaults so authors get a one-click",
-                "entry point in the Skeleton subpanel instead of digging through",
-                "Window > Pose Library every time.",
+                "A thin shim over Blender's native poselib.create_pose_asset, wrapped with"
+                " sensible defaults so authors get a one-click entry point in the Skeleton"
+                " subpanel instead of digging through the menus every time.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Enter Pose Mode on the active armature.",
                 "2. Set the desired pose - rotate / translate / scale bones.",
-                "3. Click 'Save Pose to Library' in the Skeleton panel.",
-                "4. The pose lands in the Asset Browser as '<action>.<frame>'",
-                "   (or '<armature>.<frame>' when no action is active).",
+                "3. Click 'Save Pose to Library'.",
+                "4. The pose lands in the Asset Browser as '<action>.<frame>' (or"
+                " '<armature>.<frame>' when no action is active).",
                 "5. Open Window > Asset Browser to apply the saved pose later.",
             ),
             _section(
                 "Where it fits",
-                "Pose assets live entirely on the Blender side - they never",
-                "reach the .proscenio export. Use them to library + reuse poses",
-                "across animations, characters, or projects. Animation tracks",
-                "still drive the runtime; pose assets are an authoring shortcut.",
+                "Pose assets live entirely on the Blender side - they never reach the"
+                " .proscenio. Use them to library and reuse poses across animations,"
+                " characters, or projects; animation tracks still drive the runtime.",
             ),
             _section(
                 "Caveats",
-                "- Requires Blender 3.5+ (poselib operator availability).",
-                "- The shim does not curate the Asset Browser layout - pose",
-                "  assets land in the active asset library; configure that via",
-                "  Edit > Preferences > File Paths > Asset Libraries.",
+                "Requires a Blender with the poselib operator. The shim does not curate the"
+                " Asset Browser layout - assets land in the active asset library, configured"
+                " via Preferences > File Paths > Asset Libraries.",
             ),
         ),
-        see_also=(),
     ),
     "import_photoshop": HelpTopic(
         title="Import Photoshop Manifest",
-        summary="Stamp planes + stub armature from a v1 PSD manifest.",
+        summary="Stamp planes + a stub armature from a v1 PSD manifest.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Reads a manifest emitted by the Proscenio Photoshop UXP plugin,",
-                "stamps one mesh per layer + composes spritesheet textures",
-                "for sprite groups, parents everything to a stub root armature.",
+                "Reads a manifest emitted by the Proscenio Photoshop UXP plugin, stamps one"
+                " mesh per layer, composes spritesheet textures for sprite groups, and"
+                " parents everything to a stub root armature.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Run the Proscenio Exporter panel in Photoshop on a layered PSD.",
-                "2. Click Import Photoshop Manifest, pick the resulting .json.",
+                "2. Click Import Photoshop Manifest and pick the resulting .json.",
                 "3. Choose placement: landed (feet on Z=0) or centered (manifest center).",
-                "4. Refine the stub armature + paint weights in Blender.",
+                "4. Refine the stub armature and paint weights in Blender.",
             ),
             _section(
                 "Idempotent re-import",
-                "Meshes carry a proscenio_import_origin = 'psd:<layer>' tag. Re-running",
-                "on the same manifest reuses existing meshes - user-set rotation,",
-                "parenting, and weights survive the round trip.",
+                "Meshes carry a proscenio_import_origin = 'psd:<layer>' tag, so re-running on"
+                " the same manifest reuses existing meshes - user-set rotation, parenting,"
+                " and weights survive the round trip.",
             ),
         ),
         see_also=(
@@ -538,28 +554,27 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Traces the active image's alpha contour into an annulus mesh you",
-                "can weight-paint and deform. Interior Mode (on the panel header)",
-                "picks SIMPLE (sparse, Spine-like) or DENSE (uniform + bone-aware fill).",
+                "Traces the active image's alpha contour into a mesh you can weight-paint and"
+                " deform. Interior Mode picks SIMPLE (sparse, Spine-like) or DENSE (a uniform"
+                " plus bone-aware fill).",
             ),
             _section(
                 "Automesh from Alpha",
-                "One-shot trace using the panel defaults. Re-runs preserve the",
-                "UV-pinned base quad via the proscenio_base_sprite vertex group.",
+                "A one-shot trace using the panel defaults. Re-runs preserve the UV-pinned"
+                " base quad via the proscenio_base_sprite vertex group.",
             ),
             _section(
                 "Automesh Interactive / Debug Pipeline",
-                "Interactive is a modal preview that lets you cut / extend / fold",
-                "the silhouette before the geometry commits. Debug Pipeline emits",
-                "per-stage wireframe companions for inspecting the trace.",
+                "Interactive is a modal preview that lets you cut / extend / fold the"
+                " silhouette before the geometry commits. Debug Pipeline emits per-stage"
+                " wireframe companions for inspecting the trace.",
             ),
             _section(
                 "Where it fits",
-                "Authoring only - the generated geometry exports as a Polygon2D, but",
-                "the trace tool itself never reaches the .proscenio.",
+                "Authoring only - the generated geometry exports as a Polygon2D, but the"
+                " trace tool itself never reaches the .proscenio.",
             ),
         ),
-        see_also=(),
     ),
     "weight_paint": HelpTopic(
         title="Weight Paint",
@@ -567,28 +582,27 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Mesh-only panel. Bind the active mesh to the picked armature, then",
-                "refine the per-bone weights. Bind + the resulting weights export to",
-                "the Polygon2D; the edit and snapshot tools are blender-side.",
+                "A mesh-only panel: bind the active mesh to the picked armature, then refine"
+                " the per-bone weights. Bind and the resulting weights export to the"
+                " Polygon2D; the edit and snapshot tools are blender-side.",
             ),
             _section(
                 "Bind",
-                "Binds to the armature picked in the Skeleton panel. Per-bone",
-                "Soft / Hard rows override the default falloff for individual bones.",
+                "Binds to the armature picked in the Skeleton panel. Per-bone Soft / Hard"
+                " rows override the default falloff for individual bones.",
             ),
             _section(
                 "Edit Weights / Snapshot",
-                "Edit Weights enters a modal weight-paint session with brush presets.",
-                "Snapshot tracks paint provenance, restores the last saved weights, and",
-                "exports / imports the weight snapshot to a file.",
+                "Edit Weights enters a modal weight-paint session with brush presets."
+                " Snapshot tracks paint provenance, restores saved weights, and"
+                " exports/imports the weight snapshot to a file.",
             ),
             _section(
                 "Weight Transfer",
-                "Copies weights from the active mesh to the other selected meshes",
-                "- handy for symmetric or split cutouts.",
+                "Copies weights from the active mesh to the other selected meshes - handy for"
+                " symmetric or split cutouts.",
             ),
         ),
-        see_also=(),
     ),
     "helpers": HelpTopic(
         title="Helpers",
@@ -596,16 +610,15 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Convenience tools that set up the Blender viewport for 2D cutout",
-                "work. None of them touch the .proscenio export.",
+                "Convenience tools that set up the Blender viewport for 2D cutout work. None"
+                " of them touch the .proscenio export.",
             ),
             _section(
                 "Preview Camera",
-                "Drops an orthographic front camera framed the way the Godot",
-                "importer expects, so what you see matches the runtime framing.",
+                "Drops an orthographic front camera framed the way the Godot importer"
+                " expects, so what you see matches the runtime framing.",
             ),
         ),
-        see_also=(),
     ),
     "active_mesh": HelpTopic(
         title="Active Mesh",
@@ -613,12 +626,11 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Shown when the active element type is Mesh. The mesh exports as a",
-                "Polygon2D - a deformable cutout with UVs + bone weights. The vertices",
-                "carry their own positions, so the Blender origin is baked in at export.",
+                "Shown when the active element type is Mesh. The mesh exports as a Polygon2D"
+                " - a deformable cutout with UVs and bone weights. The vertices carry their"
+                " own positions, so the Blender origin is baked in at export.",
             ),
         ),
-        see_also=(),
     ),
     "active_sprite": HelpTopic(
         title="Active Sprite",
@@ -626,27 +638,26 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Shown when the active element type is Sprite. The mesh exports as a",
-                "Sprite2D that slices a spritesheet: an hframes x vframes grid + a frame",
-                "index. The quad geometry itself is not exported - only this metadata.",
+                "Shown when the active element type is Sprite. The mesh exports as a Sprite2D"
+                " that slices a spritesheet: an hframes x vframes grid plus a frame index."
+                " The quad geometry itself is not exported - only this metadata.",
             ),
-            _section(
+            _list_section(
                 "Fields",
                 "- hframes / vframes: the spritesheet grid (columns x rows).",
                 "- frame: the cell shown at rest pose; animation tracks override it.",
-                "- centered: Godot Sprite2D.centered - texture centered on the node",
-                "  origin (on) or top-left at the origin (off).",
+                "- centered: Godot Sprite2D.centered - the texture is centered on the node"
+                " origin (on) or its top-left sits at the origin (off).",
             ),
             _section(
                 "Centered vs origin",
-                "'centered' is the Sprite2D pivot toggle - it sets where the texture",
-                "sits within the node (centered on the origin, or top-left at it). It is",
-                "a manual choice on this sprite, independent of the object origin the PSD",
-                "[origin] tag imported. The imported origin places the whole element in",
-                "the scene; 'centered' only moves the texture relative to that point.",
+                "'centered' is the Sprite2D pivot toggle - it sets where the texture sits"
+                " within the node (centered on the origin, or top-left at it). It is a manual"
+                " choice on this sprite, independent of the object origin the PSD [origin]"
+                " tag imported. The imported origin places the whole element in the scene;"
+                " 'centered' only moves the texture relative to that point.",
             ),
         ),
-        see_also=(),
     ),
     "texture_region": HelpTopic(
         title="Texture Region",
@@ -654,22 +665,20 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Auto reads the region from the mesh UV bounds at export. Manual reads",
-                "region_x/y/w/h verbatim - use it for atlas slicing. 'Snap to UV bounds'",
-                "fills the manual fields from the current UV layout.",
+                "Auto reads the region from the mesh UV bounds at export. Manual reads"
+                " region_x/y/w/h verbatim - use it for atlas slicing. 'Snap to UV bounds'"
+                " fills the manual fields from the current UV layout.",
             ),
             _section(
                 "Reproject UV vs region",
-                "Three controls, three jobs. Reproject UV rebuilds the mesh's UV layout",
-                "from its geometry (a planar projection: U follows X, V follows Z), so the",
-                "texture lines up again after you move vertices - run it when an edit left",
-                "the texture skewed. The region (Auto / Manual) then decides which slice of",
-                "the texture those UVs sample: Auto follows the UV bounds, Manual pins",
-                "region_x/y/w/h. Snap to UV bounds freezes the current Auto bounds into the",
-                "Manual fields. Reproject changes the UVs; the region only reads them.",
+                "Three controls, three jobs. Reproject UV rebuilds the mesh's UV layout from"
+                " its geometry (a planar projection: U follows X, V follows Z) so the texture"
+                " lines up again after you move vertices. The region (Auto / Manual) then"
+                " decides which slice of the texture those UVs sample. Snap to UV bounds"
+                " freezes the current Auto bounds into the Manual fields. Reproject changes"
+                " the UVs; the region only reads them.",
             ),
         ),
-        see_also=(),
     ),
     "bind": HelpTopic(
         title="Bind",
@@ -677,20 +686,20 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Builds the vertex weights that let the rig deform this mesh. Mode picks",
-                "the algorithm; Bone Heat (Blender native) is the default and best for",
-                "most 2D rigs. Proximity / Envelope / Single-nearest / Empty are",
-                "fallbacks exposed via F3 redo.",
+                "Builds the vertex weights that let the rig deform this mesh. Mode picks the"
+                " algorithm; Bone Heat (Blender native) is the default and best for most 2D"
+                " rigs. Proximity / Envelope / Single-nearest / Empty are fallbacks exposed"
+                " via the F3 redo panel.",
             ),
             _section(
                 "Per-bone Soft / Hard",
-                "Override a single bone's falloff. Soft = proximity falloff: the bone",
-                "shares weight smoothly with neighbours (good for cloth, hair). Hard =",
-                "single-nearest: a crisp boundary, no bleed (good for finger joints).",
-                "A bone with no override uses the Mode's default family.",
+                "Override a single bone's falloff. Soft = proximity falloff: the bone shares"
+                " weight smoothly with neighbours (good for cloth, hair). Hard ="
+                " single-nearest: a crisp boundary, no bleed (good for finger joints). A bone"
+                " with no override uses the Mode's default family. The list scrolls, so a"
+                " many-bone rig does not push the Bind button off-screen.",
             ),
         ),
-        see_also=(),
     ),
     "edit_weights": HelpTopic(
         title="Edit Weights",
@@ -698,26 +707,24 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Enters Weight Paint on the active group with a provenance overlay",
-                "(which verts are auto-seed vs hand-painted). The brush-curve presets",
-                "(Hard Edge / Soft Falloff / Crease / Smooth Blend) shape the brush",
-                "falloff for common 2D tasks without a trip to the curve editor.",
+                "Enters Weight Paint on the active group with a provenance overlay (which"
+                " verts are auto-seed vs hand-painted). The brush-curve presets (Hard Edge /"
+                " Soft Falloff / Crease / Smooth Blend) shape the brush falloff for common 2D"
+                " tasks without a trip to the curve editor.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Bind the mesh first (the button is disabled until then).",
-                "2. Click Edit Weights; paint; ESC exits and restores brush state.",
+                "2. Click Edit Weights, paint, then ESC to exit and restore brush state.",
             ),
             _section(
                 "Viewport display + posing",
-                "Weight Opacity + Zero Weights (the native Viewport Overlay levers) let",
-                "the texture show through the weight gradient while painting; opacity 0",
-                "is not fully invisible (Blender 145603). To test deformation, pose the",
-                "bones live inside Weight Paint mode - select the armature, enter Pose,",
-                "and scrub or rotate while painting (no separate preview needed).",
+                "Weight Opacity and Zero Weights (the native Viewport Overlay levers) let the"
+                " texture show through the weight gradient while painting. To test"
+                " deformation, pose the bones live inside Weight Paint mode - select the"
+                " armature, enter Pose, and scrub or rotate while painting.",
             ),
         ),
-        see_also=(),
     ),
     "snapshot": HelpTopic(
         title="Snapshot",
@@ -725,30 +732,27 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "The weight snapshot stores, per vertex, a UV anchor + its weights +",
-                "where they came from (auto-seed / hand paint / reprojected). It is the",
-                "safety net that survives a mesh rebuild.",
+                "The weight snapshot stores, per vertex, a UV anchor + its weights + where"
+                " they came from (auto-seed / hand paint / reprojected). It is the safety net"
+                " that survives a mesh rebuild.",
             ),
-            _section(
+            _list_section(
                 "Controls",
-                "- Preserve weights on regen: before an Automesh re-run, snapshot the",
-                "  weights by UV, then reproject them onto the new mesh. Off = the",
-                "  regen wipes paint.",
-                "- Reset to Last Saved Weights: revert the live weights to the last",
-                "  snapshot (undo paint back to the saved baseline).",
-                "- The N paint / M seed / K reprojected pill shows where each vert's",
-                "  weight came from.",
+                "- Preserve weights on regen: before an Automesh re-run, snapshot the weights"
+                " by UV and reproject them onto the new mesh. Off = the regen wipes paint.",
+                "- Reset to Last Saved Weights: revert the live weights to the last snapshot.",
+                "- The N paint / M seed / K reprojected pill shows where each vert's weight"
+                " came from.",
             ),
-            _section(
+            _list_section(
                 "File export / import",
-                "- Export Snapshot: write the weight snapshot to a JSON file (version-",
-                "  control weights in git, or move them between files).",
-                "- Import Snapshot: load one back. It applies onto the live weights when",
-                "  the mesh topology still matches; otherwise it stores the snapshot only",
-                "  (re-run Automesh with Preserve weights on regen to reproject).",
+                "- Export Snapshot: write the weight snapshot to a JSON file (version-control"
+                " weights, or move them between files).",
+                "- Import Snapshot: load one back. It applies onto the live weights when the"
+                " topology still matches; otherwise it stores the snapshot only (re-run"
+                " Automesh with Preserve weights on regen to reproject).",
             ),
         ),
-        see_also=(),
     ),
     "weight_transfer": HelpTopic(
         title="Weight Transfer",
@@ -756,39 +760,36 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "For each vertex of every other selected mesh, copies the weights of",
-                "the nearest vertex on the active mesh (by world position). An imprint:",
-                "the meshes must overlap in space; different vertex counts are fine",
-                "(each target vert grabs its own nearest source).",
+                "For each vertex of every other selected mesh, copies the weights of the"
+                " nearest vertex on the active mesh (by world position). It is an imprint:"
+                " the meshes must overlap in space, but different vertex counts are fine.",
             ),
             _section(
                 "Caveats",
-                "Target verts beyond the Max Distance (F3 redo) get no weights. Use it",
-                "for layered or split cutouts that sit on top of a rigged base.",
+                "Target verts beyond the Max Distance (F3 redo) get no weights. Use it for"
+                " layered or split cutouts that sit on top of a rigged base.",
             ),
         ),
-        see_also=(),
     ),
     "automesh_alpha": HelpTopic(
         title="Automesh from Alpha",
-        summary="One-shot trace of the sprite alpha into a deformable mesh.",
+        summary="A one-shot trace of the sprite alpha into a deformable mesh.",
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Walks the image alpha contour into an annulus mesh you can weight-paint.",
-                "Re-runs preserve the UV-pinned base quad (the proscenio_base_sprite group).",
+                "Walks the image alpha contour into a mesh you can weight-paint. Re-runs"
+                " preserve the UV-pinned base quad (the proscenio_base_sprite group).",
             ),
-            _section(
+            _list_section(
                 "Key settings",
-                "- Trace resolution: an image downscale factor. HIGHER (1.0 =",
-                "  full image) traces a finer silhouette but costs more; it sets",
-                "  outline fidelity, not vertex count.",
+                "- Trace resolution: an image downscale factor. Higher (1.0 = full image)"
+                " traces a finer silhouette but costs more; it sets outline fidelity, not"
+                " vertex count.",
                 "- Interior Mode (parent panel): Simple (sparse) or Dense (filled).",
-                "- Density follows bones (Dense only, off by default): pack more",
-                "  triangles near the target's bones, where deformation happens.",
+                "- Density follows bones (Dense only, off by default): pack more triangles"
+                " near the target's bones, where deformation happens.",
             ),
         ),
-        see_also=(),
     ),
     "automesh_interactive": HelpTopic(
         title="Automesh Interactive",
@@ -796,19 +797,18 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "A modal preview of the same trace. Advance through stages to cut /",
-                "extend the outline and place interior points, then commit the mesh.",
-                "Nothing is written until you confirm the final stage.",
+                "A modal preview of the same trace. Advance through the stages to cut /"
+                " extend the outline and place interior points, then commit the mesh. Nothing"
+                " is written until you confirm the final stage.",
             ),
-            _section(
+            _list_section(
                 _SECTION_HOW,
                 "1. Select a mesh with an image texture; click Author Mesh (interactive).",
                 "2. ENTER advances a stage, BACKSPACE steps back, ESC cancels.",
-                "3. The final stage builds the mesh (same result as Automesh from Alpha",
-                "   plus your edits).",
+                "3. The final stage builds the mesh (the same result as Automesh from Alpha"
+                " plus your edits).",
             ),
         ),
-        see_also=(),
     ),
     "debug_pipeline": HelpTopic(
         title="Debug Pipeline",
@@ -816,13 +816,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Developer aid (shown only with debug mode on). Picks a stage of the",
-                "alpha trace (raw contours, smoothed, resampled, interior, bridges,",
-                "fill); the next Automesh run leaves a wireframe companion in the",
-                "Proscenio.Debug collection. Clear Debug Companions removes them.",
+                "A developer aid (shown only with debug mode on). Pick a stage of the alpha"
+                " trace (raw contours, smoothed, resampled, interior, bridges, fill) and the"
+                " next Automesh run leaves a wireframe companion in the Proscenio.Debug"
+                " collection. Clear Debug Companions removes them.",
             ),
         ),
-        see_also=(),
     ),
     "active_slot": HelpTopic(
         title="Active Slot",
@@ -830,31 +829,28 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Lists the slot's child meshes (its attachments), lets you mark which",
-                "one is visible at scene load (the SOLO star = default), and add the",
-                "selected mesh as a new attachment. See the Slots help for the overview.",
+                "Lists the slot's child meshes (its attachments), lets you mark which one is"
+                " visible at scene load (the SOLO star = default), and adds the selected mesh"
+                " as a new attachment. See the Slots help for the overview.",
             ),
             _section(
                 "Bind to Bone / Unbind",
-                "Bind to Bone makes the slot follow a bone in the viewport the same",
-                "way it follows at runtime in Godot: object-parent + a Child Of",
-                "constraint that cancels the bone rest, staying flat for any bone",
-                "orientation. Hand bone-parenting the Empty (Ctrl+P > Bone) also",
-                "works and exports, but only for bones pointing into the screen - an",
-                "in-plane bone collapses the attachment quads, and the panel warns",
-                "when it does. The panel shows how the slot follows (constraint or",
-                "bone parent) and its parent. Bind refuses when a slot already",
-                "follows; to rebind after moving it, Unbind then Bind (two clicks).",
+                "Bind to Bone makes the slot follow a bone in the viewport the same way it"
+                " follows at runtime in Godot: an object-parent plus a Child Of constraint"
+                " that cancels the bone rest, staying flat for any bone orientation. Hand"
+                " bone-parenting the Empty also works and exports, but only for bones"
+                " pointing into the screen - an in-plane bone collapses the attachment quads,"
+                " and the panel warns when it does. Bind refuses when a slot already follows;"
+                " to rebind after moving it, Unbind then Bind.",
             ),
             _section(
                 "Editing raw Custom Properties",
-                "The SOLO star sets the default through the panel. Editing the raw",
-                "proscenio_slot_default Custom Property directly exports and validates",
-                "the same value, but the panel does not live-refresh to a raw edit -",
-                "use the panel buttons as the expected workflow.",
+                "The SOLO star sets the default through the panel. Editing the raw"
+                " proscenio_slot_default Custom Property directly exports and validates the"
+                " same value, but the panel does not live-refresh to a raw edit - use the"
+                " panel buttons as the expected workflow.",
             ),
         ),
-        see_also=(),
     ),
     "armature": HelpTopic(
         title="Armature",
@@ -862,12 +858,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Lists every bone the writer would export, indented by depth, with",
-                "connected / relative flags. Click a bone to select it in the viewport.",
-                "Inspection only - it never changes the .proscenio output.",
+                "Lists every bone the writer would export, indented by depth, with"
+                " connected / relative flags. Click a bone to select it in the viewport;"
+                " Shift / Ctrl extend or toggle the selection. Inspection only - it never"
+                " changes the .proscenio output.",
             ),
         ),
-        see_also=(),
     ),
     "pose_mode": HelpTopic(
         title="Pose Mode",
@@ -875,13 +871,12 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_WHAT,
-                "Bake Current Pose keys every bone at the playhead. Toggle IK adds /",
-                "removes an IK constraint plus a control bone at the chain tip. Save",
-                "Pose to Library stores the pose as a Blender asset. None of these",
-                "reach the .proscenio - they are authoring conveniences.",
+                "Bake Current Pose keys every bone at the playhead. Toggle IK adds or removes"
+                " an IK constraint plus a control bone at the chain tip. Save Pose to Library"
+                " stores the pose as a Blender asset. None of these reach the .proscenio -"
+                " they are authoring conveniences.",
             ),
         ),
-        see_also=(),
     ),
 }
 

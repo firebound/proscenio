@@ -171,7 +171,7 @@ class PROSCENIO_PT_drive_from_bone(bpy.types.Panel):
         draw_subpanel_header(self.layout, context, "drive_from_bone", "drive_from_bone")
 
     def draw(self, context: bpy.types.Context) -> None:
-        _draw_driver_shortcut.draw_box(self.layout, context.active_object.proscenio)
+        _draw_driver_shortcut.draw_box(self.layout, context.active_object)
 
 
 _classes: tuple[type, ...] = (

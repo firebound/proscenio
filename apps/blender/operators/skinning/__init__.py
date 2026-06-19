@@ -4,6 +4,7 @@ Subpackage with:
 
 - bind_mesh                - PROSCENIO_OT_bind_mesh_to_armature
 - restore_weight_snapshot  - PROSCENIO_OT_restore_weight_snapshot
+- named_snapshot           - save / restore named weight snapshots
 - edit_weights             - PROSCENIO_OT_edit_weights_modal
 - set_bone_mode            - per-bone SOFT/HARD bind-mode toggle
 - sidecar_io               - export / import the weight sidecar
@@ -20,6 +21,7 @@ from . import (
     clear_empty_vgroups,
     copy_weights_to_selected,
     edit_weights,
+    named_snapshot,
     restore_weight_snapshot,
     set_bone_mode,
     sidecar_io,
@@ -29,6 +31,7 @@ from . import (
 def register() -> None:
     bind_mesh.register()
     restore_weight_snapshot.register()
+    named_snapshot.register()
     edit_weights.register()
     set_bone_mode.register()
     sidecar_io.register()
@@ -44,5 +47,6 @@ def unregister() -> None:
     sidecar_io.unregister()
     set_bone_mode.unregister()
     edit_weights.unregister()
+    named_snapshot.unregister()
     restore_weight_snapshot.unregister()
     bind_mesh.unregister()

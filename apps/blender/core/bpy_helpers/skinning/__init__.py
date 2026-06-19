@@ -20,7 +20,13 @@ from .paint_preset_bind import (
     restore_paint_preset,
     snapshot_paint_preset,
 )
-from .sidecar_io import apply_sidecar, per_vert_uv_anchors, snapshot_sidecar
+from .sidecar_io import (
+    append_auto_snapshot,
+    apply_sidecar,
+    per_vert_uv_anchors,
+    read_snapshots,
+    snapshot_sidecar,
+)
 from .stroke_diff import StrokeDiffTracker
 from .weight_overlay import register_handler, unregister_handler
 
@@ -28,6 +34,7 @@ __all__ = [
     "BoneCollectionSnapshot",
     "EditWeightsSession",
     "StrokeDiffTracker",
+    "append_auto_snapshot",
     "apply_bind",
     "apply_paint_preset",
     "apply_sidecar",
@@ -37,6 +44,7 @@ __all__ = [
     "maybe_pre_regen_snapshot",
     "per_vert_uv_anchors",
     "read_mirror_flag",
+    "read_snapshots",
     "register_handler",
     "reproject_stored_sidecar",
     "restore_bone_visibility",

@@ -13,6 +13,11 @@ from ..core._shared.report import report_warn  # type: ignore[import-not-found]
 from ..core.armature.skeleton_target import (  # type: ignore[import-not-found]
     resolve_skeleton_target,
 )
+from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
+    bone_select_add,
+    bone_select_only,
+    bone_select_toggle,
+)
 from ..core.bpy_helpers._shared.select import (  # type: ignore[import-not-found]
     select_add,
     select_named_or_warn,
@@ -124,11 +129,22 @@ class PROSCENIO_OT_select_outliner_object(bpy.types.Operator):
 
 
 class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
-    """Select + activate a pose bone from the Skeleton panel UIList."""
+    """Select + activate a bone from the Skeleton panel UIList.
+
+    A plain click replaces the bone selection; Shift-click extends it and
+    Ctrl-click toggles the clicked bone, mirroring the Outliner row modifiers.
+    Bone selection is real only in POSE / EDIT modes; in Object mode the click
+    just moves the active bone. ``invoke`` reads the event to set ``extend`` /
+    ``toggle``; calling ``execute`` directly with the flags drives the same
+    paths headlessly.
+    """
 
     bl_idname = "proscenio.select_bone_by_name"
     bl_label = "Proscenio: Select Bone"
-    bl_description = "Selects the bone for this Skeleton-panel row in the viewport"
+    bl_description = (
+        "Selects the bone for this Skeleton-panel row in the viewport. Shift "
+        "extends the selection, Ctrl toggles the bone"
+    )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     armature_name: StringProperty(  # type: ignore[valid-type]
@@ -139,6 +155,21 @@ class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
         name="Bone",
         default="",
     )
+    extend: BoolProperty(  # type: ignore[valid-type]
+        name="Extend",
+        description="Add to the bone selection instead of replacing it (Shift)",
+        default=False,
+    )
+    toggle: BoolProperty(  # type: ignore[valid-type]
+        name="Toggle",
+        description="Toggle this bone's selection (Ctrl)",
+        default=False,
+    )
+
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        self.extend = event.shift
+        self.toggle = event.ctrl
+        return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         armature = bpy.data.objects.get(self.armature_name)
@@ -149,10 +180,16 @@ class PROSCENIO_OT_select_bone_by_name(bpy.types.Operator):
         if bones is None or self.bone_name not in bones:
             report_warn(self, f"bone '{self.bone_name}' not in '{armature.name}'")
             return {"CANCELLED"}
+        # Make the armature the active object so bone-level ops act on it; this
+        # touches object selection only, not the per-bone selection set below.
         select_only(context, armature)
-        armature.data.bones.active = bones[self.bone_name]
-        if context.mode == "POSE":
-            _sync_pose_bone_selection(armature, self.bone_name)
+        mode = context.mode
+        if self.toggle:
+            bone_select_toggle(armature, self.bone_name, mode)
+        elif self.extend:
+            bone_select_add(armature, self.bone_name, mode)
+        else:
+            bone_select_only(armature, self.bone_name, mode)
         _sync_active_index(context, "active_bone_index", bones, self.bone_name)
         return {"FINISHED"}
 
@@ -212,24 +249,6 @@ def _frame_selected(context: bpy.types.Context) -> None:
         with contextlib.suppress(RuntimeError), context.temp_override(area=area, region=region):
             bpy.ops.view3d.view_selected()
         return
-
-
-def _sync_pose_bone_selection(armature: bpy.types.Object, bone_name: str) -> None:
-    """Set viewport selection so only ``bone_name`` is selected.
-
-    `bones.active` drives the Properties-editor highlight; PoseBone.select
-    drives the viewport bone-shape selection. Blender 4.x exposed the
-    select flag on Bone too, but 5.1 moved it to PoseBone exclusively, so
-    the hasattr guard stays tolerant of either layout.
-    """
-    if armature.pose is None:
-        return
-    for pose_bone in armature.pose.bones:
-        wanted = pose_bone.name == bone_name
-        if hasattr(pose_bone, "select"):
-            pose_bone.select = wanted
-        elif hasattr(pose_bone.bone, "select"):
-            pose_bone.bone.select = wanted
 
 
 def _sync_active_index(

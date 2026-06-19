@@ -2,16 +2,14 @@
 
 Three authoring calls, decided 2026-06-18 with the maintainer. The calls are locked below; [TODO.md](TODO.md) sequences them. They migrate to [`decisions.md`](../decisions.md) when this spec ships (the repo records locked calls at prune time, not while a spec is in flight).
 
-Started as five questions; two were pulled out:
-
-- **sprite-centered-vs-origin** - removed: on reading all three hops it is not a design call. The PS `[origin]` already flows to the Sprite2D pivot end to end (import sets the object location from `[origin]` at `planes.py:223-227`, the writer derives `Sprite2D.offset` from origin-vs-quad-centre at `sprites.py:136-169`, the Godot builder applies `centered` + `offset` at `sprite_builder.gd:46-49`); for a mesh it is a downstream no-op (Polygon2D has no pivot, verts bake absolute or bone-local and the import compensates for the origin). What remains is a small contract cleanup, now in [`backlog.md`](../backlog.md): make `[origin]` sprite-only, drop the vestigial manual `centered` toggle, and add a round-trip test.
-- **qa-quickarm-interaction-revision** - returned to [`backlog.md`](../backlog.md) as a `DECIDIR` item; the modal interaction redesign needs more decision time.
+Started as five questions. One returned to the backlog: **qa-quickarm-interaction-revision** - the modal interaction redesign needs more decision time, so it is a `DECIDIR` item in [`backlog.md`](../backlog.md). The **sprite-centered-vs-origin** question resolved on inspection into a concrete contract cleanup rather than a design fork (the origin already flows to the sprite pivot, and is a no-op for meshes) - it stays in this spec as item 4 below.
 
 ## Scope
 
 - **qa-rotation-mode** - guard a rotation-mode swap on a driven bone, and give a one-click convert-to-Euler.
 - **proscenio-y-depth-layers** - a manual depth control on top of the PSD-order Y spacing.
 - **incorporate-blender-mesh-as-element** - a button to adopt a hand-authored Blender mesh into the flow.
+- **sprite-origin-cleanup** - make the PS `[origin]` sprite-only, drop the vestigial manual `centered` toggle, and pin the sprite origin -> pivot round-trip with a test.
 
 ## Decisions
 
@@ -47,6 +45,19 @@ Started as five questions; two were pulled out:
 
 **Size:** M (operator + modal/redo dialog + the geometry heuristic + property set).
 
+### 4. sprite-origin-cleanup
+
+**Code anchors:** `importers/photoshop/planes.py:217-230` (`_layer_placement` sets the object location from `[origin]` and bakes the geometry offset); `exporters/godot/writer/sprites.py:136-169` (`_compute_sprite_offset` derives `Sprite2D.offset` from origin-vs-quad-centre) + `:313-315` (`centered`); `apps/godot/addons/proscenio/builders/sprite_builder.gd:46-49` (Godot applies `centered` + `offset`); `packages/models/src/proscenio_models/psd_manifest.py` (`MeshLayer.origin` exists today); the PS planner/parser that emits `[origin]`.
+
+**Not a design fork - a contract cleanup.** Reading all three hops: the PS `[origin]` already flows to the Sprite2D pivot end to end. For a mesh it is a downstream no-op - Polygon2D has no pivot, the verts bake absolute or bone-local, and the import compensates for wherever the origin sits, so the origin cancels. The asymmetry is the proof: the mesh export uses world / bone space (origin cancels), the sprite export uses `centre - origin` explicitly (origin becomes the offset).
+
+**Locked call:**
+- Make `[origin]` **sprite-only**: the PS plugin stops emitting it for mesh layers (drop `MeshLayer.origin`), or the Blender importer / validator warns when a mesh carries one.
+- Drop the **vestigial manual `centered` toggle** from the authoring UI: the writer's offset assumes `centered=true`, so a manual flip breaks placement; keep it an internal constant.
+- Add a **round-trip test** PS `[origin]` -> Sprite2D pivot, so the wiring is pinned (today's confidence is code-read, not a run).
+
+**Size:** S each. The round-trip test is the highest-value piece.
+
 ## Verdict summary
 
-**3 calls locked, all "now".** None blocks the others. The convert-to-Euler operator rides the qa-rotation validator PR. See [TODO.md](TODO.md) for the sequencing. The locked calls move to [`decisions.md`](../decisions.md) when the spec ships.
+**4 items locked, all "now".** None blocks the others. The convert-to-Euler operator rides the qa-rotation validator PR. See [TODO.md](TODO.md) for the sequencing. The locked calls move to [`decisions.md`](../decisions.md) when the spec ships.

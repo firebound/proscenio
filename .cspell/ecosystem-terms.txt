@@ -313,6 +313,7 @@ transpiles
 transpiling
 travelled
 tris
+typeshed
 uilist
 underspecify
 underuse

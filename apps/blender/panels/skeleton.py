@@ -12,7 +12,12 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
+    BONE_SELECT_MODES,
+    bone_is_selected,
+)
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
+from ._list import ProscenioListMixin, draw_select_marker
 
 
 def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
@@ -27,14 +32,20 @@ def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
 _SKELETON_HEADER_NAME_MIN_WIDTH = 220
 
 
-class PROSCENIO_UL_bones(bpy.types.UIList):
-    """List view for ``Armature.bones`` - the Armature subpanel uses this."""
+class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
+    """List view for ``Armature.bones`` - the Armature subpanel uses this.
+
+    Multi-select: a click maps to a real bone selection (Shift extends, Ctrl
+    toggles), so in POSE / EDIT modes each row shows the per-row selection
+    marker. The shared mixin gives it native ``filter_name`` search; source
+    (hierarchy) order is kept so the depth indent stays meaningful.
+    """
 
     bl_idname = "PROSCENIO_UL_bones"
 
     def draw_item(
         self,
-        _context: bpy.types.Context,
+        context: bpy.types.Context,
         layout: bpy.types.UILayout,
         data: bpy.types.AnyType,
         item: bpy.types.AnyType,
@@ -44,11 +55,17 @@ class PROSCENIO_UL_bones(bpy.types.UIList):
     ) -> None:
         row = layout.row(align=True)
         # `data` is the armature data block. Walk back to its owning Object
-        # so the operator can address it by name + sync pose-mode selection.
+        # so the operator can address it by name + sync bone selection.
         armature_obj = next(
             (o for o in bpy.data.objects if o.type == "ARMATURE" and o.data is data),
             None,
         )
+        # Multi-select marker, only where bone selection is real (POSE / EDIT):
+        # the single template_list highlight cannot show a multi-bone selection.
+        if armature_obj is not None and context.mode in BONE_SELECT_MODES:
+            draw_select_marker(
+                row, selected=bone_is_selected(armature_obj, item.name, context.mode)
+            )
         depth = 0
         parent = item.parent
         while parent is not None:

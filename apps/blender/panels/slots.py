@@ -20,6 +20,7 @@ from ..core.bpy_helpers.slot import (  # type: ignore[import-not-found]
     bone_parent_collapses,
     slot_follow_shape,
 )
+from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ..core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 from ._helpers import draw_issue_row, draw_subpanel_header
 
@@ -71,23 +72,22 @@ class PROSCENIO_UL_slots(bpy.types.UIList):
         data: bpy.types.AnyType,
         propname: str,
     ) -> tuple[list[int], list[int]]:
-        """Keep only slot Empties in the view layer, name-filtered, sorted by name."""
+        """Keep only slot Empties in the view layer, name-filtered, sorted by name.
+
+        Routes the search + flag/order computation through the shared
+        :func:`compute_list_filter`; the slot-Empty + view-layer test is the
+        per-row visibility closure.
+        """
         objects = list(getattr(data, propname))
-        flt_text = (self.filter_name or "").lower()
         view_layer_names = {o.name for o in context.view_layer.objects}
-        n = len(objects)
-        flt_flags = [0] * n
-        for i, obj in enumerate(objects):
-            if not is_slot_empty(obj) or obj.name not in view_layer_names:
-                continue
-            if flt_text and flt_text not in obj.name.lower():
-                continue
-            flt_flags[i] = self.bitflag_filter_item
-        order = sorted(range(n), key=lambda i: objects[i].name.lower())
-        flt_neworder = [0] * n
-        for new_i, orig_i in enumerate(order):
-            flt_neworder[orig_i] = new_i
-        return flt_flags, flt_neworder
+        return compute_list_filter(
+            objects,
+            bitflag=self.bitflag_filter_item,
+            name_filter=self.filter_name or "",
+            name_of=lambda obj: obj.name,
+            visible=lambda obj: is_slot_empty(obj) and obj.name in view_layer_names,
+            sort_key=lambda obj: obj.name.lower(),
+        )
 
 
 def _attachment_kind_for(mesh_obj: bpy.types.Object) -> str:

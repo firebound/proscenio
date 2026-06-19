@@ -7,10 +7,15 @@ from typing import ClassVar
 import bpy
 
 from ._helpers import _active_armature, draw_subpanel_header, draw_target_readout
+from ._list import ProscenioListMixin
 
 
-class PROSCENIO_UL_actions(bpy.types.UIList):
-    """List view for ``bpy.data.actions`` - Animation subpanel uses this."""
+class PROSCENIO_UL_actions(ProscenioListMixin, bpy.types.UIList):
+    """List view for ``bpy.data.actions`` - Animation subpanel uses this.
+
+    Single-select (a click assigns the active action); the shared mixin gives it
+    native ``filter_name`` search. Source order is kept.
+    """
 
     bl_idname = "PROSCENIO_UL_actions"
 

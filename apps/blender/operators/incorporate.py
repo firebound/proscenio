@@ -1,12 +1,16 @@
 """Incorporate a hand-authored Blender mesh as a Proscenio element.
 
 A mesh modelled directly in Blender carries no Proscenio element data, so the
-pipeline does not recognize it. This operator adopts it: a single quad (4 verts
-/ 1 face) defaults to a Sprite, any denser mesh to a Mesh, and the user can
-override the choice in the redo panel. It sets ``element_type`` plus the same
-sensible defaults the Element panel controls, then stamps the Custom Property
-mirror so the element is recognized end to end. Mirrors the Create Slot shape
-(a button plus its adjust/redo dialog).
+pipeline does not recognize it. This operator adopts it: the Auto choice picks
+Sprite for a single quad (4 verts / 1 face) and Mesh for anything denser, and
+the user can force Mesh or Sprite in the redo panel. It sets ``element_type``
+plus the same sensible defaults the Element panel controls, then stamps the
+Custom Property mirror so the element is recognized end to end. Mirrors the
+Create Slot shape (a button plus its adjust/redo dialog).
+
+The choice is resolved in ``execute`` (not ``invoke``) so the Auto heuristic
+runs on every entry point - the button, a redo, and a script call - rather than
+only when an interactive ``invoke`` fires (headless Blender skips ``invoke``).
 """
 
 from __future__ import annotations
@@ -18,7 +22,12 @@ from bpy.props import EnumProperty, IntProperty
 
 from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
 from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
-from ..properties.object_props import ELEMENT_TYPE_ITEMS  # type: ignore[import-not-found]
+
+_INCORPORATE_CHOICE_ITEMS = (
+    ("auto", "Auto (detect)", "Sprite for a single quad, Mesh for anything denser", 0),
+    ("mesh", "Mesh", "Deformable cutout - Polygon2D vertices + UV", 1),
+    ("sprite", "Sprite", "Rigid quad - Sprite2D with an hframes x vframes grid", 2),
+)
 
 
 def _is_single_quad(obj: bpy.types.Object) -> bool:
@@ -37,16 +46,16 @@ class PROSCENIO_OT_incorporate_element(bpy.types.Operator):
     bl_idname = "proscenio.incorporate_element"
     bl_label = "Proscenio: Incorporate as Element"
     bl_description = (
-        "Adopt this hand-authored mesh as a Proscenio element. A single quad "
-        "defaults to Sprite, any denser mesh to Mesh - override in the redo panel"
+        "Adopt this hand-authored mesh as a Proscenio element. Auto picks Sprite "
+        "for a single quad and Mesh otherwise - override in the redo panel"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     element_type: EnumProperty(  # type: ignore[valid-type]
         name="Element type",
-        description="Adopt as a deformable Mesh (Polygon2D) or a rigid Sprite (Sprite2D)",
-        items=ELEMENT_TYPE_ITEMS,
-        default="mesh",
+        description="Adopt as a deformable Mesh, a rigid Sprite, or Auto-detect from the geometry",
+        items=_INCORPORATE_CHOICE_ITEMS,
+        default="auto",
     )
     hframes: IntProperty(  # type: ignore[valid-type]
         name="Horizontal frames",
@@ -70,16 +79,16 @@ class PROSCENIO_OT_incorporate_element(bpy.types.Operator):
         # already-incorporated element stamps the proscenio_type Custom Property.
         return obj is not None and obj.type == "MESH" and obj.get("proscenio_type") is None
 
-    def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
-        """Seed the element type from the geometry heuristic, then incorporate."""
-        obj = context.active_object
-        self.element_type = "sprite" if obj is not None and _is_single_quad(obj) else "mesh"
-        return self.execute(context)
+    def _resolved_type(self, obj: bpy.types.Object | None) -> str:
+        """Map the choice to a concrete element type, running the Auto heuristic."""
+        if self.element_type == "auto":
+            return "sprite" if obj is not None and _is_single_quad(obj) else "mesh"
+        return str(self.element_type)
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         layout.prop(self, "element_type")
-        if self.element_type == "sprite":
+        if self._resolved_type(context.active_object) == "sprite":
             layout.prop(self, "hframes")
             layout.prop(self, "vframes")
 
@@ -92,8 +101,9 @@ class PROSCENIO_OT_incorporate_element(bpy.types.Operator):
         if props is None:
             report_error(self, "Proscenio property group not registered")
             return {"CANCELLED"}
-        props.element_type = self.element_type
-        if self.element_type == "sprite":
+        resolved = self._resolved_type(obj)
+        props.element_type = resolved
+        if resolved == "sprite":
             props.hframes = self.hframes
             props.vframes = self.vframes
             props.frame = 0
@@ -103,7 +113,7 @@ class PROSCENIO_OT_incorporate_element(bpy.types.Operator):
         # the proscenio_type marker the panel + poll key on) must be written
         # here regardless of whether element_type actually changed.
         mirror_all_fields(props, obj)
-        report_info(self, f"incorporated '{obj.name}' as a {self.element_type} element")
+        report_info(self, f"incorporated '{obj.name}' as a {resolved} element")
         return {"FINISHED"}
 
 

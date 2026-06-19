@@ -1,9 +1,9 @@
 """Headless tests for Incorporate as Element.
 
 Runs INSIDE Blender via ``run_operator_tests.py``. A hand-authored Blender mesh
-carries no Proscenio element data; the operator adopts it as a Mesh or Sprite,
-defaulting Sprite for a single quad and Mesh otherwise, and stamps the
-proscenio_type marker the panel + poll key on.
+carries no Proscenio element data; the operator adopts it as a Mesh or Sprite -
+the Auto choice picks Sprite for a single quad and Mesh otherwise - and stamps
+the proscenio_type marker the panel + poll key on.
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ import bpy
 
 _QUAD_VERTS = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), (0.0, 0.0, 1.0)]
 _QUAD_FACES = [(0, 1, 2, 3)]
+_DENSE_VERTS = [*_QUAD_VERTS, (2.0, 0.0, 0.5)]
+_DENSE_FACES = [(0, 1, 2, 3), (1, 4, 2)]
 
 
 def _make_mesh_object(name: str, verts: list, faces: list) -> bpy.types.Object:
@@ -24,9 +26,21 @@ def _make_mesh_object(name: str, verts: list, faces: list) -> bpy.types.Object:
     return obj
 
 
-def test_incorporate_quad_defaults_to_sprite(automesh_fixture):
+def test_single_quad_heuristic_picks_sprite(automesh_fixture):
+    from proscenio.operators.incorporate import _is_single_quad
+
+    assert _is_single_quad(_make_mesh_object("quad", _QUAD_VERTS, _QUAD_FACES)) is True
+
+
+def test_single_quad_heuristic_rejects_a_dense_mesh(automesh_fixture):
+    from proscenio.operators.incorporate import _is_single_quad
+
+    assert _is_single_quad(_make_mesh_object("dense", _DENSE_VERTS, _DENSE_FACES)) is False
+
+
+def test_auto_incorporates_a_quad_as_sprite_with_a_frame_grid(automesh_fixture):
     obj = _make_mesh_object("plain_quad", _QUAD_VERTS, _QUAD_FACES)
-    result = bpy.ops.proscenio.incorporate_element("INVOKE_DEFAULT")
+    result = bpy.ops.proscenio.incorporate_element()  # default choice is Auto
     assert "FINISHED" in result
     assert obj.proscenio.element_type == "sprite"
     assert (obj.proscenio.hframes, obj.proscenio.vframes) == (1, 1)
@@ -35,20 +49,16 @@ def test_incorporate_quad_defaults_to_sprite(automesh_fixture):
     assert obj.get("proscenio_type") == "sprite"
 
 
-def test_incorporate_dense_mesh_defaults_to_mesh(automesh_fixture):
-    # 5 verts / 2 faces is not a single quad, so the heuristic picks Mesh.
-    verts = [*_QUAD_VERTS, (2.0, 0.0, 0.5)]
-    faces = [(0, 1, 2, 3), (1, 4, 2)]
-    obj = _make_mesh_object("dense", verts, faces)
-    result = bpy.ops.proscenio.incorporate_element("INVOKE_DEFAULT")
+def test_auto_incorporates_a_dense_mesh_as_mesh(automesh_fixture):
+    obj = _make_mesh_object("dense", _DENSE_VERTS, _DENSE_FACES)
+    result = bpy.ops.proscenio.incorporate_element()  # Auto, denser than a quad
     assert "FINISHED" in result
     assert obj.proscenio.element_type == "mesh"
     assert obj.get("proscenio_type") == "mesh"
 
 
-def test_incorporate_respects_an_explicit_mesh_choice(automesh_fixture):
-    # A quad would default to Sprite; an explicit element_type overrides it
-    # (the redo-panel override path, EXEC without the invoke heuristic).
+def test_explicit_choice_overrides_the_quad_heuristic(automesh_fixture):
+    # A quad would Auto-detect as Sprite; an explicit Mesh choice overrides it.
     obj = _make_mesh_object("forced_mesh", _QUAD_VERTS, _QUAD_FACES)
     result = bpy.ops.proscenio.incorporate_element(element_type="mesh")
     assert "FINISHED" in result

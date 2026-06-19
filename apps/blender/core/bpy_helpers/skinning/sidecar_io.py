@@ -127,8 +127,10 @@ def append_auto_snapshot(obj: bpy.types.Object, armature: bpy.types.Object) -> b
     Reads the existing sidecar, snapshots the live vertex weights, appends them
     as an auto entry (the oldest auto rolls off past the cap), and writes the
     sidecar back. Returns ``False`` (no-op) when there is no sidecar yet, it is
-    corrupt, or the snapshot would be empty (no UV layer). Best-effort: the Edit
-    Weights modal calls this on a normal finish and must never let it raise.
+    corrupt, the snapshot would be empty (no UV layer), or the live topology has
+    drifted from the sidecar's hash (the snapshot could not be restored later,
+    since restore guards on the hash). Best-effort: the Edit Weights modal calls
+    this on a normal finish and must never let it raise.
     """
     payload = obj.get(_SIDECAR_KEY)
     if payload is None:
@@ -140,7 +142,12 @@ def append_auto_snapshot(obj: bpy.types.Object, armature: bpy.types.Object) -> b
     current = snapshot_sidecar(obj, armature, provenance="user_paint")
     if not current.entries:
         return False
-    name = time.strftime("auto %H:%M:%S")
+    if current.mesh_topology_hash != sidecar.mesh_topology_hash:
+        return False
+    # Sub-second suffix so two captures in the same second do not collide (restore
+    # resolves a snapshot by name).
+    now = time.time()
+    name = f"auto {time.strftime('%H:%M:%S', time.localtime(now))}.{int(now * 1000) % 1000:03d}"
     obj[_SIDECAR_KEY] = to_json(add_auto_snapshot(sidecar, name, current.entries))
     return True
 

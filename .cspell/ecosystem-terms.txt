@@ -167,6 +167,7 @@ kwonlyargs
 laplacian
 lineterm
 localise
+localtime
 lockdown
 lstrip
 manylinux

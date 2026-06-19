@@ -70,6 +70,35 @@ def test_saved_snapshot_is_listed(automesh_fixture):
     assert [(s.name, s.kind) for s in listed] == [("pose-a", "manual")]
 
 
+def test_append_auto_snapshot_adds_when_topology_matches(automesh_fixture):
+    from proscenio.core.bpy_helpers.skinning import append_auto_snapshot, read_snapshots
+
+    obj = _bound_hand()
+
+    assert append_auto_snapshot(obj, bpy.data.objects["automesh.hand_rig"]) is True
+    autos = [s for s in read_snapshots(obj) if s.kind == "auto"]
+    assert len(autos) == 1
+
+
+def test_append_auto_snapshot_skips_on_topology_drift(automesh_fixture):
+    import bmesh
+    from proscenio.core.bpy_helpers.skinning import append_auto_snapshot, read_snapshots
+
+    obj = _bound_hand()
+    # Drift the topology without refreshing the sidecar hash (the no-preserve regen
+    # case): an auto-snapshot stored now could not be restored later, so it must skip.
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.new((9.0, 9.0, 9.0))
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+    assert append_auto_snapshot(obj, bpy.data.objects["automesh.hand_rig"]) is False
+    assert [s for s in read_snapshots(obj) if s.kind == "auto"] == []
+
+
 def test_restore_unknown_name_cancels(automesh_fixture):
     _bound_hand()
     with pytest.raises(RuntimeError, match="no snapshot named"):

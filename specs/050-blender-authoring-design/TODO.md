@@ -20,3 +20,9 @@ Sequenced from the locked calls in [STUDY.md](STUDY.md). Three small PRs; all "n
 - [ ] Add an **Incorporate as Element** button in [`panels/element.py`](../../apps/blender/panels/element.py), shown when the active object is a plain mesh with no Proscenio element data.
 - [ ] Add the operator (under [`operators/`](../../apps/blender/operators/)): a Mesh / Sprite choice (redo/adjust dialog, the Create Slot pattern), defaulting Sprite for a 4-vert single-face quad and Mesh otherwise; set `element_type` + the sensible defaults the Element panel already controls.
 - [ ] Headless tests: incorporate sets a valid mesh element; the quad heuristic picks Sprite and fills hframes/vframes; a non-quad picks Mesh.
+
+## PR 4 - sprite-origin contract cleanup
+
+- [ ] Make `[origin]` sprite-only: stop the PS plugin emitting it for mesh layers (drop `MeshLayer.origin` in [`packages/models/src/proscenio_models/psd_manifest.py`](../../packages/models/src/proscenio_models/psd_manifest.py) + the planner/parser path), or warn in the Blender importer / validator when a mesh layer carries an origin.
+- [ ] Drop the vestigial manual `centered` toggle from the Active Sprite UI ([`panels/_draw_sprite.py`](../../apps/blender/panels/_draw_sprite.py) / [`panels/element.py`](../../apps/blender/panels/element.py)); keep `centered=true` as the internal constant the writer's offset math assumes.
+- [ ] Add a round-trip test: a PS `[origin]` produces the expected `Sprite2D` pivot (object location -> writer `offset` -> Godot), pinning the wiring that is only code-read today.

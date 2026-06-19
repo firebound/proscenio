@@ -13,15 +13,11 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 
 ## Fila da sprint
 
-A maioria das issues de UI/UX dos walks pós-spec-036 foi promovida em 2026-06-18 para [spec 049](049-blender-ui-polish/STUDY.md) (10 itens now-able) e [spec 050](050-blender-authoring-design/STUDY.md) (3 decisões de autoria travadas). O `show-provenance-overlay` toggle inerte saiu de [`backlog-bugs-found.md`](backlog-bugs-found.md) no mesmo movimento (agora no spec 049). Voltaram/sobraram dois itens:
+A maioria das issues de UI/UX dos walks pós-spec-036 foi promovida em 2026-06-18 para [spec 049](049-blender-ui-polish/STUDY.md) (10 itens now-able) e [spec 050](050-blender-authoring-design/STUDY.md) (4 itens de autoria travados). O `show-provenance-overlay` toggle inerte saiu de [`backlog-bugs-found.md`](backlog-bugs-found.md) no mesmo movimento (agora no spec 049). Voltou um item:
 
 ### Blender · Skeleton
 
 - **qa-quickarm-interaction-revision** `[feature]` - Revisar o vocabulário de interação do modal do Quick Armature: os taps de modificador (Shift/Ctrl/etc.) são ruins e precisam ser repensados, e o esquema de chords está saturado (Shift/Alt/Ctrl/X/Z ocupados). No esquema revisto, incluir o pick-parent na viewport (hit-testing de ponta de bone para reparentar mid-sketch) - há demanda. **`DECIDIR (STUDY):`** o novo vocabulário de interação (o que substitui os taps) antes de encaixar o pick-parent. Absorve o antigo `qa-pick-parent-viewport`. (Tirado do spec 050 em 2026-06-18: a redesign de interação precisa de mais tempo de decisão.)
-
-### Blender · Sprite (PS -> Blender -> Godot)
-
-- **sprite-origin-cleanup** `[bug]` `[quick win]` - O `[origin]` do PS vira pivô só pra SPRITE (o import põe a `location` no ponto -> o writer deriva `Sprite2D.offset` -> a Godot aplica `centered`+`offset`). Pra MESH é no-op downstream: Polygon2D não tem pivô, os verts são assados em absoluto/bone-local e o import compensa a geometria, então a origin se cancela. Acertos: (1) tornar `[origin]` sprite-only (o PS não emite pra camada mesh, ou o validador avisa); (2) remover o toggle `centered` manual (vestigial, acoplado ao offset, fica sempre `true`); (3) teste de round-trip `[origin]` PS -> pivô Sprite2D. (Saiu do spec 050 em 2026-06-18 - não era decisão de design.)
 
 Formato para novas issues, por app → painel: `**slug** [cat] - descrição` + refs de código (`arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`. **`DECIDIR (STUDY):`** marca pergunta de design em aberto - resolver no STUDY, não no palpite. Fluxo: issue → STUDY → implementar (este arquivo não é spec).
 

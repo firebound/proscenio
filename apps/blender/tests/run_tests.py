@@ -87,6 +87,7 @@ def _load_addon_as_package() -> None:
 
 
 def _normalize(doc: JsonValue) -> str:
+    """Canonical JSON (sorted keys, indented) so the golden diff ignores ordering."""
     return json.dumps(doc, sort_keys=True, indent=2)
 
 
@@ -175,6 +176,7 @@ def _run_one(blend: Path, expected: Path, writer_module: _WriterModule) -> bool:
 
 
 def main() -> int:
+    """Re-export every fixture, validate + diff against its golden; return an exit code."""
     prefer_source_models()
     _load_addon_as_package()
     from proscenio.exporters.godot import writer  # type: ignore[import-not-found]

@@ -37,6 +37,7 @@ def prefer_source_models() -> None:
 
 
 def main() -> int:
+    """Run the operator pytest suite inside Blender; return its exit code."""
     prefer_source_models()
     try:
         import pytest

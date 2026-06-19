@@ -61,6 +61,10 @@ PROSCENIO_REGION_Y = "proscenio_region_y"
 PROSCENIO_REGION_W = "proscenio_region_w"
 PROSCENIO_REGION_H = "proscenio_region_h"
 PROSCENIO_MATERIAL_ISOLATED = "proscenio_material_isolated"
+# Manual draw-order nudge (PSD-layer units) layered on the PSD-order depth.
+# The writer adds it to the element's Y before deriving the Godot z_index;
+# authoring-only, never a schema field. Mirrors ProscenioObjectProps.depth_offset.
+PROSCENIO_DEPTH_OFFSET = "proscenio_depth_offset"
 
 # Skinning sidecar + bind metadata. The weight sidecar is the per-Object JSON
 # store of bind/paint provenance; bone modes, envelope radius, and the mirror

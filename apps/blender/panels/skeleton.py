@@ -212,6 +212,15 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
             "active_bone_index",
             rows=min(max(len(bones), 3), 8),
         )
+        # Convert-to-Euler is the one-click fix for the export validator's
+        # driven-bone-not-XYZ warning: Drive-from-Bone reads rotation as XYZ.
+        convert = layout.row(align=True)
+        convert.operator(
+            "proscenio.convert_rotation_to_euler", text="Active to Euler", icon="DRIVER"
+        ).scope = "ACTIVE"
+        convert.operator(
+            "proscenio.convert_rotation_to_euler", text="All to Euler", icon="DRIVER"
+        ).scope = "ALL"
 
 
 class PROSCENIO_PT_pose_mode(bpy.types.Panel):

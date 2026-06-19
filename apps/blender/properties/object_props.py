@@ -164,6 +164,19 @@ class ProscenioObjectProps(PropertyGroup):
         precision=4,
         update=on_any_update,
     )
+    depth_offset: FloatProperty(  # type: ignore[valid-type]
+        name="Depth offset",
+        description=(
+            "Manual draw-order nudge layered on top of the PSD-order depth, in "
+            "PSD-layer units. Added to the element's depth before it becomes the "
+            "Godot z_index, so a positive value pushes this element further back "
+            "and a negative value pulls it forward - reorder a plane without "
+            "re-importing or moving the object."
+        ),
+        default=0.0,
+        precision=2,
+        update=on_any_update,
+    )
     material_isolated: BoolProperty(  # type: ignore[valid-type]
         name="Isolated material",
         description=(

@@ -75,7 +75,16 @@ class PROSCENIO_PT_element(bpy.types.Panel):
             col.prop(props, "element_type")
             layout.label(text="element type is locked in Weight Paint mode", icon="INFO")
             return
+        if obj.get("proscenio_type") is None:
+            # Hand-authored mesh with no element data yet: offer one-click adopt
+            # with a smart Mesh/Sprite default before showing the element fields.
+            box = layout.box()
+            box.label(text="hand-authored mesh - not a Proscenio element yet", icon="INFO")
+            box.operator(
+                "proscenio.incorporate_element", text="Incorporate as Element", icon="IMPORT"
+            )
         layout.prop(props, "element_type")
+        layout.prop(props, "depth_offset")
         for issue in validation.validate_active_element(obj):
             draw_issue_row(layout, issue)
 

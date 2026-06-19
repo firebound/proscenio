@@ -13,7 +13,7 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 
 ## Fila da sprint
 
-O grosso das issues de UI/UX dos walks pós-spec-036 virou as specs 049 e 050 em 2026-06-18. O **spec 049** (11 itens: o componente de lista compartilhado + seus consumidores, o reflow do help popup + a revisão de texto, e as correções de painel) foi entregue e a pasta da spec foi removida no mesmo dia - ver [`_index.md`](_index.md). O `show-provenance-overlay` toggle inerte (saído de [`backlog-bugs-found.md`](backlog-bugs-found.md)) entrou nesse pacote. O [spec 050](050-blender-authoring-design/STUDY.md) (4 itens de autoria travados) segue planejado. Voltou um item:
+O grosso das issues de UI/UX dos walks pós-spec-036 virou as specs 049 e 050 em 2026-06-18. O **spec 049** (11 itens: o componente de lista compartilhado + seus consumidores, o reflow do help popup + a revisão de texto, e as correções de painel) foi entregue e a pasta da spec foi removida no mesmo dia - ver [`_index.md`](_index.md). O `show-provenance-overlay` toggle inerte (saído de [`backlog-bugs-found.md`](backlog-bugs-found.md)) entrou nesse pacote. O **spec 050** (4 itens de autoria travados: guarda de rotation-mode + convert-to-Euler, depth-offset manual de Y, botão incorporate-mesh, limpeza do contrato sprite-origin) foi entregue e a pasta removida em 2026-06-19 - ver [`_index.md`](_index.md). Voltou um item, que segue aberto:
 
 ### Blender · Skeleton
 

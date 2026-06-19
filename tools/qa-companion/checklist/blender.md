@@ -220,10 +220,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: regressed
 - review: keep
 - pre: A mesh or sprite element active.
-- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite). With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
-- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the empty-state and locked-state labels, and inline validation rows.
-- code: apps/blender/panels/element.py:49-80; apps/blender/core/validation/active_element.py:9
-- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. Re-walk.
+- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite) and a Depth offset field. A hand-authored mesh with no Proscenio element data also shows a boxed 'hand-authored mesh - not a Proscenio element yet' note with an 'Incorporate as Element' button above the type dropdown. With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
+- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the Depth offset field, the Incorporate-as-Element note for an unincorporated mesh, the empty-state and locked-state labels, and inline validation rows.
+- code: apps/blender/panels/element.py:62-89; apps/blender/core/validation/active_element.py:9
+- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. blender-authoring-design added the Depth offset field + the Incorporate button. Re-walk.
 
 ### BL-ELEM-ROOT-01 · Element type chooses the subpanel and the Godot node
 - status: pass
@@ -242,6 +242,29 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: The element-type dropdown is greyed out and the label 'element type is locked in Weight Paint mode' appears; no other element fields or subpanels draw.
 - intent: The element type cannot be changed mid-weight-paint, so a bound mesh cannot switch to a sprite while you are painting it.
 - code: apps/blender/panels/element.py:56-61
+
+### BL-ELEM-ROOT-03 · Depth offset nudges the export draw order
+- status: todo
+- review: keep
+- pre: A mesh or sprite element active.
+- steps:
+  1. In the Element root, set Depth offset to a non-zero value (e.g. 2), then back to 0.
+- observe: The field accepts a number (it is in PSD-layer units). A positive value pushes the element further back in the exported draw order, a negative one pulls it forward; 0 keeps the PSD-order stacking. The object does not move in the viewport.
+- intent: Depth offset is an authoring-only manual nudge added to the PSD-order depth before it becomes the Godot z_index, so a plane reorders without moving the object or re-importing.
+- code: apps/blender/panels/element.py:87; apps/blender/exporters/godot/writer/sprites.py _derive_z_index
+- note: blender-authoring-design. Writer behavior pinned by tests/writer/test_sprites.py; this is the GUI-presence walk.
+
+### BL-ELEM-ROOT-04 · Incorporate as Element adopts a hand-authored mesh
+- status: todo
+- review: keep
+- pre: A plain mesh modelled in Blender (Add > Mesh), with no Proscenio element data, active.
+- steps:
+  1. With the plain mesh active, open the Element panel and click 'Incorporate as Element'.
+  2. In the redo panel, switch the Element type between Auto, Mesh, and Sprite.
+- observe: Before incorporating, the panel shows the 'not a Proscenio element yet' note with the button. Clicking it adopts the mesh: a single quad (4 verts / 1 face) Auto-detects as Sprite, anything denser as Mesh. The redo panel exposes the Auto / Mesh / Sprite choice; choosing Sprite (or Auto on a quad) reveals Horizontal / Vertical frames. After incorporating, the note and button disappear and the normal element fields show.
+- intent: Incorporate adopts a hand-authored mesh as a Proscenio element, Auto-detecting Sprite for a single quad and Mesh otherwise, with an override - mirroring the Create Slot button-plus-dialog shape.
+- code: apps/blender/operators/incorporate.py; apps/blender/panels/element.py:78-85
+- note: blender-authoring-design. Heuristic + execute pinned by tests/operators/test_incorporate_element.py; this is the GUI button + redo-dialog walk.
 
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass
@@ -275,13 +298,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/uv_authoring.py:49-56
 
 ### BL-ELEM-SPRITE-SWEEP · Active Sprite subpanel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: A sprite element (type Sprite) active.
-- observe: The Active Sprite subpanel shows the Horizontal frames, Vertical frames, and Frame fields, a Centered checkbox, the atlas/region/frame read-out labels ('atlas: not linked in material' when no image is linked, otherwise 'atlas: WxH px', 'region: WxH px', 'frame: WxH px'), and the Setup Preview and Remove Preview buttons.
-- intent: Confirm the Active Sprite subpanel renders the grid fields, the centered toggle, the size read-outs, and the preview buttons; behavior lives in the named tests.
-- code: apps/blender/panels/_draw_sprite.py:23-83
-- note: absorbs the per-field sprite items; their behavior is the BL-ELEM-SPRITE-NN tests.
+- observe: The Active Sprite subpanel shows the Horizontal frames, Vertical frames, and Frame fields, the atlas/region/frame read-out labels ('atlas: not linked in material' when no image is linked, otherwise 'atlas: WxH px', 'region: WxH px', 'frame: WxH px'), and the Setup Preview and Remove Preview buttons. There is no Centered checkbox (it was retired to a fixed internal constant).
+- intent: Confirm the Active Sprite subpanel renders the grid fields, the size read-outs, and the preview buttons, and no longer shows a Centered toggle; behavior lives in the named tests.
+- code: apps/blender/panels/_draw_sprite.py:18-29
+- note: absorbs the per-field sprite items; their behavior is the BL-ELEM-SPRITE-NN tests. blender-authoring-design dropped the Centered toggle - re-walk to confirm it is gone.
 
 ### BL-ELEM-SPRITE-01 · Horizontal and Vertical frames set the spritesheet grid
 - status: pass
@@ -305,15 +328,6 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Frame chooses which cell the sprite shows at rest pose (animation tracks override it at export), clamped to the valid grid so the export never carries an index Godot rejects.
 - code: apps/blender/panels/_draw_sprite.py:25; object_props.py (frame + _clamp_frame_and_update); core/_shared/sprite_grid.py
 - note: spec 036 PR3 renamed Initial frame to Frame and added the grid clamp; re-walk the clamp + reclamp.
-
-### BL-ELEM-SPRITE-03 · Centered places the sprite on its origin
-- status: pass
-- review: keep
-- steps:
-  1. Toggle the Centered checkbox.
-- observe: The checkbox toggles on and off (on by default).
-- intent: Centered decides whether the exported Sprite2D is centred on its origin or has its top-left corner at the origin.
-- code: apps/blender/panels/_draw_sprite.py:26; object_props.py:104-109
 
 ### BL-ELEM-SPRITE-04 · Sprite read-out shows atlas, region, and frame sizes
 - status: pass
@@ -599,10 +613,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A rig picked.
-- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply. The list now carries Blender's native 'Filter by Name' search under its expand arrows, and in Pose / Edit mode each row leads with a selection marker (a filled radio dot when the bone is selected, an empty one otherwise).
-- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, the native search, the per-row selection marker, and the connected/disconnected/relative flags; behavior lives in the named tests.
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply. The list now carries Blender's native 'Filter by Name' search under its expand arrows, and in Pose / Edit mode each row leads with a selection marker (a filled radio dot when the bone is selected, an empty one otherwise). Below the list sits a row of two buttons: 'Active to Euler' and 'All to Euler'.
+- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, the native search, the per-row selection marker, the connected/disconnected/relative flags, and the two Convert-rotation-to-Euler buttons; behavior lives in the named tests.
 - code: apps/blender/panels/skeleton.py PROSCENIO_UL_bones (ProscenioListMixin + draw_select_marker)
-- note: shared-list-component: the bone list moved onto the shared component (gains native search + the selection marker). Re-walk the inventory.
+- note: shared-list-component: the bone list moved onto the shared component (gains native search + the selection marker). blender-authoring-design added the two convert-to-Euler buttons. Re-walk the inventory.
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
 - status: todo
@@ -624,6 +638,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: Plain click selects only A. Shift-click adds B (A stays selected), B becomes active. Ctrl-click on B (selected) deselects only B, leaving A. Ctrl-click on C (unselected) adds C and makes it active. The per-row radio markers track which bones are selected. In Object mode there is no per-bone selection - a click just moves the active bone (no markers).
 - intent: The bone list mirrors the Outliner's Shift/Ctrl multi-select where bone selection is real (Pose / Edit); Object mode stays single active.
 - code: apps/blender/operators/selection.py PROSCENIO_OT_select_bone_by_name (invoke reads event.shift/ctrl) + core/bpy_helpers/_shared/bone_select.py
+
+### BL-SKEL-ARMATURE-03 · Convert rotation to Euler clears the driven-bone warning
+- status: todo
+- review: keep
+- pre: A rig picked; a sprite element driven from one of its bones via Drive from Bone (the bone left in its default Quaternion rotation mode).
+- steps:
+  1. Run Pipeline > Validate and read the issues list.
+  2. Select the driving bone (or leave it active), then click 'Active to Euler' in the Active Armature subpanel. Re-run Validate.
+  3. Set the bone back to Quaternion, then click 'All to Euler' and re-run Validate.
+- observe: Before converting, Validate shows a warning that the bone drives the sprite's rotation but is not in XYZ Euler (the driver reads XYZ). 'Active to Euler' converts the active bone to XYZ Euler and the warning clears for it; 'All to Euler' converts every bone in the armature. The pose does not visibly change (Blender converts the stored rotation). A status report names how many bones were converted.
+- intent: The export validator warns when a sprite-driving bone is not in XYZ Euler, and Convert rotation to Euler (active bone or whole armature) is the one-click fix that clears it.
+- code: apps/blender/operators/armature/rotation_mode.py; apps/blender/core/validation/export.py _validate_driver_rotation_modes
+- note: blender-authoring-design. Validator + operator pinned by tests/test_validation_export.py and tests/operators/test_rotation_mode.py; this is the GUI loop across Skeleton + Validate.
 
 ### BL-SKEL-POSE-SWEEP · Pose Mode subpanel inventory (visual pass)
 - status: pass

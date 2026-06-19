@@ -1,8 +1,9 @@
 """Sprite-frame body draw (slot panel + region readout).
 
-Renders the sprite-frame metadata block: hframes / vframes / frame /
-centered, the atlas+region readout, the preview-shader setup buttons,
-and the shared region authoring box.
+Renders the sprite-frame metadata block: hframes / vframes / frame, the
+atlas+region readout, the preview-shader setup buttons, and the shared
+region authoring box. ``centered`` is no longer a UI toggle - the writer's
+offset math assumes it is always on, so it stays a fixed internal constant.
 """
 
 from __future__ import annotations
@@ -24,7 +25,6 @@ def draw_body(
     layout.prop(props, "hframes")
     layout.prop(props, "vframes")
     layout.prop(props, "frame")
-    layout.prop(props, "centered")
     _draw_readout(layout, obj, props)
     _draw_preview_shader_buttons(layout, obj)
 

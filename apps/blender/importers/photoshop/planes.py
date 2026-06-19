@@ -108,7 +108,7 @@ def _place_and_tag(
         manifest.size,
         manifest.pixels_per_unit,
         layer.z_order,
-        layer.origin,
+        _origin_for_kind(layer.origin, element_type, layer.name),
         manifest.anchor,
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
@@ -182,6 +182,28 @@ class _Placement:
     # size/2` in PSD pixels) even when the object's location was
     # shifted to an explicit `origin`. Zero when no origin is set.
     geometry_offset: tuple[float, float]
+
+
+def _origin_for_kind(
+    layer_origin: Sequence[int] | None,
+    element_type: str,
+    layer_name: str,
+) -> Sequence[int] | None:
+    """Honour ``[origin]`` for sprites only; ignore (and warn about) one on a mesh.
+
+    A Polygon2D has no pivot - the mesh exports in world / bone space, so an
+    origin only shifts the Blender object pivot and cancels at export. Treating
+    it as absent keeps the import placement at the bbox centre and surfaces the
+    no-op rather than silently honouring a tag that does nothing downstream. A
+    sprite keeps its origin: it becomes the Sprite2D offset.
+    """
+    if element_type == "mesh" and layer_origin is not None:
+        print(
+            f"[psd_import] mesh layer {layer_name!r} carries an [origin]; ignoring it "
+            "(origin is sprite-only - it cancels at mesh export)"
+        )
+        return None
+    return layer_origin
 
 
 def _layer_placement(

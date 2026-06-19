@@ -17,6 +17,7 @@ from core.help_topics import (  # noqa: E402
     HELP_TOPICS,
     HelpTopic,
     known_topic_ids,
+    reflow_paragraph,
     topic_for,
 )
 
@@ -43,9 +44,28 @@ def test_every_topic_has_required_fields() -> None:
         assert topic.sections, f"no sections for {topic_id!r}"
         for section in topic.sections:
             assert section.heading, f"empty section heading in {topic_id!r}"
-            assert section.body, f"empty section body in {topic_id!r}"
-            for line in section.body:
-                assert line, f"empty line in {topic_id!r}/{section.heading!r}"
+            # body is one paragraph string ("\n" separates explicit list items).
+            assert isinstance(section.body, str), f"non-str body in {topic_id!r}"
+            assert section.body.strip(), f"empty section body in {topic_id!r}"
+            for item in section.body.split("\n"):
+                assert item.strip(), f"blank list item in {topic_id!r}/{section.heading!r}"
+
+
+def test_reflow_wraps_each_line_to_the_width() -> None:
+    lines = reflow_paragraph("alpha bravo charlie delta echo", 11)
+    assert all(len(line) <= 11 for line in lines)
+    # No words lost or reordered by the wrap.
+    assert " ".join(lines).split() == ["alpha", "bravo", "charlie", "delta", "echo"]
+
+
+def test_reflow_blank_input_yields_no_lines() -> None:
+    assert reflow_paragraph("   ", 40) == []
+
+
+def test_reflow_bullet_keeps_a_hanging_indent() -> None:
+    lines = reflow_paragraph("- alpha bravo charlie delta", 12)
+    assert lines[0].startswith("- ")
+    assert all(line.startswith("  ") for line in lines[1:]), "continuation lines indent"
 
 
 def test_panel_topic_ids_present() -> None:

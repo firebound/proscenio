@@ -76,6 +76,7 @@ class PROSCENIO_PT_element(bpy.types.Panel):
             layout.label(text="element type is locked in Weight Paint mode", icon="INFO")
             return
         layout.prop(props, "element_type")
+        layout.prop(props, "depth_offset")
         for issue in validation.validate_active_element(obj):
             draw_issue_row(layout, issue)
 

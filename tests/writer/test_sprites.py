@@ -47,6 +47,30 @@ def test_derive_z_index_negates_the_psd_depth() -> None:
     assert sprites._derive_z_index(obj) == -2
 
 
+def test_derive_z_index_applies_manual_depth_offset() -> None:
+    # depth_offset is in PSD-layer units, added to the depth before the negate:
+    # the front plane (Y = 0) pushed back 3 layers maps to z_index -3.
+    obj = SimpleNamespace(
+        location=_vec(y=0.0), proscenio=SimpleNamespace(depth_offset=3.0)
+    )
+    assert sprites._derive_z_index(obj) == -3
+
+
+def test_derive_z_index_offset_composes_with_psd_depth() -> None:
+    # z_order 2 (Y = 0.002) pulled forward 2 layers cancels back to the front (None).
+    obj = SimpleNamespace(
+        location=_vec(y=0.002), proscenio=SimpleNamespace(depth_offset=-2.0)
+    )
+    assert sprites._derive_z_index(obj) is None
+
+
+def test_derive_z_index_zero_offset_keeps_the_psd_value() -> None:
+    obj = SimpleNamespace(
+        location=_vec(y=0.002), proscenio=SimpleNamespace(depth_offset=0.0)
+    )
+    assert sprites._derive_z_index(obj) == -2
+
+
 def test_derive_flips_none_for_positive_scale() -> None:
     obj = SimpleNamespace(scale=_vec(x=1.0, y=1.0, z=1.0))
     assert sprites._derive_flips(obj) == (None, None)
@@ -56,8 +80,14 @@ def test_derive_flips_reads_negative_scale_signs() -> None:
     # Quad authored in local XY then stood up 90deg on X: local X is horizontal,
     # local Y is vertical. A mirrored sprite has no per-vertex geometry to carry
     # the flip, so the sign becomes a flag.
-    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=-1.0, y=1.0))) == (True, None)
-    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=1.0, y=-1.0))) == (None, True)
+    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=-1.0, y=1.0))) == (
+        True,
+        None,
+    )
+    assert sprites._derive_flips(SimpleNamespace(scale=_vec(x=1.0, y=-1.0))) == (
+        None,
+        True,
+    )
 
 
 def test_build_polygon_topology_dedups_shared_vertices() -> None:
@@ -119,7 +149,12 @@ def test_build_sprite_reads_grid_and_bone() -> None:
     assert sprite.centered is False
     assert sprite.texture_region is None  # auto mode omits the region
     # A default-appearance object emits no appearance fields.
-    assert (sprite.modulate, sprite.z_index, sprite.flip_h, sprite.flip_v) == (None, None, None, None)
+    assert (sprite.modulate, sprite.z_index, sprite.flip_h, sprite.flip_v) == (
+        None,
+        None,
+        None,
+        None,
+    )
 
 
 def test_build_sprite_emits_derived_appearance() -> None:
@@ -183,7 +218,9 @@ def test_build_sprite_rejects_unknown_kind() -> None:
 
 
 def test_resolve_known_groups_keeps_matching_and_drops_unknown() -> None:
-    obj = SimpleNamespace(name="s", vertex_groups=[_vgroup(0, "arm"), _vgroup(1, "ghost")])
+    obj = SimpleNamespace(
+        name="s", vertex_groups=[_vgroup(0, "arm"), _vgroup(1, "ghost")]
+    )
     known = sprites._resolve_known_groups(obj, available_bones={"arm"})
     assert known == {0: "arm"}  # the warn for the dropped group also runs here
 
@@ -209,7 +246,9 @@ def test_build_sprite_weights_empty_without_groups_or_vertices() -> None:
 
 
 def test_build_sprite_weights_distributes_per_vertex() -> None:
-    obj = SimpleNamespace(name="s", vertex_groups=[_vgroup(0, "arm"), _vgroup(1, "hand")])
+    obj = SimpleNamespace(
+        name="s", vertex_groups=[_vgroup(0, "arm"), _vgroup(1, "hand")]
+    )
     mesh = SimpleNamespace(
         vertices=[
             SimpleNamespace(
@@ -237,7 +276,9 @@ def test_build_sprite_weights_raises_when_no_group_resolves() -> None:
 
 def test_build_sprite_weights_uses_fallback_for_zero_weight_vertex() -> None:
     obj = SimpleNamespace(name="s", vertex_groups=[_vgroup(0, "arm")])
-    mesh = SimpleNamespace(vertices=[SimpleNamespace(groups=[])])  # vertex carries no weight
+    mesh = SimpleNamespace(
+        vertices=[SimpleNamespace(groups=[])]
+    )  # vertex carries no weight
     weights = sprites.build_sprite_weights(
         obj, mesh, [0], fallback_bone="arm", available_bones={"arm"}
     )

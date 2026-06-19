@@ -23,6 +23,7 @@ from core.validation.active_slot import (  # noqa: E402
 from core.validation.export import (  # noqa: E402
     _validate_atlas_files,
     _validate_bone_orientation,
+    _validate_driver_rotation_modes,
     _validate_element_against_armature,
     _validate_ik_bake,
     _validate_mesh_flatness,
@@ -39,7 +40,9 @@ def _slot_empty() -> SimpleNamespace:
 
 def _cp_carrier(**cp: str) -> SimpleNamespace:
     # Unhydrated object: no PropertyGroup, value only on the raw CP dict.
-    return SimpleNamespace(proscenio=None, get=lambda key, default=None: cp.get(key, default))
+    return SimpleNamespace(
+        proscenio=None, get=lambda key, default=None: cp.get(key, default)
+    )
 
 
 def _has(issues: list[Issue], severity: str, substr: str) -> bool:
@@ -138,7 +141,9 @@ def _sprite_uvs(
             vframes=vframes,
             region_mode=region_mode,
         ),
-        data=SimpleNamespace(uv_layers=SimpleNamespace(active=SimpleNamespace(data=loops))),
+        data=SimpleNamespace(
+            uv_layers=SimpleNamespace(active=SimpleNamespace(data=loops))
+        ),
     )
 
 
@@ -173,7 +178,9 @@ def test_mesh_element_is_skipped() -> None:
 
 def test_element_without_bone_or_groups_warns() -> None:
     obj = SimpleNamespace(name="torso", parent_bone="", vertex_groups=[])
-    assert _has(_validate_element_against_armature(obj, {"spine"}), "warning", "no parent bone")
+    assert _has(
+        _validate_element_against_armature(obj, {"spine"}), "warning", "no parent bone"
+    )
 
 
 def test_element_with_unresolved_vertex_groups_errors() -> None:
@@ -181,7 +188,9 @@ def test_element_with_unresolved_vertex_groups_errors() -> None:
         name="torso", parent_bone="", vertex_groups=[SimpleNamespace(name="ghost")]
     )
     assert _has(
-        _validate_element_against_armature(obj, {"spine"}), "error", "none resolve to bones"
+        _validate_element_against_armature(obj, {"spine"}),
+        "error",
+        "none resolve to bones",
     )
 
 
@@ -194,7 +203,9 @@ def test_element_with_matching_vertex_group_is_clean() -> None:
 
 def test_slot_attachment_does_not_flag_a_missing_bone() -> None:
     # A slot attachment inherits its bone through the slot Empty by design.
-    obj = SimpleNamespace(name="sword", parent=_slot_empty(), parent_bone="", vertex_groups=[])
+    obj = SimpleNamespace(
+        name="sword", parent=_slot_empty(), parent_bone="", vertex_groups=[]
+    )
     assert _validate_element_against_armature(obj, {"spine"}) == []
 
 
@@ -232,7 +243,9 @@ def test_transform_key_check_sees_a_legacy_action() -> None:
 
 
 def test_transform_key_check_ignores_a_visibility_only_layered_action() -> None:
-    child = _child_with_action(_action_with_path('["proscenio_slot_index"]', layered=True))
+    child = _child_with_action(
+        _action_with_path('["proscenio_slot_index"]', layered=True)
+    )
     assert _has_bone_transform_keys(child) is False
 
 
@@ -246,14 +259,18 @@ def test_duplicate_slot_name_errors() -> None:
             children=[SimpleNamespace(name=f"{name}.mesh", type="MESH")],
         )
 
-    assert _has(_validate_slots([slot("brow"), slot("brow")]), "error", "duplicate slot name")
+    assert _has(
+        _validate_slots([slot("brow"), slot("brow")]), "error", "duplicate slot name"
+    )
 
 
 def _vec3(x: float, y: float, z: float) -> SimpleNamespace:
     return SimpleNamespace(x=x, y=y, z=z)
 
 
-def _rest_bone(name: str, head: tuple[float, float, float], tail: tuple[float, float, float]):
+def _rest_bone(
+    name: str, head: tuple[float, float, float], tail: tuple[float, float, float]
+):
     return SimpleNamespace(name=name, head_local=_vec3(*head), tail_local=_vec3(*tail))
 
 
@@ -261,7 +278,9 @@ def _armature_with_rest_bones(*bones: SimpleNamespace) -> SimpleNamespace:
     return SimpleNamespace(type="ARMATURE", data=SimpleNamespace(bones=list(bones)))
 
 
-def _mesh_obj_with_verts(name: str, coords: list[tuple[float, float, float]]) -> SimpleNamespace:
+def _mesh_obj_with_verts(
+    name: str, coords: list[tuple[float, float, float]]
+) -> SimpleNamespace:
     verts = [SimpleNamespace(co=_vec3(*c)) for c in coords]
     return SimpleNamespace(name=name, data=SimpleNamespace(vertices=verts))
 
@@ -269,17 +288,23 @@ def _mesh_obj_with_verts(name: str, coords: list[tuple[float, float, float]]) ->
 def test_bone_tilted_out_of_the_xz_plane_warns() -> None:
     # Head->tail runs diagonally into the screen (Y), which the XZ projection
     # cannot represent.
-    arm = _armature_with_rest_bones(_rest_bone("tilt", (0.0, 0.0, 0.0), (1.0, 1.0, 0.0)))
+    arm = _armature_with_rest_bones(
+        _rest_bone("tilt", (0.0, 0.0, 0.0), (1.0, 1.0, 0.0))
+    )
     assert _has(_validate_bone_orientation(arm), "warning", "XZ plane")
 
 
 def test_bone_in_the_xz_plane_is_clean() -> None:
-    arm = _armature_with_rest_bones(_rest_bone("flat", (0.0, 0.0, 0.0), (1.0, 0.0, 1.0)))
+    arm = _armature_with_rest_bones(
+        _rest_bone("flat", (0.0, 0.0, 0.0), (1.0, 0.0, 1.0))
+    )
     assert _validate_bone_orientation(arm) == []
 
 
 def test_bone_orientation_skips_a_zero_length_bone() -> None:
-    arm = _armature_with_rest_bones(_rest_bone("point", (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)))
+    arm = _armature_with_rest_bones(
+        _rest_bone("point", (1.0, 1.0, 1.0), (1.0, 1.0, 1.0))
+    )
     assert _validate_bone_orientation(arm) == []
 
 
@@ -308,8 +333,12 @@ def test_flat_mesh_authored_in_xz_is_clean() -> None:
 
 
 def test_full_pass_surfaces_a_tilted_bone_as_a_warning() -> None:
-    arm = _armature_with_rest_bones(_rest_bone("spine", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0)))
-    scene = SimpleNamespace(objects=[arm], proscenio=SimpleNamespace(active_armature=arm))
+    arm = _armature_with_rest_bones(
+        _rest_bone("spine", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+    )
+    scene = SimpleNamespace(
+        objects=[arm], proscenio=SimpleNamespace(active_armature=arm)
+    )
     assert _has(validate_export(scene), "warning", "XZ plane")
 
 
@@ -319,7 +348,9 @@ def test_atlas_missing_file_warns(monkeypatch: pytest.MonkeyPatch) -> None:
         type="TEX_IMAGE", image=SimpleNamespace(filepath="missing_atlas_zzz.png")
     )
     material = SimpleNamespace(use_nodes=True, node_tree=SimpleNamespace(nodes=[node]))
-    obj = SimpleNamespace(name="torso", material_slots=[SimpleNamespace(material=material)])
+    obj = SimpleNamespace(
+        name="torso", material_slots=[SimpleNamespace(material=material)]
+    )
     assert _has(_validate_atlas_files([obj]), "warning", "not found on disk")
 
 
@@ -344,17 +375,23 @@ def _ik_constraint(
     )
 
 
-def _ik_pose_bone(name: str, *, parent: object = None, constraints: tuple = ()) -> SimpleNamespace:
+def _ik_pose_bone(
+    name: str, *, parent: object = None, constraints: tuple = ()
+) -> SimpleNamespace:
     return SimpleNamespace(name=name, parent=parent, constraints=list(constraints))
 
 
 def _ik_armature(pose_bones: list, *keyed_paths: str) -> SimpleNamespace:
-    action = SimpleNamespace(fcurves=[SimpleNamespace(data_path=p) for p in keyed_paths])
+    action = SimpleNamespace(
+        fcurves=[SimpleNamespace(data_path=p) for p in keyed_paths]
+    )
     return SimpleNamespace(
         type="ARMATURE",
         pose=SimpleNamespace(bones=list(pose_bones)),
         animation_data=SimpleNamespace(action=action),
-        data=SimpleNamespace(bones=[SimpleNamespace(name=pb.name) for pb in pose_bones]),
+        data=SimpleNamespace(
+            bones=[SimpleNamespace(name=pb.name) for pb in pose_bones]
+        ),
     )
 
 
@@ -392,7 +429,9 @@ def test_ik_gate_ignores_a_zero_influence_constraint() -> None:
     thigh = _ik_pose_bone("thigh")
     shin = _ik_pose_bone("shin", parent=thigh)
     arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
-    shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2, influence=0.0)]
+    shin.constraints = [
+        _ik_constraint("foot_ik", target=arm, chain_count=2, influence=0.0)
+    ]
     assert _validate_ik_bake(arm) == []
 
 
@@ -432,5 +471,81 @@ def test_full_pass_flags_an_unbaked_ik_chain() -> None:
     shin = _ik_pose_bone("shin", parent=thigh)
     arm = _ik_armature([thigh, shin], 'pose.bones["foot_ik"].location')
     shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2)]
-    scene = SimpleNamespace(objects=[arm], proscenio=SimpleNamespace(active_armature=arm))
+    scene = SimpleNamespace(
+        objects=[arm], proscenio=SimpleNamespace(active_armature=arm)
+    )
     assert _has(validate_export(scene), "error", "Bake IK")
+
+
+# --- driven-bone rotation mode ------------------------------------------------
+
+
+def _rot_armature(name: str, **bone_modes: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        name=name,
+        type="ARMATURE",
+        pose=SimpleNamespace(
+            bones=[
+                SimpleNamespace(name=n, rotation_mode=m) for n, m in bone_modes.items()
+            ]
+        ),
+    )
+
+
+def _driven_sprite(
+    name: str,
+    *,
+    armature: SimpleNamespace,
+    bone_target: str,
+    transform_type: str = "ROT_Y",
+    data_path: str = "proscenio.region_x",
+) -> SimpleNamespace:
+    target = SimpleNamespace(
+        id=armature, bone_target=bone_target, transform_type=transform_type
+    )
+    driver = SimpleNamespace(variables=[SimpleNamespace(targets=[target])])
+    fcurve = SimpleNamespace(data_path=data_path, driver=driver)
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        animation_data=SimpleNamespace(drivers=[fcurve]),
+    )
+
+
+def test_driver_rotation_mode_warns_on_a_quaternion_driven_bone() -> None:
+    arm = _rot_armature("Rig", arm_bone="QUATERNION")
+    sprite = _driven_sprite("flap", armature=arm, bone_target="arm_bone")
+    assert _has(_validate_driver_rotation_modes([sprite]), "warning", "not XYZ Euler")
+
+
+def test_driver_rotation_mode_clean_on_an_xyz_driven_bone() -> None:
+    arm = _rot_armature("Rig", arm_bone="XYZ")
+    sprite = _driven_sprite("flap", armature=arm, bone_target="arm_bone")
+    assert _validate_driver_rotation_modes([sprite]) == []
+
+
+def test_driver_rotation_mode_ignores_a_non_rotation_channel() -> None:
+    # A location-driven sprite does not read rotation, so the bone's mode is moot.
+    arm = _rot_armature("Rig", arm_bone="QUATERNION")
+    sprite = _driven_sprite(
+        "flap", armature=arm, bone_target="arm_bone", transform_type="LOC_X"
+    )
+    assert _validate_driver_rotation_modes([sprite]) == []
+
+
+def test_driver_rotation_mode_ignores_a_non_proscenio_driver() -> None:
+    # A driver on some other property is none of this validator's business.
+    arm = _rot_armature("Rig", arm_bone="QUATERNION")
+    sprite = _driven_sprite(
+        "flap", armature=arm, bone_target="arm_bone", data_path="location"
+    )
+    assert _validate_driver_rotation_modes([sprite]) == []
+
+
+def test_full_pass_surfaces_a_quaternion_driven_bone_as_a_warning() -> None:
+    arm = _rot_armature("Rig", arm_bone="QUATERNION")
+    sprite = _driven_sprite("flap", armature=arm, bone_target="arm_bone")
+    scene = SimpleNamespace(
+        objects=[arm, sprite], proscenio=SimpleNamespace(active_armature=arm)
+    )
+    assert _has(validate_export(scene), "warning", "not XYZ Euler")

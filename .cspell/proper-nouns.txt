@@ -9,6 +9,7 @@ BrashMonkey
 cgtyphoon
 claude
 COATOOLS
+coderabbit
 consola
 Cubism
 Defold

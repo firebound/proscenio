@@ -99,6 +99,24 @@ def test_append_auto_snapshot_skips_on_topology_drift(automesh_fixture):
     assert [s for s in read_snapshots(obj) if s.kind == "auto"] == []
 
 
+def test_save_snapshot_cancels_on_topology_drift(automesh_fixture):
+    import bmesh
+
+    obj = _bound_hand()
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.new((9.0, 9.0, 9.0))
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+    # Saving against a stale-hash sidecar would produce a snapshot restore always
+    # rejects, so the save is refused with a re-bind hint.
+    with pytest.raises(RuntimeError, match="topology changed since bind"):
+        bpy.ops.proscenio.save_weight_snapshot(snapshot_name="late")
+
+
 def test_restore_unknown_name_cancels(automesh_fixture):
     _bound_hand()
     with pytest.raises(RuntimeError, match="no snapshot named"):

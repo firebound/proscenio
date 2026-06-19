@@ -52,6 +52,11 @@ def test_auto_snapshots_roll_to_the_cap() -> None:
     assert all(s.kind == "auto" for s in sidecar.snapshots)
 
 
+def test_auto_snapshot_cap_zero_drops_all() -> None:
+    sidecar = add_auto_snapshot(_sidecar(), "auto-0", [_entry(0.0)], cap=0)
+    assert [s for s in sidecar.snapshots if s.kind == "auto"] == []
+
+
 def test_auto_roll_leaves_manual_snapshots_untouched() -> None:
     sidecar = add_named_snapshot(_sidecar(), "keep-me", [_entry(0.5)])
     for i in range(AUTO_SNAPSHOT_CAP + 1):

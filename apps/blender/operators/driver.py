@@ -277,6 +277,11 @@ class PROSCENIO_OT_remove_driver(bpy.types.Operator):
         if not self.data_path:
             report_warn(self, "no driver data path given")
             return {"CANCELLED"}
+        if not self.data_path.startswith("proscenio."):
+            # This operator manages only the Drive-from-Bone proscenio.* drivers;
+            # refuse any other path so a direct call cannot strip unrelated drivers.
+            report_warn(self, f"unsupported driver path '{self.data_path}'")
+            return {"CANCELLED"}
         anim = sprite.animation_data
         if anim is None or anim.drivers.find(self.data_path) is None:
             report_warn(self, f"no driver on '{self.data_path}'")

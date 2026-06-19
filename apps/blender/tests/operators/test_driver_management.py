@@ -77,3 +77,13 @@ def test_remove_driver_cancels_when_absent(automesh_fixture):
     result = bpy.ops.proscenio.remove_driver(data_path="proscenio.region_w")
 
     assert "CANCELLED" in result
+
+
+def test_remove_driver_rejects_non_proscenio_path(automesh_fixture):
+    _activate("hand")
+
+    # A non-proscenio path must be refused so the operator cannot strip an
+    # unrelated driver when called directly.
+    result = bpy.ops.proscenio.remove_driver(data_path="location")
+
+    assert "CANCELLED" in result

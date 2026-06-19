@@ -90,7 +90,10 @@ def add_auto_snapshot(
     """
     snaps = [*sidecar.snapshots, NamedSnapshot(name=name, kind="auto", entries=list(entries))]
     auto_positions = [i for i, s in enumerate(snaps) if s.kind == "auto"]
-    drop = set(auto_positions[:-cap]) if cap >= 0 and len(auto_positions) > cap else set()
+    # Drop the oldest autos beyond `cap`; `cap == 0` drops them all (the
+    # `[:-cap]` slice would wrongly keep everything when cap is 0).
+    drop_count = max(0, len(auto_positions) - max(cap, 0))
+    drop = set(auto_positions[:drop_count])
     return replace(sidecar, snapshots=[s for i, s in enumerate(snaps) if i not in drop])
 
 

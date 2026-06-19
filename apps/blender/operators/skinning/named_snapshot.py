@@ -88,6 +88,9 @@ class PROSCENIO_OT_save_weight_snapshot(bpy.types.Operator):
         if not current.entries:
             report_error(self, "no weights to snapshot (mesh has no UV layer)")
             return {"CANCELLED"}
+        if current.mesh_topology_hash != sidecar.mesh_topology_hash:
+            report_error(self, "topology changed since bind - re-bind before saving snapshots")
+            return {"CANCELLED"}
         obj[_SIDECAR_KEY] = to_json(add_named_snapshot(sidecar, name, current.entries))
         report_info(self, f"saved snapshot '{name}'")
         return {"FINISHED"}

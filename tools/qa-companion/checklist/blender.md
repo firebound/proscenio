@@ -39,15 +39,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/help_dispatch.py:42-44; apps/blender/core/help_topics.py:63-96
 
 ### BL-CHROME-04 · Help '?' popup renders its content and links
-- status: pass
+- status: todo
 - review: keep
 - pre: Any header with a '?' help button.
 - steps:
   1. Click a '?' icon and read the popup.
   2. If the popup has an 'Open online docs' button or a 'See also' web link, click it.
-- observe: A help popup opens with a title, a summary line, and section headings with body text. 'Open online docs' opens the doc page in a browser; 'See also' web links are clickable buttons, and non-link references show as plain indented labels.
-- intent: The help popup renders its title, sections, links, and the online-docs button correctly.
-- code: apps/blender/operators/help_dispatch.py:64-97
+- observe: A help popup opens with a title, a summary line, and section headings with body text. Prose now fills the popup width (it reflows to the column instead of sitting hand-wrapped in a narrow band with an empty right margin); bullet and numbered items keep their own lines with a hanging indent on wrapped continuations. 'Open online docs' opens the doc page in a browser; 'See also' web links are clickable buttons, and non-link references show as plain indented labels.
+- intent: The help popup renders its title, sections, links, and the online-docs button correctly, with prose reflowed to the popup width.
+- code: apps/blender/operators/help_dispatch.py draw (reflow_paragraph) + apps/blender/core/help_topics.py
+- note: help-popup-width: bodies became single paragraphs reflowed at draw time + the 31 topics were re-edited. Re-walk a few popups to confirm the reflow + revised copy read correctly.
 
 ### BL-CHROME-05 · Each panel's '?' opens the matching help topic
 - status: regressed
@@ -169,6 +170,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: The highlighted active row follows whichever object you last clicked, landing on the correct visual row even with the list filtered/sorted. Selecting an object in the viewport moves the highlight to that object's row too. Selecting a non-Proscenio object (camera, light) leaves the highlight where it was.
 - intent: The active-row highlight stays in sync with the active object in both directions - clicking a row and selecting in the viewport (spec 043).
 - code: apps/blender/properties/_handlers.py sync_outliner_to_active_object + core/outliner_view.py source_index_for_name + selection.py:153-167
+- note: cross-list-deselect: the same viewport-follow now drives the Slots list (highlight follows the active slot object) and the Skeleton bone list (highlight follows the picked armature's active bone), via sync_slots_to_active_object + sync_bone_index_to_active_bone. While re-walking, select a slot / a bone in the viewport and confirm those lists' highlights track too, instead of staying lit on a stale row.
 
 ### BL-OUTLN-07 · Clicking a row selects that object
 - status: pass
@@ -386,13 +388,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/_draw_region.py:28 (gated on element_type=='mesh')
 
 ### BL-ELEM-DRIVER-SWEEP · Drive from Bone subpanel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: A sprite or mesh element active.
-- observe: The Drive from Bone subpanel shows, in order: a Target dropdown (Frame index / Region X/Y/W/H); an Armature picker (armatures only); a Bone dropdown (with a hint when no armature is picked yet, or when the armature has no bones); an Axis dropdown; the In/Out range fields (or an Expression field when Advanced is on) with the Advanced toggle; a live 'Value' read-out; and the Drive from Bone button.
-- intent: Confirm the subpanel renders all its controls; behavior lives in BL-ELEM-DRIVER-01..03.
-- code: apps/blender/panels/_draw_driver_shortcut.py:21-59
-- note: absorbs the old per-field driver items (target, armature, bone, axis, ranges, expression, advanced toggle, value read-out).
+- observe: The Drive from Bone subpanel shows, in order: a Target dropdown (Frame index / Region X/Y/W/H); an Armature picker (armatures only); a Bone dropdown (with a hint when no armature is picked yet, or when the armature has no bones); an Axis dropdown; the In/Out range fields (or an Expression field when Advanced is on) with the Advanced toggle; a live 'Value' read-out; the Drive from Bone button; and - when the element already has drivers - a 'Drivers (N):' list, one row per driver showing its target label + source bone with an X to remove it.
+- intent: Confirm the subpanel renders all its controls + the existing-driver list; behavior lives in BL-ELEM-DRIVER-01..04.
+- code: apps/blender/panels/_draw_driver_shortcut.py (draw_box + _draw_driver_list)
+- note: driver-management: the existing-drivers list + remove were added. Re-walk the inventory (the list shows only when a driver exists).
 
 ### BL-ELEM-DRIVER-01 · Drive a sprite property from a bone
 - status: pass
@@ -427,6 +429,17 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: An error explains the problem ('pick a source armature' or 'bone not in armature') and no driver is created.
 - intent: Invalid input is caught instead of silently adding a broken driver.
 - code: apps/blender/operators/driver.py:197-204
+
+### BL-ELEM-DRIVER-04 · Existing-driver list lists and removes drivers
+- status: todo
+- review: keep
+- pre: A sprite element that already has one or more proscenio.* bone drivers (run BL-ELEM-DRIVER-01 first, ideally for two different target properties).
+- steps:
+  1. Read the 'Drivers (N):' list under the Drive from Bone button.
+  2. Click the X on one row.
+- observe: The list shows one row per existing driver - the target label (Region X, Frame index, ...) and the source bone. Clicking the X removes that one driver (the row disappears, the others stay) and reports it; the list hides entirely when no drivers remain.
+- intent: The subpanel can view and remove the element's drivers, not only replace the single one the create path manages.
+- code: apps/blender/panels/_draw_driver_shortcut.py _draw_driver_list + apps/blender/operators/driver.py PROSCENIO_OT_remove_driver + core/bpy_helpers/armature/driver_list.py
 
 ## Slots panel + slot operators
 
@@ -586,19 +599,31 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A rig picked.
-- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply.
-- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, and the connected/disconnected/relative flags; behavior lives in the named test.
-- code: apps/blender/panels/skeleton.py:25-65,148-158
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply. The list now carries Blender's native 'Filter by Name' search under its expand arrows, and in Pose / Edit mode each row leads with a selection marker (a filled radio dot when the bone is selected, an empty one otherwise).
+- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, the native search, the per-row selection marker, and the connected/disconnected/relative flags; behavior lives in the named tests.
+- code: apps/blender/panels/skeleton.py PROSCENIO_UL_bones (ProscenioListMixin + draw_select_marker)
+- note: shared-list-component: the bone list moved onto the shared component (gains native search + the selection marker). Re-walk the inventory.
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
-- status: pass
+- status: todo
 - review: keep
 - pre: A rig picked with bones; a bone row visible.
 - steps:
   1. Click a bone name in the bone list.
-- observe: The armature is selected and that bone becomes active. In Pose mode only that pose bone is selected. A missing armature or bone reports a warning and changes nothing.
+- observe: The armature is selected and that bone becomes active. A plain click replaces the bone selection (in Pose / Edit mode only that bone stays selected). A missing armature or bone reports a warning and changes nothing.
 - intent: Clicking a bone in the list selects it in the viewport.
-- code: apps/blender/panels/skeleton.py:52-58 -> selection.py:62-93
+- code: apps/blender/panels/skeleton.py -> selection.py PROSCENIO_OT_select_bone_by_name -> core/bpy_helpers/_shared/bone_select.py
+- note: bone-multiselect: the click path now routes through the bone-select helpers (plain/extend/toggle). Re-walk plain-click selection.
+
+### BL-SKEL-ARMATURE-02 · Shift extends, Ctrl toggles the bone selection
+- status: todo
+- review: keep
+- pre: Pose (or Edit) mode on a rig with at least three bones; bone rows visible.
+- steps:
+  1. Click bone A (plain), then Shift-click bone B, then Ctrl-click bone B, then Ctrl-click bone C.
+- observe: Plain click selects only A. Shift-click adds B (A stays selected), B becomes active. Ctrl-click on B (selected) deselects only B, leaving A. Ctrl-click on C (unselected) adds C and makes it active. The per-row radio markers track which bones are selected. In Object mode there is no per-bone selection - a click just moves the active bone (no markers).
+- intent: The bone list mirrors the Outliner's Shift/Ctrl multi-select where bone selection is real (Pose / Edit); Object mode stays single active.
+- code: apps/blender/operators/selection.py PROSCENIO_OT_select_bone_by_name (invoke reads event.shift/ctrl) + core/bpy_helpers/_shared/bone_select.py
 
 ### BL-SKEL-POSE-SWEEP · Pose Mode subpanel inventory (visual pass)
 - status: pass
@@ -707,21 +732,22 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Mesh Generation panel: automesh one-click + interactive modal + debug pipeline
 
 ### BL-MESH-PARENT-SWEEP · Mesh Generation parent panel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: Mesh Generation panel expanded; switch the active object between a mesh, a sprite, and nothing to surface each guard.
-- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the Interior Mode selector (Simple / Dense).
-- intent: Confirm the parent panel renders the empty-state and sprite guards, the picker read-out, and the Interior Mode selector; behavior lives in the named tests.
-- code: apps/blender/panels/mesh_generation.py:63-74 -> _helpers.py:111
+- observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the trace params both entry points share: the Interior Mode selector (Simple / Dense), Contour vertices, Interior spacing, and the dense-only column 'Density follows bones' with its Bone influence radius and Bone density factor sub-fields (greyed in Simple mode; the bone sub-fields active only in Dense with density on).
+- intent: Confirm the parent panel renders the empty-state and sprite guards, the picker read-out, and the shared trace params lifted up from the Automesh-from-Alpha subpanel; behavior lives in the named tests.
+- code: apps/blender/panels/mesh_generation.py PROSCENIO_PT_mesh_generation.draw
+- note: automesh-shared-params: Interior Mode kept + Contour vertices / Interior spacing / the dense fields moved here from Automesh-from-Alpha so the Interactive modal sees them too. Re-walk both inventories.
 
 ### BL-MESH-ALPHA-SWEEP · Automesh-from-Alpha subpanel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
 - pre: A mesh element active; Automesh from Alpha subpanel expanded.
-- observe: The subpanel shows the trace settings (Trace resolution, Alpha threshold, Margin in pixels, Contour vertices, Interior spacing), the Preserve base quad and Preserve weights on regen checkboxes, and the dense-only column 'Density follows bones' with its Bone influence radius and Bone density factor sub-fields. The dense-only column is greyed in Simple mode, and the bone sub-fields are active only in Dense mode with density on. At the bottom is the Automesh button, greyed unless the mesh has an image texture.
-- intent: Confirm the Automesh-from-Alpha subpanel renders all its trace settings and the enable/grey rules; behavior lives in the named tests.
-- code: apps/blender/panels/mesh_generation.py:156-178; scene_props.py:80-205,287
-- note: Preserve weights on regen behavior -> GAP-REGEN-PRESERVE.
+- observe: The subpanel now shows only the alpha-trace-specific settings (Trace resolution, Alpha threshold, Margin in pixels) plus the Preserve base quad and Preserve weights on regen checkboxes, then the Automesh button (greyed unless the mesh has an image texture). The shared params (Contour vertices, Interior spacing, Interior Mode, the dense fields) now live on the parent Mesh Generation panel, not here.
+- intent: Confirm the Automesh-from-Alpha subpanel renders the alpha-only settings + the enable/grey rule, with the shared params no longer duplicated here; behavior lives in the named tests.
+- code: apps/blender/panels/mesh_generation.py _draw_automesh_alpha
+- note: automesh-shared-params: the shared trace params moved to the parent panel. Re-walk this inventory.
 
 ### BL-MESH-ALPHA-01 · Automesh from Alpha rebuilds the mesh from the image
 - status: pass
@@ -824,12 +850,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: todo
 - review: keep
 - pre: A mesh element active with a target armature set in Skeleton and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
-- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides box, a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox and a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'); Weight Transfer has a Max Distance field.
+- observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides list (a scrolling, height-capped list now, not an unbounded column), a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox (the standalone provenance-overlay toggle was removed - the overlay lives only inside the Edit Weights modal now), a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'), the Reset to Last Saved Weights button, a Save Snapshot button plus - when snapshots exist - a list of save points (pinned icon = manual, recover icon = auto) each with a restore button, then Export / Import Snapshot; Weight Transfer has a Max Distance field.
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
-- code: apps/blender/panels/weight_paint.py:51-53,174-360; _helpers.py:111
+- code: apps/blender/panels/weight_paint.py (_draw_bind / _draw_snapshot / _draw_named_snapshots / PROSCENIO_UL_bone_overrides); _helpers.py
 - note:
   Preserve weights on regen behavior -> GAP-REGEN-PRESERVE; modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
   (2026-06-17 spec 044: max_distance + falloff_power now draw under Proximity; Clear Empty Vertex Groups button added to Bind.)
+  ui-polish: the per-bone override box became a scrolling list, the inert provenance-overlay toggle was dropped, and Save Snapshot + the named-snapshot list were added. Re-walk the inventory.
 
 ### BL-WPAINT-BIND-01 · Mode dropdown picks the bind algorithm
 - status: pass
@@ -841,16 +868,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:174 (prop); properties/scene_props.py:218 (enum def)
 
 ### BL-WPAINT-BIND-02 · Per-bone Soft / Hard / Clear overrides (consolidated)
-- status: pass
+- status: todo
 - review: keep
-- pre: A target armature with bones; Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
+- pre: A target armature with bones (ideally many, to see the list scroll); Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
 - steps:
   1. Click Soft next to a bone.
   2. Click Hard next to the same bone.
   3. Click the X (Clear) on a bone that has an override.
-- observe: Soft and Hard each set that bone's override and look pressed (only one at a time), and Clear becomes available. Clearing removes the override, un-presses both, and disables the X again. Overrides apply only to the planar modes - Bone Heat ignores them.
-- intent: Soft blends a bone's weight smoothly with neighbours, Hard gives a crisp single-bone boundary, and Clear drops back to the bind-mode default.
-- code: apps/blender/panels/weight_paint.py:225,232,241 -> operators/skinning/set_bone_mode.py:52,56
+  4. With a many-bone rig, confirm the list scrolls inside its box rather than pushing the Bind button off-screen.
+- observe: The overrides are a scrolling, height-capped list now (a native UIList, with the same Soft / Hard / Clear buttons per row and Blender's filter under its expand arrows). Soft and Hard each set that bone's override and look pressed (only one at a time), and Clear becomes available. Clearing removes the override, un-presses both, and disables the X again. Overrides apply only to the planar modes - Bone Heat ignores them. A many-bone rig scrolls inside the list instead of growing the panel.
+- intent: Soft blends a bone's weight smoothly with neighbours, Hard gives a crisp single-bone boundary, Clear drops back to the bind-mode default, and the list scrolls instead of pushing the Bind button down.
+- code: apps/blender/panels/weight_paint.py PROSCENIO_UL_bone_overrides + _draw_bone_overrides -> operators/skinning/set_bone_mode.py
+- note: wpaint-override-scroll: the override box became a template_list. Re-walk the Soft/Hard/Clear buttons + the scroll on a many-bone rig.
 
 ### BL-WPAINT-BIND-03 · Bind to Target Armature builds the weights
 - status: todo
@@ -934,6 +963,20 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: Export writes the snapshot to the chosen JSON file with a confirmation; on an unbound mesh the Export button does nothing. Import reads and validates the JSON and stores it on the mesh: if the topology matches it applies to the live weights ('imported and applied to N verts'), otherwise it stores only ('imported - topology differs'). A bad file or bad JSON warns and cancels.
 - intent: Export and Import move a weight snapshot between files as JSON for version control or sharing.
 - code: apps/blender/panels/weight_paint.py:359,360 -> operators/skinning/sidecar_io.py:50,66,84,101
+
+### BL-WPAINT-SNAP-03 · Named save points + rolling auto-snapshots (consolidated)
+- status: todo
+- review: keep
+- pre: A bound mesh element with a target armature picked.
+- steps:
+  1. Click Save Snapshot, give it a name (e.g. 'pose-a'), confirm.
+  2. Paint or zero some weights so the live weights differ.
+  3. Click the restore button on the 'pose-a' row.
+  4. Enter and exit Edit Weights a few times; watch the auto rows.
+- observe: Save Snapshot prompts for a name and adds a pinned-icon row to the snapshot list (re-saving the same name overwrites it, not duplicates). The restore button on a row reapplies that save point's weights to the mesh (topology-guarded - it errors if the mesh changed). Each Edit Weights session that ends normally adds a recover-icon 'auto HH:MM:SS' row; only the last three auto rows are kept (older ones roll off), while manual rows are unbounded. Save / list / restore are disabled when the mesh has no sidecar.
+- intent: Named manual save points plus a rolling last-3 auto history make the weight save-point UX explicit (which point a restore targets), beyond the single 'last saved' Reset.
+- code: apps/blender/panels/weight_paint.py _draw_named_snapshots + apps/blender/operators/skinning/named_snapshot.py + core/skinning/sidecar_schema.py (NamedSnapshot, add_named_snapshot, add_auto_snapshot) + core/bpy_helpers/skinning/sidecar_io.py append_auto_snapshot
+- note: wpaint-named-snapshots: new feature (manual named + rolling auto). The rolling-3 cap + JSON round-trip have pure tests; the save/restore-by-name have headless tests; the list rendering + the per-session auto capture are the GUI-only pass.
 
 ### BL-WPAINT-XFER-01 · Copy Weights to Selected transfers weights
 - status: pass

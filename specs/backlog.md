@@ -13,7 +13,7 @@ Entry point to where not-yet-shipped work is tracked. It routes to the per-domai
 
 ## Fila da sprint
 
-A maioria das issues de UI/UX dos walks pós-spec-036 foi promovida em 2026-06-18 para [spec 049](049-blender-ui-polish/STUDY.md) (10 itens now-able) e [spec 050](050-blender-authoring-design/STUDY.md) (4 itens de autoria travados). O `show-provenance-overlay` toggle inerte saiu de [`backlog-bugs-found.md`](backlog-bugs-found.md) no mesmo movimento (agora no spec 049). Voltou um item:
+O grosso das issues de UI/UX dos walks pós-spec-036 virou as specs 049 e 050 em 2026-06-18. O **spec 049** (11 itens: o componente de lista compartilhado + seus consumidores, o reflow do help popup + a revisão de texto, e as correções de painel) foi entregue e a pasta da spec foi removida no mesmo dia - ver [`_index.md`](_index.md). O `show-provenance-overlay` toggle inerte (saído de [`backlog-bugs-found.md`](backlog-bugs-found.md)) entrou nesse pacote. O [spec 050](050-blender-authoring-design/STUDY.md) (4 itens de autoria travados) segue planejado. Voltou um item:
 
 ### Blender · Skeleton
 

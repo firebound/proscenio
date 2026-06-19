@@ -42,6 +42,24 @@ ADDON_PATH = REPO_ROOT / "apps" / "blender"
 ADDON_PACKAGE = "proscenio"
 EXAMPLES_DIR = REPO_ROOT / "examples"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "proscenio.schema.json"
+MODELS_SRC = REPO_ROOT / "packages" / "models" / "src"
+
+
+def prefer_source_models() -> None:
+    """Make the in-repo ``proscenio_models`` win over the installed extension copy.
+
+    The addon is auto-enabled as an installed extension whose bundled
+    ``proscenio_models`` is keyed by version (``0.1.0``); a pre-launch field
+    change keeps that version, so Blender never re-unpacks the wheel and the
+    stale copy lingers - and it is already imported into ``sys.modules`` at
+    enable. Prepend the repo source and drop the cached modules so the writer
+    re-imports the current models, matching the fresh install CI gets.
+    """
+    sys.path.insert(0, str(MODELS_SRC))
+    for name in [
+        m for m in sys.modules if m == "proscenio_models" or m.startswith("proscenio_models.")
+    ]:
+        del sys.modules[name]
 
 
 def _load_addon_as_package() -> None:
@@ -157,6 +175,7 @@ def _run_one(blend: Path, expected: Path, writer_module: _WriterModule) -> bool:
 
 
 def main() -> int:
+    prefer_source_models()
     _load_addon_as_package()
     from proscenio.exporters.godot import writer  # type: ignore[import-not-found]
 

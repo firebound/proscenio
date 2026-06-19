@@ -39,7 +39,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/help_dispatch.py:42-44; apps/blender/core/help_topics.py:63-96
 
 ### BL-CHROME-04 · Help '?' popup renders its content and links
-- status: todo
+- status: pending
 - review: keep
 - pre: Any header with a '?' help button.
 - steps:
@@ -96,7 +96,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: panel-restructure removed the Diagnostics panel; the smoke test now lives in the About footer (BL-DIAG-01). Re-walk.
 
 ### BL-CHROME-09 · Header icons drop and titles truncate when the N-panel is narrow
-- status: todo
+- status: pending
 - review: keep
 - pre: Any Proscenio panel; drag the N-panel divider to narrow it.
 - steps:
@@ -108,7 +108,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Outliner panel
 
 ### BL-OUTLN-SWEEP · Outliner panel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: Outliner subpanel expanded, with a scene that has the picked armature, at least one slot + attachment, an authored sprite/mesh, plus a raw hand-modelled mesh and a second (unpicked) armature.
 - observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the name, and the favorite star, with the name indented by its depth in the parenting tree. Names are labeled by kind: armature as '[arm] <name>', slots as '[slot] <name>', attachments as '-> <name>', element meshes as '<name>' (with '@ <bone>' when bone-parented). Only Proscenio members appear: an element mesh shows once it carries element data (imported or Incorporated), the armature only when it is the one picked in the Skeleton panel, plus slots and their attachments. The raw mesh, the unpicked armature, cameras, and lights do not appear.
@@ -138,7 +138,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: favoritos não sobem para o topo (achado conhecido).
 
 ### BL-OUTLN-03 · List is ordered by the scene parenting tree
-- status: todo
+- status: pending
 - review: keep
 - observe: Rows read as the parenting tree, regardless of scene order: the picked armature first (root), then each slot immediately followed by its own attachments (slots ordered by name, the slot row before its attachments), then the loose element meshes - and each row is indented by its depth (armature flush, slots + loose meshes one level in, attachments two). Cameras, lights, raw meshes, and unpicked armatures are not listed.
 - intent: The list lays out armature -> slot -> slot mesh, then loose meshes (the scene parenting), not a flat by-category grouping.
@@ -156,7 +156,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/outliner.py filter_items (self.filter_name only)
 
 ### BL-OUTLN-05 · Custom sort overrides Blender's native sort
-- status: todo
+- status: pending
 - review: keep
 - observe: The list always shows the Proscenio parenting-tree order, even with the native sort toggles open. The native invert-filter toggle can still flip which rows are shown.
 - intent: The custom parenting-tree order overrides Blender's native list sort.
@@ -164,7 +164,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: blender-authoring-ux: custom order is now the parenting tree, not category-then-name. Re-walk.
 
 ### BL-OUTLN-11 · Only Proscenio members are listed
-- status: todo
+- status: pending
 - review: keep
 - pre: A scene with the picked armature, a slot + attachment, an authored element mesh, a raw hand-modelled mesh (Add > Mesh, never Incorporated), and a second unpicked armature.
 - steps:
@@ -176,7 +176,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: blender-authoring-ux. Logic pinned by tests/test_outliner_view.py; this is the GUI walk.
 
 ### BL-OUTLN-06 · Active row highlight follows click and viewport selection
-- status: todo
+- status: pending
 - review: keep
 - pre: a scene with several Proscenio objects; type something into the native 'Filter by Name' so the list is sorted/filtered (not raw scene order).
 - steps:
@@ -208,7 +208,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/outliner.py:78-84 + operators/selection.py:170-197
 
 ### BL-OUTLN-09 · Deleted / undone objects leave the list
-- status: todo
+- status: pending
 - review: keep
 - pre: Outliner expanded with a Proscenio object listed (e.g. a Quick Armature rig).
 - steps:
@@ -218,7 +218,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/outliner.py filter_items (view-layer membership) + core/outliner_view.py row_visible
 
 ### BL-OUTLN-10 · Shift extends, Ctrl toggles the selection
-- status: todo
+- status: pending
 - review: keep
 - pre: Outliner expanded with at least three visible rows.
 - steps:
@@ -259,7 +259,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/element.py:56-61
 
 ### BL-ELEM-ROOT-03 · Depth offset nudges the export draw order
-- status: todo
+- status: pending
 - review: keep
 - pre: A mesh or sprite element active.
 - steps:
@@ -270,7 +270,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: blender-authoring-design. Writer behavior pinned by tests/writer/test_sprites.py; this is the GUI-presence walk.
 
 ### BL-ELEM-ROOT-04 · Incorporate as Element adopts a hand-authored mesh
-- status: todo
+- status: pending
 - review: keep
 - pre: A plain mesh modelled in Blender (Add > Mesh), with no Proscenio element data, active.
 - steps:
@@ -313,7 +313,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/uv_authoring.py:49-56
 
 ### BL-ELEM-SPRITE-SWEEP · Active Sprite subpanel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: A sprite element (type Sprite) active.
 - observe: The Active Sprite subpanel shows the Horizontal frames, Vertical frames, and Frame fields, the atlas/region/frame read-out labels ('atlas: not linked in material' when no image is linked, otherwise 'atlas: WxH px', 'region: WxH px', 'frame: WxH px'), and the Setup Preview and Remove Preview buttons. There is no Centered checkbox (it was retired to a fixed internal constant).
@@ -417,7 +417,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/_draw_region.py:28 (gated on element_type=='mesh')
 
 ### BL-ELEM-DRIVER-SWEEP · Drive from Bone subpanel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: A sprite or mesh element active.
 - observe: The Drive from Bone subpanel shows, in order: a Target dropdown (Frame index / Region X/Y/W/H); an Armature picker (armatures only); a Bone dropdown (with a hint when no armature is picked yet, or when the armature has no bones); an Axis dropdown; the In/Out range fields (or an Expression field when Advanced is on) with the Advanced toggle; a live 'Value' read-out; the Drive from Bone button; and - when the element already has drivers - a 'Drivers (N):' list, one row per driver showing its target label + source bone with an X to remove it.
@@ -460,7 +460,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/driver.py:197-204
 
 ### BL-ELEM-DRIVER-04 · Existing-driver list lists and removes drivers
-- status: todo
+- status: pending
 - review: keep
 - pre: A sprite element that already has one or more proscenio.* bone drivers (run BL-ELEM-DRIVER-01 first, ideally for two different target properties).
 - steps:
@@ -511,7 +511,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py PROSCENIO_UL_slots.draw_item -> operators/slot/select.py:36-55
 
 ### BL-SLOTS-PARENT-04 · Filter and scroll the slot list
-- status: todo
+- status: pending
 - review: keep
 - pre: A scene with several slots (more than fit in the visible rows is ideal).
 - steps:
@@ -548,7 +548,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:122-128
 
 ### BL-SLOTS-ACTIVE-03 · Error row when the slot has no children
-- status: todo
+- status: pending
 - review: keep
 - pre: A slot Empty active.
 - observe: A red validator error row, 'slot "<name>" has no MESH children', appears under the attachments only when the active slot has no mesh children. (Spec 046 removed the older inline 'empty slot - add child meshes' INFO line - the validator's error row is now the single signal, and it carries error severity.)
@@ -584,7 +584,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py PROSCENIO_PT_active_slot.draw validation loop -> _helpers.py draw_issue_row -> validation/active_slot.py:15-35
 
 ### BL-SLOTS-ACTIVE-07 · Attach Mesh picker attaches by name
-- status: todo
+- status: pending
 - review: keep
 - pre: A slot Empty active and nothing else selected (the single-selection case the picker exists for).
 - steps:
@@ -625,7 +625,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:113-120 -> skeleton_target.py:36-52
 
 ### BL-SKEL-ARMATURE-SWEEP · Active Armature subpanel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: A rig picked.
 - observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply. The list now carries Blender's native 'Filter by Name' search under its expand arrows, and in Pose / Edit mode each row leads with a selection marker (a filled radio dot when the bone is selected, an empty one otherwise). Below the list sits a row of two buttons: 'Active to Euler' and 'All to Euler'.
@@ -634,7 +634,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: shared-list-component: the bone list moved onto the shared component (gains native search + the selection marker). blender-authoring-design added the two convert-to-Euler buttons. Re-walk the inventory.
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
-- status: todo
+- status: pending
 - review: keep
 - pre: A rig picked with bones; a bone row visible.
 - steps:
@@ -645,7 +645,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: bone-multiselect: the click path now routes through the bone-select helpers (plain/extend/toggle). Re-walk plain-click selection.
 
 ### BL-SKEL-ARMATURE-02 · Shift extends, Ctrl toggles the bone selection
-- status: todo
+- status: pending
 - review: keep
 - pre: Pose (or Edit) mode on a rig with at least three bones; bone rows visible.
 - steps:
@@ -655,7 +655,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/selection.py PROSCENIO_OT_select_bone_by_name (invoke reads event.shift/ctrl) + core/bpy_helpers/_shared/bone_select.py
 
 ### BL-SKEL-ARMATURE-03 · Convert rotation to Euler clears the driven-bone warning
-- status: todo
+- status: pending
 - review: keep
 - pre: A rig picked; a sprite element driven from one of its bones via Drive from Bone (the bone left in its default Quaternion rotation mode).
 - steps:
@@ -725,7 +725,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:217-220 -> scene_props.py:29-67
 
 ### BL-SKEL-QUICKARM-01 · Quick Armature modal walk (consolidated)
-- status: todo
+- status: pending
 - review: keep
 - pre: The mouse is over a 3D viewport; the Quick Armature subpanel is open.
 - steps:
@@ -774,7 +774,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Mesh Generation panel: automesh one-click + interactive modal + debug pipeline
 
 ### BL-MESH-PARENT-SWEEP · Mesh Generation parent panel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: Mesh Generation panel expanded; switch the active object between a mesh, a sprite, and nothing to surface each guard.
 - observe: With no mesh active it shows 'select a mesh to generate or edit'. With a sprite active it shows 'mesh tools are mesh-only (this is a sprite)' plus a hint to parent the sprite to a bone, and hides the subpanels. With a mesh active it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the trace params both entry points share: the Interior Mode selector (Simple / Dense), Contour vertices, Interior spacing, and the dense-only column 'Density follows bones' with its Bone influence radius and Bone density factor sub-fields (greyed in Simple mode; the bone sub-fields active only in Dense with density on).
@@ -783,7 +783,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: automesh-shared-params: Interior Mode kept + Contour vertices / Interior spacing / the dense fields moved here from Automesh-from-Alpha so the Interactive modal sees them too. Re-walk both inventories.
 
 ### BL-MESH-ALPHA-SWEEP · Automesh-from-Alpha subpanel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: A mesh element active; Automesh from Alpha subpanel expanded.
 - observe: The subpanel now shows only the alpha-trace-specific settings (Trace resolution, Alpha threshold, Margin in pixels) plus the Preserve base quad and Preserve weights on regen checkboxes, then the Automesh button (greyed unless the mesh has an image texture). The shared params (Contour vertices, Interior spacing, Interior Mode, the dense fields) now live on the parent Mesh Generation panel, not here.
@@ -889,7 +889,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Weight Paint panel: five bind modes, Edit Weights modal, brush preset, copy weights, sidecar IO, snapshot restore
 
 ### BL-WPAINT-SWEEP · Weight Paint inventory across subpanels (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: A mesh element active with a target armature set in Skeleton and the mesh bound (to surface every read-out); inspect the Bind, Edit Weights, Snapshot, and Weight Transfer subpanels.
 - observe: With a sprite active it shows 'select a mesh element (Weight Paint is mesh-only)' and no subpanels. With a mesh it shows a target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') and the subpanels: Bind has a Mode dropdown (Bone Heat / Proximity / Envelope / Single nearest / Empty), then under Proximity only a Max Distance and a Falloff Power field, a per-bone Soft/Hard overrides list (a scrolling, height-capped list now, not an unbounded column), a Bone Heat hint, and the Bind button (no separate target line - the parent read-out covers it); Edit Weights has an active-group label, the Edit Weights button (which reads 'Exit Painting Mode' while in weight-paint mode; with a 'bind first to enable' hint when disabled), the brush curve-preset buttons, and a Clear Empty Vertex Groups button; Brush has the four curve-preset buttons and a viewport-display box (Weight Opacity slider, Zero Weights dropdown, and a caveat about opacity 0); Snapshot has a Preserve weights on regen checkbox (the standalone provenance-overlay toggle was removed - the overlay lives only inside the Edit Weights modal now), a provenance line ('N paint / N seed / N reprojected' or 'no snapshot - run Bind first'), the Reset to Last Saved Weights button, a Save Snapshot button plus - when snapshots exist - a list of save points (pinned icon = manual, recover icon = auto) each with a restore button, then Export / Import Snapshot; Weight Transfer has a Max Distance field.
@@ -910,7 +910,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:174 (prop); properties/scene_props.py:218 (enum def)
 
 ### BL-WPAINT-BIND-02 · Per-bone Soft / Hard / Clear overrides (consolidated)
-- status: todo
+- status: pending
 - review: keep
 - pre: A target armature with bones (ideally many, to see the list scroll); Mode set to a planar mode (Proximity / Envelope / Single nearest / Empty).
 - steps:
@@ -924,7 +924,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - note: wpaint-override-scroll: the override box became a template_list. Re-walk the Soft/Hard/Clear buttons + the scroll on a many-bone rig.
 
 ### BL-WPAINT-BIND-03 · Bind to Target Armature builds the weights
-- status: todo
+- status: pending
 - review: keep
 - pre: A mesh element active; a target armature set in Skeleton (the button is greyed without one).
 - steps:
@@ -944,7 +944,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/bind_mesh.py:49-94 (props), 104 invoke
 
 ### BL-WPAINT-EDIT-01 · Edit Weights paint stroke marks verts as user-painted
-- status: todo
+- status: pending
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
@@ -954,7 +954,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/edit_weights.py modal (RELEASE -> _tag_redraw_view3d, all VIEW_3D areas)
 
 ### BL-WPAINT-EDIT-02 · Edit Weights exits and restores (Esc + native mode exit)
-- status: todo
+- status: pending
 - review: keep
 - pre: Inside the Edit Weights modal.
 - steps:
@@ -965,7 +965,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/skinning/edit_weights.py modal (ESC + TIMER mode-watch) -> _finish
 
 ### BL-WPAINT-EDIT-03 · Edit Weights button flips to Exit Painting Mode
-- status: todo
+- status: pending
 - review: keep
 - pre: A mesh bound to a target armature.
 - steps:
@@ -1007,7 +1007,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/weight_paint.py:359,360 -> operators/skinning/sidecar_io.py:50,66,84,101
 
 ### BL-WPAINT-SNAP-03 · Named save points + rolling auto-snapshots (consolidated)
-- status: todo
+- status: pending
 - review: keep
 - pre: A bound mesh element with a target armature picked.
 - steps:
@@ -1034,7 +1034,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Animation panel (read-only action summary)
 
 ### BL-ANIM-SWEEP · Animation panel inventory (visual pass)
-- status: todo
+- status: pending
 - review: keep
 - pre: Animation subpanel expanded; test with zero actions and with at least one action.
 - observe: A target read-out ('Target: Skeleton <armature>' or 'Target: Skeleton (none - pick a rig there)') heads the panel, matching Mesh Generation and Weight Paint. With no actions it then shows 'no actions to export' and no list. With actions it shows the action list (one row per action, between 2 and 6 rows visible), each row labeled with the action name and its frame range '[start-end]' (rounded to whole frames; an empty action shows '[0-0]'), and a 'N action(s) total' count below.
@@ -1042,7 +1042,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/animation.py:12-36,56-68
 
 ### BL-ANIM-01 · Clicking an action row assigns it to the picked armature
-- status: todo
+- status: pending
 - review: keep
 - pre: At least one action; an armature picked in the Skeleton panel.
 - steps:
@@ -1052,7 +1052,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/animation.py:28-36 (draw), apps/blender/operators/selection.py (handler -> resolve_skeleton_target)
 
 ### BL-ANIM-02 · Assigning targets the picked armature, not the first in scene
-- status: todo
+- status: pending
 - review: keep
 - pre: At least one action; two or more armatures in the scene; one of them picked in the Skeleton panel.
 - steps:
@@ -1062,7 +1062,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/selection.py (resolve_skeleton_target)
 
 ### BL-ANIM-03 · Assigning with no armature picked cancels with a warning
-- status: todo
+- status: pending
 - review: keep
 - pre: At least one action; the Skeleton picker empty (clear it via the 'x').
 - steps:

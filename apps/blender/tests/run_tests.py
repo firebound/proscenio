@@ -54,7 +54,13 @@ def prefer_source_models() -> None:
     stale copy lingers - and it is already imported into ``sys.modules`` at
     enable. Prepend the repo source and drop the cached modules so the writer
     re-imports the current models, matching the fresh install CI gets.
+
+    Warns and no-ops if the source dir is absent (a moved layout): the run then
+    falls back to the installed copy rather than silently regressing unnoticed.
     """
+    if not MODELS_SRC.is_dir():
+        print(f"WARN: models source not at {MODELS_SRC}; using the installed copy", file=sys.stderr)
+        return
     sys.path.insert(0, str(MODELS_SRC))
     for name in [
         m for m in sys.modules if m == "proscenio_models" or m.startswith("proscenio_models.")

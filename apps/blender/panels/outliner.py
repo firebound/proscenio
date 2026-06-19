@@ -7,7 +7,7 @@ from typing import ClassVar
 import bpy
 
 from ..core.list_view import compute_list_filter
-from ..core.outliner_view import category_rank, row_visible
+from ..core.outliner_view import category_rank, is_proscenio_member, row_visible
 from ._helpers import draw_subpanel_header
 from ._list import draw_select_marker
 
@@ -98,6 +98,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )
+        # The Outliner shows only the armature picked in the Skeleton panel, so a
+        # stray rig does not crowd the list (mirrors the panel's _explicit_target).
+        picked = getattr(scene_props, "active_armature", None) if scene_props is not None else None
+        try:
+            picked_armature_name = picked.name if picked is not None else None
+        except ReferenceError:  # pointer to a deleted armature
+            picked_armature_name = None
         # Names linked into the current view layer. The list is sourced from
         # bpy.data.objects, which keeps a deleted/undone object's datablock for
         # the rest of the session; a row whose object left the view layer must
@@ -111,11 +118,15 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
             is_fav = bool(
                 obj_props is not None and getattr(obj_props, "is_outliner_favorite", False)
             )
+            rank = ranks[obj.name]
             # filter_text="" - the name search is applied by compute_list_filter.
             return row_visible(
                 obj,
                 in_view_layer=obj.name in view_layer_names,
-                rank=ranks[obj.name],
+                rank=rank,
+                is_member=is_proscenio_member(
+                    obj, rank=rank, picked_armature_name=picked_armature_name
+                ),
                 is_favorite=is_fav,
                 favorites_only=favorites_only,
                 filter_text="",

@@ -7,7 +7,17 @@ from typing import ClassVar
 import bpy
 
 from ..core.list_view import compute_list_filter
-from ..core.outliner_view import category_rank, row_visible
+from ..core.outliner_view import (
+    RANK_ARMATURE,
+    RANK_ATTACHMENT,
+    RANK_ELEMENT_MESH,
+    RANK_SLOT,
+    category_rank,
+    is_proscenio_member,
+    outliner_depth,
+    outliner_sort_key,
+    row_visible,
+)
 from ._helpers import draw_subpanel_header
 from ._list import draw_select_marker
 
@@ -31,22 +41,29 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         obj_props = getattr(obj, "proscenio", None)
         is_fav = bool(obj_props is not None and getattr(obj_props, "is_outliner_favorite", False))
         rank = category_rank(obj)
-        if rank == 0:
+        if rank == RANK_SLOT:
             row_icon = "LINK_BLEND"
             label = f"[slot] {obj.name}"
-        elif rank == 1:
+        elif rank == RANK_ATTACHMENT:
             row_icon = "OBJECT_DATAMODE"
-            label = f"  -> {obj.name}"
-        elif rank == 2:
+            label = f"-> {obj.name}"
+        elif rank == RANK_ELEMENT_MESH:
             row_icon = "MESH_DATA"
             parent_bone = obj.parent_bone if obj.parent and obj.parent_type == "BONE" else ""
             label = f"{obj.name}{' @ ' + parent_bone if parent_bone else ''}"
-        elif rank == 3:
+        elif rank == RANK_ARMATURE:
             row_icon = "ARMATURE_DATA"
             label = f"[arm] {obj.name}"
         else:
             row_icon = "OBJECT_DATA"
             label = obj.name
+        # Indent by tree depth so the flat list reads as the parenting tree
+        # (armature root -> slot -> its attachments; loose meshes under the rig).
+        # With the native 'sort by name' toggle on the tree is dropped for a flat
+        # alphabetical order, so the indent goes too.
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
+        depth = 0 if sort_alpha else outliner_depth(rank)
+        label = ("    " * depth) + label
         # A bare operator button stretches across the row and centers its
         # text. Split the row and draw the label in a LEFT-aligned sub-row so
         # names hug the left edge (spec 036 left-align-names); the favorite
@@ -98,6 +115,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )
+        # The Outliner shows only the armature picked in the Skeleton panel, so a
+        # stray rig does not crowd the list (mirrors the panel's _explicit_target).
+        picked = getattr(scene_props, "active_armature", None) if scene_props is not None else None
+        try:
+            picked_armature_name = picked.name if picked is not None else None
+        except ReferenceError:  # pointer to a deleted armature
+            picked_armature_name = None
         # Names linked into the current view layer. The list is sourced from
         # bpy.data.objects, which keeps a deleted/undone object's datablock for
         # the rest of the session; a row whose object left the view layer must
@@ -111,23 +135,32 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
             is_fav = bool(
                 obj_props is not None and getattr(obj_props, "is_outliner_favorite", False)
             )
+            rank = ranks[obj.name]
             # filter_text="" - the name search is applied by compute_list_filter.
             return row_visible(
                 obj,
                 in_view_layer=obj.name in view_layer_names,
-                rank=ranks[obj.name],
+                rank=rank,
+                is_member=is_proscenio_member(
+                    obj, rank=rank, picked_armature_name=picked_armature_name
+                ),
                 is_favorite=is_fav,
                 favorites_only=favorites_only,
                 filter_text="",
             )
 
+        # The native 'sort by name' toggle (A-Z) flattens the list to plain
+        # alphabetical; off, the rows keep the parenting-tree order.
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
         return compute_list_filter(
             objects,
             bitflag=self.bitflag_filter_item,
             name_filter=self.filter_name or "",
             name_of=lambda obj: obj.name,
             visible=_visible,
-            sort_key=lambda obj: (ranks[obj.name], obj.name.lower()),
+            sort_key=lambda obj: outliner_sort_key(
+                obj, rank=ranks[obj.name], sort_alpha=sort_alpha
+            ),
         )
 
 

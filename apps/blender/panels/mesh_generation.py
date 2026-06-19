@@ -87,6 +87,7 @@ class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_mesh_generation"
     bl_order = 0
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:

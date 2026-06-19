@@ -58,7 +58,23 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
         skinning_props = _scene_skinning(context)
         draw_target_readout(layout, _active_armature(context))
         if skinning_props is not None:
+            # The trace params both entry points read (Automesh from Alpha + the
+            # Interactive modal) live on the parent so neither subpanel hides
+            # them; the alpha-only knobs stay in the Automesh from Alpha subpanel.
             layout.prop(skinning_props, "automesh_interior_mode")
+            col = layout.column(align=True)
+            col.prop(skinning_props, "automesh_contour_vertices")
+            # Interior spacing is not dense-only: the interactive modal reads it
+            # in SIMPLE mode too (free-draw resample + fold snap radius).
+            col.prop(skinning_props, "automesh_interior_spacing")
+            is_dense = skinning_props.automesh_interior_mode == "DENSE"
+            dense_col = col.column(align=True)
+            dense_col.active = is_dense
+            dense_col.prop(skinning_props, "automesh_density_under_bones")
+            sub = dense_col.column(align=True)
+            sub.active = is_dense and bool(skinning_props.automesh_density_under_bones)
+            sub.prop(skinning_props, "automesh_bone_radius")
+            sub.prop(skinning_props, "automesh_bone_factor")
 
 
 class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
@@ -133,35 +149,22 @@ def _draw_automesh_alpha(
     layout: bpy.types.UILayout,
     skinning_props: bpy.types.PropertyGroup | None,
 ) -> None:
-    """Automesh-from-alpha defaults + the run button - drawn on the subpanel layout.
+    """Automesh-from-alpha-only defaults + the run button - drawn on the subpanel.
 
-    Interior Mode lives on the parent panel; the dense-only fields here
-    read it back for their ``active`` state.
+    The trace params shared with the Interactive modal (Interior Mode, contour
+    vertices, interior spacing, the dense fields) live on the parent panel; only
+    the alpha-trace-specific knobs are here.
     """
     if skinning_props is not None:
         col = layout.column(align=True)
         col.prop(skinning_props, "automesh_resolution")
         col.prop(skinning_props, "automesh_alpha_threshold")
         col.prop(skinning_props, "automesh_margin_pixels")
-        col.prop(skinning_props, "automesh_contour_vertices")
-        # Interior spacing is not dense-only: the interactive modal reads it in
-        # SIMPLE mode too (free-draw resample + fold snap radius), so it stays
-        # in the always-active column rather than greyed behind DENSE.
-        col.prop(skinning_props, "automesh_interior_spacing")
         col.separator()
         col.prop(skinning_props, "preserve_base_quad")
         # Regen reprojects weights when ON; surfaced here (not only in the
         # Snapshot subpanel) because this button is what triggers the regen.
         col.prop(skinning_props, "preserve_on_regen")
-        col.separator()
-        is_dense = skinning_props.automesh_interior_mode == "DENSE"
-        dense_col = col.column(align=True)
-        dense_col.active = is_dense
-        dense_col.prop(skinning_props, "automesh_density_under_bones")
-        sub = dense_col.column(align=True)
-        sub.active = is_dense and bool(skinning_props.automesh_density_under_bones)
-        sub.prop(skinning_props, "automesh_bone_radius")
-        sub.prop(skinning_props, "automesh_bone_factor")
     layout.operator(
         "proscenio.automesh_from_alpha",
         text="Automesh from Alpha",

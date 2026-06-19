@@ -14,6 +14,7 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
+from ..core.bpy_helpers.skinning import read_snapshots  # type: ignore[import-not-found]
 from ..core.list_view import clamped_rows  # type: ignore[import-not-found]
 from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
     overrides_apply_under_bind_mode,
@@ -383,7 +384,9 @@ def _draw_snapshot(
     """
     if skinning_props is not None:
         layout.prop(skinning_props, "preserve_on_regen")
-        layout.prop(skinning_props, "show_provenance_overlay")
+        # The provenance overlay toggle lived here but registered no draw handler
+        # outside the Edit Weights modal (which forces the overlay on for its
+        # session and restores the prior value on exit), so it was dead UI.
     counts = _sidecar_counts(obj)
     if counts is None:
         layout.label(text="no snapshot (run Bind first)", icon="INFO")
@@ -402,10 +405,34 @@ def _draw_snapshot(
         text="Reset to Last Saved Weights",
         icon="LOOP_BACK",
     )
+    _draw_named_snapshots(layout, obj)
     layout.separator()
     io_row = layout.row(align=True)
     io_row.operator("proscenio.export_sidecar", text="Export Snapshot", icon="EXPORT")
     io_row.operator("proscenio.import_sidecar", text="Import Snapshot", icon="IMPORT")
+
+
+def _draw_named_snapshots(layout: bpy.types.UILayout, obj: bpy.types.Object | None) -> None:
+    """Named save points: a Save button + one restore row per snapshot.
+
+    Manual save points (pinned icon) are unbounded; the rolling auto-snapshots
+    (recover icon) are the last few the Edit Weights modal captured per session.
+    """
+    layout.separator()
+    has_sidecar = obj is not None and obj.get(PROSCENIO_WEIGHT_SIDECAR) is not None
+    save_row = layout.row(align=True)
+    save_row.enabled = has_sidecar
+    save_row.operator("proscenio.save_weight_snapshot", text="Save Snapshot", icon="ADD")
+    snapshots = read_snapshots(obj) if obj is not None else []
+    if not snapshots:
+        return
+    box = layout.box().column(align=True)
+    for snapshot in snapshots:
+        snap_row = box.row(align=True)
+        icon = "PINNED" if snapshot.kind == "manual" else "RECOVER_LAST"
+        snap_row.label(text=snapshot.name, icon=icon)
+        restore = snap_row.operator("proscenio.restore_named_snapshot", text="", icon="LOOP_BACK")
+        restore.snapshot_name = snapshot.name
 
 
 def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:

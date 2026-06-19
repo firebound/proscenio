@@ -11,14 +11,21 @@ automesh-regen reproject simply skips later because entries==[].
 
 from __future__ import annotations
 
+import time
+
 import bpy
 
+from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
 from ...skinning.sidecar_schema import (
     SIDECAR_VERSION,
+    NamedSnapshot,
     ProvenanceKind,
     SidecarEntry,
     WeightSidecar,
+    add_auto_snapshot,
     compute_topology_hash,
+    from_json,
+    to_json,
 )
 from ._helpers import iter_deform_bones, wipe_non_base_groups
 
@@ -112,6 +119,41 @@ def apply_sidecar(obj: bpy.types.Object, sidecar: WeightSidecar) -> dict[str, in
         "groups_created": groups_created,
         "missing_entry_verts": max(0, vert_count - entry_count),
     }
+
+
+def append_auto_snapshot(obj: bpy.types.Object, armature: bpy.types.Object) -> bool:
+    """Capture the mesh's current weights as a rolling auto-snapshot.
+
+    Reads the existing sidecar, snapshots the live vertex weights, appends them
+    as an auto entry (the oldest auto rolls off past the cap), and writes the
+    sidecar back. Returns ``False`` (no-op) when there is no sidecar yet, it is
+    corrupt, or the snapshot would be empty (no UV layer). Best-effort: the Edit
+    Weights modal calls this on a normal finish and must never let it raise.
+    """
+    payload = obj.get(_SIDECAR_KEY)
+    if payload is None:
+        return False
+    try:
+        sidecar = from_json(payload)
+    except ValueError:
+        return False
+    current = snapshot_sidecar(obj, armature, provenance="user_paint")
+    if not current.entries:
+        return False
+    name = time.strftime("auto %H:%M:%S")
+    obj[_SIDECAR_KEY] = to_json(add_auto_snapshot(sidecar, name, current.entries))
+    return True
+
+
+def read_snapshots(obj: bpy.types.Object) -> list[NamedSnapshot]:
+    """Parse the named snapshots stored on the mesh, or ``[]`` when absent/corrupt."""
+    payload = obj.get(_SIDECAR_KEY)
+    if payload is None:
+        return []
+    try:
+        return from_json(payload).snapshots
+    except ValueError:
+        return []
 
 
 def per_vert_uv_anchors(obj: bpy.types.Object) -> list[tuple[float, float]] | None:

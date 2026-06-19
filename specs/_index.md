@@ -77,4 +77,4 @@ Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped com
 | 047 | godot-import-verify | Verify the sprite manual-region scaling with a test + two model-quirk doc notes | pruned |
 | 048 | photoshop-read-perf | Tag-list busy-flag scoping + a batchPlay multiGet document reader | pruned |
 | 049 | blender-ui-polish | Shared list component (search / multi-select / scroll) + its consumers, help popup reflow + copy revision, and small panel fixes (provenance toggle, automesh params, named snapshots) | planned |
-| 050 | blender-authoring-design | Five authoring design calls: sprite centered-vs-origin, Quick Armature interaction, rotation-mode safety, Y-depth layers, incorporate-Blender-mesh | planned |
+| 050 | blender-authoring-design | Three locked authoring calls: rotation-mode guard + convert-to-Euler, manual Y-depth offset, incorporate-Blender-mesh button (sprite-origin became a backlog cleanup, Quick-Armature interaction returned to the backlog) | planned |

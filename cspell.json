@@ -12,6 +12,7 @@
     "specs/backlog-bugs-found.md",
     "specs/backlog-ui-feedback.md",
     "specs/backlog-ik-ergonomics.md",
+    "specs/backlog-coderabbit-nitpicks.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
     "specs/025-code-duplication/raw/**",
     "tools/qa-companion/.backup/**",

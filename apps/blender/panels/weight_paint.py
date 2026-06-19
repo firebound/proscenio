@@ -62,6 +62,7 @@ class PROSCENIO_PT_bind(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_weight_paint"
     bl_order = 0
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:

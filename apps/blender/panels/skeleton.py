@@ -184,6 +184,7 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
     bl_order = 0
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -233,6 +234,7 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
     bl_order = 1
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "pose_mode", "pose_mode")

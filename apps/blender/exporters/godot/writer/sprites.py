@@ -10,6 +10,7 @@ from mathutils import Vector
 from proscenio_models import MeshElement, SpriteElement, Weight
 
 from ....core._shared import region as region_core
+from ....core._shared.cp_keys import PROSCENIO_DEPTH_OFFSET
 from ....core._shared.material_images import iter_material_images
 from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import (
@@ -121,7 +122,7 @@ def _derive_z_index(obj: bpy.types.Object) -> int | None:
     emits nothing.
     """
     depth_offset = float(
-        read_field(obj, pg_field="depth_offset", cp_key="proscenio_depth_offset", default=0.0)
+        read_field(obj, pg_field="depth_offset", cp_key=PROSCENIO_DEPTH_OFFSET, default=0.0)
     )
     z = -round(obj.location.y / _DEPTH_EPSILON + depth_offset)
     return z or None

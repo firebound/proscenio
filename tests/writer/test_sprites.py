@@ -71,6 +71,17 @@ def test_derive_z_index_zero_offset_keeps_the_psd_value() -> None:
     assert sprites._derive_z_index(obj) == -2
 
 
+def test_derive_z_index_reads_depth_offset_from_the_custom_property_fallback() -> None:
+    # Headless writer path: no PropertyGroup, so depth_offset resolves via the
+    # proscenio_depth_offset Custom Property (front plane pushed back 4 layers).
+    obj = SimpleNamespace(
+        location=_vec(y=0.0),
+        proscenio=None,
+        get=lambda key, default=None: {"proscenio_depth_offset": 4.0}.get(key, default),
+    )
+    assert sprites._derive_z_index(obj) == -4
+
+
 def test_derive_flips_none_for_positive_scale() -> None:
     obj = SimpleNamespace(scale=_vec(x=1.0, y=1.0, z=1.0))
     assert sprites._derive_flips(obj) == (None, None)

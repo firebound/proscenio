@@ -31,13 +31,20 @@ _INCORPORATE_CHOICE_ITEMS = (
 
 
 def _is_single_quad(obj: bpy.types.Object) -> bool:
-    """True when the mesh is a single quad (4 verts / 1 face) - the sprite shape."""
+    """True when the mesh is a single quad - one 4-corner face, no loose verts.
+
+    The sprite shape. Requires the lone face to have four vertices, not merely a
+    four-vertex mesh (a triangle plus a stray vertex also has four verts and one
+    face), so a non-quad does not auto-incorporate as a Sprite.
+    """
     mesh = getattr(obj, "data", None)
     vertices = getattr(mesh, "vertices", None)
     polygons = getattr(mesh, "polygons", None)
     if vertices is None or polygons is None:
         return False
-    return len(vertices) == 4 and len(polygons) == 1
+    if len(vertices) != 4 or len(polygons) != 1:
+        return False
+    return len(getattr(polygons[0], "vertices", ())) == 4
 
 
 class PROSCENIO_OT_incorporate_element(bpy.types.Operator):

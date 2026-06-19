@@ -282,25 +282,31 @@ def _validate_driver_rotation_modes(scene_objects: Sequence[object]) -> list[Iss
     for obj in scene_objects:
         if getattr(obj, "type", None) != "MESH":
             continue
-        seen: set[tuple[str, str]] = set()
-        for fcurve in _proscenio_driver_fcurves(obj):
-            for armature, bone_name in _driver_rotation_sources(getattr(fcurve, "driver", None)):
-                key = (name_of(armature), bone_name)
-                if key in seen:
-                    continue
-                seen.add(key)
-                mode = _pose_bone_rotation_mode(armature, bone_name)
-                if mode is not None and mode != _DRIVER_ROTATION_MODE:
-                    issues.append(
-                        Issue(
-                            "warning",
-                            f"bone '{bone_name}' drives this sprite's rotation but is in "
-                            f"{mode} mode, not XYZ Euler - the driver reads XYZ, so the "
-                            "animation will not track. Run Convert rotation to Euler",
-                            name_of(obj),
-                        )
+        for armature, bone_name in _unique_driver_rotation_sources(obj):
+            mode = _pose_bone_rotation_mode(armature, bone_name)
+            if mode is not None and mode != _DRIVER_ROTATION_MODE:
+                issues.append(
+                    Issue(
+                        "warning",
+                        f"bone '{bone_name}' drives this sprite's rotation but is in "
+                        f"{mode} mode, not XYZ Euler - the driver reads XYZ, so the "
+                        "animation will not track. Run Convert rotation to Euler",
+                        name_of(obj),
                     )
+                )
     return issues
+
+
+def _unique_driver_rotation_sources(obj: object) -> Iterator[tuple[object, str]]:
+    """Yield the unique ``(armature, bone_name)`` ROT_* sources of obj's proscenio drivers."""
+    seen: set[tuple[str, str]] = set()
+    for fcurve in _proscenio_driver_fcurves(obj):
+        for armature, bone_name in _driver_rotation_sources(getattr(fcurve, "driver", None)):
+            key = (name_of(armature), bone_name)
+            if key in seen:
+                continue
+            seen.add(key)
+            yield armature, bone_name
 
 
 def _proscenio_driver_fcurves(obj: object) -> Iterator[object]:

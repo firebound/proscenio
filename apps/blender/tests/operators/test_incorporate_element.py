@@ -38,6 +38,15 @@ def test_single_quad_heuristic_rejects_a_dense_mesh(automesh_fixture):
     assert _is_single_quad(_make_mesh_object("dense", _DENSE_VERTS, _DENSE_FACES)) is False
 
 
+def test_single_quad_heuristic_rejects_a_triangle_with_a_loose_vertex(automesh_fixture):
+    from proscenio.operators.incorporate import _is_single_quad
+
+    # Four verts and one face, but the face is a triangle (vert 3 is loose) -
+    # a four-vert total is not enough; the face itself must be a quad.
+    obj = _make_mesh_object("tri_loose", _QUAD_VERTS, [(0, 1, 2)])
+    assert _is_single_quad(obj) is False
+
+
 def test_auto_incorporates_a_quad_as_sprite_with_a_frame_grid(automesh_fixture):
     obj = _make_mesh_object("plain_quad", _QUAD_VERTS, _QUAD_FACES)
     result = bpy.ops.proscenio.incorporate_element()  # default choice is Auto

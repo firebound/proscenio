@@ -108,12 +108,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 ## Outliner panel
 
 ### BL-OUTLN-SWEEP · Outliner panel inventory (visual pass)
-- status: pass
+- status: todo
 - review: keep
-- pre: Outliner subpanel expanded, with a scene that has at least one slot, attachment, sprite mesh, and armature.
-- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the category-labeled name, and the favorite star. Names are labeled by category: slots as '[slot] <name>', attachments indented as '-> <name>', sprite meshes as '<name>' (with '@ <bone>' when bone-parented), and armatures as '[arm] <name>'. Cameras, lights, and other objects do not appear.
-- intent: Confirm the Outliner renders its favorites toggle, the per-row selection marker, and the category-labeled list; behavior lives in the named tests.
+- pre: Outliner subpanel expanded, with a scene that has the picked armature, at least one slot + attachment, an authored sprite/mesh, plus a raw hand-modelled mesh and a second (unpicked) armature.
+- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the name, and the favorite star, with the name indented by its depth in the parenting tree. Names are labeled by kind: armature as '[arm] <name>', slots as '[slot] <name>', attachments as '-> <name>', element meshes as '<name>' (with '@ <bone>' when bone-parented). Only Proscenio members appear: an element mesh shows once it carries element data (imported or Incorporated), the armature only when it is the one picked in the Skeleton panel, plus slots and their attachments. The raw mesh, the unpicked armature, cameras, and lights do not appear.
+- intent: Confirm the Outliner renders its favorites toggle, the per-row selection marker, the depth-indented names, and that only Proscenio members (authored meshes + the picked armature + slots/attachments) are listed; behavior lives in the named tests.
 - code: apps/blender/panels/outliner.py draw_item (sel marker + name + star) + filter_items
+- note: blender-authoring-ux: members-only filter + parenting-tree order + depth indent. Re-walk the inventory.
 
 ### BL-OUTLN-01 · Filter the list by typing
 - status: pass
@@ -136,12 +137,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/outliner.py:149 (prop) + filter_items:100-116
 - note: favoritos não sobem para o topo (achado conhecido).
 
-### BL-OUTLN-03 · List is sorted by category then name
-- status: pass
+### BL-OUTLN-03 · List is ordered by the scene parenting tree
+- status: todo
 - review: keep
-- observe: Rows are grouped by category and then alphabetically: slots first (with attachments indented under them), then sprite meshes, then armatures last. Cameras, lights, and other objects are not listed.
-- intent: The list always shows a fixed category order (slots, then sprites, then armatures) regardless of scene order.
-- code: apps/blender/panels/outliner.py:150-158 (template_list) + draw_item:40-84
+- observe: Rows read as the parenting tree, regardless of scene order: the picked armature first (root), then each slot immediately followed by its own attachments (slots ordered by name, the slot row before its attachments), then the loose element meshes - and each row is indented by its depth (armature flush, slots + loose meshes one level in, attachments two). Cameras, lights, raw meshes, and unpicked armatures are not listed.
+- intent: The list lays out armature -> slot -> slot mesh, then loose meshes (the scene parenting), not a flat by-category grouping.
+- code: apps/blender/core/outliner_view.py hierarchy_sort_key + outliner_depth; apps/blender/panels/outliner.py filter_items (sort_key) + draw_item (indent)
+- note: blender-authoring-ux: changed from the old category-then-name order to the parenting tree. Re-walk.
 
 ### BL-OUTLN-04 · Native 'Filter by Name' is the only search
 - status: pass
@@ -154,11 +156,24 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/outliner.py filter_items (self.filter_name only)
 
 ### BL-OUTLN-05 · Custom sort overrides Blender's native sort
-- status: pass
+- status: todo
 - review: keep
-- observe: The list always shows the Proscenio category-then-name order, even with the native sort toggles open. The native invert-filter toggle can still flip which rows are shown.
-- intent: The custom category-then-name order overrides Blender's native list sort.
-- code: apps/blender/panels/outliner.py:150-158 (template_list) + filter_items:120-124
+- observe: The list always shows the Proscenio parenting-tree order, even with the native sort toggles open. The native invert-filter toggle can still flip which rows are shown.
+- intent: The custom parenting-tree order overrides Blender's native list sort.
+- code: apps/blender/panels/outliner.py filter_items (sort_key=hierarchy_sort_key)
+- note: blender-authoring-ux: custom order is now the parenting tree, not category-then-name. Re-walk.
+
+### BL-OUTLN-11 · Only Proscenio members are listed
+- status: todo
+- review: keep
+- pre: A scene with the picked armature, a slot + attachment, an authored element mesh, a raw hand-modelled mesh (Add > Mesh, never Incorporated), and a second unpicked armature.
+- steps:
+  1. Read the Outliner rows.
+  2. Incorporate the raw mesh (Element panel) and pick the second armature in the Skeleton panel; read the rows again.
+- observe: At first the raw mesh and the unpicked armature are absent; the picked armature, slot, attachment, and authored mesh are present. After incorporating the mesh it appears (it now carries element data); after picking the second armature the listed armature switches to it (only the picked one ever shows).
+- intent: The Outliner lists only Proscenio members - an element mesh once it carries the proscenio_type marker, the armature only when it is the Skeleton-picked one, plus slots and their attachments.
+- code: apps/blender/core/outliner_view.py is_proscenio_member; apps/blender/panels/outliner.py filter_items
+- note: blender-authoring-ux. Logic pinned by tests/test_outliner_view.py; this is the GUI walk.
 
 ### BL-OUTLN-06 · Active row highlight follows click and viewport selection
 - status: todo

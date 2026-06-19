@@ -12,13 +12,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Literal, cast, get_args
 
 SIDECAR_VERSION = 1
 
+#: How many rolling auto-snapshots a sidecar keeps (the oldest drop off).
+AUTO_SNAPSHOT_CAP = 3
+
 ProvenanceKind = Literal["auto_seed", "user_paint", "reprojected"]
 _PROVENANCE_VALUES = frozenset(get_args(ProvenanceKind))
+
+SnapshotKind = Literal["manual", "auto"]
+_SNAPSHOT_KINDS = frozenset(get_args(SnapshotKind))
 
 
 @dataclass(frozen=True)
@@ -31,6 +37,20 @@ class SidecarEntry:
 
 
 @dataclass(frozen=True)
+class NamedSnapshot:
+    """A labelled restore point: a copy of the per-vert entries at save time.
+
+    ``kind`` separates user-named manual save points (unbounded) from the
+    rolling auto-snapshots captured per paint session (capped at
+    :data:`AUTO_SNAPSHOT_CAP`).
+    """
+
+    name: str
+    kind: SnapshotKind
+    entries: list[SidecarEntry] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class WeightSidecar:
     """Schema for ``obj["proscenio_weight_sidecar"]`` JSON payload."""
 
@@ -38,6 +58,48 @@ class WeightSidecar:
     vertex_group_names: list[str]
     mesh_topology_hash: str
     entries: list[SidecarEntry] = field(default_factory=list)
+    # Additive (pre-launch, no version bump): named restore points layered over
+    # the baseline ``entries``. Old payloads parse with an empty list.
+    snapshots: list[NamedSnapshot] = field(default_factory=list)
+
+
+def add_named_snapshot(
+    sidecar: WeightSidecar, name: str, entries: list[SidecarEntry]
+) -> WeightSidecar:
+    """Return ``sidecar`` with a manual snapshot ``name`` added (replacing a same-name one).
+
+    Manual snapshots are unbounded; re-saving a name overwrites that save point
+    rather than piling up duplicates.
+    """
+    kept = [s for s in sidecar.snapshots if not (s.kind == "manual" and s.name == name)]
+    kept.append(NamedSnapshot(name=name, kind="manual", entries=list(entries)))
+    return replace(sidecar, snapshots=kept)
+
+
+def add_auto_snapshot(
+    sidecar: WeightSidecar,
+    name: str,
+    entries: list[SidecarEntry],
+    *,
+    cap: int = AUTO_SNAPSHOT_CAP,
+) -> WeightSidecar:
+    """Return ``sidecar`` with an auto snapshot added, keeping only the last ``cap``.
+
+    Manual snapshots are untouched; only the auto snapshots roll - the oldest
+    drop off once more than ``cap`` exist.
+    """
+    snaps = [*sidecar.snapshots, NamedSnapshot(name=name, kind="auto", entries=list(entries))]
+    auto_positions = [i for i, s in enumerate(snaps) if s.kind == "auto"]
+    # Drop the oldest autos beyond `cap`; `cap == 0` drops them all (the
+    # `[:-cap]` slice would wrongly keep everything when cap is 0).
+    drop_count = max(0, len(auto_positions) - max(cap, 0))
+    drop = set(auto_positions[:drop_count])
+    return replace(sidecar, snapshots=[s for i, s in enumerate(snaps) if i not in drop])
+
+
+def find_snapshot(sidecar: WeightSidecar, name: str) -> NamedSnapshot | None:
+    """Return the snapshot named ``name`` (first match), or ``None``."""
+    return next((s for s in sidecar.snapshots if s.name == name), None)
 
 
 def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str:
@@ -90,11 +152,32 @@ def from_json(payload: str) -> WeightSidecar:
     if not isinstance(entries_raw, list):
         raise ValueError("sidecar entries must be a list")
     entries = [_entry_from_dict(item) for item in entries_raw]
+    snapshots_raw = data.get("snapshots", [])
+    if not isinstance(snapshots_raw, list):
+        raise ValueError("sidecar snapshots must be a list")
+    snapshots = [_snapshot_from_dict(item) for item in snapshots_raw]
     return WeightSidecar(
         version=version,
         vertex_group_names=list(data.get("vertex_group_names", [])),
         mesh_topology_hash=str(data["mesh_topology_hash"]),
         entries=entries,
+        snapshots=snapshots,
+    )
+
+
+def _snapshot_from_dict(item: object) -> NamedSnapshot:
+    if not isinstance(item, dict):
+        raise ValueError("sidecar snapshot must be a JSON object")
+    kind = item.get("kind")
+    if kind not in _SNAPSHOT_KINDS:
+        raise ValueError(f"snapshot kind {kind!r} must be one of {sorted(_SNAPSHOT_KINDS)}")
+    entries_raw = item.get("entries", [])
+    if not isinstance(entries_raw, list):
+        raise ValueError("snapshot entries must be a list")
+    return NamedSnapshot(
+        name=str(item.get("name", "")),
+        kind=cast(SnapshotKind, kind),
+        entries=[_entry_from_dict(entry) for entry in entries_raw],
     )
 
 

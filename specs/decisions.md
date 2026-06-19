@@ -232,7 +232,7 @@ The calls made while building each feature that crossed a component boundary or 
 
 ### Slots list UX
 
-- **No reusable list component was built; multi-select shipped as an operator capability** (the Outliner select operator reads `event.shift` / `event.ctrl`), index sync in `core/outliner_view.py`. A shared list wrapper is deferred to a genuine third consumer.
+- **Multi-select shipped as an operator capability** (the Outliner select operator reads `event.shift` / `event.ctrl`), index sync in `core/outliner_view.py`. The reusable list wrapper was deferred to a genuine third consumer - then built once they materialized (see Blender UI polish below).
 - **The attachment list is a custom-draw column over the derived `empty.children` with a `scale_y` cap, not a synced `CollectionProperty`** (`template_list` needs a real collection + a single `active_index`); the native-scroll upgrade is gated on an observed desync. The slot list itself (a real collection) did move to `template_list`.
 - **The empty-slot signal is owned solely by the validator error** - the panel dropped the duplicate inline INFO line.
 
@@ -241,3 +241,13 @@ The calls made while building each feature that crossed a component boundary or 
 - **A Sprite2D region is enabled only when a texture resolves** - an enabled zero-area region draws nothing.
 - **Colliding node names use Godot's numeric `add_child` suffix (`_001`), never a kind prefix** - animation tracks resolve targets by leaf name via `find_child`, so a prefix would churn the lookups.
 - **Bone-attached slots cancel the bone's full cumulative rest, not the parent-local rest** - `get_skeleton_rest()` returns parent-local in this Godot version; cancelling the cumulative rest anchors absolute-baked attachments at the skeleton origin where authored.
+
+### Blender UI polish
+
+- **The deferred reusable list wrapper was built** once four-plus consumers cleared the trigger: a bpy-free `compute_list_filter` (search + visibility + sort to the flag/order pair) in `core/list_view.py`, plus a `ProscenioListMixin` and a `draw_select_marker` in `panels/_list.py`. The Outliner, Slots, Bones, Actions, the Weight-Paint per-bone overrides, and the element-driver list route through it. Default is source order (the bone list relies on hierarchy order); sorting lists pass a `sort_key`.
+- **Bone multi-select reuses the Outliner's per-row-marker pattern** (a radio dot reading the live bone selection, not the single `template_list` active index), wired through the bone-select trio in `core/bpy_helpers/_shared/bone_select.py`. It is live only where bone selection is real (Pose / Edit); Object mode stays single-active.
+- **The active-row highlight follows the viewport selection across every object/bone list** - the depsgraph sync drives the Slots index (the active slot) and the Skeleton bone index (the picked armature's active bone), not only the Outliner. The Animation actions list stays independent (its row is the picked armature's active action, not an object).
+- **Help bodies are one paragraph string reflowed at draw time** (`reflow_paragraph` against a fixed character budget tuned to the popup width); explicit newlines mark list items, which keep a hanging indent. This retired the hand-wrapping. The budget is a constant because `layout.label` cannot wrap and a popup exposes no draw-time text metrics.
+- **The provenance overlay is modal-only** - the standalone Snapshot-panel toggle registered no draw handler outside the Edit Weights modal (which forces the overlay on for its session and restores the prior value on exit), so it was removed rather than given a persistent handler.
+- **The shared automesh trace params live on the parent Mesh Generation panel** (Interior Mode, contour vertices, interior spacing, the dense fields), because both Automesh from Alpha and the Interactive modal read them; the alpha-only knobs stay in the subpanel.
+- **Named weight snapshots are an additive sidecar field** (`snapshots`, no version bump): unbounded manual save points plus a rolling last-3 auto history captured per Edit Weights session, each a labelled copy of the per-vert entries. Restore-by-name is topology-guarded like Reset to Last Saved Weights.

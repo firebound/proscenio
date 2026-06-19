@@ -12,7 +12,12 @@ from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     FeatureStatus,
 )
 from ..core._shared.report import report_info  # type: ignore[import-not-found]
-from ..core.help_topics import topic_for  # type: ignore[import-not-found]
+from ..core.help_topics import (  # type: ignore[import-not-found]
+    POPUP_WIDTH,
+    POPUP_WRAP_CHARS,
+    reflow_paragraph,
+    topic_for,
+)
 
 
 class PROSCENIO_OT_status_info(bpy.types.Operator):
@@ -63,7 +68,7 @@ class PROSCENIO_OT_help(bpy.types.Operator):
     )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
-        result: set[str] = context.window_manager.invoke_popup(self, width=480)
+        result: set[str] = context.window_manager.invoke_popup(self, width=POPUP_WIDTH)
         return result
 
     def execute(self, _context: bpy.types.Context) -> set[str]:
@@ -77,12 +82,16 @@ class PROSCENIO_OT_help(bpy.types.Operator):
             return
         header = layout.row()
         header.label(text=topic.title, icon="QUESTION")
-        layout.label(text=topic.summary)
+        for line in reflow_paragraph(topic.summary, POPUP_WRAP_CHARS):
+            layout.label(text=line)
         for section in topic.sections:
             layout.separator()
             layout.label(text=section.heading + ":", icon="DOT")
-            for line in section.body:
-                layout.label(text=line)
+            # Each body is one paragraph; "\n" marks an explicit list item / step.
+            # Reflow each piece to the popup width (layout.label cannot wrap).
+            for paragraph in section.body.split("\n"):
+                for line in reflow_paragraph(paragraph, POPUP_WRAP_CHARS):
+                    layout.label(text=line)
         if topic.see_also:
             layout.separator()
             layout.label(text="See also:", icon="URL")

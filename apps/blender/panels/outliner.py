@@ -6,8 +6,10 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.list_view import compute_list_filter
 from ..core.outliner_view import category_rank, row_visible
 from ._helpers import draw_subpanel_header
+from ._list import draw_select_marker
 
 
 class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
@@ -56,8 +58,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # the real object selection (Shift/Ctrl-click drive it through
         # proscenio.select_outliner_object). filter_items already drops
         # out-of-view-layer rows, so select_get() is safe to call here.
-        sel_icon = "RADIOBUT_ON" if obj.select_get() else "RADIOBUT_OFF"
-        row.label(text="", icon=sel_icon)
+        draw_select_marker(row, selected=obj.select_get())
         split = row.split(factor=0.92, align=True)
         name_row = split.row()
         name_row.alignment = "LEFT"
@@ -85,45 +86,49 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         propname: str,
     ) -> tuple[list[int], list[int]]:
         """Hide non-Proscenio + out-of-view-layer objects, apply text + favorites
-        filter, sort by category."""
+        filter, sort by category.
+
+        Name search + the flag/order computation go through the shared
+        :func:`compute_list_filter`; the Outliner-specific bits (view-layer set,
+        favorites, category rank) are precomputed once and fed in as closures so
+        the per-row work stays O(1).
+        """
         objects = list(getattr(data, propname))
         scene_props = getattr(context.scene, "proscenio", None)
-        # One search field: Blender's native "Filter by Name" (self.filter_name).
-        # The Proscenio drawer was removed in spec 043, so there is no second
-        # source to reconcile here.
-        flt_text = (self.filter_name or "").lower()
         favorites_only = bool(
             scene_props is not None and getattr(scene_props, "outliner_show_favorites", False)
         )
         # Names linked into the current view layer. The list is sourced from
         # bpy.data.objects, which keeps a deleted/undone object's datablock for
         # the rest of the session; a row whose object left the view layer must
-        # drop out (it is no longer in the scene).
+        # drop out (it is no longer in the scene). Object names are unique in
+        # bpy.data.objects, so a name-keyed rank cache is sound.
         view_layer_names = {o.name for o in context.view_layer.objects}
-        n = len(objects)
-        flt_flags = [0] * n
-        ranks: list[int] = [0] * n
-        for i, obj in enumerate(objects):
-            rank = category_rank(obj)
-            ranks[i] = rank
+        ranks = {obj.name: category_rank(obj) for obj in objects}
+
+        def _visible(obj: bpy.types.AnyType) -> bool:
             obj_props = getattr(obj, "proscenio", None)
             is_fav = bool(
                 obj_props is not None and getattr(obj_props, "is_outliner_favorite", False)
             )
-            if row_visible(
+            # filter_text="" - the name search is applied by compute_list_filter.
+            return row_visible(
                 obj,
                 in_view_layer=obj.name in view_layer_names,
-                rank=rank,
+                rank=ranks[obj.name],
                 is_favorite=is_fav,
                 favorites_only=favorites_only,
-                filter_text=flt_text,
-            ):
-                flt_flags[i] = self.bitflag_filter_item
-        order = sorted(range(n), key=lambda i: (ranks[i], objects[i].name.lower()))
-        flt_neworder = [0] * n
-        for new_i, orig_i in enumerate(order):
-            flt_neworder[orig_i] = new_i
-        return flt_flags, flt_neworder
+                filter_text="",
+            )
+
+        return compute_list_filter(
+            objects,
+            bitflag=self.bitflag_filter_item,
+            name_filter=self.filter_name or "",
+            name_of=lambda obj: obj.name,
+            visible=_visible,
+            sort_key=lambda obj: (ranks[obj.name], obj.name.lower()),
+        )
 
 
 class PROSCENIO_PT_outliner(bpy.types.Panel):

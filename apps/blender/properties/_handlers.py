@@ -24,6 +24,7 @@ from ..core.outliner_view import (  # type: ignore[import-not-found]
     is_outliner_relevant,
     source_index_for_name,
 )
+from ..core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
 
 
 def hydrate_existing_objects() -> None:
@@ -87,6 +88,8 @@ def on_depsgraph_update(scene: bpy.types.Scene, _depsgraph: bpy.types.Depsgraph)
             return
         _clear_dangling_active_armature(scene, proscenio)
         sync_outliner_to_active_object(scene)
+        sync_slots_to_active_object(scene)
+        sync_bone_index_to_active_bone(scene)
     except Exception:  # depsgraph hook safety - swallow to protect draw cycle
         # No logging: the operator INFO bar is not reachable from a
         # depsgraph callback, so there is nowhere to surface it.
@@ -137,6 +140,56 @@ def sync_outliner_to_active_object(scene: bpy.types.Scene) -> None:
     if idx is None or proscenio.active_outliner_index == idx:
         return
     proscenio.active_outliner_index = idx
+    _tag_view3d_areas_redraw()
+
+
+def sync_slots_to_active_object(scene: bpy.types.Scene) -> None:
+    """Move the Slots highlight to follow the active object when it is a slot.
+
+    The Slots list and the Outliner both bind ``bpy.data.objects`` but with
+    separate active-index props, so without this the Slots row stays lit on the
+    previously clicked slot when the active object changes elsewhere (the
+    cross-list-deselect bug). A non-slot active object leaves the highlight
+    untouched. Cheap early-outs keep the per-tick depsgraph callback light.
+    """
+    proscenio = getattr(scene, "proscenio", None)
+    if proscenio is None or not hasattr(proscenio, "active_slot_index"):
+        return
+    view_layer = getattr(bpy.context, "view_layer", None)
+    active = getattr(getattr(view_layer, "objects", None), "active", None)
+    if active is None or not is_slot_empty(active):
+        return
+    idx = source_index_for_name(bpy.data.objects, active.name)
+    if idx is None or proscenio.active_slot_index == idx:
+        return
+    proscenio.active_slot_index = idx
+    _tag_view3d_areas_redraw()
+
+
+def sync_bone_index_to_active_bone(scene: bpy.types.Scene) -> None:
+    """Move the Skeleton bone highlight to follow the picked armature's active bone.
+
+    Closes the same loop for bones: selecting a bone in the viewport points the
+    Skeleton list at it. Targets the picked Active Armature (the rig the list
+    shows). The fast-path guard reads the bone already under the highlight, so
+    the O(bones) index scan only runs when the active bone actually changed -
+    this callback fires on every transform.
+    """
+    proscenio = getattr(scene, "proscenio", None)
+    if proscenio is None or not hasattr(proscenio, "active_bone_index"):
+        return
+    armature = getattr(proscenio, "active_armature", None)
+    bones = getattr(getattr(armature, "data", None), "bones", None)
+    active_bone = getattr(bones, "active", None) if bones is not None else None
+    if active_bone is None:
+        return
+    current = proscenio.active_bone_index
+    if 0 <= current < len(bones) and bones[current].name == active_bone.name:
+        return
+    idx = source_index_for_name(bones, active_bone.name)
+    if idx is None or proscenio.active_bone_index == idx:
+        return
+    proscenio.active_bone_index = idx
     _tag_view3d_areas_redraw()
 
 

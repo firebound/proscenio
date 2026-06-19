@@ -113,7 +113,9 @@ def test_trace_resolution_copy_is_not_inverted(automesh_fixture):
     assert prop.name == "Trace resolution"
     assert "Lower values produce more" not in prop.description
     topic = HELP_TOPICS["automesh_alpha"]
-    text = " ".join(line for section in topic.sections for line in section.body).lower()
+    # body is one paragraph string ("\n" separates list items); split on it so
+    # the negative checks see whole words, not space-separated characters.
+    text = " ".join(item for section in topic.sections for item in section.body.split("\n")).lower()
     assert "denser" not in text
     assert "reads backwards" not in text
 

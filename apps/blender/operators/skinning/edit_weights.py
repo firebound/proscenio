@@ -25,6 +25,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     StrokeDiffTracker,
+    append_auto_snapshot,
     apply_paint_preset,
     capture_session,
     read_mirror_flag,
@@ -162,10 +163,26 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
                 unregister_handler(self._overlay_handle)
                 self._overlay_handle = None
             self._remove_statusbar()
+            # A normal finish captures the session's end weights as a rolling
+            # auto-snapshot. Suppressed so a snapshot failure never aborts the
+            # mode/selection restore below (cleanup must run in every exit path).
+            if not cancel:
+                with contextlib.suppress(Exception):
+                    self._capture_auto_snapshot()
             restore_session(context, self._session)
         finally:
             report_info(self, "Edit Weights modal restored")
         return {"CANCELLED" if cancel else "FINISHED"}
+
+    def _capture_auto_snapshot(self) -> None:
+        """Snapshot the session's end weights into the rolling auto history."""
+        session = self._session
+        if session is None:
+            return
+        obj = bpy.data.objects.get(session.mesh_name or "")
+        armature = bpy.data.objects.get(session.armature_name or "")
+        if obj is not None and armature is not None:
+            append_auto_snapshot(obj, armature)
 
     def _append_statusbar(self) -> None:
         append_statusbar_draw(type(self), _draw_statusbar_edit_weights)

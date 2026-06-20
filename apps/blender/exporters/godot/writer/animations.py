@@ -177,7 +177,7 @@ def _local_rotation_matrix(entry: dict[str, dict[int, float]]) -> Matrix | None:
         a = entry["rotation_axis_angle"]
         angle = a.get(0, 0.0)
         axis = Vector((a.get(1, 0.0), a.get(2, 0.0), a.get(3, 1.0)))
-        if axis.length_squared == 0.0:
+        if axis.length_squared < 1e-12:  # degenerate/zero axis -> rest default
             axis = Vector((0.0, 0.0, 1.0))
         return Quaternion(axis.normalized(), angle).to_matrix()
     return None

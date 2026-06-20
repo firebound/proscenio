@@ -24,6 +24,7 @@ no longer appears in the manifest are left for the user to clean up manually.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -402,7 +403,12 @@ def _attach_material(
     # shift it. The exporter writes plain sRGB PNGs.
     colorspace = getattr(image, "colorspace_settings", None)
     if colorspace is not None:
-        colorspace.name = "sRGB"
+        # Best-effort + guarded like _apply_flat_color_management: a non-default
+        # OCIO config (e.g. ACES) may not expose a literal "sRGB" colorspace, and
+        # the bare assignment would raise and abort the import. Leave Blender's
+        # default colorspace in that case rather than fail.
+        with contextlib.suppress(TypeError, AttributeError):
+            colorspace.name = "sRGB"
     mat_name = f"{obj.name}.mat"
     mat = material_by_name(mat_name) or bpy.data.materials.new(name=mat_name)
     mat.use_nodes = True

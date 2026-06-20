@@ -26,6 +26,11 @@ export interface TagBag {
     folder?: string;
     /** Explicit kind override. `[mesh]` / `[poly]` / `[polygon]` -> mesh; `[sprite]` / `[spritesheet]` -> sprite. */
     kind?: "mesh" | "sprite";
+    /** The sprite kind was authored as `[spritesheet]` (an alias for
+     *  `[sprite]`). Carried only so the writer re-emits the literal token
+     *  the artist typed, keeping the layer name stable across unrelated
+     *  edits. No effect on the manifest. */
+    spritesheet?: true;
     /** Mark this layer as the group's origin marker (no PNG emitted). */
     originMarker?: true;
     /** Explicit pivot in PSD pixels (set by `[origin:x,y]`). */
@@ -114,8 +119,11 @@ function consumeToken(body: string, tags: TagBag): boolean {
         case "polygon":
             tags.kind = "mesh";
             return true;
-        case "sprite":
         case "spritesheet":
+            tags.spritesheet = true;
+            tags.kind = "sprite";
+            return true;
+        case "sprite":
             tags.kind = "sprite";
             return true;
         case "origin":

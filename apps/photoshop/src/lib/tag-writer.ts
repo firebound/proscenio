@@ -47,7 +47,7 @@ function collectSegments(tags: TagBag): string[] {
 const SEGMENT_BUILDERS: Record<typeof TAG_ORDER[number], (tags: TagBag) => string | null> = {
     ignore: (tags) => (tags.ignore === true ? "[ignore]" : null),
     merge: (tags) => (tags.merge === true ? "[merge]" : null),
-    kind: (tags) => (tags.kind === undefined ? null : kindSegment(tags.kind)),
+    kind: (tags) => (tags.kind === undefined ? null : kindSegment(tags)),
     folder: (tags) => (tags.folder === undefined ? null : `[folder:${tags.folder}]`),
     path: (tags) => (tags.path === undefined ? null : `[path:${tags.path}]`),
     // `normal` is the default composite mode; emitting `[blend:normal]`
@@ -70,12 +70,16 @@ function segmentFor(key: typeof TAG_ORDER[number], tags: TagBag): string | null 
     return SEGMENT_BUILDERS[key](tags);
 }
 
-function kindSegment(kind: NonNullable<TagBag["kind"]>): string {
-    switch (kind) {
+function kindSegment(tags: TagBag): string {
+    switch (tags.kind) {
         case "mesh":
             return "[mesh]";
         case "sprite":
-            return "[sprite]";
+            // Re-emit the literal token the artist authored so an unrelated
+            // edit does not silently rewrite [spritesheet] to [sprite].
+            return tags.spritesheet === true ? "[spritesheet]" : "[sprite]";
+        default:
+            return "";
     }
 }
 
@@ -118,6 +122,9 @@ export function setKindTag(
     kind: TagBag["kind"] | undefined,
 ): string {
     const next: TagBag = { ...tags };
+    // An explicit kind pick supersedes the [spritesheet] alias: keeping the
+    // flag would re-emit a token that no longer matches the chosen kind.
+    delete next.spritesheet;
     if (kind === undefined) delete next.kind;
     else next.kind = kind;
     return writeLayerName(displayName, next);

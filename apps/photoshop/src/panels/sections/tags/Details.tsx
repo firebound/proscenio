@@ -87,13 +87,18 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
         [setField],
     );
 
+    const [selectionNote, setSelectionNote] = React.useState<string | null>(null);
     const onUseSelection = React.useCallback(() => {
         const center = readSelectionCenter();
         if (center === null) {
+            // A silent no-op reads as a broken button; tell the artist why
+            // nothing filled in.
             log.warn("TagsSection.details", "use-selection: no marquee selection bounds");
+            setSelectionNote("No marquee selection - draw one first.");
             return;
         }
         log.debug("TagsSection.details", "use-selection", center);
+        setSelectionNote(null);
         setForm((prev) => ({
             ...prev,
             originX: String(center.x),
@@ -130,7 +135,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onScale}
                 />
             </DetailRow>
-            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels" error={errors.origin}>
+            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels" error={errors.origin ?? selectionNote ?? undefined}>
                 <input
                     type="text"
                     className="tag-input narrow"

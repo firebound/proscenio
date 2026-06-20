@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "photoshop";
 
 import { loadPixelsPerUnit } from "../src/api/pixels-per-unit-store";
-import { runImport } from "../src/api/import-flow";
+import { runImport, splitManifestPath } from "../src/api/import-flow";
 import { buildExportPlan } from "../src/lib/planner";
 import { DEFAULT_PIXELS_PER_UNIT, type Manifest } from "../src/lib/manifest";
 import type { UxpFolder } from "uxp";
@@ -93,6 +93,20 @@ function stubSourceLayer(): void {
 
 afterEach(() => {
     vi.restoreAllMocks();
+});
+
+describe("splitManifestPath", () => {
+    it("splits on forward slashes", () => {
+        expect(splitManifestPath("images/blink/0.png")).toEqual(["images", "blink", "0.png"]);
+    });
+
+    it("splits on backslashes too (a foreign-authored manifest)", () => {
+        expect(splitManifestPath("images\\blink\\0.png")).toEqual(["images", "blink", "0.png"]);
+    });
+
+    it("drops empty segments from doubled or leading separators", () => {
+        expect(splitManifestPath("/images//torso.png")).toEqual(["images", "torso.png"]);
+    });
 });
 
 describe("runImport", () => {

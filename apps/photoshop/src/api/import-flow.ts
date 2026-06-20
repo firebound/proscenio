@@ -170,8 +170,16 @@ async function stampSprite(
     return true;
 }
 
+/** Split a manifest-relative path into folder segments. Manifests are
+ *  authored with `/`, but a hand-edited or foreign-tool manifest can carry
+ *  `\`; accept both so a Windows-style separator does not collapse the
+ *  whole path into one unresolvable segment. */
+export function splitManifestPath(relative: string): string[] {
+    return relative.split(/[/\\]/).filter((s) => s.length > 0);
+}
+
 async function resolveRelativeFile(folder: UxpFolder, relative: string): Promise<UxpFile | null> {
-    const segments = relative.split("/").filter((s) => s.length > 0);
+    const segments = splitManifestPath(relative);
     let current: UxpFolder = folder;
     for (let i = 0; i < segments.length - 1; i++) {
         const segment = segments[i];

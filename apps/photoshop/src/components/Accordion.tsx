@@ -42,7 +42,6 @@ export const Accordion: React.FC<Props> = ({
 
     return (
         <section className={`accordion ${open ? "open" : "closed"}`}>
-            { }
             <span
                 className="accordion-header"
                 role="button"

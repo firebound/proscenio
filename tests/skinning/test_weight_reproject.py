@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.sidecar_schema import SidecarEntry  # noqa: E402
-from core.skinning.weight_reproject import reproject_entries  # noqa: E402
+from core.skinning.sidecar_schema import SidecarEntry
+from core.skinning.weight_reproject import reproject_entries
 
 
 def _entry(uv: tuple[float, float], weights: dict[str, float]) -> SidecarEntry:

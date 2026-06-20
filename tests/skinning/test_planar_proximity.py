@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.planar_proximity import compute_proximity_weights  # noqa: E402
+from core.skinning.planar_proximity import compute_proximity_weights
 
 
 def test_two_equidistant_bones_get_equal_weight():

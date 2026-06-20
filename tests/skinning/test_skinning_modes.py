@@ -3,15 +3,10 @@
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.skinning_modes import bind_weights_for_mode  # noqa: E402
+from core.skinning.skinning_modes import bind_weights_for_mode
 
 
 def test_empty_mode_zero_weights_per_vert_per_bone():

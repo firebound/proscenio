@@ -8,7 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 # Module lives under bpy_helpers/skinning/ for organization, but the package
 # __init__.py eagerly imports bpy-bound siblings. Load the bpy-free file

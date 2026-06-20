@@ -1,15 +1,9 @@
 """Pure tests for build_sidecar_from_vgroup_data (M1)."""
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
 
 def test_build_sidecar_from_uv_and_weights_dict():
-    from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data  # noqa: E402
+    from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data
     uvs = [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)]
     weights_per_vert = [
         {"bone_a": 1.0},

@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.paint_preset_2d import (  # noqa: E402
+from core.skinning.paint_preset_2d import (
     PRESET_2D,
     PaintPresetSnapshot,
     apply_2d_preset,

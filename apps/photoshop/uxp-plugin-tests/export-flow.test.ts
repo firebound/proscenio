@@ -140,7 +140,7 @@ describe("runExport", () => {
             height: 64,
             layers: [meshLayer("good"), rejectingLayer("bad")],
         };
-        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc());
         const written: Record<string, string> = {};
         const folder = recordingFolder(written);
 
@@ -166,7 +166,7 @@ describe("runExport", () => {
             height: 64,
             layers: [meshLayer("good")],
         };
-        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc());
         const staleFolder = {
             nativePath: "/gone",
             createFile: vi.fn(async () => { throw new Error("Folder not found"); }),
@@ -178,6 +178,38 @@ describe("runExport", () => {
         expect(result.errors?.[0]).toMatch(/folder/i);
     });
 
+    it("returns stale-folder when some writes land but every failure is stale and nothing is kept", async () => {
+        // A two-frame sprite: frame 0 writes fine, frame 1's folder op fails
+        // stale, so the entry is not kept (keptEntries 0) yet not all results
+        // are failures. The failed-writes-only check must still re-pick.
+        (app as MutableApp).activeDocument = {
+            name: "hero.psd",
+            width: 64,
+            height: 64,
+            layers: [
+                {
+                    name: "blink",
+                    visible: true,
+                    layers: [meshLayer("0"), meshLayer("1")],
+                },
+            ],
+        };
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc());
+        let call = 0;
+        const folder: Record<string, unknown> = {
+            nativePath: "/out",
+            createFile: vi.fn(async (name: string) => {
+                call += 1;
+                if (call >= 2) throw new Error("Folder not found");
+                return { name, write: vi.fn(async () => {}) };
+            }),
+        };
+        folder.createFolder = vi.fn(async () => folder);
+        folder.getEntry = vi.fn();
+        const result = await runExport(opts, folder as unknown as UxpFolder);
+        expect(result.kind).toBe("stale-folder");
+    });
+
     it("writes no manifest and returns failed when every layer's PNG fails", async () => {
         (app as MutableApp).activeDocument = {
             name: "hero.psd",
@@ -185,7 +217,7 @@ describe("runExport", () => {
             height: 64,
             layers: [rejectingLayer("bad")],
         };
-        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc());
         const written: Record<string, string> = {};
         const folder = recordingFolder(written);
 

@@ -79,16 +79,30 @@ function stubDocAdd(): void {
     vi.spyOn(app.documents, "add").mockResolvedValue(doc as never);
 }
 
-function stubSourceLayer(): void {
+function sourceLayer(): Record<string, unknown> {
     const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
-    const srcLayer = {
+    return {
         bounds: { left: 0, top: 0, right: 32, bottom: 32 },
         duplicate: vi.fn(async () => duped),
     };
+}
+
+function stubSourceLayer(): void {
     vi.spyOn(app, "open").mockResolvedValue({
-        layers: [srcLayer],
+        layers: [sourceLayer()],
         closeWithoutSaving: vi.fn(async () => {}),
     } as never);
+}
+
+// app.open resolves a standard single-layer source, except the nth call
+// rejects - the corrupt/locked-PNG path for the per-entry import guards.
+function stubOpenRejectingOnCall(rejectCall: number, message: string): void {
+    let call = 0;
+    vi.spyOn(app, "open").mockImplementation(async () => {
+        call += 1;
+        if (call === rejectCall) throw new Error(message);
+        return { layers: [sourceLayer()], closeWithoutSaving: vi.fn(async () => {}) } as never;
+    });
 }
 
 afterEach(() => {
@@ -101,7 +115,7 @@ describe("splitManifestPath", () => {
     });
 
     it("splits on backslashes too (a foreign-authored manifest)", () => {
-        expect(splitManifestPath("images\\blink\\0.png")).toEqual(["images", "blink", "0.png"]);
+        expect(splitManifestPath(String.raw`images\blink\0.png`)).toEqual(["images", "blink", "0.png"]);
     });
 
     it("drops empty segments from doubled or leading separators", () => {
@@ -144,17 +158,7 @@ describe("runImport", () => {
 
     it("keeps prior progress when one entry's open rejects", async () => {
         stubDocAdd();
-        const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
-        const srcLayer = {
-            bounds: { left: 0, top: 0, right: 32, bottom: 32 },
-            duplicate: vi.fn(async () => duped),
-        };
-        let call = 0;
-        vi.spyOn(app, "open").mockImplementation(async () => {
-            call += 1;
-            if (call === 2) throw new Error("corrupt PNG");
-            return { layers: [srcLayer], closeWithoutSaving: vi.fn(async () => {}) } as never;
-        });
+        stubOpenRejectingOnCall(2, "corrupt PNG");
         const result = await runImport(twoMeshManifest(), folderResolving({ isFile: true, name: "x.png" }));
         expect(result.kind).toBe("ok");
         expect(result.stamped).toBe(1);
@@ -164,17 +168,7 @@ describe("runImport", () => {
 
     it("keeps the frames that landed when one sprite frame's open rejects", async () => {
         stubDocAdd();
-        const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
-        const srcLayer = {
-            bounds: { left: 0, top: 0, right: 32, bottom: 32 },
-            duplicate: vi.fn(async () => duped),
-        };
-        let call = 0;
-        vi.spyOn(app, "open").mockImplementation(async () => {
-            call += 1;
-            if (call === 2) throw new Error("corrupt frame");
-            return { layers: [srcLayer], closeWithoutSaving: vi.fn(async () => {}) } as never;
-        });
+        stubOpenRejectingOnCall(2, "corrupt frame");
         const manifest = spriteManifest();
         (manifest.layers[0] as { frames: unknown[] }).frames = [
             { index: 0, path: "images/blink/0.png" },

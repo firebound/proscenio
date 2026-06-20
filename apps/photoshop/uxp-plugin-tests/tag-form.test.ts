@@ -183,6 +183,11 @@ describe("detailFormErrors surfaces rejected input", () => {
         expect(detailFormErrors(form({ originX: "x", originY: "2" })).origin).toBeDefined();
     });
 
+    it("flags a partly-numeric origin like 1abc (strict parse, not parseFloat)", () => {
+        expect(detailFormErrors(form({ originX: "1abc", originY: "2" })).origin).toBeDefined();
+        expect(detailFormErrors(form({ originX: "1", originY: "2px" })).origin).toBeDefined();
+    });
+
     it("flags a name pattern missing the * wildcard", () => {
         expect(detailFormErrors(form({ namePattern: "literal" })).namePattern).toBeDefined();
     });

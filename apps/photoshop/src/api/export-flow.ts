@@ -207,10 +207,13 @@ export async function runExport(
                 errors: failures,
             };
         }
-        // Every write failed for a "folder is gone" reason: the chosen
-        // output folder was moved or deleted mid-session. Surface a re-pick
-        // rather than a wall of identical not-found lines.
-        if (pngResults.length > 0 && pngResults.every((r) => !r.ok && isStaleFolderError(r.skippedReason))) {
+        // No entry survived and every failed write is a "folder is gone"
+        // reason: the chosen output folder was moved or deleted mid-session.
+        // Test the failures, not the whole result set - some writes may have
+        // landed before the folder vanished. Surface a re-pick rather than a
+        // wall of identical not-found lines.
+        const failedWrites = pngResults.filter((r) => !r.ok);
+        if (failedWrites.length > 0 && failedWrites.every((r) => isStaleFolderError(r.skippedReason))) {
             return staleFolderResult();
         }
         log.warn("export-flow", "runExport failed - no entry exported", { total });

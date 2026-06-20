@@ -24,12 +24,19 @@ describe("tagNodeIdentity", () => {
     });
 
     it("falls back to the display path when there is no id", () => {
-        expect(tagNodeIdentity({ displayPath: ["body", "arm"] })).toBe("path:body/arm");
+        expect(tagNodeIdentity({ displayPath: ["body", "arm"] })).toBe('path:["body","arm"]');
     });
 
     it("distinguishes two same-named siblings by their distinct ids", () => {
         const a = tagNodeIdentity({ id: 1, displayPath: ["dup"] });
         const b = tagNodeIdentity({ id: 2, displayPath: ["dup"] });
+        expect(a).not.toBe(b);
+    });
+
+    it("does not collide two hierarchies that share a slash-joined path", () => {
+        // Without JSON encoding, both join("/") to "a/b/c".
+        const a = tagNodeIdentity({ displayPath: ["a/b", "c"] });
+        const b = tagNodeIdentity({ displayPath: ["a", "b/c"] });
         expect(a).not.toBe(b);
     });
 });

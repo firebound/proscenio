@@ -50,6 +50,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
     // mark the offending rows instead.
     const errors = React.useMemo(() => detailFormErrors(form), [form]);
     const hasErrors = Object.keys(errors).length > 0;
+    const [selectionNote, setSelectionNote] = React.useState<string | null>(null);
 
     const setField = React.useCallback(<K extends keyof DetailForm>(key: K, value: DetailForm[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -78,11 +79,18 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
         [setField],
     );
     const onOriginX = React.useCallback(
-        (e: React.SyntheticEvent) => { setField("originX", (e.target as HTMLInputElement).value); },
+        (e: React.SyntheticEvent) => {
+            // Typing valid coordinates dismisses the stale "no marquee" note.
+            setSelectionNote(null);
+            setField("originX", (e.target as HTMLInputElement).value);
+        },
         [setField],
     );
     const onOriginY = React.useCallback(
-        (e: React.SyntheticEvent) => { setField("originY", (e.target as HTMLInputElement).value); },
+        (e: React.SyntheticEvent) => {
+            setSelectionNote(null);
+            setField("originY", (e.target as HTMLInputElement).value);
+        },
         [setField],
     );
     const onOriginMarker = React.useCallback(
@@ -94,7 +102,6 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
         [setField],
     );
 
-    const [selectionNote, setSelectionNote] = React.useState<string | null>(null);
     const onUseSelection = React.useCallback(() => {
         const center = readSelectionCenter();
         if (center === null) {

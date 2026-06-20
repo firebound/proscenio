@@ -50,9 +50,13 @@ export function clearRememberedFolder(): void {
 // other I/O errors that a re-pick would not fix.
 const STALE_FOLDER_PATTERN = /not found|no such|does not exist|no longer|entry ?not ?found|cannot be found/i;
 
+function errorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    return typeof err === "string" ? err : "";
+}
+
 export function isStaleFolderError(err: unknown): boolean {
-    const message = err instanceof Error ? err.message : typeof err === "string" ? err : "";
-    return STALE_FOLDER_PATTERN.test(message);
+    return STALE_FOLDER_PATTERN.test(errorMessage(err));
 }
 
 function readToken(): string | null {

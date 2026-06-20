@@ -17,6 +17,7 @@ button + file picker.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -67,6 +68,7 @@ def import_manifest(
     """
     manifest = psd_manifest.load(manifest_path)
     _sync_scene_pixels_per_unit(manifest)
+    _apply_flat_color_management()
     armature_obj = build_root_armature(
         name=_armature_name(manifest),
         root_bone_name=root_bone_name,
@@ -89,6 +91,22 @@ def import_manifest(
     if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
+
+
+def _apply_flat_color_management() -> None:
+    """Switch the scene view transform to Standard for flat 2D art.
+
+    Proscenio cutout art is authored flat; Blender's 4.x default AgX (and the
+    older Filmic) view transform applies a film tone map that desaturates and
+    lightens saturated colors, so the viewport stops matching the source PNG.
+    Standard shows the rendered color 1:1. Best-effort + guarded so a config
+    without the Standard transform never blocks an import.
+    """
+    view_settings = getattr(bpy.context.scene, "view_settings", None)
+    if view_settings is None:
+        return
+    with contextlib.suppress(TypeError, AttributeError):
+        view_settings.view_transform = "Standard"
 
 
 def _sync_scene_pixels_per_unit(manifest: psd_manifest.LoadedManifest) -> None:

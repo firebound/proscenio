@@ -29,9 +29,38 @@ static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) ->
 		var info := _build_one_slot(skeleton, slot_res)
 		if info == null:
 			continue
+		var sanitized: PackedStringArray = []
 		for attachment_name: String in slot_res.attachments:
-			slot_map[NodeNameUtil.sanitize(attachment_name)] = info
+			sanitized.append(NodeNameUtil.sanitize(attachment_name))
+		info.default = _effective_default(slot_res, sanitized)
+		for attachment_name: String in sanitized:
+			slot_map[attachment_name] = info
 	return slot_map
+
+
+static func _effective_default(
+	slot_res: ProscenioSlot, sanitized_attachments: PackedStringArray
+) -> String:
+	# The default decides which attachment starts visible. When it names nothing
+	# in the slot, fall back to the first attachment so the slot is not blank
+	# (every attachment hidden). An empty default with attachments is the same
+	# fallback; a slot with no attachments has nothing to show.
+	var wanted := NodeNameUtil.sanitize(slot_res.default)
+	if wanted != "" and sanitized_attachments.has(wanted):
+		return wanted
+	if sanitized_attachments.is_empty():
+		return wanted
+	if slot_res.default != "":
+		push_warning(
+			(
+				(
+					"Proscenio: slot '%s' default '%s' matches no attachment - "
+					+ "falling back to first attachment '%s'."
+				)
+				% [slot_res.name, slot_res.default, sanitized_attachments[0]]
+			)
+		)
+	return sanitized_attachments[0]
 
 
 static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> SlotInfo:
@@ -77,5 +106,6 @@ static func _build_one_slot(skeleton: Skeleton2D, slot_res: ProscenioSlot) -> Sl
 
 	var info := SlotInfo.new()
 	info.node = node
-	info.default = NodeNameUtil.sanitize(slot_res.default)
+	# `default` (the effective starting-visible attachment) is resolved by the
+	# caller, which holds the full attachment list needed for the fallback.
 	return info

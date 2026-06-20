@@ -2,6 +2,7 @@
 extends RefCounted
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
+const PackedVecUtil := preload("res://addons/proscenio/builders/packed_vec_util.gd")
 const SpriteAttachUtil := preload("res://addons/proscenio/builders/sprite_attach_util.gd")
 
 
@@ -10,14 +11,19 @@ static func _apply_skinning(
 	skeleton: Skeleton2D,
 	weights: Array[ProscenioWeight],
 ) -> void:
-	# Bones whose name does not resolve under the skeleton are skipped, not
-	# fatal - the rest of the rig still imports.
-	poly.skeleton = poly.get_path_to(skeleton)
-	poly.clear_bones()
+	# Resolve weights BEFORE binding. Binding a Polygon2D to a skeleton with zero
+	# resolved bones leaves it skeleton-deformed by nothing and collapses it to a
+	# point, so an all-missing-bone mesh stays unbound (a plain rig-root mesh)
+	# instead. Bones that do not resolve are skipped, not fatal.
+	var bone_paths: Array[NodePath] = []
+	var bone_values: Array[PackedFloat32Array] = []
 	for weight in weights:
 		var bone_name := NodeNameUtil.sanitize(weight.bone)
 		var bone_node := skeleton.find_child(bone_name, true, false)
-		if bone_node == null:
+		# find_child matches by name across node types, so a slot Node2D anchor
+		# sharing a bone name would resolve here; require a Bone2D so a non-bone
+		# match is skipped, not skinned to.
+		if not (bone_node is Bone2D):
 			push_error(
 				(
 					"Proscenio: sprite '%s' weight entry references missing bone '%s' - skipping."
@@ -25,8 +31,22 @@ static func _apply_skinning(
 				)
 			)
 			continue
-		var packed := PackedFloat32Array(weight.values)
-		poly.add_bone(poly.get_path_to(bone_node), packed)
+		bone_paths.append(poly.get_path_to(bone_node))
+		bone_values.append(PackedFloat32Array(weight.values))
+
+	if bone_paths.is_empty():
+		push_error(
+			(
+				"Proscenio: sprite '%s' has no resolvable skin weights - leaving it unbound."
+				% poly.name
+			)
+		)
+		return
+
+	poly.skeleton = poly.get_path_to(skeleton)
+	poly.clear_bones()
+	for i in bone_paths.size():
+		poly.add_bone(bone_paths[i], bone_values[i])
 
 
 static func attach_elements(
@@ -58,7 +78,7 @@ static func _build_mesh(
 
 	var pts := PackedVector2Array()
 	for p: PackedFloat32Array in sprite.polygon:
-		pts.append(Vector2(p[0], p[1]))
+		pts.append(PackedVecUtil.to_vec2(p))
 	poly.polygon = pts
 
 	# Multi-face meshes carry per-face vertex-index arrays (automesh
@@ -81,7 +101,7 @@ static func _build_mesh(
 	if sprite_tex != null:
 		uv_scale = sprite_tex.get_size()
 	for u: PackedFloat32Array in sprite.uv:
-		uvs.append(Vector2(u[0] * uv_scale.x, u[1] * uv_scale.y))
+		uvs.append(PackedVecUtil.to_vec2(u) * uv_scale)
 	poly.uv = uvs
 
 	if sprite_tex != null:

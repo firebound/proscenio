@@ -905,8 +905,11 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 _SECTION_WHAT,
                 "Bake Current Pose keys every bone at the playhead. Toggle IK adds or removes"
                 " an IK constraint plus a control bone at the chain tip. Save Pose to Library"
-                " stores the pose as a Blender asset. None of these reach the .proscenio -"
-                " they are authoring conveniences.",
+                " stores the pose as a Blender asset. These three are authoring conveniences"
+                " and never reach the .proscenio. Bake IK to Keyframes is the exception: it"
+                " bakes the active bone's IK chain to bone keyframes over the action range"
+                " and clears the IK constraint, so the exporter reads real bone motion"
+                " instead of flat fcurves - run it before export on any animated IK chain.",
             ),
         ),
     ),

@@ -21,6 +21,10 @@ colorband
 datablock
 datablocks
 depsgraph
+desaturate
+desaturated
+desaturates
+desaturating
 DONOTSAVECHANGES
 dopesheet
 embossless

@@ -196,6 +196,16 @@ def node_input_by_name(node: bpy.types.Node, name: str) -> bpy.types.NodeSocket:
     return table[name]
 
 
+def node_input_at(node: bpy.types.Node, index: int) -> bpy.types.NodeSocket:
+    """Subscript ``node.inputs[index]`` (stub omits __getitem__ on NodeInputs).
+
+    For sockets that share a name - the Mix Shader's two ``Shader`` inputs - where
+    a by-name lookup is ambiguous.
+    """
+    seq = cast("list[bpy.types.NodeSocket]", node.inputs)
+    return seq[index]
+
+
 def set_material_at(mesh: bpy.types.Mesh, index: int, material: bpy.types.Material) -> None:
     """Assign ``mesh.materials[index] = material`` (stub rejects indexed assign)."""
     cast(list[bpy.types.Material], mesh.materials)[index] = material

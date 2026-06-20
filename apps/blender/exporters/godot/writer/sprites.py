@@ -220,8 +220,11 @@ def build_element(
     # Whole-mesh emission: every face's vertices, deduplicated, plus per-face
     # index arrays. Emitting only the first polygon silently truncated any
     # multi-island or triangulated (automesh) mesh to one face.
+    # strict=True: a polygon's vertex count and loop count are always equal in
+    # valid Blender mesh data, so a mismatch is corruption - fail loud rather
+    # than zip-truncating to the shorter and emitting wrong topology.
     faces = [
-        list(zip(iter_poly_vertices(poly), iter_poly_loop_indices(poly), strict=False))
+        list(zip(iter_poly_vertices(poly), iter_poly_loop_indices(poly), strict=True))
         for poly in iter_polygons(mesh)
     ]
     vertex_order, face_indices = _build_polygon_topology(faces)

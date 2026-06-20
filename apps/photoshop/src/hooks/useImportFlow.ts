@@ -20,15 +20,18 @@ export function useImportFlow(): UseImportFlow {
     const [manifestErrors, setManifestErrors] = React.useState<string[] | null>(null);
 
     const run = React.useCallback(async () => {
-        setManifestErrors(null);
-        const picked = await readManifestFromPicker();
-        if (picked.kind === "cancelled") return;
-        if (picked.kind === "invalid") {
-            setManifestErrors(picked.errors);
-            return;
-        }
+        // Go busy before the picker opens, not just before the modal: the
+        // pre-busy window otherwise leaves the button live, so a second
+        // click stacks a second picker on top of the first.
         setBusy(true);
+        setManifestErrors(null);
         try {
+            const picked = await readManifestFromPicker();
+            if (picked.kind === "cancelled") return;
+            if (picked.kind === "invalid") {
+                setManifestErrors(picked.errors);
+                return;
+            }
             const result = await runImport(picked.picked.manifest, picked.picked.folder);
             setLast(result);
         } finally {

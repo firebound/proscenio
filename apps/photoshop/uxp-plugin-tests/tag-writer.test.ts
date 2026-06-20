@@ -34,6 +34,15 @@ describe("writeLayerName", () => {
         expect(writeLayerName("blink", { kind: "sprite" })).toBe("blink [sprite]");
     });
 
+    it("preserves [spritesheet] when the bag carries the alias flag", () => {
+        expect(writeLayerName("blink", { kind: "sprite", spritesheet: true })).toBe("blink [spritesheet]");
+    });
+
+    it("round-trips a [spritesheet] group name unchanged", () => {
+        const tags = parseLayerName("eyes [spritesheet]").tags;
+        expect(writeLayerName("eyes", tags)).toBe("eyes [spritesheet]");
+    });
+
     it("formats folder + path + blend + scale", () => {
         const out = writeLayerName("eye", {
             folder: "eyes",
@@ -95,6 +104,14 @@ describe("setKindTag", () => {
     it("clears the kind", () => {
         const next = setKindTag("body", { kind: "mesh" }, undefined);
         expect(parseLayerName(next).tags.kind).toBeUndefined();
+    });
+
+    it("drops the spritesheet alias when the kind is explicitly changed", () => {
+        // A spritesheet group shows as "sprite" in the dropdown; an explicit
+        // pick normalises the alias to the plain token rather than keeping a
+        // stale [spritesheet] that no longer reflects the chosen kind.
+        const next = setKindTag("eyes", { kind: "sprite", spritesheet: true }, "mesh");
+        expect(next).toBe("eyes [mesh]");
     });
 });
 

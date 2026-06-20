@@ -153,7 +153,6 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         onClick={onToggleMerge}
                     />
                     <select
-                        key="kind"
                         className="tag-select tag-select-kind"
                         value={node.tags.kind ?? ""}
                         onChange={onKindChange}
@@ -164,7 +163,6 @@ const TagRowImpl: React.FC<TagRowProps> = ({
                         <option key="sprite" value="sprite">sprite</option>
                     </select>
                     <select
-                        key="blend"
                         className="tag-select tag-select-blend"
                         value={blendSelectValue(node.tags.blend)}
                         onChange={onBlendChange}

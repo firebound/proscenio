@@ -80,14 +80,24 @@ function diffScale(form: DetailForm, baseline: DetailForm): Diff<TagBag["scale"]
     return parseScaleValue(value) ?? SKIP;
 }
 
+// Strict origin-coordinate parse. `Number.parseFloat("1abc")` returns 1
+// and would pass an `isFinite` check, so a malformed coordinate could be
+// coerced into a written origin; gate the cast on a full numeric pattern
+// first, mirroring `parseScaleValue`.
+function parseOriginCoord(value: string): number | null {
+    if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
 function diffOrigin(form: DetailForm, baseline: DetailForm): Diff<TagBag["origin"]> {
     const ox = form.originX.trim();
     const oy = form.originY.trim();
     if (ox === baseline.originX.trim() && oy === baseline.originY.trim()) return SKIP;
     if (ox.length === 0 && oy.length === 0) return undefined;
-    const x = Number.parseFloat(ox);
-    const y = Number.parseFloat(oy);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return SKIP;
+    const x = parseOriginCoord(ox);
+    const y = parseOriginCoord(oy);
+    if (x === null || y === null) return SKIP;
     return [x, y];
 }
 
@@ -109,6 +119,45 @@ function applyDiff<K extends keyof TagBag>(
         return;
     }
     changes.set[key] = diff;
+}
+
+// One message per advanced field whose typed value the parser would
+// reject. The diff helpers above return SKIP for both "unchanged" and
+// "invalid", so they cannot drive UI feedback; this companion inspects
+// the form in isolation and names every field that holds input which
+// would be silently dropped, so `Details` can mark it instead of the
+// form showing a value that never gets written.
+export interface DetailFormErrors {
+    path?: string;
+    scale?: string;
+    origin?: string;
+    namePattern?: string;
+}
+
+export function detailFormErrors(form: DetailForm): DetailFormErrors {
+    const errors: DetailFormErrors = {};
+    const path = form.path.trim();
+    if (path.length > 0 && !isValidPathValue(path)) {
+        errors.path = String.raw`No / \ . or .. - those carve folders or escape the output dir.`;
+    }
+    const scale = form.scale.trim();
+    if (scale.length > 0 && parseScaleValue(scale) === null) {
+        errors.scale = "Must be a positive number.";
+    }
+    const ox = form.originX.trim();
+    const oy = form.originY.trim();
+    if (ox.length > 0 || oy.length > 0) {
+        if (ox.length === 0 || oy.length === 0) {
+            errors.origin = "Set both X and Y, or clear both.";
+        } else if (parseOriginCoord(ox) === null || parseOriginCoord(oy) === null) {
+            errors.origin = "X and Y must be numbers.";
+        }
+    }
+    const namePattern = form.namePattern.trim();
+    if (namePattern.length > 0 && !isValidNamePattern(namePattern)) {
+        errors.namePattern = "Needs a * wildcard for the child name.";
+    }
+    return errors;
 }
 
 export function computeChanges(form: DetailForm, baseline: DetailForm): TagChanges {

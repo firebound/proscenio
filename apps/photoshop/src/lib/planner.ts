@@ -69,9 +69,17 @@ export interface ExportPlan {
     writes: PngWrite[];
     skipped: SkippedLayer[];
     warnings: PlanWarning[];
+    /** Blocking misconfigurations: the export must not run while any are
+     *  present (unlike `warnings`, which are advisory). */
+    errors: PlanError[];
     /** Maps each manifest entry (by index, parallel to
      *  `manifest.layers`) back to the PSD layers that produced it. */
     entryRefs: EntryRef[];
+}
+
+export interface PlanError {
+    code: "template-collapse";
+    message: string;
 }
 
 export interface EntryRef {
@@ -144,8 +152,37 @@ export function buildExportPlan(
         writes: ctx.out.flatMap(toWrites),
         skipped: ctx.skipped,
         warnings: ctx.warnings,
+        errors: detectTemplateCollapse(ctx),
         entryRefs: ctx.out.map(toEntryRef),
     };
+}
+
+// A filename template that omits the token distinguishing its entries
+// makes every entry resolve to one path; the writer then overwrites each
+// previous PNG, silently shipping a manifest that points at a single
+// frame. This is unrecoverable data loss at export, so it blocks rather
+// than warns. `{name}` separates meshes; `{index}` separates a sprite's
+// frames. A lone mesh / single-frame sprite cannot collide, so the guard
+// only fires once there is something to collapse.
+function detectTemplateCollapse(ctx: WalkContext): PlanError[] {
+    const errors: PlanError[] = [];
+    const meshCount = ctx.out.filter((e) => e.kind === "mesh").length;
+    if (meshCount >= 2 && !ctx.settings.polygonTemplate.includes("{name}")) {
+        errors.push({
+            code: "template-collapse",
+            message: `Polygon filename template '${ctx.settings.polygonTemplate}' has no {name} token: all ${meshCount} meshes resolve to one path and overwrite each other. Add {name}.`,
+        });
+    }
+    const hasMultiFrameSprite = ctx.out.some(
+        (e) => e.kind === "sprite" && e.frames.length >= 2,
+    );
+    if (hasMultiFrameSprite && !ctx.settings.framesTemplate.includes("{index}")) {
+        errors.push({
+            code: "template-collapse",
+            message: `Frames filename template '${ctx.settings.framesTemplate}' has no {index} token: every frame of a sprite resolves to one path and overwrites the others. Add {index}.`,
+        });
+    }
+    return errors;
 }
 
 function toEntryRef(entry: PlannedEntry): EntryRef {

@@ -62,6 +62,14 @@ describe("parseLayerName - kind overrides", () => {
     it("[spritesheet] is an alias for sprite", () => {
         expect(parseLayerName("x [spritesheet]").tags.kind).toBe("sprite");
     });
+
+    it("[spritesheet] records the alias flag so the writer can preserve it", () => {
+        expect(parseLayerName("x [spritesheet]").tags.spritesheet).toBe(true);
+    });
+
+    it("[sprite] does not set the spritesheet flag", () => {
+        expect(parseLayerName("x [sprite]").tags.spritesheet).toBeUndefined();
+    });
 });
 
 describe("parseLayerName - origin", () => {

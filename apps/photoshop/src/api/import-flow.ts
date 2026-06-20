@@ -60,9 +60,18 @@ async function doImport(manifest: Manifest, folder: UxpFolder): Promise<ImportFl
     let stamped = 0;
     let skipped = 0;
     for (const entry of sortedEntries) {
-        const result = await stampEntry(doc, entry, folder, warnings);
-        if (result) stamped += 1;
-        else skipped += 1;
+        // Guard each entry: a rejected `app.open` (corrupt / locked PNG) or
+        // a stamp failure must degrade to a per-entry warning, not abort the
+        // batch and discard the layers already stamped. The export side has
+        // the same per-entry resilience.
+        try {
+            const result = await stampEntry(doc, entry, folder, warnings);
+            if (result) stamped += 1;
+            else skipped += 1;
+        } catch (err) {
+            skipped += 1;
+            warnings.push(`${entry.kind} ${entry.name}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
 
     return {
@@ -131,19 +140,27 @@ async function stampSprite(
             warnings.push(`sprite ${entry.name} frame ${frame.index}: missing PNG at ${frame.path}`);
             continue;
         }
-        const result = await placePngAt(
-            doc,
-            pngFile,
-            entry.position[0],
-            entry.position[1],
-            entry.size[0],
-            entry.size[1],
-        );
-        if (result.warning !== undefined) warnings.push(result.warning);
-        if (result.layer === null) continue;
-        result.layer.name = String(frame.index);
-        await moveLayerIntoGroup(result.layer, group);
-        placed += 1;
+        // A rejected open / placement on one frame degrades to a warning so
+        // the sprite keeps the frames that did land instead of losing all.
+        try {
+            const result = await placePngAt(
+                doc,
+                pngFile,
+                entry.position[0],
+                entry.position[1],
+                entry.size[0],
+                entry.size[1],
+            );
+            if (result.warning !== undefined) warnings.push(result.warning);
+            if (result.layer === null) continue;
+            result.layer.name = String(frame.index);
+            await moveLayerIntoGroup(result.layer, group);
+            placed += 1;
+        } catch (err) {
+            warnings.push(
+                `sprite ${entry.name} frame ${frame.index}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+        }
     }
     if (placed === 0) {
         await group.delete();
@@ -153,8 +170,16 @@ async function stampSprite(
     return true;
 }
 
+/** Split a manifest-relative path into folder segments. Manifests are
+ *  authored with `/`, but a hand-edited or foreign-tool manifest can carry
+ *  `\`; accept both so a Windows-style separator does not collapse the
+ *  whole path into one unresolvable segment. */
+export function splitManifestPath(relative: string): string[] {
+    return relative.split(/[/\\]/).filter((s) => s.length > 0);
+}
+
 async function resolveRelativeFile(folder: UxpFolder, relative: string): Promise<UxpFile | null> {
-    const segments = relative.split("/").filter((s) => s.length > 0);
+    const segments = splitManifestPath(relative);
     let current: UxpFolder = folder;
     for (let i = 0; i < segments.length - 1; i++) {
         const segment = segments[i];

@@ -17,7 +17,7 @@ export interface UseExportFlow {
     busy: boolean;
     last: ExportFlowResult | null;
     setOption: <K extends keyof ExportOptions>(key: K, value: ExportOptions[K]) => void;
-    run: (folder: UxpFolder) => Promise<void>;
+    run: (folder: UxpFolder) => Promise<ExportFlowResult | null>;
 }
 
 export function useExportFlow(): UseExportFlow {
@@ -35,11 +35,12 @@ export function useExportFlow(): UseExportFlow {
     );
 
     const run = React.useCallback(
-        async (folder: UxpFolder) => {
+        async (folder: UxpFolder): Promise<ExportFlowResult | null> => {
             setBusy(true);
             try {
                 const result = await runExport(opts, folder);
                 setLast(result);
+                return result;
             } finally {
                 setBusy(false);
             }

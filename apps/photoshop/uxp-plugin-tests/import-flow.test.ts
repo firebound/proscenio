@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "photoshop";
 
 import { loadPixelsPerUnit } from "../src/api/pixels-per-unit-store";
-import { runImport } from "../src/api/import-flow";
+import { runImport, splitManifestPath } from "../src/api/import-flow";
 import { buildExportPlan } from "../src/lib/planner";
 import { DEFAULT_PIXELS_PER_UNIT, type Manifest } from "../src/lib/manifest";
 import type { UxpFolder } from "uxp";
@@ -26,6 +26,19 @@ function meshManifest(): Manifest {
                 size: [32, 32],
                 z_order: 0,
             },
+        ],
+    } as unknown as Manifest;
+}
+
+function twoMeshManifest(): Manifest {
+    return {
+        format_version: 1,
+        doc: "hero.psd",
+        size: [64, 64],
+        pixels_per_unit: 100,
+        layers: [
+            { kind: "mesh", name: "torso", path: "images/torso.png", position: [0, 0], size: [32, 32], z_order: 1 },
+            { kind: "mesh", name: "head", path: "images/head.png", position: [0, 0], size: [32, 32], z_order: 0 },
         ],
     } as unknown as Manifest;
 }
@@ -66,20 +79,48 @@ function stubDocAdd(): void {
     vi.spyOn(app.documents, "add").mockResolvedValue(doc as never);
 }
 
-function stubSourceLayer(): void {
+function sourceLayer(): Record<string, unknown> {
     const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
-    const srcLayer = {
+    return {
         bounds: { left: 0, top: 0, right: 32, bottom: 32 },
         duplicate: vi.fn(async () => duped),
     };
+}
+
+function stubSourceLayer(): void {
     vi.spyOn(app, "open").mockResolvedValue({
-        layers: [srcLayer],
+        layers: [sourceLayer()],
         closeWithoutSaving: vi.fn(async () => {}),
     } as never);
 }
 
+// app.open resolves a standard single-layer source, except the nth call
+// rejects - the corrupt/locked-PNG path for the per-entry import guards.
+function stubOpenRejectingOnCall(rejectCall: number, message: string): void {
+    let call = 0;
+    vi.spyOn(app, "open").mockImplementation(async () => {
+        call += 1;
+        if (call === rejectCall) throw new Error(message);
+        return { layers: [sourceLayer()], closeWithoutSaving: vi.fn(async () => {}) } as never;
+    });
+}
+
 afterEach(() => {
     vi.restoreAllMocks();
+});
+
+describe("splitManifestPath", () => {
+    it("splits on forward slashes", () => {
+        expect(splitManifestPath("images/blink/0.png")).toEqual(["images", "blink", "0.png"]);
+    });
+
+    it("splits on backslashes too (a foreign-authored manifest)", () => {
+        expect(splitManifestPath(String.raw`images\blink\0.png`)).toEqual(["images", "blink", "0.png"]);
+    });
+
+    it("drops empty segments from doubled or leading separators", () => {
+        expect(splitManifestPath("/images//torso.png")).toEqual(["images", "torso.png"]);
+    });
 });
 
 describe("runImport", () => {
@@ -113,6 +154,30 @@ describe("runImport", () => {
         const result = await runImport(spriteManifest(), folderResolving({ isFile: true, name: "0.png" }));
         expect(result.kind).toBe("ok");
         expect(result.stamped).toBe(1);
+    });
+
+    it("keeps prior progress when one entry's open rejects", async () => {
+        stubDocAdd();
+        stubOpenRejectingOnCall(2, "corrupt PNG");
+        const result = await runImport(twoMeshManifest(), folderResolving({ isFile: true, name: "x.png" }));
+        expect(result.kind).toBe("ok");
+        expect(result.stamped).toBe(1);
+        expect(result.skipped).toBe(1);
+        expect(result.warnings?.some((w) => w.includes("corrupt PNG"))).toBe(true);
+    });
+
+    it("keeps the frames that landed when one sprite frame's open rejects", async () => {
+        stubDocAdd();
+        stubOpenRejectingOnCall(2, "corrupt frame");
+        const manifest = spriteManifest();
+        (manifest.layers[0] as { frames: unknown[] }).frames = [
+            { index: 0, path: "images/blink/0.png" },
+            { index: 1, path: "images/blink/1.png" },
+        ];
+        const result = await runImport(manifest, folderResolving({ isFile: true, name: "x.png" }));
+        expect(result.kind).toBe("ok");
+        expect(result.stamped).toBe(1);
+        expect(result.warnings?.some((w) => w.includes("corrupt frame"))).toBe(true);
     });
 
     it("returns failed when the modal throws", async () => {

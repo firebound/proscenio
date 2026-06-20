@@ -167,6 +167,15 @@ const ExportResultView: React.FC<{ result: ExportFlowResult }> = ({ result }) =>
             </div>
         );
     }
+    if (result.kind === "stale-folder") {
+        return (
+            <div className="result error">
+                <sp-body size="XS">
+                    {result.errors?.[0] ?? "The output folder is no longer accessible. Pick the folder again."}
+                </sp-body>
+            </div>
+        );
+    }
     return (
         <div className="result error">
             <sp-body size="XS">Export {result.kind}.</sp-body>

@@ -38,6 +38,18 @@ export interface TagTreeNode {
     children: TagTreeNode[];
 }
 
+/** Stable identity for a node's per-row UI draft state: the PS layer id
+ *  when present, else the display path. Two same-named siblings share a
+ *  `rawName` but differ here, so a draft (the advanced-fields form) can
+ *  reset when selection moves between them instead of leaking the prior
+ *  node's in-progress edit. */
+export function tagNodeIdentity(node: Pick<TagTreeNode, "id" | "displayPath">): string {
+    // A display-path segment can itself contain "/", so a join("/") key
+    // would collide two different hierarchies (["a/b","c"] vs ["a","b/c"]);
+    // JSON-encode the array for an unambiguous fallback key.
+    return node.id === undefined ? `path:${JSON.stringify(node.displayPath)}` : `id:${node.id}`;
+}
+
 export function buildTagTreeReusing(
     layers: Layer[],
     prev: TagTreeNode[] | null,

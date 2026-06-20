@@ -29,6 +29,8 @@ Spec 050 was pruned 2026-06-19: the four locked authoring calls shipped. The exp
 
 Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped complete - the Bind / Unbind operators (object-parent + a Child Of constraint that cancels the bone rest + the `slot_bone` field), `create_slot` migrated off real bone-parenting, the shared resolver reading `slot_bone`, legacy bone-parent normalization on bind and unbind, and the `mixed_feature` + `slot_swap` fixtures authoring the constraint. Nothing was deferred or gated - the STUDY's four items were all "now" and all shipped; the locked calls landed in [decisions.md](decisions.md).
 
+Specs 051-063 were scaffolded together on 2026-06-20 as a backlog-drain planning wave: the open per-domain backlogs (bugs-found, godot-importer, photoshop, ik-ergonomics, docs, code-quality, blender-6, sonarqube, and the CodeRabbit closed-PR sweep) were routed into focused thematic specs, each STUDY-first, to clear the known-work backlog without god-specs. They stay `planned` until each STUDY locks its calls and the TODO drives implementation.
+
 | # | Spec | Summary | Status |
 | --- | --- | --- | --- |
 | 000 | initial-plan | Initial plan: what Proscenio is, settled vs open decisions; drove the Phase 0 to Phase 1 work | pruned |
@@ -82,3 +84,16 @@ Spec 042 was pruned 2026-06-16 (PR #117): the slot bone-follow slice shipped com
 | 048 | photoshop-read-perf | Tag-list busy-flag scoping + a batchPlay multiGet document reader | pruned |
 | 049 | blender-ui-polish | Shared list component (search / multi-select / scroll) + its consumers, help popup reflow + copy revision, and small panel fixes (provenance toggle, automesh params, named snapshots) | pruned |
 | 050 | blender-authoring-design | Four locked authoring items: rotation-mode guard + convert-to-Euler, manual Y-depth offset, incorporate-Blender-mesh button, sprite-origin contract cleanup (Quick-Armature interaction returned to the backlog) | pruned |
+| 051 | godot-importer-hardening | Defensive validation in the Godot import builders plus animation-fidelity cleanups (length-guarded parsing, weight-first bind, scoped lookups, discrete sprite_frame track) | planned |
+| 052 | blender-operator-robustness | No-silent-failure sweep over Blender operators and export (first-export pixels-per-unit, atlas no-UV, bake-pose channel, guards for malformed input and freed refs) | planned |
+| 053 | photoshop-data-integrity | Photoshop plugin data-loss and resilience (spritesheet token, id-based targeting, per-entry import guard, filename template, staleness group) | planned |
+| 054 | code-review-cleanup | Cheap residue of the CodeRabbit closed-PR sweep: test gaps, DRY, dead code, doc typos, infra hardening | planned |
+| 055 | reimport-contract | Settle what survives a re-import (PSD weights and armature into Blender, the non-destructive Godot reimporter) and align code with docs | planned |
+| 056 | ik-authoring-ergonomics | Make IK chains legible and editable in Proscenio (rename, chain markers, expose constraint props, stop the .IK export leak, Rigify-style affordances) | planned |
+| 057 | materials-panel | Materials inspection and config surface versus a low-effort pixel-art shortcut; resolve the HASHED-versus-CLIP importer default | planned |
+| 058 | quick-armature-interaction-redesign | Redesign the saturated Quick Armature modal chord scheme and fit viewport pick-parent | planned |
+| 059 | skin-coordination | Spine-style named attachment sets across slots; needs a Godot runtime layer and the format-migration path | planned |
+| 060 | documentation-coverage-pass | Reconcile docs and in-panel help against the shipped surface across the three doc homes | planned |
+| 061 | blender-module-decomposition | Behavior-preserving split of the god-files (automesh_authoring, planes material) plus two sprite-bone-parent DRY folds | planned |
+| 062 | blender-6-compatibility | Gated forward-compat: sweep raw use_nodes reads to the version-robust getattr form for Blender 6.0 | planned |
+| 063 | sonarcloud-analysis-pipeline | Fix the inert SonarCloud analysis (route plus coverage wiring) and triage the 248 open issues | planned |

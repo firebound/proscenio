@@ -57,8 +57,10 @@ rigify
 rollup
 RubberHose
 softprops
+sonarcloud
 sonarlint
 sonarqube
+sonarsource
 Souperior
 spacewizard
 Spriter

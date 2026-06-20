@@ -61,7 +61,7 @@ def bone_in_picture_plane(armature: bpy.types.Object, bone_name: str) -> bool:
         return False
     world = armature.matrix_world
     direction = (world @ pose_bone.tail) - (world @ pose_bone.head)
-    if direction.length == 0.0:
+    if direction.length < 1e-9:  # degenerate (zero-length) bone
         return False
     direction.normalize()
     return abs(direction.y) < _INTO_SCREEN_MIN_Y

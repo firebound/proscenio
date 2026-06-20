@@ -142,6 +142,28 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - intent: Each layer is exported as its own trimmed PNG into the target folder.
 - code: apps/photoshop/src/api/png-writer.ts:23-77 runWrites/writeLayerPng
 
+### PS-EXPORT-RUN-06 · A collapsing filename template blocks the export
+- status: pending
+- review: keep
+- pre: A document with at least two mesh layers (or a sprite with two or more frames) and a folder picked.
+- steps:
+  1. Open "Filename templates" and set the mesh template to a value with no {name} token (for example "out.png"), then run the export.
+  2. Restore {name}, then set the sprite template to a value with no {index} token (for example "{name}.png") with a multi-frame sprite present, and export again.
+- observe: Each export is blocked before anything is written: the result is a "validation failed" message explaining the template has no {name} (or {index}) token so every mesh (or every frame) would resolve to one path and overwrite the others. Adding the missing token lets the export run.
+- intent: A filename template that drops the disambiguating token would silently overwrite PNGs and ship a manifest pointing at one file, so the planner blocks it instead of warning.
+- code: apps/photoshop/src/lib/planner.ts detectTemplateCollapse (template-collapse PlanError); apps/photoshop/src/api/export-flow.ts (plan.errors gate)
+
+### PS-EXPORT-RUN-07 · A vanished output folder prompts a re-pick
+- status: pending
+- review: keep
+- pre: A folder is picked and a document is open. To exercise it, move or delete the picked output folder in the OS after picking it but before exporting.
+- steps:
+  1. Pick a folder, then move or delete that folder on disk.
+  2. Run the export.
+- observe: The export does not bury the tester in repeated not-found lines; the result reads that the output folder is no longer accessible and to pick it again, and the Output-folder card drops back to "No folder picked." so the picker is one click away.
+- intent: When the chosen output folder vanishes mid-session, the panel surfaces a re-pick affordance instead of a raw failure, and forgets the stale folder.
+- code: apps/photoshop/src/api/export-flow.ts (stale-folder result); apps/photoshop/src/api/folder-storage.ts isStaleFolderError; apps/photoshop/src/panels/ProscenioExporter.tsx (clearFolder on stale-folder)
+
 ## Re-export sub-panel
 
 ### PS-REEXPORT-SWEEP · Re-export sub-panel inventory (visual pass)
@@ -243,7 +265,7 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - observe: "mesh" puts "[mesh]" in the layer name, "sprite" puts "[sprite]" in it, and "auto" removes the kind tag. The Photoshop layer name updates each time.
 - intent: The Kind dropdown tags a layer as a mesh (Polygon2D) or a sprite (Sprite2D), or clears the tag with auto.
 - code: apps/photoshop/src/panels/sections/tags/Row.tsx:75-84,157-168
-- note: finding - on a [spritesheet] group this rewrites it to [sprite].
+- note: a layer authored [spritesheet] reads as "sprite" in the dropdown and keeps the [spritesheet] token across unrelated edits; only an explicit kind pick here normalises it to [sprite]/[mesh].
 
 ### PS-TAGS-ROW-02 · Blend dropdown (none / multiply / screen / additive)
 - status: pending
@@ -258,8 +280,8 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 ### PS-TAGS-DETAILS-SWEEP · Tag details (advanced) inventory (visual pass)
 - status: pending
 - review: keep
-- observe: A "+"/"-" expander at the far right of a row opens and closes the advanced Tag details box (the glyph flips to "-" when open). Inside the box are a folder field, a path field, a scale field, an origin X field, an origin Y field, an origin-marker checkbox, and a name-pattern field (shown on group rows only). Three buttons are present: "From selection", Apply, and Revert; Apply and Revert are greyed out while the form has no unsaved changes or while a write is running.
-- intent: Confirm the advanced expander and every Tag details field and button are present and follow the enable-when-dirty rule.
+- observe: A "+"/"-" expander at the far right of a row opens and closes the advanced Tag details box (the glyph flips to "-" when open). Inside the box are a folder field, a path field, a scale field, an origin X field, an origin Y field, an origin-marker checkbox, and a name-pattern field (shown on group rows only). Three buttons are present: "From selection", Apply, and Revert; Revert is greyed out while the form has no unsaved changes, and Apply is greyed out while there are no unsaved changes, while a write is running, or while any field holds invalid input.
+- intent: Confirm the advanced expander and every Tag details field and button are present and follow the enable-when-dirty (and disable-on-invalid) rule.
 - code: apps/photoshop/src/panels/sections/tags/Row.tsx:97-99,182-188; apps/photoshop/src/panels/sections/tags/Details.tsx:100-182
 - note: absorbs PS-TAGS-13, PS-TAGS-22, PS-TAGS-23.
 
@@ -279,9 +301,9 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - steps:
   1. In a row's advanced details, type a plain name into the path field and click Apply.
   2. Clear it and Apply; then try a value containing a slash or a dot.
-- observe: A valid name writes "[path:NAME]" and an empty value removes the tag. A value containing "/", "\\", ".", or ".." is silently ignored - nothing changes and no error is shown.
-- intent: The path field overrides the exported filename stem for the layer, and only plain names (no slashes or dots) are accepted.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:110-119,59-62,69-74
+- observe: A valid name writes "[path:NAME]" and an empty value removes the tag. A value containing "/", "\\", ".", or ".." is rejected: the row is marked with a red edge and an inline error ("No / \\ . or .. ...") and the Apply button is greyed out until the value is fixed or cleared.
+- intent: The path field overrides the exported filename stem for the layer, and only plain names (no slashes or dots) are accepted; an invalid value is surfaced, not silently dropped.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx (onPath, DetailRow error); apps/photoshop/src/lib/tag-form.ts detailFormErrors
 
 ### PS-TAGS-DETAILS-03 · Advanced: scale field
 - status: pending
@@ -289,9 +311,9 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - steps:
   1. In a row's advanced details, type a positive number into the scale field and click Apply.
   2. Clear it and Apply; then try 0, a negative number, and letters.
-- observe: A positive number writes "[scale:N]" and an empty value removes the tag. 0, negative, or non-numeric input is ignored (nothing is written). No sub-pixel warning appears in the panel.
-- intent: The scale field multiplies the layer's bounding-box size, and only positive numbers are accepted.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:120-129,63-66,76-81
+- observe: A positive number writes "[scale:N]" and an empty value removes the tag. 0, negative, or non-numeric input is rejected: the row is marked with an inline error ("Must be a positive number.") and Apply is greyed out until it is fixed or cleared.
+- intent: The scale field multiplies the layer's bounding-box size, and only positive numbers are accepted; an invalid value is surfaced, not silently dropped.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx (onScale, DetailRow error); apps/photoshop/src/lib/tag-form.ts detailFormErrors
 
 ### PS-TAGS-DETAILS-04 · Advanced: origin X / Y fields
 - status: pending
@@ -299,9 +321,9 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - steps:
   1. In a row's advanced details, type numbers into both origin X and origin Y and click Apply.
   2. Clear both and Apply; then leave one field non-numeric and Apply.
-- observe: With both fields valid, Apply writes "[origin:X,Y]". Clearing both removes the origin tag. If either field is non-numeric, nothing is written and no error appears.
-- intent: The origin X/Y fields set an explicit pivot for the layer in pixels, overriding the default centre.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:130-146,67-74,83-92
+- observe: With both fields valid, Apply writes "[origin:X,Y]". Clearing both removes the origin tag. A half-filled pair (only X or only Y) or a non-numeric value is rejected: the origin row shows an inline error ("Set both X and Y..." or "X and Y must be numbers.") and Apply is greyed out until it is fixed or cleared.
+- intent: The origin X/Y fields set an explicit pivot for the layer in pixels, overriding the default centre; an incomplete or invalid pair is surfaced, not silently dropped.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx (onOriginX/Y, DetailRow error); apps/photoshop/src/lib/tag-form.ts detailFormErrors
 
 ### PS-TAGS-DETAILS-05 · Advanced: From selection button
 - status: pending
@@ -310,9 +332,9 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - steps:
   1. Make a rectangular marquee selection, then click "From selection".
   2. Click "From selection" again with no active selection.
-- observe: The origin X and Y fields fill in with the rounded centre of the selection (this is a draft - it needs Apply to commit). With no selection, the button does nothing visible.
-- intent: "From selection" fills the origin fields from the centre of the current Photoshop marquee.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:147-153,84-96; apps/photoshop/src/api/ps-selection-bounds.ts:15-36
+- observe: The origin X and Y fields fill in with the rounded centre of the selection (this is a draft - it needs Apply to commit). With no selection, the button reports an inline note on the origin row ("No marquee selection - draw one first.") instead of doing nothing.
+- intent: "From selection" fills the origin fields from the centre of the current Photoshop marquee, and tells the tester when there is no marquee rather than silently no-op-ing.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx (onUseSelection, selectionNote); apps/photoshop/src/api/ps-selection-bounds.ts:15-36
 
 ### PS-TAGS-DETAILS-06 · Advanced: origin marker checkbox
 - status: pending
@@ -331,9 +353,9 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 - steps:
   1. On a group row, type a pattern containing "*" into the name-pattern field and click Apply.
   2. Clear it and Apply; then try a pattern with no "*".
-- observe: A non-empty pattern that contains "*" writes "[name:..]" and an empty value removes the tag. A pattern with no "*" is ignored. The field does not appear on non-group rows at all.
-- intent: The name-pattern field sets a naming template for a group's descendants, where "*" stands in for each descendant's own name.
-- code: apps/photoshop/src/panels/sections/tags/Details.tsx:163-174,79-82,94-98
+- observe: A non-empty pattern that contains "*" writes "[name:..]" and an empty value removes the tag. A pattern with no "*" is rejected: the row shows an inline error ("Needs a * wildcard...") and Apply is greyed out until it is fixed or cleared. The field does not appear on non-group rows at all.
+- intent: The name-pattern field sets a naming template for a group's descendants, where "*" stands in for each descendant's own name; a pattern missing the wildcard is surfaced, not silently dropped.
+- code: apps/photoshop/src/panels/sections/tags/Details.tsx (onNamePattern, DetailRow error); apps/photoshop/src/lib/tag-form.ts detailFormErrors
 
 ### PS-TAGS-SYNC-01 · Layer tree stays in sync with Photoshop
 - status: pending

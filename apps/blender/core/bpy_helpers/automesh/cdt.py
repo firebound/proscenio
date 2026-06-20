@@ -81,9 +81,7 @@ def _build_cdt_inputs(
     """
     outer_count = len(outer_world)
     inner_count = len(inner_world)
-    all_coords: list[tuple[float, float]] = (
-        list(outer_world) + list(inner_world) + list(interior_points)
-    )
+    all_coords: list[tuple[float, float]] = outer_world + inner_world + interior_points
     edges_constraint = cyclic_loop_edges(0, outer_count)
     if inner_count >= 3:
         edges_constraint.extend(cyclic_loop_edges(outer_count, inner_count))

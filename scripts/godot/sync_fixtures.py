@@ -31,8 +31,8 @@ Link strategy:
 - If both fail, falls back to ``shutil.copy2`` and prints a warning. Edits
   in examples/ won't propagate live in this last-resort path.
 
-Output is **gitignored**. Treat ``apps/godot/<name>/`` as derived; regenerate
-when sources change.
+Output is **gitignored**. Treat ``apps/godot/examples/<name>/`` as derived;
+regenerate when sources change.
 
 Run from the repository root:
 
@@ -143,7 +143,7 @@ def _link_wrappers(fixture_root: Path, dest: Path) -> int:
 
 
 def sync_one(short_name: str, fixture_root: Path) -> dict[str, int]:
-    """Mirror a single fixture into ``apps/godot/<short_name>/``."""
+    """Mirror a single fixture into ``apps/godot/examples/<short_name>/``."""
     dest = GODOT_DEST_DIR / short_name
     if dest.exists():
         shutil.rmtree(dest)

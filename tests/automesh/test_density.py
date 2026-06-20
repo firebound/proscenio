@@ -67,6 +67,12 @@ class TestPointInPolygon:
     def test_outside_above_right(self) -> None:
         assert point_in_polygon((11.0, 11.0), _square(10.0)) is False
 
+    def test_point_on_boundary_returns_false(self) -> None:
+        # Documented contract: a point sitting exactly on an edge is
+        # "outside" (the explicit boundary check guards the indeterminate
+        # ray-cast for on-segment points).
+        assert point_in_polygon((5.0, 0.0), _square(10.0)) is False
+
     def test_short_polygon_returns_false(self) -> None:
         assert point_in_polygon((0.0, 0.0), [(0.0, 0.0), (1.0, 1.0)]) is False
 

@@ -80,10 +80,11 @@ def emit_ts_bindings(
         ts_name = schema_path.stem.replace(".schema", "") + ".ts"
         target = bindings_dir / ts_name
         body = _run_json_schema_to_typescript(schema_path)
-        # json-schema-to-typescript prepends `/* eslint-disable */`, but
-        # schema_bindings/ is already excluded from the eslint run; drop it
-        # so the emit reproduces byte-for-byte (the staleness gate).
-        body = body.replace("/* eslint-disable */", "", 1)
+        # json-schema-to-typescript prepends `/* eslint-disable */` on its own
+        # line, but schema_bindings/ is already excluded from the eslint run;
+        # drop the marker and its trailing newline so the emit reproduces
+        # byte-for-byte (the staleness gate) without a double blank line.
+        body = body.replace("/* eslint-disable */\n", "", 1)
         write_atomic(target, _AUTO_HEADER + "\n" + body)
         written.append(target)
     return written

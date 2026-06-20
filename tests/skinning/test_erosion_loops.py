@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.automesh.contour import BinaryMask  # noqa: E402
-from core.automesh.erosion_loops import compute_inner_loops  # noqa: E402
+from core.automesh.contour import BinaryMask
+from core.automesh.erosion_loops import compute_inner_loops
 
 
 def _solid_square(side: int) -> BinaryMask:

@@ -1,8 +1,7 @@
-"""Mesh body + weight paint draws (the authoring panel + the weight-paint inline controls).
+"""Mesh body draw for the Active Mesh subpanel.
 
 Mesh mode block: poly count, vertex group count, reproject UV
-button, isolated material toggle, shared region box. Plus the inline
-weight-paint brush mirror used when the user is in PAINT_WEIGHT mode.
+button, isolated material toggle, shared region box.
 """
 
 from __future__ import annotations
@@ -23,22 +22,3 @@ def draw_body(
     layout.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
     layout.prop(props, "material_isolated")
     layout.prop(props, "exclude_from_atlas")
-
-
-def draw_weight_paint(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
-    """Mirror Blender's weight-paint brush controls inline."""
-    box = layout.box()
-    box.label(text="Weight paint", icon="BRUSH_DATA")
-    tool_settings = context.tool_settings
-    wp = getattr(tool_settings, "weight_paint", None)
-    brush = getattr(wp, "brush", None) if wp is not None else None
-    if brush is None:
-        box.label(text="no active brush", icon="INFO")
-        return
-    ups = tool_settings.unified_paint_settings
-    box.prop(ups, "use_unified_size", text="Unified size")
-    box.prop(ups if ups.use_unified_size else brush, "size", slider=True)
-    box.prop(ups, "use_unified_strength", text="Unified strength")
-    box.prop(ups if ups.use_unified_strength else brush, "strength", slider=True)
-    box.prop(ups if ups.use_unified_weight else brush, "weight", slider=True)
-    box.prop(brush, "use_auto_normalize", text="Auto-normalize")

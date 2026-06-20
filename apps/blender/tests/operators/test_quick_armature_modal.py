@@ -16,7 +16,7 @@ snap/lock/name math is unit-tested in ``tests/test_quick_armature_math.py``.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import bpy
 import pytest
@@ -42,8 +42,8 @@ def quick_armature_session(automesh_fixture):
         _target_armature_name = ""
         _name_prefix = "qbone"
         _last_bone_name = ""
-        _session_records: ClassVar[list] = []
-        _redo_records: ClassVar[list] = []
+        _session_records: ClassVar[list[Any]] = []
+        _redo_records: ClassVar[list[Any]] = []
         _ctrl_held = False
         _snap_increment = 1.0
         _drag_head = None

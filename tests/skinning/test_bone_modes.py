@@ -9,15 +9,9 @@ dict satisfies; this lets the tests stay pure (no bpy required).
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.bone_modes import bone_mode_for, read_bone_modes, write_bone_modes  # noqa: E402
+from core.skinning.bone_modes import bone_mode_for, read_bone_modes, write_bone_modes
 
 
 class _FakeObj:

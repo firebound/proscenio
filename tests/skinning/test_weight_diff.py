@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
-
-from core.skinning.weight_diff import diff_weights  # noqa: E402
+from core.skinning.weight_diff import diff_weights
 
 
 def test_identical_dicts_return_empty_set():
@@ -32,6 +26,12 @@ def test_eps_threshold_respected():
 def test_missing_vert_in_after_counts_as_changed():
     before = {0: 0.7, 1: 1.0}
     after = {1: 1.0}  # vert 0 dropped (weight removed by paint)
+    assert diff_weights(before, after) == {0}
+
+
+def test_missing_vert_in_before_counts_as_changed():
+    before = {1: 1.0}
+    after = {0: 0.25, 1: 1.0}  # vert 0 gained (weight added by paint)
     assert diff_weights(before, after) == {0}
 
 

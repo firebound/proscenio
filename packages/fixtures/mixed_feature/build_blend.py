@@ -42,6 +42,9 @@ from pathlib import Path
 
 import bpy
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from blend_utils import rewrite_images_to_relpath  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = (
     REPO_ROOT / "examples" / "generated" / "blender_to_godot" / "mixed_feature"
@@ -72,7 +75,7 @@ def main() -> None:
     _build_slot(armature_obj)
     _build_action(armature_obj)
     _save_blend()
-    _rewrite_images_to_relpath()
+    rewrite_images_to_relpath("[build_mixed_feature]")
     bpy.ops.wm.save_mainfile()
     print(f"[build_mixed_feature] wrote {BLEND_PATH}")
 
@@ -428,18 +431,6 @@ def _build_action(armature_obj: bpy.types.Object) -> None:
 def _save_blend() -> None:
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), check_existing=False)
-
-
-def _rewrite_images_to_relpath() -> None:
-    """After save_as, rewrite each image filepath to a ``//``-relative path."""
-    for img in bpy.data.images:
-        if not img.filepath:
-            continue
-        try:
-            img.filepath = bpy.path.relpath(img.filepath)
-        except ValueError:
-            # Different drive on Windows - leave the absolute path.
-            pass
 
 
 if __name__ == "__main__":

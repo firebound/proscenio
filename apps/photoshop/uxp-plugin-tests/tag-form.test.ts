@@ -6,7 +6,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { computeChanges, formFromTags, formsEqual, type DetailForm } from "../src/lib/tag-form";
+import {
+    computeChanges,
+    detailFormErrors,
+    formFromTags,
+    formsEqual,
+    type DetailForm,
+} from "../src/lib/tag-form";
 import { applyTagChanges } from "../src/lib/tag-writer";
 import type { TagBag } from "../src/lib/tag-parser";
 
@@ -145,6 +151,52 @@ describe("computeChanges clears", () => {
             set: {},
             clear: ["originMarker"],
         });
+    });
+});
+
+describe("detailFormErrors surfaces rejected input", () => {
+    it("reports no errors for an empty form", () => {
+        expect(detailFormErrors(EMPTY)).toEqual({});
+    });
+
+    it("reports no errors for a fully valid form", () => {
+        const f = form({ path: "hero", scale: "1.5", originX: "1", originY: "2", namePattern: "p*" });
+        expect(detailFormErrors(f)).toEqual({});
+    });
+
+    it("flags a path with separators (the value the parser silently drops)", () => {
+        expect(detailFormErrors(form({ path: "a/b" })).path).toBeDefined();
+        expect(detailFormErrors(form({ path: ".." })).path).toBeDefined();
+    });
+
+    it("flags a non-numeric or non-positive scale", () => {
+        expect(detailFormErrors(form({ scale: "1abc" })).scale).toBeDefined();
+        expect(detailFormErrors(form({ scale: "0" })).scale).toBeDefined();
+    });
+
+    it("flags a half-filled origin pair", () => {
+        expect(detailFormErrors(form({ originX: "1" })).origin).toBeDefined();
+        expect(detailFormErrors(form({ originY: "2" })).origin).toBeDefined();
+    });
+
+    it("flags a non-numeric origin", () => {
+        expect(detailFormErrors(form({ originX: "x", originY: "2" })).origin).toBeDefined();
+    });
+
+    it("flags a partly-numeric origin like 1abc (strict parse, not parseFloat)", () => {
+        expect(detailFormErrors(form({ originX: "1abc", originY: "2" })).origin).toBeDefined();
+        expect(detailFormErrors(form({ originX: "1", originY: "2px" })).origin).toBeDefined();
+    });
+
+    it("flags a name pattern missing the * wildcard", () => {
+        expect(detailFormErrors(form({ namePattern: "literal" })).namePattern).toBeDefined();
+    });
+
+    it("does not flag a valid name pattern, scale, path, or origin", () => {
+        expect(detailFormErrors(form({ namePattern: "arm_*" }))).toEqual({});
+        expect(detailFormErrors(form({ scale: "0.5" }))).toEqual({});
+        expect(detailFormErrors(form({ path: "hero-01" }))).toEqual({});
+        expect(detailFormErrors(form({ originX: "0", originY: "0" }))).toEqual({});
     });
 });
 

@@ -7,7 +7,7 @@
 
 import { app, core } from "photoshop";
 
-import { findLayerByPath } from "./_layer-find";
+import { findLayerById, findLayerByPath } from "./_layer-find";
 import { adaptDocument } from "../api/adapt-document";
 import {
     planUnderscoreMigration,
@@ -58,7 +58,11 @@ export async function applyUnderscoreMigration(): Promise<MigrationResult> {
         // eslint-disable-next-line @typescript-eslint/require-await -- modal callback is async by API contract
         async () => {
             for (const candidate of candidates) {
-                const layer = findLayerByPath(doc, candidate.layerPath);
+                // Prefer the stable id: two same-named siblings share a
+                // layerPath, so a name-only resolve could rename the wrong
+                // one. Fall back to the path when the host gave no id.
+                const layer = (candidate.id === undefined ? null : findLayerById(doc, candidate.id))
+                    ?? findLayerByPath(doc, candidate.layerPath);
                 if (layer === null) {
                     failures.push({ layerPath: candidate.layerPath, reason: "layer not found" });
                     continue;

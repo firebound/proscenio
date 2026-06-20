@@ -6,9 +6,10 @@
 
 import React from "react";
 
-import type { TagTreeNode } from "../../../lib/tag-tree";
+import { tagNodeIdentity, type TagTreeNode } from "../../../lib/tag-tree";
 import {
     computeChanges,
+    detailFormErrors,
     formFromTags,
     formsEqual,
     type DetailForm,
@@ -26,16 +27,30 @@ interface TagDetailsProps {
 export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange }) => {
     const baseline = React.useMemo(() => formFromTags(node.tags), [node.tags]);
     const [form, setForm] = React.useState<DetailForm>(baseline);
+    const identity = tagNodeIdentity(node);
+    const lastIdentity = React.useRef(identity);
     const lastRawName = React.useRef(node.rawName);
 
     React.useEffect(() => {
-        if (lastRawName.current !== node.rawName) {
+        // Reset on a node-identity change as well as an external rename:
+        // two same-named siblings share a rawName, so keying the reset on
+        // rawName alone would leak the prior sibling's draft when selection
+        // moves between them.
+        if (lastIdentity.current !== identity || lastRawName.current !== node.rawName) {
+            lastIdentity.current = identity;
             lastRawName.current = node.rawName;
             setForm(formFromTags(node.tags));
         }
-    }, [node.rawName, node.tags]);
+    }, [identity, node.rawName, node.tags]);
 
     const dirty = !formsEqual(form, baseline);
+    // Fields whose typed value the parser would reject. computeChanges
+    // silently SKIPs these, so without surfacing them the artist sees the
+    // value sitting in the box yet Apply writes nothing. Block Apply and
+    // mark the offending rows instead.
+    const errors = React.useMemo(() => detailFormErrors(form), [form]);
+    const hasErrors = Object.keys(errors).length > 0;
+    const [selectionNote, setSelectionNote] = React.useState<string | null>(null);
 
     const setField = React.useCallback(<K extends keyof DetailForm>(key: K, value: DetailForm[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -64,11 +79,18 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
         [setField],
     );
     const onOriginX = React.useCallback(
-        (e: React.SyntheticEvent) => { setField("originX", (e.target as HTMLInputElement).value); },
+        (e: React.SyntheticEvent) => {
+            // Typing valid coordinates dismisses the stale "no marquee" note.
+            setSelectionNote(null);
+            setField("originX", (e.target as HTMLInputElement).value);
+        },
         [setField],
     );
     const onOriginY = React.useCallback(
-        (e: React.SyntheticEvent) => { setField("originY", (e.target as HTMLInputElement).value); },
+        (e: React.SyntheticEvent) => {
+            setSelectionNote(null);
+            setField("originY", (e.target as HTMLInputElement).value);
+        },
         [setField],
     );
     const onOriginMarker = React.useCallback(
@@ -83,10 +105,14 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
     const onUseSelection = React.useCallback(() => {
         const center = readSelectionCenter();
         if (center === null) {
+            // A silent no-op reads as a broken button; tell the artist why
+            // nothing filled in.
             log.warn("TagsSection.details", "use-selection: no marquee selection bounds");
+            setSelectionNote("No marquee selection - draw one first.");
             return;
         }
         log.debug("TagsSection.details", "use-selection", center);
+        setSelectionNote(null);
         setForm((prev) => ({
             ...prev,
             originX: String(center.x),
@@ -105,7 +131,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onFolder}
                 />
             </DetailRow>
-            <DetailRow label="path" hint="[path:NAME] - filename stem override (no slashes)">
+            <DetailRow label="path" hint="[path:NAME] - filename stem override (no slashes)" error={errors.path}>
                 <input
                     type="text"
                     className="tag-input"
@@ -114,7 +140,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onPath}
                 />
             </DetailRow>
-            <DetailRow label="scale" hint="[scale:N] - pre-export bounds multiplier (>0)">
+            <DetailRow label="scale" hint="[scale:N] - pre-export bounds multiplier (>0)" error={errors.scale}>
                 <input
                     type="text"
                     className="tag-input"
@@ -123,7 +149,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onScale}
                 />
             </DetailRow>
-            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels">
+            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels" error={errors.origin ?? selectionNote ?? undefined}>
                 <input
                     type="text"
                     className="tag-input narrow"
@@ -153,7 +179,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                 />
             </DetailRow>
             {node.isGroup && (
-                <DetailRow label="name pattern" hint="[name:PRE*SUF] - rewrites group children names; * = original">
+                <DetailRow label="name pattern" hint="[name:PRE*SUF] - rewrites group children names; * = original" error={errors.namePattern}>
                     <input
                         type="text"
                         className="tag-input"
@@ -167,7 +193,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                 <sp-action-button onClick={onRevert} disabled={!dirty ? true : undefined}>
                     Revert
                 </sp-action-button>
-                <sp-action-button onClick={onApply} disabled={!dirty ? true : undefined}>
+                <sp-action-button onClick={onApply} disabled={!dirty || hasErrors ? true : undefined}>
                     Apply
                 </sp-action-button>
             </div>
@@ -178,10 +204,12 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
 const DetailRow: React.FC<{
     label: string;
     hint: string;
+    error?: string | undefined;
     children: React.ReactNode;
-}> = ({ label, hint, children }) => (
-    <div className="tag-detail-row" title={hint}>
+}> = ({ label, hint, error, children }) => (
+    <div className={error === undefined ? "tag-detail-row" : "tag-detail-row has-error"} title={hint}>
         <span className="tag-detail-label">{label}</span>
         <span className="tag-detail-controls">{children}</span>
+        {error !== undefined && <span className="tag-detail-error" role="alert">{error}</span>}
     </div>
 );

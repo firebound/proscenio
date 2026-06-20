@@ -18,6 +18,10 @@ export interface UnderscoreMigrationCandidate {
     layerPath: string[];
     oldName: string;
     newName: string;
+    /** Stable PS layer id, when the adapter captured one. The applier
+     *  prefers it so a duplicate same-named sibling is not mis-renamed
+     *  (the name-path alone cannot tell two siblings apart). */
+    id?: number;
 }
 
 export function planUnderscoreMigration(layers: Layer[]): UnderscoreMigrationCandidate[] {
@@ -37,7 +41,12 @@ function walk(
             const stripped = layer.name.replace(/^_+/, "").trim();
             const newName = nextName(stripped);
             if (newName !== layer.name) {
-                out.push({ layerPath, oldName: layer.name, newName });
+                out.push({
+                    layerPath,
+                    oldName: layer.name,
+                    newName,
+                    ...(layer.id === undefined ? {} : { id: layer.id }),
+                });
             }
         }
         if (layer.kind === "set") {

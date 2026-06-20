@@ -32,9 +32,16 @@ export const ProscenioValidatePanel: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [version, opts]);
 
+    // Doc Refresh re-runs the preview too: refreshing only the doc snapshot
+    // left the warnings / skipped list showing a stale run.
+    const onRefresh = React.useCallback(() => {
+        void refreshDoc();
+        preview.refresh(opts);
+    }, [refreshDoc, preview, opts]);
+
     return (
         <div className="proscenio-panel">
-            <DocSection doc={doc} onRefresh={() => { void refreshDoc(); }} />
+            <DocSection doc={doc} onRefresh={onRefresh} />
             <ValidateSection preview={preview.preview} />
         </div>
     );

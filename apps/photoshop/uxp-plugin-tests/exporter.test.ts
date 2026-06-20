@@ -652,3 +652,39 @@ describe("planner warnings", () => {
         expect(warning).toBeUndefined();
     });
 });
+
+describe("planner errors - template collapse", () => {
+    it("blocks a polygon template that drops {name} (every mesh collapses)", () => {
+        const layers: Layer[] = [
+            art("torso", { x: 0, y: 0, w: 10, h: 10 }),
+            art("head", { x: 0, y: 0, w: 10, h: 10 }),
+        ];
+        const plan = buildExportPlan(doc, layers, { ...opts, polygonTemplate: "out.png" });
+        const error = plan.errors.find((e) => e.code === "template-collapse");
+        expect(error).toBeDefined();
+        expect(error?.message).toMatch(/\{name\}/);
+    });
+
+    it("blocks a frames template that drops {index} (frames collapse)", () => {
+        const layers: Layer[] = [set("blink", [art("0"), art("1")])];
+        const plan = buildExportPlan(doc, layers, { ...opts, framesTemplate: "{name}.png" });
+        const error = plan.errors.find((e) => e.code === "template-collapse");
+        expect(error).toBeDefined();
+        expect(error?.message).toMatch(/\{index\}/);
+    });
+
+    it("does NOT block the default templates", () => {
+        const layers: Layer[] = [
+            art("torso", { x: 0, y: 0, w: 10, h: 10 }),
+            set("blink", [art("0"), art("1")]),
+        ];
+        const plan = buildExportPlan(doc, layers, opts);
+        expect(plan.errors).toEqual([]);
+    });
+
+    it("does NOT block a {name}-less polygon template with a single mesh (no collision)", () => {
+        const layers: Layer[] = [art("torso", { x: 0, y: 0, w: 10, h: 10 })];
+        const plan = buildExportPlan(doc, layers, { ...opts, polygonTemplate: "{kind}.png" });
+        expect(plan.errors.find((e) => e.code === "template-collapse")).toBeUndefined();
+    });
+});

@@ -360,10 +360,23 @@ This file is layered and grouped by subpanel: (1) global chrome tested once acro
 ### PS-VALIDATE-SWEEP · Validate sub-panel inventory (visual pass)
 - status: pending
 - review: keep
-- observe: The header badge shows the total of warnings plus skipped plus validation errors, or "ok" when that total is zero. With no document, the body shows "Open a document to begin validation." or, in the no-document state, the first error or a fallback "No document open." When everything is fine, the badge reads "ok" and the body reads "No issues. Manifest looks ready to export." When invalid, a red "Manifest invalid:" block lists one row per error. Problems are grouped under "Warnings (N)" with a row each and "Skipped (N)" with a row each.
-- intent: Confirm every Validate-panel state (empty, no-document, clean, invalid) and the warnings/skipped groups render.
-- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:16-68
+- observe: The header badge shows the total of warnings plus skipped plus validation errors plus the non-sRGB color advisory, or "ok" when that total is zero. With no document, the body shows "Open a document to begin validation." or, in the no-document state, the first error or a fallback "No document open." When everything is fine, the badge reads "ok" and the body reads "No issues. Manifest looks ready to export." When invalid, a red "Manifest invalid:" block lists one row per error. Problems are grouped under "Warnings (N)" with a row each and "Skipped (N)" with a row each. A document assigned a non-sRGB color profile adds an amber "Document profile <name> is not sRGB" advisory block at the top (behavior in PS-VALIDATE-COLOR-01).
+- intent: Confirm every Validate-panel state (empty, no-document, clean, invalid, non-sRGB advisory) and the warnings/skipped groups render.
+- code: apps/photoshop/src/panels/sections/ValidateSection.tsx:16-85
 - note: absorbs PS-AUX-06, PS-AUX-07, PS-AUX-08, PS-AUX-09, PS-AUX-10, PS-AUX-12; behavior -> FLOW-PSD-03 (Validate refresh + click-to-select offending/skipped layer).
+
+### PS-VALIDATE-COLOR-01 · Non-sRGB document advisory
+- status: pending
+- review: keep
+- pre: An open document. To exercise the warning path, have one assigned a non-sRGB profile (Adobe RGB (1998) or any wide-gamut profile) plus the ability to Edit > Convert to Profile.
+- steps:
+  1. Activate a document assigned a non-sRGB profile (Adobe RGB (1998)); open the Validate sub-panel.
+  2. Edit > Convert to Profile > sRGB IEC61966-2.1, then re-read the panel.
+  3. Activate an untagged document (Edit > Assign Profile > Don't Color Manage) and re-read the panel.
+- observe: With the non-sRGB document, Validate shows an amber advisory "Document profile Adobe RGB (1998) is not sRGB." plus a line that out-of-gamut colors clamp on export (the engine reads PNGs as sRGB and ignores embedded profiles) and to convert via Edit > Convert to Profile; the advisory counts toward the header badge total, so an otherwise-clean manifest reads the count rather than "ok". After converting to sRGB the advisory disappears and the total drops by one. The untagged ("None") document shows no advisory.
+- intent: The doc-level advisory fires only on a positively-identified non-sRGB profile - Godot reads PNG bytes as sRGB and ignores ICC, so wide-gamut authoring clamps on export - and stays silent for sRGB and untagged documents (no false positive).
+- code: apps/photoshop/src/api/doc-color-profile.ts; apps/photoshop/src/panels/sections/ValidateSection.tsx:38,52-63
+- note: classification covered headless by apps/photoshop/uxp-plugin-tests/doc-color-profile.test.ts.
 
 ## Preview (Debug) sub-panel
 

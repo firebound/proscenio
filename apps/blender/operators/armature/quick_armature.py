@@ -201,6 +201,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             pg.name_prefix if pg is not None else _DEFAULT_NAME_PREFIX
         )
         cls._snap_increment = float(pg.snap_increment) if pg is not None else 1.0
+        # Seed the front-ortho toggle from the panel (PG) value so the panel
+        # checkbox takes effect on the first invoke; it stays a real operator
+        # property so an F3 redo can still flip it per-invoke.
+        if pg is not None:
+            self.lock_to_front_ortho = bool(pg.lock_to_front_ortho)
         cls._invoke_area = context.area
         # ``context.region`` is whichever region had focus when the
         # operator fired. When invoked via the N-panel button it points

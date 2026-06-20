@@ -213,18 +213,24 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         action = bpy.data.actions.get(self.action_name)
         if action is None:
-            report_warn(self, f"action '{self.action_name}' not found")
+            report_warn(self, f"action '{self.action_name}' not found", always=True)
             return {"CANCELLED"}
         # The Skeleton picker is the single source of truth, same as every
         # other skeleton op. Do not scan the scene for an armature - that
         # silently targeted the wrong rig when more than one existed.
         armature = resolve_skeleton_target(context)
         if armature is None:
-            report_warn(self, "no armature picked - pick one in the Skeleton panel")
+            report_warn(self, "no armature picked - pick one in the Skeleton panel", always=True)
             return {"CANCELLED"}
-        if armature.animation_data is None:
-            armature.animation_data_create()
-        armature.animation_data.action = action
+        # The picked armature can be deleted between pick and click; touching a
+        # freed datablock raises ReferenceError. Guard and ask for a re-pick.
+        try:
+            if armature.animation_data is None:
+                armature.animation_data_create()
+            armature.animation_data.action = action
+        except ReferenceError:
+            report_warn(self, "picked armature no longer exists - pick one again", always=True)
+            return {"CANCELLED"}
         _sync_active_index(context, "active_action_index", bpy.data.actions, self.action_name)
         return {"FINISHED"}
 

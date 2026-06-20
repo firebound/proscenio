@@ -136,6 +136,42 @@ def test_from_json_rejects_unknown_provenance():
         from_json(payload)
 
 
+def test_from_json_raises_value_error_on_non_numeric_weight():
+    import pytest
+
+    # A non-numeric weight makes float() raise TypeError; from_json's contract
+    # is to always raise ValueError, so the failure must be converted.
+    payload = json.dumps(
+        {
+            "version": 1,
+            "vertex_group_names": ["arm"],
+            "mesh_topology_hash": "x",
+            "entries": [
+                {"uv_anchor": [0.0, 0.0], "weights": {"arm": None}, "provenance": "user_paint"}
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="non-numeric"):
+        from_json(payload)
+
+
+def test_from_json_raises_value_error_on_non_numeric_uv_anchor():
+    import pytest
+
+    payload = json.dumps(
+        {
+            "version": 1,
+            "vertex_group_names": [],
+            "mesh_topology_hash": "x",
+            "entries": [
+                {"uv_anchor": ["nope", 0.0], "weights": {}, "provenance": "user_paint"}
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="non-numeric"):
+        from_json(payload)
+
+
 def test_weight_sidecar_is_frozen():
     sidecar = WeightSidecar(
         version=1, vertex_group_names=["arm"], mesh_topology_hash="xyz", entries=[]

@@ -140,11 +140,25 @@ class PROSCENIO_OT_bake_current_pose(bpy.types.Operator):
             report_warn(self, "armature has no pose bones")
             return {"CANCELLED"}
         for bone in bones:
-            for path in ("location", "rotation_quaternion", "rotation_euler", "scale"):
+            for path in ("location", _rotation_data_path(bone.rotation_mode), "scale"):
                 if hasattr(bone, path):
                     bone.keyframe_insert(data_path=path, frame=frame)
         report_info(self, f"baked pose at frame {frame} for {len(bones)} bone(s)")
         return {"FINISHED"}
+
+
+def _rotation_data_path(rotation_mode: str) -> str:
+    """The single rotation channel a bone's ``rotation_mode`` actually uses.
+
+    Keying every rotation channel left dead fcurves on the unused one (e.g. a
+    ``rotation_quaternion`` curve on an XYZ-Euler bone), which then fight the
+    live channel on playback. Bake only the channel that matches the mode.
+    """
+    if rotation_mode == "QUATERNION":
+        return "rotation_quaternion"
+    if rotation_mode == "AXIS_ANGLE":
+        return "rotation_axis_angle"
+    return "rotation_euler"  # XYZ and the other Euler orders
 
 
 _classes: tuple[type, ...] = (

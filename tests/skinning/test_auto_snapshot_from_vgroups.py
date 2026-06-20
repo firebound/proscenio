@@ -1,9 +1,10 @@
 """Pure tests for build_sidecar_from_vgroup_data (M1)."""
 from __future__ import annotations
 
+from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data
+
 
 def test_build_sidecar_from_uv_and_weights_dict():
-    from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data
     uvs = [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)]
     weights_per_vert = [
         {"bone_a": 1.0},
@@ -17,13 +18,11 @@ def test_build_sidecar_from_uv_and_weights_dict():
 
 
 def test_empty_inputs_return_empty_sidecar():
-    from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data  # noqa: E402
     sidecar = build_sidecar_from_vgroup_data([], [])
     assert sidecar.entries == []
 
 
 def test_mismatched_lengths_truncate_to_shorter():
-    from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data  # noqa: E402
     uvs = [(0.0, 0.0), (0.5, 0.5)]
     weights = [{"a": 1.0}]
     sidecar = build_sidecar_from_vgroup_data(uvs, weights)

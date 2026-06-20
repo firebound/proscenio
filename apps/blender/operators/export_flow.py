@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import bpy
-from bpy.props import FloatProperty, StringProperty
+from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper
 
 from ..core import validation  # type: ignore[import-not-found]
@@ -17,6 +17,10 @@ from ..core._shared.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
+
+# Fallback only: the scene PropertyGroup carries the canonical pixels-per-unit
+# (default 100), so this is used solely when the scene has no proscenio props.
+_DEFAULT_PIXELS_PER_UNIT = 100.0
 
 
 def _populate_validation_results(scene: bpy.types.Scene, issues: list[validation.Issue]) -> None:
@@ -155,16 +159,15 @@ class PROSCENIO_OT_export_godot(bpy.types.Operator, ExportHelper):
     filename_ext = ".proscenio"
     filter_glob: StringProperty(default="*.proscenio", options={"HIDDEN"})  # type: ignore[valid-type]
 
-    pixels_per_unit: FloatProperty(  # type: ignore[valid-type]
-        name="Pixels per unit",
-        description="Conversion ratio between Blender units and Godot pixels",
-        default=100.0,
-        min=0.0001,
-    )
-
     def execute(self, context: bpy.types.Context) -> set[str]:
+        # Read pixels-per-unit from the scene (the panel field), not a private
+        # operator default: a private FloatProperty defaulting to 100 meant the
+        # first export ignored the panel value until a re-export. Re-export
+        # already reads the scene field; this keeps the two in lockstep.
+        props = scene_props(context)
+        pixels_per_unit = props.pixels_per_unit if props is not None else _DEFAULT_PIXELS_PER_UNIT
         if not _gate_and_write(
-            self, context.scene, self.filepath, self.pixels_per_unit, fail_verb="export"
+            self, context.scene, self.filepath, pixels_per_unit, fail_verb="export"
         ):
             return {"CANCELLED"}
 

@@ -82,3 +82,19 @@ def test_debug_prefix_applied():
     target, calls = _recorder()
     report.report_debug(target, "hello")
     assert calls == [({"INFO"}, "[Proscenio debug] hello")]
+
+
+def test_warn_always_surfaces_at_errors_level():
+    # A failed user action (a row click that cancelled) must report even at the
+    # quietest level, or the click looks like a silent no-op.
+    report.set_min_level("errors")
+    target, calls = _recorder()
+    report.report_warn(target, "no armature picked", always=True)
+    assert _levels(calls) == ["WARNING"]
+
+
+def test_warn_without_always_still_gated_at_errors_level():
+    report.set_min_level("errors")
+    target, calls = _recorder()
+    report.report_warn(target, "ordinary warning")
+    assert calls == []

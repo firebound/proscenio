@@ -67,6 +67,7 @@ def _fcurve(
         ('pose.bones["arm"].location', ("arm", "location")),
         ('pose.bones["arm"].rotation_euler', ("arm", "rotation_euler")),
         ('pose.bones["arm"].rotation_quaternion', ("arm", "rotation_quaternion")),
+        ('pose.bones["arm"].rotation_axis_angle', ("arm", "rotation_axis_angle")),
         ('pose.bones["arm"].scale', ("arm", "scale")),
         ("location", (None, None)),  # missing pose.bones prefix
         ('pose.bones["arm"].foo', (None, None)),  # unknown property

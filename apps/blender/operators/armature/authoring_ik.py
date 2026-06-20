@@ -160,6 +160,15 @@ def _set_bone_select(pose_bone: bpy.types.PoseBone, selected: bool) -> None:
         pose_bone.bone.select = selected
 
 
+def _get_bone_select(pose_bone: bpy.types.PoseBone) -> bool:
+    """Read the same selection flag ``_set_bone_select`` writes."""
+    if hasattr(pose_bone, "select"):
+        return bool(pose_bone.select)
+    if hasattr(pose_bone.bone, "select"):
+        return bool(pose_bone.bone.select)
+    return False
+
+
 def _bake_frame_range(armature: bpy.types.Object, scene: bpy.types.Scene) -> tuple[int, int]:
     """Action frame range when the rig carries one, else the scene play range."""
     anim = armature.animation_data
@@ -198,19 +207,28 @@ class PROSCENIO_OT_bake_ik_chain(bpy.types.Operator):
             report_warn(self, f"'{bone.name}' has no IK constraint to bake")
             return {"CANCELLED"}
 
+        # Snapshot selection: the bake scopes to the IK chain by selecting only
+        # those bones, so restore the artist's original per-bone selection after.
+        selection_snapshot = {pb.name: _get_bone_select(pb) for pb in armature.pose.bones}
         chain_names = {pb.name for pb in _chain_member_bones(bone, ik.chain_count)}
         for pose_bone in armature.pose.bones:
             _set_bone_select(pose_bone, pose_bone.name in chain_names)
         frame_start, frame_end = _bake_frame_range(armature, context.scene)
-        bpy.ops.nla.bake(
-            frame_start=frame_start,
-            frame_end=frame_end,
-            only_selected=True,
-            visual_keying=True,
-            clear_constraints=True,
-            use_current_action=True,
-            bake_types={"POSE"},
-        )
+        try:
+            bpy.ops.nla.bake(
+                frame_start=frame_start,
+                frame_end=frame_end,
+                only_selected=True,
+                visual_keying=True,
+                clear_constraints=True,
+                use_current_action=True,
+                bake_types={"POSE"},
+            )
+        finally:
+            # Restore on every exit path: a bake that throws must not leave the
+            # artist's selection stuck on the chain-only set.
+            for pose_bone in armature.pose.bones:
+                _set_bone_select(pose_bone, selection_snapshot.get(pose_bone.name, False))
         report_info(
             self,
             f"baked IK chain from '{bone.name}' over frames {frame_start}-{frame_end}",

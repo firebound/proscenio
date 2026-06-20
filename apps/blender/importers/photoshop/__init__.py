@@ -39,6 +39,7 @@ class ImportResult:
     meshes: list[bpy.types.Object] = field(default_factory=list)
     spritesheets: list[Path] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def import_manifest(
@@ -68,13 +69,15 @@ def import_manifest(
     :class:`psd_manifest.ManifestError` on shape mismatch.
     """
     manifest = psd_manifest.load(manifest_path)
-    _sync_scene_pixels_per_unit(manifest)
+    ppu_warning = _sync_scene_pixels_per_unit(manifest)
     _apply_flat_color_management()
     armature_obj = build_root_armature(
         name=_armature_name(manifest),
         root_bone_name=root_bone_name,
     )
     result = ImportResult(armature=armature_obj)
+    if ppu_warning is not None:
+        result.warnings.append(ppu_warning)
     for layer in manifest.layers:
         if layer.kind == "mesh":
             obj = stamp_mesh(layer, manifest, armature_obj)
@@ -110,20 +113,30 @@ def _apply_flat_color_management() -> None:
         view_settings.view_transform = "Standard"
 
 
-def _sync_scene_pixels_per_unit(manifest: psd_manifest.LoadedManifest) -> None:
+def _sync_scene_pixels_per_unit(manifest: psd_manifest.LoadedManifest) -> str | None:
     """Push the manifest's PPU onto the active scene's Proscenio props.
 
     The importer sizes every mesh by ``manifest.pixels_per_unit``; if the
     scene property kept its default while an import used 1000, a later
-    export would emit a 10x-scale mismatch. Syncing here keeps the
-    import/export round-trip consistent. No-op when the scene props are
+    export would emit a 10x-scale mismatch, so the sync is intentional. But
+    overwriting a value the user deliberately set, silently, hides that the
+    import moved it - return a warning when the two differ so the operator
+    can surface the change. No-op (and no warning) when the scene props are
     not registered (e.g. the addon is not enabled in this context).
     """
     scene = bpy.context.scene
     props = getattr(scene, "proscenio", None)
     if props is None:
-        return
-    props.pixels_per_unit = manifest.pixels_per_unit
+        return None
+    current = props.pixels_per_unit
+    incoming = manifest.pixels_per_unit
+    props.pixels_per_unit = incoming
+    if current != incoming:
+        return (
+            f"scene pixels-per-unit changed {current:g} -> {incoming:g} to match the "
+            f"imported manifest; a re-export now uses the imported scale."
+        )
+    return None
 
 
 def _anchor_meshes_at_feet(

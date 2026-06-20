@@ -195,8 +195,15 @@ def _entry_from_dict(item: object) -> SidecarEntry:
         raise ValueError(
             f"entry provenance {provenance!r} must be one of {sorted(_PROVENANCE_VALUES)}"
         )
+    # float() raises TypeError on a non-number (None, dict, list); from_json's
+    # contract is to always raise ValueError, so convert the failure mode.
+    try:
+        uv_anchor = (float(anchor_raw[0]), float(anchor_raw[1]))
+        weights = {str(k): float(v) for k, v in weights_raw.items()}
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"sidecar entry has a non-numeric uv_anchor or weight: {exc}") from exc
     return SidecarEntry(
-        uv_anchor=(float(anchor_raw[0]), float(anchor_raw[1])),
-        weights={str(k): float(v) for k, v in weights_raw.items()},
+        uv_anchor=uv_anchor,
+        weights=weights,
         provenance=cast(ProvenanceKind, provenance),
     )

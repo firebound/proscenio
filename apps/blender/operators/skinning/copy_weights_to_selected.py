@@ -47,6 +47,11 @@ class PROSCENIO_OT_copy_weights_to_selected(bpy.types.Operator):
             applied = _apply_to_target(target, source_positions, source_weights, self.max_distance)
             per_target.append((target.name, applied, len(target.data.vertices)))
         all_covered, message = summarize_transfer(per_target)
+        # Zero verts transferred across every target: nothing was applied, so
+        # do not register a successful (undoable) step - cancel and warn.
+        if sum(applied for _, applied, _ in per_target) == 0:
+            self.report({"WARNING"}, message)
+            return {"CANCELLED"}
         self.report({"INFO"} if all_covered else {"WARNING"}, message)
         return {"FINISHED"}
 

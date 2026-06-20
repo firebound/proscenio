@@ -47,9 +47,14 @@ def report_info(op: ReportTarget, msg: str) -> None:
         op.report({"INFO"}, _PREFIX + msg)
 
 
-def report_warn(op: ReportTarget, msg: str) -> None:
-    """Emit a WARNING report with the ``Proscenio:`` prefix (gated by log level)."""
-    if _min_level >= _INFO_LEVEL:
+def report_warn(op: ReportTarget, msg: str, *, always: bool = False) -> None:
+    """Emit a WARNING report with the ``Proscenio:`` prefix.
+
+    Gated by the log level by default. Pass ``always=True`` for feedback on a
+    failed user action (a row click that cancelled): that must surface even at
+    the ``errors`` verbosity, or the click looks like a silent no-op.
+    """
+    if always or _min_level >= _INFO_LEVEL:
         op.report({"WARNING"}, _PREFIX + msg)
 
 

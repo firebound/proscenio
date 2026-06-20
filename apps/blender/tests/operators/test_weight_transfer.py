@@ -40,3 +40,27 @@ def test_copy_weights_to_selected_duplicate_mesh(automesh_fixture):
             except RuntimeError:
                 continue
     assert weighted_verts > 0, "no verts received weights from copy"
+
+
+def test_copy_weights_zero_coverage_returns_cancelled(automesh_fixture):
+    """A target out of range transfers nothing, so the op cancels (no undo step)."""
+    src = bpy.data.objects["hand"]
+    bpy.context.scene.proscenio.active_armature = bpy.data.objects["automesh.hand_rig"]
+    bpy.context.view_layer.objects.active = src
+    for other in bpy.context.selected_objects:
+        other.select_set(False)
+    src.select_set(True)
+    bpy.ops.proscenio.bind_mesh_to_armature()
+
+    new_mesh = src.data.copy()
+    dup = bpy.data.objects.new("hand_far", new_mesh)
+    bpy.context.scene.collection.objects.link(dup)
+    dup.location = (1000.0, 1000.0, 1000.0)  # far beyond max_distance -> no match
+    for other in bpy.context.selected_objects:
+        other.select_set(False)
+    src.select_set(True)
+    dup.select_set(True)
+    bpy.context.view_layer.objects.active = src
+
+    result = bpy.ops.proscenio.copy_weights_to_selected(max_distance=0.001)
+    assert "CANCELLED" in result

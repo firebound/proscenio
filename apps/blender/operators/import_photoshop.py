@@ -18,6 +18,7 @@ from ..core._shared.report import (  # type: ignore[import-not-found]
     report_debug,
     report_error,
     report_info,
+    report_warn,
 )
 from ..core.psd import psd_manifest  # type: ignore[import-not-found]
 from ..importers.photoshop import import_manifest  # type: ignore[import-not-found]
@@ -95,6 +96,8 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
             msg += f"; skipped {len(result.skipped)}"
         if result.spritesheets:
             msg += f"; composed {len(result.spritesheets)} spritesheet(s)"
+        for warning in result.warnings:
+            report_warn(self, warning)
         report_info(self, msg)
         for obj in result.meshes:
             report_debug(self, f"stamped '{obj.name}' at z={obj.location.z:.4f}")

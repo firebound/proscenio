@@ -43,7 +43,10 @@ def draw_box(
 
     row = layout.row()
     armature = props.driver_source_armature
-    has_bones = armature is not None and bool(getattr(armature.data, "bones", None))
+    bones = getattr(armature.data, "bones", None) if armature is not None else None
+    # len(), not bool(): a bpy_prop_collection is truthy even when empty, so a
+    # zero-bone armature would wrongly enable the button.
+    has_bones = bones is not None and len(bones) > 0
     row.enabled = has_bones and bool(props.driver_source_bone)
     row.operator("proscenio.create_driver", text="Drive from Bone", icon="DRIVER")
 

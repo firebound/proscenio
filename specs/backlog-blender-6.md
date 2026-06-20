@@ -1,11 +1,7 @@
 # Blender 6+ compatibility backlog
 
-Forward-compatibility concerns for Blender 6.0 and later, kept apart from the other backlogs (indexed in [`backlog.md`](backlog.md)) because they are gated on a future engine release rather than on product demand. The addon currently targets Blender 5.1.1; nothing here is a bug on the supported version. Each entry promotes into a fix (or a numbered spec) when the support matrix actually adds the affected Blender release.
+Drained on 2026-06-20: the item here was routed into the focused spec of the backlog-drain wave (see [`_index.md`](_index.md)). This file is kept as a thin pointer so existing references resolve; recover the original entry from this file's git history.
 
-## Material.use_nodes removal in node-tree guards
+Routed to:
 
-**What:** material node-tree guards read `material.use_nodes` before walking `material.node_tree.nodes`. The canonical walk - `core/_shared/material_images.iter_material_node_images` (the N1 clone-dedup consolidation of the former `automesh._find_tex_image` + its `automesh_authoring` twin, PR #101) - now uses the version-robust `getattr(material, "use_nodes", True)` form. The remaining raw `use_nodes` reads still to sweep to that form: `panels/mesh_generation.py`, `panels/atlas.py`, `panels/_draw_sprite.py` (`_material_has_slicer`), `operators/atlas_pack/_paths.py` (`swap_image_in_materials`), and `core/bpy_helpers/spritesheet/spritesheet_shader.py`. The `mat.use_nodes = True` writes in `importers/photoshop/planes.py` and `operators/atlas_pack/apply.py` set the flag rather than gate on it (separate concern). CodeRabbit (PR #87, again on #101) reports `bpy.types.Material.use_nodes` is removed as a control in Blender 6.0 (already non-functional before), so a raw read breaks on 6.0.
-
-**Why:** on the targeted Blender 5.1.1 the guard is correct - a material can carry a populated `node_tree` with `use_nodes = False`, and the guard avoids reading a texture from an inactive tree. Dropping the guard outright (the literal CodeRabbit suggestion, briefly merged on #101 then reverted) regresses on 5.1 because it would then walk inactive node trees. The version-robust fix is `getattr(material, "use_nodes", True)`: it preserves the 5.1 behaviour and survives a 6.0 removal. The `_find_tex_image` de-duplication this referenced has shipped as `material_images` (N1); apply the same `getattr` form at each remaining read above.
-
-**Trigger:** the addon support matrix adds Blender 6.0, or a 6.0 pre-release surfaces the broken `material.use_nodes` access.
+- The `Material.use_nodes` read sweep to the version-robust `getattr` form (gated on the Blender 6.0 trigger) -> spec 062 blender-6-compatibility.

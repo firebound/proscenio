@@ -1,35 +1,27 @@
 # Backlog
 
-Entry point to where not-yet-shipped work is tracked. It routes to the per-domain homes so a reader finds the right one without re-deriving the layout, and it carries the QA-walk issue queue until each issue is routed into a home or into a numbered spec.
+Ponto de entrada para onde o trabalho ainda-não-entregue é rastreado. Roteia para os homes certos para que um leitor ache o lugar sem re-derivar o layout.
 
-## Where work lives
+## Onde o trabalho vive
 
-- **Locked calls** - [`decisions.md`](decisions.md). Architectural and per-feature decisions that are settled (ADR-light: the call, the rationale, the revisit trigger).
-- **Held behind a trigger** - [`gated.md`](gated.md). Real value, built only when a written demand signal fires.
-- **Sequenced second-stage** - [`deferred.md`](deferred.md). Real value waiting its turn, usually to ride a related change so its cost is shared.
-- **Declined** - [`dropped.md`](dropped.md). Value below cost, kept with its reasoning so a pruned item is never re-litigated.
-- **Per-domain product homes** - [`backlog-ui-feedback.md`](backlog-ui-feedback.md) (UI polish), [`backlog-bugs-found.md`](backlog-bugs-found.md) (still-broken bugs), [`backlog-code-quality.md`](backlog-code-quality.md) (type/lint health), [`backlog-ik-ergonomics.md`](backlog-ik-ergonomics.md) (IK authoring), [`backlog-blender-6.md`](backlog-blender-6.md) (Blender 6 forward-compat), [`backlog-godot-importer.md`](backlog-godot-importer.md) (Godot import builders), [`backlog-photoshop.md`](backlog-photoshop.md) (Photoshop plugin), [`backlog-docs.md`](backlog-docs.md) (doc/help-text coverage). The last three were carved from the 2026-06-15 QA Companion audit; each is sized for a future area STUDY, not per-issue tracking.
-- **Closed-PR review sweep** - [`backlog-coderabbit-nitpicks.md`](backlog-coderabbit-nitpicks.md). The 2026-06-18 harvest of CodeRabbit nitpicks/quick-wins across all 135 closed PRs, validated against current `main` (most flagged items were already fixed by the restructure and dropped). One report pending routing into the per-domain homes above.
+- **Specs planejados** - [`_index.md`](_index.md). A onda de drenagem de backlog de 2026-06-20 roteou os backlogs por-domínio (bugs, Godot importer, Photoshop, IK, docs, code-quality, blender-6, sonarqube e a varredura de nitpicks do CodeRabbit) para specs temáticos focados (051-063), cada um STUDY-first. Os arquivos `backlog-*.md` por-domínio agora são ponteiros finos para os specs que os absorveram.
+- **Locked calls** - [`decisions.md`](decisions.md). Decisões arquiteturais e por-feature já travadas (ADR-light: a decisão, o racional, o gatilho de revisão).
+- **Held behind a trigger** - [`gated.md`](gated.md). Valor real, construído só quando um sinal de demanda escrito dispara.
+- **Sequenced second-stage** - [`deferred.md`](deferred.md). Valor real esperando a vez, geralmente para pegar carona numa mudança relacionada e dividir o custo.
+- **Declined** - [`dropped.md`](dropped.md). Valor abaixo do custo, mantido com o racional para um item podado nunca ser re-litigado.
+- **Buckets vivos (recebem achados novos)** - [`backlog-bugs-found.md`](backlog-bugs-found.md) (bugs ainda-quebrados de teste manual), [`backlog-ui-feedback.md`](backlog-ui-feedback.md) (polish de UI), [`backlog-code-quality.md`](backlog-code-quality.md) (saúde de tipo/lint, com a baseline de auditoria preservada). Esvaziados na drenagem de 2026-06-20; seguem abertos para o que walk novo achar.
 
 ## Fila da sprint
 
-O grosso das issues de UI/UX dos walks pós-spec-036 virou as specs 049 e 050 em 2026-06-18. O **spec 049** (11 itens: o componente de lista compartilhado + seus consumidores, o reflow do help popup + a revisão de texto, e as correções de painel) foi entregue e a pasta da spec foi removida no mesmo dia - ver [`_index.md`](_index.md). O `show-provenance-overlay` toggle inerte (saído de [`backlog-bugs-found.md`](backlog-bugs-found.md)) entrou nesse pacote. O **spec 050** (4 itens de autoria travados: guarda de rotation-mode + convert-to-Euler, depth-offset manual de Y, botão incorporate-mesh, limpeza do contrato sprite-origin) foi entregue e a pasta removida em 2026-06-19 - ver [`_index.md`](_index.md). Voltou um item, que segue aberto:
-
-### Blender · Skeleton
-
-- **qa-quickarm-interaction-revision** `[feature]` - Revisar o vocabulário de interação do modal do Quick Armature: os taps de modificador (Shift/Ctrl/etc.) são ruins e precisam ser repensados, e o esquema de chords está saturado (Shift/Alt/Ctrl/X/Z ocupados). No esquema revisto, incluir o pick-parent na viewport (hit-testing de ponta de bone para reparentar mid-sketch) - há demanda. **`DECIDIR (STUDY):`** o novo vocabulário de interação (o que substitui os taps) antes de encaixar o pick-parent. Absorve o antigo `qa-pick-parent-viewport`. (Tirado do spec 050 em 2026-06-18: a redesign de interação precisa de mais tempo de decisão.)
+O grosso das issues de UI/UX dos walks pós-spec-036 virou as specs 049 e 050 em 2026-06-18 (ver [`_index.md`](_index.md)). A onda de drenagem de 2026-06-20 transformou o resto dos backlogs abertos nos specs 051-063. Nada está pendente de roteamento na fila no momento.
 
 Formato para novas issues, por app → painel: `**slug** [cat] - descrição` + refs de código (`arquivo:linha`, id de teste `BL-…` do [`checklist/blender.md`](../tools/qa-companion/checklist/blender.md)). Categorias: `[bug]` `[ui]` `[feature]` `[code]`; marcadores `[teste FAIL]`, `[quick win]`. **`DECIDIR (STUDY):`** marca pergunta de design em aberto - resolver no STUDY, não no palpite. Fluxo: issue → STUDY → implementar (este arquivo não é spec).
 
-## Itens spec-sized (não cabem numa sprint de polish)
+## Itens que viraram specs na drenagem de 2026-06-20
 
-Cada um é grande o bastante para virar spec próprio; estão aqui só para não se perderem.
+Os itens spec-sized e a issue que tinha voltado para a fila agora têm spec próprio (ver [`_index.md`](_index.md)):
 
-- **materials-panel** `[feature]` - (Reaberto em 2026-06-16: a spec 036 avaliou e descartou, mas o item foi mantido aqui a pedido. O racional do descarte - path-repair duplica o "Find Missing Files" nativo, e o resto é superfície especulativa - precisa ser respondido no STUDY próprio antes de construir.) Painel dedicado para inspeção/configuração de materials (hoje o usuário caça no Shader Editor ou em Properties > Material por objeto). Conteúdo proposto: inspeção (lista de materials com nome, users, Image Texture nodes, filepath); quick config cross-material aplicável a todos/seleção/regex (Interpolation Closest/Linear/Cubic/Smart; Blend mode Opaque/Clip/Hashed/Blend - o importer hoje seta `HASHED` por default, que faz dither stipple em pixels semi-transparentes, e pixel art quer `CLIP`; Extension; Alpha mode; Alpha threshold; Mipmaps/Anisotropic); bulk image-path fix ("Repair" com file picker); material report (únicos, compartilhando imagem, `material_isolated=True`). **`DECIDIR (STUDY):`** escopo - painel completo vs a alternativa low-effort (checkbox "Pixel art" no Active Sprite que seta Closest + nearest filter no material ativo).
-- **skin-coordination** `[feature]` - Conjuntos de attachment nomeados entre slots (estilo "skin" do Spine): um switch troca um attachment por slot em vários slots de uma vez. Superfície de coordenação de três apps (schema + writer + selector de runtime no Godot), apoiada na camada de runtime que o plugin importer-only do Godot deliberadamente não tem. **`DECIDIR (STUDY):`** forma - `skins[]` de primeira classe depende do format-migration-path; a forma aditiva via generated-animations não depende, mas tem semântica de runtime frágil a overrides.
-
-## Quick wins já em homes de backlog (ponteiros)
-
-Issues simples/baratas que já vivem num home de backlog; **permanecem lá** e aqui ficam só como ponteiro para a fila.
-
-- **docs-no-hard-wrap-rule** `[code]` `[quick win]` - Codificar a regra no-hard-wrap em [`.ai/conventions/docs.md`](../.ai/conventions/docs.md) ("prosa é uma linha por parágrafo/bullet; deixar o editor soft-wrap; nunca hand-wrap markdown ou parágrafos de comentário"); o reflow em si segue oportunista. → [`backlog-code-quality.md`](backlog-code-quality.md). cf. `tooltip-copy-revision`.
+- **materials-panel** -> spec 057 materials-panel. O STUDY respondeu o racional de descarte do spec 036 (o painel completo segue fora; só o caso pixel-art tem dor real) e corrigiu a premissa do texto antigo: o default problemático do importer é a interpolação de textura não-setada (`Linear`, que borra pixel art), não o blend mode `HASHED` - o importer roteia todo modo para `BLEND`.
+- **skin-coordination** -> spec 059 skin-coordination. Forma `skins[]` de primeira classe gated atrás de `format-migration-path` e da janela do spec 037; a forma aditiva via `Slot` é a ponte pré-gate. Gated/sequenciado, não pronto para construir.
+- **qa-quickarm-interaction-revision** -> spec 058 quick-armature-interaction-redesign. Redesign do vocabulário de interação do modal (esquema mode-layer recomendado) + pick-parent na viewport; absorve o antigo `qa-pick-parent-viewport`.
+- **docs-no-hard-wrap-rule** -> spec 054 code-review-cleanup. Codificar a regra no-hard-wrap em [`.ai/conventions/docs.md`](../.ai/conventions/docs.md).

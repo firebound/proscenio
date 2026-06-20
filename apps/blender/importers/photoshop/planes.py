@@ -24,6 +24,7 @@ no longer appears in the manifest are left for the user to clean up manually.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,6 +47,7 @@ from ...core.bpy_helpers._shared._bpy_compat import (
     iter_collection_children,
     iter_shader_nodes,
     material_by_name,
+    node_input_at,
     node_input_by_name,
     node_output_by_name,
     set_material_at,
@@ -396,6 +398,17 @@ def _attach_material(
     mesh = expect_mesh(obj)
     image = bpy.data.images.load(str(image_path), check_existing=True)
     image.name = image_path.stem
+    # Decode the PNG as sRGB explicitly: the texture must show its authored
+    # color, and a stray Non-Color / AgX assignment (config- or user-set) would
+    # shift it. The exporter writes plain sRGB PNGs.
+    colorspace = getattr(image, "colorspace_settings", None)
+    if colorspace is not None:
+        # Best-effort + guarded like _apply_flat_color_management: a non-default
+        # OCIO config (e.g. ACES) may not expose a literal "sRGB" colorspace, and
+        # the bare assignment would raise and abort the import. Leave Blender's
+        # default colorspace in that case rather than fail.
+        with contextlib.suppress(TypeError, AttributeError):
+            colorspace.name = "sRGB"
     mat_name = f"{obj.name}.mat"
     mat = material_by_name(mat_name) or bpy.data.materials.new(name=mat_name)
     mat.use_nodes = True
@@ -406,15 +419,27 @@ def _attach_material(
         )
     while nt.nodes:
         nt.nodes.remove(next(iter_shader_nodes(nt)))
+    # Unlit / shadeless: cutout art is flat 2D, so show the texture exactly - an
+    # Emission gated by the texture alpha, with no diffuse / specular / IOR sheen
+    # and no dependence on scene lighting. With a Standard view transform (set on
+    # import) this reproduces the source PNG 1:1; the old Principled BSDF washed
+    # it out with a Fresnel highlight.
     out = nt.nodes.new(type="ShaderNodeOutputMaterial")
-    bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
+    emission = nt.nodes.new(type="ShaderNodeEmission")
+    transparent = nt.nodes.new(type="ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new(type="ShaderNodeMixShader")
     tex = nt.nodes.new(type="ShaderNodeTexImage")
     if not isinstance(tex, bpy.types.ShaderNodeTexImage):
         raise RuntimeError("Proscenio: nodes.new returned the wrong type for ShaderNodeTexImage")
     tex.image = image
-    nt.links.new(node_output_by_name(tex, "Color"), node_input_by_name(bsdf, "Base Color"))
-    nt.links.new(node_output_by_name(tex, "Alpha"), node_input_by_name(bsdf, "Alpha"))
-    nt.links.new(node_output_by_name(bsdf, "BSDF"), node_input_by_name(out, "Surface"))
+    nt.links.new(node_output_by_name(tex, "Color"), node_input_by_name(emission, "Color"))
+    # Mix Shader Fac = texture alpha: Transparent (input 1) where alpha is 0, the
+    # Emission (input 2) where alpha is 1. The two shader inputs share the name
+    # "Shader", so they are addressed by index.
+    nt.links.new(node_output_by_name(tex, "Alpha"), node_input_by_name(mix, "Fac"))
+    nt.links.new(node_output_by_name(transparent, "BSDF"), node_input_at(mix, 1))
+    nt.links.new(node_output_by_name(emission, "Emission"), node_input_at(mix, 2))
+    nt.links.new(node_output_by_name(mix, "Shader"), node_input_by_name(out, "Surface"))
     _set_material_blend_method(mat, blend_mode)
     if mesh.materials:
         set_material_at(mesh, 0, mat)

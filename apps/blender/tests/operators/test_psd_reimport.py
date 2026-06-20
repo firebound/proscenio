@@ -13,6 +13,59 @@ import bpy
 import pytest
 
 
+def test_reimport_preserves_slot_parenting(automesh_fixture, tmp_path):
+    # A mesh the user re-parented into a slot Empty must keep that parent on a
+    # re-import. Slot attachment parents the mesh under the slot Empty; the
+    # re-import refreshes the art in place and must not yank it back to the
+    # armature root (which would silently break every slot attachment).
+    import json
+
+    from proscenio.core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-found]
+        parent_keep_world,
+    )
+    from proscenio.importers.photoshop import import_manifest  # type: ignore[import-not-found]
+
+    if bpy.context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    png = tmp_path / "torso.png"
+    img = bpy.data.images.new("torso_probe", 4, 4)
+    img.filepath_raw = str(png)
+    img.file_format = "PNG"
+    img.save()
+
+    manifest = {
+        "format_version": 1,
+        "doc": "slot_attach.psd",
+        "size": [64, 64],
+        "pixels_per_unit": 100.0,
+        "layers": [
+            {
+                "kind": "mesh",
+                "name": "torso",
+                "path": "torso.png",
+                "position": [10, 10],
+                "size": [20, 20],
+                "z_order": 0,
+            }
+        ],
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    first = import_manifest(manifest_path)
+    mesh = first.meshes[0]
+
+    slot = bpy.data.objects.new("hand_slot", None)
+    bpy.context.scene.collection.objects.link(slot)
+    slot.proscenio.is_slot = True
+    parent_keep_world(mesh, slot)
+    assert mesh.parent is slot
+
+    import_manifest(manifest_path)
+    assert mesh.parent is slot, "re-import yanked the mesh off its slot back to the armature"
+
+
 def _vert_weight(obj: bpy.types.Object, group_name: str, idx: int) -> float:
     vg = obj.vertex_groups.get(group_name)
     if vg is None:

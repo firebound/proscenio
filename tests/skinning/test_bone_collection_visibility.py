@@ -67,3 +67,14 @@ def test_restore_4x_round_trip():
     restore(arm, snap)
     assert arm.data.collections[0].is_visible is True
     assert arm.data.collections[1].is_visible is False
+
+
+def test_restore_3x_round_trip():
+    arm = _armature_3x({"wrist": False, "palm": True, "fingertip": False})
+    snap = snapshot(arm)
+    # mutate every bone's hide flag, then restore from the snapshot
+    for bone in arm.data.bones:
+        bone.hide = not bone.hide
+    restore(arm, snap)
+    hide_after = {bone.name: bone.hide for bone in arm.data.bones}
+    assert hide_after == {"wrist": False, "palm": True, "fingertip": False}

@@ -41,7 +41,12 @@ def test_committed_ts_bindings_match_emit() -> None:
     with tempfile.TemporaryDirectory() as tmp_str:
         fresh = Path(tmp_str)
         emit_ts_bindings(SCHEMAS_DIR, fresh)
-        for committed in PHOTOSHOP_BINDINGS_DIR.glob("*.ts"):
+        committed_files = sorted(PHOTOSHOP_BINDINGS_DIR.glob("*.ts"))
+        assert committed_files, (
+            f"no committed .ts bindings under {PHOTOSHOP_BINDINGS_DIR} - "
+            "an empty directory would let this gate pass validating nothing"
+        )
+        for committed in committed_files:
             fresh_file = fresh / committed.name
             assert fresh_file.is_file(), f"emitter no longer produces {committed.name}"
             assert fresh_file.read_text(encoding="utf-8") == committed.read_text(

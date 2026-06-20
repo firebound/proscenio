@@ -66,7 +66,9 @@ def test_far_anchor_falls_back_to_none():
 def test_fewer_than_three_old_entries_falls_back_to_nearest():
     # 1-2 donors in range inherit the nearest donor's weights rather than
     # auto_seeding, so the user does not lose paint on chained regens.
-    old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((1.0, 0.0), {"A": 1.0})]
+    # Distinct donor weights + a target closer to the first donor: the
+    # assertion now fails if nearest-selection picks the wrong donor.
+    old = [_entry((0.0, 0.0), {"A": 1.0}), _entry((1.0, 0.0), {"B": 1.0})]
     out = reproject_entries(old, [(0.3, 0.0)], max_distance=2.0)
     assert out[0] is not None
     assert out[0].weights == {"A": 1.0}
@@ -97,14 +99,17 @@ def test_degenerate_collinear_triangle_falls_back_to_nearest():
     # donors collinear so the triangle is degenerate), fall back to nearest
     # donor instead of auto_seed - otherwise weights drop at every
     # silhouette-boundary vert.
+    # Distinct donor weights + a target sitting directly above the middle
+    # donor: the assertion now fails if nearest-selection picks the wrong
+    # donor instead of the closest one.
     old = [
         _entry((0.0, 0.0), {"A": 1.0}),
-        _entry((0.5, 0.0), {"A": 1.0}),
-        _entry((1.0, 0.0), {"A": 1.0}),
+        _entry((0.5, 0.0), {"B": 1.0}),
+        _entry((1.0, 0.0), {"C": 1.0}),
     ]
     out = reproject_entries(old, [(0.5, 0.5)], max_distance=2.0)
     assert out[0] is not None
-    assert out[0].weights == {"A": 1.0}
+    assert out[0].weights == {"B": 1.0}
     assert out[0].provenance == "reprojected"
 
 

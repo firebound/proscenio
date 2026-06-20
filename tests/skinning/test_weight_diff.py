@@ -35,6 +35,12 @@ def test_missing_vert_in_after_counts_as_changed():
     assert diff_weights(before, after) == {0}
 
 
+def test_missing_vert_in_before_counts_as_changed():
+    before = {1: 1.0}
+    after = {0: 0.25, 1: 1.0}  # vert 0 gained (weight added by paint)
+    assert diff_weights(before, after) == {0}
+
+
 def test_negative_eps_raises():
     import pytest
 

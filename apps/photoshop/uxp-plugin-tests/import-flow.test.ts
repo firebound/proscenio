@@ -30,6 +30,19 @@ function meshManifest(): Manifest {
     } as unknown as Manifest;
 }
 
+function twoMeshManifest(): Manifest {
+    return {
+        format_version: 1,
+        doc: "hero.psd",
+        size: [64, 64],
+        pixels_per_unit: 100,
+        layers: [
+            { kind: "mesh", name: "torso", path: "images/torso.png", position: [0, 0], size: [32, 32], z_order: 1 },
+            { kind: "mesh", name: "head", path: "images/head.png", position: [0, 0], size: [32, 32], z_order: 0 },
+        ],
+    } as unknown as Manifest;
+}
+
 function spriteManifest(): Manifest {
     return {
         format_version: 1,
@@ -113,6 +126,50 @@ describe("runImport", () => {
         const result = await runImport(spriteManifest(), folderResolving({ isFile: true, name: "0.png" }));
         expect(result.kind).toBe("ok");
         expect(result.stamped).toBe(1);
+    });
+
+    it("keeps prior progress when one entry's open rejects", async () => {
+        stubDocAdd();
+        const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
+        const srcLayer = {
+            bounds: { left: 0, top: 0, right: 32, bottom: 32 },
+            duplicate: vi.fn(async () => duped),
+        };
+        let call = 0;
+        vi.spyOn(app, "open").mockImplementation(async () => {
+            call += 1;
+            if (call === 2) throw new Error("corrupt PNG");
+            return { layers: [srcLayer], closeWithoutSaving: vi.fn(async () => {}) } as never;
+        });
+        const result = await runImport(twoMeshManifest(), folderResolving({ isFile: true, name: "x.png" }));
+        expect(result.kind).toBe("ok");
+        expect(result.stamped).toBe(1);
+        expect(result.skipped).toBe(1);
+        expect(result.warnings?.some((w) => w.includes("corrupt PNG"))).toBe(true);
+    });
+
+    it("keeps the frames that landed when one sprite frame's open rejects", async () => {
+        stubDocAdd();
+        const duped = { translate: vi.fn(async () => {}), move: vi.fn(async () => {}), name: "" };
+        const srcLayer = {
+            bounds: { left: 0, top: 0, right: 32, bottom: 32 },
+            duplicate: vi.fn(async () => duped),
+        };
+        let call = 0;
+        vi.spyOn(app, "open").mockImplementation(async () => {
+            call += 1;
+            if (call === 2) throw new Error("corrupt frame");
+            return { layers: [srcLayer], closeWithoutSaving: vi.fn(async () => {}) } as never;
+        });
+        const manifest = spriteManifest();
+        (manifest.layers[0] as { frames: unknown[] }).frames = [
+            { index: 0, path: "images/blink/0.png" },
+            { index: 1, path: "images/blink/1.png" },
+        ];
+        const result = await runImport(manifest, folderResolving({ isFile: true, name: "x.png" }));
+        expect(result.kind).toBe("ok");
+        expect(result.stamped).toBe(1);
+        expect(result.warnings?.some((w) => w.includes("corrupt frame"))).toBe(true);
     });
 
     it("returns failed when the modal throws", async () => {

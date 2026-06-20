@@ -61,7 +61,11 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
             report_error(self, f"manifest not found - {manifest_json.name}")
             return {"CANCELLED"}
 
-        atlas_w, atlas_h, _padding, placements = read_manifest(manifest_json)
+        try:
+            atlas_w, atlas_h, _padding, placements = read_manifest(manifest_json)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            report_error(self, f"packed-atlas manifest unreadable - {exc}")
+            return {"CANCELLED"}
 
         atlas_image = bpy.data.images.get(atlas_png.stem)
         if atlas_image is None:
@@ -164,11 +168,15 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
         """Apply the packed atlas to a single sprite mesh."""
         props = getattr(obj, "proscenio", None)
         element_type = str(getattr(props, "element_type", "mesh")) if props else "mesh"
-        rewrote = self._rewrite_uvs(obj, placement, atlas_w, atlas_h)
+        # A sprite with no UV layer to remap is a no-op, not a rewrite: the
+        # shared atlas material would relink onto un-remapped UVs and render
+        # the whole atlas. Gate on the UV rewrite so the caller counts it as
+        # skipped (no UV layer) rather than as a successful sprite.
+        if not self._rewrite_uvs(obj, placement, atlas_w, atlas_h):
+            return False
         if element_type == "sprite" and props is not None:
             self._apply_sprite(props, placement, atlas_w, atlas_h)
-            return True
-        return rewrote
+        return True
 
     def _apply_sprite(
         self,

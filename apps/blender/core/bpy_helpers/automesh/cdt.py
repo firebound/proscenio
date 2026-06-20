@@ -88,9 +88,9 @@ def _build_cdt_inputs(
     if inner_count >= 3:
         edges_constraint.extend(cyclic_loop_edges(outer_count, inner_count))
     hole_offset = len(all_coords)
+    # Holes are pre-filtered to >=3-vertex loops by the caller, so no length
+    # guard here - a degenerate loop never reaches this point.
     for hole in holes:
-        if len(hole) < 3:
-            continue
         all_coords.extend(hole)
         edges_constraint.extend(cyclic_loop_edges(hole_offset, len(hole)))
         hole_offset += len(hole)
@@ -172,7 +172,11 @@ def build_mesh_via_delaunay(
     """
     if len(outer_world) < 3:
         return 0
-    holes = list(holes_world) if holes_world else []
+    # Filter degenerate hole loops up front: a <3-vertex hole adds no valid
+    # constraint, so it must not flip the output type to with-holes (which
+    # would auto-detect holes the constraint edges never carved). With the
+    # filter here, the _build_cdt_inputs guard is redundant and dropped.
+    holes = [hole for hole in holes_world if len(hole) >= 3] if holes_world else []
     all_coords, edges_constraint = _build_cdt_inputs(
         outer_world, inner_world, interior_points, holes, extra_edges=extra_edges
     )

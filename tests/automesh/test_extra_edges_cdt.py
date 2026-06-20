@@ -45,6 +45,19 @@ def test_extra_edges_none_behaves_as_empty():
     assert edges_a == edges_b
 
 
+def test_build_cdt_inputs_includes_a_valid_hole_loop():
+    """A >=3-vertex hole adds its verts + a cyclic edge loop.
+
+    The caller now pre-filters degenerate holes, so _build_cdt_inputs trusts
+    its input and adds every hole verbatim (no internal length guard).
+    """
+    outer = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)]
+    hole = [(1.0, 1.0), (2.0, 1.0), (2.0, 2.0)]
+    coords, edges = _build_cdt_inputs(outer, [], [], [hole])
+    assert len(coords) == 4 + 3  # outer + hole verts
+    assert len(edges) == 4 + 3  # outer cyclic (4) + hole cyclic (3)
+
+
 # Unit square outer polygon used by all three filter tests.
 _OUTER = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
 

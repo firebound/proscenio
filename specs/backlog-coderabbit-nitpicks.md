@@ -4,7 +4,6 @@ Drained on 2026-06-20: the closed-PR review sweep was routed across the focused 
 
 Routed to:
 
-- Blender correctness and robustness bugs (Constrained Delaunay holes, driver-shortcut boolean, atlas-apply error handling, sidecar float guard, sprites zip-strict, selection ReferenceError) -> spec 052 blender-operator-robustness.
 - The slot-anchor parent-assertion test gap -> spec 051 godot-importer-hardening.
 - The remaining test gaps, DRY extractions, redundant/cosmetic code, doc typos, the frozen-dataclass tuple fix, and the CI permissions block -> spec 054 code-review-cleanup.
 - The bare `use_nodes` atlas reads -> spec 062 blender-6-compatibility.

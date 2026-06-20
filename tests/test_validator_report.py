@@ -20,7 +20,7 @@ from proscenio_validator._types import (
 from proscenio_validator.report import print_report, write_json_report
 
 
-def _payload(*, failures: list[str], with_leaks: bool) -> SpritePayload:
+def _payload(*, failures: tuple[str, ...], with_leaks: bool) -> SpritePayload:
     metrics = Metrics(
         verts=300,
         faces=500,
@@ -32,7 +32,7 @@ def _payload(*, failures: list[str], with_leaks: bool) -> SpritePayload:
         leak_count=2 if with_leaks else 0,
         leak_quadrants=Quadrants(TL=2) if with_leaks else Quadrants(),
         leak_records_sample=(
-            [
+            (
                 LeakRecord(
                     pixel_x=1,
                     pixel_y_storage=2,
@@ -41,31 +41,31 @@ def _payload(*, failures: list[str], with_leaks: bool) -> SpritePayload:
                     world_x=0.1,
                     world_z=0.2,
                     quadrant="TL",
-                )
-            ]
+                ),
+            )
             if with_leaks
-            else []
+            else ()
         ),
         hole_bleed_count=0,
     )
-    return SpritePayload(metrics=metrics, invariants=Invariants(failures=failures, warnings=["minor"]))
+    return SpritePayload(metrics=metrics, invariants=Invariants(failures=failures, warnings=("minor",)))
 
 
 def test_print_report_passing_returns_zero() -> None:
-    report = ValidationReport(sprites={"blob": _payload(failures=[], with_leaks=False)}, failures=[])
+    report = ValidationReport(sprites={"blob": _payload(failures=(), with_leaks=False)}, failures=[])
     assert print_report(report) == 0
 
 
 def test_print_report_failing_returns_failure_count() -> None:
     report = ValidationReport(
-        sprites={"blob": _payload(failures=["bad mesh"], with_leaks=True)},
+        sprites={"blob": _payload(failures=("bad mesh",), with_leaks=True)},
         failures=["bad mesh"],
     )
     assert print_report(report) == 1
 
 
 def test_write_json_report_writes_valid_json(tmp_path: Path) -> None:
-    report = ValidationReport(sprites={"blob": _payload(failures=[], with_leaks=True)}, failures=[])
+    report = ValidationReport(sprites={"blob": _payload(failures=(), with_leaks=True)}, failures=[])
     out = tmp_path / "nested" / "report.json"
     write_json_report(report, out)
     assert out.exists()

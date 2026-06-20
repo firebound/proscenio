@@ -2,6 +2,10 @@
 
 All documentation, code comments, docstrings, commit messages, PR descriptions, and prose under `specs/` follow a small set of positive rules. The goal is text that reads like a human wrote it for another human. Part of the [agent and contributor reference](../README.md).
 
+## No hard wrapping
+
+Prose is one line per paragraph or bullet; let the editor soft-wrap; never hand-wrap markdown bodies or comment paragraphs. A hard-wrapped paragraph fights every later edit (re-flowing the whole block to change one word) and renders as one paragraph anyway. Code blocks and tables keep their own line structure.
+
 ## Information architecture
 
 The docs site (`apps/docs`) serves the `docs/` folder under three navbar sections, sliced by audience. Place a new page by audience and altitude, not by topic alone:

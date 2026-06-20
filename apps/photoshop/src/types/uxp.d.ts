@@ -241,6 +241,11 @@ declare module "photoshop" {
         readonly name: string;
         readonly width: number;
         readonly height: number;
+        /** Assigned ICC profile name, e.g. "sRGB IEC61966-2.1" or
+         *  "Adobe RGB (1998)". UXP returns the literal "None" when the
+         *  document is not colour-managed. Optional: older UXP builds may
+         *  omit it, so readers must tolerate `undefined`. */
+        readonly colorProfileName?: string;
         readonly layers: PsLayer[];
         readonly layerTree?: PsLayer[];
         /** The layers the user has selected. UXP reports an empty

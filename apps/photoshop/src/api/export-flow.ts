@@ -10,6 +10,7 @@ import type { UxpFolder } from "uxp";
 
 import { adaptDocument, type AdaptedDocument } from "./adapt-document";
 import { adaptDocumentFast } from "./active-document";
+import { readDocColorProfile, type ColorProfileStatus } from "./doc-color-profile";
 import {
     buildExportPlan,
     type EntryRef,
@@ -51,6 +52,9 @@ export interface ExportPreview {
     warnings?: PlanWarning[];
     writes?: ExportPlan["writes"];
     entryRefs?: EntryRef[];
+    /** Active document color-profile classification, for the doc-level
+     *  "not sRGB" advisory in the Validate panel. */
+    colorProfile?: ColorProfileStatus;
     errors?: string[];
 }
 
@@ -58,7 +62,7 @@ export function previewExport(opts: ExportOptions): ExportPreview {
     try {
         const doc = app.activeDocument;
         if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
-        return previewFromAdapted(adaptDocument(doc), opts);
+        return previewFromAdapted(adaptDocument(doc), opts, readDocColorProfile(doc));
     } catch (err) {
         return {
             kind: "validation-failed",
@@ -75,7 +79,7 @@ export async function previewExportAsync(opts: ExportOptions): Promise<ExportPre
         const doc = app.activeDocument;
         if (doc === null) return { kind: "no-document", errors: ["No document is open."] };
         const adapted = await adaptDocumentFast(doc);
-        return previewFromAdapted(adapted, opts);
+        return previewFromAdapted(adapted, opts, readDocColorProfile(doc));
     } catch (err) {
         return {
             kind: "validation-failed",
@@ -84,7 +88,11 @@ export async function previewExportAsync(opts: ExportOptions): Promise<ExportPre
     }
 }
 
-function previewFromAdapted(adapted: AdaptedDocument, opts: ExportOptions): ExportPreview {
+function previewFromAdapted(
+    adapted: AdaptedDocument,
+    opts: ExportOptions,
+    colorProfile: ColorProfileStatus,
+): ExportPreview {
     log.trace("export-flow", "preview opts", opts, "layers", adapted.layers.length);
     const plan = buildExportPlan(adapted.info, adapted.layers, {
         ...opts,
@@ -99,6 +107,7 @@ function previewFromAdapted(adapted: AdaptedDocument, opts: ExportOptions): Expo
             warnings: plan.warnings,
             writes: plan.writes,
             entryRefs: plan.entryRefs,
+            colorProfile,
             errors,
         };
     }
@@ -109,6 +118,7 @@ function previewFromAdapted(adapted: AdaptedDocument, opts: ExportOptions): Expo
         warnings: plan.warnings,
         writes: plan.writes,
         entryRefs: plan.entryRefs,
+        colorProfile,
     };
 }
 

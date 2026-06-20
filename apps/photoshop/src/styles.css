@@ -364,6 +364,10 @@
     border-left-color: #ef5350;
 }
 
+.proscenio-panel .result.warn {
+    border-left-color: #ffb74d;
+}
+
 .proscenio-panel .result-row.warn {
     color: #ffb74d;
 }

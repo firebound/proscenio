@@ -32,7 +32,12 @@ export const ValidateSection: React.FC<Props> = ({ preview }) => {
     const warnings = preview.warnings ?? [];
     const skipped = preview.skipped ?? [];
     const valErrors = preview.kind === "validation-failed" ? preview.errors ?? [] : [];
-    const totalIssues = warnings.length + skipped.length + valErrors.length;
+    // Doc-level advisory: a non-sRGB document clamps out-of-gamut color on
+    // export (the engine reads PNGs as sRGB). No layer to jump to, so it
+    // renders as its own block rather than a clickable row.
+    const colorWarning = preview.colorProfile?.kind === "non-srgb" ? preview.colorProfile : null;
+    const totalIssues =
+        warnings.length + skipped.length + valErrors.length + (colorWarning === null ? 0 : 1);
     const clean = totalIssues === 0;
     return (
         <Accordion
@@ -44,6 +49,18 @@ export const ValidateSection: React.FC<Props> = ({ preview }) => {
                 <sp-body size="XS" className="muted">No issues. Manifest looks ready to export.</sp-body>
             ) : (
                 <>
+                    {colorWarning !== null && (
+                        <div className="result warn">
+                            <sp-body size="XS">
+                                Document profile <strong>{colorWarning.profile}</strong> is not sRGB.
+                            </sp-body>
+                            <sp-body size="XS" className="result-row warn">
+                                Colors outside the sRGB gamut clamp on export - the game engine reads
+                                PNGs as sRGB and ignores embedded profiles. Convert the document to
+                                sRGB (Edit &gt; Convert to Profile) to author the colors the game shows.
+                            </sp-body>
+                        </div>
+                    )}
                     {valErrors.length > 0 && (
                         <div className="result error">
                             <sp-body size="XS">Manifest invalid:</sp-body>

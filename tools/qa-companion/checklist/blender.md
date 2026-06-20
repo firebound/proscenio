@@ -1342,6 +1342,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Root Bone Name names the imported stub armature's bone (undocumented - GAP-4).
 - code: apps/blender/operators/import_photoshop.py:62-70 -> apps/blender/importers/photoshop/__init__.py:70-73
 
+### BL-PIPE-IMPORT-03 · Imported cutout shows its authored color
+- status: pending
+- review: keep
+- pre: A PSD manifest + PNGs whose art has a saturated flat-colored region whose color you can sample (e.g. examples/authored/firebound_guy). A scene on the default AgX view transform is fine - the import switches it.
+- steps:
+  1. Import the manifest (Pipeline > Import).
+  2. In a Material Preview or Rendered viewport, sample the color of a flat-colored region on an imported plane and compare it to the source PNG.
+  3. Open an imported plane's material in the Shader Editor and read the image texture's Color Space.
+- observe: The imported plane shows its authored color matching the source PNG (no AgX wash, no Principled IOR sheen). The scene's View Transform reads Standard (not AgX). The material is an unlit Emission gated by the texture alpha through a Mix Shader (Transparent / Emission) with no Principled BSDF, and the image texture's Color Space reads sRGB.
+- intent: Imported flat 2D cutouts display their authored color - unlit Emission + Standard view transform + sRGB texture decode - instead of the washed-out lit/AgX look.
+- code: apps/blender/importers/photoshop/planes.py (_attach_material) -> apps/blender/importers/photoshop/__init__.py (_apply_flat_color_management)
+- note: asserted headless by apps/blender/tests/operators/test_flat_material.py; rationale - Godot reads PNG bytes as sRGB (color is sRGB end to end).
+
 ### BL-PIPE-EXPORT-01 · Last export path is sticky and enables Re-export
 - status: pending
 - review: keep

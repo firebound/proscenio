@@ -20,7 +20,10 @@ static func _apply_skinning(
 	for weight in weights:
 		var bone_name := NodeNameUtil.sanitize(weight.bone)
 		var bone_node := skeleton.find_child(bone_name, true, false)
-		if bone_node == null:
+		# find_child matches by name across node types, so a slot Node2D anchor
+		# sharing a bone name would resolve here; require a Bone2D so a non-bone
+		# match is skipped, not skinned to.
+		if not (bone_node is Bone2D):
 			push_error(
 				(
 					"Proscenio: sprite '%s' weight entry references missing bone '%s' - skipping."

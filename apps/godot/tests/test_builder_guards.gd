@@ -28,6 +28,7 @@ var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
 func _initialize() -> void:
 	_run_short_vector_guard_checks()
 	_run_all_missing_bone_checks()
+	_run_non_bone_weight_target_checks()
 	_run_duplicate_bone_checks()
 	_run_slot_default_miss_checks()
 	_run_frame_track_discrete_checks()
@@ -97,6 +98,45 @@ func _run_all_missing_bone_checks() -> void:
 		var orphan: Polygon2D = meshes[0]
 		_assert_true(orphan.skeleton.is_empty(), "all_missing: not skeleton-bound with 0 weights")
 		_assert_eq(orphan.get_bone_count(), 0, "all_missing: no bones bound")
+	character.free()
+
+
+# A weight whose bone name resolves to a non-Bone2D node in the skeleton subtree
+# (a slot Node2D anchor sharing the name) must NOT bind to it: find_child matches
+# by name across node types, so the skin guard type-checks Bone2D and skips the
+# non-bone match, leaving the mesh unbound instead of skinned to a slot anchor.
+func _run_non_bone_weight_target_checks() -> void:
+	var character := _build_character(
+		{
+			"format_version": 1,
+			"name": "non_bone_weight",
+			"pixels_per_unit": 100.0,
+			"skeleton": {"bones": [{"name": "root", "position": [0.0, 0.0]}]},
+			"slots": [{"name": "decoy", "bone": "", "attachments": [], "default": ""}],
+			"elements":
+			[
+				{
+					"type": "mesh",
+					"name": "orphan",
+					"polygon": [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+					"uv": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+					"weights": [{"bone": "decoy", "values": [1.0, 1.0, 1.0]}],
+				}
+			],
+		}
+	)
+	var skeleton: Skeleton2D = character.get_node("Skeleton2D")
+	# Precondition: the same-named non-bone target really is in the subtree.
+	var decoy := skeleton.find_child("decoy", true, false)
+	_assert_true(
+		decoy != null and not (decoy is Bone2D), "non_bone_weight: decoy is a non-Bone2D node"
+	)
+	var meshes := _descendants_of_type(skeleton.get_parent(), "Polygon2D")
+	_assert_eq(meshes.size(), 1, "non_bone_weight: mesh still built")
+	if meshes.size() == 1:
+		var orphan: Polygon2D = meshes[0]
+		_assert_true(orphan.skeleton.is_empty(), "non_bone_weight: not bound to the non-bone match")
+		_assert_eq(orphan.get_bone_count(), 0, "non_bone_weight: no bones bound")
 	character.free()
 
 
@@ -248,7 +288,7 @@ func _run_bone_track_type_scope_checks() -> void:
 			anim.get_track_count(), 0, "bone_scope: no track binds to the same-named slot Node2D"
 		)
 	else:
-		_assert_true(true, "bone_scope: animation library present")
+		_fail("bone_scope: expected animation 'move' to exist")
 	character.free()
 
 

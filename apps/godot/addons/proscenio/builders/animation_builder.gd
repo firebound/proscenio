@@ -50,40 +50,91 @@ static func _add_track(anim: Animation, skeleton: Skeleton2D, track_res: Proscen
 
 	match track_type:
 		"bone_transform":
-			var bone := skeleton.find_child(target, true, false)
-			if bone == null:
-				push_error("Proscenio: bone '%s' not found for animation track" % target)
-				return
-			var base_path := str(character_root.get_path_to(bone))
-			_add_value_track_if_present(anim, base_path, "position", keys)
-			_add_value_track_if_present(anim, base_path, "rotation", keys)
-			_add_value_track_if_present(anim, base_path, "scale", keys)
+			_add_bone_transform_track(anim, skeleton, character_root, target, keys)
 		"sprite_frame":
-			var sprite := character_root.find_child(target, true, false)
-			if sprite == null:
-				push_error("Proscenio: sprite '%s' not found for sprite_frame track" % target)
-				return
-			if not (sprite is Sprite2D):
-				push_error(
-					(
-						(
-							"Proscenio: sprite '%s' is %s, not Sprite2D - sprite_frame "
-							+ "tracks only target sprite elements (Sprite2D)."
-						)
-						% [target, sprite.get_class()]
-					)
-				)
-				return
-			var base_path := str(character_root.get_path_to(sprite))
-			_add_frame_track(anim, base_path, keys)
+			_add_sprite_frame_track(anim, skeleton, character_root, target, keys)
 		"slot_attachment":
-			var slot_node := character_root.find_child(target, true, false)
-			if slot_node == null:
-				push_error("Proscenio: slot '%s' not found for slot_attachment track" % target)
-				return
-			_add_slot_attachment_tracks(anim, character_root, slot_node, keys)
+			_add_slot_attachment_track(anim, skeleton, character_root, target, keys)
 		_:
 			push_warning("Proscenio: unknown track type '%s'" % track_type)
+
+
+# Resolve a track target under the skeleton, narrowed to the expected node type.
+# `find_child` is recursive, so without a type filter it can bind to an
+# unrelated same-named node (a slot anchor named like a bone, a skinned-mesh
+# sibling). Searching the skeleton subtree and checking the class mirrors the
+# sprite_frame narrowing and keeps a track from animating the wrong node.
+static func _resolve_typed_target(
+	skeleton: Skeleton2D, target: String, expected_class: String, track_label: String
+) -> Node:
+	var node := skeleton.find_child(target, true, false)
+	if node == null:
+		push_error("Proscenio: %s target '%s' not found under skeleton" % [track_label, target])
+		return null
+	if not node.is_class(expected_class):
+		push_error(
+			(
+				"Proscenio: %s target '%s' is %s, not %s - skipping the track."
+				% [track_label, target, node.get_class(), expected_class]
+			)
+		)
+		return null
+	return node
+
+
+static func _add_bone_transform_track(
+	anim: Animation,
+	skeleton: Skeleton2D,
+	character_root: Node,
+	target: String,
+	keys: Array[ProscenioKey],
+) -> void:
+	var bone := _resolve_typed_target(skeleton, target, "Bone2D", "bone_transform")
+	if bone == null:
+		return
+	var base_path := str(character_root.get_path_to(bone))
+	_add_value_track_if_present(anim, base_path, "position", keys)
+	_add_value_track_if_present(anim, base_path, "rotation", keys)
+	_add_value_track_if_present(anim, base_path, "scale", keys)
+
+
+static func _add_sprite_frame_track(
+	anim: Animation,
+	skeleton: Skeleton2D,
+	character_root: Node,
+	target: String,
+	keys: Array[ProscenioKey],
+) -> void:
+	var sprite := _resolve_typed_target(skeleton, target, "Sprite2D", "sprite_frame")
+	if sprite == null:
+		return
+	var base_path := str(character_root.get_path_to(sprite))
+	_add_frame_track(anim, base_path, keys)
+
+
+static func _add_slot_attachment_track(
+	anim: Animation,
+	skeleton: Skeleton2D,
+	character_root: Node,
+	target: String,
+	keys: Array[ProscenioKey],
+) -> void:
+	# Slot anchors are plain Node2D (class is exactly "Node2D", unlike Bone2D /
+	# Polygon2D / Sprite2D which subclass it), so an exact-class check rejects a
+	# same-named bone or attachment that find_child would otherwise return.
+	var slot_node := skeleton.find_child(target, true, false)
+	if slot_node == null:
+		push_error("Proscenio: slot '%s' not found under skeleton for slot_attachment" % target)
+		return
+	if slot_node.get_class() != "Node2D":
+		push_error(
+			(
+				"Proscenio: slot_attachment target '%s' is %s, not a slot Node2D - skipping."
+				% [target, slot_node.get_class()]
+			)
+		)
+		return
+	_add_slot_attachment_tracks(anim, character_root, slot_node, keys)
 
 
 static func _key_has_property(key: ProscenioKey, property: String) -> bool:
@@ -146,9 +197,15 @@ static func _add_slot_attachment_tracks(
 
 
 static func _add_frame_track(anim: Animation, base_path: String, keys: Array[ProscenioKey]) -> void:
-	# Frame indexes are discrete integers - NEAREST interpolation, no blending.
+	# Frame indexes are discrete integers. UPDATE_DISCRETE holds each frame until
+	# the next key (no tween toward it under blend or seek); NEAREST snaps the
+	# sampled key. Together they realize the constant interpolation the writer
+	# emits on these keys, so per-key `interp` needs no separate handling here -
+	# honoring it per key (mixing modes within one track) is the gated
+	# per-key-interp-mixing work.
 	var idx := anim.add_track(Animation.TYPE_VALUE)
 	anim.track_set_path(idx, NodePath("%s:frame" % base_path))
+	anim.value_track_set_update_mode(idx, Animation.UPDATE_DISCRETE)
 	anim.track_set_interpolation_type(idx, Animation.INTERPOLATION_NEAREST)
 	for key in keys:
 		anim.track_insert_key(idx, key.time, key.frame)

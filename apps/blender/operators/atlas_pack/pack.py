@@ -27,7 +27,7 @@ def packable_atlas_meshes(objects: Iterable[bpy.types.Object]) -> list[bpy.types
         if obj.type != "MESH":
             continue
         props = getattr(obj, "proscenio", None)
-        if props is not None and bool(getattr(props, "exclude_from_atlas", False)):
+        if props is not None and getattr(props, "exclude_from_atlas", False):
             continue
         out.append(obj)
     return out

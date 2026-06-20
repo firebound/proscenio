@@ -95,7 +95,9 @@ def _nearest_neighbor_entry(
 ) -> SidecarEntry:
     """Fallback when barycentric blend not possible (fewer than 3 donors
     in range, OR target outside the donor triangle). Inherits the nearest
-    donor's weights + carries its provenance verbatim.
+    donor's weights; normalizes provenance to user_paint when the donor was
+    user-painted, else reprojected (an auto_seed donor never propagates its
+    own marker through the fallback).
 
     neighbors must be non-empty; caller already checked. Distances in the
     tuple come from _knn_3 (squared, ascending), so neighbors[0] is the

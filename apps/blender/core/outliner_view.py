@@ -150,7 +150,9 @@ def row_visible(
         return False
     if favorites_only and not is_favorite:
         return False
-    return not (filter_text and filter_text not in getattr(obj, "name", "").lower())
+    if not filter_text:
+        return True
+    return filter_text in getattr(obj, "name", "").lower()
 
 
 def source_index_for_name(objects: Iterable[object], target_name: str) -> int | None:

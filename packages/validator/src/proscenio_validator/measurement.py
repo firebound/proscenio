@@ -125,7 +125,7 @@ def measure_mesh(sprite_obj: bpy.types.Object) -> Metrics:
         ),
         # First 30 leak records inline; full list still flows into the
         # JSON report via _types.LeakRecord.
-        leak_records_sample=[_to_leak_record(rec) for rec in leak_records[:30]],
+        leak_records_sample=tuple(_to_leak_record(rec) for rec in leak_records[:30]),
         hole_bleed_count=bleed_count,
     )
 

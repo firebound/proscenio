@@ -1,4 +1,4 @@
-// Manifest JSON writer. Stringifies a v2 manifest with two-space
+// Manifest JSON writer. Stringifies a v1 manifest with two-space
 // indent (diff-friendly) and writes it through the UXP file system.
 // Validation runs at the call site, before any disk write.
 

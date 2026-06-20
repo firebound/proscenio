@@ -67,9 +67,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
             report_error(self, f"packed-atlas manifest unreadable - {exc}")
             return {"CANCELLED"}
 
-        atlas_image = bpy.data.images.get(atlas_png.stem)
-        if atlas_image is None:
-            atlas_image = bpy.data.images.load(str(atlas_png), check_existing=True)
+        atlas_image = bpy.data.images.load(str(atlas_png), check_existing=True)
 
         shared_mat = self._ensure_shared_material(atlas_image)
 

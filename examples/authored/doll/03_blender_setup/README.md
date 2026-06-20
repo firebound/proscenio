@@ -67,7 +67,7 @@ The Blender importer preserves the photoshop tag system v2 semantics that step 0
 ### `doll_rigged.blend` (rigging path vs step 01)
 
 - Imported plane count matches the clean re-export's manifest length.
-- Each plane's location reflects the manifest position; no the photoshop tag system origins (the baseline carries none).
+- Each plane's location reflects the manifest position; no photoshop tag system origins (the baseline carries none).
 - After rigging: every plane is parented to `doll.rig` with non-empty vertex groups.
 
 ## Outputs going downstream

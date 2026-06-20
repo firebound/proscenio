@@ -2,14 +2,14 @@
 
 Run with::
 
-    blender --background --python packages/fixtures/build_shared_atlas.py
+    blender --background --python packages/fixtures/shared_atlas/build_blend.py
 
 Loads ``examples/generated/shared_atlas/atlas.png`` produced by
-``draw_shared_atlas.py`` and builds 3 polygon meshes whose UV bounds
+``draw_atlas.py`` and builds 3 polygon meshes whose UV bounds
 each cover one quadrant of the shared atlas. The bottom-right quadrant
 stays unused.
 
-Run ``draw_shared_atlas.py`` first or this script aborts on missing
+Run ``draw_atlas.py`` first or this script aborts on missing
 PNG.
 """
 

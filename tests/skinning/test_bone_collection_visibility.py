@@ -8,7 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 # Module lives under bpy_helpers/skinning/ for organization, but the package
 # __init__.py eagerly imports bpy-bound siblings. Load the bpy-free file
@@ -67,3 +66,14 @@ def test_restore_4x_round_trip():
     restore(arm, snap)
     assert arm.data.collections[0].is_visible is True
     assert arm.data.collections[1].is_visible is False
+
+
+def test_restore_3x_round_trip():
+    arm = _armature_3x({"wrist": False, "palm": True, "fingertip": False})
+    snap = snapshot(arm)
+    # mutate every bone's hide flag, then restore from the snapshot
+    for bone in arm.data.bones:
+        bone.hide = not bone.hide
+    restore(arm, snap)
+    hide_after = {bone.name: bone.hide for bone in arm.data.bones}
+    assert hide_after == {"wrist": False, "palm": True, "fingertip": False}

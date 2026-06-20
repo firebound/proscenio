@@ -1,4 +1,4 @@
-// ajv-backed validation gate for the v2 PSD manifest, against the
+// ajv-backed validation gate for the v1 PSD manifest, against the
 // shared schema at `packages/models/schemas/psd_manifest.schema.json`.
 //
 // Two surfaces:

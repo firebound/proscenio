@@ -145,7 +145,7 @@ def check_invariants(metrics: Metrics, bounds: SpriteInvariants | None) -> Invar
     """
     failures, warnings = _check_topology_critical(metrics)
     if bounds is None:
-        return Invariants(failures=failures, warnings=warnings)
+        return Invariants(failures=tuple(failures), warnings=tuple(warnings))
     failures.extend(_check_count_bounds(metrics, bounds))
     failures.extend(_check_coverage_and_bleed(metrics, bounds))
-    return Invariants(failures=failures, warnings=warnings)
+    return Invariants(failures=tuple(failures), warnings=tuple(warnings))

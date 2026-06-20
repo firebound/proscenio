@@ -25,23 +25,23 @@ def _metrics(**overrides: Any) -> Metrics:
         "coverage_pct": 0.99,
         "leak_count": 0,
         "leak_quadrants": Quadrants(),
-        "leak_records_sample": [],
+        "leak_records_sample": (),
         "hole_bleed_count": 0,
     }
     base.update(overrides)
     return Metrics(**base)
 
 
-def _failures(**overrides: Any) -> list[str]:
+def _failures(**overrides: Any) -> tuple[str, ...]:
     return check_invariants(_metrics(**overrides), _BOUNDS).failures
 
 
-def _warnings(**overrides: Any) -> list[str]:
+def _warnings(**overrides: Any) -> tuple[str, ...]:
     return check_invariants(_metrics(**overrides), _BOUNDS).warnings
 
 
 def test_clean_metrics_pass() -> None:
-    assert check_invariants(_metrics(), _BOUNDS).failures == []
+    assert check_invariants(_metrics(), _BOUNDS).failures == ()
 
 
 def test_zero_faces_is_critical() -> None:
@@ -82,7 +82,7 @@ def test_hole_bleed_above_maximum_fails() -> None:
 
 def test_no_bounds_runs_topology_only() -> None:
     # Without bounds the count band is not enforced - only topology checks run.
-    assert check_invariants(_metrics(verts=99999), None).failures == []
+    assert check_invariants(_metrics(verts=99999), None).failures == ()
 
 
 def test_sprite_bounds_table_is_populated() -> None:

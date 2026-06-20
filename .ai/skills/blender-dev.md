@@ -9,7 +9,7 @@ description: Develop, install, lint, and test the Blender addon
 
 - **Minimum:** Blender 4.2 LTS - required for the Extensions system (`blender_manifest.toml`).
 - **Tested:** Blender 4.5 LTS, latest 5.x.
-- **Python:** 3.11 (bundled with Blender 4.x).
+- **Python:** cp311 (3.11) with Blender 4.x, cp313 (3.13) with Blender 5.x.
 
 ## Project layout
 

@@ -58,7 +58,7 @@ class Metrics:
     coverage_pct: float | None
     leak_count: int
     leak_quadrants: Quadrants
-    leak_records_sample: list[LeakRecord]
+    leak_records_sample: tuple[LeakRecord, ...]
     hole_bleed_count: int
 
 
@@ -66,8 +66,8 @@ class Metrics:
 class Invariants:
     """Verdict of the invariant check for one sprite."""
 
-    failures: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
+    failures: tuple[str, ...] = field(default_factory=tuple)
+    warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

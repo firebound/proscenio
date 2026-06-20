@@ -201,8 +201,6 @@ def _draw_automesh_interactive(
         text="Author Mesh (interactive)",
         icon="MOD_REMESH",
     )
-    if obj is None or obj.type != "MESH":
-        layout.label(text="select a mesh first", icon="INFO")
 
 
 def _authoring_button_enabled(obj: bpy.types.Object | None) -> bool:

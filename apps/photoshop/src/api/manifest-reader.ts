@@ -1,5 +1,5 @@
 // Manifest JSON reader. Picks a `.json` via the UXP file picker,
-// parses it, then validates against the v2 schema.
+// parses it, then validates against the v1 schema.
 //
 // Returns a discriminated result rather than throwing: exceptions
 // across the UXP IPC boundary tend to surface as opaque host errors.

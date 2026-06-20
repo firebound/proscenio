@@ -19,7 +19,7 @@ def _print_leak_quadrants(quadrants: Quadrants) -> None:
     )
 
 
-def _print_leak_sample(sample: list[LeakRecord]) -> None:
+def _print_leak_sample(sample: tuple[LeakRecord, ...]) -> None:
     """Print the first up-to-5 leak records (pixel coord + world coord)."""
     if not sample:
         return

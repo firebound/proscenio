@@ -111,6 +111,45 @@ function applyDiff<K extends keyof TagBag>(
     changes.set[key] = diff;
 }
 
+// One message per advanced field whose typed value the parser would
+// reject. The diff helpers above return SKIP for both "unchanged" and
+// "invalid", so they cannot drive UI feedback; this companion inspects
+// the form in isolation and names every field that holds input which
+// would be silently dropped, so `Details` can mark it instead of the
+// form showing a value that never gets written.
+export interface DetailFormErrors {
+    path?: string;
+    scale?: string;
+    origin?: string;
+    namePattern?: string;
+}
+
+export function detailFormErrors(form: DetailForm): DetailFormErrors {
+    const errors: DetailFormErrors = {};
+    const path = form.path.trim();
+    if (path.length > 0 && !isValidPathValue(path)) {
+        errors.path = "No / \\ . or .. - those carve folders or escape the output dir.";
+    }
+    const scale = form.scale.trim();
+    if (scale.length > 0 && parseScaleValue(scale) === null) {
+        errors.scale = "Must be a positive number.";
+    }
+    const ox = form.originX.trim();
+    const oy = form.originY.trim();
+    if (ox.length > 0 || oy.length > 0) {
+        if (ox.length === 0 || oy.length === 0) {
+            errors.origin = "Set both X and Y, or clear both.";
+        } else if (!Number.isFinite(Number.parseFloat(ox)) || !Number.isFinite(Number.parseFloat(oy))) {
+            errors.origin = "X and Y must be numbers.";
+        }
+    }
+    const namePattern = form.namePattern.trim();
+    if (namePattern.length > 0 && !isValidNamePattern(namePattern)) {
+        errors.namePattern = "Needs a * wildcard for the child name.";
+    }
+    return errors;
+}
+
 export function computeChanges(form: DetailForm, baseline: DetailForm): TagChanges {
     const changes: TagChanges = { set: {}, clear: [] };
     applyDiff(changes, "folder", diffFolder(form, baseline));

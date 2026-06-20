@@ -98,7 +98,10 @@ function previewFromAdapted(
         ...opts,
         ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
     });
-    const errors = validateManifest(plan.manifest);
+    // Plan-level errors (e.g. a collapsing filename template) block before
+    // ajv: they are not manifest-shape problems, but shipping past them
+    // overwrites PNGs. Report them alongside any validation errors.
+    const errors = [...plan.errors.map((e) => e.message), ...validateManifest(plan.manifest)];
     if (errors.length > 0) {
         return {
             kind: "validation-failed",
@@ -141,7 +144,10 @@ export async function runExport(
             ...(adapted.anchor === undefined ? {} : { anchor: adapted.anchor }),
         });
 
-        const validationErrors = validateManifest(plan.manifest);
+        const validationErrors = [
+            ...plan.errors.map((e) => e.message),
+            ...validateManifest(plan.manifest),
+        ];
         if (validationErrors.length > 0) {
             log.warn("export-flow", "validation failed", validationErrors);
             return { kind: "validation-failed", errors: validationErrors };

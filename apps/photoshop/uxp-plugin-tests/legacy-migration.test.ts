@@ -59,6 +59,17 @@ describe("planUnderscoreMigration", () => {
         expect(candidates[2].layerPath).toEqual(["body", "_archived", "_old"]);
     });
 
+    it("carries the layer id when present, so the applier can route by id", () => {
+        const layer: ArtLayer = { ...art("_torso"), id: 42 };
+        const candidates = planUnderscoreMigration([layer]);
+        expect(candidates[0].id).toBe(42);
+    });
+
+    it("omits id when the layer has none", () => {
+        const candidates = planUnderscoreMigration([art("_torso")]);
+        expect(candidates[0]).not.toHaveProperty("id");
+    });
+
     it("drops the leading `_` when the stripped name already carries [ignore]", () => {
         // `_[ignore]` strips to `[ignore]`; the migration normalises
         // the cosmetic underscore prefix even though the semantic

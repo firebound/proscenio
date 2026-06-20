@@ -9,6 +9,7 @@ import React from "react";
 import type { TagTreeNode } from "../../../lib/tag-tree";
 import {
     computeChanges,
+    detailFormErrors,
     formFromTags,
     formsEqual,
     type DetailForm,
@@ -36,6 +37,12 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
     }, [node.rawName, node.tags]);
 
     const dirty = !formsEqual(form, baseline);
+    // Fields whose typed value the parser would reject. computeChanges
+    // silently SKIPs these, so without surfacing them the artist sees the
+    // value sitting in the box yet Apply writes nothing. Block Apply and
+    // mark the offending rows instead.
+    const errors = React.useMemo(() => detailFormErrors(form), [form]);
+    const hasErrors = Object.keys(errors).length > 0;
 
     const setField = React.useCallback(<K extends keyof DetailForm>(key: K, value: DetailForm[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -105,7 +112,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onFolder}
                 />
             </DetailRow>
-            <DetailRow label="path" hint="[path:NAME] - filename stem override (no slashes)">
+            <DetailRow label="path" hint="[path:NAME] - filename stem override (no slashes)" error={errors.path}>
                 <input
                     type="text"
                     className="tag-input"
@@ -114,7 +121,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onPath}
                 />
             </DetailRow>
-            <DetailRow label="scale" hint="[scale:N] - pre-export bounds multiplier (>0)">
+            <DetailRow label="scale" hint="[scale:N] - pre-export bounds multiplier (>0)" error={errors.scale}>
                 <input
                     type="text"
                     className="tag-input"
@@ -123,7 +130,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                     onChange={onScale}
                 />
             </DetailRow>
-            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels">
+            <DetailRow label="origin" hint="[origin:X,Y] - explicit pivot in PSD pixels" error={errors.origin}>
                 <input
                     type="text"
                     className="tag-input narrow"
@@ -153,7 +160,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                 />
             </DetailRow>
             {node.isGroup && (
-                <DetailRow label="name pattern" hint="[name:PRE*SUF] - rewrites group children names; * = original">
+                <DetailRow label="name pattern" hint="[name:PRE*SUF] - rewrites group children names; * = original" error={errors.namePattern}>
                     <input
                         type="text"
                         className="tag-input"
@@ -167,7 +174,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                 <sp-action-button onClick={onRevert} disabled={!dirty ? true : undefined}>
                     Revert
                 </sp-action-button>
-                <sp-action-button onClick={onApply} disabled={!dirty ? true : undefined}>
+                <sp-action-button onClick={onApply} disabled={!dirty || hasErrors ? true : undefined}>
                     Apply
                 </sp-action-button>
             </div>
@@ -178,10 +185,12 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
 const DetailRow: React.FC<{
     label: string;
     hint: string;
+    error?: string | undefined;
     children: React.ReactNode;
-}> = ({ label, hint, children }) => (
-    <div className="tag-detail-row" title={hint}>
+}> = ({ label, hint, error, children }) => (
+    <div className={error === undefined ? "tag-detail-row" : "tag-detail-row has-error"} title={hint}>
         <span className="tag-detail-label">{label}</span>
         <span className="tag-detail-controls">{children}</span>
+        {error !== undefined && <span className="tag-detail-error" role="alert">{error}</span>}
     </div>
 );

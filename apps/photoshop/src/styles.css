@@ -625,6 +625,26 @@
     height: 24px;
 }
 
+/* A row whose typed value the parser would reject grows to fit the
+   message on a second line; the input itself gets a red edge so the
+   field is identifiable at a glance. */
+.proscenio-panel .tag-detail-row.has-error {
+    flex-wrap: wrap;
+    height: auto;
+}
+
+.proscenio-panel .tag-detail-row.has-error input.tag-input {
+    border-color: #d9534f;
+}
+
+.proscenio-panel .tag-detail-error {
+    flex-basis: 100%;
+    margin-left: 86px;
+    color: #ff8a8a;
+    font-size: 10px;
+    line-height: 14px;
+}
+
 .proscenio-panel .tag-detail-label {
     width: 80px;
     color: rgba(255, 255, 255, 0.7);

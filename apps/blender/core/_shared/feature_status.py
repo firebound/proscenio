@@ -91,6 +91,8 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     # GODOT_READY because the writer emits slots[] even before the Godot
     # importer consumes them - a documented no-op on the Godot side until then.
     "slot_system": FeatureStatus.GODOT_READY,
+    # The bone parent exports as the Sprite2D's bone field (resolve_sprite_bone).
+    "sprite_bone_parent": FeatureStatus.GODOT_READY,
     "sprite_frame_preview": FeatureStatus.BLENDER_ONLY,
     # Pose assets live in the Asset Browser and never reach the .proscenio.
     "pose_library": FeatureStatus.BLENDER_ONLY,

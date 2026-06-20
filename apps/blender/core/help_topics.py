@@ -361,6 +361,39 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
         ),
     ),
+    "sprite_bone_parent": HelpTopic(
+        title="Attach to Bone",
+        summary="Rigid-attach a sprite to one bone without a slot.",
+        sections=(
+            _section(
+                _SECTION_WHAT,
+                "Parents the active sprite to a single bone as a rigid attachment, the"
+                " non-slot way to make a sprite follow a bone. It is authored"
+                " keep-transform, so the sprite stays where it is instead of jumping to"
+                " the bone tail. The sprite then rides that bone's pose. Clear Bone Parent"
+                " removes it, leaving the sprite where it sits.",
+            ),
+            _list_section(
+                _SECTION_HOW,
+                "1. Select the sprite as the active object.",
+                "2. Pick the rig in the Skeleton panel (or be in Pose Mode with the"
+                " target bone active to prefill it).",
+                "3. Click Parent To Bone and confirm the bone in the dialog.",
+                "4. Clear Bone Parent detaches it again.",
+            ),
+            _section(
+                "Where it fits",
+                "Exports as a Sprite2D parented to that Bone2D (the element's bone field)."
+                " Use it for a static prop or facial part pinned to one bone.",
+            ),
+            _section(
+                "Caveats",
+                "A bone in the picture plane (drawn up/across the figure) rotates the rigid"
+                " sprite out of the camera plane - the panel warns when this happens. For a"
+                " flat follow on any bone, or for swappable attachments, use a slot instead.",
+            ),
+        ),
+    ),
     "quick_armature": HelpTopic(
         title="Quick Armature",
         summary="Click-drag in the viewport to draw bones without entering Edit Mode.",

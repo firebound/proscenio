@@ -17,7 +17,13 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
-from . import _draw_driver_shortcut, _draw_mesh, _draw_region, _draw_sprite
+from . import (
+    _draw_bone_attach,
+    _draw_driver_shortcut,
+    _draw_mesh,
+    _draw_region,
+    _draw_sprite,
+)
 from ._helpers import (
     _active_mesh_props,
     _is_mesh_element,
@@ -138,6 +144,30 @@ class PROSCENIO_PT_active_sprite(bpy.types.Panel):
         _draw_sprite.draw_body(self.layout, obj, obj.proscenio)
 
 
+class PROSCENIO_PT_attach_to_bone(bpy.types.Panel):
+    """Attach to Bone subpanel - rigid bone parent for a sprite (the non-slot path)."""
+
+    bl_label = "Attach to Bone"
+    bl_idname = "PROSCENIO_PT_attach_to_bone"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_element"
+    bl_order = 1
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        props = _active_mesh_props(context)
+        return props is not None and props.element_type == "sprite"
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "sprite_bone_parent", "sprite_bone_parent")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        _draw_bone_attach.draw_body(self.layout, context, context.active_object)
+
+
 class PROSCENIO_PT_texture_region(bpy.types.Panel):
     """Texture Region subpanel - auto/manual region for the active element."""
 
@@ -147,7 +177,7 @@ class PROSCENIO_PT_texture_region(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_element"
-    bl_order = 1
+    bl_order = 2
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -171,7 +201,7 @@ class PROSCENIO_PT_drive_from_bone(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_element"
-    bl_order = 2
+    bl_order = 3
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -189,6 +219,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_PT_element,
     PROSCENIO_PT_active_mesh,
     PROSCENIO_PT_active_sprite,
+    PROSCENIO_PT_attach_to_bone,
     PROSCENIO_PT_texture_region,
     PROSCENIO_PT_drive_from_bone,
 )

@@ -17,16 +17,20 @@ Measured both sides before building. The parser maps `[sprite]` and `[spriteshee
 - Clear the minor staleness and race group (pre-busy import window, path-separator assumption, no-marquee no-op, Validate refresh). Re-emit the authored `[spritesheet]` token for round-trip stability.
 - Fold in the cosmetic Photoshop review nitpicks touching the same components.
 
-## Delivered vs deferred
+## Delivered
 
-Delivered in `feat/spec-053-photoshop-data-integrity` (PR 1 + PR 2 + most of PR 3): all four data-loss / resilience items, the import path-separator fix, the pre-busy import disable, the Validate Doc-Refresh re-run, the no-marquee report, the `[spritesheet]` round-trip, and the stray-JSX / spurious-key cosmetics.
+All scoped items shipped in `feat/spec-053-photoshop-data-integrity`:
 
-Deferred (low severity, no React test harness in the suite):
+- PR 1: filename-template collapse blocked, id-routed migration, surfaced invalid advanced-field input.
+- PR 2: per-entry (and per-frame) import guard.
+- PR 3: `[spritesheet]` round-trip, import path-separator fix, pre-busy import disable, Validate Doc-Refresh re-run, no-marquee report, stray-JSX / spurious-key cosmetics.
+- Stale output folder at export: `runExport` returns a `stale-folder` result, drops the persistent token, and the panel falls back to the picker. `isStaleFolderError` classifies the not-found family.
+- Tag-draft stale baseline: the advanced-fields reset keys on node identity (`tagNodeIdentity`: layer id, else display path) as well as `rawName`, so two same-named siblings no longer share a draft.
 
-- `folder-storage` stale-token re-pick affordance - needs a typed re-pick signal plumbed from `writeManifest` up through the export result into the UI.
-- Tag-draft stale-baseline guard - the reproduction is unclear (tags derive from `rawName`, so the two move together); not changed without a repro and a test.
-- The redundant-`disabled` ternary nitpick is rejected, not deferred: `disabled={cond ? true : undefined}` is load-bearing for the UXP spectrum web components under React 16, where `disabled={false}` can render a present attribute and pin the button disabled.
-- Closed-document export-button disable is already satisfied (`ProscenioExporter` guards `doc === null`).
+Two backlog items resolved as decisions rather than code:
+
+- The redundant-`disabled` ternary nitpick is rejected: `disabled={cond ? true : undefined}` is load-bearing for the UXP spectrum web components under React 16. For a custom element React routes the prop through `setValueForAttribute`, which does `setAttribute("disabled", "false")` for a boolean `false` rather than removing it, pinning the button disabled. The ternary keeps `undefined` -> attribute removed.
+- Closed-document export-button disable was already satisfied (`ProscenioExporter` guards `doc === null`).
 
 ## Sources
 

@@ -22,7 +22,7 @@ Three PRs. PR 1 is the data-loss core; PR 2 is import resilience; PR 3 is the lo
 - [x] The Validate panel's Doc Refresh re-runs the preview so the list cannot go stale. `ProscenioValidatePanel.tsx`.
 - [x] Remove the spurious `key` on the standalone `<select>` elements. `tags/Row.tsx`.
 - [x] Delete the stray `{ }` JSX leftover. `components/Accordion.tsx`.
-- [deferred] `folder-storage` stale-token write surfaces a re-pick affordance, not a generic failure. Needs a typed re-pick signal from `writeManifest` through the export result into the UI. `manifest-writer.ts`.
-- [deferred] The tag draft does not apply a stale baseline when an external edit keeps the same `rawName`. Reproduction unclear (tags derive from `rawName`); not changed without a repro + test. `tags/Details.tsx`.
-- [rejected] Drop the redundant `disabled={cond ? true : undefined}` ternaries. Kept: load-bearing for UXP spectrum web components under React 16 (`disabled={false}` can render a present attribute and pin the button disabled). `MigrationSection.tsx`, `tags/Details.tsx`.
+- [x] `folder-storage` stale-token write surfaces a re-pick affordance, not a generic failure. `runExport` returns a `stale-folder` result, drops the token, and the panel clears the folder so the picker reappears. `export-flow.ts`, `folder-storage.ts` (`isStaleFolderError`), `ProscenioExporter.tsx`, `ExportSection.tsx`.
+- [x] The tag draft does not apply a stale baseline when an external edit keeps the same `rawName`. Reset keys on node identity (`tagNodeIdentity`) as well as `rawName`, so same-named siblings do not share a draft. `tag-tree.ts`, `tags/Details.tsx`.
+- [rejected] Drop the redundant `disabled={cond ? true : undefined}` ternaries. Kept: load-bearing for UXP spectrum web components under React 16 - for a custom element React routes the prop through `setValueForAttribute`, so `disabled={false}` sets `disabled="false"` (present) and pins the button disabled. The ternary keeps `undefined` -> removed. `MigrationSection.tsx`, `tags/Details.tsx`.
 - [already done] Disable the export button on a closed-document snapshot. `ProscenioExporter.tsx` already guards `doc === null`.

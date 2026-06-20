@@ -1,6 +1,6 @@
 // Migrates the legacy `_<name>` skip convention to `[ignore]`. Walks
 // the adapted layer tree and produces rename candidates so the artist
-// can convert in bulk from the Tags tab.
+// can convert in bulk from the Exporter panel.
 //
 // Rules:
 //   - any layer name with a leading underscore is a candidate;

@@ -55,6 +55,7 @@ from ...core.bpy_helpers.psd.psd_spritesheet import compose_spritesheet
 from ...core.bpy_helpers.skinning import reproject_stored_sidecar, snapshot_live_vgroups
 from ...core.psd import psd_manifest
 from ...core.skinning.sidecar_schema import from_json, to_json
+from ...core.slot.slot_emit import is_slot_empty
 
 Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
@@ -112,10 +113,16 @@ def _place_and_tag(
         manifest.anchor,
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
-    _set_world_position(obj, placement.location)
     _attach_material(obj, image_path, blend_mode=layer.blend_mode)
-    _parent_to_root(obj, armature_obj)
-    _link_to_subfolder(obj, layer.subfolder)
+    # A re-import refreshes the art in place, but the user owns where the mesh
+    # lives. Once it has been re-parented into a slot Empty, the slot drives its
+    # placement - re-rooting it back to the armature (and re-zeroing its world
+    # position / outliner home) would silently break the attachment. Only the
+    # manifest-driven placement is applied when the mesh is NOT slot-attached.
+    if not is_slot_empty(obj.parent):
+        _set_world_position(obj, placement.location)
+        _parent_to_root(obj, armature_obj)
+        _link_to_subfolder(obj, layer.subfolder)
     _tag_origin(obj, layer.name)
     _tag_kind(obj, kind)
     _tag_blend_mode(obj, layer.blend_mode)

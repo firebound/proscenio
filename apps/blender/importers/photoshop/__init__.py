@@ -25,6 +25,7 @@ import bpy
 
 from ...core._shared.cp_keys import PROSCENIO_IMPORT_ORIGIN
 from ...core.psd import psd_manifest
+from ...core.slot.slot_emit import is_slot_empty
 from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
 from .planes import stamp_mesh, stamp_sprite
 
@@ -117,7 +118,13 @@ def _anchor_meshes_at_feet(
     location with its manifest-declared size (half-height in world
     units). The shift is applied as a Z translation so all relative
     layouts and the per-layer ``z_order`` Y-offset stay intact.
+
+    Slot-attached meshes are excluded: their ``location`` is relative to
+    the slot Empty, not the armature, so the slot owns their placement and
+    feeding them into the world-Z math (or shifting them) would move them
+    off their attachment on every re-import.
     """
+    meshes = [obj for obj in meshes if not is_slot_empty(obj.parent)]
     if not meshes:
         return
     layer_by_name = {layer.name: layer for layer in manifest.layers}

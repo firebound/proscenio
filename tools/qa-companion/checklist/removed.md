@@ -505,3 +505,15 @@ Tests retired in the 2026-06 QA restructure (452 -> ~205): the surface was re-la
 - intent: Generated scene is plain Godot 4 nodes; reimport overwrites the existing .scn (wrapper-scene safety).
 - code: apps/godot/addons/proscenio/importer.gd:91-103,170-174
 - reason: asserted in any flow import (scene pack/owner); wrapper clause kept in GD-B-WRAPPER-SAFETY
+
+## Removed when the control changed (spec 052)
+
+### BL-PIPE-EXPORT-04 · Export dialog Pixels per unit (first export)
+- status: pending
+- review: drop
+- steps:
+  1. Run the first Export and set the Pixels per unit in the export file dialog.
+- observe: The writer uses this dialog value (default 100), independent of the panel/scene Pixels-per-unit field. This is the only pixels-per-unit the first Export honors.
+- intent: The export dialog's Pixels per unit sets the world-to-pixel ratio for the first export.
+- code: apps/blender/operators/export_flow.py:158-163,167
+- reason: spec 052 removed the export operator's private pixels_per_unit field (it shadowed the panel); the first export now reads the scene field, covered by BL-PIPE-EXPORT-02. The dialog no longer shows a Pixels-per-unit control.

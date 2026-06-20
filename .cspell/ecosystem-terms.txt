@@ -154,6 +154,7 @@ itertools
 jaccard
 jank
 janky
+jsdom
 jsonschema
 jsxA11yPlugin
 kdtree

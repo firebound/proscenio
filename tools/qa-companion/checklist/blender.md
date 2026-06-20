@@ -741,7 +741,7 @@ Each block answers three questions in plain language: what passing it proves (`i
   7. Press Ctrl+Z to undo the last bone you drew, Ctrl+Shift+Z to redo it; undoing or redoing past the ends reports there is nothing to do.
   8. Press Enter to finish (the status-bar hint reads 'finish'): the overlays clear, your view and selection are restored, and a confirmation reports how many bones you authored.
   9. Press Esc or right-click: with nothing drawn the hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored the hint reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Your view and selection are restored either way.
-  10. The redo panel's 'Lock to Front Orthographic' option, when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone.
+  10. The subpanel's 'Lock to Front Orthographic' field (also overridable per-launch in the redo panel), when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone. The field takes effect on the first launch - no redo override needed.
 - observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored.
 - intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, and the status-bar-only cheat-sheet with dynamic finish/exit hints.
 - code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + _exit + _draw_statusbar_quick_armature); _overlay.py:47-167; _status_bar.py emit_chord_layout
@@ -1030,7 +1030,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - steps:
   1. Select the target meshes, then the source mesh (active), and click the copy-weights button.
   2. Press F9 and change Max Distance to re-run with a different radius.
-- observe: Each target mesh receives the source's weights by nearest vertex within the Max Distance, creating vertex groups as needed, with a coverage summary report. The button shows only the copy icon (no text). The redo panel exposes Max Distance.
+- observe: Each target mesh receives the source's weights by nearest vertex within the Max Distance, creating vertex groups as needed, with a coverage summary report. The button shows only the copy icon (no text). The redo panel exposes Max Distance. A transfer that covers nothing (e.g. Max Distance too small for any match) cancels with a warning instead of registering a successful, undoable no-op.
 - intent: Copy Weights copies the active mesh's weights onto every other selected mesh by nearest world-space vertex.
 - code: apps/blender/panels/weight_paint.py:151 -> operators/skinning/copy_weights_to_selected.py:25,41
 
@@ -1365,13 +1365,14 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/pipeline.py:88 -> apps/blender/properties/scene_props.py:403-411
 
 ### BL-PIPE-EXPORT-02 · Pixels per unit (scene field)
-- status: pending
+- status: todo
 - review: keep
 - steps:
-  1. Change the Pixels-per-unit field and re-export.
-- observe: The scene pixels-per-unit value updates (minimum just above 0). Re-export uses it as the world-to-pixel ratio. The first Export does not use this field - it uses the dialog's own value (default 100). It is also synced from the manifest on import.
-- intent: Pixels per unit sets the Blender-world-to-Godot-pixel ratio used by Re-export (default 100).
-- code: apps/blender/panels/pipeline.py:89 -> apps/blender/properties/scene_props.py:412-417
+  1. Change the Pixels-per-unit field, run the first Export, and read the written pixels_per_unit.
+  2. Change it again and Re-export.
+- observe: The scene pixels-per-unit value updates (minimum just above 0). BOTH the first Export and Re-export use it as the world-to-pixel ratio (the export dialog no longer carries its own field). It is synced from the manifest on import, which now warns when the imported value differs from the current scene value.
+- intent: Pixels per unit sets the Blender-world-to-Godot-pixel ratio used by both export and re-export (default 100).
+- code: apps/blender/panels/pipeline.py:89 -> apps/blender/operators/export_flow.py (execute reads scene_props.pixels_per_unit)
 
 ### BL-PIPE-EXPORT-03 · Bundle textures copies textures beside the export
 - status: pending
@@ -1381,15 +1382,6 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: With it on, every referenced texture is copied next to the .proscenio file and the success report adds 'bundled N texture(s)' (noting any missing on disk). With it off, no textures are copied and there is no suffix.
 - intent: Bundle textures copies the referenced textures alongside the exported .proscenio (undocumented).
 - code: apps/blender/panels/pipeline.py:90 -> apps/blender/properties/scene_props.py:418-426 -> apps/blender/operators/export_flow.py:97-118
-
-### BL-PIPE-EXPORT-04 · Export dialog Pixels per unit (first export)
-- status: pending
-- review: keep
-- steps:
-  1. Run the first Export and set the Pixels per unit in the export file dialog.
-- observe: The writer uses this dialog value (default 100), independent of the panel/scene Pixels-per-unit field. This is the only pixels-per-unit the first Export honors.
-- intent: The export dialog's Pixels per unit sets the world-to-pixel ratio for the first export.
-- code: apps/blender/operators/export_flow.py:158-163,167
 
 ## Helpers panel (viewport authoring aids outside export)
 

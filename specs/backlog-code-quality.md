@@ -23,3 +23,10 @@ The 2026-06-20 backlog-drain wave routed the entries that were here into specs (
 - The bundled `proscenio_models` wheel staleness gate was not planned as its own spec; it rides the next schema-touching spec (037 storage-split) and now lives in [`deferred.md`](deferred.md).
 
 New code-health and toolchain-enforcement gaps land here.
+
+## Test-coverage gaps (from specs 053, 052)
+
+Behaviors shipped with verification by inspection + type/lint + (Blender) goldens, but without a dedicated automated test, because the current harnesses cannot reach them. Listed so a future coverage pass closes them. Paths already exercised by a golden or fixture are NOT listed (they are considered covered).
+
+- **Photoshop has no React/component test harness.** The `apps/photoshop` vitest suite runs in the node environment over pure logic (`lib/`, `api/` with mocks); there is no jsdom + React Testing Library, so component and hook behavior is unverified. Uncovered behaviors from spec 053: the import button going busy before the picker (`useImportFlow`), the Validate panel's Doc-Refresh re-running the preview, the "From selection" no-marquee inline note, the tag-draft `selectionNote` clearing on manual edit, and the cosmetic JSX. Enabler: add jsdom + `@testing-library/react` to the vitest config, then cover these.
+- **Blender operator paths without a dedicated test** (spec 052): the atlas Apply malformed-manifest report-and-cancel path (needs a corrupt packed-atlas manifest fixture), the Drive-from-Bone shortcut's UI enable-state for a zero-bone armature (needs a panel-draw assertion approach), the set-active-action freed-armature `ReferenceError` guard (needs a freed-datablock simulation), and the Quick Armature invoke seeding `lock_to_front_ortho` from the panel (the modal regression runs invoke but does not assert the seed). The `zip(strict=True)` writer guard is NOT listed - the goldens exercise that writer path with valid data.

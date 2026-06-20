@@ -10,7 +10,6 @@ The 2026-06-20 backlog-drain wave routed the prior entries into specs (see [`_in
 
 - The PSD re-import weight divergence and the every-run armature rebuild -> spec 055 reimport-contract.
 - The sprite-frame discrete-update-mode polish -> spec 051 godot-importer-hardening.
-- The export, atlas, and operator-feedback code-read cluster -> spec 052 blender-operator-robustness.
 - The doll-roundtrip re-measure waiver was not a current defect, so it moved to [`gated.md`](gated.md); it fires before the first public release tag.
 
 New bugs found during manual testing land here. Lead with the symptom (see the bug-report style in [`.ai/conventions/docs.md`](../.ai/conventions/docs.md)), then the suspect and the affected file.

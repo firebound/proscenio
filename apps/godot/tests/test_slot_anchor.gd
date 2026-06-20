@@ -78,6 +78,13 @@ func _run_anchor_check() -> void:
 	if slot == null:
 		_fail("anchor: slot node 's_slot' not built")
 		return
+	# The slot must hang off its own Bone2D (slot.bone == "child"), not the
+	# skeleton root. The origin checks below alone do not catch a root-parented
+	# regression: the child's cumulative rest happens to net near zero, so a slot
+	# parented to the root still lands near origin and passes. Pin the parent.
+	var child_bone: Node = skeleton.find_child("child", true, false)
+	_assert_true(child_bone != null, "anchor: child bone built")
+	_assert_true(slot.get_parent() == child_bone, "anchor: slot parented under its bone")
 	# At rest the slot must land on the skeleton origin so absolute-baked
 	# attachments render where they were authored.
 	var gp := slot.global_position
@@ -91,6 +98,14 @@ func _assert_near(actual: float, expected: float, label: String) -> void:
 		print("  ok  %s" % label)
 	else:
 		_fail("%s - expected %.3f, got %.3f" % [label, expected, actual])
+
+
+func _assert_true(condition: bool, label: String) -> void:
+	if condition:
+		_passes += 1
+		print("  ok  %s" % label)
+	else:
+		_fail(label)
 
 
 func _fail(msg: String) -> void:

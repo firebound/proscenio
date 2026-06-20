@@ -37,6 +37,7 @@ from . import (
     selection,
     skinning,
     slot,
+    sprite,
     uv_authoring,
 )
 
@@ -53,6 +54,7 @@ def register() -> None:
     automesh.register()
     skinning.register()
     slot.register()
+    sprite.register()
     atlas_pack.register()
     import_photoshop.register()
 
@@ -60,6 +62,7 @@ def register() -> None:
 def unregister() -> None:
     import_photoshop.unregister()
     atlas_pack.unregister()
+    sprite.unregister()
     slot.unregister()
     skinning.unregister()
     automesh.unregister()

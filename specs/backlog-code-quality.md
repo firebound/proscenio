@@ -17,9 +17,7 @@ So the next reader does not re-audit from scratch:
 
 The 2026-06-20 backlog-drain wave routed the entries that were here into specs (see [`_index.md`](_index.md)):
 
-- The no-hard-wrap prose rule, the dead and placeholder code removals, and the frozen-dataclass tuple fix -> spec 054 code-review-cleanup.
 - The god-file and single-responsibility hotspots (`automesh_authoring`, the `planes` material build) and the two sprite-bone-parent DRY folds -> spec 061 blender-module-decomposition.
-- The documentation and help-text coverage pass -> spec 060 documentation-coverage-pass.
 - The bundled `proscenio_models` wheel staleness gate was not planned as its own spec; it rides the next schema-touching spec (037 storage-split) and now lives in [`deferred.md`](deferred.md).
 
 New code-health and toolchain-enforcement gaps land here.

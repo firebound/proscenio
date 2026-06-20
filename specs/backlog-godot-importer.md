@@ -4,5 +4,4 @@ Drained on 2026-06-20: every item here was routed into the focused specs of the 
 
 Routed to:
 
-- Import-builder hardening (length-guarded parsing, weight-first bind, scoped lookups, slot-default warning, duplicate-bone guard, per-key interp) and the slot-anchor parent-assertion test -> spec 051 godot-importer-hardening.
 - The non-destructive reimporter stub decision (build diff/merge versus document the wrapper-scene path) -> spec 055 reimport-contract.

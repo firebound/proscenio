@@ -115,10 +115,10 @@ Most Godot node-tree behavior is asserted inside the roundtrip flows' import-and
 - steps:
   1. Author a skinned mesh and a rigid-with-bone mesh, reimport, and inspect their parents.
   2. Author a skinned mesh weighted to a non-existent bone and reimport.
-- observe: If the element's name matches a slot, it goes under that slot anchor. Otherwise a rigid mesh sits under its Bone2D and a skinned mesh sits under the Skeleton2D. The mesh weighted to a missing bone produces an error in the Output panel and that bone's weights are dropped, but the rest of the mesh and the rig still import.
+- observe: If the element's name matches a slot, it goes under that slot anchor. Otherwise a rigid mesh sits under its Bone2D and a skinned mesh sits under the Skeleton2D. The mesh weighted to a missing bone produces an error in the Output panel and that bone's weights are dropped, but the rest of the mesh and the rig still import. A mesh whose weights all reference a missing bone, or a name that resolves to a non-Bone2D node (a slot anchor sharing the name), is left unbound - no skeleton reference - rather than bound with zero weights, which would collapse it to a point.
 - intent: Mesh elements route by slot first, then by skin (skeleton root) versus rigid (bone); a missing skin bone is skipped rather than failing the import.
 - code: apps/godot/addons/proscenio/builders/mesh_builder.gd:8-29,98-113; sprite_attach_util.gd:38-60
-- note: absorbs GD-BUILD-18 (missing-bone clause) and GD-BUILD-19. Maps gap G3.
+- note: absorbs GD-BUILD-18 (missing-bone clause) and GD-BUILD-19. Maps gap G3. The all-missing-unbound and non-Bone2D-target guards are asserted in apps/godot/tests/test_builder_guards.gd (all_missing, non_bone_weight).
 
 ### GD-IMPORT-ROUTE-06 · Sprite parenting: slot, then bone, then skeleton
 - status: pending
@@ -191,10 +191,10 @@ Most Godot node-tree behavior is asserted inside the roundtrip flows' import-and
 ### GD-SLOT-INV · Slot output inventory
 - status: pending
 - review: keep
-- observe: One Node2D anchor per slot, named after the slot and parented under the slot's Bone2D. The slot's attachments sit under that anchor: the default attachment is visible, all the others are hidden. A slot with no name is skipped with a warning and produces no anchor (its attachments are left unmapped). A slot whose bone is missing or empty gets a warning and its anchor is parented under the Skeleton2D root instead.
+- observe: One Node2D anchor per slot, named after the slot and parented under the slot's Bone2D. The slot's attachments sit under that anchor: the default attachment is visible, all the others are hidden. If the slot's default names no attachment that exists, the builder warns and falls back to showing the first attachment instead of hiding every one. A slot with no name is skipped with a warning and produces no anchor (its attachments are left unmapped). A slot whose bone is missing or empty gets a warning and its anchor is parented under the Skeleton2D root instead.
 - intent: The slot builder produces one anchor Node2D per slot, shows only the default attachment, and guards against missing names and bones.
 - code: apps/godot/addons/proscenio/builders/slot_builder.gd:22-66; sprite_attach_util.gd:50-54
-- note: absorbs GD-BUILD-10/11/12/13; behavior asserted in FLOW-SLOTSWAP-02 and FLOW-SLOTCYCLE-01 inspect steps.
+- note: absorbs GD-BUILD-10/11/12/13; behavior asserted in FLOW-SLOTSWAP-02 and FLOW-SLOTCYCLE-01 inspect steps. The default-matches-nothing fallback is asserted in apps/godot/tests/test_builder_guards.gd (slot_default_miss).
 
 ### GD-MESH-INV · Mesh (Polygon2D) output inventory
 - status: pending

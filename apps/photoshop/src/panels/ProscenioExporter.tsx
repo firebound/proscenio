@@ -65,8 +65,13 @@ export const ProscenioExporter: React.FC = () => {
     const exportDisabled = exportFlow.busy || folder === null || doc === null;
 
     const onExport = React.useCallback(() => {
-        if (folder !== null) void exportFlow.run(folder);
-    }, [exportFlow, folder]);
+        if (folder === null) return;
+        void exportFlow.run(folder).then((result) => {
+            // The folder vanished mid-session: drop the stale reference so
+            // FolderSection falls back to the picker (the re-pick affordance).
+            if (result?.kind === "stale-folder") clearFolder();
+        });
+    }, [exportFlow, folder, clearFolder]);
 
     const onApplyMigration = React.useCallback(() => {
         void migration.apply();

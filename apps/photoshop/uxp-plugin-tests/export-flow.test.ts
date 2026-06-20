@@ -159,6 +159,25 @@ describe("runExport", () => {
         expect(manifest.layers[0]?.name).toBe("good");
     });
 
+    it("returns stale-folder when the output folder is gone at write time", async () => {
+        (app as MutableApp).activeDocument = {
+            name: "hero.psd",
+            width: 64,
+            height: 64,
+            layers: [meshLayer("good")],
+        };
+        vi.spyOn(app.documents, "add").mockResolvedValue(fakeWorkDoc() as never);
+        const staleFolder = {
+            nativePath: "/gone",
+            createFile: vi.fn(async () => { throw new Error("Folder not found"); }),
+            createFolder: vi.fn(async () => { throw new Error("Folder not found"); }),
+            getEntry: vi.fn(async () => { throw new Error("Folder not found"); }),
+        };
+        const result = await runExport(opts, staleFolder as unknown as UxpFolder);
+        expect(result.kind).toBe("stale-folder");
+        expect(result.errors?.[0]).toMatch(/folder/i);
+    });
+
     it("writes no manifest and returns failed when every layer's PNG fails", async () => {
         (app as MutableApp).activeDocument = {
             name: "hero.psd",

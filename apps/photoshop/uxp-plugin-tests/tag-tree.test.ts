@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ArtLayer, Layer, LayerSet } from "../src/lib/layer";
-import { buildTagTreeReusing, type TagTreeNode } from "../src/lib/tag-tree";
+import { buildTagTreeReusing, tagNodeIdentity, type TagTreeNode } from "../src/lib/tag-tree";
 
 function art(name: string, visible = true): ArtLayer {
     return { kind: "art", name, visible, bounds: { x: 0, y: 0, w: 10, h: 10 } };
@@ -17,6 +17,22 @@ function set(name: string, layers: Layer[], visible = true): LayerSet {
 function build(layers: Layer[]): TagTreeNode[] {
     return buildTagTreeReusing(layers, null);
 }
+
+describe("tagNodeIdentity", () => {
+    it("uses the layer id when present", () => {
+        expect(tagNodeIdentity({ id: 7, displayPath: ["body", "arm"] })).toBe("id:7");
+    });
+
+    it("falls back to the display path when there is no id", () => {
+        expect(tagNodeIdentity({ displayPath: ["body", "arm"] })).toBe("path:body/arm");
+    });
+
+    it("distinguishes two same-named siblings by their distinct ids", () => {
+        const a = tagNodeIdentity({ id: 1, displayPath: ["dup"] });
+        const b = tagNodeIdentity({ id: 2, displayPath: ["dup"] });
+        expect(a).not.toBe(b);
+    });
+});
 
 describe("buildTagTreeReusing - fresh build", () => {
     it("parses tags on leaf layers", () => {

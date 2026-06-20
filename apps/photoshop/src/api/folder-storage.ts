@@ -43,6 +43,18 @@ export function clearRememberedFolder(): void {
     clearToken();
 }
 
+// Recognizes the "folder moved / deleted / no longer reachable" family of
+// UXP file-system errors, so a write that fails because the chosen output
+// folder vanished mid-session can prompt a re-pick instead of surfacing a
+// raw failure. Conservative: only the not-found shapes, not permission or
+// other I/O errors that a re-pick would not fix.
+const STALE_FOLDER_PATTERN = /not found|no such|does not exist|no longer|entry ?not ?found|cannot be found/i;
+
+export function isStaleFolderError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : typeof err === "string" ? err : "";
+    return STALE_FOLDER_PATTERN.test(message);
+}
+
 function readToken(): string | null {
     try {
         return localStorage.getItem(STORAGE_KEY);

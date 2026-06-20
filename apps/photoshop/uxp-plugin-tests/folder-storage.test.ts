@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { storage } from "uxp";
 
-import { clearRememberedFolder, pickFolder, restoreFolder } from "../src/api/folder-storage";
+import {
+    clearRememberedFolder,
+    isStaleFolderError,
+    pickFolder,
+    restoreFolder,
+} from "../src/api/folder-storage";
 
 const lfs = storage.localFileSystem;
 const KEY = "proscenio.exporter.folderToken";
@@ -27,6 +32,21 @@ beforeEach(() => {
 afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+});
+
+describe("isStaleFolderError", () => {
+    it("matches the not-found / no-longer-exists family", () => {
+        expect(isStaleFolderError(new Error("Folder not found"))).toBe(true);
+        expect(isStaleFolderError(new Error("No such file or directory"))).toBe(true);
+        expect(isStaleFolderError(new Error("The entry does not exist"))).toBe(true);
+        expect(isStaleFolderError("the folder cannot be found")).toBe(true);
+    });
+
+    it("does not match unrelated failures", () => {
+        expect(isStaleFolderError(new Error("duplicate rejected"))).toBe(false);
+        expect(isStaleFolderError(new Error("output path collides with a non-folder entry"))).toBe(false);
+        expect(isStaleFolderError(null)).toBe(false);
+    });
 });
 
 describe("restoreFolder", () => {

@@ -6,7 +6,7 @@
 
 import React from "react";
 
-import type { TagTreeNode } from "../../../lib/tag-tree";
+import { tagNodeIdentity, type TagTreeNode } from "../../../lib/tag-tree";
 import {
     computeChanges,
     detailFormErrors,
@@ -27,14 +27,21 @@ interface TagDetailsProps {
 export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange }) => {
     const baseline = React.useMemo(() => formFromTags(node.tags), [node.tags]);
     const [form, setForm] = React.useState<DetailForm>(baseline);
+    const identity = tagNodeIdentity(node);
+    const lastIdentity = React.useRef(identity);
     const lastRawName = React.useRef(node.rawName);
 
     React.useEffect(() => {
-        if (lastRawName.current !== node.rawName) {
+        // Reset on a node-identity change as well as an external rename:
+        // two same-named siblings share a rawName, so keying the reset on
+        // rawName alone would leak the prior sibling's draft when selection
+        // moves between them.
+        if (lastIdentity.current !== identity || lastRawName.current !== node.rawName) {
+            lastIdentity.current = identity;
             lastRawName.current = node.rawName;
             setForm(formFromTags(node.tags));
         }
-    }, [node.rawName, node.tags]);
+    }, [identity, node.rawName, node.tags]);
 
     const dirty = !formsEqual(form, baseline);
     // Fields whose typed value the parser would reject. computeChanges

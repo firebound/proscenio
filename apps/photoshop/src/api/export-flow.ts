@@ -10,6 +10,7 @@ import type { UxpFolder } from "uxp";
 
 import { adaptDocument, type AdaptedDocument } from "./adapt-document";
 import { adaptDocumentFast } from "./active-document";
+import { clearRememberedFolder, isStaleFolderError } from "./folder-storage";
 import { readDocColorProfile, type ColorProfileStatus } from "./doc-color-profile";
 import {
     buildExportPlan,
@@ -27,7 +28,7 @@ import { runWrites, type PngWriteResult } from "./png-writer";
 import { log } from "../utils/log";
 
 export interface ExportFlowResult {
-    kind: "ok" | "partial" | "validation-failed" | "no-document" | "failed";
+    kind: "ok" | "partial" | "validation-failed" | "no-document" | "failed" | "stale-folder";
     folder?: string;
     manifestFile?: string;
     /** Entries actually written to the manifest (every PNG landed). */
@@ -206,15 +207,36 @@ export async function runExport(
                 errors: failures,
             };
         }
+        // Every write failed for a "folder is gone" reason: the chosen
+        // output folder was moved or deleted mid-session. Surface a re-pick
+        // rather than a wall of identical not-found lines.
+        if (pngResults.length > 0 && pngResults.every((r) => !r.ok && isStaleFolderError(r.skippedReason))) {
+            return staleFolderResult();
+        }
         log.warn("export-flow", "runExport failed - no entry exported", { total });
         return { kind: "failed", pngResults, errors: failures };
     } catch (err) {
         log.error("export-flow", "runExport threw", err);
+        // A throw out of the modal (e.g. the manifest write itself hitting a
+        // vanished folder) lands here; classify it the same way.
+        if (isStaleFolderError(err)) return staleFolderResult();
         return {
             kind: "failed",
             errors: [err instanceof Error ? err.message : String(err)],
         };
     }
+}
+
+// Drops the stale persistent token so the next session re-prompts, and
+// returns a result the panel turns into a re-pick affordance.
+function staleFolderResult(): ExportFlowResult {
+    clearRememberedFolder();
+    return {
+        kind: "stale-folder",
+        errors: [
+            "The output folder is no longer accessible (moved, deleted, or permission lost). Pick the folder again.",
+        ],
+    };
 }
 
 /** Output paths an entry owns: the single mesh PNG, or every frame PNG

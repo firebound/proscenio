@@ -214,17 +214,21 @@ class PROSCENIO_OT_bake_ik_chain(bpy.types.Operator):
         for pose_bone in armature.pose.bones:
             _set_bone_select(pose_bone, pose_bone.name in chain_names)
         frame_start, frame_end = _bake_frame_range(armature, context.scene)
-        bpy.ops.nla.bake(
-            frame_start=frame_start,
-            frame_end=frame_end,
-            only_selected=True,
-            visual_keying=True,
-            clear_constraints=True,
-            use_current_action=True,
-            bake_types={"POSE"},
-        )
-        for pose_bone in armature.pose.bones:
-            _set_bone_select(pose_bone, selection_snapshot.get(pose_bone.name, False))
+        try:
+            bpy.ops.nla.bake(
+                frame_start=frame_start,
+                frame_end=frame_end,
+                only_selected=True,
+                visual_keying=True,
+                clear_constraints=True,
+                use_current_action=True,
+                bake_types={"POSE"},
+            )
+        finally:
+            # Restore on every exit path: a bake that throws must not leave the
+            # artist's selection stuck on the chain-only set.
+            for pose_bone in armature.pose.bones:
+                _set_bone_select(pose_bone, selection_snapshot.get(pose_bone.name, False))
         report_info(
             self,
             f"baked IK chain from '{bone.name}' over frames {frame_start}-{frame_end}",

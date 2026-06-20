@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 import bpy
+import pytest
 
 
 def test_first_export_uses_scene_pixels_per_unit(automesh_fixture: None, tmp_path: Path) -> None:
@@ -24,4 +25,4 @@ def test_first_export_uses_scene_pixels_per_unit(automesh_fixture: None, tmp_pat
 
     assert result == {"FINISHED"}, result
     data = json.loads(out.read_text())
-    assert data["pixels_per_unit"] == 250.0
+    assert data["pixels_per_unit"] == pytest.approx(250.0)

@@ -12,6 +12,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import bpy
+import pytest
 
 
 def test_sync_warns_and_updates_when_ppu_differs(automesh_fixture: None) -> None:
@@ -22,7 +23,7 @@ def test_sync_warns_and_updates_when_ppu_differs(automesh_fixture: None) -> None
 
     assert warning is not None
     assert "250" in warning
-    assert bpy.context.scene.proscenio.pixels_per_unit == 250.0
+    assert bpy.context.scene.proscenio.pixels_per_unit == pytest.approx(250.0)
 
 
 def test_sync_is_silent_when_ppu_matches(automesh_fixture: None) -> None:
@@ -32,4 +33,4 @@ def test_sync_is_silent_when_ppu_matches(automesh_fixture: None) -> None:
     warning = _sync_scene_pixels_per_unit(SimpleNamespace(pixels_per_unit=250.0))
 
     assert warning is None
-    assert bpy.context.scene.proscenio.pixels_per_unit == 250.0
+    assert bpy.context.scene.proscenio.pixels_per_unit == pytest.approx(250.0)

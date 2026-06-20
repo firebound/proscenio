@@ -63,7 +63,7 @@ class PROSCENIO_OT_apply_packed_atlas(bpy.types.Operator):
 
         try:
             atlas_w, atlas_h, _padding, placements = read_manifest(manifest_json)
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        except (KeyError, TypeError, ValueError) as exc:  # JSONDecodeError is a ValueError
             report_error(self, f"packed-atlas manifest unreadable - {exc}")
             return {"CANCELLED"}
 

@@ -164,13 +164,22 @@ def build_animations(fps: int, ppu: float, rest_local: dict[str, BoneRestLocal])
 
 
 def _local_rotation_matrix(entry: dict[str, dict[int, float]]) -> Matrix | None:
-    """Bone-local rotation matrix (3x3) from euler or quaternion fcurve samples."""
+    """Bone-local rotation matrix (3x3) from euler, quaternion, or axis-angle samples."""
     if "rotation_euler" in entry:
         e = entry["rotation_euler"]
         return Euler((e.get(0, 0.0), e.get(1, 0.0), e.get(2, 0.0)), "XYZ").to_matrix()
     if "rotation_quaternion" in entry:
         q = entry["rotation_quaternion"]
         return Quaternion((q.get(0, 1.0), q.get(1, 0.0), q.get(2, 0.0), q.get(3, 0.0))).to_matrix()
+    if "rotation_axis_angle" in entry:
+        # Blender stores axis-angle as [angle, x, y, z]. A zero axis is the
+        # rest default; fall back to +Z so the Quaternion build stays valid.
+        a = entry["rotation_axis_angle"]
+        angle = a.get(0, 0.0)
+        axis = Vector((a.get(1, 0.0), a.get(2, 0.0), a.get(3, 1.0)))
+        if axis.length_squared == 0.0:
+            axis = Vector((0.0, 0.0, 1.0))
+        return Quaternion(axis.normalized(), angle).to_matrix()
     return None
 
 
@@ -255,6 +264,8 @@ def _parse_bone_data_path(data_path: str) -> tuple[str | None, str | None]:
         return bone, "rotation_euler"
     if rest == "rotation_quaternion":
         return bone, "rotation_quaternion"
+    if rest == "rotation_axis_angle":
+        return bone, "rotation_axis_angle"
     if rest == "scale":
         return bone, "scale"
     return None, None

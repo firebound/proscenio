@@ -137,6 +137,12 @@ def test_draw_order_diverged_y_warns() -> None:
     assert any(i.severity == "warning" and "Draw Order" in i.message for i in issues)
 
 
+def test_draw_order_skips_the_check_when_spacing_is_non_positive() -> None:
+    # A zero / negative spacing has no layer to divide by; the check bails out
+    # instead of crashing, even on an object that would otherwise diverge.
+    assert validation.validate_active_element(_plane_obj(order=3, y=0.010), layer_spacing=0.0) == []
+
+
 def test_draw_order_divergence_respects_the_injected_spacing() -> None:
     # At spacing 0.01, order 2 sits at Y 0.02 (clean); the default 0.001 would
     # mis-flag the same object - so the check honors the spacing it is given.

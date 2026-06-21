@@ -58,8 +58,17 @@ def _armature_obj(bones: list[SimpleNamespace]) -> SimpleNamespace:
     return SimpleNamespace(data=armature)
 
 
+def _bone(
+    name: str, parent: object = None, *, use_deform: bool = True
+) -> SimpleNamespace:
+    """Fake bone carrying the fields build_skeleton reads, deforming by default."""
+    return SimpleNamespace(
+        name=name, parent=parent, matrix_local=_I, use_deform=use_deform
+    )
+
+
 def test_build_skeleton_root_bone_uses_world_transform() -> None:
-    root = SimpleNamespace(name="root", parent=None, matrix_local=_I)
+    root = SimpleNamespace(name="root", parent=None, matrix_local=_I, use_deform=True)
     world = {"root": BoneWorld(x=5.0, y=7.0, rot=0.25, length=3.0)}
     skeleton, rest = build_skeleton(_armature_obj([root]), world)
     bone = skeleton.bones[0]
@@ -72,8 +81,8 @@ def test_build_skeleton_root_bone_uses_world_transform() -> None:
 
 
 def test_build_skeleton_child_is_relative_to_parent() -> None:
-    root = SimpleNamespace(name="root", parent=None, matrix_local=_I)
-    child = SimpleNamespace(name="child", parent=root, matrix_local=_I)
+    root = SimpleNamespace(name="root", parent=None, matrix_local=_I, use_deform=True)
+    child = SimpleNamespace(name="child", parent=root, matrix_local=_I, use_deform=True)
     world = {
         "root": BoneWorld(x=0.0, y=0.0, rot=0.0, length=1.0),
         "child": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),
@@ -84,3 +93,56 @@ def test_build_skeleton_child_is_relative_to_parent() -> None:
     # parent at origin with no rotation -> child local equals the world delta.
     assert child_bone.position == [2.0, 0.0]
     assert child_bone.rotation == pytest.approx(0.0)
+
+
+def test_build_skeleton_skips_non_deform_control_bones() -> None:
+    # The .IK / .pole control bones are non-deforming scaffolding; they must
+    # never enter the deform skeleton the Godot export builds for Polygon2D
+    # skinning. Regression for the export-leak filter (spec 056, decision 4A).
+    deform = _bone("hand", parent=None, use_deform=True)
+    control = _bone("hand.IK", parent=None, use_deform=False)
+    world = {
+        "hand": BoneWorld(x=1.0, y=2.0, rot=0.0, length=1.0),
+        "hand.IK": BoneWorld(x=3.0, y=4.0, rot=0.0, length=0.5),
+    }
+    skeleton, rest = build_skeleton(_armature_obj([deform, control]), world)
+    names = [b.name for b in skeleton.bones]
+    assert names == ["hand"], "non-deform control bone leaked into skeleton bones[]"
+    assert "hand.IK" not in rest, "non-deform control bone leaked into rest_local"
+
+
+def test_build_skeleton_reparents_child_past_a_filtered_parent() -> None:
+    # A deform child whose parent is a non-deform control: dropping the control
+    # must not leave a dangling parent reference (Godot import would reject it).
+    # The child re-parents to the nearest deform ancestor.
+    grandparent = _bone("root", parent=None, use_deform=True)
+    control = _bone("root.ctrl", parent=grandparent, use_deform=False)
+    child = _bone("hand", parent=control, use_deform=True)
+    world = {
+        "root": BoneWorld(x=0.0, y=0.0, rot=0.0, length=1.0),
+        "root.ctrl": BoneWorld(x=1.0, y=0.0, rot=0.0, length=1.0),
+        "hand": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),
+    }
+    skeleton, _rest = build_skeleton(
+        _armature_obj([grandparent, control, child]), world
+    )
+    names = [b.name for b in skeleton.bones]
+    assert names == ["root", "hand"]
+    hand = next(b for b in skeleton.bones if b.name == "hand")
+    assert hand.parent == "root", "child kept a dangling parent to the filtered control"
+
+
+def test_build_skeleton_child_of_root_control_becomes_a_root() -> None:
+    # No deform ancestor above the filtered parent -> the child becomes a root.
+    control = _bone("ctrl", parent=None, use_deform=False)
+    deform = _bone("bone", parent=control, use_deform=True)
+    world = {
+        "ctrl": BoneWorld(x=0.0, y=0.0, rot=0.0, length=1.0),
+        "bone": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),
+    }
+    skeleton, _rest = build_skeleton(_armature_obj([control, deform]), world)
+    assert [b.name for b in skeleton.bones] == ["bone"]
+    bone = skeleton.bones[0]
+    assert bone.parent is None
+    # With no deform parent the bone uses its own world transform.
+    assert bone.position == [2.0, 0.0]

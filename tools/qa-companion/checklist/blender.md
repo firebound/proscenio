@@ -111,10 +111,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pending
 - review: keep
 - pre: Outliner subpanel expanded, with a scene that has the picked armature, at least one slot + attachment, an authored sprite/mesh, plus a raw hand-modelled mesh and a second (unpicked) armature.
-- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the name, and the favorite star, with the name indented by its depth in the parenting tree. Names are labeled by kind: armature as '[arm] <name>', slots as '[slot] <name>', attachments as '-> <name>', element meshes as '<name>' (with '@ <bone>' when bone-parented). Only Proscenio members appear: an element mesh shows once it carries element data (imported or Incorporated), the armature only when it is the one picked in the Skeleton panel, plus slots and their attachments. The raw mesh, the unpicked armature, cameras, and lights do not appear.
-- intent: Confirm the Outliner renders its favorites toggle, the per-row selection marker, the depth-indented names, and that only Proscenio members (authored meshes + the picked armature + slots/attachments) are listed; behavior lives in the named tests.
-- code: apps/blender/panels/outliner.py draw_item (sel marker + name + star) + filter_items
-- note: blender-authoring-ux: members-only filter + parenting-tree order + depth indent. Re-walk the inventory.
+- observe: The Outliner shows, in order: a favorites-only toggle (star icon), and the object list (up to 8 rows). Text search is Blender's native 'Filter by Name' under the list's expand arrows - there is no separate Proscenio search field. Each row carries, left to right: a selection marker (a filled radio dot when the object is selected, an empty one otherwise), the name, a 'Y Location (Draw Order)' integer field on plane rows (element meshes + attachments; dropped when the N-panel is narrow), and the favorite star, with the name indented by its depth in the parenting tree. Names are labeled by kind: armature as '[arm] <name>', slots as '[slot] <name>', attachments as '-> <name>', element meshes as '<name>' (with '@ <bone>' when bone-parented). Only Proscenio members appear: an element mesh shows once it carries element data (imported or Incorporated), the armature only when it is the one picked in the Skeleton panel, plus slots and their attachments. The raw mesh, the unpicked armature, cameras, and lights do not appear.
+- intent: Confirm the Outliner renders its favorites toggle, the per-row selection marker, the depth-indented names, the inline draw-order field on plane rows, and that only Proscenio members (authored meshes + the picked armature + slots/attachments) are listed; behavior lives in the named tests.
+- code: apps/blender/panels/outliner.py draw_item (sel marker + name + order + star) + filter_items
+- note: blender-authoring-ux: members-only filter + parenting-tree order + depth indent. draw-order-authoring added the inline Y Location (Draw Order) field on plane rows. Re-walk the inventory.
 
 ### BL-OUTLN-01 · Filter the list by typing
 - status: pass
@@ -232,16 +232,28 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: A plain click replaces the selection; Shift extends it and Ctrl toggles the clicked row, mirroring the viewport and native Outliner (spec 046). The per-row marker tracks the real object selection.
 - code: apps/blender/operators/selection.py PROSCENIO_OT_select_outliner_object (invoke reads event.shift/ctrl) + core/bpy_helpers/_shared/select.py select_add/select_toggle
 
+### BL-OUTLN-12 · Inline draw-order field reorders plane rows
+- status: pending
+- review: keep
+- pre: Outliner expanded, the N-panel wide enough to show the order field, with two element meshes (or attachments) and the armature listed.
+- steps:
+  1. On a plane row (an element mesh or attachment), edit the 'Y Location (Draw Order)' integer field - including to a negative value.
+  2. Narrow the N-panel until the field disappears, then widen it back.
+- observe: The field shows the object's draw-order layer and edits it in place, even on a non-active row (it moves that row's object, not the active one). Slot and armature rows have no field. Below a narrow panel width the field is dropped (the name + star stay); it returns when widened. The order remains editable in the Element panel regardless.
+- intent: The Outliner exposes the draw order inline so the stack reads and reorders from the list; the field targets its own row's object (id_data, not the active object) and hides in a narrow panel where its number would clip.
+- code: apps/blender/panels/outliner.py draw_item (order column + _OUTLINER_ORDER_MIN_WIDTH) + properties/object_props.py (_y_draw_order_update via id_data)
+- note: draw-order-authoring.
+
 ## Element panel (Active Sprite / Active Mesh, type, region, drive-from-bone, reproject UV)
 
 ### BL-ELEM-ROOT-SWEEP · Element panel root inventory (visual pass)
 - status: regressed
 - review: keep
 - pre: A mesh or sprite element active.
-- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite) and a Depth offset field. A hand-authored mesh with no Proscenio element data also shows a boxed 'hand-authored mesh - not a Proscenio element yet' note with an 'Incorporate as Element' button above the type dropdown. With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
-- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the Depth offset field, the Incorporate-as-Element note for an unincorporated mesh, the empty-state and locked-state labels, and inline validation rows.
+- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite) and a 'Y Location (Draw Order)' integer field. A hand-authored mesh with no Proscenio element data also shows a boxed 'hand-authored mesh - not a Proscenio element yet' note with an 'Incorporate as Element' button above the type dropdown. With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
+- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the Y Location (Draw Order) field, the Incorporate-as-Element note for an unincorporated mesh, the empty-state and locked-state labels, and inline validation rows.
 - code: apps/blender/panels/element.py:62-89; apps/blender/core/validation/active_element.py:9
-- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. blender-authoring-design added the Depth offset field + the Incorporate button. Re-walk.
+- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. blender-authoring-design added the Incorporate button; draw-order-authoring replaced the float Depth offset with the integer Y Location (Draw Order) field that positions the object in Y. Re-walk.
 
 ### BL-ELEM-ROOT-01 · Element type chooses the subpanel and the Godot node
 - status: pass
@@ -261,16 +273,17 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The element type cannot be changed mid-weight-paint, so a bound mesh cannot switch to a sprite while you are painting it.
 - code: apps/blender/panels/element.py:56-61
 
-### BL-ELEM-ROOT-03 · Depth offset nudges the export draw order
+### BL-ELEM-ROOT-03 · Y Location (Draw Order) positions the plane and sets the export draw order
 - status: pending
 - review: keep
 - pre: A mesh or sprite element active.
 - steps:
-  1. In the Element root, set Depth offset to a non-zero value (e.g. 2), then back to 0.
-- observe: The field accepts a number (it is in PSD-layer units). A positive value pushes the element further back in the exported draw order, a negative one pulls it forward; 0 keeps the PSD-order stacking. The object does not move in the viewport.
-- intent: Depth offset is an authoring-only manual nudge added to the PSD-order depth before it becomes the Godot z_index, so a plane reorders without moving the object or re-importing.
-- code: apps/blender/panels/element.py:87; apps/blender/exporters/godot/writer/sprites.py _derive_z_index
-- note: blender-authoring-design. Writer behavior pinned by tests/writer/test_sprites.py; this is the GUI-presence walk.
+  1. In the Element root, set Y Location (Draw Order) to a non-zero integer (e.g. 2), then to -1, then back to 0.
+  2. Grab the object and move it in Y by hand, then look at the validation rows.
+- observe: The field is a whole number. Changing it moves the object in Y (number times the Y Location spacing from the addon preferences) - a higher number sits further back, a negative one in front; 0 is the front layer. The Godot export draws it in that order regardless of the literal Y. After a manual Y drag that leaves the layer, a warning row appears ('object Y ... does not match Y Location (Draw Order) ...; ... run Re-space planes'); editing the number back, or Re-space Planes (Helpers), clears it.
+- intent: Y Location (Draw Order) is one authoritative integer: it positions the object in Y so stacked planes separate (no z-fight) and it becomes the Godot z_index. The export reads the integer, not the literal Y, so the spacing only spreads planes in the viewport; a manual Y drag is flagged rather than silently reordering.
+- code: apps/blender/panels/element.py:93; apps/blender/properties/object_props.py (_y_draw_order_update); apps/blender/exporters/godot/writer/sprites.py (_derive_z_index); apps/blender/core/validation/active_element.py (_validate_draw_order_position)
+- note: draw-order-authoring replaced the float Depth offset. Writer + divergence pinned by tests/writer/test_sprites.py + tests/test_validation.py; the Y-positioning + re-space by apps/blender/tests/operators/test_draw_order.py. This is the GUI-presence walk.
 
 ### BL-ELEM-ROOT-04 · Incorporate as Element adopts a hand-authored mesh
 - status: pending
@@ -1417,7 +1430,29 @@ Each block answers three questions in plain language: what passing it proves (`i
   2. Click it again to test the update path, and press Numpad 0 to look through it.
 - observe: The first click creates an orthographic front camera ('Proscenio.PreviewCam'), makes it the scene camera and the sole selection, and reports its creation; the ortho scale is set so the view matches the export framing. Clicking again reuses the same camera and recomputes its scale. It is undoable.
 - intent: Preview Camera drops an orthographic front camera framed the way the Godot importer expects, so the viewport matches the runtime framing.
-- code: apps/blender/panels/helpers.py:31-35 (button); operator at apps/blender/operators/armature/authoring_camera.py:16-53
+- code: apps/blender/panels/helpers.py (Preview Camera button); operator at apps/blender/operators/armature/authoring_camera.py:16-53
+
+### BL-HELP-02 · Re-space Planes re-applies the Y Location spacing
+- status: pending
+- review: keep
+- pre: A scene with a couple of Proscenio plane elements that carry a draw order; one of them dragged off its layer in Y (so its Element-panel validation warns).
+- steps:
+  1. Expand Helpers and click Re-space Planes.
+- observe: Every Proscenio element's Y snaps to its draw-order layer (order times the Y Location spacing preference); the dragged plane returns to its layer and its divergence warning clears. Slot-attached meshes are left where the slot puts them. The operator reports how many planes it re-spaced and is undoable. The exported draw order does not change (it reads the integer, not the Y).
+- intent: Re-space Planes applies a changed Y Location spacing to the whole scene and snaps any plane dragged off its layer back, so the viewport stack stays consistent with the authored order.
+- code: apps/blender/operators/helpers.py (PROSCENIO_OT_respace_planes); pinned by apps/blender/tests/operators/test_draw_order.py
+- note: draw-order-authoring.
+
+### BL-HELP-03 · 3D-view clip range is editable in the panel
+- status: pending
+- review: keep
+- pre: A 3D viewport with the Helpers panel expanded.
+- steps:
+  1. Change Clip Start and Clip End under the '3D View Clip' label.
+- observe: The two fields edit the active 3D viewport's near/far clip directly (the same values as the viewport's View properties). They are the viewport's own settings, so they apply to that 3D view and are not exported.
+- intent: The clip range lives in Helpers so a small Y Location spacing (tightly stacked planes) can be made to register in the depth buffer without leaving the panel.
+- code: apps/blender/panels/helpers.py (context.space_data clip_start / clip_end)
+- note: draw-order-authoring.
 
 ## Help system + Addon Preferences
 
@@ -1446,9 +1481,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: pending
 - review: keep
 - pre: Addon Preferences open.
-- observe: The preferences show a 'Developer' box grouping a Log level dropdown (errors / info / debug) and a Debug mode checkbox.
-- intent: Confirm the addon preferences render the Developer box with the Log level and Debug mode controls; their effects live in BL-DIAG-02 and BL-CHROME-08.
-- code: apps/blender/addon_prefs.py:29-62
+- observe: The preferences show an 'Authoring' box with a 'Y Location spacing' number field (default 0.01), and a 'Developer' box grouping a Log level dropdown (errors / info / debug) and a Debug mode checkbox.
+- intent: Confirm the addon preferences render the Authoring box with the Y Location spacing field and the Developer box with the Log level and Debug mode controls; the spacing's effect lives in BL-ELEM-ROOT-03 / BL-HELP-02, the Developer effects in BL-DIAG-02 and BL-CHROME-08.
+- code: apps/blender/addon_prefs.py (ProscenioAddonPreferences.draw, y_location_spacing)
+- note: draw-order-authoring added the Authoring box + Y Location spacing.
 
 ### BL-DIAG-01 · Run Smoke Test prints a gated sanity check
 - status: regressed

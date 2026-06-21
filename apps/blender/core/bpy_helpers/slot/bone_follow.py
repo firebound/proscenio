@@ -14,15 +14,10 @@ import bpy
 
 from ..._shared.cp_keys import PROSCENIO_SLOT_BONE
 from ..._shared.pg_cp_fallback import read_field
-from ..._shared.props_access import active_armature, resolve_export_armature
+from ..._shared.props_access import resolve_target_armature
+from .._shared.bone_orientation import bone_in_picture_plane
 
 SLOT_FOLLOW_CONSTRAINT = "Proscenio Slot Follow"
-
-# A bone whose world direction lies within this much of the picture plane (XZ)
-# collapses a bone-parented attachment quad edge-on. The camera looks down -Y,
-# so a bone pointing into the screen (world +/-Y) stays flat; abs(dir.y) below
-# this cosine threshold (~45 degrees off Y) is the collapse-risk band.
-_INTO_SCREEN_MIN_Y = 0.7
 
 
 def resolve_slot_armature(
@@ -30,18 +25,11 @@ def resolve_slot_armature(
 ) -> bpy.types.Object | None:
     """The armature a slot Empty should follow a bone of, or None.
 
-    Priority: the Empty's own object-parent when it is an ARMATURE (the slot
-    convention parents the Empty to the rig), then the Skeleton picker, then
-    the scene's export armature.
+    The slot-facing name for the shared :func:`resolve_target_armature`:
+    parent-if-ARMATURE, then the Skeleton picker, then the scene's export
+    armature.
     """
-    parent = getattr(empty, "parent", None)
-    if parent is not None and getattr(parent, "type", None) == "ARMATURE":
-        return parent
-    picker = active_armature(context)
-    if picker is not None:
-        return picker
-    scene = getattr(context, "scene", None)
-    return resolve_export_armature(scene) if scene is not None else None
+    return resolve_target_armature(context, empty)
 
 
 def _follow_constraint(empty: bpy.types.Object) -> bpy.types.Constraint | None:
@@ -83,22 +71,16 @@ def bone_parent_collapses(empty: bpy.types.Object) -> bool:
     quads stay flat; for an in-plane bone (+X / +Z) the parent rotation tilts the
     quads edge-on and the export collapses them to zero area. The constraint
     follow cancels the rest, so it never collapses - this flags the bone-parent
-    case that should switch to it.
+    case that should switch to it. The in-plane test is the shared
+    :func:`bone_in_picture_plane`; this adds the slot-specific guard that the
+    Empty is a real BONE parent of an ARMATURE.
     """
     if getattr(empty, "parent_type", "") != "BONE":
         return False
     armature = getattr(empty, "parent", None)
     if armature is None or getattr(armature, "type", None) != "ARMATURE":
         return False
-    pose_bone = armature.pose.bones.get(empty.parent_bone)
-    if pose_bone is None:
-        return False
-    world = armature.matrix_world
-    direction = (world @ pose_bone.tail) - (world @ pose_bone.head)
-    if direction.length == 0.0:
-        return False
-    direction.normalize()
-    return abs(direction.y) < _INTO_SCREEN_MIN_Y
+    return bone_in_picture_plane(armature, empty.parent_bone)
 
 
 def _drop_legacy_bone_parent(empty: bpy.types.Object) -> None:

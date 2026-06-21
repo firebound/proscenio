@@ -90,6 +90,30 @@ def active_armature(context: bpy.types.Context) -> bpy.types.Object | None:
     return cast("bpy.types.Object", picker)
 
 
+def resolve_target_armature(
+    context: bpy.types.Context, obj: bpy.types.Object
+) -> bpy.types.Object | None:
+    """The armature ``obj`` should attach a bone of, or None.
+
+    Priority: ``obj``'s own object-parent when it is an ARMATURE (the slot
+    convention parents the Empty to the rig, and a sprite may share it), then
+    the Skeleton picker, then the scene's export armature. The single
+    resolution order both the slot bone-follow and the rigid sprite
+    bone-attach route through, so the two never disagree on the rig.
+
+    Duck-typed at runtime (``getattr`` only), so a ``SimpleNamespace`` ``obj``
+    and ``context`` exercise the priority order without Blender.
+    """
+    parent = getattr(obj, "parent", None)
+    if parent is not None and getattr(parent, "type", None) == "ARMATURE":
+        return cast("bpy.types.Object", parent)
+    picker = active_armature(context)
+    if picker is not None:
+        return picker
+    scene = getattr(context, "scene", None)
+    return resolve_export_armature(scene) if scene is not None else None
+
+
 def resolve_export_armature(scene: object) -> bpy.types.Object | None:
     """Return the armature Proscenio exports for ``scene`` - picker first.
 

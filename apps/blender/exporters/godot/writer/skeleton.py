@@ -66,13 +66,35 @@ def wrap_pi(a: float) -> float:
     return a
 
 
+def _nearest_deform_ancestor(bone: bpy.types.Bone) -> bpy.types.Bone | None:
+    """First ancestor of ``bone`` with ``use_deform`` set, or None.
+
+    A deform bone parented under a filtered-out control bone re-parents to this
+    ancestor so the exported skeleton has no dangling parent reference (Godot
+    rejects a Bone2D whose ``parent`` names a bone the document never emits).
+    """
+    parent = bone.parent
+    while parent is not None:
+        if parent.use_deform:
+            return parent
+        parent = parent.parent
+    return None
+
+
 def compute_bone_world_godot(armature_obj: bpy.types.Object, ppu: float) -> dict[str, BoneWorld]:
-    """Return per-bone Godot world position (Vector2-ish) and rotation in radians."""
+    """Return per-bone Godot world position (Vector2-ish) and rotation in radians.
+
+    Non-deforming bones (``.IK`` / ``.pole`` control scaffolding, any authoring
+    control) are skipped: the export is a deform skeleton for ``Polygon2D``
+    skinning, matching the ``use_deform`` rule the skinning code already follows.
+    """
     armature = expect_armature(armature_obj)
     arm_world = armature_obj.matrix_world
 
     out: dict[str, BoneWorld] = {}
     for bone in iter_bones(armature):
+        if not bone.use_deform:
+            continue
         head_world_blender = arm_world @ bone.head_local
         tail_world_blender = arm_world @ bone.tail_local
         head_godot = world_to_godot_xy(head_world_blender, ppu)
@@ -105,23 +127,31 @@ def build_skeleton(
     rest_local: dict[str, BoneRestLocal] = {}
 
     for bone in iter_bones(armature):
+        # Non-deform control bones never enter the deform skeleton. A deform
+        # child of a filtered control re-parents to its nearest deform ancestor
+        # so no Bone2D references a parent the document never emits.
+        if not bone.use_deform:
+            continue
         w = world_godot[bone.name]
-        if bone.parent is None:
+        parent_bone = _nearest_deform_ancestor(bone)
+        if parent_bone is None:
             local_pos = (w.x, w.y)
             local_rot = w.rot
+            parent_world_rot = 0.0
         else:
-            p = world_godot[bone.parent.name]
+            p = world_godot[parent_bone.name]
             dx = w.x - p.x
             dy = w.y - p.y
             cos_p = math.cos(-p.rot)
             sin_p = math.sin(-p.rot)
             local_pos = (dx * cos_p - dy * sin_p, dx * sin_p + dy * cos_p)
             local_rot = wrap_pi(w.rot - p.rot)
+            parent_world_rot = p.rot
 
         bones_out.append(
             Bone(
                 name=bone.name,
-                parent=bone.parent.name if bone.parent else None,
+                parent=parent_bone.name if parent_bone else None,
                 position=[round(local_pos[0], 6), round(local_pos[1], 6)],
                 rotation=round(local_rot, 6),
                 scale=[1.0, 1.0],
@@ -133,7 +163,7 @@ def build_skeleton(
             rotation=local_rot,
             scale=(1.0, 1.0),
             rest_basis=bone.matrix_local.to_3x3(),
-            parent_world_rot=world_godot[bone.parent.name].rot if bone.parent else 0.0,
+            parent_world_rot=parent_world_rot,
         )
 
     return Skeleton(bones=bones_out), rest_local

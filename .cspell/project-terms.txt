@@ -45,6 +45,7 @@ Hitbox
 hitboxes
 homefile
 iconned
+inplane
 keyframa
 keyframable
 keyframed
@@ -80,10 +81,12 @@ relinks
 remesh
 reparent
 reparenteia
+reparents
 reproject
 reprojected
 reprojection
 reprojects
+rescan
 retarget
 retargeted
 riggable

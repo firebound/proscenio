@@ -21,6 +21,9 @@ from bpy.props import (
 from bpy.types import Context, PropertyGroup
 from bpy.types import Object as _Object
 
+from ..core._shared.material_images import (  # type: ignore[import-not-found]
+    set_object_texture_interpolation,
+)
 from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-not-found]
 from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
     DRIVER_SOURCE_AXIS_ITEMS,
@@ -40,6 +43,22 @@ def _clamp_frame_and_update(self: ProscenioObjectProps, context: Context) -> Non
     if clamped != int(self.frame):
         self["frame"] = clamped
     on_any_update(self, context)
+
+
+def _pixel_art_update(self: ProscenioObjectProps, context: Context) -> None:
+    """Flip every image-texture node on the active object to Closest / Linear.
+
+    ``pixel_art`` is authoring-only viewport state: it sets the texture node's
+    nearest-neighbor interpolation so pixel art stops bilinear-blurring under
+    magnification. It is deliberately NOT mirrored to a Custom Property and
+    NOT exported - it does not call the shared mirror, and it has no entry in
+    ``mirror.OBJECT_MIRROR_MAP`` / ``hydrate.OBJECT_PROPS``. The Godot writer
+    emits no ``texture_filter``, so the toggle changes nothing in the
+    ``.proscenio`` (regression-guarded by ``test_pixel_art_not_exported``).
+    """
+    obj = context.active_object
+    if obj is not None:
+        set_object_texture_interpolation(obj, "Closest" if self.pixel_art else "Linear")
 
 
 ELEMENT_TYPE_ITEMS = (
@@ -176,6 +195,18 @@ class ProscenioObjectProps(PropertyGroup):
         default=0.0,
         precision=2,
         update=on_any_update,
+    )
+    pixel_art: BoolProperty(  # type: ignore[valid-type]
+        name="Pixel art",
+        description=(
+            "Show this element's texture with crisp nearest-neighbor sampling "
+            "(Closest interpolation) instead of Blender's bilinear blur "
+            "(Linear). Authoring-only viewport state - it sets the interpolation "
+            "on every image-texture node of this object's materials and is not "
+            "exported. Off by default; the importer leaves new art on Linear."
+        ),
+        default=False,
+        update=_pixel_art_update,
     )
     material_isolated: BoolProperty(  # type: ignore[valid-type]
         name="Isolated material",

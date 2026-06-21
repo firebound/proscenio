@@ -21,7 +21,4 @@ Formato para novas issues, por app → painel: `**slug** [cat] - descrição` + 
 
 Os itens spec-sized e a issue que tinha voltado para a fila agora têm spec próprio (ver [`_index.md`](_index.md)):
 
-- **materials-panel** -> spec 057 materials-panel. O STUDY respondeu o racional de descarte do spec 036 (o painel completo segue fora; só o caso pixel-art tem dor real) e corrigiu a premissa do texto antigo: o default problemático do importer é a interpolação de textura não-setada (`Linear`, que borra pixel art), não o blend mode `HASHED` - o importer roteia todo modo para `BLEND`.
-- **skin-coordination** -> spec 059 skin-coordination. Forma `skins[]` de primeira classe gated atrás de `format-migration-path` e da janela do spec 037; a forma aditiva via `Slot` é a ponte pré-gate. Gated/sequenciado, não pronto para construir.
-- **qa-quickarm-interaction-revision** -> spec 058 quick-armature-interaction-redesign. Redesign do vocabulário de interação do modal (esquema mode-layer recomendado) + pick-parent na viewport; absorve o antigo `qa-pick-parent-viewport`.
-- **docs-no-hard-wrap-rule** -> spec 054 code-review-cleanup. Codificar a regra no-hard-wrap em [`.ai/conventions/docs.md`](../.ai/conventions/docs.md).
+- **skin-coordination** -> spec 059 skin-coordination. Forma `skins[]` de primeira classe gated atrás de `format-migration-path` e da janela do spec 037; a forma aditiva via `Slot` é a ponte pré-gate. Gated/sequenciado, não pronto para construir. Único ainda aberto desta lista: materials-panel (spec 057), qa-quickarm-interaction-revision (spec 058) e docs-no-hard-wrap-rule (spec 054) já entraram.

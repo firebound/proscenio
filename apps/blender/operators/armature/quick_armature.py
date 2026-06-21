@@ -264,7 +264,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # Esc / RMB / Enter must work from any area so the user can
         # always exit the modal even if focus drifted to the Outliner.
         if _is_exit_event(event):
-            cancelled = type(self)._drag_head is None and type(self)._last_bone_name == ""
+            # "Nothing authored" keys on the session-authored signal, not
+            # _last_bone_name: a Reparent pick writes _last_bone_name (the
+            # chain parent) without creating a bone, so it must not flip a
+            # bare Esc from cancel (discard the empty auto-rig) to keep.
+            cls = type(self)
+            cancelled = cls._drag_head is None and not cls._session_records
             return self._exit(context, cancelled=cancelled)
         if _is_confirm_event(event):
             return self._exit(context, cancelled=False)

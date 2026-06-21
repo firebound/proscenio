@@ -80,7 +80,10 @@ def _emit_exit_rows(
     session-state-aware label persists across both modes' cheatsheets.
     """
     chord(layout, ("EVENT_RETURN", ""), ("", "finish"))
-    if cls._last_bone_name:
+    # Key the Esc label on the session-authored signal, not _last_bone_name: a
+    # Reparent pick writes _last_bone_name (the chain parent) without authoring
+    # a bone, so it must read "keeps bones" only once a bone exists this session.
+    if cls._session_records:
         chord(layout, ("EVENT_ESC", ""), ("", "exit (keeps bones)"))
     else:
         chord(layout, ("EVENT_ESC", ""), ("", "cancel (discards empty rig)"))

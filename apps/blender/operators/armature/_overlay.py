@@ -131,7 +131,11 @@ def _draw_reparent_tips(cls: type[PROSCENIO_OT_quick_armature]) -> None:
     target = cls._pick_target_name
     for bone in armature.data.bones:
         tail_world = matrix_world @ bone.tail_local
-        tail = (float(tail_world.x), float(tail_world.y), float(tail_world.z))
+        # The pick resolver (_world_tail_tips / resolve_pick) projects every
+        # tail to the Y=0 XZ plane, so the drawn marker must drop its Y too;
+        # otherwise a non-planar armature renders the dot off the clickable
+        # point.
+        tail = (float(tail_world.x), 0.0, float(tail_world.z))
         if bone.name == target:
             color = _REPARENT_PICK_COLOR
             radius = _REPARENT_PICK_RADIUS

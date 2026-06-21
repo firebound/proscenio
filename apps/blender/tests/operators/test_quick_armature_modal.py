@@ -36,6 +36,7 @@ def quick_armature_session(automesh_fixture):
         _post_process_world_point = QA._post_process_world_point
         _switch_mode = QA._switch_mode
         _world_tail_tips = QA._world_tail_tips
+        _handle_reparent_pick = QA._handle_reparent_pick
         _PICK_RADIUS_PX = QA._PICK_RADIUS_PX
 
         def report(self, *_args, **_kwargs) -> None:
@@ -198,3 +199,26 @@ def test_world_tail_tips_empty_without_an_armature(quick_armature_session):
     op, _arm, cls = quick_armature_session
     cls._target_armature_name = "does-not-exist"
     assert op._world_tail_tips() == []
+
+
+def test_reparent_pick_sets_chain_parent_without_authoring_a_bone(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    # A Reparent pick re-points the chain parent (_last_bone_name) but authors
+    # no bone, so the session-authored signal (_session_records, which the Esc
+    # label + cancel determination key on) must stay empty. Stub only the
+    # viewport-math pick so the real field-writing path runs headless.
+    op._resolve_pick_at_cursor = lambda _context, _event: "picked_bone"  # type: ignore[method-assign]
+    op._handle_reparent_pick(bpy.context, object())
+    assert cls._last_bone_name == "picked_bone", "pick did not set the chain parent"
+    assert cls._session_records == [], "a Reparent pick must not author a bone"
+
+
+def test_reparent_pick_miss_keeps_chain_parent(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    cls._last_bone_name = "existing"
+    # A miss (no tip within the radius) is a no-op: keep the current parent and
+    # never touch the session-authored signal.
+    op._resolve_pick_at_cursor = lambda _context, _event: ""  # type: ignore[method-assign]
+    op._handle_reparent_pick(bpy.context, object())
+    assert cls._last_bone_name == "existing", "a miss must not clear the chain parent"
+    assert cls._session_records == [], "a miss must not author a bone"

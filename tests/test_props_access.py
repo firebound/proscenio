@@ -197,3 +197,11 @@ def test_resolve_target_armature_none_when_no_armature() -> None:
     obj = SimpleNamespace(parent=None)
     ctx = _context(scene_objects=[_mesh("m")], picker=None)
     assert resolve_target_armature(ctx, obj) is None
+
+
+def test_resolve_target_armature_none_when_context_has_no_scene() -> None:
+    # Defensive path: a context with no scene (scene is None) must not reach the
+    # scene export resolver - resolve_target_armature short-circuits to None.
+    obj = SimpleNamespace(parent=None)
+    ctx = SimpleNamespace(scene=None)
+    assert resolve_target_armature(ctx, obj) is None

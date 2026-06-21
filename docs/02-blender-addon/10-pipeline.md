@@ -11,6 +11,8 @@ The first panel in the sidebar and the grouper for the whole Photoshop to Blende
 
 Each stamped mesh is tagged with its source layer, so re-importing the same manifest reuses the existing meshes - user-set rotation, parenting, and weights survive the round trip. The importer reports how many meshes it stamped, how many layers it skipped, and how many spritesheets it composed.
 
+See [`examples/generated/simple_psd/`](../../examples/generated/simple_psd/) for a minimal worked manifest and its imported result.
+
 ## Validate
 
 `Validate` runs the full pre-export pass and lists what it finds; the same pass runs automatically before every export, and any `error` row blocks it. Sits between Import and Export so the run order reads top to bottom. Until you click `Validate` the panel shows `run Validate to see issues`; a clean scene shows `no issues - ready to export`.

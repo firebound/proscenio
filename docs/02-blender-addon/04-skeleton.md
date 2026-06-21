@@ -12,7 +12,11 @@ Below the list, `Active to Euler` and `All to Euler` convert bone rotation mode 
 
 ## Pose Mode
 
-Pose-only authoring shortcuts, all **blender-only** (enter Pose mode to reach them): `Bake Current Pose` keys every bone at the playhead (those keys do export), `Toggle IK` adds or removes a test IK constraint, `Bake IK to Keyframes` writes the IK-solved pose onto the chain bones as keyframes (the fix for the validator's animated-IK-without-keyframes error), and `Save Pose to Library` stores the pose as a Blender asset (its own `?` covers the asset flow).
+Pose-only authoring shortcuts, all **blender-only** (enter Pose mode to reach them): `Bake Current Pose` keys every bone at the playhead (those keys do export), `Toggle IK` adds or removes a test IK constraint, `Bake IK to Keyframes` writes the IK-solved pose onto the chain bones as keyframes (the fix for the validator's animated-IK-without-keyframes error), and `Save Pose to Library` stores the pose as a Blender asset (covered below).
+
+### Save Pose to Library
+
+`Save Pose to Library` is a one-click shim over Blender's native `poselib.create_pose_asset`. Set the pose, click it, and the pose lands in the Asset Browser named `<action>.<frame>` (or `<armature>.<frame>` when no action is active). Pose assets are **blender-only** - they never reach the `.proscenio`; use them to reuse a pose across animations, characters, or projects. Assets land in the active asset library, set under Preferences > File Paths > Asset Libraries, and you re-apply them from Window > Asset Browser.
 
 ## Quick Armature
 

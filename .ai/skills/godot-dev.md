@@ -19,7 +19,6 @@ apps/godot/
 │   ├── plugin.cfg
 │   ├── plugin.gd          EditorPlugin entry - registers importer
 │   ├── importer.gd        EditorImportPlugin
-│   ├── reimporter.gd      reimport orchestration
 │   └── builders/          one file per concern
 │       ├── skeleton_builder.gd
 │       ├── mesh_builder.gd

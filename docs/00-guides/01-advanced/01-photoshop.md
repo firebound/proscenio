@@ -32,17 +32,20 @@ In Blender, open the `.blend`, click `Import Photoshop Manifest` in the **Active
 
 When you edit the PSD, re-export, and run the import again in Blender, it does not duplicate anything: it finds each existing plane by its tag and updates it in place. The tag is a hidden custom property, `proscenio_import_origin = "psd:<layer_name>"`, matched against each layer (the object's name is ignored - see [Three names, one link](#three-names-one-link)). A layer that still exists is updated, a new layer gets a fresh plane, and a removed layer's plane is left alone and logged as an orphan rather than deleted.
 
-The important part is what "update in place" rebuilds. The import **regenerates the mesh** from the new art - back to a flat quad at the layer's new size and UVs - so anything stored in the mesh's vertex data is reset. The *object* is reused, so object-level data survives:
+The important part is what "update in place" does to each plane, and it depends on whether the layer's placement (its size and offset) changed:
 
-- transform (rotation, position) and parenting;
-- the vertex-group names (the groups remain, but the weights painted onto their vertices are gone);
+- **Same placement** - the common art-retouch case (you repainted inside the same box). The mesh is left fully intact: the Automesh densification and the painted weights stay exactly as they were, and only the texture refreshes to the new art.
+- **Changed placement** - the layer resized or moved. The import **rebuilds the mesh** back to a flat quad at the new size and UVs, but the painted weights are not lost: they live in the object-level `proscenio_weight_sidecar` Custom Property, which survives the geometry rebuild, and the importer reprojects them onto the fresh quad by UV anchor. A native Auto Weights bind that wrote no sidecar is snapshotted just before the rebuild, so its weights carry over too. The Automesh density does reset to the plain quad - re-run Automesh (with `Preserve weights on regen`) to densify again, and the reprojected weights redistribute across the denser mesh.
+
+Either way the *object* is reused, so object-level data survives:
+
+- transform (rotation, position) and parenting - including the single root armature, which is reused rather than rebuilt, so a rig you grew on it stays put;
+- the vertex groups and their painted weights (kept intact on a same-placement re-import, reprojected onto the new quad on a changed-placement one);
 - per-sprite settings (sprite type, sprite-frame metadata, the `is_slot` flag, region overrides);
 - slot membership and animation tracks that target the plane by name.
 
-> [!WARNING]
-> Re-import is **not** weight-preserving. Because it rebuilds the mesh, the Automesh density and the painted weights on every plane it touches are lost - the weight values live in the vertex data it regenerates. Do your PSD geometry iteration *before* you automesh and skin, or be ready to re-mesh and re-bind. (Non-destructive re-import is tracked on the backlog.)
-
-So the sane order is: iterate the PSD freely - paint, reposition, add or remove layers - while the sprites are still plain quads, and automesh, weight, and rig once the art has settled.
+> [!NOTE]
+> Re-import **is** weight-preserving. This is the same snapshot-by-UV-then-reproject mechanism an [Automesh regen](../../02-blender-addon/06-weight-paint.md#snapshot) uses, so a re-import preserves weights the way an Automesh re-run does - distinct from a fresh re-bind (re-rig), which starts from a clean bind and does not consult the sidecar. You can still iterate the PSD freely before you skin, but you no longer have to: paint and rig once, then keep editing the art, and your weights follow.
 
 ### Three names, one link
 
@@ -114,7 +117,7 @@ You land with planes at their PSD positions, materials linked, and a single `roo
 2. *Re-export*: click `Export` to the same folder; the manifest and PNGs are overwritten.
 3. *Re-import*: run `Import Photoshop Manifest` again and point at the same `manifest.json`.
 
-Planes update in place where the tags match, new layers are stamped, and removed-layer planes are reported as orphans rather than deleted. (Remember the re-import warning above: do this before you skin a sprite.)
+Planes update in place where the tags match, new layers are stamped, and removed-layer planes are reported as orphans rather than deleted. Painted weights survive the round trip (see [the re-import contract above](#re-importing-after-psd-edits)), so you can keep editing the art after you skin.
 
 ### Author a spritesheet group
 
@@ -130,7 +133,7 @@ The fragile one. To rename `torso` to `chest` without losing weights:
 1. In Blender, note the existing plane's `proscenio_import_origin` value.
 2. Rename the layer in the PSD and re-export.
 3. **Before** re-importing, change that plane's tag from `psd:torso` to `psd:chest`, so the importer routes the update to it.
-4. Re-import. The plane's UV and PNG refresh; the weights persist (the geometry is still rebuilt to a quad, so this is the no-automesh case).
+4. Re-import. The plane's UV and PNG refresh; the weights persist - reprojected from the sidecar onto the rebuilt quad, the same as any changed-placement re-import.
 
 Skip step 3 and you get a fresh `chest` plane plus an orphaned `torso` plane. Recoverable, but tedious.
 

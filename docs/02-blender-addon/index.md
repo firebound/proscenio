@@ -16,7 +16,7 @@ The addon is where the pipeline's heavy lifting happens:
 - **Weight bind and paint** - five bind modes (Bone Heat, Proximity, Envelope, Single Nearest, Empty), a 2D-tuned Edit Weights modal, copy-weights-between-sprites, and a weight sidecar that records provenance.
 - **Slots** - sprite-swap groups animated by slot index.
 - **Atlas** - pack, unpack, and apply a shared texture atlas.
-- **Source-art ingestion** - import a Photoshop manifest into planes plus a root bone (re-import rebuilds meshes, so painted weights are not preserved).
+- **Source-art ingestion** - import a Photoshop manifest into planes plus a root bone (re-import reuses the planes and the armature and preserves painted weights - intact on a same-placement layer, reprojected from the sidecar on a changed one).
 - **Export to Godot** - validate the scene, write the `.proscenio`, and one-click re-export to the same path afterwards.
 
 Each capability has its own panel below; the bind modes and the automesh-vs-reimport weight rules are detailed in [Weight Paint](06-weight-paint.md) and [Mesh Generation](05-mesh-generation.md).

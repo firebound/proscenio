@@ -55,9 +55,8 @@ def test_controls_collection_is_reused_across_chains(automesh_fixture: None) -> 
         # check below stays vacuously green if the second toggle silently failed
         # (one chain still yields exactly one controls collection).
         assert "FINISHED" in bpy.ops.proscenio.toggle_ik_chain()
-        assert (
-            rig.pose.bones["palm"].constraints.get("Proscenio IK") is not None
-        ), "second toggle did not add an IK chain to 'palm'"
+        palm_ik = rig.pose.bones["palm"].constraints.get("Proscenio IK")
+        assert palm_ik is not None, "second toggle did not add an IK chain to 'palm'"
         matches = [c for c in rig.data.collections if c.name == _CONTROLS_COLLECTION]
         assert len(matches) == 1, "a second chain created a duplicate controls collection"
     finally:

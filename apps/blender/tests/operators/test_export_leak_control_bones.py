@@ -43,13 +43,11 @@ def test_control_bone_absent_from_skeleton_and_tracks(
         # Animate the control so it would emit an animation track if not filtered.
         control = rig.pose.bones[control_name]
         control.location = (0.0, 0.0, 0.0)
-        assert control.keyframe_insert(
-            data_path="location", frame=1
-        ), "test precondition: control keyframe inserted"
+        inserted_first = control.keyframe_insert(data_path="location", frame=1)
+        assert inserted_first, "test precondition: control keyframe inserted"
         control.location = (0.2, 0.0, 0.3)
-        assert control.keyframe_insert(
-            data_path="location", frame=10
-        ), "test precondition: control keyframe inserted"
+        inserted_second = control.keyframe_insert(data_path="location", frame=10)
+        assert inserted_second, "test precondition: control keyframe inserted"
     finally:
         bpy.ops.object.mode_set(mode="OBJECT")
 

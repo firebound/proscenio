@@ -3,10 +3,16 @@
 Pure pytest, no Blender. Confirms every topic surfaced by the panel UI
 exists in the table + carries non-empty content + cross-references
 real directories on disk.
+
+The exact-mirror coverage test (spec 064) extends the spec-036 reverse-coverage
+check below: it parses the Blender-addon doc headings off disk and holds the
+``_DOC_PATHS`` map to the panel tree in both directions, so the docs site and
+the in-panel ``?`` deep-links cannot drift apart.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -14,7 +20,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.help_topics import (  # noqa: E402
+    _DOC_PATHS,
+    _DOCS_BASE,
+    _POPUP_MARGIN_PX,
+    _POPUP_PX_PER_CHAR,
     HELP_TOPICS,
+    POPUP_WIDTH,
+    POPUP_WRAP_CHARS,
     HelpTopic,
     known_topic_ids,
     reflow_paragraph,
@@ -37,18 +49,121 @@ def test_topic_for_unknown_returns_none() -> None:
     assert topic_for("nonexistent_topic") is None
 
 
+#: The ten top-level panel topics (spec 064, Decision 2A). A panel ``?`` is one
+#: shallow overview paragraph - what the panel is for and which pipeline stage it
+#: serves - and carries no ``sections``; depth lives on the doc page behind the
+#: ``Open online docs`` link. ``status_legend`` is the index badge legend rather
+#: than a panel, so it is NOT in this set and keeps its enumerated sections.
+PANEL_TOPIC_IDS: frozenset[str] = frozenset(
+    {
+        "pipeline_overview",
+        "outliner",
+        "active_element",
+        "slot_system",
+        "skeleton",
+        "mesh_generation",
+        "weight_paint",
+        "animation",
+        "atlas",
+        "helpers",
+    }
+)
+
+#: A panel ``?`` summary is one shallow paragraph; this caps it so a panel popup
+#: cannot grow back into the subpanel-depth prose the two-tier contract removes.
+PANEL_SUMMARY_BUDGET = 200
+
+
 def test_every_topic_has_required_fields() -> None:
     for topic_id, topic in HELP_TOPICS.items():
         assert topic.title, f"empty title for {topic_id!r}"
         assert topic.summary, f"empty summary for {topic_id!r}"
-        assert topic.sections, f"no sections for {topic_id!r}"
+        if topic_id in PANEL_TOPIC_IDS:
+            # Panel topics legitimately carry no sections under the two-tier
+            # contract (Decision 2A): the overview is the summary, depth is on
+            # the doc page. They must still have a non-empty summary (above).
+            assert topic.sections == (), (
+                f"panel topic {topic_id!r} must have sections == () (two-tier "
+                f"contract): depth belongs on the doc page, not the popup"
+            )
+            continue
+        assert topic.sections, f"no sections for non-panel topic {topic_id!r}"
         for section in topic.sections:
             assert section.heading, f"empty section heading in {topic_id!r}"
             # body is one paragraph string ("\n" separates explicit list items).
             assert isinstance(section.body, str), f"non-str body in {topic_id!r}"
             assert section.body.strip(), f"empty section body in {topic_id!r}"
             for item in section.body.split("\n"):
-                assert item.strip(), f"blank list item in {topic_id!r}/{section.heading!r}"
+                assert item.strip(), (
+                    f"blank list item in {topic_id!r}/{section.heading!r}"
+                )
+
+
+def test_panel_topics_are_one_shallow_overview() -> None:
+    """The two-tier contract shape (spec 064, Decision 2A), enforced.
+
+    Every panel topic carries no ``sections`` (the overview is the summary, depth
+    moves to the doc page) and keeps its summary under the budget so a panel ``?``
+    stays a shallow "what and why," not subpanel-depth prose.
+    """
+    for topic_id in PANEL_TOPIC_IDS:
+        topic = HELP_TOPICS[topic_id]
+        assert topic.sections == (), (
+            f"panel topic {topic_id!r} must have sections == () (Decision 2A)"
+        )
+        assert len(topic.summary) <= PANEL_SUMMARY_BUDGET, (
+            f"panel topic {topic_id!r} summary is {len(topic.summary)} chars, "
+            f"over the {PANEL_SUMMARY_BUDGET}-char overview budget"
+        )
+
+
+def test_no_subpanel_body_repeats_its_parent_panel_summary() -> None:
+    """A subpanel ``?`` names its parent by reference, never re-explains it.
+
+    No subpanel topic's summary or section body may contain its parent panel's
+    summary text verbatim, so the parent's overview lives in exactly one place
+    (the panel ``?``) and the subpanel stays scoped to its own controls.
+    """
+    # Subpanel topic -> the panel topic id it sits under (spec 064 mirror).
+    parent_of = {
+        # Pipeline panel.
+        "import_photoshop": "pipeline_overview",
+        "validation": "pipeline_overview",
+        "export": "pipeline_overview",
+        # Element panel.
+        "active_mesh": "active_element",
+        "active_sprite": "active_element",
+        "sprite_bone_parent": "active_element",
+        "texture_region": "active_element",
+        "drive_from_bone": "active_element",
+        "sprite_frame_preview": "active_element",
+        # Slots panel.
+        "active_slot": "slot_system",
+        # Skeleton panel.
+        "armature": "skeleton",
+        "pose_mode": "skeleton",
+        "pose_library": "skeleton",
+        "quick_armature": "skeleton",
+        # Mesh Generation panel.
+        "automesh_alpha": "mesh_generation",
+        "automesh_interactive": "mesh_generation",
+        "debug_pipeline": "mesh_generation",
+        # Weight Paint panel.
+        "bind": "weight_paint",
+        "edit_weights": "weight_paint",
+        "snapshot": "weight_paint",
+        "weight_transfer": "weight_paint",
+    }
+    for topic_id, parent_id in parent_of.items():
+        parent_summary = HELP_TOPICS[parent_id].summary.strip()
+        topic = HELP_TOPICS[topic_id]
+        bodies = [topic.summary, *(section.body for section in topic.sections)]
+        for body in bodies:
+            assert parent_summary not in body, (
+                f"subpanel topic {topic_id!r} repeats its parent "
+                f"{parent_id!r} summary verbatim; name the parent by "
+                f"reference instead"
+            )
 
 
 def test_reflow_wraps_each_line_to_the_width() -> None:
@@ -60,6 +175,21 @@ def test_reflow_wraps_each_line_to_the_width() -> None:
 
 def test_reflow_blank_input_yields_no_lines() -> None:
     assert reflow_paragraph("   ", 40) == []
+
+
+def test_popup_width_is_derived_from_the_wrap_budget() -> None:
+    # The popup width must track the wrap budget by construction, so the two
+    # cannot drift apart and re-open the empty right-band defect (spec 064).
+    assert POPUP_WIDTH == POPUP_WRAP_CHARS * _POPUP_PX_PER_CHAR + _POPUP_MARGIN_PX
+
+
+def test_no_topic_body_reflows_past_the_wrap_budget() -> None:
+    for topic_id, topic in HELP_TOPICS.items():
+        bodies = [topic.summary, *(section.body for section in topic.sections)]
+        for body in bodies:
+            for line in reflow_paragraph(body, POPUP_WRAP_CHARS):
+                over = len(line) > POPUP_WRAP_CHARS
+                assert not over, f"{topic_id}: line over {POPUP_WRAP_CHARS}: {line!r}"
 
 
 def test_reflow_bullet_keeps_a_hanging_indent() -> None:
@@ -133,3 +263,316 @@ def test_every_topic_has_a_panel_or_operator_caller() -> None:
         tid for tid in HELP_TOPICS if f'"{tid}"' not in blob and f"'{tid}'" not in blob
     ]
     assert not missing, f"help topics with no panel/operator caller: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Spec 064: the exact docs <-> panel mirror.
+#
+# The locked structural rule (STUDY.md, Decision 3): the docs mirror the Blender
+# panel tree exactly. Every top-level panel owns one page; every subpanel owns
+# one H2 section under its parent page; the About footer panel owns the index
+# page; and a topic that is neither a panel nor a subpanel anchors inside its
+# host section instead of owning a page or a top-level section.
+#
+# The tables below ARE that mirror, made visible. The tests hold them to three
+# other artifacts in both directions: the ``?`` topics wired in panels/, the
+# ``_DOC_PATHS`` map, and the doc-page headings on disk.
+# ---------------------------------------------------------------------------
+
+DOCS_DIR = REPO_ROOT / "docs" / "02-blender-addon"
+
+#: The eleven pages the mirror allows: the ten top-level panels plus the index
+#: (the About footer panel). Bare page slug -> the panel topic that owns it. The
+#: index has no panel topic of its own (status_legend deep-links to an anchor on
+#: it but is not a panel), so it maps to None.
+PANEL_PAGES: dict[str, str | None] = {
+    "pipeline": "pipeline_overview",
+    "outliner": "outliner",
+    "element": "active_element",
+    "slots": "slot_system",
+    "skeleton": "skeleton",
+    "mesh-generation": "mesh_generation",
+    "weight-paint": "weight_paint",
+    "animation": "animation",
+    "atlas": "atlas",
+    "helpers": "helpers",
+    "index": None,
+}
+
+#: Every subpanel topic -> the ``<page, anchor>`` H2 section it owns under its
+#: parent page. Each anchor here MUST exist as an H2 on that page, and every H2
+#: on a subpanel-bearing page MUST be claimed here (both directions are tested).
+SUBPANEL_SECTIONS: dict[str, tuple[str, str]] = {
+    # Pipeline subpanels (Validate folded in from the old standalone page).
+    "import_photoshop": ("pipeline", "import"),
+    "validation": ("pipeline", "validate"),
+    "export": ("pipeline", "export"),
+    # Element subpanels.
+    "active_mesh": ("element", "active-mesh"),
+    "active_sprite": ("element", "active-sprite"),
+    "sprite_bone_parent": ("element", "attach-to-bone"),
+    "texture_region": ("element", "texture-region"),
+    "drive_from_bone": ("element", "drive-from-bone"),
+    # Slots subpanel.
+    "active_slot": ("slots", "active-slot"),
+    # Skeleton subpanels.
+    "armature": ("skeleton", "active-armature"),
+    "pose_mode": ("skeleton", "pose-mode"),
+    "quick_armature": ("skeleton", "quick-armature"),
+    # Mesh Generation subpanels.
+    "automesh_alpha": ("mesh-generation", "automesh-from-alpha"),
+    "automesh_interactive": ("mesh-generation", "automesh-interactive"),
+    "debug_pipeline": ("mesh-generation", "debug-pipeline"),
+    # Weight Paint subpanels.
+    "bind": ("weight-paint", "bind"),
+    "edit_weights": ("weight-paint", "edit-weights"),
+    "snapshot": ("weight-paint", "snapshot"),
+    "weight_transfer": ("weight-paint", "weight-transfer"),
+}
+
+#: Topics that are neither a panel nor a subpanel: they hang off a row button or
+#: a sub-box and deep-link to an anchor inside a host section (Decision 5). Each
+#: maps to the ``<page, anchor>`` it points into. The anchor for status_legend
+#: is its own H2 on the index page; pose_library and sprite_frame_preview now own
+#: a dedicated in-section anchor (an H3 under their host subpanel's H2, not a
+#: sibling H2) so the deep-link lands on their own paragraph.
+ANCHOR_TOPICS: dict[str, tuple[str, str]] = {
+    "status_legend": ("index", "status-badges"),
+    "pose_library": ("skeleton", "save-pose-to-library"),
+    "sprite_frame_preview": ("element", "material-preview"),
+}
+
+
+def _slugify_heading(text: str) -> str:
+    """Approximate Docusaurus's GitHub-style heading-id slug.
+
+    Lowercase, drop inline-code backticks and other punctuation, collapse runs
+    of whitespace to single hyphens. Enough for the plain-word headings the
+    Blender-addon pages use; the test asserts the result, so a heading whose
+    slug differs fails loudly here.
+    """
+    slug = text.strip().lower()
+    slug = slug.replace("`", "")
+    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
+    slug = re.sub(r"\s+", "-", slug)
+    return slug.strip("-")
+
+
+def _doc_page_slug(path: Path) -> str:
+    """Bare routing slug for a doc file: the ``NN-`` ordering prefix is stripped.
+
+    Docusaurus routes ``10-pipeline.md`` at ``.../pipeline`` and ``index.md`` at
+    the section root, so ``_DOC_PATHS`` keys on the bare slug while the files on
+    disk carry the numeric prefix.
+    """
+    stem = path.stem
+    return stem.split("-", 1)[1] if re.match(r"^\d+-", stem) else stem
+
+
+def _doc_page_path(slug: str) -> Path:
+    """Resolve a bare routing slug to its prefixed file on disk."""
+    for path in DOCS_DIR.glob("*.md"):
+        if _doc_page_slug(path) == slug:
+            return path
+    raise FileNotFoundError(f"no Blender-addon doc page for slug {slug!r}")
+
+
+def _page_headings(slug: str) -> dict[int, list[str]]:
+    """Return ``{level: [anchor, ...]}`` for one Blender-addon page's headings.
+
+    Parses ATX headings (``#``..``###``) off disk, skipping fenced code blocks,
+    and returns their slug anchors keyed by heading level.
+    """
+    text = _doc_page_path(slug).read_text(encoding="utf-8")
+    headings: dict[int, list[str]] = {}
+    in_fence = False
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        match = re.match(r"^(#{1,6})\s+(.*)$", line)
+        if not match:
+            continue
+        level = len(match.group(1))
+        headings.setdefault(level, []).append(_slugify_heading(match.group(2)))
+    return headings
+
+
+def _wired_help_topics() -> set[str]:
+    """Every ``help_topic`` id wired by a ``?`` in panels/ (bpy-free, source-parsed).
+
+    Matches the four header/help-button draw helpers' trailing topic argument so
+    a new ``?`` wiring that the mirror tables forget to cover fails the
+    completeness test below.
+    """
+    panels_dir = REPO_ROOT / "apps" / "blender" / "panels"
+    topics: set[str] = set()
+    # draw_subpanel_header(layout, context, feature_id, "topic")
+    # draw_subbox_header(box, title, icon, feature_id, "topic")
+    header_call = re.compile(
+        r"draw_sub(?:panel|box)_header\([^)]*?,\s*['\"][^'\"]+['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*,?\s*\)",
+        re.DOTALL,
+    )
+    # draw_help_button(layout, "topic")
+    button_call = re.compile(r"draw_help_button\([^,]+,\s*['\"]([^'\"]+)['\"]\s*\)")
+    for path in sorted(panels_dir.rglob("*.py")):
+        src = path.read_text(encoding="utf-8")
+        topics.update(header_call.findall(src))
+        topics.update(button_call.findall(src))
+    return topics
+
+
+def test_doc_pages_on_disk_equal_the_locked_panel_set() -> None:
+    """The page set is exactly the ten panels plus index - no extras, no missing.
+
+    After the spec-064 fold there is no standalone 09-validation.md; Validate is
+    a section of the Pipeline page. ``_category_.json`` is sidebar metadata, not
+    a page.
+    """
+    on_disk = {_doc_page_slug(p) for p in DOCS_DIR.glob("*.md")}
+    assert on_disk == set(PANEL_PAGES), (
+        f"doc page set drifted from the locked panel mirror: "
+        f"extra={sorted(on_disk - set(PANEL_PAGES))} "
+        f"missing={sorted(set(PANEL_PAGES) - on_disk)}"
+    )
+    assert not (DOCS_DIR / "09-validation.md").exists(), (
+        "09-validation.md must be folded into pipeline.md#validate (spec 064)"
+    )
+
+
+def test_mirror_tables_partition_the_doc_paths() -> None:
+    """The three mirror tables together cover exactly the ``_DOC_PATHS`` keys.
+
+    Every topic with a doc deep-link is classified as a panel, a subpanel, or an
+    anchor topic - and nothing is classified twice or left out.
+    """
+    panel_topics = {t for t in PANEL_PAGES.values() if t is not None}
+    classified = panel_topics | set(SUBPANEL_SECTIONS) | set(ANCHOR_TOPICS)
+    overlaps = (
+        (panel_topics & set(SUBPANEL_SECTIONS))
+        | (panel_topics & set(ANCHOR_TOPICS))
+        | (set(SUBPANEL_SECTIONS) & set(ANCHOR_TOPICS))
+    )
+    assert not overlaps, (
+        f"topics classified in more than one mirror table: {sorted(overlaps)}"
+    )
+    assert classified == set(_DOC_PATHS), (
+        f"mirror tables disagree with _DOC_PATHS: "
+        f"only_in_tables={sorted(classified - set(_DOC_PATHS))} "
+        f"only_in_DOC_PATHS={sorted(set(_DOC_PATHS) - classified)}"
+    )
+
+
+def test_every_doc_path_matches_its_mirror_classification() -> None:
+    """``_DOC_PATHS`` values equal what the mirror tables say they must be.
+
+    A panel topic -> the bare page; a subpanel/anchor topic -> ``page#anchor``.
+    """
+    for page, topic in PANEL_PAGES.items():
+        if topic is None:
+            continue
+        assert _DOC_PATHS[topic] == page, (
+            f"{topic}: panel topic must map to bare {page!r}"
+        )
+    for topic, (page, anchor) in {**SUBPANEL_SECTIONS, **ANCHOR_TOPICS}.items():
+        assert _DOC_PATHS[topic] == f"{page}#{anchor}", (
+            f"{topic}: must map to {page}#{anchor!r}"
+        )
+
+
+def test_every_doc_path_resolves_to_a_page_and_anchor_on_disk() -> None:
+    """Every ``_DOC_PATHS`` value points at a real page file and, when it has a
+    ``#anchor``, a real heading on that page."""
+    for topic, rel in _DOC_PATHS.items():
+        page, _, anchor = rel.partition("#")
+        assert page in {_doc_page_slug(p) for p in DOCS_DIR.glob("*.md")}, (
+            f"{topic}: doc page {page!r} is missing"
+        )
+        if anchor:
+            anchors = {
+                a
+                for level_anchors in _page_headings(page).values()
+                for a in level_anchors
+            }
+            assert anchor in anchors, (
+                f"{topic}: anchor #{anchor} not found as a heading in {page}.md "
+                f"(have: {sorted(anchors)})"
+            )
+
+
+def test_every_subpanel_section_is_an_h2_on_its_parent_page() -> None:
+    """Each subpanel topic's anchor is an actual H2 (not H1/H3) on its page.
+
+    The mirror reserves H2s for subpanels, so the anchor must live at H2 depth.
+    """
+    for topic, (page, anchor) in SUBPANEL_SECTIONS.items():
+        h2s = set(_page_headings(page).get(2, []))
+        assert anchor in h2s, (
+            f"{topic}: #{anchor} must be an H2 on {page}.md (H2s there: {sorted(h2s)})"
+        )
+
+
+def test_every_h2_on_a_subpanel_page_has_a_subpanel_topic() -> None:
+    """Reverse direction: no orphan H2. Every H2 on a subpanel-bearing panel page
+    is claimed by exactly one subpanel topic.
+
+    The index page is excluded: it is the About panel's prose page, and its H2s
+    (What it does / The sidebar / Header affordances / Status badges) are
+    documentation structure, not subpanels - status_legend deep-links to one
+    anchor but is not a subpanel.
+    """
+    claimed: dict[str, set[str]] = {}
+    for _topic, (page, anchor) in SUBPANEL_SECTIONS.items():
+        claimed.setdefault(page, set()).add(anchor)
+    for page in PANEL_PAGES:
+        if page == "index":
+            continue
+        h2s = set(_page_headings(page).get(2, []))
+        orphans = h2s - claimed.get(page, set())
+        assert not orphans, (
+            f"{page}.md has H2(s) with no subpanel topic pointing at them: {sorted(orphans)} "
+            f"(the mirror requires every subpanel-page H2 to be a subpanel section)"
+        )
+
+
+def test_every_wired_question_button_topic_has_a_doc_path() -> None:
+    """Every ``?`` topic wired in panels/ resolves to a ``_DOC_PATHS`` entry.
+
+    This is the forward leg of the mirror: a panel/subpanel/button that surfaces
+    a ``?`` must deep-link somewhere, so a new wiring without a doc mapping fails
+    here. (status_legend's ``?`` is the status operator, not a panel header
+    topic, so it is allowed to be wired elsewhere; it still carries a doc path.)
+    """
+    wired = _wired_help_topics()
+    # Sanity: the parser actually found the wirings, not an empty set.
+    assert "pipeline_overview" in wired and "validation" in wired, (
+        f"help-topic wiring parser found too little: {sorted(wired)}"
+    )
+    missing = sorted(t for t in wired if t not in _DOC_PATHS)
+    assert not missing, f"wired ? topics with no _DOC_PATHS deep-link: {missing}"
+
+
+def test_every_wired_topic_is_in_the_mirror_tables() -> None:
+    """Every wired ``?`` topic is classified by the mirror tables, so a new
+    panel/subpanel cannot be added without the mirror test covering it."""
+    wired = _wired_help_topics()
+    classified = (
+        {t for t in PANEL_PAGES.values() if t is not None}
+        | set(SUBPANEL_SECTIONS)
+        | set(ANCHOR_TOPICS)
+    )
+    missing = sorted(t for t in wired if t not in classified)
+    assert not missing, f"wired ? topics absent from the mirror tables: {missing}"
+
+
+def test_topic_for_fills_doc_url_for_every_mapped_topic() -> None:
+    """``topic_for`` injects the ``_DOCS_BASE`` doc_url for each mapped topic."""
+    for topic_id, rel in _DOC_PATHS.items():
+        topic = topic_for(topic_id)
+        assert topic is not None, f"{topic_id} not in HELP_TOPICS"
+        assert topic.doc_url == _DOCS_BASE + rel, (
+            f"{topic_id}: doc_url {topic.doc_url!r} != base + {rel!r}"
+        )

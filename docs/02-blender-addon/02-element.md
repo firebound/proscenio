@@ -21,7 +21,11 @@ Shown when the element type is Sprite. Only the spritesheet metadata is exported
 
 The sprite is always centred on its node - the writer's offset math assumes it, so this is a fixed internal constant rather than a toggle. The `[origin]` PSD tag sets the pivot for a sprite; it is ignored on a Mesh.
 
-Below the fields a read-out reports the linked atlas size, the region size (full atlas, or the manual rect), and the resulting per-frame size for the current grid. A **Material Preview** sub-box hosts `Setup Preview` / `Remove Preview`, which wire (and un-wire) a shader-node slicer plus drivers so Material Preview shows the active cell on the quad instead of the full atlas.
+Below the fields a read-out reports the linked atlas size, the region size (full atlas, or the manual rect), and the resulting per-frame size for the current grid.
+
+### Material Preview
+
+The **Material Preview** sub-box hosts `Setup Preview` / `Remove Preview`. `Setup Preview` inserts a `SpriteFrameSlicer` node group between the material's TexCoord and ImageTexture nodes and drives its inputs from `frame` / `hframes` / `vframes`, so Material Preview shows the active cell on the quad instead of the full atlas and tracks the value live as `frame` animates. It is idempotent - re-running refreshes an existing slicer rather than duplicating it. `Remove Preview` un-wires the slicer and drops the drivers. The slicer is invisible under the Solid / Workbench engines (they only honour `diffuse_color`), and it assumes contiguous cells - atlases with padding between cells are not yet supported.
 
 ## Attach to Bone
 

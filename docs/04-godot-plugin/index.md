@@ -4,8 +4,8 @@ A GDScript editor plugin: a single [`EditorImportPlugin`](https://docs.godotengi
 
 ## What it does
 
-- **Reimport to a native scene.** The plugin regenerates a scene (Skeleton2D + Bone2D + Polygon2D / Sprite2D + AnimationPlayer) whenever a `.proscenio` file enters or changes in the project. The generated scene runs with the plugin uninstalled: it is plain Godot 4 nodes, no GDExtension and no runtime dependency.
-- **Wrapper-scene safety.** A user-authored wrapper scene that instances the generated one survives every reimport, so scripts and gameplay nodes are never clobbered.
+- **Reimport to a native scene.** The plugin regenerates a scene (Skeleton2D + Bone2D + Polygon2D / Sprite2D + AnimationPlayer) whenever a `.proscenio` file enters or changes in the project. Reimport overwrites the generated scene wholesale - it rebuilds the tree from scratch and there is no diff or merge against the previous output, because the `.proscenio` is the source and the scene is a generated artifact the engine owns. The generated scene runs with the plugin uninstalled: it is plain Godot 4 nodes, no GDExtension and no runtime dependency.
+- **Wrapper-scene safety.** Because reimport overwrites, edits never live inside the generated scene; the supported way to keep them is to wrap the generated scene in your own `.tscn` that instances it. The wrapper holds your scripts, extra nodes, and its own `AnimationPlayer`, so it survives every reimport untouched.
 - **Typed read.** The importer reads the document as a typed Resource (`ProscenioDocument.from_dict`), checks the `format_version`, and builds the node tree in order: skeleton, atlas, slots before sprites, sprites, animation.
 
 ## How it is built

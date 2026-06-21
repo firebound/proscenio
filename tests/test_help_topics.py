@@ -14,7 +14,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.help_topics import (  # noqa: E402
+    _POPUP_MARGIN_PX,
+    _POPUP_PX_PER_CHAR,
     HELP_TOPICS,
+    POPUP_WIDTH,
+    POPUP_WRAP_CHARS,
     HelpTopic,
     known_topic_ids,
     reflow_paragraph,
@@ -60,6 +64,21 @@ def test_reflow_wraps_each_line_to_the_width() -> None:
 
 def test_reflow_blank_input_yields_no_lines() -> None:
     assert reflow_paragraph("   ", 40) == []
+
+
+def test_popup_width_is_derived_from_the_wrap_budget() -> None:
+    # The popup width must track the wrap budget by construction, so the two
+    # cannot drift apart and re-open the empty right-band defect (spec 064).
+    assert POPUP_WIDTH == POPUP_WRAP_CHARS * _POPUP_PX_PER_CHAR + _POPUP_MARGIN_PX
+
+
+def test_no_topic_body_reflows_past_the_wrap_budget() -> None:
+    for topic_id, topic in HELP_TOPICS.items():
+        bodies = [topic.summary, *(section.body for section in topic.sections)]
+        for body in bodies:
+            for line in reflow_paragraph(body, POPUP_WRAP_CHARS):
+                over = len(line) > POPUP_WRAP_CHARS
+                assert not over, f"{topic_id}: line over {POPUP_WRAP_CHARS}: {line!r}"
 
 
 def test_reflow_bullet_keeps_a_hanging_indent() -> None:

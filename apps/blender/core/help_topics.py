@@ -30,14 +30,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
-#: The help popup width passed to ``invoke_popup``, in pixels.
-POPUP_WIDTH = 480
-
-#: Greedy word-wrap budget tuned to ``POPUP_WIDTH``: ``layout.label`` cannot wrap
-#: and Blender exposes no draw-time text metrics in a popup, so prose is reflowed
-#: against a fixed character count that fills the popup at default UI scale. The
-#: old hand-wrapping sat near 55 chars, leaving the right third of the popup empty.
+#: Greedy word-wrap budget: ``layout.label`` cannot wrap and Blender exposes no
+#: draw-time text metrics in a popup, so prose is reflowed against a fixed
+#: character count. This is the readability lever; the popup width is derived
+#: from it below so the two can never drift (the old pair - a 480 px popup
+#: against a 72-char wrap - left the right band of the popup empty).
 POPUP_WRAP_CHARS = 72
+
+#: Default-scale glyph advance for ``layout.label`` (approximate - Blender gives
+#: no draw-time metric) plus the popup's inner chrome. Keep ``_POPUP_PX_PER_CHAR``
+#: a hair above the real advance so a full-width line never clips; lower it if a
+#: band reappears, raise it if text clips. ``POPUP_WRAP_CHARS`` is the readability
+#: knob.
+_POPUP_PX_PER_CHAR = 5
+_POPUP_MARGIN_PX = 30
+
+#: The help popup width passed to ``invoke_popup``, in pixels - DERIVED from the
+#: wrap budget so it is always the wrapped-text extent and the empty-band defect
+#: cannot return.
+POPUP_WIDTH = POPUP_WRAP_CHARS * _POPUP_PX_PER_CHAR + _POPUP_MARGIN_PX
 
 
 @dataclass(frozen=True)

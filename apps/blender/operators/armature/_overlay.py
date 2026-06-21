@@ -34,6 +34,10 @@ _PREVIEW_COLOR = (1.0, 0.6, 0.0, 0.9)  # connected (Blender modal-progress orang
 _PREVIEW_COLOR_UNPARENTED = (0.4, 0.8, 1.0, 0.9)  # cyan = no parent
 _PREVIEW_COLOR_DISCONNECTED = (1.0, 0.85, 0.2, 0.9)  # yellow = parent + free head
 _PREVIEW_COLOR_INVALID = (0.9, 0.25, 0.25, 0.85)
+_REPARENT_TIP_COLOR = (0.5, 0.8, 1.0, 0.7)  # candidate bone tips (faint cyan)
+_REPARENT_PICK_COLOR = (1.0, 0.85, 0.2, 0.95)  # live pick target (bright yellow)
+_REPARENT_TIP_RADIUS = 0.07
+_REPARENT_PICK_RADIUS = 0.11
 _AXIS_LINE_COLOR_X = (1.0, 0.3, 0.3, 0.9)
 _AXIS_LINE_COLOR_Z = (0.3, 0.55, 1.0, 0.9)
 _AXIS_LINE_HALF_LENGTH = 1000.0
@@ -45,6 +49,11 @@ _CHEATSHEET_WARNING_TEXT_COLOR = (1.0, 0.55, 0.55, 1.0)
 
 
 def draw_preview_3d(cls: type[PROSCENIO_OT_quick_armature]) -> None:
+    # Reparent mode draws its own surface (candidate tips + live pick target)
+    # and never the Draw preview line; the two modes are mutually exclusive.
+    if cls._mode == "REPARENT":
+        _draw_reparent_tips(cls)
+        return
     head = cls._drag_head
     cursor = cls._cursor_world
     # Axis lock guideline renders even before the drag starts so the
@@ -106,6 +115,43 @@ def _resolve_parent_tail_world(
         return None
     tail_world = armature.matrix_world @ bone.tail_local
     return (float(tail_world.x), float(tail_world.y), float(tail_world.z))
+
+
+def _draw_reparent_tips(cls: type[PROSCENIO_OT_quick_armature]) -> None:
+    """Highlight every bone tail as a pick candidate; brighten the live target.
+
+    Tails are the Reparent hit-test anchors (a click chains from the picked
+    tail), so they read as the candidate dots; the bone under the cursor draws
+    bigger + brighter so the user sees what a click would pick.
+    """
+    armature = bpy.data.objects.get(cls._target_armature_name)
+    if armature is None or armature.type != "ARMATURE":
+        return
+    matrix_world = armature.matrix_world
+    target = cls._pick_target_name
+    for bone in armature.data.bones:
+        tail_world = matrix_world @ bone.tail_local
+        # The pick resolver (_world_tail_tips / resolve_pick) projects every
+        # tail to the Y=0 XZ plane, so the drawn marker must drop its Y too;
+        # otherwise a non-planar armature renders the dot off the clickable
+        # point.
+        tail = (float(tail_world.x), 0.0, float(tail_world.z))
+        if bone.name == target:
+            color = _REPARENT_PICK_COLOR
+            radius = _REPARENT_PICK_RADIUS
+            width = _PREVIEW_LINE_WIDTH
+        else:
+            color = _REPARENT_TIP_COLOR
+            radius = _REPARENT_TIP_RADIUS
+            width = 1.0
+        draw_circle_3d(
+            tail,
+            radius,
+            color,
+            plane_axis="Y",
+            segments=_ANCHOR_SEGMENTS,
+            line_width=width,
+        )
 
 
 def _preview_color_for(

@@ -26,10 +26,27 @@ def emit_chord_layout(
 ) -> None:
     """Shared chord rendering for the STATUSBAR + 3D viewport headers.
 
-    Uses Blender's native ``EVENT_*`` / ``MOUSE_*`` icons via the shared
-    ``chord`` primitive so the hint visually matches Blender's own modal
-    status bar (knife tool, loop cut, etc).
+    The cheatsheet swaps per modal sub-mode (Tab cycles Draw / Reparent) so
+    only the active mode's gestures show - mirroring the per-stage automesh
+    authoring status bar. Uses Blender's native ``EVENT_*`` / ``MOUSE_*``
+    icons via the shared ``chord`` primitive so the hint visually matches
+    Blender's own modal status bar (knife tool, loop cut, etc).
     """
+    if cls._mode == "REPARENT":
+        _emit_reparent_rows(layout)
+    else:
+        _emit_draw_rows(layout, cls)
+    # Tab cycles the mode; the label names the OTHER mode (where Tab lands).
+    other = "draw" if cls._mode == "REPARENT" else "reparent"
+    chord(layout, ("EVENT_TAB", ""), ("", f"{other} mode"))
+    _emit_exit_rows(layout, cls)
+
+
+def _emit_draw_rows(
+    layout: bpy.types.UILayout,
+    cls: type[PROSCENIO_OT_quick_armature],
+) -> None:
+    """Draw-mode chords: the click-drag bone authoring vocabulary."""
     if cls._default_chain:
         connect_label = "connected"
         unparented_label = "unparented"
@@ -43,12 +60,30 @@ def emit_chord_layout(
     chord(layout, ("EVENT_X", ""), ("", "/"), ("EVENT_Z", ""), ("", "axis lock"))
     chord(layout, ("EVENT_CTRL", ""), ("", "grid snap"))
     chord(layout, ("EVENT_CTRL", ""), ("", "+"), ("EVENT_Z", ""), ("", "undo"))
-    # Confirm / exit read as synonyms and never change, so the two gestures
-    # looked identical. Relabel and make the Esc hint track session state: a
-    # bare Esc discards the empty auto-rig, but once a bone is authored both
-    # Esc and Enter keep the bones (only the report verb differs today).
+
+
+def _emit_reparent_rows(layout: bpy.types.UILayout) -> None:
+    """Reparent-mode chords: click a bone tip to pick the next chain parent."""
+    chord(layout, ("MOUSE_LMB", ""), ("", "pick bone tip = parent"))
+
+
+def _emit_exit_rows(
+    layout: bpy.types.UILayout,
+    cls: type[PROSCENIO_OT_quick_armature],
+) -> None:
+    """Confirm / exit chords, shared across modes.
+
+    Confirm / exit read as synonyms and never change, so the two gestures
+    looked identical. Relabel and make the Esc hint track session state: a
+    bare Esc discards the empty auto-rig, but once a bone is authored both
+    Esc and Enter keep the bones (only the report verb differs today). The
+    session-state-aware label persists across both modes' cheatsheets.
+    """
     chord(layout, ("EVENT_RETURN", ""), ("", "finish"))
-    if cls._last_bone_name:
+    # Key the Esc label on the session-authored signal, not _last_bone_name: a
+    # Reparent pick writes _last_bone_name (the chain parent) without authoring
+    # a bone, so it must read "keeps bones" only once a bone exists this session.
+    if cls._session_records:
         chord(layout, ("EVENT_ESC", ""), ("", "exit (keeps bones)"))
     else:
         chord(layout, ("EVENT_ESC", ""), ("", "cancel (discards empty rig)"))

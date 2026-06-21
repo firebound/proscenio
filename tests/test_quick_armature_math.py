@@ -19,6 +19,8 @@ from core.armature.quick_armature_math import (  # noqa: E402  - sys.path setup 
     DEFAULT_NAME_PREFIX,
     apply_axis_lock,
     format_bone_name,
+    next_mode,
+    resolve_pick,
     resolve_press_mode,
     resolve_press_mode_label,
     sanitize_prefix,
@@ -170,3 +172,51 @@ class TestFormatBoneName:
     def test_index_above_999_overflows(self) -> None:
         # Documented behaviour: padding floor is 3, larger indices grow.
         assert format_bone_name("def", 1000) == "def.1000"
+
+
+class TestNextMode:
+    """Tab cycles the modal sub-mode between Draw and Reparent."""
+
+    def test_draw_cycles_to_reparent(self) -> None:
+        assert next_mode("DRAW") == "REPARENT"
+
+    def test_reparent_cycles_back_to_draw(self) -> None:
+        assert next_mode("REPARENT") == "DRAW"
+
+
+class TestResolvePick:
+    """Reparent hit-test: nearest bone tail within a world radius, by name.
+
+    The pure core of viewport pick-parent - the operator projects the cursor
+    and each bone tail to the Y=0 XZ plane, then this resolves which bone tip
+    (if any) the click landed on. Returns the bone name on a hit, ``None`` on
+    a miss (cursor in empty space), so the operator can no-op with feedback.
+    """
+
+    def test_cursor_near_a_tip_picks_that_bone(self) -> None:
+        tips = [("boneA", (0.0, 0.0)), ("boneB", (5.0, 0.0)), ("boneC", (0.0, 5.0))]
+        # Cursor sits a hair from boneB's tail.
+        assert resolve_pick((5.05, 0.02), tips, radius=0.5) == "boneB"
+
+    def test_cursor_in_empty_space_picks_nothing(self) -> None:
+        tips = [("boneA", (0.0, 0.0)), ("boneB", (5.0, 0.0))]
+        # Cursor far from every tail (beyond the radius) -> no reparent.
+        assert resolve_pick((50.0, 50.0), tips, radius=0.5) is None
+
+    def test_no_tips_picks_nothing(self) -> None:
+        assert resolve_pick((0.0, 0.0), [], radius=0.5) is None
+
+    def test_picks_the_nearest_when_two_are_in_radius(self) -> None:
+        tips = [("near", (0.1, 0.0)), ("far", (0.4, 0.0))]
+        assert resolve_pick((0.0, 0.0), tips, radius=1.0) == "near"
+
+    def test_tie_keeps_the_first(self) -> None:
+        tips = [("first", (1.0, 0.0)), ("second", (-1.0, 0.0))]
+        # Equidistant from the origin; the lower index wins (nearest_index uses
+        # strict <), so the first-listed bone is chosen.
+        assert resolve_pick((0.0, 0.0), tips, radius=2.0) == "first"
+
+    def test_on_the_radius_boundary_counts_as_a_hit(self) -> None:
+        tips = [("edge", (1.0, 0.0))]
+        # Exactly at the radius: nearest_index caps with <=, so this hits.
+        assert resolve_pick((0.0, 0.0), tips, radius=1.0) == "edge"

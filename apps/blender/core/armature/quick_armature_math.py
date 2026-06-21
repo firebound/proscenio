@@ -6,9 +6,17 @@ chord-resolution / axis-lock / grid-snap math without booting Blender.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Literal, TypeAlias
 
+from .._shared.nearest import nearest_index
+
 AxisLock: TypeAlias = Literal["X", "Z"] | None
+
+# Modal sub-mode. ``DRAW`` is the click-drag bone authoring (the historical
+# behaviour, unchanged); ``REPARENT`` hit-tests a bone tip to pick the parent
+# for the next Draw chain. Tab cycles between them.
+Mode = Literal["DRAW", "REPARENT"]
 
 DEFAULT_NAME_PREFIX = "qbone"
 
@@ -105,6 +113,36 @@ def apply_axis_lock(
     if axis == "Z":
         return (head[0], head[1], tail[2])
     return tail
+
+
+def next_mode(mode: Mode) -> Mode:
+    """Cycle the modal sub-mode (Tab). Two modes, so this toggles."""
+    return "REPARENT" if mode == "DRAW" else "DRAW"
+
+
+def resolve_pick(
+    cursor_xz: tuple[float, float],
+    tips: Sequence[tuple[str, tuple[float, float]]],
+    radius: float,
+) -> str | None:
+    """Return the bone whose tail is nearest ``cursor_xz`` within ``radius``.
+
+    ``tips`` pairs each candidate bone name with its tail projected to the
+    Y=0 XZ plane (the picture-plane the whole modal commits to). Resolution
+    is the pure :func:`nearest_index` scan, so the pick tolerance is whatever
+    world ``radius`` the caller derived from a screen-constant pixel distance.
+
+    Returns ``None`` when ``tips`` is empty or every tail lies beyond
+    ``radius`` - the caller treats that as "no bone tip near cursor" and keeps
+    the current parent (a miss is a no-op with feedback, never a silent state
+    change). Ties keep the first-listed bone (``nearest_index`` uses strict
+    ``<``).
+    """
+    points = [tail for _name, tail in tips]
+    idx = nearest_index(cursor_xz, points, max_distance=radius)
+    if idx < 0:
+        return None
+    return tips[idx][0]
 
 
 def sanitize_prefix(raw: str | None) -> str:

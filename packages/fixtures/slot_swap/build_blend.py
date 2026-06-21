@@ -266,6 +266,8 @@ def _build_attachment(
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
     obj.location = (0.0, draw_order * 0.001, 0.0)
+    if hasattr(obj, "proscenio"):
+        obj.proscenio.y_draw_order = draw_order
     obj["proscenio_y_draw_order"] = draw_order
     mat = _build_material(f"{name}.mat", image_path)
     mesh.materials.append(mat)

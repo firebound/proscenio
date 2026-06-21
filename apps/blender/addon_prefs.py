@@ -108,10 +108,13 @@ def y_location_spacing(context: bpy.types.Context) -> float:
     ``context.preferences``) so callers get a usable spacing instead of
     crashing the lookup.
     """
-    prefs = context.preferences if context is not None else None
+    prefs = getattr(context, "preferences", None) if context is not None else None
     if prefs is None:
         return DEFAULT_Y_LOCATION_SPACING
-    addon = prefs.addons.get(ADDON_PACKAGE)  # type: ignore[attr-defined]
+    addons = getattr(prefs, "addons", None)
+    if addons is None:
+        return DEFAULT_Y_LOCATION_SPACING
+    addon = addons.get(ADDON_PACKAGE)
     if addon is None:
         return DEFAULT_Y_LOCATION_SPACING
     return float(getattr(addon.preferences, "y_location_spacing", DEFAULT_Y_LOCATION_SPACING))

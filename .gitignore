@@ -14,6 +14,7 @@ venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.sonar/
 
 # Coverage reports (generated locally before a Sonar scan; transient, not source)
 .coverage

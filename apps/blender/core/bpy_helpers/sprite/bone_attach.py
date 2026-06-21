@@ -14,13 +14,15 @@ from __future__ import annotations
 import bpy
 
 from ..._shared.props_access import resolve_target_armature
+from .._shared.bone_orientation import bone_in_picture_plane
 
-# A bone whose world direction lies within this much of the picture plane (XZ)
-# rotates a rigid sprite out of the camera plane. The camera looks down -Y, so a
-# bone pointing into the screen (world +/-Y) keeps the sprite facing front;
-# abs(dir.y) below this cosine threshold (~45 degrees off Y) is the rotate-risk
-# band. Mirrors the slot bone_follow threshold of the same name.
-_INTO_SCREEN_MIN_Y = 0.7
+__all__ = [
+    "bone_in_picture_plane",
+    "clear_bone_parent_keep_world",
+    "current_bone_parent",
+    "parent_to_bone_keep_world",
+    "resolve_sprite_armature",
+]
 
 
 def resolve_sprite_armature(
@@ -41,24 +43,6 @@ def current_bone_parent(obj: bpy.types.Object) -> str:
     if getattr(obj, "parent_type", "") == "BONE" and getattr(obj, "parent_bone", ""):
         return str(obj.parent_bone)
     return ""
-
-
-def bone_in_picture_plane(armature: bpy.types.Object, bone_name: str) -> bool:
-    """True when ``bone_name`` lies in the picture plane (rotates a rigid sprite).
-
-    A bone pointing into the screen (world +/-Y) keeps the sprite facing front;
-    an in-plane bone (+X / +Z, e.g. a spine bone drawn up the figure) tilts the
-    rigid Sprite2D off the camera plane. Unknown / zero-length bones read False.
-    """
-    pose_bone = armature.pose.bones.get(bone_name)
-    if pose_bone is None:
-        return False
-    world = armature.matrix_world
-    direction = (world @ pose_bone.tail) - (world @ pose_bone.head)
-    if direction.length < 1e-9:  # degenerate (zero-length) bone
-        return False
-    direction.normalize()
-    return abs(direction.y) < _INTO_SCREEN_MIN_Y
 
 
 def parent_to_bone_keep_world(

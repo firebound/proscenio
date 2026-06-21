@@ -23,6 +23,7 @@ The 2026-06-20 backlog-drain wave routed the entries that were here into specs (
 New code-health and toolchain-enforcement gaps land here.
 
 - **ruff version drift, pre-commit versus CI.** The [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) ruff hook is pinned to 0.8.4 while CI runs `uvx ruff` (unpinned, currently ~0.15.x); the two disagree on `assert ..., (message)` line wrapping, so a file that passes the pre-commit hook can still fail CI `ruff format --check` (hit and worked around in spec 056). Align them - pin CI to the hook version, or bump the hook to match CI.
+- **High cognitive-complexity functions (S3776), accepted not refactored.** Spec 063 accepted seven at-threshold S3776 findings via `sonar.issue.ignore.multicriteria` rather than refactor load-bearing code unsupervised: the Godot export writers (`exporters/godot/writer/{__init__,sprites,sprite_frame_animations}.py`), `core/automesh/outer_splice.py`, `operators/help_dispatch.py`, `operators/skinning/edit_weights.py`, and `apps/photoshop/src/lib/layer-descriptor.ts`. Behavior is pinned by the goldens and headless suites; extract collaborators when one of these files next fights a change, then drop the matching multicriteria entry.
 
 ## Test-coverage gaps (from specs 053, 052)
 

@@ -27,9 +27,8 @@
 
 import type { Layer, LayerBounds } from "./layer";
 
-// A single raw multiGet descriptor. Loose by design: the real shape is only
+// A single raw multiGet descriptor is typed `unknown`: the real shape is only
 // confirmable against a live PSD, so the mapper validates fields defensively.
-export type RawDescriptor = unknown;
 
 // Photoshop's `layerSection` marker, normalised to a small internal enum:
 //   - "start"   opens a group (LayerSet);
@@ -72,7 +71,7 @@ const SECTION_VALUES: Readonly<Record<string, LayerSectionKind>> = {
 // value is not a usable descriptor (not an object, no string name, or an
 // unrecognised section marker) so the fold can skip it safely. SWAPPABLE:
 // adjust KEYS / SECTION_VALUES / readBounds to match the live descriptor.
-export function parseDescriptor(raw: RawDescriptor): ParsedEntry | null {
+export function parseDescriptor(raw: unknown): ParsedEntry | null {
     if (typeof raw !== "object" || raw === null) return null;
     const record = raw as Record<string, unknown>;
 
@@ -114,14 +113,14 @@ type LayerEnumeration = "bottom-up" | "top-down";
 const LAYER_ENUMERATION = "bottom-up" as LayerEnumeration;
 const BOTTOM_UP = LAYER_ENUMERATION === "bottom-up";
 
-export function rebuildLayerTree(raw: readonly RawDescriptor[]): Layer[] {
+export function rebuildLayerTree(raw: readonly unknown[]): Layer[] {
     const root: Layer[] = [];
     // Stack of in-progress groups. Each frame holds the LayerSet being built
     // and the sibling list it will be added to when it closes.
     const stack: { set: Extract<Layer, { kind: "set" }>; siblings: Layer[] }[] = [];
 
     const currentSiblings = (): Layer[] => {
-        const top = stack[stack.length - 1];
+        const top = stack.at(-1);
         return top === undefined ? root : top.set.layers;
     };
 
@@ -182,11 +181,10 @@ export function rebuildLayerTree(raw: readonly RawDescriptor[]): Layer[] {
 // action-descriptor envelope; a bare string is also accepted so the shape
 // stays robust across UXP / PS builds.
 function mapSection(value: unknown): LayerSectionKind | null {
-    const raw = typeof value === "string"
-        ? value
-        : typeof value === "object" && value !== null
-            ? (value as Record<string, unknown>)["_value"]
-            : undefined;
+    let raw: unknown = value;
+    if (typeof value === "object" && value !== null) {
+        raw = (value as Record<string, unknown>)["_value"];
+    }
     if (typeof raw !== "string") return null;
     return SECTION_VALUES[raw] ?? null;
 }

@@ -31,7 +31,7 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Determine component and version
         id: meta
@@ -57,12 +57,12 @@ jobs:
       # `apps/photoshop/dist/` is gitignored, so the job builds it here.
       - name: Set up Node (photoshop)
         if: steps.meta.outputs.name == 'photoshop'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "20"
       - name: Set up pnpm (photoshop)
         if: steps.meta.outputs.name == 'photoshop'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
           version: 9
       - name: Build the UXP plugin (photoshop)
@@ -106,7 +106,7 @@ jobs:
             unzip -l "$f"
           done
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         if: github.event_name == 'push'
         with:
           files: dist/*

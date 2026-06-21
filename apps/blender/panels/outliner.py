@@ -21,6 +21,12 @@ from ..core.outliner_view import (
 from ._helpers import draw_subpanel_header
 from ._list import draw_select_marker
 
+# Below this N-panel width the inline draw-order field is dropped: the int field
+# (a negative value especially) clips to an unreadable sliver in a narrow panel.
+# The order stays editable full-width in the Element panel. Mirrors the Element
+# header's name-drop threshold. GUI-tunable.
+_OUTLINER_ORDER_MIN_WIDTH = 240
+
 
 class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
     """Sprite-centric outliner - slots, attachments, sprite meshes, armatures."""
@@ -29,7 +35,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
 
     def draw_item(
         self,
-        _context: bpy.types.Context,
+        context: bpy.types.Context,
         layout: bpy.types.UILayout,
         _data: bpy.types.AnyType,
         item: bpy.types.AnyType,
@@ -80,8 +86,16 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # Order) field so the stack reads and reorders from the list. The
         # property update keys off id_data, so editing a non-active row moves
         # the right object. Slot / armature rows have no z_index - no column.
-        is_plane = rank in (RANK_ELEMENT_MESH, RANK_ATTACHMENT)
-        split = row.split(factor=0.78 if is_plane else 0.92, align=True)
+        # The field is dropped in a narrow panel (the number clips to an
+        # unreadable sliver, worse for a negative value); it stays editable
+        # full-width in the Element panel.
+        region_width = getattr(getattr(context, "region", None), "width", 9999)
+        show_order = (
+            rank in (RANK_ELEMENT_MESH, RANK_ATTACHMENT)
+            and obj_props is not None
+            and region_width >= _OUTLINER_ORDER_MIN_WIDTH
+        )
+        split = row.split(factor=0.78 if show_order else 0.92, align=True)
         name_row = split.row()
         name_row.alignment = "LEFT"
         op = name_row.operator(
@@ -92,7 +106,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         )
         op.obj_name = obj.name
         right = split.row(align=True)
-        if is_plane and obj_props is not None:
+        if show_order:
             order_col = right.row(align=True)
             order_col.prop(obj_props, "y_draw_order", text="")
         fav_row = right.row()

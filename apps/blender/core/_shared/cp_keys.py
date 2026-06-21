@@ -67,11 +67,15 @@ PROSCENIO_MATERIAL_ISOLATED = "proscenio_material_isolated"
 PROSCENIO_Y_DRAW_ORDER = "proscenio_y_draw_order"
 
 # Default Blender-units gap between consecutive Y Location (Draw Order) layers.
-# The addon preference ``y_location_spacing`` overrides it; the bpy-free
-# validation core falls back to this when no preference value is threaded in.
-# Kept here (the one pure-Python shared module both sides import) so the
-# preference default and the validation default never drift.
-DEFAULT_Y_LOCATION_SPACING = 0.001
+# Matches Blender's default 3D-view ``clip_start`` (0.01) so the layer gap clears
+# the depth-buffer precision of the perspective authoring viewport at the usual
+# camera distance - 0.001 is marginal there, 0.01 is comfortable, and the gap is
+# invisible in the front-ortho deliverable view (ortho drops depth). The addon
+# preference ``y_location_spacing`` overrides it; the bpy-free validation core
+# falls back to this when no preference value is threaded in. Kept here (the one
+# pure-Python shared module both sides import) so the preference default and the
+# validation default never drift.
+DEFAULT_Y_LOCATION_SPACING = 0.01
 
 # Skinning sidecar + bind metadata. The weight sidecar is the per-Object JSON
 # store of bind/paint provenance; bone modes, envelope radius, and the mirror

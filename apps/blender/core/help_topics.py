@@ -63,6 +63,7 @@ class HelpTopic:
 
 _SECTION_WHAT = "What it does"
 _SECTION_HOW = "How to use it"
+_SECTION_WHERE = "Where it fits"
 
 
 def _section(heading: str, *parts: str) -> HelpSection:
@@ -382,7 +383,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "4. Clear Bone Parent detaches it again.",
             ),
             _section(
-                "Where it fits",
+                _SECTION_WHERE,
                 "Exports as a Sprite2D parented to that Bone2D (the element's bone field)."
                 " Use it for a static prop or facial part pinned to one bone.",
             ),
@@ -445,7 +446,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 " everything else.",
             ),
             _section(
-                "Where it fits",
+                _SECTION_WHERE,
                 "A pure authoring shortcut - favorites and filter state live entirely on the"
                 " Blender side. The .proscenio export is untouched.",
             ),
@@ -540,7 +541,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 "5. Open Window > Asset Browser to apply the saved pose later.",
             ),
             _section(
-                "Where it fits",
+                _SECTION_WHERE,
                 "Pose assets live entirely on the Blender side - they never reach the"
                 " .proscenio. Use them to library and reuse poses across animations,"
                 " characters, or projects; animation tracks still drive the runtime.",
@@ -603,7 +604,7 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 " wireframe companions for inspecting the trace.",
             ),
             _section(
-                "Where it fits",
+                _SECTION_WHERE,
                 "Authoring only - the generated geometry exports as a Polygon2D, but the"
                 " trace tool itself never reaches the .proscenio.",
             ),

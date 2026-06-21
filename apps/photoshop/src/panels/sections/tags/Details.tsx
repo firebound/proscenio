@@ -190,7 +190,7 @@ export const TagDetails: React.FC<TagDetailsProps> = ({ indentPx, node, onChange
                 </DetailRow>
             )}
             <div className="tag-detail-actions">
-                <sp-action-button onClick={onRevert} disabled={!dirty ? true : undefined}>
+                <sp-action-button onClick={onRevert} disabled={dirty ? undefined : true}>
                     Revert
                 </sp-action-button>
                 <sp-action-button onClick={onApply} disabled={!dirty || hasErrors ? true : undefined}>

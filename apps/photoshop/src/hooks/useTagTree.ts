@@ -103,7 +103,10 @@ export function useTagTree(version: number): UseTagTree {
             pendingRef.current = true;
             return;
         }
-        void runLoop();
+        // Fire-and-forget: a transient read failure is ignored on purpose
+        // (the next poll tick / version bump retries), so swallow the
+        // rejection rather than leaving the promise floating.
+        runLoop().catch(() => undefined);
     }, [runLoop]);
 
     React.useEffect(() => {

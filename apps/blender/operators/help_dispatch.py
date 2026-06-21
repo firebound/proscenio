@@ -100,7 +100,7 @@ class PROSCENIO_OT_help(bpy.types.Operator):
                     layout.label(text=line)
         if topic.see_also:
             layout.separator()
-            layout.label(text="See also:", icon="URL")
+            layout.label(text=iface("See also:"), icon="URL")
             for ref in topic.see_also:
                 if ref.startswith(("http://", "https://")):
                     op = layout.operator("wm.url_open", text=ref, icon="URL")
@@ -109,7 +109,7 @@ class PROSCENIO_OT_help(bpy.types.Operator):
                     layout.label(text="  " + ref)
         if topic.doc_url:
             layout.separator()
-            docs = layout.operator("wm.url_open", text="Open online docs", icon="HELP")
+            docs = layout.operator("wm.url_open", text=iface("Open online docs"), icon="HELP")
             docs.url = topic.doc_url
 
 

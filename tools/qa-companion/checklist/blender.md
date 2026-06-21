@@ -284,6 +284,16 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/incorporate.py; apps/blender/panels/element.py:78-85
 - note: blender-authoring-design. Heuristic + execute pinned by tests/operators/test_incorporate_element.py; this is the GUI button + redo-dialog walk.
 
+### BL-ELEM-ROOT-05 · Pixel art toggle switches texture interpolation
+- status: pending
+- review: todo
+- pre: An imported element (sprite or mesh) with a textured material, viewed magnified in the viewport.
+- steps:
+  1. With the element active, tick 'Pixel art' in the Active Sprite / Active Mesh body, then untick it.
+- observe: The checkbox is off by default. Ticking it sets the object's image-texture nodes to Closest (crisp, nearest-neighbor) so a magnified texture stops looking blurry; unticking restores Linear (smooth). Fresh imports stay on Linear (the importer is unchanged), so this is the per-element opt-in. The exported .proscenio is byte-identical either way - the toggle is authoring-only.
+- intent: The per-element Pixel art toggle flips texture interpolation between Closest and Linear without touching the schema; the importer default is intentionally Linear, not Closest.
+- code: apps/blender/properties/object_props.py (pixel_art) -> core/_shared/material_images.py; surfaced in panels/_draw_sprite.py + _draw_mesh.py
+
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass
 - review: keep
@@ -689,15 +699,27 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Bake Current Pose keys every bone at the playhead (exporting those keys is GAP-POSE-BAKE).
 - code: apps/blender/panels/skeleton.py:180 -> pose_library.py:117-147
 
-### BL-SKEL-POSE-02 · Toggle IK adds and removes a test IK constraint
+### BL-SKEL-POSE-02 · Add / Remove IK Chain creates and removes a chain
 - status: pending
 - review: todo
 - pre: In Pose mode with an active pose bone.
 - steps:
-  1. Select a pose bone and click Toggle IK, then click it again.
-- observe: The first click adds a control bone at the chain tip and an IK constraint pointing at it. The second click removes both.
-- intent: Toggle IK adds or removes a test IK constraint on the selected chain (export consequence is GAP-IK).
-- code: apps/blender/panels/skeleton.py:181 -> authoring_ik.py:73-128
+  1. Select a pose bone with no IK and read the button, click it, then read and click it again.
+- observe: With no Proscenio IK on the bone the button reads Add IK Chain; clicking it adds a control bone at the chain tip (joined to a "Proscenio Controls" collection with a theme color) and an IK constraint pointing at it. The button then reads Remove IK Chain; clicking it removes both. A cancelled click (no active bone) still reports even at the "errors" log level.
+- intent: The button label resolves from the active bone's Proscenio IK state (Add when absent, Remove when present) and creates / removes the chain plus its themed control bone (export consequence is GAP-IK).
+- code: apps/blender/panels/skeleton.py -> authoring_ik.py
+
+### BL-SKEL-IK-01 · IK chains list, row markers, and constraint props
+- status: pending
+- review: todo
+- pre: In Pose mode on an armature carrying at least one Proscenio IK chain.
+- steps:
+  1. Read the bone list and the IK chains section in the Skeleton panel.
+  2. Click a chain row, then edit its influence and insert a keyframe; toggle the in-plane lock.
+  3. Add or remove a chain and watch the list and markers.
+- observe: A bone with a Proscenio IK constraint shows a chain marker in the bone list and its control bone shows a control glyph; the IK chains section lists each chain (tip, chain length, control) and clicking a row selects the tip. The props show chain length, a keyframable influence (the IK/FK seed - inserting a key records it), and the pole target, plus an opt-in in-plane lock. Adding or removing a chain refreshes the list and markers on the next redraw.
+- intent: The panel surfaces every active IK chain from a live per-draw scan (no stored state) and exposes the curated constraint trio plus the in-plane lock, without redrawing Blender's native constraint UI.
+- code: apps/blender/panels/skeleton.py -> core/bpy_helpers/armature/ik_chains.py
 
 ### BL-SKEL-POSE-03 · Bake IK to Keyframes bakes and clears the chain
 - status: pending
@@ -742,9 +764,10 @@ Each block answers three questions in plain language: what passing it proves (`i
   8. Press Enter to finish (the status-bar hint reads 'finish'): the overlays clear, your view and selection are restored, and a confirmation reports how many bones you authored.
   9. Press Esc or right-click: with nothing drawn the hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored the hint reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Your view and selection are restored either way.
   10. The subpanel's 'Lock to Front Orthographic' field (also overridable per-launch in the redo panel), when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone. The field takes effect on the first launch - no redo override needed.
+  11. Press Tab to cycle Draw and Reparent modes; the status-bar cheat-sheet swaps to show only the active mode's chords. In Reparent mode, click near a bone tip to set it as the next bone's parent (a highlight marks the tip under the cursor); clicking empty space reports 'no bone tip near cursor' and changes nothing.
 - observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored.
 - intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, and the status-bar-only cheat-sheet with dynamic finish/exit hints.
-- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + _exit + _draw_statusbar_quick_armature); _overlay.py:47-167; _status_bar.py emit_chord_layout
+- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + Tab mode dispatch + _exit); core/armature/quick_armature_math.py (next_mode, resolve_pick); _overlay.py; _status_bar.py emit_chord_layout
 
 ### BL-SKEL-03 · Active Armature picker
 - status: pass

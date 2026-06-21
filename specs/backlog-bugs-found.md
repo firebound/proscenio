@@ -8,7 +8,6 @@ Bugs whose fix already shipped and only await a GUI confirmation are walkable it
 
 The 2026-06-20 backlog-drain wave routed the prior entries into specs (see [`_index.md`](_index.md)):
 
-- The PSD re-import weight divergence and the every-run armature rebuild -> spec 055 reimport-contract.
 - The doll-roundtrip re-measure waiver was not a current defect, so it moved to [`gated.md`](gated.md); it fires before the first public release tag.
 
 New bugs found during manual testing land here. Lead with the symptom (see the bug-report style in [`.ai/conventions/docs.md`](../.ai/conventions/docs.md)), then the suspect and the affected file.

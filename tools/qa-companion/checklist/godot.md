@@ -173,9 +173,9 @@ Most Godot node-tree behavior is asserted inside the roundtrip flows' import-and
 - pre: A generated scene the user has hand-edited directly (added nodes or animations inside the generated .scn itself).
 - steps:
   1. Edit the imported scene directly, then reimport the .proscenio.
-- observe: Despite the documentation suggesting a diff/merge keeps direct edits, the scene is fully regenerated and the direct edits are discarded - there is no merge step. Confirm nothing is preserved. The supported way to keep user work is the wrapper approach in GD-IMPORT-REIMPORT-01.
-- intent: Confirm reimport is a full regeneration, not the documented non-destructive diff/merge.
-- code: apps/godot/addons/proscenio/reimporter.gd:1-10
+- observe: The scene is fully regenerated and the direct edits are discarded - there is no merge step. Confirm nothing is preserved. The dead diff/merge stub was removed (spec 055) and the docs now state the overwrite contract plainly, so there is no longer a documentation claim to contradict. The supported way to keep user work is the wrapper approach in GD-IMPORT-REIMPORT-01.
+- intent: Confirm reimport is a full regeneration - the plugin promises no non-destructive diff/merge.
+- code: apps/godot/addons/proscenio/importer.gd:98-109
 - note: absorbs GD-IMPORT-20; asserted alongside FLOW-REIMPORT-01.
 
 ## Builders: per-builder output inventory

@@ -17,10 +17,12 @@ So the next reader does not re-audit from scratch:
 
 The 2026-06-20 backlog-drain wave routed the entries that were here into specs (see [`_index.md`](_index.md)):
 
-- The god-file and single-responsibility hotspots (`automesh_authoring`, the `planes` material build) and the two sprite-bone-parent DRY folds -> spec 061 blender-module-decomposition.
+- The two sprite-bone-parent DRY folds shipped in spec 061; the god-file and single-responsibility hotspots (`automesh_authoring`, the `planes` material build) stay trigger-gated under spec 061 (split when the file fights the next change).
 - The bundled `proscenio_models` wheel staleness gate was not planned as its own spec; it rides the next schema-touching spec (037 storage-split) and now lives in [`deferred.md`](deferred.md).
 
 New code-health and toolchain-enforcement gaps land here.
+
+- **ruff version drift, pre-commit versus CI.** The [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) ruff hook is pinned to 0.8.4 while CI runs `uvx ruff` (unpinned, currently ~0.15.x); the two disagree on `assert ..., (message)` line wrapping, so a file that passes the pre-commit hook can still fail CI `ruff format --check` (hit and worked around in spec 056). Align them - pin CI to the hook version, or bump the hook to match CI.
 
 ## Test-coverage gaps (from specs 053, 052)
 

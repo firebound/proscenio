@@ -259,3 +259,26 @@ The calls made while building each feature that crossed a component boundary or 
 - **Incorporate-as-Element adopts a hand-authored mesh, Auto-detecting the kind** - a button (Element panel, shown only for a mesh with no `proscenio_type` marker) plus an operator that picks Sprite for a single quad and Mesh otherwise. The choice is resolved in `execute` (an Auto enum default, Mesh / Sprite overrides in the redo panel), not `invoke`, so the heuristic runs on every entry point and is headless-testable. Mirrors the Create Slot button-plus-dialog shape; no schema impact.
 - **The PSD `[origin]` is sprite-only** - a Polygon2D has no pivot, so a mesh origin only shifts the Blender object and cancels at export; the importer ignores (and warns about) an `[origin]` on a mesh layer, keeping mesh placement at the bbox centre. A sprite keeps it: the origin becomes the `Sprite2D.offset`, pinned now by a round-trip test that was code-read before.
 - **The manual `centered` toggle is retired to a fixed internal constant** - the writer's offset math assumes `centered=true`, so a user flip only broke placement. The field stays (the raw-CP escape hatch + mirror) but leaves the Active Sprite UI.
+
+### Re-import contract
+
+- **Photoshop manifest re-import PRESERVES painted weights via the sidecar reproject** (two tiers: a same-bounds re-import keeps weights and density intact; a changed-bounds re-import reprojects the surviving object-level sidecar onto the rebuilt quad), the same mechanism automesh regen uses - distinct from re-rig, which still LOSES. The guide's loses-weights warning was stale and was rewritten with the weight-operation matrix. Revisit: a workflow that wants PSD re-import to discard weights on purpose.
+- **The PSD importer reuses the existing root armature when present** (looked up by the manifest armature name), building a fresh one only when absent, so re-import no longer orphans the prior armature or strands a rig grown on it. Trivial today (single root bone); revisit when multi-bone import needs bone reconciliation.
+- **The Godot non-destructive reimporter stub was deleted, not built** - dead, unreferenced code promising a diff/merge that fights Godot's `EditorImportPlugin` model; the wrapper-scene overwrite path (the locked call under Core architecture) is the documented contract. Revisit: same as the wrapper-scene call.
+
+### IK authoring ergonomics
+
+- **Non-deform bones never export** - a general `use_deform=False` filter in the skeleton and animation writers keeps `.IK` / `.pole` controls (and any hand-authored control) out of the Godot export, suffix-agnostic, matching the skinning filter already in the addon.
+- **Toggle IK is a conditional Add / Remove IK Chain label** resolved in draw from the active bone's `Proscenio IK` constraint presence - influence lives on the keyframable slider, not a binary button.
+- **IK chains surface as both a per-row marker and an IK chains section** (tip / chain length / control), driven by one live per-draw scan of `pose.bones` constraints - no stored chain state, so the panel cannot drift from the rig.
+- **The exposed constraint set is the curated trio** (chain length, keyframable influence as the IK/FK-blend seed, pole target) plus an opt-in in-plane lock, never a full redraw of Blender's native constraint UI. The in-plane-lock prebend skips a non-Euler bone rather than forcing its `rotation_mode`.
+- **Control bones join a "Proscenio Controls" collection with a theme color** on creation; the custom shape is deferred.
+
+### Materials and pixel art
+
+- **Pixel-art crispness is a per-element "Pixel art" toggle, default OFF; the importer is unchanged (stays `Linear`)** - the toggle sets the object's image-texture nodes to `Closest` when on and back to `Linear` when off. Pixel art is not assumed to be the majority case, so there is no global import default. The full materials inspection / config / repair panel stays dropped (it duplicates native Blender tools). The toggle is authoring-only UI state, never written to the schema.
+
+### Quick Armature interaction redesign
+
+- **A mode layer replaced the saturated chord scheme** - Tab cycles Draw (the prior click-drag authoring, byte-for-byte) and Reparent; the status bar swaps to the active mode's chords (the automesh-authoring precedent). Draw stays additive, so every prior Quick Armature promise holds.
+- **Reparent is viewport pick-parent: the nearest bone tip within a screen-constant pixel radius** (Y=0 XZ projection + the shared nearest-index); a miss is a no-op with feedback, a hit sets the chain parent. The overlay highlight projects to the same Y=0 plane as the picker, and the Esc session-state label reads the session-authored records, not the chaining field the pick now also writes.

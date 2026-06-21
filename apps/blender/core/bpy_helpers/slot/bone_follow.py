@@ -14,7 +14,7 @@ import bpy
 
 from ..._shared.cp_keys import PROSCENIO_SLOT_BONE
 from ..._shared.pg_cp_fallback import read_field
-from ..._shared.props_access import active_armature, resolve_export_armature
+from ..._shared.props_access import resolve_target_armature
 
 SLOT_FOLLOW_CONSTRAINT = "Proscenio Slot Follow"
 
@@ -30,18 +30,11 @@ def resolve_slot_armature(
 ) -> bpy.types.Object | None:
     """The armature a slot Empty should follow a bone of, or None.
 
-    Priority: the Empty's own object-parent when it is an ARMATURE (the slot
-    convention parents the Empty to the rig), then the Skeleton picker, then
-    the scene's export armature.
+    The slot-facing name for the shared :func:`resolve_target_armature`:
+    parent-if-ARMATURE, then the Skeleton picker, then the scene's export
+    armature.
     """
-    parent = getattr(empty, "parent", None)
-    if parent is not None and getattr(parent, "type", None) == "ARMATURE":
-        return parent
-    picker = active_armature(context)
-    if picker is not None:
-        return picker
-    scene = getattr(context, "scene", None)
-    return resolve_export_armature(scene) if scene is not None else None
+    return resolve_target_armature(context, empty)
 
 
 def _follow_constraint(empty: bpy.types.Object) -> bpy.types.Constraint | None:

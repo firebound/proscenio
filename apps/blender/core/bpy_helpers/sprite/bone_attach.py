@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..._shared.props_access import active_armature, resolve_export_armature
+from ..._shared.props_access import resolve_target_armature
 
 # A bone whose world direction lies within this much of the picture plane (XZ)
 # rotates a rigid sprite out of the camera plane. The camera looks down -Y, so a
@@ -28,18 +28,12 @@ def resolve_sprite_armature(
 ) -> bpy.types.Object | None:
     """The armature a sprite should bone-parent to, or None.
 
-    Priority: the sprite's own object-parent when it is an ARMATURE, then the
-    Skeleton picker, then the scene's export armature - the same resolution
-    order the slot bone-follow uses, so the two never disagree on the rig.
+    The sprite-facing name for the shared :func:`resolve_target_armature`:
+    parent-if-ARMATURE, then the Skeleton picker, then the scene's export
+    armature - the same resolution order the slot bone-follow uses, so the two
+    never disagree on the rig.
     """
-    parent = getattr(obj, "parent", None)
-    if parent is not None and getattr(parent, "type", None) == "ARMATURE":
-        return parent
-    picker = active_armature(context)
-    if picker is not None:
-        return picker
-    scene = getattr(context, "scene", None)
-    return resolve_export_armature(scene) if scene is not None else None
+    return resolve_target_armature(context, obj)
 
 
 def current_bone_parent(obj: bpy.types.Object) -> str:

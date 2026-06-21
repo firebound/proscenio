@@ -18,6 +18,7 @@ from core._shared.props_access import (  # noqa: E402
     describe_export_target,
     object_props,
     resolve_export_armature,
+    resolve_target_armature,
     scene_props,
 )
 
@@ -28,6 +29,12 @@ def _armature(name: str) -> SimpleNamespace:
 
 def _mesh(name: str) -> SimpleNamespace:
     return SimpleNamespace(name=name, type="MESH")
+
+
+def _context(*, scene_objects=(), picker=None) -> SimpleNamespace:
+    proscenio = SimpleNamespace(active_armature=picker)
+    scene = SimpleNamespace(objects=list(scene_objects), proscenio=proscenio)
+    return SimpleNamespace(scene=scene)
 
 
 def test_scene_props_returns_pg() -> None:
@@ -155,3 +162,38 @@ def test_describe_export_target_none_when_scene_has_no_armature() -> None:
         proscenio=SimpleNamespace(active_armature=None),
     )
     assert describe_export_target(scene) is None
+
+
+# resolve_target_armature: the shared resolver both resolve_slot_armature and
+# resolve_sprite_armature now delegate to. These four cases mirror the priority
+# order both former call sites encoded (object-parent ARMATURE, then picker,
+# then scene export armature, else None), so the fold is behavior-preserving.
+
+
+def test_resolve_target_armature_prefers_object_parent_armature() -> None:
+    arm = _armature("rig_parent")
+    obj = SimpleNamespace(parent=arm)
+    ctx = _context(scene_objects=[arm, _armature("other")], picker=_armature("picked"))
+    assert resolve_target_armature(ctx, obj) is arm
+
+
+def test_resolve_target_armature_falls_back_to_picker_when_parent_not_armature() -> (
+    None
+):
+    picked = _armature("picked")
+    obj = SimpleNamespace(parent=_mesh("not_a_rig"))
+    ctx = _context(scene_objects=[picked], picker=picked)
+    assert resolve_target_armature(ctx, obj) is picked
+
+
+def test_resolve_target_armature_falls_back_to_scene_export_armature() -> None:
+    only = _armature("only_rig")
+    obj = SimpleNamespace(parent=None)
+    ctx = _context(scene_objects=[only], picker=None)
+    assert resolve_target_armature(ctx, obj) is only
+
+
+def test_resolve_target_armature_none_when_no_armature() -> None:
+    obj = SimpleNamespace(parent=None)
+    ctx = _context(scene_objects=[_mesh("m")], picker=None)
+    assert resolve_target_armature(ctx, obj) is None

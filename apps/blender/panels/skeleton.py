@@ -16,8 +16,16 @@ from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-
     BONE_SELECT_MODES,
     bone_is_selected,
 )
+from ..core.bpy_helpers.armature import (  # type: ignore[import-not-found]
+    IkChainScan,
+    scan_ik_chains,
+)
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 from ._list import ProscenioListMixin, draw_select_marker
+
+# Constraint that marks a Proscenio-owned IK chain; the name is the single
+# source the panel reads (a renamed .IK control suffix must not change the cue).
+_IK_CONSTRAINT_NAME = "Proscenio IK"
 
 
 def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
@@ -43,6 +51,24 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
 
     bl_idname = "PROSCENIO_UL_bones"
 
+    def _ik_scan_for(self, armature_obj: bpy.types.Object | None) -> IkChainScan:
+        """IK chain scan for the list's armature, cached for one draw pass.
+
+        ``draw_item`` runs once per visible row; scanning the whole pose every
+        row would be O(bones^2). Cache on the instance keyed by armature name +
+        bone count so the cue refreshes when a chain is added / removed without
+        a per-row rescan.
+        """
+        if armature_obj is None:
+            return IkChainScan(chains=[])
+        bones = getattr(armature_obj.data, "bones", [])
+        key = (armature_obj.name, len(bones))
+        cached = getattr(self, "_ik_scan_cache", None)
+        if cached is None or cached[0] != key:
+            cached = (key, scan_ik_chains(armature_obj))
+            self._ik_scan_cache = cached  # type: ignore[attr-defined]
+        return cached[1]
+
     def draw_item(
         self,
         context: bpy.types.Context,
@@ -66,6 +92,14 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
             draw_select_marker(
                 row, selected=bone_is_selected(armature_obj, item.name, context.mode)
             )
+        # IK cue: a chain tip carries the constraint icon, a control bone (some
+        # chain's subtarget) carries the goal-object glyph. Driven by the live
+        # constraint scan, never the .IK name suffix.
+        scan = self._ik_scan_for(armature_obj)
+        if scan.is_tip(item.name):
+            row.label(text="", icon="CON_KINEMATIC")
+        elif scan.is_control(item.name):
+            row.label(text="", icon="EMPTY_ARROWS")
         depth = 0
         parent = item.parent
         while parent is not None:
@@ -224,6 +258,80 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         ).scope = "ALL"
 
 
+def _active_ik_constraint(context: bpy.types.Context) -> bpy.types.Constraint | None:
+    """The active pose bone's ``Proscenio IK`` constraint, or None."""
+    bone = getattr(context, "active_pose_bone", None)
+    if bone is None:
+        return None
+    return bone.constraints.get(_IK_CONSTRAINT_NAME)
+
+
+def _draw_ik_toggle(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
+    """Draw the create / remove IK button with an honest, state-resolved label.
+
+    One operator (``proscenio.toggle_ik_chain``) does both create and destroy;
+    the label reads "Add IK Chain" when the active bone has no Proscenio IK and
+    "Remove IK Chain" when it does, so the button names the action it performs.
+    """
+    has_chain = _active_ik_constraint(context) is not None
+    text = "Remove IK Chain" if has_chain else "Add IK Chain"
+    icon = "X" if has_chain else "CON_KINEMATIC"
+    layout.operator("proscenio.toggle_ik_chain", text=text, icon=icon)
+
+
+def _draw_ik_constraint_props(layout: bpy.types.UILayout, constraint: bpy.types.Constraint) -> None:
+    """Draw the curated IK constraint controls for the active chain.
+
+    The trio the IK flow needs - chain length, keyframable influence (the
+    IK/FK-blend seed, with an explicit insert-key button), pole target - plus an
+    opt-in "lock chain in-plane" toggle that gives the otherwise-hidden
+    ``lock_ik_*`` flags a visible owner. Deliberately not the full native
+    KinematicConstraint UI (no stretch / iterations / weight): the export bakes
+    the chain, so those are native-UI territory.
+    """
+    box = layout.box()
+    box.label(text="Proscenio IK", icon="CON_KINEMATIC")
+    box.prop(constraint, "chain_count", text="Chain length")
+
+    influence_row = box.row(align=True)
+    influence_row.prop(constraint, "influence", text="Influence", slider=True)
+    # Explicit insert-key affordance for the IK/FK-blend seed (the prop already
+    # honors keying; this is the one-click button on the chain's tip bone).
+    influence_row.operator("proscenio.key_ik_influence", text="", icon="KEYFRAME_HLT")
+
+    box.prop(constraint, "pole_target", text="Pole target")
+    if constraint.pole_target is not None and constraint.pole_target.type == "ARMATURE":
+        box.prop_search(
+            constraint,
+            "pole_subtarget",
+            constraint.pole_target.data,
+            "bones",
+            text="Pole bone",
+        )
+
+    _draw_ik_inplane_lock(box, constraint)
+
+
+def _draw_ik_inplane_lock(layout: bpy.types.UILayout, constraint: bpy.types.Constraint) -> None:
+    """Opt-in "lock chain in-plane" toggle for the active chain's tip bone.
+
+    Locks the chain's out-of-plane rotation DOFs on the constrained bone so the
+    solve stays in the 2D picture plane. Off by default and clearly labelled,
+    because loose ``lock_ik_*`` flags are hidden bone state that otherwise read
+    as "the bone will not rotate" with no explanation.
+    """
+    bone = getattr(bpy.context, "active_pose_bone", None)
+    if bone is None or constraint.name != _IK_CONSTRAINT_NAME:
+        return
+    locked = bool(bone.lock_ik_x and bone.lock_ik_z)
+    op = layout.operator(
+        "proscenio.toggle_ik_inplane_lock",
+        text="Unlock chain in-plane" if locked else "Lock chain in-plane",
+        icon="LOCKED" if locked else "UNLOCKED",
+    )
+    op.bone_name = bone.name
+
+
 class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     """Pose Mode subpanel - pose-only authoring shortcuts."""
 
@@ -245,8 +353,13 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
             layout.label(text="enter Pose mode to bake / save poses", icon="INFO")
             return
         layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
-        layout.operator("proscenio.toggle_ik_chain", text="Toggle IK", icon="CON_KINEMATIC")
+        _draw_ik_toggle(layout, context)
         layout.operator("proscenio.bake_ik_chain", text="Bake IK to Keyframes", icon="KEYFRAME_HLT")
+        # When the active bone carries a Proscenio IK chain, surface the curated
+        # constraint controls inline so the IK flow lives in Proscenio.
+        constraint = _active_ik_constraint(context)
+        if constraint is not None:
+            _draw_ik_constraint_props(layout, constraint)
         # The subpanel header explains Pose Mode; the pose-library asset flow
         # (writable-library precheck, where the asset lands) has its own topic,
         # so the row carries its own ? - the orphan the #96 restructure left.
@@ -257,6 +370,60 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
             icon="ASSET_MANAGER",
         )
         draw_help_button(pose_row, "pose_library")
+
+
+class PROSCENIO_PT_ik_chains(bpy.types.Panel):
+    """IK chains subpanel - inventory of the picked armature's Proscenio IK chains.
+
+    The marker on each bone row answers "is this bone part of a chain"; this
+    section answers "what chains exist and what do they target", each row a
+    click that selects the chain tip. Both read the same live constraint scan.
+    """
+
+    bl_label = "IK chains"
+    bl_idname = "PROSCENIO_PT_ik_chains"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 2
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        target = _explicit_target(context)
+        if target is None:
+            return False
+        return bool(scan_ik_chains(target).chains)
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "pose_mode", "pose_mode")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        target = _explicit_target(context)
+        if target is None:
+            return
+        chains = scan_ik_chains(target).chains
+        if not chains:
+            layout.label(text="no IK chains - add one in Pose Mode", icon="INFO")
+            return
+        for chain in chains:
+            box = layout.box()
+            tip_row = box.row(align=True)
+            select = tip_row.operator(
+                "proscenio.select_bone_by_name",
+                text=chain.tip,
+                icon="CON_KINEMATIC",
+                emboss=False,
+            )
+            select.armature_name = target.name
+            select.bone_name = chain.tip
+            detail = tip_row.row()
+            detail.alignment = "RIGHT"
+            detail.label(text=f"chain {chain.chain_count}")
+            control_text = chain.control if chain.control else "(no control)"
+            box.label(text=f"control: {control_text}", icon="EMPTY_ARROWS")
 
 
 class PROSCENIO_PT_quick_armature(bpy.types.Panel):
@@ -273,7 +440,7 @@ class PROSCENIO_PT_quick_armature(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
-    bl_order = 2
+    bl_order = 3
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
@@ -297,6 +464,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_PT_skeleton,
     PROSCENIO_PT_armature,
     PROSCENIO_PT_pose_mode,
+    PROSCENIO_PT_ik_chains,
     PROSCENIO_PT_quick_armature,
 )
 

@@ -2,10 +2,11 @@ name: SonarCloud
 
 # CI-based SonarCloud analysis (Route B of spec 063). Replaces Automatic
 # Analysis - the two modes cannot both run, so Automatic Analysis is disabled
-# in the SonarCloud UI (Project Settings > Analysis Method). Coverage wiring
-# (the in-Blender + pytest + vitest reports the properties already point at)
-# lands in a follow-up; this job makes the CI-based analysis live with the
-# correct project key and organization.
+# in the SonarCloud UI (Project Settings > Analysis Method). Generates the
+# Python (pytest) and JavaScript (vitest) coverage the quality gate's
+# new-code-coverage condition needs; the in-Blender coverage pass that lifts
+# the bpy-bound writer/exporter lines (see sonar-project.properties) is a
+# later enhancement for overall coverage and is not required by the gate.
 
 on:
   push:
@@ -27,9 +28,15 @@ jobs:
           fetch-depth: 0
           # Read-only scan; do not leave the token in the local git config.
           persist-credentials: false
-      # Install the Photoshop deps so the TypeScript analyzer can resolve the
-      # project's types and configs (without node_modules it warns that a
-      # referenced/extended tsconfig is missing).
+
+      # --- Python coverage (pure-pytest pass) ---
+      - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3.2.4
+      - name: Sync uv workspace
+        run: uv sync --all-packages --all-groups
+      - name: Python coverage
+        run: uv run pytest tests/ --cov=apps/blender --cov=packages --cov=scripts --cov-report=xml:coverage.xml
+
+      # --- JavaScript/TypeScript coverage + types for the analyzer ---
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "20"
@@ -38,9 +45,14 @@ jobs:
           version: 9
       - name: Install Photoshop deps
         working-directory: apps/photoshop
-        # --ignore-scripts: only the resolved node_modules tree is needed for
-        # the TypeScript analysis; do not run package lifecycle scripts.
+        # --ignore-scripts: only the resolved node_modules tree is needed (for
+        # the coverage run and for the TypeScript analyzer to resolve configs);
+        # do not run package lifecycle scripts.
         run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Photoshop coverage
+        working-directory: apps/photoshop
+        run: pnpm run test:coverage
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
         env:

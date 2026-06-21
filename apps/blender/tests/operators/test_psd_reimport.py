@@ -66,6 +66,59 @@ def test_reimport_preserves_slot_parenting(automesh_fixture, tmp_path):
     assert mesh.parent is slot, "re-import yanked the mesh off its slot back to the armature"
 
 
+def test_reimport_reuses_existing_armature(automesh_fixture, tmp_path):
+    # A second import_manifest must reuse the armature the first import built,
+    # not create a duplicate. Building a fresh armature every run orphans the
+    # prior one and strands any rig (bones, pose, constraints) the user grew on
+    # it, while re-parenting the meshes to the new empty armature.
+    import json
+
+    from proscenio.importers.photoshop import import_manifest  # type: ignore[import-not-found]
+
+    if bpy.context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    png = tmp_path / "head.png"
+    img = bpy.data.images.new("head_probe", 4, 4)
+    img.filepath_raw = str(png)
+    img.file_format = "PNG"
+    img.save()
+
+    manifest = {
+        "format_version": 1,
+        "doc": "reuse_arm.psd",
+        "size": [64, 64],
+        "pixels_per_unit": 100.0,
+        "layers": [
+            {
+                "kind": "mesh",
+                "name": "head",
+                "path": "head.png",
+                "position": [10, 10],
+                "size": [20, 20],
+                "z_order": 0,
+            }
+        ],
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    def _armature_count() -> int:
+        return sum(1 for obj in bpy.data.objects if obj.type == "ARMATURE")
+
+    before = _armature_count()
+
+    first = import_manifest(manifest_path)
+    assert first.armature is not None
+    assert _armature_count() == before + 1, "first import did not build the root armature"
+    first_armature = first.armature
+
+    second = import_manifest(manifest_path)
+    assert _armature_count() == before + 1, "second import created a duplicate armature"
+    assert second.armature is first_armature, "second import did not reuse the first armature"
+    assert second.meshes[0].parent is first_armature, "re-imported mesh follows a new armature"
+
+
 def _vert_weight(obj: bpy.types.Object, group_name: str, idx: int) -> float:
     vg = obj.vertex_groups.get(group_name)
     if vg is None:

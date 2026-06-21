@@ -33,8 +33,7 @@ Every panel renders on any selection and warns (rather than hiding) when it need
 - [Weight Paint](06-weight-paint.md) - bind and refine bone weights (mesh elements only).
 - [Animation](07-animation.md) - read-only summary of the actions the writer exports.
 - [Atlas](08-atlas.md) - pack source images into a shared atlas.
-- [Validation](09-validation.md) - issues that would block an export.
-- [Pipeline](10-pipeline.md) - import a Photoshop manifest and export the `.proscenio`.
+- [Pipeline](10-pipeline.md) - import a Photoshop manifest, validate the scene, and export the `.proscenio`.
 - [Helpers](11-helpers.md) - viewport authoring aids that sit outside the export.
 
 ## Header affordances
@@ -43,7 +42,11 @@ Every panel and subpanel header carries two controls on its right edge, and a su
 
 The **`?` help button** opens that feature's help inline - a popup with a one-line summary, what it does, how to use it, where it fits the pipeline, and any caveats - plus an `Open online docs` button that links to the matching page in this section. A row whose own help differs from its subpanel (the Save Pose to Library button under Pose Mode) carries its own `?`.
 
-The **status badge** shows where the feature lands in the pipeline. Hover it for the band tooltip; click it to open the legend. The godot-ready band uses a Godot mark, blender-only uses a Blender mark, and the rest use a built-in icon.
+The **status badge** shows where the feature lands in the pipeline. Hover it for the band tooltip; click it to open the legend below. The godot-ready band uses a Godot mark, blender-only uses a Blender mark, and the rest use a built-in icon.
+
+## Status badges
+
+The single legend for the four bands a status badge can show. Every panel header's badge resolves to one of these, and clicking any badge re-opens this legend.
 
 - **godot-ready** - exports to `.proscenio` and ships in the Godot importer; edits to its fields reach the runtime scene.
 - **blender-only** - an authoring shortcut that lives entirely on the Blender side and never reaches the export.

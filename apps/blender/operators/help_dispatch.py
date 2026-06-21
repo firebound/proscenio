@@ -18,6 +18,7 @@ from ..core.help_topics import (  # type: ignore[import-not-found]
     reflow_paragraph,
     topic_for,
 )
+from ..core.i18n import iface  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_status_info(bpy.types.Operator):
@@ -80,21 +81,26 @@ class PROSCENIO_OT_help(bpy.types.Operator):
         if topic is None:
             layout.label(text=f"unknown help topic: {self.topic!r}", icon="ERROR")
             return
+        # Translate each user-facing string as one whole-string unit under a
+        # per-topic context (the topic id), THEN reflow - so a populated locale
+        # table (core/i18n.py) takes effect without re-churning the copy. With the
+        # table empty, iface() returns the msgid unchanged, so this is a no-op today.
+        ctx = self.topic
         header = layout.row()
-        header.label(text=topic.title, icon="QUESTION")
-        for line in reflow_paragraph(topic.summary, POPUP_WRAP_CHARS):
+        header.label(text=iface(topic.title, ctx), icon="QUESTION")
+        for line in reflow_paragraph(iface(topic.summary, ctx), POPUP_WRAP_CHARS):
             layout.label(text=line)
         for section in topic.sections:
             layout.separator()
-            layout.label(text=section.heading + ":", icon="DOT")
+            layout.label(text=iface(section.heading, ctx) + ":", icon="DOT")
             # Each body is one paragraph; "\n" marks an explicit list item / step.
-            # Reflow each piece to the popup width (layout.label cannot wrap).
-            for paragraph in section.body.split("\n"):
+            # Translate the whole body, then reflow each piece (layout.label cannot wrap).
+            for paragraph in iface(section.body, ctx).split("\n"):
                 for line in reflow_paragraph(paragraph, POPUP_WRAP_CHARS):
                     layout.label(text=line)
         if topic.see_also:
             layout.separator()
-            layout.label(text="See also:", icon="URL")
+            layout.label(text=iface("See also:"), icon="URL")
             for ref in topic.see_also:
                 if ref.startswith(("http://", "https://")):
                     op = layout.operator("wm.url_open", text=ref, icon="URL")
@@ -103,7 +109,7 @@ class PROSCENIO_OT_help(bpy.types.Operator):
                     layout.label(text="  " + ref)
         if topic.doc_url:
             layout.separator()
-            docs = layout.operator("wm.url_open", text="Open online docs", icon="HELP")
+            docs = layout.operator("wm.url_open", text=iface("Open online docs"), icon="HELP")
             docs.url = topic.doc_url
 
 

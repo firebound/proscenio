@@ -104,6 +104,7 @@ euler
 extname
 favorited
 fdopen
+findall
 flexi
 footgun
 foss

@@ -51,23 +51,33 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
 
     bl_idname = "PROSCENIO_UL_bones"
 
-    def _ik_scan_for(self, armature_obj: bpy.types.Object | None) -> IkChainScan:
-        """IK chain scan for the list's armature, cached for one draw pass.
+    def filter_items(
+        self,
+        context: bpy.types.Context,
+        data: bpy.types.AnyType,
+        propname: str,
+    ) -> tuple[list[int], list[int]]:
+        """Run the shared name/visibility filter, then refresh the IK scan once.
 
-        ``draw_item`` runs once per visible row; scanning the whole pose every
-        row would be O(bones^2). Cache on the instance keyed by armature name +
-        bone count so the cue refreshes when a chain is added / removed without
-        a per-row rescan.
+        ``filter_items`` is Blender's single per-draw-pass hook (it runs once
+        before the per-row ``draw_item`` calls), so it is where the IK scan is
+        rebuilt: keying a cross-redraw cache on the bone count missed chains
+        added / removed on existing bones (those leave the count unchanged), so
+        the tip / control icons went stale. A fresh scan per pass keeps the cue
+        live; ``draw_item`` then reads the cached scan as an O(1) set lookup.
         """
+        self._ik_scan = self._scan_ik_for(data)  # type: ignore[attr-defined]
+        return super().filter_items(context, data, propname)
+
+    def _scan_ik_for(self, data: bpy.types.AnyType) -> IkChainScan:
+        """Scan the armature owning the list's ``data`` block for IK chains."""
+        armature_obj = next(
+            (o for o in bpy.data.objects if o.type == "ARMATURE" and o.data is data),
+            None,
+        )
         if armature_obj is None:
             return IkChainScan(chains=[])
-        bones = getattr(armature_obj.data, "bones", [])
-        key = (armature_obj.name, len(bones))
-        cached = getattr(self, "_ik_scan_cache", None)
-        if cached is None or cached[0] != key:
-            cached = (key, scan_ik_chains(armature_obj))
-            self._ik_scan_cache = cached  # type: ignore[attr-defined]
-        return cached[1]
+        return scan_ik_chains(armature_obj)
 
     def draw_item(
         self,
@@ -94,8 +104,12 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
             )
         # IK cue: a chain tip carries the constraint icon, a control bone (some
         # chain's subtarget) carries the goal-object glyph. Driven by the live
-        # constraint scan, never the .IK name suffix.
-        scan = self._ik_scan_for(armature_obj)
+        # constraint scan (refreshed once per pass in ``filter_items``), never
+        # the .IK name suffix. Fall back to a fresh scan if a draw somehow runs
+        # before ``filter_items`` populated it.
+        scan = getattr(self, "_ik_scan", None)
+        if scan is None:
+            scan = self._scan_ik_for(data)
         if scan.is_tip(item.name):
             row.label(text="", icon="CON_KINEMATIC")
         elif scan.is_control(item.name):
@@ -279,7 +293,11 @@ def _draw_ik_toggle(layout: bpy.types.UILayout, context: bpy.types.Context) -> N
     layout.operator("proscenio.toggle_ik_chain", text=text, icon=icon)
 
 
-def _draw_ik_constraint_props(layout: bpy.types.UILayout, constraint: bpy.types.Constraint) -> None:
+def _draw_ik_constraint_props(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+    constraint: bpy.types.Constraint,
+) -> None:
     """Draw the curated IK constraint controls for the active chain.
 
     The trio the IK flow needs - chain length, keyframable influence (the
@@ -309,10 +327,14 @@ def _draw_ik_constraint_props(layout: bpy.types.UILayout, constraint: bpy.types.
             text="Pole bone",
         )
 
-    _draw_ik_inplane_lock(box, constraint)
+    _draw_ik_inplane_lock(box, context, constraint)
 
 
-def _draw_ik_inplane_lock(layout: bpy.types.UILayout, constraint: bpy.types.Constraint) -> None:
+def _draw_ik_inplane_lock(
+    layout: bpy.types.UILayout,
+    context: bpy.types.Context,
+    constraint: bpy.types.Constraint,
+) -> None:
     """Opt-in "lock chain in-plane" toggle for the active chain's tip bone.
 
     Locks the chain's out-of-plane rotation DOFs on the constrained bone so the
@@ -320,7 +342,7 @@ def _draw_ik_inplane_lock(layout: bpy.types.UILayout, constraint: bpy.types.Cons
     because loose ``lock_ik_*`` flags are hidden bone state that otherwise read
     as "the bone will not rotate" with no explanation.
     """
-    bone = getattr(bpy.context, "active_pose_bone", None)
+    bone = getattr(context, "active_pose_bone", None)
     if bone is None or constraint.name != _IK_CONSTRAINT_NAME:
         return
     locked = bool(bone.lock_ik_x and bone.lock_ik_z)
@@ -359,7 +381,7 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
         # constraint controls inline so the IK flow lives in Proscenio.
         constraint = _active_ik_constraint(context)
         if constraint is not None:
-            _draw_ik_constraint_props(layout, constraint)
+            _draw_ik_constraint_props(layout, context, constraint)
         # The subpanel header explains Pose Mode; the pose-library asset flow
         # (writable-library precheck, where the asset lands) has its own topic,
         # so the row carries its own ? - the orphan the #96 restructure left.

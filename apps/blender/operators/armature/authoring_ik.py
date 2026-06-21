@@ -309,7 +309,7 @@ class PROSCENIO_OT_key_ik_influence(bpy.types.Operator):
         bone = context.active_pose_bone
         ik = bone.constraints.get(_IK_CONSTRAINT_NAME)
         if ik is None:
-            report_warn(self, f"'{bone.name}' has no Proscenio IK chain")
+            report_warn(self, f"'{bone.name}' has no Proscenio IK chain", always=True)
             return {"CANCELLED"}
         frame = context.scene.frame_current
         ik.keyframe_insert(data_path="influence", frame=frame)
@@ -332,9 +332,13 @@ def _seed_inplane_prebend(pose_bone: bpy.types.PoseBone) -> None:
     """Nudge a straight interior chain bone so the solver has a bend direction.
 
     Only applied when the bone is at rest about its in-plane (Y) axis - never
-    overwrites a pose the artist already set.
+    overwrites a pose the artist already set. Bones in a non-Euler rotation mode
+    are skipped rather than coerced to ``XYZ``: forcing the mode would clobber
+    the bone's existing rotation representation (the dedicated
+    ``convert_rotation_to_euler`` operator is the intentional path for that).
     """
-    pose_bone.rotation_mode = "XYZ"
+    if pose_bone.rotation_mode in {"QUATERNION", "AXIS_ANGLE"}:
+        return
     if abs(pose_bone.rotation_euler.y) < 1e-4:
         pose_bone.rotation_euler.y = _INPLANE_PREBEND
 
@@ -369,11 +373,11 @@ class PROSCENIO_OT_toggle_ik_inplane_lock(bpy.types.Operator):
         name = self.bone_name or context.active_pose_bone.name
         pose_bone = armature.pose.bones.get(name)
         if pose_bone is None:
-            report_warn(self, f"bone '{name}' not found")
+            report_warn(self, f"bone '{name}' not found", always=True)
             return {"CANCELLED"}
         ik = pose_bone.constraints.get(_IK_CONSTRAINT_NAME)
         if ik is None:
-            report_warn(self, f"'{name}' has no Proscenio IK chain to lock")
+            report_warn(self, f"'{name}' has no Proscenio IK chain to lock", always=True)
             return {"CANCELLED"}
 
         members = _chain_member_bones(pose_bone, ik.chain_count)

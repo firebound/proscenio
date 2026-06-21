@@ -49,9 +49,15 @@ def test_controls_collection_is_reused_across_chains(automesh_fixture: None) -> 
 
     rig = _enter_pose_with_active_bone("automesh.hand_rig", "fingertip")
     try:
-        bpy.ops.proscenio.toggle_ik_chain()
+        assert "FINISHED" in bpy.ops.proscenio.toggle_ik_chain()
         rig.data.bones.active = rig.data.bones["palm"]
-        bpy.ops.proscenio.toggle_ik_chain()
+        # Assert the second chain actually got created: without this, the reuse
+        # check below stays vacuously green if the second toggle silently failed
+        # (one chain still yields exactly one controls collection).
+        assert "FINISHED" in bpy.ops.proscenio.toggle_ik_chain()
+        assert (
+            rig.pose.bones["palm"].constraints.get("Proscenio IK") is not None
+        ), "second toggle did not add an IK chain to 'palm'"
         matches = [c for c in rig.data.collections if c.name == _CONTROLS_COLLECTION]
         assert len(matches) == 1, "a second chain created a duplicate controls collection"
     finally:

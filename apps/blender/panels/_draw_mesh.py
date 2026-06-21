@@ -20,5 +20,6 @@ def draw_body(
     poly_count = len(getattr(mesh, "polygons", []) or [])
     layout.label(text=f"{poly_count} polygon(s), {vg_count} vertex group(s)")
     layout.operator("proscenio.reproject_sprite_uv", text="Reproject UV", icon="UV")
+    layout.prop(props, "pixel_art")
     layout.prop(props, "material_isolated")
     layout.prop(props, "exclude_from_atlas")

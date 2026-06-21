@@ -21,14 +21,25 @@ the pure-pytest suites build.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     import bpy
 
+# Texture-node interpolation values the pixel-art toggle switches between:
+# ``Closest`` is crisp nearest-neighbor (pixel art), ``Linear`` is Blender's
+# bilinear default. Closed set, so it is a Literal, not a bare str.
+TextureInterpolation = Literal["Closest", "Linear"]
 
-def iter_material_node_images(material: bpy.types.Material | None) -> Iterator[bpy.types.Image]:
-    """Yield every linked TEX_IMAGE image in one material's node tree.
+
+def iter_material_image_nodes(
+    material: bpy.types.Material | None,
+) -> Iterator[bpy.types.ShaderNodeTexImage]:
+    """Yield every TEX_IMAGE node with an image bound in one material's node tree.
+
+    The node-level walk every image reader sits on: callers that want the
+    image take ``node.image`` (see :func:`iter_material_node_images`), callers
+    that mutate the node (the pixel-art interpolation toggle) keep the node.
 
     Empty when ``material`` is None, is not node-based, has no node tree, or
     carries no image texture node with an image bound.
@@ -48,16 +59,43 @@ def iter_material_node_images(material: bpy.types.Material | None) -> Iterator[b
     if tree is None:
         return
     for node in getattr(tree, "nodes", ()):
-        if getattr(node, "type", "") == "TEX_IMAGE":
-            image = getattr(node, "image", None)
-            if image is not None:
-                yield image
+        if getattr(node, "type", "") == "TEX_IMAGE" and getattr(node, "image", None) is not None:
+            yield node
+
+
+def iter_material_node_images(material: bpy.types.Material | None) -> Iterator[bpy.types.Image]:
+    """Yield every linked TEX_IMAGE image in one material's node tree.
+
+    Empty when ``material`` is None, is not node-based, has no node tree, or
+    carries no image texture node with an image bound.
+    """
+    for node in iter_material_image_nodes(material):
+        image = node.image
+        if image is not None:  # always true (the node walk filters), narrows for mypy
+            yield image
 
 
 def iter_material_images(obj: bpy.types.Object) -> Iterator[bpy.types.Image]:
     """Yield every TEX_IMAGE image across the object's material slots, in slot order."""
     for material in getattr(getattr(obj, "data", None), "materials", None) or []:
         yield from iter_material_node_images(material)
+
+
+def set_object_texture_interpolation(
+    obj: bpy.types.Object | None,
+    interpolation: TextureInterpolation,
+) -> None:
+    """Set ``interpolation`` on every image-texture node across ``obj``'s materials.
+
+    Reuses the canonical :func:`iter_material_image_nodes` walk so the
+    pixel-art toggle and every image reader stay on the same node-finding
+    convention. A no-op when ``obj`` is None or carries no image-texture
+    nodes. Pure / bpy-free (assigns through the node's ``interpolation``
+    attribute) so the pure-pytest suite exercises it with mocks.
+    """
+    for material in getattr(getattr(obj, "data", None), "materials", None) or []:
+        for node in iter_material_image_nodes(material):
+            node.interpolation = interpolation
 
 
 def first_material_image(obj: bpy.types.Object | None) -> bpy.types.Image | None:

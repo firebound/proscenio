@@ -5,4 +5,3 @@ Drained on 2026-06-20: the closed-PR review sweep was routed across the focused 
 Routed to:
 
 - The bare `use_nodes` atlas reads -> spec 062 blender-6-compatibility.
-- The non-recursive `sonar.exclusions` glob -> spec 063 sonarcloud-analysis-pipeline.

@@ -10,6 +10,7 @@ Submodules / subpackages:
 - help_dispatch     - status badge proxy, help popup, smoke test
 - export_flow       - Validate, Export, Re-export
 - incorporate       - adopt a hand-authored Blender mesh as an element
+- helpers           - Re-space planes (apply the Y Location spacing)
 - selection         - select issue, select outliner, toggle favorite
 - armature/         - Preview Camera, Toggle IK, set active armature, Quick Armature
 - uv_authoring      - Reproject UV, Snap region to UV
@@ -31,6 +32,7 @@ from . import (
     driver,
     export_flow,
     help_dispatch,
+    helpers,
     import_photoshop,
     incorporate,
     pose_library,
@@ -47,6 +49,7 @@ def register() -> None:
     export_flow.register()
     incorporate.register()
     selection.register()
+    helpers.register()
     armature.register()
     uv_authoring.register()
     driver.register()
@@ -70,6 +73,7 @@ def unregister() -> None:
     driver.unregister()
     uv_authoring.unregister()
     armature.unregister()
+    helpers.unregister()
     selection.unregister()
     incorporate.unregister()
     export_flow.unregister()

@@ -76,7 +76,12 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # proscenio.select_outliner_object). filter_items already drops
         # out-of-view-layer rows, so select_get() is safe to call here.
         draw_select_marker(row, selected=obj.select_get())
-        split = row.split(factor=0.92, align=True)
+        # Plane rows (mesh / attachment) carry an editable Y Location (Draw
+        # Order) field so the stack reads and reorders from the list. The
+        # property update keys off id_data, so editing a non-active row moves
+        # the right object. Slot / armature rows have no z_index - no column.
+        is_plane = rank in (RANK_ELEMENT_MESH, RANK_ATTACHMENT)
+        split = row.split(factor=0.78 if is_plane else 0.92, align=True)
         name_row = split.row()
         name_row.alignment = "LEFT"
         op = name_row.operator(
@@ -86,7 +91,11 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
             emboss=False,
         )
         op.obj_name = obj.name
-        fav_row = split.row()
+        right = split.row(align=True)
+        if is_plane and obj_props is not None:
+            order_col = right.row(align=True)
+            order_col.prop(obj_props, "y_draw_order", text="")
+        fav_row = right.row()
         fav_row.alignment = "RIGHT"
         fav = fav_row.operator(
             "proscenio.toggle_outliner_favorite",

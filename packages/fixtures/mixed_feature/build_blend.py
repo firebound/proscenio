@@ -36,6 +36,7 @@ Run ``draw_layers.py`` first or this script aborts on the missing atlas.
 
 from __future__ import annotations
 
+import importlib.util
 import math
 import sys
 from pathlib import Path
@@ -46,6 +47,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from blend_utils import rewrite_images_to_relpath  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+ADDON_DIR = REPO_ROOT / "apps/blender"
+ADDON_PACKAGE = "proscenio"
 FIXTURE_DIR = (
     REPO_ROOT / "examples" / "generated" / "blender_to_godot" / "mixed_feature"
 )
@@ -67,6 +70,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
+    _load_addon_as_package()
     _wipe_blend()
     armature_obj = _build_armature()
     _build_skinned_body(armature_obj)
@@ -78,6 +82,30 @@ def main() -> None:
     rewrite_images_to_relpath("[build_mixed_feature]")
     bpy.ops.wm.save_mainfile()
     print(f"[build_mixed_feature] wrote {BLEND_PATH}")
+
+
+def _load_addon_as_package() -> None:
+    """Mount apps/blender as ``proscenio`` and register it.
+
+    Mirrors ``apps/blender/tests/conftest``: registering the fresh addon makes
+    ``obj.proscenio.*`` (the driver target + the ``_dual`` PG writes) resolve
+    against the current code, so the build runs under ``--factory-startup`` and
+    never depends on a separately-enabled (and possibly stale) installed addon.
+    """
+    if ADDON_PACKAGE in sys.modules:
+        return
+    init_path = ADDON_DIR / "__init__.py"
+    spec = importlib.util.spec_from_file_location(
+        ADDON_PACKAGE,
+        init_path,
+        submodule_search_locations=[str(ADDON_DIR)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not build import spec for {init_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[ADDON_PACKAGE] = module
+    spec.loader.exec_module(module)
+    module.register()
 
 
 def _wipe_blend() -> None:
@@ -271,6 +299,8 @@ def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
     _dual(obj, "vframes", "proscenio_vframes", 2)
     _dual(obj, "frame", "proscenio_frame", 0)
     _dual(obj, "centered", "proscenio_centered", True)
+    # Draw order -4 -> z_index 4: frontmost (Y -0.004 = order * the 0.001 spacing).
+    _dual(obj, "y_draw_order", "proscenio_y_draw_order", -4)
     _apply_manual_region(obj, MOUTH_REGION)
     return obj
 
@@ -319,6 +349,8 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     neutral.parent_type = "OBJECT"
     neutral_mesh.materials.append(_atlas_material("face_neutral.mat"))
     _dual(neutral, "element_type", "proscenio_type", "mesh")
+    # Draw order -2 -> z_index 2: in front of the torso (0), behind the mouth (4).
+    _dual(neutral, "y_draw_order", "proscenio_y_draw_order", -2)
 
     # Sprite attachment (the mixed-slot test: one mesh + one sprite under one
     # slot): a single-frame glowing head, region = atlas top-right quadrant. UVs
@@ -338,6 +370,8 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     _dual(glow, "vframes", "proscenio_vframes", 1)
     _dual(glow, "frame", "proscenio_frame", 0)
     _dual(glow, "centered", "proscenio_centered", True)
+    # Draw order -2 -> z_index 2 (same layer as the neutral face it swaps with).
+    _dual(glow, "y_draw_order", "proscenio_y_draw_order", -2)
     _apply_manual_region(glow, GLOW_REGION)
     return empty
 

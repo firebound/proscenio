@@ -5,9 +5,13 @@ manifest's ``pixels_per_unit``::
 
     mesh_center.x = (px_x + px_w / 2 - W / 2) / pixels_per_unit
     mesh_center.z = (H / 2 - px_y - px_h / 2) / pixels_per_unit
-    mesh_center.y = z_order * Z_EPSILON   (avoid Z-fight)
+    mesh_center.y = z_order * spacing   (the Y Location layer gap; avoid Z-fight)
     mesh_size.x   = px_w / pixels_per_unit
     mesh_size.z   = px_h / pixels_per_unit
+
+The PSD layer order seeds ``y_draw_order`` (the Y Location / Draw Order
+field); the per-layer ``spacing`` is the addon ``y_location_spacing``
+preference.
 
 Re-import semantics: existing meshes are identified by the
 ``proscenio_import_origin == "psd:<layer_name>"`` custom property and
@@ -38,6 +42,7 @@ from ...core._shared.cp_keys import (
     PROSCENIO_IMPORT_PLACEMENT,
     PROSCENIO_PSD_KIND,
     PROSCENIO_WEIGHT_SIDECAR,
+    PROSCENIO_Y_DRAW_ORDER,
 )
 from ...core.bpy_helpers._shared._bpy_compat import (
     expect_mesh,
@@ -59,7 +64,6 @@ from ...core.psd import psd_manifest
 from ...core.skinning.sidecar_schema import from_json, to_json
 from ...core.slot.slot_emit import is_slot_empty
 
-Z_EPSILON = 0.001
 SPRITESHEET_DIR_NAME = "_spritesheets"
 
 # EEVEE material.blend_method mapping for the photoshop tag system blend modes.
@@ -105,12 +109,15 @@ def _place_and_tag(
     image (single PNG vs composed spritesheet), the ``kind`` +
     ``element_type`` tag values, and the sprite frame counts.
     """
+    from ...addon_prefs import y_location_spacing
+
     placement = _layer_placement(
         layer.position,
         layer.size,
         manifest.size,
         manifest.pixels_per_unit,
         layer.z_order,
+        y_location_spacing(bpy.context),
         _origin_for_kind(layer.origin, element_type, layer.name),
         manifest.anchor,
     )
@@ -121,10 +128,14 @@ def _place_and_tag(
     # placement - re-rooting it back to the armature (and re-zeroing its world
     # position / outliner home) would silently break the attachment. Only the
     # manifest-driven placement is applied when the mesh is NOT slot-attached.
+    # The draw order rides with the placement: a non-slot mesh resyncs to the
+    # PSD layer order (its Y was just re-applied too); a slot-attached mesh is
+    # left alone (the slot owns it).
     if not is_slot_empty(obj.parent):
         _set_world_position(obj, placement.location)
         _parent_to_root(obj, armature_obj)
         _link_to_subfolder(obj, layer.subfolder)
+        _tag_draw_order(obj, layer.z_order)
     _tag_origin(obj, layer.name)
     _tag_kind(obj, kind)
     _tag_blend_mode(obj, layer.blend_mode)
@@ -221,6 +232,7 @@ def _layer_placement(
     doc_size_px: Sequence[int],
     pixels_per_unit: float,
     z_order: int,
+    spacing: float,
     origin_px: Sequence[int] | None,
     anchor_px: Sequence[int] | None,
 ) -> _Placement:
@@ -242,7 +254,7 @@ def _layer_placement(
         ref_y = float(anchor_px[1])
     bbox_cx = (px_x + px_w / 2.0 - ref_x) / pixels_per_unit
     bbox_cz = (ref_y - px_y - px_h / 2.0) / pixels_per_unit
-    cy = z_order * Z_EPSILON
+    cy = z_order * spacing
     sx = px_w / pixels_per_unit
     sz = px_h / pixels_per_unit
     if origin_px is None:
@@ -520,6 +532,22 @@ def _link_to_subfolder(obj: bpy.types.Object, subfolder: str | None) -> None:
 
 def _tag_origin(obj: bpy.types.Object, layer_name: str) -> None:
     obj[PROSCENIO_IMPORT_ORIGIN] = f"psd:{layer_name}"
+
+
+def _tag_draw_order(obj: bpy.types.Object, z_order: int) -> None:
+    """Seed ``y_draw_order`` from the PSD layer order.
+
+    Writes the Custom Property (the headless writer reads it) and, when the
+    PropertyGroup is registered, the idprop directly - bypassing the field's
+    update callback, which keys off ``context.active_object`` and would target
+    the wrong object mid-import. The object's Y was already positioned by the
+    placement, so no reposition is needed here.
+    """
+    order = int(z_order)
+    obj[PROSCENIO_Y_DRAW_ORDER] = order
+    props = getattr(obj, "proscenio", None)
+    if props is not None:
+        props["y_draw_order"] = order
 
 
 def _tag_kind(obj: bpy.types.Object, kind: str) -> None:

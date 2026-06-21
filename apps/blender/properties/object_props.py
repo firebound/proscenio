@@ -28,6 +28,7 @@ from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-
 from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
     DRIVER_SOURCE_AXIS_ITEMS,
 )
+from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 from ._dynamic_items import driver_bone_items, is_armature, on_any_update
 
 
@@ -59,6 +60,30 @@ def _pixel_art_update(self: ProscenioObjectProps, context: Context) -> None:
     obj = context.active_object
     if obj is not None:
         set_object_texture_interpolation(obj, "Closest" if self.pixel_art else "Linear")
+
+
+def _y_draw_order_update(self: ProscenioObjectProps, context: Context) -> None:
+    """Position the owning object in Y from its draw-order layer, then mirror.
+
+    ``y_draw_order`` is the authoritative draw order: a stored integer that
+    doubles as the object's Y position (``order * spacing``) so stacked planes
+    separate in the viewport and never z-fight. The writer reads the integer
+    directly, so the spacing only spreads planes in Blender - it never changes
+    the exported order. The spacing comes from the addon preference (imported
+    lazily to avoid an import cycle at registration).
+
+    Resolves the object through ``self.id_data`` (the ID this PropertyGroup is
+    rooted on), not the active object, so editing the field from a non-active
+    Outliner row moves and mirrors the correct object. Mirrors inline for the
+    same reason - the shared ``on_any_update`` keys off the active object.
+    """
+    obj = self.id_data
+    if obj is None:
+        return
+    from ..addon_prefs import y_location_spacing
+
+    obj.location.y = self.y_draw_order * y_location_spacing(context)
+    mirror_all_fields(self, obj)
 
 
 ELEMENT_TYPE_ITEMS = (
@@ -183,18 +208,19 @@ class ProscenioObjectProps(PropertyGroup):
         precision=4,
         update=on_any_update,
     )
-    depth_offset: FloatProperty(  # type: ignore[valid-type]
-        name="Depth offset",
+    y_draw_order: IntProperty(  # type: ignore[valid-type]
+        name="Y Location (Draw Order)",
         description=(
-            "Manual draw-order nudge layered on top of the PSD-order depth, in "
-            "PSD-layer units. Added to the element's depth before it becomes the "
-            "Godot z_index, so a positive value pushes this element further back "
-            "and a negative value pulls it forward - reorder a plane without "
-            "re-importing or moving the object."
+            "Draw order of this element as a whole-number layer. In Blender it "
+            "sets the object's Y position (this number times the Y Location "
+            "spacing in the addon preferences) so stacked planes separate and "
+            "do not z-fight; in Godot it sets the Sprite / Polygon draw order "
+            "(z_index). Higher pushes the element further back, lower (incl. "
+            "negative) pulls it forward. Reorder by editing this number, not by "
+            "dragging the object in Y - a manual Y drag is flagged in validation."
         ),
-        default=0.0,
-        precision=2,
-        update=on_any_update,
+        default=0,
+        update=_y_draw_order_update,
     )
     pixel_art: BoolProperty(  # type: ignore[valid-type]
         name="Pixel art",

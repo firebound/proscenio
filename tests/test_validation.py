@@ -55,6 +55,20 @@ def _sprite_obj(
     )
 
 
+def _plane_obj(name: str = "torso", *, order: int, y: float) -> SimpleNamespace:
+    # A mesh element with a draw order and a Y position - the inputs the
+    # divergence check reads. ``order`` is the stored Y Location (Draw Order),
+    # ``y`` the object's actual Blender Y.
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        data=_mesh(1),
+        location=SimpleNamespace(x=0.0, y=y, z=0.0),
+        proscenio=SimpleNamespace(element_type="mesh", y_draw_order=order),
+        get=lambda key, default=None: default,
+    )
+
+
 def test_active_mesh_with_polygons_is_clean() -> None:
     assert validation.validate_active_element(_mesh_obj()) == []
 
@@ -106,3 +120,28 @@ def test_active_unknown_element_type_errors() -> None:
 
 def test_active_non_mesh_object_yields_no_issues() -> None:
     assert validation.validate_active_element(SimpleNamespace(type="ARMATURE")) == []
+
+
+def test_draw_order_on_its_layer_is_clean() -> None:
+    # order 3 at the default 0.001 spacing belongs at Y 0.003 - on its layer.
+    assert validation.validate_active_element(_plane_obj(order=3, y=0.003)) == []
+
+
+def test_draw_order_front_layer_is_clean() -> None:
+    assert validation.validate_active_element(_plane_obj(order=0, y=0.0)) == []
+
+
+def test_draw_order_diverged_y_warns() -> None:
+    # order 3 but dragged to Y 0.010 (rounds to layer 10) - the plane left its layer.
+    issues = validation.validate_active_element(_plane_obj(order=3, y=0.010))
+    assert any(i.severity == "warning" and "Draw Order" in i.message for i in issues)
+
+
+def test_draw_order_divergence_respects_the_injected_spacing() -> None:
+    # At spacing 0.01, order 2 sits at Y 0.02 (clean); the default 0.001 would
+    # mis-flag the same object - so the check honors the spacing it is given.
+    obj = _plane_obj(order=2, y=0.02)
+    assert validation.validate_active_element(obj, layer_spacing=0.01) == []
+    assert any(
+        i.severity == "warning" for i in validation.validate_active_element(obj)
+    )

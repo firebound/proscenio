@@ -8,8 +8,9 @@ addon root, so its ``__package__`` is exactly that name.
 from __future__ import annotations
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty
 
+from .core._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING
 from .core._shared.report import set_min_level
 
 # The addon root package - the key both bl_idname and the prefs lookup use.
@@ -57,7 +58,26 @@ class ProscenioAddonPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
+    y_location_spacing: FloatProperty(  # type: ignore[valid-type]
+        name="Y Location spacing",
+        description=(
+            "Blender units between consecutive Y Location (Draw Order) layers. "
+            "Each element sits at its draw-order number times this gap, so "
+            "stacked planes never share a Y and z-fight. This only spreads "
+            "planes in the 3D view - the exported draw order is the integer "
+            "itself and never depends on this value. If planes still flicker, "
+            "raise it or tighten the 3D view clip range in the Helpers panel. "
+            "Use Re-space planes there after changing it"
+        ),
+        default=DEFAULT_Y_LOCATION_SPACING,
+        min=1e-6,
+        precision=6,
+    )
+
     def draw(self, _context: bpy.types.Context) -> None:
+        box = self.layout.box()
+        box.label(text="Authoring", icon="OPTIONS")
+        box.prop(self, "y_location_spacing")
         box = self.layout.box()
         box.label(text="Developer", icon="TOOL_SETTINGS")
         box.prop(self, "log_level")
@@ -78,6 +98,26 @@ def debug_mode_enabled(context: bpy.types.Context) -> bool:
     if addon is None:
         return False
     return bool(getattr(addon.preferences, "debug_mode", False))
+
+
+def y_location_spacing(context: bpy.types.Context) -> float:
+    """Blender-units gap between draw-order layers, from the addon preference.
+
+    Falls back to ``DEFAULT_Y_LOCATION_SPACING`` when the addon was mounted
+    outside Blender's addon system (a headless importlib smoke has no
+    ``context.preferences``) so callers get a usable spacing instead of
+    crashing the lookup.
+    """
+    prefs = getattr(context, "preferences", None) if context is not None else None
+    if prefs is None:
+        return DEFAULT_Y_LOCATION_SPACING
+    addons = getattr(prefs, "addons", None)
+    if addons is None:
+        return DEFAULT_Y_LOCATION_SPACING
+    addon = addons.get(ADDON_PACKAGE)
+    if addon is None:
+        return DEFAULT_Y_LOCATION_SPACING
+    return float(getattr(addon.preferences, "y_location_spacing", DEFAULT_Y_LOCATION_SPACING))
 
 
 _classes: tuple[type, ...] = (ProscenioAddonPreferences,)

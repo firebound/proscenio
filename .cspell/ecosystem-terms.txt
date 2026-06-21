@@ -276,6 +276,7 @@ shopt
 shutil
 sitecustomize
 skipif
+sortsize
 Specialised
 splitlines
 sprt

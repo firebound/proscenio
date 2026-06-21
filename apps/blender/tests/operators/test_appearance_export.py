@@ -55,7 +55,7 @@ def test_sprite_emits_appearance_and_offset(addon: None) -> None:
         [(-0.5, 0.0, -0.5), (0.5, 0.0, -0.5), (0.5, 0.0, 0.5), (-0.5, 0.0, 0.5)],
     )
     obj.color = (1.0, 0.5, 0.25, 1.0)
-    obj.location.y = 0.002  # z_order 2, two steps behind the front plane
+    obj.proscenio.y_draw_order = 2  # two layers behind the front; drives z_index
     obj.scale.x = -1.0  # mirrored horizontally
 
     sprite = build_sprite(obj, ppu=100.0)
@@ -89,7 +89,7 @@ def test_mesh_emits_modulate_and_z_index(addon: None) -> None:
         [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), (0.0, 0.0, 1.0)],
     )
     obj.color = (0.2, 0.4, 0.6, 1.0)
-    obj.location.y = 0.001  # z_order 1, one step back
+    obj.proscenio.y_draw_order = 1  # one layer back; drives z_index
 
     element = build_element(obj, {}, ppu=100.0)
     assert element.type == "mesh"

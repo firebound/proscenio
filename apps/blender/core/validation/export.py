@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .._shared.action_fcurves import action_fcurves
 from .._shared.cp_keys import (
+    DEFAULT_Y_LOCATION_SPACING,
     PROSCENIO_HFRAMES,
     PROSCENIO_REGION_MODE,
     PROSCENIO_TYPE,
@@ -39,12 +40,18 @@ _IK_TRANSFORM_PROPS = frozenset(
 )
 
 
-def validate_export(scene: object) -> list[Issue]:
+def validate_export(
+    scene: object,
+    *,
+    layer_spacing: float = DEFAULT_Y_LOCATION_SPACING,
+) -> list[Issue]:
     """Full pre-export pass. Walks the scene, hits the disk for the atlas.
 
     Returns every issue found; the caller decides whether to abort.
     Errors block export by convention; warnings inform but allow the
-    operator to proceed.
+    operator to proceed. ``layer_spacing`` is threaded to the per-element
+    pass for the Y Location (Draw Order) divergence check; the operator
+    passes ``addon_prefs.y_location_spacing(context)``.
     """
     issues: list[Issue] = []
     scene_objects = list(getattr(scene, "objects", ()))
@@ -64,7 +71,7 @@ def validate_export(scene: object) -> list[Issue]:
     for obj in scene_objects:
         if getattr(obj, "type", None) != "MESH":
             continue
-        for active_issue in validate_active_element(obj):
+        for active_issue in validate_active_element(obj, layer_spacing=layer_spacing):
             issues.append(active_issue)
         issues.extend(_validate_element_against_armature(obj, available_bones))
         issues.extend(_validate_mesh_flatness(obj))

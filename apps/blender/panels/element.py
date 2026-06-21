@@ -16,6 +16,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..addon_prefs import y_location_spacing  # type: ignore[import-not-found]
 from ..core import validation  # type: ignore[import-not-found]
 from . import (
     _draw_bone_attach,
@@ -90,8 +91,10 @@ class PROSCENIO_PT_element(bpy.types.Panel):
                 "proscenio.incorporate_element", text="Incorporate as Element", icon="IMPORT"
             )
         layout.prop(props, "element_type")
-        layout.prop(props, "depth_offset")
-        for issue in validation.validate_active_element(obj):
+        layout.prop(props, "y_draw_order")
+        for issue in validation.validate_active_element(
+            obj, layer_spacing=y_location_spacing(context)
+        ):
             draw_issue_row(layout, issue)
 
 

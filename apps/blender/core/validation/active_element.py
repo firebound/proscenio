@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+from .._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING, PROSCENIO_Y_DRAW_ORDER
 from ._shared import name_of, read_element_type, read_int
 from .issue import Issue
 
 
-def validate_active_element(obj: object) -> list[Issue]:
+def validate_active_element(
+    obj: object,
+    *,
+    layer_spacing: float = DEFAULT_Y_LOCATION_SPACING,
+) -> list[Issue]:
     """Return per-active-object issues. Cheap - runs every panel redraw.
 
     ``obj`` is a ``bpy.types.Object``; typed loosely to keep the
-    validation module testable without importing ``bpy``.
+    validation module testable without importing ``bpy``. ``layer_spacing``
+    is the addon's Y Location spacing - injected (not read) so the core
+    stays bpy-free; callers pass ``addon_prefs.y_location_spacing(context)``.
     """
     if obj is None or getattr(obj, "type", None) != "MESH":
         return []
@@ -31,8 +38,39 @@ def validate_active_element(obj: object) -> list[Issue]:
                 name,
             )
         )
+        return issues
 
+    issues.extend(_validate_draw_order_position(obj, name, layer_spacing))
     return issues
+
+
+def _validate_draw_order_position(obj: object, name: str, spacing: float) -> list[Issue]:
+    """Warn when the object's Y no longer matches its Y Location (Draw Order).
+
+    The draw order is the authoritative integer; the object's Y is meant to be
+    ``order * spacing``. A manual Y drag breaks that (the export still uses the
+    integer, so this is a hygiene warning, not a blocker). ``round(Y/spacing)``
+    recovers the layer the Y currently sits on; a mismatch means the plane was
+    moved off its layer. Skips when there is no usable Y or spacing.
+    """
+    if spacing <= 0:
+        return []
+    location = getattr(obj, "location", None)
+    y = getattr(location, "y", None)
+    if y is None:
+        return []
+    order = read_int(obj, "y_draw_order", PROSCENIO_Y_DRAW_ORDER, 0)
+    if round(float(y) / spacing) == order:
+        return []
+    return [
+        Issue(
+            "warning",
+            f"object Y {float(y):.4f} does not match Y Location (Draw Order) {order} "
+            f"(expected {order * spacing:.4f}) - it was moved in Y; edit the order or "
+            "run Re-space planes in the Helpers panel",
+            name,
+        )
+    ]
 
 
 def _validate_sprite_fields(obj: object, name: str) -> list[Issue]:

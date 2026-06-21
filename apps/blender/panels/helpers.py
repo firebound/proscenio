@@ -1,7 +1,9 @@
 """Helpers panel - viewport authoring aids that are not part of the pipeline.
 
-Currently hosts the Preview Camera (orthographic front camera) used to
-frame sprites the way the Godot importer expects.
+Hosts the Preview Camera (orthographic front camera) used to frame sprites
+the way the Godot importer expects, the 3D-view clip range (so tiny
+Y Location layer gaps register in the depth buffer instead of z-fighting),
+and Re-space planes (re-apply the Y Location spacing to every element).
 """
 
 from __future__ import annotations
@@ -27,12 +29,24 @@ class PROSCENIO_PT_helpers(bpy.types.Panel):
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "helpers", "helpers")
 
-    def draw(self, _context: bpy.types.Context) -> None:
-        self.layout.operator(
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        layout.operator(
             "proscenio.create_ortho_camera",
             text="Preview Camera",
             icon="OUTLINER_OB_CAMERA",
         )
+        layout.operator(
+            "proscenio.respace_planes",
+            text="Re-space Planes",
+            icon="SORTSIZE",
+        )
+        space = context.space_data
+        if space is not None and getattr(space, "type", None) == "VIEW_3D":
+            col = layout.column(align=True)
+            col.label(text="3D View Clip:")
+            col.prop(space, "clip_start")
+            col.prop(space, "clip_end")
 
 
 _classes: tuple[type, ...] = (PROSCENIO_PT_helpers,)

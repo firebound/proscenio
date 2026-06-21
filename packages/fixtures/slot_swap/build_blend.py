@@ -84,14 +84,11 @@ def main() -> None:
     armature_obj = _build_armature()
     _build_arm_mesh(armature_obj)
     slot_empty = _build_slot_empty(armature_obj)
-    # Stagger attachments along bone-Y so Eevee never disambiguates
-    # coplanar quads if both end up visible.
-    _build_attachment(
-        "club", CLUB_PATH, slot_empty, is_default=True, depth_offset=-0.001
-    )
-    _build_attachment(
-        "sword", SWORD_PATH, slot_empty, is_default=False, depth_offset=-0.002
-    )
+    # Stagger attachments by draw order so Eevee never disambiguates coplanar
+    # quads if both end up visible. The writer negates the order into z_index
+    # (club -1 -> z_index 1, sword -2 -> z_index 2).
+    _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1)
+    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2)
     _build_swing_action(armature_obj)
     _build_swap_action(slot_empty)
     _save_blend()
@@ -247,7 +244,7 @@ def _build_attachment(
     slot_empty: bpy.types.Object,
     *,
     is_default: bool,
-    depth_offset: float,
+    draw_order: int,
 ) -> bpy.types.Object:
     """Polygon mesh attachment parented to the slot Empty.
 
@@ -256,18 +253,22 @@ def _build_attachment(
     attachment visible at a time). Animation tracks toggle visibility
     at runtime via the slot_attachment track in the .proscenio output.
 
-    ``depth_offset`` shifts the attachment a sub-millimeter along the
-    bone-Y axis so attachments never exactly share the picture plane
-    - protects against Eevee z-fight if multiple attachments end up
-    visible simultaneously (e.g. the user manually unhides one for
-    inspection).
+    ``draw_order`` is the Y Location (Draw Order) layer: stamped as the
+    ``proscenio_y_draw_order`` Custom Property (the writer negates it into
+    the Godot z_index) and used to stagger the attachment along the bone-Y
+    axis (order * the default 0.001 spacing) so attachments never exactly
+    share the picture plane - protects against Eevee z-fight if two end up
+    visible at once (e.g. the user unhides one for inspection).
     """
     mesh = _quad_mesh(name, WEAPON_W_PX, WEAPON_H_PX)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
-    obj.location = (0.0, depth_offset, 0.0)
+    obj.location = (0.0, draw_order * 0.001, 0.0)
+    if hasattr(obj, "proscenio"):
+        obj.proscenio.y_draw_order = draw_order
+    obj["proscenio_y_draw_order"] = draw_order
     mat = _build_material(f"{name}.mat", image_path)
     mesh.materials.append(mat)
     _stamp_polygon_props(obj)

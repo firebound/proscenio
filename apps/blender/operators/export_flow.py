@@ -9,6 +9,7 @@ import bpy
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper
 
+from ..addon_prefs import y_location_spacing  # type: ignore[import-not-found]
 from ..core import validation  # type: ignore[import-not-found]
 from ..core._shared.props_access import scene_props  # type: ignore[import-not-found]
 from ..core._shared.report import (  # type: ignore[import-not-found]
@@ -61,7 +62,7 @@ def _run_writer(filepath: str, pixels_per_unit: float) -> str | None:
 
 def _gate_on_validation(operator: bpy.types.Operator, scene: bpy.types.Scene) -> bool:
     """Return False (and report) when validation finds blocking errors."""
-    issues = validation.validate_export(scene)
+    issues = validation.validate_export(scene, layer_spacing=y_location_spacing(bpy.context))
     _populate_validation_results(scene, issues)
     _report_issue_traces(operator, issues)
     errors = [i for i in issues if i.severity == "error"]
@@ -134,7 +135,9 @@ class PROSCENIO_OT_validate_export(bpy.types.Operator):
     bl_options: ClassVar[set[str]] = {"REGISTER"}
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        issues = validation.validate_export(context.scene)
+        issues = validation.validate_export(
+            context.scene, layer_spacing=y_location_spacing(context)
+        )
         _populate_validation_results(context.scene, issues)
         _report_issue_traces(self, issues)
         errors = sum(1 for i in issues if i.severity == "error")

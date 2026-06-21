@@ -75,6 +75,7 @@ def test_origin_round_trips_to_the_sprite_offset(automesh_fixture):
         doc_size_px=(100, 100),
         pixels_per_unit=100.0,
         z_order=0,
+        spacing=0.001,  # z_order 0 -> Y 0 regardless; origin/offset is the subject
         origin_px=(50, 70),
         anchor_px=None,
     )

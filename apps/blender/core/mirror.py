@@ -64,7 +64,7 @@ OBJECT_MIRROR_MAP: tuple[tuple[str, str, Caster], ...] = (
     (cp_keys.PROSCENIO_REGION_Y, "region_y", _as_float),
     (cp_keys.PROSCENIO_REGION_W, "region_w", _as_float),
     (cp_keys.PROSCENIO_REGION_H, "region_h", _as_float),
-    (cp_keys.PROSCENIO_DEPTH_OFFSET, "depth_offset", _as_float),
+    (cp_keys.PROSCENIO_Y_DRAW_ORDER, "y_draw_order", _as_int),
     (cp_keys.PROSCENIO_MATERIAL_ISOLATED, "material_isolated", _as_bool),
     (cp_keys.PROSCENIO_IS_SLOT, "is_slot", _as_bool),
     (cp_keys.PROSCENIO_SLOT_DEFAULT, "slot_default", _as_str),

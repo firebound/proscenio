@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core import validation  # noqa: E402
+from core._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING  # noqa: E402
 
 
 def _mesh(polygon_count: int = 1, vert_count: int = 4) -> SimpleNamespace:
@@ -51,6 +52,20 @@ def _sprite_obj(
             hframes=hframes,
             vframes=vframes,
         ),
+        get=lambda key, default=None: default,
+    )
+
+
+def _plane_obj(name: str = "torso", *, order: int, y: float) -> SimpleNamespace:
+    # A mesh element with a draw order and a Y position - the inputs the
+    # divergence check reads. ``order`` is the stored Y Location (Draw Order),
+    # ``y`` the object's actual Blender Y.
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        data=_mesh(1),
+        location=SimpleNamespace(x=0.0, y=y, z=0.0),
+        proscenio=SimpleNamespace(element_type="mesh", y_draw_order=order),
         get=lambda key, default=None: default,
     )
 
@@ -106,3 +121,39 @@ def test_active_unknown_element_type_errors() -> None:
 
 def test_active_non_mesh_object_yields_no_issues() -> None:
     assert validation.validate_active_element(SimpleNamespace(type="ARMATURE")) == []
+
+
+def test_draw_order_on_its_default_layer_is_clean() -> None:
+    # order 3 at the default spacing belongs at Y = 3 * spacing - on its layer.
+    obj = _plane_obj(order=3, y=3 * DEFAULT_Y_LOCATION_SPACING)
+    assert validation.validate_active_element(obj) == []
+
+
+def test_draw_order_front_layer_is_clean() -> None:
+    assert validation.validate_active_element(_plane_obj(order=0, y=0.0)) == []
+
+
+def test_draw_order_diverged_y_warns() -> None:
+    # order 3 but dragged five layers off (Y = 8 * spacing) - it left its layer.
+    obj = _plane_obj(order=3, y=8 * DEFAULT_Y_LOCATION_SPACING)
+    issues = validation.validate_active_element(obj)
+    assert any(i.severity == "warning" and "Draw Order" in i.message for i in issues)
+
+
+def test_draw_order_skips_the_check_when_spacing_is_non_positive() -> None:
+    # A zero / negative spacing has no layer to divide by; the check bails out
+    # instead of crashing, even on an object that would otherwise diverge.
+    obj = _plane_obj(order=3, y=8 * DEFAULT_Y_LOCATION_SPACING)
+    assert validation.validate_active_element(obj, layer_spacing=0.0) == []
+
+
+def test_draw_order_divergence_respects_the_injected_spacing() -> None:
+    # Same object at Y 0.02: at spacing 0.01 it sits on layer 2 (clean); at
+    # spacing 0.005 the same Y rounds to layer 4 (diverged from its stored 2),
+    # so the check honors the spacing it is given rather than a fixed constant.
+    obj = _plane_obj(order=2, y=0.02)
+    assert validation.validate_active_element(obj, layer_spacing=0.01) == []
+    assert any(
+        i.severity == "warning"
+        for i in validation.validate_active_element(obj, layer_spacing=0.005)
+    )

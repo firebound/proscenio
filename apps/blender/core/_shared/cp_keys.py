@@ -61,10 +61,21 @@ PROSCENIO_REGION_Y = "proscenio_region_y"
 PROSCENIO_REGION_W = "proscenio_region_w"
 PROSCENIO_REGION_H = "proscenio_region_h"
 PROSCENIO_MATERIAL_ISOLATED = "proscenio_material_isolated"
-# Manual draw-order nudge (PSD-layer units) layered on the PSD-order depth.
-# The writer adds it to the element's Y before deriving the Godot z_index;
-# authoring-only, never a schema field. Mirrors ProscenioObjectProps.depth_offset.
-PROSCENIO_DEPTH_OFFSET = "proscenio_depth_offset"
+# Whole-number draw order (the Y Location layer). The writer negates it into the
+# Godot z_index; the addon also positions the object at Y = order * spacing.
+# Authoring-only, never a schema field. Mirrors ProscenioObjectProps.y_draw_order.
+PROSCENIO_Y_DRAW_ORDER = "proscenio_y_draw_order"
+
+# Default Blender-units gap between consecutive Y Location (Draw Order) layers.
+# Matches Blender's default 3D-view ``clip_start`` (0.01) so the layer gap clears
+# the depth-buffer precision of the perspective authoring viewport at the usual
+# camera distance - 0.001 is marginal there, 0.01 is comfortable, and the gap is
+# invisible in the front-ortho deliverable view (ortho drops depth). The addon
+# preference ``y_location_spacing`` overrides it; the bpy-free validation core
+# falls back to this when no preference value is threaded in. Kept here (the one
+# pure-Python shared module both sides import) so the preference default and the
+# validation default never drift.
+DEFAULT_Y_LOCATION_SPACING = 0.01
 
 # Skinning sidecar + bind metadata. The weight sidecar is the per-Object JSON
 # store of bind/paint provenance; bone modes, envelope radius, and the mirror

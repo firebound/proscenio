@@ -34,52 +34,39 @@ def test_derive_modulate_returns_the_tint() -> None:
     assert sprites._derive_modulate(obj) == [1.0, 0.5, 0.25, 1.0]
 
 
-def test_derive_z_index_none_at_the_front_plane() -> None:
-    # z_order 0 (front) stamps Blender Y = 0; default draw order needs no z_index.
-    obj = SimpleNamespace(location=_vec(y=0.0))
+def test_derive_z_index_none_at_the_front_layer() -> None:
+    # Draw order 0 is the front layer; the default needs no z_index.
+    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=0))
     assert sprites._derive_z_index(obj) is None
 
 
-def test_derive_z_index_negates_the_psd_depth() -> None:
-    # z_order 2 (further back) is stamped as Y = 2 * 0.001; Godot draws a lower
-    # z_index behind, so the back layer maps to -2.
-    obj = SimpleNamespace(location=_vec(y=0.002))
+def test_derive_z_index_negates_the_draw_order() -> None:
+    # A back layer (order 2) maps to z_index -2; Godot draws a lower z_index behind.
+    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=2))
     assert sprites._derive_z_index(obj) == -2
 
 
-def test_derive_z_index_applies_manual_depth_offset() -> None:
-    # depth_offset is in PSD-layer units, added to the depth before the negate:
-    # the front plane (Y = 0) pushed back 3 layers maps to z_index -3.
+def test_derive_z_index_pulls_forward_on_negative_order() -> None:
+    # A negative order pulls the plane in front of the front layer (z_index 3).
+    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=-3))
+    assert sprites._derive_z_index(obj) == 3
+
+
+def test_derive_z_index_reads_the_custom_property_fallback() -> None:
+    # Headless writer path: no PropertyGroup, so the order resolves via the
+    # proscenio_y_draw_order Custom Property (order -4 -> z_index 4).
     obj = SimpleNamespace(
-        location=_vec(y=0.0), proscenio=SimpleNamespace(depth_offset=3.0)
-    )
-    assert sprites._derive_z_index(obj) == -3
-
-
-def test_derive_z_index_offset_composes_with_psd_depth() -> None:
-    # z_order 2 (Y = 0.002) pulled forward 2 layers cancels back to the front (None).
-    obj = SimpleNamespace(
-        location=_vec(y=0.002), proscenio=SimpleNamespace(depth_offset=-2.0)
-    )
-    assert sprites._derive_z_index(obj) is None
-
-
-def test_derive_z_index_zero_offset_keeps_the_psd_value() -> None:
-    obj = SimpleNamespace(
-        location=_vec(y=0.002), proscenio=SimpleNamespace(depth_offset=0.0)
-    )
-    assert sprites._derive_z_index(obj) == -2
-
-
-def test_derive_z_index_reads_depth_offset_from_the_custom_property_fallback() -> None:
-    # Headless writer path: no PropertyGroup, so depth_offset resolves via the
-    # proscenio_depth_offset Custom Property (front plane pushed back 4 layers).
-    obj = SimpleNamespace(
-        location=_vec(y=0.0),
         proscenio=None,
-        get=lambda key, default=None: {"proscenio_depth_offset": 4.0}.get(key, default),
+        get=lambda key, default=None: {"proscenio_y_draw_order": -4}.get(key, default),
     )
-    assert sprites._derive_z_index(obj) == -4
+    assert sprites._derive_z_index(obj) == 4
+
+
+def test_derive_z_index_ignores_the_object_y() -> None:
+    # The stored order is the source of truth; the object's Y (only the viewport
+    # spacing) is never read, so a stray Y drag cannot shift the exported order.
+    obj = SimpleNamespace(location=_vec(y=0.123), proscenio=SimpleNamespace(y_draw_order=1))
+    assert sprites._derive_z_index(obj) == -1
 
 
 def test_derive_flips_none_for_positive_scale() -> None:
@@ -174,9 +161,11 @@ def test_build_sprite_emits_derived_appearance() -> None:
         parent_type="OBJECT",
         parent_bone="",
         vertex_groups=[],
-        proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+        proscenio=SimpleNamespace(
+            hframes=1, vframes=1, frame=0, centered=True, y_draw_order=1
+        ),
         color=(1.0, 0.5, 0.25, 1.0),
-        location=_vec(y=0.001),  # z_order 1, one step behind the front plane
+        location=_vec(y=0.001),  # one step back; the order, not the Y, drives z_index
         scale=_vec(-1.0, 1.0, 1.0),  # mirrored horizontally
     )
     sprite = sprites.build_sprite(obj, ppu=100.0)

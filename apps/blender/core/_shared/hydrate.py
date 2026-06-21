@@ -25,7 +25,7 @@ OBJECT_PROPS: tuple[tuple[str, str], ...] = (
     (cp_keys.PROSCENIO_REGION_Y, "region_y"),
     (cp_keys.PROSCENIO_REGION_W, "region_w"),
     (cp_keys.PROSCENIO_REGION_H, "region_h"),
-    (cp_keys.PROSCENIO_DEPTH_OFFSET, "depth_offset"),
+    (cp_keys.PROSCENIO_Y_DRAW_ORDER, "y_draw_order"),
     (cp_keys.PROSCENIO_MATERIAL_ISOLATED, "material_isolated"),
 )
 

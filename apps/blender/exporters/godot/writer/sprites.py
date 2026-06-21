@@ -10,7 +10,7 @@ from mathutils import Vector
 from proscenio_models import MeshElement, SpriteElement, Weight
 
 from ....core._shared import region as region_core
-from ....core._shared.cp_keys import PROSCENIO_DEPTH_OFFSET
+from ....core._shared.cp_keys import PROSCENIO_Y_DRAW_ORDER
 from ....core._shared.material_images import iter_material_images
 from ....core._shared.pg_cp_fallback import read_field
 from ....core.bpy_helpers._shared._bpy_compat import (
@@ -27,12 +27,6 @@ from .scene_discovery import image_filename
 from .skeleton import BoneWorld, world_to_godot_xy
 
 _WEIGHT_EPS = 1e-9
-
-# Mirrors the PSD importer's per-layer depth stamp (planes.Z_EPSILON): the
-# importer writes object Y = z_order * this, with z_order 0 = front. Kept as a
-# local constant rather than imported so the exporter does not depend on the
-# importer; the two are coupled by the format convention, not by code.
-_DEPTH_EPSILON = 0.001
 _OPAQUE_WHITE = [1.0, 1.0, 1.0, 1.0]
 
 
@@ -111,21 +105,17 @@ def _derive_modulate(obj: bpy.types.Object) -> list[float] | None:
 
 
 def _derive_z_index(obj: bpy.types.Object) -> int | None:
-    """Draw order from the PSD-stamped depth (object Y) plus the manual offset.
+    """Godot ``z_index`` from the stored Y Location (Draw Order) layer.
 
-    The PSD import stamps ``object.location.y = z_order * Z_EPSILON`` with
-    z_order 0 = front; Godot draws a higher ``z_index`` on top, so negate to
-    keep the authored stacking. The authoring-only ``depth_offset`` (in
-    PSD-layer units) adds to the depth before the negate, letting the artist
-    reorder a plane without moving the object or re-importing - a positive
-    value pushes the element further back. A net-zero depth (Y = 0, no offset)
-    emits nothing.
+    ``y_draw_order`` is the authoritative whole-number draw order; Godot draws
+    a higher ``z_index`` on top, so negate to keep "higher order = further
+    back". Reads the PropertyGroup first, the Custom Property fallback second
+    (the headless writer path). The object's actual Y is just the order times
+    the addon spacing, so the export never reads ``location.y`` and never
+    depends on the spacing preference. A net-zero order emits nothing.
     """
-    depth_offset = float(
-        read_field(obj, pg_field="depth_offset", cp_key=PROSCENIO_DEPTH_OFFSET, default=0.0)
-    )
-    z = -round(obj.location.y / _DEPTH_EPSILON + depth_offset)
-    return z or None
+    order = int(read_field(obj, pg_field="y_draw_order", cp_key=PROSCENIO_Y_DRAW_ORDER, default=0))
+    return -order or None
 
 
 def _derive_flips(obj: bpy.types.Object) -> tuple[bool | None, bool | None]:

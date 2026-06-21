@@ -29,6 +29,11 @@ from ._helpers import (
 )
 from ._list import ProscenioListMixin
 
+# bl_idname of the per-bone Soft/Hard/Clear operator, reached via its string
+# id-name (the project convention for operator calls); named once so the three
+# row.operator() call sites below do not repeat the literal.
+_SET_BONE_MODE_OT = "proscenio.set_bone_mode"
+
 
 class PROSCENIO_PT_weight_paint(bpy.types.Panel):
     """Weight Paint - mesh-only bind + weight authoring; body in subpanels."""
@@ -226,15 +231,15 @@ class PROSCENIO_UL_bone_overrides(ProscenioListMixin, bpy.types.UIList):
         current = read_bone_modes(obj).get(item.name, "") if obj is not None else ""
         row = layout.row(align=True)
         row.label(text=item.name)
-        op_soft = row.operator("proscenio.set_bone_mode", text="Soft", depress=(current == "SOFT"))
+        op_soft = row.operator(_SET_BONE_MODE_OT, text="Soft", depress=(current == "SOFT"))
         op_soft.bone_name = item.name
         op_soft.mode = "SOFT"
-        op_hard = row.operator("proscenio.set_bone_mode", text="Hard", depress=(current == "HARD"))
+        op_hard = row.operator(_SET_BONE_MODE_OT, text="Hard", depress=(current == "HARD"))
         op_hard.bone_name = item.name
         op_hard.mode = "HARD"
         clear_sub = row.row(align=True)
         clear_sub.enabled = current != ""
-        op_clear = clear_sub.operator("proscenio.set_bone_mode", text="", icon="X")
+        op_clear = clear_sub.operator(_SET_BONE_MODE_OT, text="", icon="X")
         op_clear.bone_name = item.name
         op_clear.mode = "CLEAR"
 

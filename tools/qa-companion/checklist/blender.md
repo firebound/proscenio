@@ -45,9 +45,9 @@ Each block answers three questions in plain language: what passing it proves (`i
 - steps:
   1. Click a '?' icon and read the popup.
   2. If the popup has an 'Open online docs' button or a 'See also' web link, click it.
-- observe: A help popup opens with a title, a summary line, and section headings with body text. Prose now fills the popup width (it reflows to the column instead of sitting hand-wrapped in a narrow band with an empty right margin); bullet and numbered items keep their own lines with a hanging indent on wrapped continuations. 'Open online docs' opens the doc page in a browser; 'See also' web links are clickable buttons, and non-link references show as plain indented labels.
-- intent: The help popup renders its title, sections, links, and the online-docs button correctly, with prose reflowed to the popup width.
-- code: apps/blender/operators/help_dispatch.py draw (reflow_paragraph) + apps/blender/core/help_topics.py
+- observe: A help popup opens hugging its text - the width tracks the wrapped prose, with no empty right band. A panel '?' shows a title and one short what-and-why paragraph (no section headings); a subpanel '?' shows a title, a summary, and one focused section scoped to that control. Bullet and numbered items keep their own lines with a hanging indent on wrapped continuations. 'Open online docs' opens the matching doc page (a subpanel's button deep-links to its H2 section); 'See also' web links are clickable buttons, and non-link references show as plain indented labels.
+- intent: The help popup hugs its text (width derived from the wrap budget), renders the two-tier copy (a shallow panel overview versus a focused subpanel section), and deep-links to the mirrored doc page or section.
+- code: apps/blender/operators/help_dispatch.py draw (reflow_paragraph + iface) + apps/blender/core/help_topics.py
 - note: help-popup-width: bodies became single paragraphs reflowed at draw time + the 31 topics were re-edited. Re-walk a few popups to confirm the reflow + revised copy read correctly.
 
 ### BL-CHROME-05 · Each panel's '?' opens the matching help topic

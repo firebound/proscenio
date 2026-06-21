@@ -282,3 +282,11 @@ The calls made while building each feature that crossed a component boundary or 
 
 - **A mode layer replaced the saturated chord scheme** - Tab cycles Draw (the prior click-drag authoring, byte-for-byte) and Reparent; the status bar swaps to the active mode's chords (the automesh-authoring precedent). Draw stays additive, so every prior Quick Armature promise holds.
 - **Reparent is viewport pick-parent: the nearest bone tip within a screen-constant pixel radius** (Y=0 XZ projection + the shared nearest-index); a miss is a no-op with feedback, a hit sets the chain parent. The overlay highlight projects to the same Y=0 plane as the picker, and the Esc session-state label reads the session-authored records, not the chaining field the pick now also writes.
+
+### Help copy and docs alignment
+
+- **The help popup width is derived from the wrap budget** (`POPUP_WIDTH = POPUP_WRAP_CHARS * _POPUP_PX_PER_CHAR + margin`), so the drawn width is the wrapped-text extent by construction and the empty-band defect cannot return; the wrap budget is the lone readability knob.
+- **Two-tier help copy, tested**: a panel `?` is one shallow what-and-why paragraph (`sections=()`); a subpanel `?` is one focused summary plus at most one section scoped to its own controls, never re-explaining the parent; worked depth lives on the doc page. A shape test enforces the tiers.
+- **The docs mirror the Blender panel tree exactly** (user-locked): every top-level panel is one page, every subpanel one H2 section under it, the About footer is the index; a topic that is neither anchors inside its host section. 09-validation.md folded into `pipeline#validate` (client redirect from the old slug), and a two-way coverage test holds `_DOC_PATHS` to the mirror in both directions.
+- **Help strings are translation-stable, not translated**: each body is one whole-string msgid routed through `core/i18n.py` `iface()` under a per-topic context (shared labels under the default context); `TRANSLATIONS` stays empty (zero visible change), unblocking the gated `i18n-locale-tables` item without a second copy pass.
+- **Row-button / helper topics anchor inside their host section** (`pose_library` -> `skeleton#save-pose-to-library`, `sprite_frame_preview` -> `element#material-preview`), never a sibling H2 - the mirror reserves H2s for subpanels.

@@ -49,11 +49,45 @@ def test_topic_for_unknown_returns_none() -> None:
     assert topic_for("nonexistent_topic") is None
 
 
+#: The ten top-level panel topics (spec 064, Decision 2A). A panel ``?`` is one
+#: shallow overview paragraph - what the panel is for and which pipeline stage it
+#: serves - and carries no ``sections``; depth lives on the doc page behind the
+#: ``Open online docs`` link. ``status_legend`` is the index badge legend rather
+#: than a panel, so it is NOT in this set and keeps its enumerated sections.
+PANEL_TOPIC_IDS: frozenset[str] = frozenset(
+    {
+        "pipeline_overview",
+        "outliner",
+        "active_element",
+        "slot_system",
+        "skeleton",
+        "mesh_generation",
+        "weight_paint",
+        "animation",
+        "atlas",
+        "helpers",
+    }
+)
+
+#: A panel ``?`` summary is one shallow paragraph; this caps it so a panel popup
+#: cannot grow back into the subpanel-depth prose the two-tier contract removes.
+PANEL_SUMMARY_BUDGET = 200
+
+
 def test_every_topic_has_required_fields() -> None:
     for topic_id, topic in HELP_TOPICS.items():
         assert topic.title, f"empty title for {topic_id!r}"
         assert topic.summary, f"empty summary for {topic_id!r}"
-        assert topic.sections, f"no sections for {topic_id!r}"
+        if topic_id in PANEL_TOPIC_IDS:
+            # Panel topics legitimately carry no sections under the two-tier
+            # contract (Decision 2A): the overview is the summary, depth is on
+            # the doc page. They must still have a non-empty summary (above).
+            assert topic.sections == (), (
+                f"panel topic {topic_id!r} must have sections == () (two-tier "
+                f"contract): depth belongs on the doc page, not the popup"
+            )
+            continue
+        assert topic.sections, f"no sections for non-panel topic {topic_id!r}"
         for section in topic.sections:
             assert section.heading, f"empty section heading in {topic_id!r}"
             # body is one paragraph string ("\n" separates explicit list items).
@@ -63,6 +97,73 @@ def test_every_topic_has_required_fields() -> None:
                 assert item.strip(), (
                     f"blank list item in {topic_id!r}/{section.heading!r}"
                 )
+
+
+def test_panel_topics_are_one_shallow_overview() -> None:
+    """The two-tier contract shape (spec 064, Decision 2A), enforced.
+
+    Every panel topic carries no ``sections`` (the overview is the summary, depth
+    moves to the doc page) and keeps its summary under the budget so a panel ``?``
+    stays a shallow "what and why," not subpanel-depth prose.
+    """
+    for topic_id in PANEL_TOPIC_IDS:
+        topic = HELP_TOPICS[topic_id]
+        assert topic.sections == (), (
+            f"panel topic {topic_id!r} must have sections == () (Decision 2A)"
+        )
+        assert len(topic.summary) <= PANEL_SUMMARY_BUDGET, (
+            f"panel topic {topic_id!r} summary is {len(topic.summary)} chars, "
+            f"over the {PANEL_SUMMARY_BUDGET}-char overview budget"
+        )
+
+
+def test_no_subpanel_body_repeats_its_parent_panel_summary() -> None:
+    """A subpanel ``?`` names its parent by reference, never re-explains it.
+
+    No subpanel topic's summary or section body may contain its parent panel's
+    summary text verbatim, so the parent's overview lives in exactly one place
+    (the panel ``?``) and the subpanel stays scoped to its own controls.
+    """
+    # Subpanel topic -> the panel topic id it sits under (spec 064 mirror).
+    parent_of = {
+        # Pipeline panel.
+        "import_photoshop": "pipeline_overview",
+        "validation": "pipeline_overview",
+        "export": "pipeline_overview",
+        # Element panel.
+        "active_mesh": "active_element",
+        "active_sprite": "active_element",
+        "sprite_bone_parent": "active_element",
+        "texture_region": "active_element",
+        "drive_from_bone": "active_element",
+        "sprite_frame_preview": "active_element",
+        # Slots panel.
+        "active_slot": "slot_system",
+        # Skeleton panel.
+        "armature": "skeleton",
+        "pose_mode": "skeleton",
+        "pose_library": "skeleton",
+        "quick_armature": "skeleton",
+        # Mesh Generation panel.
+        "automesh_alpha": "mesh_generation",
+        "automesh_interactive": "mesh_generation",
+        "debug_pipeline": "mesh_generation",
+        # Weight Paint panel.
+        "bind": "weight_paint",
+        "edit_weights": "weight_paint",
+        "snapshot": "weight_paint",
+        "weight_transfer": "weight_paint",
+    }
+    for topic_id, parent_id in parent_of.items():
+        parent_summary = HELP_TOPICS[parent_id].summary.strip()
+        topic = HELP_TOPICS[topic_id]
+        bodies = [topic.summary, *(section.body for section in topic.sections)]
+        for body in bodies:
+            assert parent_summary not in body, (
+                f"subpanel topic {topic_id!r} repeats its parent "
+                f"{parent_id!r} summary verbatim; name the parent by "
+                f"reference instead"
+            )
 
 
 def test_reflow_wraps_each_line_to_the_width() -> None:
@@ -232,13 +333,13 @@ SUBPANEL_SECTIONS: dict[str, tuple[str, str]] = {
 #: Topics that are neither a panel nor a subpanel: they hang off a row button or
 #: a sub-box and deep-link to an anchor inside a host section (Decision 5). Each
 #: maps to the ``<page, anchor>`` it points into. The anchor for status_legend
-#: is its own H2 on the index page; pose_library / sprite_frame_preview ride the
-#: H2 of their host subpanel section until the copy-rewrite PR gives them a
-#: dedicated in-section anchor.
+#: is its own H2 on the index page; pose_library and sprite_frame_preview now own
+#: a dedicated in-section anchor (an H3 under their host subpanel's H2, not a
+#: sibling H2) so the deep-link lands on their own paragraph.
 ANCHOR_TOPICS: dict[str, tuple[str, str]] = {
     "status_legend": ("index", "status-badges"),
-    "pose_library": ("skeleton", "pose-mode"),
-    "sprite_frame_preview": ("element", "active-sprite"),
+    "pose_library": ("skeleton", "save-pose-to-library"),
+    "sprite_frame_preview": ("element", "material-preview"),
 }
 
 

@@ -57,13 +57,24 @@ class PoseDelta:
 
 
 def collect_bone_keys(
-    action: bpy.types.Action, fps: int
+    action: bpy.types.Action,
+    fps: int,
+    deform_bones: set[str] | None = None,
 ) -> dict[str, dict[float, dict[str, dict[int, float]]]]:
-    """Group fcurve samples by bone -> time -> property -> axis."""
+    """Group fcurve samples by bone -> time -> property -> axis.
+
+    When ``deform_bones`` is given, fcurves on a bone outside that set are
+    dropped - the belt-and-braces export-leak guard so a control-bone track
+    (``.IK`` / ``.pole``) never reaches the document even if it would otherwise
+    resolve through ``_REST_FALLBACK``. ``None`` disables the filter (the bare
+    ``root``-handle path and the pure-helper tests).
+    """
     bone_keys: dict[str, dict[float, dict[str, dict[int, float]]]] = {}
     for fc in action_fcurves(action):
         bone_name, prop = _parse_bone_data_path(fc.data_path)
         if bone_name is None or prop is None:
+            continue
+        if deform_bones is not None and bone_name not in deform_bones:
             continue
         for kp in iter_keyframe_points(fc):
             time = (float(kp.co.x) - 1.0) / float(fps)
@@ -134,8 +145,9 @@ def build_animation(
     fps: int,
     ppu: float,
     rest_local: dict[str, BoneRestLocal],
+    deform_bones: set[str] | None = None,
 ) -> Animation | None:
-    bone_keys = collect_bone_keys(action, fps)
+    bone_keys = collect_bone_keys(action, fps, deform_bones)
     if not bone_keys:
         return None
 
@@ -154,10 +166,15 @@ def build_animation(
     )
 
 
-def build_animations(fps: int, ppu: float, rest_local: dict[str, BoneRestLocal]) -> list[Animation]:
+def build_animations(
+    fps: int,
+    ppu: float,
+    rest_local: dict[str, BoneRestLocal],
+    deform_bones: set[str] | None = None,
+) -> list[Animation]:
     animations: list[Animation] = []
     for action in iter_actions():
-        anim = build_animation(action, fps, ppu, rest_local)
+        anim = build_animation(action, fps, ppu, rest_local, deform_bones)
         if anim is not None:
             animations.append(anim)
     return animations

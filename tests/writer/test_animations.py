@@ -284,6 +284,25 @@ def test_collect_bone_keys_skips_unparseable_fcurves() -> None:
     assert anim.collect_bone_keys(action, fps=10) == {}
 
 
+def test_collect_bone_keys_drops_non_deform_bone_tracks() -> None:
+    # Belt-and-braces export-leak guard (spec 056, decision 4A): when the deform
+    # set is supplied, a control-bone fcurve (here the .IK target) is dropped so
+    # it never becomes an animation track, even though it parses fine.
+    deform_fc = _fcurve('pose.bones["hand"].location', 0, [(1, 0.1)])
+    control_fc = _fcurve('pose.bones["hand.IK"].location', 0, [(1, 0.2)])
+    action = SimpleNamespace(fcurves=[deform_fc, control_fc])
+    keys = anim.collect_bone_keys(action, fps=10, deform_bones={"hand"})
+    assert set(keys) == {"hand"}, "non-deform control bone leaked into bone keys"
+
+
+def test_collect_bone_keys_without_deform_set_keeps_every_bone() -> None:
+    # No deform set supplied -> no filtering (preserves the bare-root-handle path
+    # and every existing call site).
+    fc = _fcurve('pose.bones["anything.IK"].location', 0, [(1, 0.2)])
+    action = SimpleNamespace(fcurves=[fc])
+    assert set(anim.collect_bone_keys(action, fps=10)) == {"anything.IK"}
+
+
 def test_build_animation_returns_none_when_no_bone_keys() -> None:
     action = SimpleNamespace(name="idle", fcurves=[], frame_range=(1.0, 10.0))
     assert anim.build_animation(action, fps=10, ppu=100.0, rest_local=_REST) is None
@@ -306,6 +325,20 @@ def test_build_animation_clamps_zero_length_to_minimum() -> None:
     out = anim.build_animation(action, fps=10, ppu=1.0, rest_local=_REST_X)
     assert out is not None
     assert out.length == 0.001
+
+
+def test_build_animation_drops_non_deform_tracks() -> None:
+    # End-to-end through build_animation: only the deform bone's track survives.
+    deform_fc = _fcurve('pose.bones["arm"].rotation_euler', 0, [(1, 0.0), (11, 0.4)])
+    control_fc = _fcurve('pose.bones["arm.IK"].location', 0, [(1, 0.0), (11, 0.5)])
+    action = SimpleNamespace(
+        name="wave", fcurves=[deform_fc, control_fc], frame_range=(1.0, 11.0)
+    )
+    out = anim.build_animation(
+        action, fps=10, ppu=100.0, rest_local=_REST_X, deform_bones={"arm"}
+    )
+    assert out is not None
+    assert [t.target for t in out.tracks] == ["arm"]
 
 
 def test_build_animations_iterates_actions(monkeypatch: pytest.MonkeyPatch) -> None:

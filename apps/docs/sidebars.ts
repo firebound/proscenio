@@ -45,7 +45,6 @@ const sidebars: SidebarsConfig = {
         'blender-addon/weight-paint',
         'blender-addon/animation',
         'blender-addon/atlas',
-        'blender-addon/validation',
         'blender-addon/pipeline',
         'blender-addon/helpers',
       ],

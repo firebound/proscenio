@@ -25,6 +25,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 from ...core.armature.quick_armature_math import (
     BONE_TOO_SHORT_TOLERANCE,
     AxisLock,
+    Mode,
     PressMode,
 )
 from ...core.armature.quick_armature_math import (  # type: ignore[import-not-found]
@@ -35,6 +36,12 @@ from ...core.armature.quick_armature_math import (
 )
 from ...core.armature.quick_armature_math import (
     format_bone_name as _format_bone_name,
+)
+from ...core.armature.quick_armature_math import (
+    next_mode as _next_mode,
+)
+from ...core.armature.quick_armature_math import (
+    resolve_pick as _resolve_pick,
 )
 from ...core.armature.quick_armature_math import (
     resolve_press_mode as _resolve_press_mode,
@@ -51,10 +58,15 @@ from ...core.armature.quick_armature_math import (
 from ...core.armature.skeleton_target import (
     resolve_skeleton_target,  # type: ignore[import-not-found]
 )
+from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
+    tag_redraw_areas,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     find_window_region,
     mouse_event_to_plane_point,
     point_in_region_rect,
+    region_event_to_xz,
+    region_event_to_xz_offset,
     rv3d_is_front_ortho,
     view_pose_equal,
 )
@@ -88,9 +100,16 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     bl_label = "Proscenio: Quick Armature"
     bl_description = (
         "Click-drag in the 3D viewport to draw a bone (head -> tail). "
-        "Hold Shift to chain onto the previous bone. Esc or right-click to exit."
+        "Hold Shift to chain onto the previous bone. Tab switches to Reparent "
+        "mode (click a bone tip to pick the next chain parent). Esc or "
+        "right-click to exit."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO", "BLOCKING"}
+
+    # Reparent pick tolerance as a screen-space pixel radius, converted to a
+    # world distance per pick so the hit target stays the same on-screen size
+    # at any zoom (the automesh authoring pick uses the same approach).
+    _PICK_RADIUS_PX: ClassVar[int] = 12
 
     lock_to_front_ortho: BoolProperty(  # type: ignore[valid-type]
         name="Lock to Front Orthographic",
@@ -108,6 +127,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _drag_head: ClassVar[tuple[float, float, float] | None] = None
     _drag_press_point: ClassVar[tuple[float, float, float] | None] = None
     _last_bone_name: ClassVar[str] = ""
+    # Modal sub-mode (Tab cycles). Draw is the click-drag authoring (default);
+    # Reparent hit-tests a bone tip to pick the next chain parent.
+    _mode: ClassVar[Mode] = "DRAW"
+    # Bone tip under the cursor in Reparent mode (the live pick target the
+    # overlay highlights); "" when no tip is within the pick radius.
+    _pick_target_name: ClassVar[str] = ""
     _shift_held: ClassVar[bool] = False
     _alt_held: ClassVar[bool] = False
     _press_mode: ClassVar[PressMode] = "connected"
@@ -166,6 +191,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._drag_head = None
         cls._drag_press_point = None
         cls._last_bone_name = ""
+        cls._mode = "DRAW"
+        cls._pick_target_name = ""
         cls._shift_held = False
         cls._alt_held = False
         cls._press_mode = "connected"
@@ -242,9 +269,21 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if _is_confirm_event(event):
             return self._exit(context, cancelled=False)
         cls = type(self)
+        # Tab cycles the modal sub-mode. It sits above the per-mode dispatch
+        # so the switch is mode-independent (and never reaches bone authoring).
+        if _is_mode_switch_event(event):
+            self._switch_mode(context)
+            return {"RUNNING_MODAL"}
         # Track Ctrl state on every event so MOUSEMOVE can apply grid
         # snap without waiting for a press / release transition.
         cls._ctrl_held = bool(event.ctrl)
+        if cls._mode == "REPARENT":
+            return self._modal_reparent(context, event)
+        return self._modal_draw(context, event)
+
+    def _modal_draw(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        # Draw mode: the historical click-drag bone authoring, unchanged. The
+        # standalone tools (undo / redo / axis lock) live here, not in Reparent.
         if _is_undo_event(event):
             self._undo_last_bone(context)
             return {"RUNNING_MODAL"}
@@ -266,6 +305,19 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             return self._handle_leftmouse_dispatch(context, event, in_canvas=in_canvas)
         return {"PASS_THROUGH"}
 
+    def _modal_reparent(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        # Reparent mode reroutes only LEFTMOUSE (pick a bone tip as the next
+        # chain parent) + MOUSEMOVE (highlight the live pick target). Draw's
+        # PRESS / RELEASE / commit path is never touched.
+        in_canvas = self._event_in_invoke_region(context, event)
+        if event.type == "MOUSEMOVE":
+            self._handle_reparent_mousemove(context, event, in_canvas=in_canvas)
+            return {"PASS_THROUGH"}
+        if event.type == "LEFTMOUSE" and event.value == "PRESS" and in_canvas:
+            self._handle_reparent_pick(context, event)
+            return {"RUNNING_MODAL"}
+        return {"PASS_THROUGH"}
+
     def _toggle_axis_lock(self, context: bpy.types.Context, axis: str) -> None:
         cls = type(self)
         new_lock: AxisLock = axis if axis in {"X", "Z"} else None
@@ -276,6 +328,103 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if context.area is not None:
             context.area.tag_redraw()
         report_info(self, f"axis lock = {cls._axis_lock or 'off'}")
+
+    def _switch_mode(self, context: bpy.types.Context) -> None:
+        cls = type(self)
+        cls._mode = _next_mode(cls._mode)
+        # Leaving Draw mid-drag would strand a half-committed bone; drop the
+        # in-flight drag so the next Draw entry restarts clean. Clear the
+        # Reparent pick highlight too so a stale tip never lingers.
+        cls._drag_head = None
+        cls._drag_press_point = None
+        cls._pick_target_name = ""
+        # The cheatsheet reads the class-level mode, so the STATUSBAR must be
+        # repainted explicitly (it otherwise only refreshes on mouse move);
+        # VIEW_3D repaints so the overlay's Reparent branch lands at once.
+        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        report_info(self, f"{cls._mode.lower()} mode")
+
+    def _handle_reparent_mousemove(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+        *,
+        in_canvas: bool,
+    ) -> None:
+        cls = type(self)
+        cls._cursor_in_canvas = in_canvas
+        cls._cursor_screen_x = event.mouse_x
+        cls._cursor_screen_y = event.mouse_y
+        cls._pick_target_name = self._resolve_pick_at_cursor(context, event)
+        if context.area is not None:
+            context.area.tag_redraw()
+
+    def _handle_reparent_pick(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> None:
+        cls = type(self)
+        hit = self._resolve_pick_at_cursor(context, event)
+        if not hit:
+            # A miss is a no-op with feedback: keep the current parent and stay
+            # in Reparent mode so the user can click again.
+            report_info(self, "no bone tip near cursor")
+            return
+        cls._last_bone_name = hit
+        cls._pick_target_name = hit
+        report_info(self, f"parent set to '{hit}'")
+        if context.area is not None:
+            context.area.tag_redraw()
+
+    def _resolve_pick_at_cursor(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> str:
+        """Nearest bone tip to the cursor within the pixel radius, or "".
+
+        Projects the cursor and each bone tail to the Y=0 XZ plane with the
+        same helpers Draw uses, so picks line up with drawn bones in any view.
+        """
+        cursor_xz = region_event_to_xz(context, event)
+        if cursor_xz is None:
+            return ""
+        tips = self._world_tail_tips()
+        if not tips:
+            return ""
+        radius = self._pick_radius_world(context, event, cursor_xz)
+        return _resolve_pick(cursor_xz, tips, radius) or ""
+
+    def _world_tail_tips(self) -> list[tuple[str, tuple[float, float]]]:
+        """Each bone paired with its world-space tail projected to XZ (Y=0)."""
+        cls = type(self)
+        armature = bpy.data.objects.get(cls._target_armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return []
+        matrix_world = armature.matrix_world
+        tips: list[tuple[str, tuple[float, float]]] = []
+        for bone in armature.data.bones:
+            tail_world = matrix_world @ bone.tail_local
+            tips.append((bone.name, (float(tail_world.x), float(tail_world.z))))
+        return tips
+
+    def _pick_radius_world(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+        cursor_xz: tuple[float, float],
+    ) -> float:
+        """World-space pick radius for the screen-space pixel radius.
+
+        Converts ``_PICK_RADIUS_PX`` to a world distance at the cursor so the
+        pick tolerance is screen-constant across zoom. Falls back to the grid
+        snap increment when the offset point cannot be projected."""
+        cls = type(self)
+        near = region_event_to_xz_offset(context, event, dx=cls._PICK_RADIUS_PX)
+        if near is None:
+            return cls._snap_increment
+        return ((near[0] - cursor_xz[0]) ** 2 + (near[1] - cursor_xz[1]) ** 2) ** 0.5
 
     def _handle_mousemove(
         self,
@@ -804,6 +953,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._drag_head = None
         cls._cursor_world = None
         cls._last_bone_name = ""
+        cls._mode = "DRAW"
+        cls._pick_target_name = ""
         cls._shift_held = False
         cls._ctrl_held = False
         cls._axis_lock = None
@@ -836,6 +987,17 @@ def _log_view(label: str, rv3d: bpy.types.RegionView3D) -> None:
 
 def _is_exit_event(event: bpy.types.Event) -> bool:
     return event.type in {"ESC", "RIGHTMOUSE"} and event.value == "PRESS"
+
+
+def _is_mode_switch_event(event: bpy.types.Event) -> bool:
+    """Tab press (no modifiers) cycles the modal sub-mode."""
+    return bool(
+        event.type == "TAB"
+        and event.value == "PRESS"
+        and not event.ctrl
+        and not event.shift
+        and not event.alt
+    )
 
 
 def _is_confirm_event(event: bpy.types.Event) -> bool:

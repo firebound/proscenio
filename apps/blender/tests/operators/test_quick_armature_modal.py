@@ -34,6 +34,9 @@ def quick_armature_session(automesh_fixture):
         _undo_last_bone = QA._undo_last_bone
         _redo_last_bone = QA._redo_last_bone
         _post_process_world_point = QA._post_process_world_point
+        _switch_mode = QA._switch_mode
+        _world_tail_tips = QA._world_tail_tips
+        _PICK_RADIUS_PX = QA._PICK_RADIUS_PX
 
         def report(self, *_args, **_kwargs) -> None:
             return None
@@ -47,7 +50,10 @@ def quick_armature_session(automesh_fixture):
         _ctrl_held = False
         _snap_increment = 1.0
         _drag_head = None
+        _drag_press_point = None
         _axis_lock = None
+        _mode = "DRAW"
+        _pick_target_name = ""
 
     arm_data = bpy.data.armatures.new("QA_TEST")
     arm = bpy.data.objects.new("QA_TEST", arm_data)
@@ -148,3 +154,47 @@ def test_post_process_snaps_and_pins_y_without_a_lock(quick_armature_session):
     cls._drag_head = None
     result = op._post_process_world_point((1.2, 0.0, 0.8))
     assert result == pytest.approx((1.0, 0.0, 1.0))
+
+
+def test_switch_mode_cycles_draw_to_reparent_and_back(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    assert cls._mode == "DRAW"
+    op._switch_mode(bpy.context)
+    assert cls._mode == "REPARENT"
+    op._switch_mode(bpy.context)
+    assert cls._mode == "DRAW"
+
+
+def test_switch_mode_drops_in_flight_drag_and_pick(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    # A drag in progress + a stale pick highlight must not survive a mode flip.
+    cls._drag_head = (0.0, 0.0, 1.0)
+    cls._drag_press_point = (0.0, 0.0, 0.0)
+    cls._pick_target_name = "stale"
+    op._switch_mode(bpy.context)
+    assert cls._drag_head is None
+    assert cls._drag_press_point is None
+    assert cls._pick_target_name == ""
+
+
+def test_world_tail_tips_projects_bone_tails_to_xz(quick_armature_session):
+    op, _arm, _cls = quick_armature_session
+    # Author two bones with known tails; the tips list pairs each name with its
+    # world tail projected to the Y=0 XZ plane - the input the pick resolver scans.
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 0.0), (2.0, 0.0, 3.0), parent_to_last=False, connect=False
+    )
+    op._create_bone(
+        bpy.context, (5.0, 0.0, 0.0), (5.0, 0.0, 7.0), parent_to_last=False, connect=False
+    )
+    tips = op._world_tail_tips()
+    by_name = dict(tips)
+    assert len(tips) == 2
+    assert by_name[_arm.data.bones[0].name] == pytest.approx((2.0, 3.0))
+    assert by_name[_arm.data.bones[1].name] == pytest.approx((5.0, 7.0))
+
+
+def test_world_tail_tips_empty_without_an_armature(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    cls._target_armature_name = "does-not-exist"
+    assert op._world_tail_tips() == []

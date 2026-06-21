@@ -25,6 +25,7 @@ def draw_body(
     layout.prop(props, "hframes")
     layout.prop(props, "vframes")
     layout.prop(props, "frame")
+    layout.prop(props, "pixel_art")
     _draw_readout(layout, obj, props)
     _draw_preview_shader_buttons(layout, obj)
 

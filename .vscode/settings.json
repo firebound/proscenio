@@ -98,5 +98,9 @@
         "**/Thumbs.db": true
     },
     "hide-files.files": [],
-    "explorerExclude.backup": {}
+    "explorerExclude.backup": {},
+    "sonarlint.connectedMode.project": {
+        "connectionId": "firebound",
+        "projectKey": "firebound_proscenio"
+    }
 }

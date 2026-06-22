@@ -216,6 +216,7 @@ parseia
 pathconv
 pathlib
 pgettext
+pipefail
 pmdcode
 pngs
 positiving

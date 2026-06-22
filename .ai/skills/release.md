@@ -53,8 +53,6 @@ Output: `proscenio-photoshop-X.Y.Z.ccx` (rename to `.zip` if `.ccx` packaging is
 2. The `release.yml` workflow builds all three zips and attaches them to the GitHub Release for the tag.
 3. Manual final step: submit the changed artifacts to the Blender Extensions Platform and the Godot Asset Library (skip a store whose bundle did not change).
 
-> The workflow's tag trigger still matches the retired per-component prefixes (`blender-v*` / `godot-v*` / `photoshop-v*`); retargeting it to a single `v*` and building all three zips per tag is the implementation follow-up tracked in the release plan.
-
 ## Pre-release checklist
 
 - [ ] Schema validates against all examples and fixtures.

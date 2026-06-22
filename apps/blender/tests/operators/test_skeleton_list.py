@@ -16,6 +16,19 @@ from __future__ import annotations
 import bpy
 
 
+def _bone_selected(arm: bpy.types.Object, name: str) -> bool:
+    """Read a pose bone's selection the version-robust way the addon does.
+
+    5.x exposes ``PoseBone.select`` (a flag distinct from the wrapped
+    ``Bone.select``); 4.2 has no ``PoseBone.select`` and the flag lives on
+    ``PoseBone.bone``. Mirrors ``_get_select`` in the production
+    ``bone_select`` helper so the assertions read whatever the operator wrote
+    on either Blender, instead of an attribute that only one version exposes.
+    """
+    pose_bone = arm.pose.bones[name]
+    return bool(pose_bone.select if hasattr(pose_bone, "select") else pose_bone.bone.select)
+
+
 def _make_rig(name: str, bones: tuple[str, ...]) -> bpy.types.Object:
     arm_data = bpy.data.armatures.new(name + "_data")
     arm = bpy.data.objects.new(name, arm_data)
@@ -47,8 +60,8 @@ def test_bone_plain_click_selects_only_one(automesh_fixture):
     # A plain click on b1 (no extend/toggle) clears b0 and selects only b1.
     bpy.ops.proscenio.select_bone_by_name(armature_name="plain_rig", bone_name="b1")
 
-    assert arm.pose.bones["b1"].select is True
-    assert arm.pose.bones["b0"].select is False
+    assert _bone_selected(arm, "b1") is True
+    assert _bone_selected(arm, "b0") is False
     assert arm.data.bones.active.name == "b1"
 
 
@@ -60,8 +73,8 @@ def test_bone_extend_keeps_the_prior_selection(automesh_fixture):
     # Shift-click (extend=True) adds b1 without dropping b0.
     bpy.ops.proscenio.select_bone_by_name(armature_name="ext_rig", bone_name="b1", extend=True)
 
-    assert arm.pose.bones["b0"].select is True
-    assert arm.pose.bones["b1"].select is True
+    assert _bone_selected(arm, "b0") is True
+    assert _bone_selected(arm, "b1") is True
 
 
 def test_bone_toggle_deselects_an_already_selected_bone(automesh_fixture):
@@ -73,8 +86,8 @@ def test_bone_toggle_deselects_an_already_selected_bone(automesh_fixture):
     # Ctrl-click (toggle=True) on b1, already selected, deselects only b1.
     bpy.ops.proscenio.select_bone_by_name(armature_name="tog_rig", bone_name="b1", toggle=True)
 
-    assert arm.pose.bones["b1"].select is False
-    assert arm.pose.bones["b0"].select is True
+    assert _bone_selected(arm, "b1") is False
+    assert _bone_selected(arm, "b0") is True
 
 
 def test_bone_toggle_adds_an_unselected_bone(automesh_fixture):
@@ -85,8 +98,8 @@ def test_bone_toggle_adds_an_unselected_bone(automesh_fixture):
     # Ctrl-click on b1, not yet selected, adds it and makes it active.
     bpy.ops.proscenio.select_bone_by_name(armature_name="tog2_rig", bone_name="b1", toggle=True)
 
-    assert arm.pose.bones["b0"].select is True
-    assert arm.pose.bones["b1"].select is True
+    assert _bone_selected(arm, "b0") is True
+    assert _bone_selected(arm, "b1") is True
     assert arm.data.bones.active.name == "b1"
 
 

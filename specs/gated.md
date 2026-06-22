@@ -72,8 +72,8 @@ New tag types + roundtrip hardening with no consuming runtime yet; each reserved
 
 CI / coverage / fixture / repo gates whose cost is not yet justified by a real exposure.
 
-- **blender-multi-version-matrix** - The 4.2+ claim is real exposure, but a permanent second Blender leg doubles the heaviest job and goldens may diverge. **Trigger:** before the first public `v*` tag, run the full headless suite once against 4.2 LTS; keep a CI leg only if green and stable, else lower `blender_version_min` to the tested floor.
-- **blender-43-legacy-actions** - Both `action_fcurves` branches are unit-tested (`tests/writer/test_animations.py:175-187`); the remaining exposure is a real 4.2 runtime. **Trigger:** folds into the 4.2 matrix run above.
+- **blender-multi-version-matrix** - DONE 2026-06-22: the full headless suite ran green on Blender 4.2 LTS for `v0.9.1-beta` (fixtures rebuilt under 4.2 so they open on both; a 4.2-only brush-preset registration bug fixed). No permanent second CI leg was added - re-run the 4.2 suite per release instead. Kept here as the record.
+- **blender-43-legacy-actions** - DONE 2026-06-22: covered by the 4.2 matrix run above - the `action_fcurves` paths exercise green on 4.2 through the animation goldens.
 - **godot-editor-reimport-test** - Headless editor-import harnesses are flaky; the highest-value half (the saved-scene assert) shipped separately. **Trigger:** the first import-flow regression the builders-direct suite + saved-scene assert fail to catch.
 - **mypy-ignore-errors-subtrees** - The full sweep is weeks of stub-fighting across ~6900 bpy-bound lines. **Trigger:** sweep each exempted module on its next functional touch; the validator trio (`addon_loader`, `coverage`, `measurement`) is the pilot.
 - **run-coverage-ci** - Instrumented in-Blender reruns lengthen the longest job to produce a report no CI consumer reads. **Trigger:** Sonar analysis moves into CI; until then the local pre-scan recipe in `sonar-project.properties` is the workflow.

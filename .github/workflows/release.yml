@@ -82,3 +82,6 @@ jobs:
         if: github.event_name == 'push'
         with:
           files: dist/*
+          # A pre-release tag carries a suffix (v0.9.0-beta, v1.0.0-rc1); a
+          # final release (v1.0.0) does not. Keep betas out of "latest".
+          prerelease: ${{ contains(github.ref_name, '-') }}

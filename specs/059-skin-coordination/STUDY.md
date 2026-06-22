@@ -59,4 +59,4 @@ This spec is STUDY-first and is the heaviest and most speculative of the open fe
 
 ## Sources
 
-Drains the `skin-coordination` spec-sized item in [`backlog.md`](../backlog.md). Depends on `format-migration-path` (see [`gated.md`](../gated.md)) for the first-class form, and is sequenced with the storage-split work (spec 037). The related `drive-slot-from-bone` capability stays in [`gated.md`](../gated.md). Spine skins are the design precedent for the named-set model, the skin-versus-animation override rule, and the runtime `set_skin` shape.
+Drains the `skin-coordination` spec-sized item in [`backlog`](../backlog/index.md). Depends on `format-migration-path` (see [`gated.md`](../gated.md)) for the first-class form, and is sequenced with the storage-split work (spec 037). The related `drive-slot-from-bone` capability stays in [`gated.md`](../gated.md). Spine skins are the design precedent for the named-set model, the skin-versus-animation override rule, and the runtime `set_skin` shape.

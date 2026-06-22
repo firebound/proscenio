@@ -1,6 +1,6 @@
 # Gated work
 
-Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out during the 2026-06-11 reconciliation (the durable number-to-topic map is [_index.md](_index.md)). Companion homes: [deferred.md](deferred.md) (sequenced second-stage), [dropped.md](dropped.md) (value below cost), [decisions.md](decisions.md) (locked calls); product backlog indexed from [backlog.md](backlog.md). One line each: item - rationale. **Trigger:** what fires it.
+Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out during the 2026-06-11 reconciliation (the durable number-to-topic map is [_index.md](_index.md)). Companion homes: [deferred.md](deferred.md) (sequenced second-stage), [dropped.md](dropped.md) (value below cost), [decisions.md](decisions.md) (locked calls); product backlog indexed from [backlog](backlog/index.md). One line each: item - rationale. **Trigger:** what fires it.
 
 ## Schema expressiveness
 
@@ -80,7 +80,7 @@ CI / coverage / fixture / repo gates whose cost is not yet justified by a real e
 - **flat-fixture-buckets** - Pure reorganization whose move ripples through spec TODOs, the fixtures index, wrapper paths, and the sync script. **Trigger:** piggyback the move onto the next edit of a flat fixture (locked backlog decision).
 - **origin-pivot-fixture** - Origin paths are triple-covered today (doll oracle, tag_smoke, pytest). **Trigger:** ship with the sprite-pivot-offset writer work, or the first regression where origin handling diverges between PSD authoring styles.
 - **issue-pr-templates** - Zero protection for a solo repo. **Trigger:** the repo opens to outside contributors.
-- **doll-roundtrip-remeasure** - The retired JSX reader logged a -1px waist drift (Blender manifest `255x173` versus the JSX-era `255x172`); the UXP png-writer now trims via `Document.trim(TRANSPARENT)`, a different bounding-box engine, so the drift needs re-measuring through the UXP path - align rounding on a persisting drift, or close it on a match. A pixels-per-unit of 100 is the doll fixture's baseline assumption, re-measured alongside. **Trigger:** before the first public `v*` tag, folded into the same release-readiness pass as `blender-multi-version-matrix`. (Moved from `backlog-bugs-found.md` in the 2026-06-20 backlog-drain wave.)
+- **doll-roundtrip-remeasure** - The retired JSX reader logged a -1px waist drift (Blender manifest `255x173` versus the JSX-era `255x172`); the UXP png-writer now trims via `Document.trim(TRANSPARENT)`, a different bounding-box engine, so the drift needs re-measuring through the UXP path - align rounding on a persisting drift, or close it on a match. A pixels-per-unit of 100 is the doll fixture's baseline assumption, re-measured alongside. **Trigger:** before the first public `v*` tag, folded into the same release-readiness pass as `blender-multi-version-matrix`. (Moved from `backlog/bugs-found.md` in the 2026-06-20 backlog-drain wave.)
 
 ## Photoshop overhaul
 

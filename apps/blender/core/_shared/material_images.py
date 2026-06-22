@@ -49,9 +49,9 @@ def iter_material_image_nodes(
     ``use_nodes`` is False (the tree is inactive and must be skipped), so the
     guard is meaningful; ``Material.use_nodes`` is deprecated and removed in
     Blender 6.0, where the ``getattr`` default of True keeps discovery
-    working. This is the version-robust form prescribed in
-    ``backlog-blender-6`` - dropping the guard outright would regress 5.1 by
-    reading textures off inactive node trees.
+    working. This is the version-robust form prescribed by the
+    blender-6-compatibility spec (062) - dropping the guard outright would
+    regress 5.1 by reading textures off inactive node trees.
     """
     if material is None or not getattr(material, "use_nodes", True):
         return

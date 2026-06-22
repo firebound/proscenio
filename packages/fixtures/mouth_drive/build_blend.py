@@ -50,6 +50,7 @@ Image filepath stored as ``//pillow_layers/...`` so cross-machine.
 
 from __future__ import annotations
 
+import importlib.util
 import math
 import sys
 from pathlib import Path
@@ -57,6 +58,8 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+ADDON_DIR = REPO_ROOT / "apps/blender"
+ADDON_PACKAGE = "proscenio"
 FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "mouth_drive"
 SHEET_PATH = FIXTURE_DIR / "pillow_layers" / "mouth_spritesheet.png"
 BLEND_PATH = FIXTURE_DIR / "mouth_drive.blend"
@@ -78,6 +81,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
+    _load_addon_as_package()
     _wipe_blend()
     armature_obj = _build_armature()
     sprite_obj = _build_sprite_plane(armature_obj)
@@ -87,6 +91,31 @@ def main() -> None:
     _rewrite_image_to_relpath()
     bpy.ops.wm.save_mainfile()
     print(f"[build_mouth_drive] wrote {BLEND_PATH}")
+
+
+def _load_addon_as_package() -> None:
+    """Mount apps/blender as ``proscenio`` and register it.
+
+    The driver targets ``sprite.proscenio.frame``, a registered PropertyGroup
+    property, so the addon must be registered for ``driver_add`` to resolve it.
+    Mirrors the mixed_feature builder: registering the fresh addon lets the
+    build run under ``--factory-startup`` instead of depending on a separately
+    enabled (and possibly stale, or absent on another Blender) installed addon.
+    """
+    if ADDON_PACKAGE in sys.modules:
+        return
+    init_path = ADDON_DIR / "__init__.py"
+    spec = importlib.util.spec_from_file_location(
+        ADDON_PACKAGE,
+        init_path,
+        submodule_search_locations=[str(ADDON_DIR)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not build import spec for {init_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[ADDON_PACKAGE] = module
+    spec.loader.exec_module(module)
+    module.register()
 
 
 def _wipe_blend() -> None:

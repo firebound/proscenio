@@ -69,6 +69,16 @@ def _apply_preset_to_brush(brush: bpy.types.Brush, preset_name: str) -> tuple[bo
     return True, f"Brush preset applied: {PRESET_LABELS[preset_name]}"
 
 
+# Built at module load (normal scope), not inline in the property annotation.
+# Blender resolves bpy.props annotations through typing.get_type_hints, which
+# eval()s the annotation string; under Blender 4.2 (Python 3.11) a comprehension
+# inside that string runs in its own scope and cannot see module names handed in
+# as locals, so `PRESET_LABELS` raised NameError and aborted registration. PEP
+# 709 comprehension inlining masked this on 5.x (Python 3.13). Referencing a
+# plain module-level name keeps the annotation eval trivial on both.
+_PRESET_ENUM_ITEMS = [(name, PRESET_LABELS[name], "") for name in PRESETS]
+
+
 class PROSCENIO_OT_set_brush_preset(bpy.types.Operator):
     bl_idname = "proscenio.set_brush_preset"
     bl_label = "Apply Brush Curve Preset"
@@ -77,7 +87,7 @@ class PROSCENIO_OT_set_brush_preset(bpy.types.Operator):
 
     preset_name: bpy.props.EnumProperty(  # type: ignore[valid-type]
         name="Preset",
-        items=[(name, PRESET_LABELS[name], "") for name in PRESETS],
+        items=_PRESET_ENUM_ITEMS,
     )
 
     @classmethod

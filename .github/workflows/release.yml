@@ -3,24 +3,16 @@ name: Release
 on:
   push:
     tags:
-      - "blender-v*"
-      - "godot-v*"
-      - "photoshop-v*"
-  # Tagless dry-run: exercise the package steps without uploading a
-  # release. The photoshop `.jsx` copy rotted unnoticed precisely because
-  # this job only ever ran on tags; a dispatch path keeps it exercisable.
+      # One lockstep product tag builds all three app bundles. The retired
+      # per-component prefixes (blender-v* / godot-v* / photoshop-v*) are gone.
+      - "v*"
+  # Tagless dry-run: exercise every package step without uploading a release.
+  # The photoshop bundle rotted unnoticed precisely because packaging only ever
+  # ran on tags; a dispatch path keeps all three builds exercisable.
   workflow_dispatch:
     inputs:
-      component:
-        description: "Component to package (dry-run, no release upload)"
-        required: true
-        type: choice
-        options:
-          - blender
-          - godot
-          - photoshop
       version:
-        description: "Version string for the artifact name"
+        description: "Version string for the artifact names (dry-run, no upload)"
         required: false
         default: "0.0.0-dry-run"
 
@@ -33,71 +25,51 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Determine component and version
+      - name: Determine version
         id: meta
-        # Route the dispatch inputs through env vars rather than expanding
-        # `${{ inputs.* }}` straight into the script body: `version` is a
-        # free-text input, so a direct expansion is a shell-injection vector.
+        # Route the dispatch input through an env var rather than expanding
+        # `${{ inputs.* }}` straight into the script body: it is free text, so a
+        # direct expansion is a shell-injection vector.
         env:
-          INPUT_COMPONENT: ${{ inputs.component }}
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            component="$INPUT_COMPONENT"
             version="$INPUT_VERSION"
           else
             tag="${GITHUB_REF#refs/tags/}"
-            component="${tag%-v*}"
-            version="${tag##*-v}"
+            version="${tag#v}"
           fi
-          echo "name=$component" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The photoshop artifact is the built UXP bundle, not a source file.
-      # `apps/photoshop/dist/` is gitignored, so the job builds it here.
+      # apps/photoshop/dist/ is gitignored, so the job builds it here.
       - name: Set up Node (photoshop)
-        if: steps.meta.outputs.name == 'photoshop'
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "20"
       - name: Set up pnpm (photoshop)
-        if: steps.meta.outputs.name == 'photoshop'
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
           version: 9
       - name: Build the UXP plugin (photoshop)
-        if: steps.meta.outputs.name == 'photoshop'
         working-directory: apps/photoshop
         run: |
           pnpm install --frozen-lockfile
           pnpm run build
 
-      - name: Build artifact
-        # Same defense as the meta step: the version rides an env var, never
-        # a `${{ }}` expansion inside the script body.
+      - name: Build all three artifacts
+        # Same defense as the meta step: the version rides an env var, never a
+        # `${{ }}` expansion inside the script body.
         env:
-          COMPONENT: ${{ steps.meta.outputs.name }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           mkdir -p dist
-          case "$COMPONENT" in
-            blender)
-              (cd apps/blender && zip -r "../../dist/proscenio-blender-$VERSION.zip" . -x "tests/*" "pyproject.toml" "README.md")
-              ;;
-            godot)
-              (cd apps/godot && zip -r "../../dist/proscenio-godot-$VERSION.zip" addons/proscenio)
-              ;;
-            photoshop)
-              # The UXP plugin root is dist/ itself - manifest.json lands
-              # there after the webpack build - so archive its contents,
-              # keeping manifest.json at the zip root for the host loader.
-              (cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-$VERSION.zip" .)
-              ;;
-            *)
-              echo "Unknown component: $COMPONENT"
-              exit 1
-              ;;
-          esac
+          (cd apps/blender && zip -r "../../dist/proscenio-blender-$VERSION.zip" . -x "tests/*" "pyproject.toml" "README.md")
+          (cd apps/godot && zip -r "../../dist/proscenio-godot-$VERSION.zip" addons/proscenio)
+          # The UXP plugin root is dist/ itself - manifest.json lands there
+          # after the webpack build - so archive its contents, keeping
+          # manifest.json at the zip root for the host loader.
+          (cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-$VERSION.zip" .)
 
       - name: List artifact contents
         run: |

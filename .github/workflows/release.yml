@@ -57,6 +57,37 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
+      # Package the built UXP bundle into an Adobe .ccx for end users (the .zip
+      # above stays for UDT / dev loading). Caveats worth knowing if this breaks:
+      #   - `npm install -g @adobe/uxp-devtools-cli` is "not officially
+      #     supported" per Adobe's README, so we invoke it through npx as a
+      #     best-effort path. If npx stops resolving the package in CI, fall back
+      #     to downloading the prebuilt binary from
+      #     github.com/adobe-uxp/devtools-cli/releases and calling it directly.
+      #   - The produced .ccx is self-distributed: it installs via double-click
+      #     but Photoshop shows an untrusted / developer prompt. Marketplace-
+      #     trusted signing requires submitting to Adobe Exchange and cannot be
+      #     done in CI.
+      # The CLI names the output after the manifest plugin id/version, so we glob
+      # for the produced *.ccx and rename it to a stable asset name. The step
+      # fails loudly (set -e plus an explicit check) rather than silently
+      # skipping if packaging produced nothing.
+      - name: Package the UXP plugin as .ccx (photoshop)
+        working-directory: apps/photoshop
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ../../dist
+          npx --yes @adobe/uxp-devtools-cli uxp plugin package \
+            --manifest dist --apps PS --outputPath ../../../dist/
+          produced="$(ls ../../dist/*.ccx | head -n 1)"
+          if [ -z "$produced" ]; then
+            echo "No .ccx was produced by the UXP devtools CLI" >&2
+            exit 1
+          fi
+          mv "$produced" "../../dist/proscenio-photoshop-$VERSION.ccx"
+
       - name: Build all three artifacts
         # Same defense as the meta step: the version rides an env var, never a
         # `${{ }}` expansion inside the script body.
@@ -72,8 +103,11 @@ jobs:
           (cd apps/photoshop/dist && zip -r "../../../dist/proscenio-photoshop-$VERSION.zip" .)
 
       - name: List artifact contents
+        # A .ccx is a zip under the hood, so unzip -l lists it too. Glob both
+        # extensions so the photoshop .ccx is verified alongside the zips.
         run: |
-          for f in dist/*.zip; do
+          for f in dist/*.zip dist/*.ccx; do
+            [ -e "$f" ] || continue
             echo "== $f =="
             unzip -l "$f"
           done

@@ -14,4 +14,4 @@ The addon support matrix adds Blender 6.0, or a 6.0 pre-release surfaces the bro
 
 ## Sources
 
-Drains [`backlog-blender-6.md`](../backlog-blender-6.md) and the `atlas-bare-use-nodes-blender6` item from [`backlog-coderabbit-nitpicks.md`](../backlog-coderabbit-nitpicks.md), which flags the same two atlas sites.
+Drains `backlog-blender-6.md` and the `atlas-bare-use-nodes-blender6` item from `backlog-coderabbit-nitpicks.md` (both removed 2026-06-21; recover from git history), which flag the same two atlas sites.

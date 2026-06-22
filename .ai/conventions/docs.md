@@ -63,11 +63,11 @@ See the weight-paint-automesh spec.
 
 The numbered folder prefix under `specs/` is a navigation aid for the filesystem; prose calls the feature by its name. Spec folders keep their `NNN-slug` shape; section headers, link text, and bullets use the feature name. A decision reference is only meaningful when it points at an explicit, written `Decision N: ...` definition it can link to; a bare `DN` token whose definition lived in a since-deleted STUDY resolves to nothing, so do not use them.
 
-## Spec references in `decisions.md` and `backlog.md` are name-only
+## Spec references in `decisions.md` and `backlog/index.md` are name-only
 
-The two long-lived index files - `specs/decisions.md` and `specs/backlog.md` - **never** hardlink to a spec folder. Reasons:
+The two long-lived index files - `specs/decisions.md` and `specs/backlog/index.md` - **never** hardlink to a spec folder. Reasons:
 
-- The locked rationale already lives in `decisions.md` itself for shipped work, or in `backlog.md` for pending work. A reader following the link would land in a `STUDY.md` that mostly re-states what the index already carries.
+- The locked rationale already lives in `decisions.md` itself for shipped work, or in `backlog/index.md` for pending work. A reader following the link would land in a `STUDY.md` that mostly re-states what the index already carries.
 - STUDY files are scheduled for periodic pruning once their decisions are mirrored back into `decisions.md`. A link that worked yesterday may target a deleted file tomorrow.
 - The feature name is searchable; `git log -p -- specs/<NNN>-<slug>/` recovers the full history when someone genuinely needs the planning archeology.
 
@@ -99,7 +99,7 @@ Scenarios are numbered within a section when ordering matters. The title carries
 
 ## Bug reports lead with the symptom
 
-`specs/backlog-bugs-found.md` and inline bug notes start with a one-line description of what the user sees, then context:
+`specs/backlog/bugs-found.md` and inline bug notes start with a one-line description of what the user sees, then context:
 
 ```markdown
 ### Polygon at world origin instead of slot location

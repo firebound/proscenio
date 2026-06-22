@@ -2,7 +2,7 @@
 
 The big picture. Each item below is an *umbrella initiative* that conceptually fits Proscenio but is not committed to a roadmap. When work begins, the umbrella breaks down into one or more numbered specs.
 
-This file is intentionally coarse. Finer-grained items (single operators, CI matrix entries, repo polish, follow-ups deferred from shipped specs) live in `specs/backlog.md` with their own trigger conditions.
+This file is intentionally coarse. Finer-grained items (single operators, CI matrix entries, repo polish, follow-ups deferred from shipped specs) live in `specs/backlog/index.md` with their own trigger conditions.
 
 ## Authoring acceleration
 

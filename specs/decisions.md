@@ -1,6 +1,6 @@
 # Decisions
 
-Locked architectural and per-feature calls. ADR-light: the call, the rationale, and the revisit trigger. Open work lives in the per-domain backlogs indexed from [`backlog.md`](backlog.md); this is the consolidated home for settled calls - the hand-written planning docs were retired once each feature shipped, so the rationale worth keeping was mirrored back here. One clause per rationale; impl detail stays in the code it cites.
+Locked architectural and per-feature calls. ADR-light: the call, the rationale, and the revisit trigger. Open work lives in the per-domain backlogs indexed from [`backlog`](backlog/index.md); this is the consolidated home for settled calls - the hand-written planning docs were retired once each feature shipped, so the rationale worth keeping was mirrored back here. One clause per rationale; impl detail stays in the code it cites.
 
 ## Core architecture
 
@@ -17,7 +17,7 @@ Locked architectural and per-feature calls. ADR-light: the call, the rationale, 
 | **Lockstep product versioning** | Three apps are one coupled pipeline (the addon emits a `format_version` the importer reads), so one SemVer `vX.Y.Z` bumped by the highest severity; unchanged apps re-stamp and ride along. Per-app detail in the CHANGELOG; `format_version` stays independent. Detail in [`.ai/conventions/layout.md`](../.ai/conventions/layout.md). | A component gains an independent consumer or release cadence. |
 | **C# / GDExtension = documented escape hatch** | Maintainer prefers typing but stays in GDScript for 2D-community reach; Firebound itself stays C#. | Same as GDExtension. |
 | **`apps/` + `packages/` + `scripts/` + `tools/` split** | apps ship; packages are shared building blocks; scripts are dependency-free one-offs; tools are standalone packages (own deps / build / tests), not shipped. Own manifest / build means tools or packages, never scripts. Detail in [`.ai/conventions/layout.md`](../.ai/conventions/layout.md). | A third standalone pnpm package warrants a root pnpm workspace alongside uv. |
-| **Manual-test surface owned by QA Companion** | The walkable `checklist/` is living data round-tripped by the tool in `tools/qa-companion/`; the seeding `findings.md` audit was triaged + retired 2026-06-15 (code issues to bug backlogs, doc gaps to [`backlog-docs.md`](backlog-docs.md), rest dropped). | The checklist block format changes shape, or the tool is replaced. |
+| **Manual-test surface owned by QA Companion** | The walkable `checklist/` is living data round-tripped by the tool in `tools/qa-companion/`; the seeding `findings.md` audit was triaged + retired 2026-06-15 (code issues to bug backlogs, doc gaps to `backlog-docs.md`, rest dropped). | The checklist block format changes shape, or the tool is replaced. |
 | **Codegen artifacts checked in per-app `schema_bindings/`** | Detailed home below (Typed-models codegen); `tests/codegen/` reproduces + fails on drift. | Renaming the binding folder, or moving JSON Schema off `packages/models/schemas/`. |
 
 ## Validation gates

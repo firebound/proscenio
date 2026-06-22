@@ -40,7 +40,7 @@ Empty for new entries today; existing Blender → Godot fixtures still live at t
 | [`generated/slot_cycle/`](generated/slot_cycle/) | slot system, 3 attachments cycling |
 | [`generated/slot_swap/`](generated/slot_swap/) | slot system + bone rotation (swing + weapon swap in one action) |
 
-The conventions for adding a new procedural fixture live in [`packages/fixtures/README.md`](../packages/fixtures/README.md). Migration of these flat fixtures into the subdirectories is tracked in [`specs/backlog.md`](../specs/backlog.md).
+The conventions for adding a new procedural fixture live in [`packages/fixtures/README.md`](../packages/fixtures/README.md). Migration of these flat fixtures into the subdirectories is tracked in [`specs/backlog`](../specs/backlog/index.md).
 
 ## Discovery
 

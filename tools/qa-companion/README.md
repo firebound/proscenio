@@ -4,7 +4,7 @@ A local tool to walk and curate the Proscenio manual-test checklists. The produc
 
 The checklist `.md` files under [`checklist/`](checklist/) are the source of truth. The tool parses them, serves a local UI, and writes every change straight back to the `.md` - there is no parallel database. The walk record (status, notes, screenshot references) and the curation (edited wording, added or removed tests) all live in those files, reviewable in git.
 
-The surface was mapped by the spec 040 pass (an automatic, code-read audit of the whole product); that spec is retired and its two outputs now live here: the walkable [`checklist/`](checklist/) and the [`findings.md`](findings.md) audit (suspected divergences to verify during the walk, then promote to `specs/backlog-bugs-found.md`).
+The surface was mapped by the spec 040 pass (an automatic, code-read audit of the whole product); that spec is retired and its two outputs now live here: the walkable [`checklist/`](checklist/) and the [`findings.md`](findings.md) audit (suspected divergences to verify during the walk, then promote to `specs/backlog/bugs-found.md`).
 
 ## Run
 

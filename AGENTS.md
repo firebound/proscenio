@@ -25,7 +25,7 @@ apps/<photoshop|blender|godot>/   per-app pipeline source
 apps/docs/                        Docusaurus site (serves docs/ + schema reference)
 packages/                         shared building blocks (models, codegen, validator, fixtures)
 packages/models/schemas/          cross-component JSON schemas (generated from the pydantic models)
-specs/                            planning artifacts (decisions.md, backlog.md)
+specs/                            planning artifacts (decisions.md, backlog/)
 examples/                         end-to-end fixtures
 docs/                             user-facing docs (content root for apps/docs)
 .ai/                              skills + conventions for agents and contributors
@@ -34,4 +34,4 @@ docs/                             user-facing docs (content root for apps/docs)
 
 ## Status
 
-Pre-alpha. Formats unstable. Not for production. Active planning lives under `specs/`; the rolling backlog is in `specs/backlog.md`.
+Pre-alpha. Formats unstable. Not for production. Active planning lives under `specs/`; the rolling backlog is in `specs/backlog/` (indexed by `index.md`).

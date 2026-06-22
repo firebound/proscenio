@@ -71,22 +71,24 @@ jobs:
       # The CLI names the output after the manifest plugin id/version, so we glob
       # for the produced *.ccx and rename it to a stable asset name. The step
       # fails loudly (set -e plus an explicit check) rather than silently
-      # skipping if packaging produced nothing.
+      # skipping if packaging produced nothing. All paths are absolute via
+      # $GITHUB_WORKSPACE: the CLI's --outputPath resolution (relative to cwd vs
+      # manifest) is unverified, so absolute paths remove the ambiguity entirely.
       - name: Package the UXP plugin as .ccx (photoshop)
         working-directory: apps/photoshop
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          mkdir -p ../../dist
+          mkdir -p "$GITHUB_WORKSPACE/dist"
           npx --yes @adobe/uxp-devtools-cli uxp plugin package \
-            --manifest dist --apps PS --outputPath ../../../dist/
-          produced="$(ls ../../dist/*.ccx | head -n 1)"
+            --manifest dist --apps PS --outputPath "$GITHUB_WORKSPACE/dist"
+          produced="$(ls "$GITHUB_WORKSPACE"/dist/*.ccx | head -n 1)"
           if [ -z "$produced" ]; then
             echo "No .ccx was produced by the UXP devtools CLI" >&2
             exit 1
           fi
-          mv "$produced" "../../dist/proscenio-photoshop-$VERSION.ccx"
+          mv "$produced" "$GITHUB_WORKSPACE/dist/proscenio-photoshop-$VERSION.ccx"
 
       - name: Build all three artifacts
         # Same defense as the meta step: the version rides an env var, never a

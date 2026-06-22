@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "proscenio"
-version = "0.9.0"
+version = "0.9.1"
 name = "Proscenio"
 tagline = "Blender → Godot 4 pipeline for 2D cutout animation"
 maintainer = "Space Wizard Studios <contato@spacewiz.dev>"

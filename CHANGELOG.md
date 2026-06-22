@@ -10,6 +10,19 @@ while the `-beta` channel marker lives on the git tag and this file.
 The on-disk `.proscenio` format carries its own integer `format_version`
 (currently 2), independent of the product version below.
 
+## [0.9.1-beta] - 2026-06-22
+
+Beta bugfix: Blender 4.2 LTS compatibility.
+
+### Blender add-on
+
+- Fixed the "Apply Brush Curve Preset" operator failing to register on Blender
+  4.2 (Python 3.11): its enum items were built by a comprehension inside the
+  property annotation, which `get_type_hints` cannot resolve on 3.11, so the
+  operator silently dropped out of the UI. The full 4.2 LTS headless suite now
+  passes (201 operator tests + 8/8 goldens), so the `4.2.0` minimum is
+  verified rather than only declared.
+
 ## [0.9.0-beta] - 2026-06-21
 
 First public beta. The full pipeline - author in Photoshop, rig and skin in

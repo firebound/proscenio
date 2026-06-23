@@ -2,7 +2,5 @@
 # scripts/godot/sync_fixtures.py. Treated as derived; regenerated on
 # demand. Wrapper .tscn / .gd + texture PNGs + the runtime .proscenio
 # live here as the Godot dev project's res:// view of each fixture.
+# (.godot/ and other generic caches are ignored from the root .gitignore.)
 /examples/
-
-# Godot per-import cache + per-build state -- never committed.
-.godot/

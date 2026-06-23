@@ -1,3 +1,0 @@
-# Test runner side-effect when goldens diverge -- written next to the golden
-# by apps/blender/tests/run_tests.py and removed on PASS.
-*.actual.proscenio

@@ -92,6 +92,12 @@ class PROSCENIO_PT_element(bpy.types.Panel):
             )
         layout.prop(props, "element_type")
         layout.prop(props, "y_draw_order")
+        if obj.get("proscenio_import_origin") is not None:
+            # Imported from a PSD manifest: offer a one-click re-import of just
+            # this Element from its source entry (siblings untouched).
+            layout.operator(
+                "proscenio.reimport_element", text="Re-import from PSD", icon="FILE_REFRESH"
+            )
         for issue in validation.validate_active_element(
             obj, layer_spacing=y_location_spacing(context)
         ):

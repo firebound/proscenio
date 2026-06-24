@@ -105,6 +105,7 @@ endoflife
 ensurepip
 esac
 euler
+expanduser
 extname
 favorited
 fdopen

@@ -18,7 +18,7 @@ So the next reader does not re-audit from scratch:
 The 2026-06-20 backlog-drain wave routed the entries that were here into specs (see [`_index.md`](../_index.md)):
 
 - The two sprite-bone-parent DRY folds shipped in spec 061; the god-file and single-responsibility hotspots (`automesh_authoring`, the `planes` material build) stay trigger-gated under spec 061 (split when the file fights the next change).
-- The bundled `proscenio_models` wheel staleness gate was not planned as its own spec; it rides the next schema-touching spec (037 storage-split) and now lives in [`deferred.md`](deferred.md).
+- The bundled `proscenio_models` wheel staleness gate was not planned as its own spec; it rides the next schema-touching spec and now lives in [`deferred.md`](deferred.md). (It was originally pinned to 037 storage-split, but that shipped without moving the schema - the disk format never changed - so the trigger is now the next spec that does touch the format, e.g. 059 skin-coordination.)
 
 New code-health and toolchain-enforcement gaps land here.
 

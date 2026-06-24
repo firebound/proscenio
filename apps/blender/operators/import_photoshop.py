@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import bpy
-from bpy.props import EnumProperty, StringProperty
+from bpy.props import EnumProperty, FloatProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 from ..core._shared.report import (  # type: ignore[import-not-found]
@@ -70,6 +70,17 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
         default="root",
     )
 
+    root_bone_length: FloatProperty(  # type: ignore[valid-type]
+        name="Root Bone Length",
+        description=(
+            "Length (world units) of the stub armature's root bone. Default "
+            "is 1.0. A re-import reuses the existing root in place, so this "
+            "only sizes a freshly built root, never an already-imported rig."
+        ),
+        default=1.0,
+        min=1e-4,
+    )
+
     def execute(self, context: bpy.types.Context) -> set[str]:
         path = Path(self.filepath)
         if not path.exists():
@@ -80,6 +91,7 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
                 path,
                 placement=self.placement,
                 root_bone_name=self.root_bone_name or "root",
+                root_bone_length=self.root_bone_length,
             )
         except psd_manifest.ManifestError as exc:
             report_error(self, f"Manifest invalid: {exc}")

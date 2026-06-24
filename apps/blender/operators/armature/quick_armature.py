@@ -245,6 +245,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if self._ensure_armature(context) is None:
             report_error(self, "failed to create QuickRig armature")
             return {"CANCELLED"}
+        self._seed_chain_parent_from_active()
 
         self._snapshot_view(context)
         self._snapshot_selection(context)
@@ -676,6 +677,27 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if scene_props is not None and scene_props.active_armature is None:
             scene_props.active_armature = arm_obj
         return arm_obj
+
+    def _seed_chain_parent_from_active(self) -> None:
+        """Seed the chain parent from the target armature's active bone.
+
+        ``invoke`` resets ``_last_bone_name`` to "", so the first authored bone
+        is unparented by default. When the user has an active bone on the
+        resolved target (e.g. the importer's root bone), seed the chain parent
+        to it so the first connected Draw chains onto it - selecting the root,
+        invoking, and drawing seeds a chain from it with zero new chords. Silent
+        and additive: with no active bone the seed stays "" (unchanged), and
+        ``_create_bone`` already guards a seed absent from the target's edit
+        bones (``last in edit_bones``), so a stale active bone from another
+        armature degrades to an unparented first bone rather than binding wrong.
+        """
+        cls = type(self)
+        armature = bpy.data.objects.get(cls._target_armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return
+        active = armature.data.bones.active
+        if active is not None:
+            cls._last_bone_name = active.name
 
     def _create_bone(
         self,

@@ -279,7 +279,7 @@ def test_every_topic_has_a_panel_or_operator_caller() -> None:
 # ``_DOC_PATHS`` map, and the doc-page headings on disk.
 # ---------------------------------------------------------------------------
 
-DOCS_DIR = REPO_ROOT / "docs" / "02-blender-addon"
+DOCS_DIR = REPO_ROOT / "docs" / "02-tools" / "blender-addon"
 
 #: The eleven pages the mirror allows: the ten top-level panels plus the index
 #: (the About footer panel). Bare page slug -> the panel topic that owns it. The

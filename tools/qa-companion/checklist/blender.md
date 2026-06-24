@@ -307,6 +307,20 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The per-element Pixel art toggle flips texture interpolation between Closest and Linear without touching the schema; the importer default is intentionally Linear, not Closest.
 - code: apps/blender/properties/object_props.py (pixel_art) -> core/_shared/material_images.py; surfaced in panels/_draw_sprite.py + _draw_mesh.py
 
+### BL-ELEM-ROOT-06 · Edited element fields survive undo and a disable / save / enable cycle
+- status: todo
+- review: keep
+- pre: A sprite element active in a fresh session.
+- steps:
+  1. In the Element panel set Element type to Sprite, set Horizontal frames to 3 and Frame to 2.
+  2. Press Ctrl+Z several times, then Ctrl+Shift+Z (redo) back to your values.
+  3. Save the .blend. Disable the Proscenio addon in Preferences, then re-enable it.
+  4. Re-open the panel and read the fields back; export and confirm the .proscenio.
+- observe: Each field edit is a single undo step that round-trips cleanly (no stuck or doubled value). After save + disable + re-enable the fields read back exactly as set, with no re-entry needed, and the export matches. Storage lives in one place now (the proscenio_* Custom Property the panel proxies), so there is no mirror to fall out of sync and no hydrate step to lose untouched fields.
+- intent: After the storage split (spec 037) every CP-canonical field has one home (its idprop) behind a get/set panel proxy; this confirms the GUI-only behaviours headless tests cannot - undo through the proxy and the disable/save/enable persistence cycle.
+- code: apps/blender/properties/object_props.py (get/set proxies); apps/blender/core/_shared/pg_cp_fallback.py; pinned mechanically by apps/blender/tests/operators/test_storage_proxy.py
+- note: storage-split. The proxy round-trip, frame clamp, and Drive-from-Bone idprop path are test-covered; this item is the undo + re-enable GUI walk only.
+
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass
 - review: keep

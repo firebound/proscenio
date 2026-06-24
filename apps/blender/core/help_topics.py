@@ -589,11 +589,11 @@ HELP_TOPICS: dict[str, HelpTopic] = {
 }
 
 
-# Base URL of the per-panel Blender addon reference (docs/02-blender-addon).
+# Base URL of the per-panel Blender addon reference (docs/02-tools/blender-addon).
 # topic_for injects the matching page (and section anchor) as the topic's
 # doc_url so the help popup's "Open online docs" button lands on it - the URL
 # scheme lives here once instead of on every HelpTopic literal.
-_DOCS_BASE = "https://firebound.github.io/proscenio/blender-addon/"
+_DOCS_BASE = "https://firebound.github.io/proscenio/tools/blender-addon/"
 
 #: The canonical panel/subpanel -> doc-path mirror (spec 064, Decision 3). The
 #: docs site mirrors the Blender panel tree exactly: every top-level panel topic

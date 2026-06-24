@@ -74,7 +74,7 @@ def test_read_slot_default_from_pg() -> None:
 
 
 def test_read_slot_default_empty_when_absent() -> None:
-    obj = _Obj(proscenio=SimpleNamespace(slot_default=""))
+    obj = _Obj(proscenio=SimpleNamespace())
     assert slots.read_slot_default(obj) == ""
 
 

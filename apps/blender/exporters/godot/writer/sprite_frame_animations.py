@@ -247,7 +247,7 @@ def _direct_frame_track(
 
 
 def _is_sprite(obj: bpy.types.Object) -> bool:
-    return str(read_field(obj, cp_key="proscenio_type", default="mesh")) == ("sprite")
+    return str(read_field(obj, cp_key="proscenio_type", default="mesh")) == "sprite"
 
 
 def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Animation]:

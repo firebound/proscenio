@@ -12,11 +12,19 @@ You author in all three tools, so you need all three installed:
 
 ## Where to get each plugin
 
-Each tool gets its own plugin from this repository:
+The quickest path is the prebuilt bundles attached to every [GitHub release](https://github.com/firebound/proscenio/releases): each tag ships a ready-to-install archive per tool.
 
-- **Photoshop plugin** - the [UXP](https://developer.adobe.com/photoshop/uxp/) exporter under [`apps/photoshop/`](../../../apps/photoshop/). It loads inside Photoshop and adds the **Proscenio** panels under `Plugins > Proscenio ...`.
-- **Blender addon** - the Python addon under [`apps/blender/`](../../../apps/blender/). Once enabled it adds the **Proscenio** tab to the 3D Viewport sidebar (open it with <kbd>N</kbd>).
-- **Godot plugin** - the GDScript editor plugin under [`apps/godot/`](../../../apps/godot/). It registers an importer that turns any `.proscenio` file into a scene on import.
+- **Photoshop plugin** - `proscenio-photoshop-<version>.ccx`. Double-click it and Photoshop's UXP installer takes over (it prompts to allow an untrusted developer, since the plugin is unsigned). A `proscenio-photoshop-<version>.zip` with the same contents is attached too if you prefer to load it manually.
+- **Blender addon** - `proscenio-blender-<version>.zip`. Install it from `Edit > Preferences > Add-ons > Install from Disk`, then enable it.
+- **Godot plugin** - `proscenio-godot-<version>.zip`. Unzip its `addons/proscenio` into your project's `addons/` folder and enable it under `Project > Project Settings > Plugins`.
+
+Once installed, each plugin lives where you author:
+
+- **Photoshop plugin** - the [UXP](https://developer.adobe.com/photoshop/uxp/) exporter. It loads inside Photoshop and adds the **Proscenio** panels under `Plugins > Proscenio ...`.
+- **Blender addon** - the Python addon. Once enabled it adds the **Proscenio** tab to the 3D Viewport sidebar (open it with <kbd>N</kbd>).
+- **Godot plugin** - the GDScript editor plugin. It registers an importer that turns any `.proscenio` file into a scene on import.
+
+Prefer to build from source? Each plugin's source lives in the repository under [`apps/photoshop/`](../../../apps/photoshop/), [`apps/blender/`](../../../apps/blender/), and [`apps/godot/`](../../../apps/godot/).
 
 ## The shape of the loop
 

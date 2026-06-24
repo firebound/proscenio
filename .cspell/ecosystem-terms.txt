@@ -5,11 +5,13 @@
 AABB
 abspath
 affordances
+aggdraw
 allclose
 anim
 anims
 annulus
 anyof
+apidoc
 apifact
 argparse
 arialbd
@@ -104,6 +106,7 @@ euler
 extname
 favorited
 fdopen
+filelayer
 findall
 flexi
 footgun
@@ -122,6 +125,7 @@ goldens
 greenlight
 greenlit
 greppable
+grouplayer
 groupname
 hardcoda
 hardlink
@@ -139,6 +143,7 @@ idnames
 idprop
 iface
 inlines
+inspectable
 interp
 ints
 isclass
@@ -211,6 +216,7 @@ objs
 oneline
 oninvoke
 Organised
+paintlayer
 parameterised
 parseia
 pathconv
@@ -227,6 +233,7 @@ printerr
 propname
 pycache
 pygrep
+pykrita
 pyproject
 pyrightconfig
 pythoncore
@@ -266,6 +273,8 @@ sanitised
 sanitiser
 scannerwork
 schemafile
+scikit
+scipy
 scrn
 serialisable
 serialisation
@@ -316,6 +325,7 @@ toggleable
 tolist
 toolkits
 Toon
+topil
 transpiles
 transpiling
 travelled

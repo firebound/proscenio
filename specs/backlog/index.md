@@ -21,4 +21,4 @@ Formato para novas issues, por app → painel: `**slug** [cat] - descrição` + 
 
 Os itens spec-sized e a issue que tinha voltado para a fila agora têm spec próprio (ver [`_index.md`](../_index.md)):
 
-- **skin-coordination** -> spec 059 skin-coordination. Forma `skins[]` de primeira classe gated atrás de `format-migration-path` e da janela do spec 037; a forma aditiva via `Slot` é a ponte pré-gate. Gated/sequenciado, não pronto para construir. Único ainda aberto desta lista: materials-panel (spec 057), qa-quickarm-interaction-revision (spec 058) e docs-no-hard-wrap-rule (spec 054) já entraram.
+- **skin-coordination** -> spec 059 skin-coordination. Forma `skins[]` de primeira classe gated atrás de `format-migration-path` (e do freeze do formato no primeiro release); a forma aditiva via `Slot` é a ponte pré-gate. (O spec 037 storage-split já entrou e não tocou o formato em disco, então não é mais um gate aqui.) Gated/sequenciado, não pronto para construir. Único ainda aberto desta lista: materials-panel (spec 057), qa-quickarm-interaction-revision (spec 058) e docs-no-hard-wrap-rule (spec 054) já entraram.

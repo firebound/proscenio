@@ -25,20 +25,20 @@ The beta gate is closed. 036 and the 043-048 sprint shipped, and the post-036 po
 ### Beta window -> `0.9.x-beta`
 
 - Collect feedback + real `.blend` files from testers.
-- Land 037 storage-split here. It is the one breaking change, but internal only: the disk `.proscenio` format does NOT move. Validate the one-shot migrator against real pre-split `.blend` files - undo through the proxy widgets, the disable -> save -> enable cycle, and Drive-from-Bone retargeted onto CP paths. The beta tester population is exactly the GUI coverage 037's STUDY says it needs and that headless tests cannot give.
+- 037 storage-split SHIPPED 2026-06-24 (pruned, see [`_index.md`](_index.md)). The internal PG-vs-CP dual storage collapsed to one home per field; the disk `.proscenio` format did NOT move. No migrator ships: pre-release, there are no `.blend` in the wild, so the original 1.0.0 gate (field-validate a once-per-file migrator) dissolved and the split landed now rather than waiting on the beta. The GUI-only risks (undo through the proxies, disable -> save -> enable, Drive-from-Bone on the idprop path) are pinned by an in-Blender `test_storage_proxy`; a final manual GUI pass in the beta is still worthwhile but no longer gating.
 - Beta bugfixes ship as `0.9.x`.
 
 ### 1.0.0 gate
 
-- 037 landed + migrator validated in the field.
+- 037 landed (no migrator: pre-release, fixtures regenerate). DONE.
 - `.proscenio` format declared stable (v2 frozen; freeze documented in `format-spec.md`).
 - Polish complete, zero known crashers.
 - 038 reach is OUT of 1.0 scope: Krita gated on demand, GIMP dropped, GDExtension gated on a measured trigger.
 
-## Disciplines during the beta (from 037's STUDY, to protect the split diff)
+## Disciplines after the split (the storage contract is now load-bearing)
 
-- New fields keep the uniform-mirror convention - never a third hybrid storage state.
-- Every new field read routes through `read_field` - keeps the eventual mirror retirement one-home mechanical.
+- New per-Object fields pick one home by the read boundary: export/headless-read or animatable -> a `proscenio_*` idprop behind a `get`/`set` proxy; pure-GUI -> a plain PropertyGroup field. Never a third hybrid state.
+- Every export-side field read routes through `read_field` - keeps the one-home contract mechanical.
 
 ## Post-1.0
 

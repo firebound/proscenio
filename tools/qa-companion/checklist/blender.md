@@ -307,6 +307,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The per-element Pixel art toggle flips texture interpolation between Closest and Linear without touching the schema; the importer default is intentionally Linear, not Closest.
 - code: apps/blender/properties/object_props.py (pixel_art) -> core/_shared/material_images.py; surfaced in panels/_draw_sprite.py + _draw_mesh.py
 
+### BL-ELEM-ROOT-06 · Re-import from PSD refreshes only the active Element
+- status: pending
+- review: todo
+- pre: A figure imported from a PSD manifest with at least two element layers; re-export one source layer's PNG from Photoshop with changed art (and optionally a changed bound). Paint weights on a different (sibling) element first.
+- steps:
+  1. With one imported element active, open the Element panel and click 'Re-import from PSD'.
+  2. Watch the active element refresh; then inspect the sibling element you painted.
+  3. Rename or delete that source layer in the PSD/manifest and click 'Re-import from PSD' again.
+- observe: The button shows only for elements imported from a PSD (those carrying an import origin). Clicking it refreshes just the active element's art in place with no file picker (the manifest path is remembered from import); a same-bounds change keeps its painted weights, a changed bound reprojects them. The sibling element is untouched (its mesh and painted weights unchanged) and does not shift position. When the source layer no longer resolves (renamed/removed), a warning reports the element was left as is and nothing changes. If the remembered manifest file is gone, the file picker opens to re-pick it.
+- intent: A per-element re-import scopes the spec 055 re-import contract to one manifest entry - refresh this element, preserve or reproject its weights, touch no sibling - so an artist who fixed one layer does not have to re-import the whole document.
+- code: apps/blender/operators/reimport_element.py; apps/blender/importers/photoshop/__init__.py (reimport_element); apps/blender/panels/element.py (Re-import button)
+- note: spec 067 element-individual-reimport. Resolution + 055 contract + no re-anchor pinned by tests/operators/test_psd_reimport_single.py; this is the GUI button + remembered-path + picker-fallback walk.
+
 ### BL-ELEM-ROOT-06 · Edited element fields survive undo and a disable / save / enable cycle
 - status: todo
 - review: keep

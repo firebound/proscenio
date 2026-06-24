@@ -52,7 +52,7 @@ def test_create_driver_builds_range_expression(automesh_fixture):
         out_max=1.0,
     )
     assert "FINISHED" in result
-    fcurve = _driver_fcurve(obj, "proscenio.region_x")
+    fcurve = _driver_fcurve(obj, '["proscenio_region_x"]')
     assert fcurve is not None
     expr = fcurve.driver.expression
     assert expr != "var", "operator stored the raw passthrough, not the built map"
@@ -78,7 +78,7 @@ def test_create_driver_advanced_keeps_raw_expression(automesh_fixture):
         expression="var * 2.0",
     )
     assert "FINISHED" in result
-    fcurve = _driver_fcurve(obj, "proscenio.region_y")
+    fcurve = _driver_fcurve(obj, '["proscenio_region_y"]')
     assert fcurve is not None
     assert fcurve.driver.expression == "var * 2.0"
 

@@ -45,9 +45,7 @@ class PROSCENIO_OT_respace_planes(bpy.types.Operator):
                 continue
             if is_slot_empty(obj.parent):
                 continue
-            order = int(
-                read_field(obj, pg_field="y_draw_order", cp_key=PROSCENIO_Y_DRAW_ORDER, default=0)
-            )
+            order = int(read_field(obj, cp_key=PROSCENIO_Y_DRAW_ORDER, default=0))
             obj.location.y = order * spacing
             moved += 1
         report_info(self, f"re-spaced {moved} plane(s) at {spacing:g} per layer")

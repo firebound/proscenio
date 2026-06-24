@@ -1,7 +1,8 @@
-"""Pure-pytest tests for the validation read helpers (PG-first / CP fallback).
+"""Pure-pytest tests for the validation read helpers (idprop reads).
 
-bpy-free: the PropertyGroup path uses SimpleNamespace mocks; the Custom
-Property path uses a dict subclass that satisfies the lookup Protocol.
+bpy-free: each per-Object field reads from its ``proscenio_*`` Custom
+Property (idprop) via ``.get``, so the carrier is a dict subclass that
+satisfies the lookup Protocol. An object with no ``.get`` reads as absent.
 """
 
 from __future__ import annotations
@@ -27,12 +28,7 @@ class _CP(dict):  # type: ignore[type-arg]
     """Custom-Property carrier: dict already has get / __contains__ / __getitem__."""
 
 
-def test_read_element_type_prefers_property_group() -> None:
-    obj = SimpleNamespace(proscenio=SimpleNamespace(element_type="sprite"))
-    assert read_element_type(obj) == "sprite"
-
-
-def test_read_element_type_custom_property_fallback() -> None:
+def test_read_element_type_from_idprop() -> None:
     assert read_element_type(_CP({"proscenio_type": "sprite"})) == "sprite"
 
 
@@ -40,21 +36,20 @@ def test_read_element_type_defaults_to_mesh() -> None:
     assert read_element_type(SimpleNamespace()) == "mesh"
 
 
-def test_read_int_prefers_property_group() -> None:
-    obj = SimpleNamespace(proscenio=SimpleNamespace(hframes=4))
-    assert read_int(obj, "hframes", "proscenio_hframes", 1) == 4
+def test_read_int_from_idprop() -> None:
+    assert read_int(_CP({"proscenio_hframes": 4}), "proscenio_hframes", 1) == 4
 
 
 def test_read_int_tolerates_float_form_custom_property() -> None:
-    assert read_int(_CP({"proscenio_hframes": "3.0"}), "hframes", "proscenio_hframes", 1) == 3
+    assert read_int(_CP({"proscenio_hframes": "3.0"}), "proscenio_hframes", 1) == 3
 
 
 def test_read_int_falls_back_on_non_numeric_custom_property() -> None:
-    assert read_int(_CP({"proscenio_hframes": "abc"}), "hframes", "proscenio_hframes", 1) == 1
+    assert read_int(_CP({"proscenio_hframes": "abc"}), "proscenio_hframes", 1) == 1
 
 
 def test_read_int_default_when_absent() -> None:
-    assert read_int(SimpleNamespace(), "hframes", "proscenio_hframes", 7) == 7
+    assert read_int(SimpleNamespace(), "proscenio_hframes", 7) == 7
 
 
 def test_armature_bone_names_collects_the_set() -> None:

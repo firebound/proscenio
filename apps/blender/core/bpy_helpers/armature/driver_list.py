@@ -12,7 +12,10 @@ from dataclasses import dataclass
 
 import bpy
 
-from ...armature.driver_targets import driver_target_label  # type: ignore[import-not-found]
+from ...armature.driver_targets import (  # type: ignore[import-not-found]
+    driver_target_label,
+    is_proscenio_driver_path,
+)
 
 
 @dataclass(frozen=True)
@@ -25,9 +28,9 @@ class DriverRow:
 
 
 def proscenio_driver_rows(sprite: bpy.types.Object) -> list[DriverRow]:
-    """List the sprite's ``proscenio.*`` bone drivers, sorted by data path.
+    """List the sprite's proscenio bone drivers, sorted by data path.
 
-    Keeps only the ``proscenio.*`` data paths (the driver shortcut's own
+    Keeps only the proscenio idprop data paths (the driver shortcut's own
     targets) and pulls the source bone from the first transform variable. Empty
     when the sprite has no animation data.
     """
@@ -41,7 +44,7 @@ def proscenio_driver_rows(sprite: bpy.types.Object) -> list[DriverRow]:
             bone=_first_bone_target(fcurve.driver),
         )
         for fcurve in anim.drivers
-        if fcurve.data_path.startswith("proscenio.")
+        if is_proscenio_driver_path(fcurve.data_path)
     ]
     rows.sort(key=lambda row: row.data_path)
     return rows

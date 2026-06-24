@@ -36,7 +36,6 @@ Run ``draw_layers.py`` first or this script aborts on the missing atlas.
 
 from __future__ import annotations
 
-import importlib.util
 import math
 import sys
 from pathlib import Path
@@ -47,8 +46,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from blend_utils import rewrite_images_to_relpath  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ADDON_DIR = REPO_ROOT / "apps/blender"
-ADDON_PACKAGE = "proscenio"
 FIXTURE_DIR = (
     REPO_ROOT / "examples" / "generated" / "blender_to_godot" / "mixed_feature"
 )
@@ -70,7 +67,6 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    _load_addon_as_package()
     _wipe_blend()
     armature_obj = _build_armature()
     _build_skinned_body(armature_obj)
@@ -82,30 +78,6 @@ def main() -> None:
     rewrite_images_to_relpath("[build_mixed_feature]")
     bpy.ops.wm.save_mainfile()
     print(f"[build_mixed_feature] wrote {BLEND_PATH}")
-
-
-def _load_addon_as_package() -> None:
-    """Mount apps/blender as ``proscenio`` and register it.
-
-    Mirrors ``apps/blender/tests/conftest``: registering the fresh addon makes
-    ``obj.proscenio.*`` (the driver target + the ``_dual`` PG writes) resolve
-    against the current code, so the build runs under ``--factory-startup`` and
-    never depends on a separately-enabled (and possibly stale) installed addon.
-    """
-    if ADDON_PACKAGE in sys.modules:
-        return
-    init_path = ADDON_DIR / "__init__.py"
-    spec = importlib.util.spec_from_file_location(
-        ADDON_PACKAGE,
-        init_path,
-        submodule_search_locations=[str(ADDON_DIR)],
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not build import spec for {init_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[ADDON_PACKAGE] = module
-    spec.loader.exec_module(module)
-    module.register()
 
 
 def _wipe_blend() -> None:
@@ -121,15 +93,13 @@ def _wipe_blend() -> None:
             collection.remove(collection[0])
 
 
-def _dual(obj: bpy.types.Object, pg_name: str, cp_key: str, value: object) -> None:
-    """Write a proscenio field to both the PropertyGroup and its CP fallback.
+def _set_field(obj: bpy.types.Object, cp_key: str, value: object) -> None:
+    """Write a proscenio field to its Custom Property (idprop) - its one home.
 
-    The headless writer reads the Custom Property when the addon's
-    PropertyGroup is not registered; the PG path is what panels read in an
-    interactive session. Authoring both keeps the fixture honest in both.
+    Each per-Object field stores in the ``proscenio_*`` Custom Property the
+    writer reads; the editor proxy reads the same idprop. The fixture stamps
+    the idprop directly, so the build needs no addon registration.
     """
-    if hasattr(obj, "proscenio"):
-        setattr(obj.proscenio, pg_name, value)
     obj[cp_key] = value
 
 
@@ -264,7 +234,7 @@ def _build_skinned_body(armature_obj: bpy.types.Object) -> bpy.types.Object:
     arm_mod.object = armature_obj
 
     mesh.materials.append(_atlas_material("body.mat"))
-    _dual(obj, "element_type", "proscenio_type", "mesh")
+    _set_field(obj, "proscenio_type", "mesh")
     return obj
 
 
@@ -294,13 +264,13 @@ def _build_mouth(armature_obj: bpy.types.Object) -> bpy.types.Object:
     arm_mod.object = armature_obj
 
     mesh.materials.append(_atlas_material("mouth.mat"))
-    _dual(obj, "element_type", "proscenio_type", "sprite")
-    _dual(obj, "hframes", "proscenio_hframes", 2)
-    _dual(obj, "vframes", "proscenio_vframes", 2)
-    _dual(obj, "frame", "proscenio_frame", 0)
-    _dual(obj, "centered", "proscenio_centered", True)
+    _set_field(obj, "proscenio_type", "sprite")
+    _set_field(obj, "proscenio_hframes", 2)
+    _set_field(obj, "proscenio_vframes", 2)
+    _set_field(obj, "proscenio_frame", 0)
+    _set_field(obj, "proscenio_centered", True)
     # Draw order -4 -> z_index 4: frontmost (Y -0.004 = order * the 0.001 spacing).
-    _dual(obj, "y_draw_order", "proscenio_y_draw_order", -4)
+    _set_field(obj, "proscenio_y_draw_order", -4)
     _apply_manual_region(obj, MOUTH_REGION)
     return obj
 
@@ -322,11 +292,11 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.location = (0.0, 0.0, 0.55)
     empty.parent = armature_obj
     empty.parent_type = "OBJECT"
-    _dual(empty, "is_slot", "proscenio_is_slot", True)
-    _dual(empty, "slot_default", "proscenio_slot_default", "face_neutral")
+    _set_field(empty, "proscenio_is_slot", True)
+    _set_field(empty, "proscenio_slot_default", "face_neutral")
     # The face follows the head bone: the importer parents the slot Node2D under
     # the head Bone2D (object-parented Empty keeps the attachment quads flat).
-    _dual(empty, "slot_bone", "proscenio_slot_bone", "head")
+    _set_field(empty, "proscenio_slot_bone", "head")
     # Author the Blender-side follow so the face tracks the head bone in the
     # viewport (mirrors the Godot importer). Baked at rest, golden-neutral.
     con = empty.constraints.new(type="CHILD_OF")
@@ -348,9 +318,9 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     neutral.parent = empty
     neutral.parent_type = "OBJECT"
     neutral_mesh.materials.append(_atlas_material("face_neutral.mat"))
-    _dual(neutral, "element_type", "proscenio_type", "mesh")
+    _set_field(neutral, "proscenio_type", "mesh")
     # Draw order -2 -> z_index 2: in front of the torso (0), behind the mouth (4).
-    _dual(neutral, "y_draw_order", "proscenio_y_draw_order", -2)
+    _set_field(neutral, "proscenio_y_draw_order", -2)
 
     # Sprite attachment (the mixed-slot test: one mesh + one sprite under one
     # slot): a single-frame glowing head, region = atlas top-right quadrant. UVs
@@ -365,13 +335,13 @@ def _build_slot(armature_obj: bpy.types.Object) -> bpy.types.Object:
     glow.parent = empty
     glow.parent_type = "OBJECT"
     glow_mesh.materials.append(_atlas_material("face_glow.mat"))
-    _dual(glow, "element_type", "proscenio_type", "sprite")
-    _dual(glow, "hframes", "proscenio_hframes", 1)
-    _dual(glow, "vframes", "proscenio_vframes", 1)
-    _dual(glow, "frame", "proscenio_frame", 0)
-    _dual(glow, "centered", "proscenio_centered", True)
+    _set_field(glow, "proscenio_type", "sprite")
+    _set_field(glow, "proscenio_hframes", 1)
+    _set_field(glow, "proscenio_vframes", 1)
+    _set_field(glow, "proscenio_frame", 0)
+    _set_field(glow, "proscenio_centered", True)
     # Draw order -2 -> z_index 2 (same layer as the neutral face it swaps with).
-    _dual(glow, "y_draw_order", "proscenio_y_draw_order", -2)
+    _set_field(glow, "proscenio_y_draw_order", -2)
     _apply_manual_region(glow, GLOW_REGION)
     return empty
 
@@ -380,18 +350,18 @@ def _apply_manual_region(
     obj: bpy.types.Object, region: tuple[float, float, float, float]
 ) -> None:
     rx, ry, rw, rh = region
-    _dual(obj, "region_mode", "proscenio_region_mode", "manual")
-    _dual(obj, "region_x", "proscenio_region_x", rx)
-    _dual(obj, "region_y", "proscenio_region_y", ry)
-    _dual(obj, "region_w", "proscenio_region_w", rw)
-    _dual(obj, "region_h", "proscenio_region_h", rh)
+    _set_field(obj, "proscenio_region_mode", "manual")
+    _set_field(obj, "proscenio_region_x", rx)
+    _set_field(obj, "proscenio_region_y", ry)
+    _set_field(obj, "proscenio_region_w", rw)
+    _set_field(obj, "proscenio_region_h", rh)
 
 
 def _install_mouth_driver(
     mouth_obj: bpy.types.Object, armature_obj: bpy.types.Object
 ) -> None:
-    """Wire the ``jaw`` spin (ROT_Z) to ``mouth.proscenio.frame``."""
-    data_path = "proscenio.frame"
+    """Wire the ``jaw`` spin (ROT_Z) to the ``["proscenio_frame"]`` idprop."""
+    data_path = '["proscenio_frame"]'
     if (
         mouth_obj.animation_data is not None
         and mouth_obj.animation_data.drivers.find(data_path) is not None
@@ -421,12 +391,6 @@ def _install_mouth_driver(
     target.transform_space = "WORLD_SPACE"
     target.rotation_mode = "XYZ"
 
-    if hasattr(mouth_obj, "proscenio"):
-        mouth_obj.proscenio.driver_target = "frame"
-        mouth_obj.proscenio.driver_source_armature = armature_obj
-        mouth_obj.proscenio.driver_source_bone = "jaw"
-        mouth_obj.proscenio.driver_source_axis = "ROT_Z"
-        mouth_obj.proscenio.driver_expression = "var * 2 + 2"
 
 
 def _build_action(armature_obj: bpy.types.Object) -> None:

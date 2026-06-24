@@ -33,6 +33,7 @@ Jukka
 Jylänki
 Kashu
 keytar
+Kota
 Krita
 Kuklin
 LoongBones
@@ -67,5 +68,6 @@ Spriter
 tseslint
 Vite
 vitest
+Yamaguchi
 yelzkizi
 Ángela

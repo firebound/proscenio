@@ -137,6 +137,7 @@ idempotently
 idname
 idnames
 idprop
+idprops
 iface
 inlines
 interp

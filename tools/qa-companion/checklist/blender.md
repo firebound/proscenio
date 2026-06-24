@@ -805,9 +805,10 @@ Each block answers three questions in plain language: what passing it proves (`i
   9. Press Esc or right-click: with nothing drawn the hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored the hint reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Your view and selection are restored either way.
   10. The subpanel's 'Lock to Front Orthographic' field (also overridable per-launch in the redo panel), when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone. The field takes effect on the first launch - no redo override needed.
   11. Press Tab to cycle Draw and Reparent modes; the status-bar cheat-sheet swaps to show only the active mode's chords. In Reparent mode, click near a bone tip to set it as the next bone's parent (a highlight marks the tip under the cursor); clicking empty space reports 'no bone tip near cursor' and changes nothing.
-- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored.
-- intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, and the status-bar-only cheat-sheet with dynamic finish/exit hints.
-- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + Tab mode dispatch + _exit); core/armature/quick_armature_math.py (next_mode, resolve_pick); _overlay.py; _status_bar.py emit_chord_layout
+  12. Seed from an active bone: before launching, select one bone of an existing rig (e.g. an imported figure's 'root' bone) so it is the armature's active bone, then launch Quick Armature and draw a chaining bone. The first bone parents onto that selected bone (no Tab/Reparent dance needed). Launch with no active bone and the first bone is unparented as usual.
+- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored. Step 12: a pre-selected active bone seeds the first chain bone's parent; no active bone leaves it unparented.
+- intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, the status-bar-only cheat-sheet with dynamic finish/exit hints, and the active-bone chain seed (select the importer root, launch, draw -> chain seeds from root with no new chord).
+- code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + Tab mode dispatch + the invoke active-bone seed + exit); core/armature/quick_armature_math.py (next_mode, resolve_pick); _overlay.py; _status_bar.py emit_chord_layout
 
 ### BL-SKEL-03 · Active Armature picker
 - status: pass
@@ -1417,6 +1418,18 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Imported flat 2D cutouts display their authored color - unlit Emission + Standard view transform + sRGB texture decode - instead of the washed-out lit/AgX look.
 - code: apps/blender/importers/photoshop/planes.py (_attach_material) -> apps/blender/importers/photoshop/__init__.py (_apply_flat_color_management)
 - note: asserted headless by apps/blender/tests/operators/test_flat_material.py; rationale - Godot reads PNG bytes as sRGB (color is sRGB end to end).
+
+### BL-PIPE-IMPORT-04 · Import Root Bone Length
+- status: pending
+- review: todo
+- pre: A PSD manifest + PNGs. A second import of the same manifest into the same scene available for the re-import check.
+- steps:
+  1. In the import file dialog, set Root Bone Length (default 1.0) and import; select the stub armature's root bone and read its length (N-panel Item, or Edit mode).
+  2. Re-import the same manifest with a different Root Bone Length and read the root bone length again.
+- observe: The root bone of a freshly built stub armature takes the length you set (default 1.0 unit, not the old 0.05). On a re-import the existing root armature is reused in place, so its bone keeps the original length - the new value does not retro-resize an already-imported rig. The field rejects a zero/negative length (clamped to a tiny positive minimum).
+- intent: Root Bone Length sizes the importer's stub root bone (default 1 unit, configurable per import); a re-import never resizes an existing root because build_root_armature reuses it.
+- code: apps/blender/operators/import_photoshop.py (root_bone_length FloatProperty) -> apps/blender/importers/photoshop/__init__.py (import_manifest root_bone_length) -> apps/blender/importers/photoshop/armature.py (build_root_armature length)
+- note: quick-armature-root-bone. Threading + reuse-keeps-length asserted headless by apps/blender/tests/operators/test_root_bone_length.py; this is the import-dialog field + re-import GUI walk.
 
 ### BL-PIPE-EXPORT-01 · Last export path is sticky and enables Re-export
 - status: pending

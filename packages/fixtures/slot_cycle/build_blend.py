@@ -104,9 +104,6 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     bpy.context.scene.collection.objects.link(empty)
     empty.parent = armature_obj
     empty.parent_type = "OBJECT"
-    if hasattr(empty, "proscenio"):
-        empty.proscenio.is_slot = True
-        empty.proscenio.slot_default = ATTACHMENT_NAMES[0]
     # Custom Property fallback so the headless writer (CI) detects the
     # slot without the addon's PropertyGroup registered (the PG-canonical
     # / CP-fallback contract).

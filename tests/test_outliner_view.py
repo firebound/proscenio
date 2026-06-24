@@ -230,8 +230,11 @@ def test_outliner_depth_by_rank() -> None:
 
 
 def _slot(name: str) -> SimpleNamespace:
+    # The slot flag reads from the proscenio_is_slot idprop via .get (spec 037).
     return SimpleNamespace(
-        name=name, type="EMPTY", proscenio=SimpleNamespace(is_slot=True)
+        name=name,
+        type="EMPTY",
+        get=lambda key, default=None: {"proscenio_is_slot": True}.get(key, default),
     )
 
 

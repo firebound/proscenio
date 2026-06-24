@@ -29,7 +29,7 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
         # Prefer an explicit `slot_bone` (object-parented Empty - keeps the
         # attachment quads flat); fall back to the Empty's parent_bone when it
         # is bone-parented the old way.
-        bone = str(read_field(obj, pg_field="slot_bone", cp_key=PROSCENIO_SLOT_BONE, default=""))
+        bone = str(read_field(obj, cp_key=PROSCENIO_SLOT_BONE, default=""))
         if not bone and obj.parent_type == "BONE":
             bone = str(obj.parent_bone)
         attachments = tuple(child.name for child in obj.children if child.type == "MESH")
@@ -46,4 +46,4 @@ def build_slots_for_scene(scene: bpy.types.Scene) -> list[Slot]:
 
 def read_slot_default(obj: bpy.types.Object) -> str:
     """Read slot_default from PG, fall back to ``proscenio_slot_default`` CP."""
-    return str(read_field(obj, pg_field="slot_default", cp_key=PROSCENIO_SLOT_DEFAULT, default=""))
+    return str(read_field(obj, cp_key=PROSCENIO_SLOT_DEFAULT, default=""))

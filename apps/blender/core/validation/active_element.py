@@ -59,7 +59,7 @@ def _validate_draw_order_position(obj: object, name: str, spacing: float) -> lis
     y = getattr(location, "y", None)
     if y is None:
         return []
-    order = read_int(obj, "y_draw_order", PROSCENIO_Y_DRAW_ORDER, 0)
+    order = read_int(obj, PROSCENIO_Y_DRAW_ORDER, 0)
     if round(float(y) / spacing) == order:
         return []
     return [
@@ -75,8 +75,8 @@ def _validate_draw_order_position(obj: object, name: str, spacing: float) -> lis
 
 def _validate_sprite_fields(obj: object, name: str) -> list[Issue]:
     issues: list[Issue] = []
-    hframes = read_int(obj, "hframes", "proscenio_hframes", 0)
-    vframes = read_int(obj, "vframes", "proscenio_vframes", 0)
+    hframes = read_int(obj, "proscenio_hframes", 0)
+    vframes = read_int(obj, "proscenio_vframes", 0)
     if hframes < 1:
         issues.append(Issue("error", "sprite needs hframes >= 1", name))
     if vframes < 1:

@@ -1,47 +1,30 @@
-"""Hydration handlers + deferred-hydrate timer.
+"""Persistent ``bpy.app.handlers`` integration for the per-Object props.
 
-Isolates the persistent ``bpy.app.handlers`` integration so the main
-properties module reads as a clean PG declaration list. Three jobs:
+Isolates the handlers so the main properties module reads as a clean PG
+declaration list. Two jobs survive the storage split (spec 037):
 
-- ``hydrate_existing_objects``: walk every object in the current
-  ``bpy.data`` and copy its legacy Custom Properties into the
-  PropertyGroup.
-- ``on_blend_load`` / ``on_blend_save_pre``: persistent handlers wired
-  into Blender's load_post / save_pre lists.
-- ``deferred_hydrate``: zero-interval ``bpy.app.timers`` job scheduled
-  inside ``register()`` so PointerProperty wiring is fully established
-  before we touch it.
+- ``on_blend_load``: a ``load_post`` handler that auto-fills the active
+  armature pointer when a freshly opened `.blend` is unambiguous.
+- ``on_depsgraph_update``: per-tick scene hygiene (armature pointer +
+  Outliner / Slots / Skeleton highlight follow).
+
+There is no hydrate handler and no save-pre mirror flush any more: each
+per-Object field has one storage home (its ``proscenio_*`` Custom
+Property), edited through a ``get=``/``set=`` PropertyGroup proxy, so
+nothing needs copying between a PropertyGroup and a Custom Property at
+load or save time.
 """
 
 from __future__ import annotations
 
 import bpy
 
-from ..core._shared.hydrate import hydrate_object  # type: ignore[import-not-found]
 from ..core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
-from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 from ..core.outliner_view import (  # type: ignore[import-not-found]
     is_outliner_relevant,
     source_index_for_name,
 )
 from ..core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
-
-
-def hydrate_existing_objects() -> None:
-    """Walk every object in the current ``bpy.data`` and hydrate.
-
-    During Blender's initial startup, ``bpy.data`` is wrapped in
-    ``_RestrictData`` and accessing ``.objects`` raises
-    ``AttributeError``. The function bails out silently in that case;
-    the ``load_post`` handler retries once the current `.blend`
-    finishes loading.
-    """
-    try:
-        objects = list(bpy.data.objects)
-    except AttributeError:
-        return
-    for obj in objects:
-        hydrate_object(obj)
 
 
 def auto_populate_active_armature() -> None:
@@ -66,8 +49,7 @@ def auto_populate_active_armature() -> None:
 
 @bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
 def on_blend_load(_filepath: str) -> None:
-    """Re-hydrate every time a `.blend` finishes loading."""
-    hydrate_existing_objects()
+    """Auto-fill the active armature every time a `.blend` finishes loading."""
     auto_populate_active_armature()
 
 
@@ -195,31 +177,3 @@ def sync_bone_index_to_active_bone(scene: bpy.types.Scene) -> None:
 
 def _tag_view3d_areas_redraw() -> None:
     tag_redraw_areas(getattr(bpy.context, "window_manager", None), {"VIEW_3D"})
-
-
-@bpy.app.handlers.persistent  # type: ignore[untyped-decorator]
-def on_blend_save_pre(_filepath: str) -> None:
-    """Flush every PropertyGroup field to its CP mirror before save."""
-    try:
-        objects = list(bpy.data.objects)
-    except AttributeError:
-        return
-    for obj in objects:
-        props = getattr(obj, "proscenio", None)
-        if props is None:
-            continue
-        mirror_all_fields(props, obj)
-
-
-def deferred_hydrate() -> None:
-    """Run hydration one tick after register().
-
-    Blender's PointerProperty wiring is not fully established the
-    moment register() returns - assigning to the PropertyGroup inside
-    register sometimes writes to a stub that is dropped before the
-    data block is materialized. A zero-interval timer schedules the
-    hydration for after the addon-enable cycle completes, when the
-    property data is real and persistent.
-    """
-    hydrate_existing_objects()
-    auto_populate_active_armature()

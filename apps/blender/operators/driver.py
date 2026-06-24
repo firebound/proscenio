@@ -19,6 +19,8 @@ from ..core.armature.driver_expression import (  # type: ignore[import-not-found
 )
 from ..core.armature.driver_targets import (  # type: ignore[import-not-found]
     DRIVER_TARGET_PROPERTIES,
+    driver_data_path,
+    is_proscenio_driver_path,
 )
 
 _DRIVER_VAR_NAME = "var"
@@ -55,7 +57,7 @@ def _purge_stale_drivers(
     source_armature: bpy.types.Object,
     source_bone: str,
 ) -> None:
-    """Remove driver on ``data_path`` plus any sibling ``proscenio.*`` driver
+    """Remove driver on ``data_path`` plus any sibling proscenio driver
     sourced from the same ``(armature, bone)`` pair."""
     if sprite.animation_data is None:
         return
@@ -66,7 +68,7 @@ def _purge_stale_drivers(
         fc.data_path
         for fc in sprite.animation_data.drivers
         if fc.data_path != data_path
-        and fc.data_path.startswith("proscenio.")
+        and is_proscenio_driver_path(fc.data_path)
         and _driver_matches_source(fc.driver, source_armature, source_bone)
     ]
     for path in stale_paths:
@@ -196,7 +198,15 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
             report_error(self, f"bone '{self.bone_name}' not in armature '{armature.name}'")
             return {"CANCELLED"}
 
-        data_path = f"proscenio.{self.target_property}"
+        # Drive the Custom Property (idprop) directly, not the PropertyGroup
+        # proxy: the field's one storage home is the idprop the writer reads,
+        # and Blender cannot keyframe / reliably drive a get/set proxy field.
+        # ``driver_add`` resolves the path against an existing idprop, so seed
+        # it from the proxy's current value (its default when unset) first.
+        cp_key = f"proscenio_{self.target_property}"
+        if cp_key not in sprite:
+            sprite[cp_key] = getattr(props, self.target_property)
+        data_path = driver_data_path(self.target_property)
         try:
             fcurve = _ensure_single_driver(sprite, data_path, armature, self.bone_name)
         except (TypeError, RuntimeError) as exc:
@@ -277,9 +287,10 @@ class PROSCENIO_OT_remove_driver(bpy.types.Operator):
         if not self.data_path:
             report_warn(self, "no driver data path given")
             return {"CANCELLED"}
-        if not self.data_path.startswith("proscenio."):
-            # This operator manages only the Drive-from-Bone proscenio.* drivers;
-            # refuse any other path so a direct call cannot strip unrelated drivers.
+        if not is_proscenio_driver_path(self.data_path):
+            # This operator manages only the Drive-from-Bone proscenio idprop
+            # drivers; refuse any other path so a direct call cannot strip
+            # unrelated drivers.
             report_warn(self, f"unsupported driver path '{self.data_path}'")
             return {"CANCELLED"}
         anim = sprite.animation_data

@@ -59,7 +59,7 @@ def slot_follow_shape(empty: bpy.types.Object) -> str:
         return "constraint"
     if getattr(empty, "parent_type", "") == "BONE" and getattr(empty, "parent_bone", ""):
         return "bone_parent"
-    field = str(read_field(empty, pg_field="slot_bone", cp_key=PROSCENIO_SLOT_BONE, default=""))
+    field = str(read_field(empty, cp_key=PROSCENIO_SLOT_BONE, default=""))
     return "field_inert" if field else "none"
 
 

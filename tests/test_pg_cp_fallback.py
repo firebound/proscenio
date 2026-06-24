@@ -1,15 +1,15 @@
 """Unit tests for the core._shared.pg_cp_fallback helpers.
 
-Pure pytest, no Blender. The fallback contract: PropertyGroup field
-wins, Custom Property literal as legacy fallback, ``default`` as last
-resort.
+Pure pytest, no Blender. Since the storage split (spec 037) each
+per-Object field has one home - its ``proscenio_*`` Custom Property
+(idprop) - so the reader is idprop-only: the value when present, the
+``default`` otherwise.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,106 +19,68 @@ from core._shared.pg_cp_fallback import read_bool_flag, read_field  # noqa: E402
 
 
 class FakeObj:
-    """SimpleNamespace-like with a ``.get`` method (mirrors bpy Object)."""
+    """``bpy.types.Object`` substitute exposing dict-style ``.get``."""
 
-    def __init__(
-        self,
-        proscenio: Any | None = None,
-        cps: dict[str, Any] | None = None,
-    ) -> None:
-        self.proscenio = proscenio
+    def __init__(self, cps: dict[str, Any] | None = None) -> None:
         self._cps = cps or {}
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._cps.get(key, default)
 
 
-def test_read_field_pg_wins_over_cp() -> None:
-    pg = SimpleNamespace(element_type="sprite")
-    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "mesh"})
-    value = read_field(
-        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
-    )
-    assert value == "sprite"
+class NoGetObj:
+    """An object without ``.get`` - reads as absent (default)."""
 
 
-def test_read_field_cp_fallback_when_pg_missing() -> None:
-    obj = FakeObj(proscenio=None, cps={"proscenio_type": "sprite"})
-    value = read_field(
-        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
-    )
-    assert value == "sprite"
+def test_read_field_returns_idprop_value() -> None:
+    obj = FakeObj(cps={"proscenio_type": "sprite"})
+    assert read_field(obj, cp_key="proscenio_type", default="mesh") == "sprite"
 
 
-def test_read_field_default_when_neither_present() -> None:
+def test_read_field_default_when_absent() -> None:
     obj = FakeObj()
-    value = read_field(
-        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
-    )
-    assert value == "mesh"
+    assert read_field(obj, cp_key="proscenio_type", default="mesh") == "mesh"
 
 
-def test_read_field_default_when_pg_field_is_none() -> None:
-    pg = SimpleNamespace()  # no element_type attribute
-    obj = FakeObj(proscenio=pg, cps={"proscenio_type": "sprite"})
-    # PG missing the field falls through to CP.
-    value = read_field(
-        obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"
-    )
-    assert value == "sprite"
+def test_read_field_default_when_idprop_is_none() -> None:
+    obj = FakeObj(cps={"proscenio_frame": None})
+    assert read_field(obj, cp_key="proscenio_frame", default=-1) == -1
 
 
-def test_read_field_pg_explicit_zero_wins_over_cp() -> None:
-    """A+A presence rule: an explicit falsy PG value (0) wins - it does NOT
-    fall through to the Custom Property the way a truthiness rule would."""
-    obj = FakeObj(proscenio=SimpleNamespace(frame=0), cps={"proscenio_frame": 5})
-    value = read_field(obj, pg_field="frame", cp_key="proscenio_frame", default=-1)
-    assert value == 0
+def test_read_field_explicit_zero_wins_over_default() -> None:
+    """A stored 0 is a real value - it must not fall through to the default."""
+    obj = FakeObj(cps={"proscenio_frame": 0})
+    assert read_field(obj, cp_key="proscenio_frame", default=-1) == 0
 
 
-def test_read_field_pg_empty_string_wins_over_cp() -> None:
-    """Explicit empty-string PG value wins (is-not-None, not truthiness)."""
-    obj = FakeObj(
-        proscenio=SimpleNamespace(slot_default=""),
-        cps={"proscenio_slot_default": "open"},
-    )
-    value = read_field(
-        obj, pg_field="slot_default", cp_key="proscenio_slot_default", default="x"
-    )
-    assert value == ""
+def test_read_field_explicit_empty_string_wins_over_default() -> None:
+    obj = FakeObj(cps={"proscenio_slot_default": ""})
+    assert read_field(obj, cp_key="proscenio_slot_default", default="x") == ""
 
 
-def test_read_field_pg_none_value_falls_through_to_cp() -> None:
-    """A None PG value (not just an absent attr) falls through to the CP."""
-    obj = FakeObj(proscenio=SimpleNamespace(frame=None), cps={"proscenio_frame": 5})
-    value = read_field(obj, pg_field="frame", cp_key="proscenio_frame", default=-1)
-    assert value == 5
+def test_read_field_no_get_object_returns_default() -> None:
+    assert read_field(NoGetObj(), cp_key="proscenio_type", default="mesh") == "mesh"
 
 
-def test_read_bool_flag_pg_true() -> None:
-    pg = SimpleNamespace(is_slot=True)
-    obj = FakeObj(proscenio=pg)
-    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is True
+def test_read_bool_flag_true() -> None:
+    obj = FakeObj(cps={"proscenio_is_slot": True})
+    assert read_bool_flag(obj, cp_key="proscenio_is_slot") is True
 
 
-def test_read_bool_flag_cp_fallback() -> None:
-    obj = FakeObj(proscenio=None, cps={"proscenio_is_slot": True})
-    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is True
+def test_read_bool_flag_false_when_absent() -> None:
+    assert read_bool_flag(FakeObj(), cp_key="proscenio_is_slot") is False
 
 
-def test_read_bool_flag_false_default() -> None:
-    obj = FakeObj()
-    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is False
+def test_read_bool_flag_explicit_false() -> None:
+    obj = FakeObj(cps={"proscenio_is_slot": False})
+    assert read_bool_flag(obj, cp_key="proscenio_is_slot") is False
 
 
-def test_read_bool_flag_pg_false_suppresses_cp_true() -> None:
-    """PG-first: explicit False on the PG must NOT fall through to CP."""
-    pg = SimpleNamespace(is_slot=False)
-    obj = FakeObj(proscenio=pg, cps={"proscenio_is_slot": True})
-    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is False
+def test_read_bool_flag_coerces_idprop_int() -> None:
+    """idprops store bool as int 0/1 - the flag read must coerce to bool."""
+    obj = FakeObj(cps={"proscenio_is_slot": 1})
+    assert read_bool_flag(obj, cp_key="proscenio_is_slot") is True
 
 
-def test_read_bool_flag_pg_missing_falls_back_to_cp() -> None:
-    pg = SimpleNamespace()  # no is_slot attribute
-    obj = FakeObj(proscenio=pg, cps={"proscenio_is_slot": True})
-    assert read_bool_flag(obj, pg_field="is_slot", cp_key="proscenio_is_slot") is True
+def test_read_bool_flag_no_get_object_returns_false() -> None:
+    assert read_bool_flag(NoGetObj(), cp_key="proscenio_is_slot") is False

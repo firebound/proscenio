@@ -12,7 +12,7 @@ The docs site (`apps/docs`) serves the `docs/` folder under three navbar section
 
 - **Guides** (`docs/00-guides/`) - the artist learning by doing: Basic and Advanced tutorials, one page per tool.
 - **Project** (`docs/01-project/` plus the live `content/` schema reference) - low-level docs for developers: the Schema reference (rendered live from the dumped JSON Schemas), Architecture, Comparison, Deferred.
-- **Tools** (`docs/02-blender-addon/`, `03-photoshop-plugin/`, `04-godot-plugin/`) - high-level, intent-level reference for each app.
+- **Tools** (`docs/02-tools/` with `blender-addon/`, `photoshop-plugin/`, `godot-plugin/`) - high-level, intent-level reference for each app.
 
 Where a given piece of knowledge belongs:
 

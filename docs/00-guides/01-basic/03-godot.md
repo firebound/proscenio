@@ -47,9 +47,9 @@ func _ready() -> void:
     anim.play("idle")
 ```
 
-Effects and colliders follow a bone with a `RemoteTransform2D`; per-sprite material or visibility overrides go in `_ready`. The [Godot workflow](../01-advanced/03-godot.md) has the full recipe set (AI, effects, colliders, shader overrides, animation events, custom animations) and the wrapper-vs-editable-children trade-offs.
+Effects and colliders follow a bone with a `RemoteTransform2D`; per-sprite material or visibility overrides go in `_ready`. The [Godot workflow](../02-advanced/03-godot.md) has the full recipe set (AI, effects, colliders, shader overrides, animation events, custom animations) and the wrapper-vs-editable-children trade-offs.
 
 > [!WARNING]
 > **Never edit the imported scene directly.** It is regenerated on every re-export from Blender, so changes inside it are lost. Always build on the wrapper.
 
-Reference fixtures: [`examples/authored/doll/`](../../../examples/authored/doll/) is the comprehensive showcase; [`examples/generated/blink_eyes/`](../../../examples/generated/blink_eyes/) isolates the `sprite_frame` path, and [`examples/generated/shared_atlas/`](../../../examples/generated/shared_atlas/) isolates the sliced-atlas path. See the [Godot workflow](../01-advanced/03-godot.md) for importer behaviour in detail.
+Reference fixtures: [`examples/authored/doll/`](../../../examples/authored/doll/) is the comprehensive showcase; [`examples/generated/blink_eyes/`](../../../examples/generated/blink_eyes/) isolates the `sprite_frame` path, and [`examples/generated/shared_atlas/`](../../../examples/generated/shared_atlas/) isolates the sliced-atlas path. See the [Godot workflow](../02-advanced/03-godot.md) for importer behaviour in detail.

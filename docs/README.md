@@ -4,8 +4,9 @@ This is a top-level documentation index that pairs hand-authored workflow guides
 
 ## Workflow guides
 
-- [Basic walkthrough](00-guides/00-basic/index.md): the end-to-end loop, one page per tool.
-- [Advanced workflow](00-guides/01-advanced/index.md): deeper dives into the features of each tool, and how they fit together.
+- [Getting started](00-guides/00-getting-started/index.md): prerequisites, where to get each plugin, and the shape of the end-to-end loop.
+- [Basic walkthrough](00-guides/01-basic/index.md): the end-to-end loop, one page per tool.
+- [Advanced workflow](00-guides/02-advanced/index.md): deeper dives into the features of each tool, and how they fit together.
 
 ## Project documentation
 
@@ -17,9 +18,10 @@ This is a top-level documentation index that pairs hand-authored workflow guides
 
 High-level, intent-level reference for each app in the pipeline:
 
-- [Blender Addon](02-blender-addon/index.md): the authoring addon - mesh, rig, weights, slots, atlas, export.
-- [Photoshop Plugin](03-photoshop-plugin/index.md): tag and export a layered PSD into a manifest plus PNGs.
-- [Godot Plugin](04-godot-plugin/index.md): reimport a `.proscenio` into a native Godot scene.
+- [Tools hub](02-tools/index.md): the high-level, intent-level reference for each app in the pipeline.
+- [Blender Addon](02-tools/blender-addon/index.md): the authoring addon - mesh, rig, weights, slots, atlas, export.
+- [Photoshop Plugin](02-tools/photoshop-plugin/index.md): tag and export a layered PSD into a manifest plus PNGs.
+- [Godot Plugin](02-tools/godot-plugin/index.md): reimport a `.proscenio` into a native Godot scene.
 
 ## Schema reference
 

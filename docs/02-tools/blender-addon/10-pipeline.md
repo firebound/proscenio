@@ -11,7 +11,7 @@ The first panel in the sidebar and the grouper for the whole Photoshop to Blende
 
 Each stamped mesh is tagged with its source layer, so re-importing the same manifest reuses the existing meshes - user-set rotation, parenting, and weights survive the round trip. The importer reports how many meshes it stamped, how many layers it skipped, and how many spritesheets it composed.
 
-See [`examples/generated/simple_psd/`](../../examples/generated/simple_psd/) for a minimal worked manifest and its imported result.
+See [`examples/generated/simple_psd/`](../../../examples/generated/simple_psd/) for a minimal worked manifest and its imported result.
 
 ## Validate
 

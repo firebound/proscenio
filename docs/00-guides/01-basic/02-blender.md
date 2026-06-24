@@ -68,7 +68,7 @@ Binding ties each mesh's vertices to bones so the mesh follows the pose.
 
 3. *Paint*: click `Edit Weights` for the in-panel weight-paint modal, or use Blender's own Weight Paint Mode.
 
-   Either path produces vertex groups named after bones. See the [Blender workflow](../01-advanced/02-blender.md) for the full skinning recipe (automesh density, bind modes, weight transfer, snapshots).
+   Either path produces vertex groups named after bones. See the [Blender workflow](../02-advanced/02-blender.md) for the full skinning recipe (automesh density, bind modes, weight transfer, snapshots).
 
 > [!WARNING]
 > **Bone names are the contract.** The writer exports a weight only when a vertex group's name matches a bone's name exactly.

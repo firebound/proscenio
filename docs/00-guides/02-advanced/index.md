@@ -1,6 +1,6 @@
 # Advanced workflows
 
-Deeper, denser guides to each tool than the [basic walkthrough](../00-basic/index.md) - the panels, the recipes, the contracts, and the gotchas you hit once you are past your first character.
+Deeper, denser guides to each tool than the [basic walkthrough](../01-basic/index.md) - the panels, the recipes, the contracts, and the gotchas you hit once you are past your first character.
 
 Read the basic walkthrough first; these assume you already know the loop.
 

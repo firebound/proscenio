@@ -65,7 +65,7 @@ const config: Config = {
         // PR2 folded the standalone 09-validation.md page into
         // pipeline.md#validate; this keeps the old slug from 404ing.
         redirects: [
-          {from: '/blender-addon/validation', to: '/blender-addon/pipeline#validate'},
+          {from: '/blender-addon/validation', to: '/tools/blender-addon/pipeline#validate'},
         ],
       },
     ],
@@ -144,7 +144,7 @@ const config: Config = {
           items: [
             {label: 'Walkthrough', to: '/guides/basic'},
             {label: 'Architecture', to: '/project/architecture'},
-            {label: 'Tools', to: '/blender-addon'},
+            {label: 'Tools', to: '/tools/blender-addon'},
           ],
         },
         {

@@ -20,4 +20,4 @@ Pose-only authoring shortcuts, all **blender-only** (enter Pose mode to reach th
 
 ## Quick Armature
 
-A modal viewport tool that draws bones one press-drag at a time onto the Y=0 picture plane, without entering Edit Mode. It is reachable even with no armature in the scene. The options box sets the front-ortho lock, chain default, name prefix, and grid snap increment. See the [walkthrough](../00-guides/00-basic/02-blender.md#build-the-skeleton) for the full chord cheatsheet.
+A modal viewport tool that draws bones one press-drag at a time onto the Y=0 picture plane, without entering Edit Mode. It is reachable even with no armature in the scene. The options box sets the front-ortho lock, chain default, name prefix, and grid snap increment. See the [walkthrough](../../00-guides/01-basic/02-blender.md#build-the-skeleton) for the full chord cheatsheet.

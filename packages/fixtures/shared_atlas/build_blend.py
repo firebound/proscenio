@@ -145,8 +145,6 @@ def _build_sprite_plane(
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     mesh.materials.append(mat)
 
-    if hasattr(obj, "proscenio"):
-        obj.proscenio.element_type = "mesh"
     obj["proscenio_type"] = "mesh"
     return obj
 

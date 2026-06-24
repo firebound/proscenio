@@ -156,9 +156,6 @@ def _build_sprite_quad(idx: int, armature_obj: bpy.types.Object) -> bpy.types.Ob
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     mesh.materials.append(mat)
 
-    if hasattr(obj, "proscenio"):
-        obj.proscenio.element_type = "mesh"
-        obj.proscenio.centered = True
     obj["proscenio_type"] = "mesh"
     obj["proscenio_centered"] = True
     return obj

@@ -39,11 +39,11 @@ def test_driver_rows_list_proscenio_drivers(automesh_fixture):
     rows = proscenio_driver_rows(obj)
     by_path = {row.data_path: row for row in rows}
 
-    assert "proscenio.region_x" in by_path
-    assert "proscenio.frame" in by_path
-    assert by_path["proscenio.region_x"].label == "Region X"
-    assert by_path["proscenio.region_x"].bone == "wrist"
-    assert by_path["proscenio.frame"].bone == "palm"
+    assert '["proscenio_region_x"]' in by_path
+    assert '["proscenio_frame"]' in by_path
+    assert by_path['["proscenio_region_x"]'].label == "Region X"
+    assert by_path['["proscenio_region_x"]'].bone == "wrist"
+    assert by_path['["proscenio_frame"]'].bone == "palm"
 
 
 def test_remove_driver_drops_one_leaving_the_rest(automesh_fixture):
@@ -63,18 +63,18 @@ def test_remove_driver_drops_one_leaving_the_rest(automesh_fixture):
         source_axis="ROT_Y",
     )
 
-    result = bpy.ops.proscenio.remove_driver(data_path="proscenio.region_x")
+    result = bpy.ops.proscenio.remove_driver(data_path='["proscenio_region_x"]')
 
     assert "FINISHED" in result
     remaining = {row.data_path for row in proscenio_driver_rows(obj)}
-    assert "proscenio.region_x" not in remaining
-    assert "proscenio.frame" in remaining
+    assert '["proscenio_region_x"]' not in remaining
+    assert '["proscenio_frame"]' in remaining
 
 
 def test_remove_driver_cancels_when_absent(automesh_fixture):
     _activate("hand")
 
-    result = bpy.ops.proscenio.remove_driver(data_path="proscenio.region_w")
+    result = bpy.ops.proscenio.remove_driver(data_path='["proscenio_region_w"]')
 
     assert "CANCELLED" in result
 

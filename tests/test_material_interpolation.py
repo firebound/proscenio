@@ -18,12 +18,11 @@ from types import SimpleNamespace
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core._shared.hydrate import OBJECT_PROPS  # noqa: E402  - sys.path setup above
+from core._shared import cp_keys  # noqa: E402  - sys.path setup above
 from core._shared.material_images import (  # noqa: E402  - sys.path setup above
     iter_material_image_nodes,
     set_object_texture_interpolation,
 )
-from core.mirror import OBJECT_MIRROR_MAP  # noqa: E402  - sys.path setup above
 
 
 def _tex_node(interpolation: str = "Linear") -> SimpleNamespace:
@@ -96,13 +95,16 @@ def test_set_interpolation_handles_none_object() -> None:
 
 
 def test_pixel_art_not_exported() -> None:
-    """``pixel_art`` is authoring-only: never mirrored to a CP, never hydrated.
+    """``pixel_art`` is authoring-only: PropertyGroup-canonical, no idprop home.
 
-    The toggle changes only viewport interpolation. If it ever picked up a
-    mirror/hydrate entry it would start writing a Custom Property and could
-    leak into a downstream reader, so guard both maps here.
+    The toggle changes only viewport interpolation. It has no ``proscenio_*``
+    Custom Property key, so it can never be stamped onto an Object or read by
+    the headless writer - guard the key registry here.
     """
-    mirror_attrs = {attr for _cp, attr, _caster in OBJECT_MIRROR_MAP}
-    hydrate_attrs = {attr for _cp, attr in OBJECT_PROPS}
-    assert "pixel_art" not in mirror_attrs
-    assert "pixel_art" not in hydrate_attrs
+    cp_values = {
+        getattr(cp_keys, name)
+        for name in dir(cp_keys)
+        if name.startswith("PROSCENIO_") and isinstance(getattr(cp_keys, name), str)
+    }
+    assert "proscenio_pixel_art" not in cp_values
+    assert not hasattr(cp_keys, "PROSCENIO_PIXEL_ART")

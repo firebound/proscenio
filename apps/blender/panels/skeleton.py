@@ -193,8 +193,8 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         scene_props = getattr(context.scene, "proscenio", None)
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
         # Writes during ``draw`` are forbidden by Blender, so the initial
-        # fill happens in the load_post / deferred_hydrate handlers; here the
-        # picker is surfaced read-only (clearing it falls back to QuickRig).
+        # fill happens in the load_post handler; here the picker is surfaced
+        # read-only (clearing it falls back to QuickRig).
         if scene_props is not None:
             row = layout.row(align=True)
             row.label(text="", icon="ARMATURE_DATA")

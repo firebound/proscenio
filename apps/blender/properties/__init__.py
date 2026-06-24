@@ -1,32 +1,31 @@
 """Proscenio property groups.
 
-These property groups expose typed widgets for the addon panel. Their
-values round-trip with the legacy Custom Properties on the same data
-block so users who authored a `.blend` before the authoring panel see existing
-values without manual re-entry, and power users can keep editing raw
-Custom Properties if they prefer.
+These property groups expose typed widgets for the addon panel. The
+per-Object fields that the writer reads store their value in a single
+home - the ``proscenio_*`` Custom Property - and surface in the panel
+through a ``get=``/``set=`` proxy over that idprop (see ``object_props``).
 
 Contract:
 
-- The PropertyGroup is the editor-side source of truth (typed,
-  validated, surfaced in the panel).
-- Each property has an ``update`` callback that mirrors the value to
-  the Custom Property the writer reads (``proscenio_type``, etc).
-- On ``register()``, every existing Custom Property is hydrated into
-  the PropertyGroup so legacy data shows up in the new UI.
+- The CP-canonical fields read and write the Custom Property the writer
+  reads; the PropertyGroup proxy is the typed editor widget over it.
+- The PG-canonical fields (pixel art, atlas flags, the driver picker,
+  outliner favorite) store in the PropertyGroup only - pure GUI state.
+- There is no mirror and no hydrate: one field, one storage home, so
+  nothing is copied at load or save time.
 
 Submodules per concern:
 
 - ``object_props.py``     ``ProscenioObjectProps`` + EnumProperty items
                           tuples (sprite type, region mode, driver target,
-                          driver source axis).
+                          driver source axis) + the idprop get/set proxies.
 - ``scene_props.py``      ``ProscenioSceneProps`` - sticky export path,
                           atlas packer params, outliner state, validation
                           results collection.
 - ``validation_issue.py`` ``ProscenioValidationIssue`` - one element of
                           the scene-level validation results collection.
-- ``_handlers.py``        persistent ``bpy.app.handlers`` (load_post,
-                          save_pre) + the deferred-hydrate timer job.
+- ``_handlers.py``        persistent ``bpy.app.handlers`` (load_post
+                          armature auto-fill, depsgraph hygiene).
 - ``_dynamic_items.py``   EnumProperty dynamic-items callbacks +
                           PointerProperty poll filters + the GC-pinning
                           items cache.
@@ -45,13 +44,8 @@ from bpy.props import PointerProperty
 from bpy.types import Object as _Object
 from bpy.types import Scene
 
-from ..core._shared.hydrate import (  # type: ignore[import-not-found]
-    OBJECT_PROPS as _OBJECT_PROPS,  # noqa: F401
-)
 from ._handlers import (
-    deferred_hydrate,
     on_blend_load,
-    on_blend_save_pre,
     on_depsgraph_update,
 )
 from .object_props import ProscenioObjectProps
@@ -78,32 +72,13 @@ def register() -> None:
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
     if on_blend_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(on_blend_load)
-    if on_blend_save_pre not in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.append(on_blend_save_pre)
     if on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(on_depsgraph_update)
-    # Defer hydration to the next tick. Two reasons:
-    #   1. During initial Blender startup, bpy.data is _RestrictData here.
-    #   2. Mid-session enable: PointerProperty wiring stabilizes only
-    #      after register() returns. Setting PropertyGroup fields inline
-    #      writes to a transient stub that drops before the data block
-    #      is committed.
-    # Guard against duplicate registration so reload-the-addon does not
-    # pile up timers; a residual timer would fire after Scene.proscenio
-    # has been deleted in unregister().
-    if not bpy.app.timers.is_registered(deferred_hydrate):
-        bpy.app.timers.register(deferred_hydrate, first_interval=0.0)
 
 
 def unregister() -> None:
-    # Pull the deferred hydrate timer first so a pending tick does not
-    # fire against a half-torn-down PropertyGroup.
-    if bpy.app.timers.is_registered(deferred_hydrate):
-        bpy.app.timers.unregister(deferred_hydrate)
     if on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(on_depsgraph_update)
-    if on_blend_save_pre in bpy.app.handlers.save_pre:
-        bpy.app.handlers.save_pre.remove(on_blend_save_pre)
     if on_blend_load in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(on_blend_load)
     if hasattr(Scene, "proscenio"):

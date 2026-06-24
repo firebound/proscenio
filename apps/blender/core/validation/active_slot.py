@@ -43,9 +43,7 @@ def _check_slot_default(obj: object, children: list[object], obj_name: str) -> l
     # Read the way the writer emits it (PG first, raw CP fallback) so a
     # proscenio_slot_default edited directly in the Custom Properties UI is
     # validated against the same value the export will carry.
-    slot_default = str(
-        read_field(obj, pg_field="slot_default", cp_key=PROSCENIO_SLOT_DEFAULT, default="")
-    )
+    slot_default = str(read_field(obj, cp_key=PROSCENIO_SLOT_DEFAULT, default=""))
     if not slot_default:
         return []
     child_names = {name_of(c) for c in children}
@@ -73,7 +71,7 @@ def slot_parent_bone(obj: object) -> str:
     Shared by the validators and the panel so the "no parent bone" notion
     has a single definition.
     """
-    slot_bone = str(read_field(obj, pg_field="slot_bone", cp_key=PROSCENIO_SLOT_BONE, default=""))
+    slot_bone = str(read_field(obj, cp_key=PROSCENIO_SLOT_BONE, default=""))
     if slot_bone:
         return slot_bone
     if getattr(obj, "parent_type", "") != "BONE":

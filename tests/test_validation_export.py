@@ -33,9 +33,32 @@ from core.validation.export import (  # noqa: E402
 )
 from core.validation.issue import Issue  # noqa: E402
 
+# spec 037: the writer reads each per-Object field from its ``proscenio_*``
+# Custom Property (idprop) via ``obj.get``. ``_Obj`` is a bpy-Object stand-in
+# whose ``.get`` derives the idprop value from a ``proscenio=`` namespace, so
+# the test data stays readable while exercising the real idprop read path.
+_FIELD_TO_CP = {"element_type": "proscenio_type"}
+
+
+def _cp_key(field: str) -> str:
+    return _FIELD_TO_CP.get(field, f"proscenio_{field}")
+
+
+class _Obj(SimpleNamespace):
+    """A fake bpy Object: attribute access plus idprop-style ``.get``."""
+
+    def get(self, key, default=None):  # noqa: ANN001, ANN201
+        pg = getattr(self, "proscenio", None)
+        if pg is None:
+            return default
+        for field, value in vars(pg).items():
+            if _cp_key(field) == key:
+                return value
+        return default
+
 
 def _slot_empty() -> SimpleNamespace:
-    return SimpleNamespace(type="EMPTY", proscenio=SimpleNamespace(is_slot=True))
+    return _Obj(type="EMPTY", proscenio=SimpleNamespace(is_slot=True))
 
 
 def _cp_carrier(**cp: str) -> SimpleNamespace:
@@ -132,7 +155,7 @@ def _sprite_uvs(
     element_type: str = "sprite",
 ) -> SimpleNamespace:
     loops = [SimpleNamespace(uv=(u, v)) for u, v in uvs]
-    return SimpleNamespace(
+    return _Obj(
         name=name,
         type="MESH",
         proscenio=SimpleNamespace(
@@ -251,7 +274,7 @@ def test_transform_key_check_ignores_a_visibility_only_layered_action() -> None:
 
 def test_duplicate_slot_name_errors() -> None:
     def slot(name: str) -> SimpleNamespace:
-        return SimpleNamespace(
+        return _Obj(
             name=name,
             type="EMPTY",
             parent_type="OBJECT",
@@ -498,7 +521,7 @@ def _driven_sprite(
     armature: SimpleNamespace,
     bone_target: str,
     transform_type: str = "ROT_Y",
-    data_path: str = "proscenio.region_x",
+    data_path: str = '["proscenio_region_x"]',
 ) -> SimpleNamespace:
     target = SimpleNamespace(
         id=armature, bone_target=bone_target, transform_type=transform_type

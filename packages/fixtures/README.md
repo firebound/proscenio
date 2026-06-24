@@ -142,15 +142,15 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
   tex.interpolation = "Closest"
   ```
 
-- **PropertyGroup + Custom Property mirror**: write both `obj.proscenio.<field>` (when the addon is registered) and `obj["proscenio_<field>"]` (always). The headless writer reads CPs when the addon is not loaded; the PG path is for the panel UX.
+- **One field, one home (Custom Property)**: stamp each per-Object field on its `obj["proscenio_<field>"]` Custom Property (idprop) only - that is the field's single storage home and what the writer reads. Do NOT also write `obj.proscenio.<field>`: the PropertyGroup field is a `get`/`set` proxy over the same idprop (see spec 037), so the build needs no addon registration. Animatable fields (`frame`, the region fields) keyframe and drive on the idprop path `'["proscenio_<field>"]'`, because Blender cannot keyframe a PropertyGroup-nested field.
 - **Driver wiring** (when the fixture exercises Drive-from-Bone): mirror the panel operator's defaults exactly --
   - `target.transform_type = "ROT_Y"` (camera-axis rotation in Blender Front Ortho)
   - `target.transform_space = "WORLD_SPACE"` for `ROT_*`, `"LOCAL_SPACE"` for `LOC_*`
   - `target.rotation_mode = "XYZ"` (Euler in radians, not quaternion)
-  - Strip the default seed keyframes after `driver_add(...)`:
+  - Target the idprop directly (the field's one home; resolves with no addon registered) and strip the default seed keyframes after `driver_add(...)`:
 
     ```python
-    fcurve = sprite_obj.driver_add("proscenio.frame")
+    fcurve = sprite_obj.driver_add('["proscenio_frame"]')
     while fcurve.keyframe_points:
         fcurve.keyframe_points.remove(fcurve.keyframe_points[0])
     ```

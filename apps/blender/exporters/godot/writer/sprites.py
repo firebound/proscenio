@@ -114,7 +114,7 @@ def _derive_z_index(obj: bpy.types.Object) -> int | None:
     the addon spacing, so the export never reads ``location.y`` and never
     depends on the spacing preference. A net-zero order emits nothing.
     """
-    order = int(read_field(obj, pg_field="y_draw_order", cp_key=PROSCENIO_Y_DRAW_ORDER, default=0))
+    order = int(read_field(obj, cp_key=PROSCENIO_Y_DRAW_ORDER, default=0))
     return -order or None
 
 
@@ -177,9 +177,7 @@ def build_element(
     legacy ``proscenio_type`` Custom Property when the PropertyGroup is
     unavailable (default ``"mesh"``).
     """
-    element_type: str = str(
-        read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
-    )
+    element_type: str = str(read_field(obj, cp_key="proscenio_type", default="mesh"))
     if element_type == "sprite":
         return build_sprite(obj, ppu)
     if element_type != "mesh":
@@ -296,8 +294,8 @@ def _per_sprite_texture(obj: bpy.types.Object) -> str | None:
 
 def build_sprite(obj: bpy.types.Object, ppu: float) -> SpriteElement:
     """Emit a ``sprite`` element entry (Sprite2D)."""
-    hframes = int(read_field(obj, pg_field="hframes", cp_key="proscenio_hframes", default=1))
-    vframes = int(read_field(obj, pg_field="vframes", cp_key="proscenio_vframes", default=1))
+    hframes = int(read_field(obj, cp_key="proscenio_hframes", default=1))
+    vframes = int(read_field(obj, cp_key="proscenio_vframes", default=1))
     if hframes < 1 or vframes < 1:
         raise RuntimeError(
             f"Proscenio: sprite object {obj.name!r} needs hframes >= 1 "
@@ -310,10 +308,8 @@ def build_sprite(obj: bpy.types.Object, ppu: float) -> SpriteElement:
         "bone": resolve_sprite_bone(obj),
         "hframes": hframes,
         "vframes": vframes,
-        "frame": int(read_field(obj, pg_field="frame", cp_key="proscenio_frame", default=0)),
-        "centered": bool(
-            read_field(obj, pg_field="centered", cp_key="proscenio_centered", default=True)
-        ),
+        "frame": int(read_field(obj, cp_key="proscenio_frame", default=0)),
+        "centered": bool(read_field(obj, cp_key="proscenio_centered", default=True)),
     }
     manual_region = region_core.manual_region_or_none(obj)
     if manual_region is not None:

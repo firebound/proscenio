@@ -322,7 +322,7 @@ def _slicer_upstream_uv(slicer: Any) -> Any:
 
 
 def _wire_slicer_drivers(slicer: Any, obj: Any) -> None:
-    """Wire `obj.proscenio.{frame,hframes,vframes}` -> slicer inputs."""
+    """Wire the `["proscenio_{frame,hframes,vframes}"]` idprops -> slicer inputs."""
     spec = (
         (_SOCK_FRAME, "frame"),
         (_SOCK_HFRAMES, "hframes"),
@@ -343,7 +343,7 @@ def _wire_slicer_drivers(slicer: Any, obj: Any) -> None:
         target = var.targets[0]
         target.id_type = "OBJECT"
         target.id = obj
-        target.data_path = f"proscenio.{prop_name}"
+        target.data_path = f'["proscenio_{prop_name}"]'
 
 
 def _drop_slicer_drivers(material: Any) -> None:

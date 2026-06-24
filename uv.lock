@@ -792,7 +792,7 @@ dev = [
     { name = "pillow", specifier = ">=10.0" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "proscenio-models", editable = "packages/models" },
-    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
     { name = "ruff", specifier = ">=0.6" },
 ]

@@ -48,6 +48,7 @@ clampar
 classmethod
 clickability
 clicky
+clsx
 cmdln
 CMYK
 codegen
@@ -100,6 +101,7 @@ dtype
 dunder
 editability
 elif
+endoflife
 ensurepip
 esac
 euler
@@ -176,6 +178,7 @@ lineterm
 localise
 localtime
 lockdown
+lockfiles
 lstrip
 manylinux
 materialised

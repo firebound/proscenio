@@ -10,8 +10,6 @@ Isolates the small bpy-side gotchas that surround the
 - The module-level cache that pins the items list for the lifetime
   of the addon, dodging the EnumProperty GC bug where Blender frees
   the returned list mid-draw and corrupts the UI strings.
-- ``_on_any_update``: shared update callback that mirrors every PG
-  field to its Custom Property on every edit.
 """
 
 from __future__ import annotations
@@ -19,8 +17,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import bpy
-
-from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
     from .object_props import ProscenioObjectProps
@@ -61,15 +57,3 @@ def driver_bone_items(
     items = [(bone.name, bone.name, "") for bone in bones]
     _DRIVER_BONE_ITEMS_CACHE[id(armature)] = items
     return items
-
-
-def on_any_update(self: ProscenioObjectProps, context: bpy.types.Context) -> None:
-    """Mirror every field on any panel edit.
-
-    Must mirror all fields, not only the edited one: a field left at its
-    default never fires its own update callback, so a per-field mirror
-    would leave the Custom Property snapshot partial.
-    """
-    obj = context.active_object
-    if obj is not None:
-        mirror_all_fields(self, obj)

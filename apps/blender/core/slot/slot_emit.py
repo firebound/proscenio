@@ -43,7 +43,7 @@ def is_slot_empty(obj: object) -> bool:
     """
     if getattr(obj, "type", None) != "EMPTY":
         return False
-    return bool(read_bool_flag(obj, pg_field="is_slot", cp_key=PROSCENIO_IS_SLOT))
+    return bool(read_bool_flag(obj, cp_key=PROSCENIO_IS_SLOT))
 
 
 class _SlotKwargs(TypedDict):

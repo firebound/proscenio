@@ -1,18 +1,19 @@
-"""Sprite-frame animation emission: bake bone-driven ``proscenio.frame`` drivers.
+"""Sprite-frame animation emission: bake bone-driven frame-index drivers.
 
 A sprite's frame index can be driven from a pose bone (the Drive-from-Bone
-shortcut writes a SCRIPTED driver on ``proscenio.frame``). Blender evaluates
-the driver as the bone animates, but the raw fcurve carries no keyframes, so
-the writer baked nothing - the in-Blender preview switched frames while the
-export dropped them. This module bakes the driven value by stepping the scene
-over the armature's assigned action, reading the posed bone channel the driver
-reads, evaluating the driver expression, and emitting a ``sprite_frame`` track
-with constant-interpolation keys at each change.
+shortcut writes a SCRIPTED driver on the ``["proscenio_frame"]`` Custom
+Property). Blender evaluates the driver as the bone animates, but the raw
+fcurve carries no keyframes, so the writer baked nothing - the in-Blender
+preview switched frames while the export dropped them. This module bakes the
+driven value by stepping the scene over the armature's assigned action,
+reading the posed bone channel the driver reads, evaluating the driver
+expression, and emitting a ``sprite_frame`` track with constant-interpolation
+keys at each change.
 
-The driver's write target (``proscenio.frame``) needs the addon PropertyGroup,
-which is absent in the headless CP-fallback test harness; reproducing the
-driver from the posed bone instead keeps the bake PropertyGroup-independent, so
-the same track exports whether the PG is registered or not.
+The driver targets the ``proscenio_frame`` idprop directly (the field's one
+storage home, present whether or not the addon PropertyGroup is registered),
+so the same track exports headless and in the editor; reproducing the driver
+from the posed bone keeps the bake independent of live driver evaluation.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     pose_bone_by_name,
 )
 
-_FRAME_DRIVER_PATH = "proscenio.frame"
+_FRAME_DRIVER_PATH = '["proscenio_frame"]'
 _ROT_COMPONENT = {"ROT_X": 0, "ROT_Y": 1, "ROT_Z": 2}
 _LOC_COMPONENT = {"LOC_X": 0, "LOC_Y": 1, "LOC_Z": 2}
 # Math functions/constants a driver expression may reference (Blender exposes
@@ -47,7 +48,7 @@ _SAFE_MATH: dict[str, object] = {
 
 @dataclass(frozen=True)
 class _FrameDriver:
-    """A sprite whose ``proscenio.frame`` is driven from a pose bone."""
+    """A sprite whose frame idprop is driven from a pose bone."""
 
     sprite: bpy.types.Object
     armature: bpy.types.Object
@@ -65,7 +66,7 @@ def _driver_armature(driver: bpy.types.Driver) -> bpy.types.Object | None:
 
 
 def _collect_frame_drivers(scene: bpy.types.Scene) -> list[_FrameDriver]:
-    """Find sprites whose ``proscenio.frame`` is driven from a bone."""
+    """Find sprites whose frame idprop is driven from a bone."""
     out: list[_FrameDriver] = []
     for obj in iter_objects(scene):
         anim_data = obj.animation_data
@@ -147,8 +148,8 @@ def _eval_frame(expression: str, values: dict[str, float]) -> int | None:
 
 def _grid_max_frame(sprite: bpy.types.Object) -> int:
     """Highest valid frame index for the sprite's grid (``hframes * vframes - 1``)."""
-    hframes = int(read_field(sprite, pg_field="hframes", cp_key="proscenio_hframes", default=1))
-    vframes = int(read_field(sprite, pg_field="vframes", cp_key="proscenio_vframes", default=1))
+    hframes = int(read_field(sprite, cp_key="proscenio_hframes", default=1))
+    vframes = int(read_field(sprite, cp_key="proscenio_vframes", default=1))
     return max(0, hframes * vframes - 1)
 
 
@@ -216,24 +217,19 @@ def _direct_frame_track(
     sprite: bpy.types.Object, action: bpy.types.Action, fps: int
 ) -> Track | None:
     """Emit a ``sprite_frame`` track from keyframes set directly on the sprite's
-    ``proscenio.frame`` (the blink_eyes shape: a frame cycle, no driver).
+    ``["proscenio_frame"]`` Custom Property (the blink_eyes shape: a frame
+    cycle, no driver).
 
     Reads the fcurve keyframe values straight off the action, so it does not
     need the addon PropertyGroup registered. Wraps into the sprite grid (see
     :func:`_wrap_frame`), constant interpolation, ``(frame - 1) / fps`` time
     base - same as the driven bake.
     """
-    # Prefer the PropertyGroup curve over the raw CP curve when both exist, so a
-    # direct keyframe export honours the same PG-first contract the rest of the
-    # writer uses (first-match over the tuple would be order-dependent).
-    frame_curve_pg: bpy.types.FCurve | None = None
-    frame_curve_cp: bpy.types.FCurve | None = None
+    fcurve: bpy.types.FCurve | None = None
     for fc in action_fcurves(action):
-        if fc.data_path == _FRAME_DRIVER_PATH and frame_curve_pg is None:
-            frame_curve_pg = fc
-        elif fc.data_path == '["proscenio_frame"]' and frame_curve_cp is None:
-            frame_curve_cp = fc
-    fcurve = frame_curve_pg or frame_curve_cp
+        if fc.data_path == _FRAME_DRIVER_PATH:
+            fcurve = fc
+            break
     if fcurve is None:
         return None
     max_frame = _grid_max_frame(sprite)
@@ -251,14 +247,12 @@ def _direct_frame_track(
 
 
 def _is_sprite(obj: bpy.types.Object) -> bool:
-    return str(
-        read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh")
-    ) == ("sprite")
+    return str(read_field(obj, cp_key="proscenio_type", default="mesh")) == ("sprite")
 
 
 def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Animation]:
     """Bake sprite-frame animations: bone-driven frames AND frames keyed directly
-    on ``proscenio.frame``.
+    on the frame idprop.
 
     One animation per action, named to match ``build_animations`` so the by-name
     merge folds the track in beside any bone_transform tracks. Restores the

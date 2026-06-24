@@ -3,6 +3,22 @@
 Holds every typed setting that lives on a mesh / Empty: element type,
 frame metadata, texture region, slot flags, driver picker.
 
+Storage has one home per field (spec 037):
+
+- **Custom-Property-canonical** fields (``element_type``, ``hframes``,
+  ``vframes``, ``frame``, ``centered``, the region fields, ``y_draw_order``,
+  ``is_slot``, ``slot_default``, ``slot_bone``) store their value in the
+  ``proscenio_*`` Custom Property (idprop) the headless writer reads. The
+  PropertyGroup field is a typed ``get=``/``set=`` proxy over that idprop -
+  it keeps the panel widget (labels, ranges, descriptions) but stores
+  nothing itself. Animatable / driver-target fields (``frame``, the region
+  fields) keyframe and drive on the idprop directly, because Blender cannot
+  keyframe a field nested inside a PropertyGroup.
+- **PropertyGroup-canonical** fields (``pixel_art``, ``material_isolated``,
+  ``exclude_from_atlas``, the driver picker, ``is_outliner_favorite``) are
+  pure GUI / operator state the headless writer never reads. They store in
+  the PropertyGroup only - no idprop, no mirror.
+
 The EnumProperty items tuples live here too - they are used by exactly
 one PropertyGroup, so colocation keeps the Enum value <-> label mapping
 next to the field that consumes it.
@@ -10,6 +26,7 @@ next to the field that consumes it.
 
 from __future__ import annotations
 
+import bpy
 from bpy.props import (
     BoolProperty,
     EnumProperty,
@@ -21,6 +38,11 @@ from bpy.props import (
 from bpy.types import Context, PropertyGroup
 from bpy.types import Object as _Object
 
+from ..core._shared import cp_keys  # type: ignore[import-not-found]
+from ..core._shared.idprop_proxy import (  # type: ignore[import-not-found]
+    enum_index_to_value,
+    enum_value_to_index,
+)
 from ..core._shared.material_images import (  # type: ignore[import-not-found]
     set_object_texture_interpolation,
 )
@@ -28,22 +50,7 @@ from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-
 from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
     DRIVER_SOURCE_AXIS_ITEMS,
 )
-from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
-from ._dynamic_items import driver_bone_items, is_armature, on_any_update
-
-
-def _clamp_frame_and_update(self: ProscenioObjectProps, context: Context) -> None:
-    """Clamp ``frame`` into the sprite grid, then run the shared mirror update.
-
-    Written through ``self["frame"]`` (the idprop) so it does not re-enter this
-    callback. Wired onto ``frame``, ``hframes``, and ``vframes`` so shrinking
-    the grid pulls a now-out-of-range initial frame back in - the static
-    ``max=`` cannot express a bound that depends on two other fields.
-    """
-    clamped = clamp_frame_index(self.frame, self.hframes, self.vframes)
-    if clamped != int(self.frame):
-        self["frame"] = clamped
-    on_any_update(self, context)
+from ._dynamic_items import driver_bone_items, is_armature
 
 
 def _pixel_art_update(self: ProscenioObjectProps, context: Context) -> None:
@@ -51,40 +58,24 @@ def _pixel_art_update(self: ProscenioObjectProps, context: Context) -> None:
 
     ``pixel_art`` is authoring-only viewport state: it sets the texture node's
     nearest-neighbor interpolation so pixel art stops bilinear-blurring under
-    magnification. It is deliberately NOT mirrored to a Custom Property and
-    NOT exported - it does not call the shared mirror, and it has no entry in
-    ``mirror.OBJECT_MIRROR_MAP`` / ``hydrate.OBJECT_PROPS``. The Godot writer
-    emits no ``texture_filter``, so the toggle changes nothing in the
-    ``.proscenio`` (regression-guarded by ``test_pixel_art_not_exported``).
+    magnification. It is deliberately NOT stored on an idprop and NOT exported -
+    it is PropertyGroup-canonical (pure GUI state). The Godot writer emits no
+    ``texture_filter``, so the toggle changes nothing in the ``.proscenio``
+    (regression-guarded by ``test_pixel_art_not_exported``).
     """
     obj = context.active_object
     if obj is not None:
         set_object_texture_interpolation(obj, "Closest" if self.pixel_art else "Linear")
 
 
-def _y_draw_order_update(self: ProscenioObjectProps, context: Context) -> None:
-    """Position the owning object in Y from its draw-order layer, then mirror.
-
-    ``y_draw_order`` is the authoritative draw order: a stored integer that
-    doubles as the object's Y position (``order * spacing``) so stacked planes
-    separate in the viewport and never z-fight. The writer reads the integer
-    directly, so the spacing only spreads planes in Blender - it never changes
-    the exported order. The spacing comes from the addon preference (imported
-    lazily to avoid an import cycle at registration).
-
-    Resolves the object through ``self.id_data`` (the ID this PropertyGroup is
-    rooted on), not the active object, so editing the field from a non-active
-    Outliner row moves and mirrors the correct object. Mirrors inline for the
-    same reason - the shared ``on_any_update`` keys off the active object.
-    """
-    obj = self.id_data
-    if obj is None:
-        return
-    from ..addon_prefs import y_location_spacing
-
-    obj.location.y = self.y_draw_order * y_location_spacing(context)
-    mirror_all_fields(self, obj)
-
+# --- Custom-Property-backed proxy accessors --------------------------------
+#
+# Each CP-canonical field declares a ``get``/``set`` pair below. The getter
+# reads the ``proscenio_*`` idprop off ``self.id_data`` (the Object this
+# PropertyGroup is rooted on), the setter writes it. There is no recursion:
+# the setter writes the idprop, never the proxy field itself, so Blender's
+# ``set=``-suppresses-``update=`` rule is moot - the side effects (frame
+# clamp, Y position) live in the setters explicitly.
 
 ELEMENT_TYPE_ITEMS = (
     ("mesh", "Mesh", "Deformable cutout - Polygon2D vertices + UV (default)", 0),
@@ -95,6 +86,7 @@ ELEMENT_TYPE_ITEMS = (
         1,
     ),
 )
+_ELEMENT_TYPE_VALUES = tuple(item[0] for item in ELEMENT_TYPE_ITEMS)
 
 REGION_MODE_ITEMS = (
     (
@@ -110,6 +102,7 @@ REGION_MODE_ITEMS = (
         1,
     ),
 )
+_REGION_MODE_VALUES = tuple(item[0] for item in REGION_MODE_ITEMS)
 
 DRIVER_TARGET_ITEMS = (
     ("frame", "Frame index", "Sprite-frame cell - driven 0..hframes*vframes-1", 0),
@@ -120,6 +113,176 @@ DRIVER_TARGET_ITEMS = (
 )
 
 
+def _get_element_type(self: ProscenioObjectProps) -> int:
+    stored = str(_idprop_get(self, cp_keys.PROSCENIO_TYPE, "mesh"))
+    return enum_value_to_index(stored, _ELEMENT_TYPE_VALUES)
+
+
+def _set_element_type(self: ProscenioObjectProps, value: int) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_TYPE, enum_index_to_value(value, _ELEMENT_TYPE_VALUES))
+
+
+def _get_region_mode(self: ProscenioObjectProps) -> int:
+    stored = str(_idprop_get(self, cp_keys.PROSCENIO_REGION_MODE, "auto"))
+    return enum_value_to_index(stored, _REGION_MODE_VALUES)
+
+
+def _set_region_mode(self: ProscenioObjectProps, value: int) -> None:
+    _idprop_set(
+        self, cp_keys.PROSCENIO_REGION_MODE, enum_index_to_value(value, _REGION_MODE_VALUES)
+    )
+
+
+def _get_hframes(self: ProscenioObjectProps) -> int:
+    return max(1, int(_idprop_get(self, cp_keys.PROSCENIO_HFRAMES, 1)))
+
+
+def _set_hframes(self: ProscenioObjectProps, value: int) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_HFRAMES, max(1, int(value)))
+    _reclamp_frame(self)
+
+
+def _get_vframes(self: ProscenioObjectProps) -> int:
+    return max(1, int(_idprop_get(self, cp_keys.PROSCENIO_VFRAMES, 1)))
+
+
+def _set_vframes(self: ProscenioObjectProps, value: int) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_VFRAMES, max(1, int(value)))
+    _reclamp_frame(self)
+
+
+def _get_frame(self: ProscenioObjectProps) -> int:
+    return max(0, int(_idprop_get(self, cp_keys.PROSCENIO_FRAME, 0)))
+
+
+def _set_frame(self: ProscenioObjectProps, value: int) -> None:
+    clamped = clamp_frame_index(int(value), self.hframes, self.vframes)
+    _idprop_set(self, cp_keys.PROSCENIO_FRAME, clamped)
+
+
+def _reclamp_frame(self: ProscenioObjectProps) -> None:
+    """Pull a now-out-of-range frame back into the grid after a grid resize.
+
+    Shrinking ``hframes`` / ``vframes`` can leave ``frame`` past the last
+    cell; re-clamp it so the writer never emits an index Godot rejects. The
+    static ``max=`` cannot express a bound that depends on two other fields.
+    """
+    current = int(_idprop_get(self, cp_keys.PROSCENIO_FRAME, 0))
+    clamped = clamp_frame_index(current, self.hframes, self.vframes)
+    if clamped != current:
+        _idprop_set(self, cp_keys.PROSCENIO_FRAME, clamped)
+
+
+def _get_centered(self: ProscenioObjectProps) -> bool:
+    return bool(_idprop_get(self, cp_keys.PROSCENIO_CENTERED, True))
+
+
+def _set_centered(self: ProscenioObjectProps, value: bool) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_CENTERED, bool(value))
+
+
+def _region_float_get(self: ProscenioObjectProps, cp_key: str, default: float) -> float:
+    return float(_idprop_get(self, cp_key, default))
+
+
+def _region_float_set(self: ProscenioObjectProps, cp_key: str, value: float) -> None:
+    _idprop_set(self, cp_key, min(1.0, max(0.0, float(value))))
+
+
+def _get_region_x(self: ProscenioObjectProps) -> float:
+    return _region_float_get(self, cp_keys.PROSCENIO_REGION_X, 0.0)
+
+
+def _set_region_x(self: ProscenioObjectProps, value: float) -> None:
+    _region_float_set(self, cp_keys.PROSCENIO_REGION_X, value)
+
+
+def _get_region_y(self: ProscenioObjectProps) -> float:
+    return _region_float_get(self, cp_keys.PROSCENIO_REGION_Y, 0.0)
+
+
+def _set_region_y(self: ProscenioObjectProps, value: float) -> None:
+    _region_float_set(self, cp_keys.PROSCENIO_REGION_Y, value)
+
+
+def _get_region_w(self: ProscenioObjectProps) -> float:
+    return _region_float_get(self, cp_keys.PROSCENIO_REGION_W, 1.0)
+
+
+def _set_region_w(self: ProscenioObjectProps, value: float) -> None:
+    _region_float_set(self, cp_keys.PROSCENIO_REGION_W, value)
+
+
+def _get_region_h(self: ProscenioObjectProps) -> float:
+    return _region_float_get(self, cp_keys.PROSCENIO_REGION_H, 1.0)
+
+
+def _set_region_h(self: ProscenioObjectProps, value: float) -> None:
+    _region_float_set(self, cp_keys.PROSCENIO_REGION_H, value)
+
+
+def _get_y_draw_order(self: ProscenioObjectProps) -> int:
+    return int(_idprop_get(self, cp_keys.PROSCENIO_Y_DRAW_ORDER, 0))
+
+
+def _set_y_draw_order(self: ProscenioObjectProps, value: int) -> None:
+    """Store the draw-order layer and position the object in Y from it.
+
+    The integer is the authoritative draw order (the writer negates it into
+    ``z_index``); the Y position (``order * spacing``) only spreads stacked
+    planes in the viewport so they do not z-fight, and never changes the
+    export. The spacing comes from the addon preference. Resolves the object
+    through ``self.id_data`` so editing from a non-active Outliner row moves
+    the correct object. Reads ``bpy.context`` for the preference because a
+    ``set=`` callback receives no context argument.
+    """
+    order = int(value)
+    obj = self.id_data
+    if obj is None:
+        return
+    obj[cp_keys.PROSCENIO_Y_DRAW_ORDER] = order
+    from ..addon_prefs import y_location_spacing  # local import avoids a register cycle
+
+    obj.location.y = order * y_location_spacing(bpy.context)
+
+
+def _get_is_slot(self: ProscenioObjectProps) -> bool:
+    return bool(_idprop_get(self, cp_keys.PROSCENIO_IS_SLOT, False))
+
+
+def _set_is_slot(self: ProscenioObjectProps, value: bool) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_IS_SLOT, bool(value))
+
+
+def _get_slot_default(self: ProscenioObjectProps) -> str:
+    return str(_idprop_get(self, cp_keys.PROSCENIO_SLOT_DEFAULT, ""))
+
+
+def _set_slot_default(self: ProscenioObjectProps, value: str) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_SLOT_DEFAULT, str(value))
+
+
+def _get_slot_bone(self: ProscenioObjectProps) -> str:
+    return str(_idprop_get(self, cp_keys.PROSCENIO_SLOT_BONE, ""))
+
+
+def _set_slot_bone(self: ProscenioObjectProps, value: str) -> None:
+    _idprop_set(self, cp_keys.PROSCENIO_SLOT_BONE, str(value))
+
+
+def _idprop_get(self: ProscenioObjectProps, key: str, default: object) -> object:
+    obj = self.id_data
+    if obj is None:
+        return default
+    return obj.get(key, default)
+
+
+def _idprop_set(self: ProscenioObjectProps, key: str, value: object) -> None:
+    obj = self.id_data
+    if obj is not None:
+        obj[key] = value
+
+
 class ProscenioObjectProps(PropertyGroup):
     """Per-Object Proscenio settings - one PropertyGroup per mesh."""
 
@@ -128,7 +291,8 @@ class ProscenioObjectProps(PropertyGroup):
         description="Rendering path - Mesh maps to Polygon2D, Sprite maps to Sprite2D",
         items=ELEMENT_TYPE_ITEMS,
         default="mesh",
-        update=on_any_update,
+        get=_get_element_type,
+        set=_set_element_type,
     )
     hframes: IntProperty(  # type: ignore[valid-type]
         name="Horizontal frames",
@@ -136,7 +300,8 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_clamp_frame_and_update,
+        get=_get_hframes,
+        set=_set_hframes,
     )
     vframes: IntProperty(  # type: ignore[valid-type]
         name="Vertical frames",
@@ -144,7 +309,8 @@ class ProscenioObjectProps(PropertyGroup):
         default=1,
         min=1,
         soft_max=64,
-        update=_clamp_frame_and_update,
+        get=_get_vframes,
+        set=_set_vframes,
     )
     frame: IntProperty(  # type: ignore[valid-type]
         name="Frame",
@@ -153,13 +319,15 @@ class ProscenioObjectProps(PropertyGroup):
         ),
         default=0,
         min=0,
-        update=_clamp_frame_and_update,
+        get=_get_frame,
+        set=_set_frame,
     )
     centered: BoolProperty(  # type: ignore[valid-type]
         name="Centered",
         description="Whether the Sprite2D's offset centers on its origin",
         default=True,
-        update=on_any_update,
+        get=_get_centered,
+        set=_set_centered,
     )
     region_mode: EnumProperty(  # type: ignore[valid-type]
         name="Region mode",
@@ -170,7 +338,8 @@ class ProscenioObjectProps(PropertyGroup):
         ),
         items=REGION_MODE_ITEMS,
         default="auto",
-        update=on_any_update,
+        get=_get_region_mode,
+        set=_set_region_mode,
     )
     region_x: FloatProperty(  # type: ignore[valid-type]
         name="X",
@@ -179,7 +348,8 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=on_any_update,
+        get=_get_region_x,
+        set=_set_region_x,
     )
     region_y: FloatProperty(  # type: ignore[valid-type]
         name="Y",
@@ -188,7 +358,8 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=on_any_update,
+        get=_get_region_y,
+        set=_set_region_y,
     )
     region_w: FloatProperty(  # type: ignore[valid-type]
         name="Width",
@@ -197,7 +368,8 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=on_any_update,
+        get=_get_region_w,
+        set=_set_region_w,
     )
     region_h: FloatProperty(  # type: ignore[valid-type]
         name="Height",
@@ -206,7 +378,8 @@ class ProscenioObjectProps(PropertyGroup):
         min=0.0,
         max=1.0,
         precision=4,
-        update=on_any_update,
+        get=_get_region_h,
+        set=_set_region_h,
     )
     y_draw_order: IntProperty(  # type: ignore[valid-type]
         name="Y Location (Draw Order)",
@@ -220,7 +393,8 @@ class ProscenioObjectProps(PropertyGroup):
             "dragging the object in Y - a manual Y drag is flagged in validation."
         ),
         default=0,
-        update=_y_draw_order_update,
+        get=_get_y_draw_order,
+        set=_set_y_draw_order,
     )
     pixel_art: BoolProperty(  # type: ignore[valid-type]
         name="Pixel art",
@@ -243,7 +417,6 @@ class ProscenioObjectProps(PropertyGroup):
             "fresnel, etc)."
         ),
         default=False,
-        update=on_any_update,
     )
     exclude_from_atlas: BoolProperty(  # type: ignore[valid-type]
         name="Exclude from atlas",
@@ -254,7 +427,6 @@ class ProscenioObjectProps(PropertyGroup):
             "shared atlas."
         ),
         default=False,
-        update=on_any_update,
     )
 
     driver_target: EnumProperty(  # type: ignore[valid-type]
@@ -335,7 +507,6 @@ class ProscenioObjectProps(PropertyGroup):
             "favorites keep their normal category order, they do not move to the top."
         ),
         default=False,
-        update=on_any_update,
     )
 
     is_slot: BoolProperty(  # type: ignore[valid-type]
@@ -346,7 +517,8 @@ class ProscenioObjectProps(PropertyGroup):
             "and the Godot importer wires a Node2D parent + visible-toggled children."
         ),
         default=False,
-        update=on_any_update,
+        get=_get_is_slot,
+        set=_set_is_slot,
     )
     slot_default: StringProperty(  # type: ignore[valid-type]
         name="Slot default",
@@ -355,7 +527,8 @@ class ProscenioObjectProps(PropertyGroup):
             "Empty string defers to the first child mesh by sorted name."
         ),
         default="",
-        update=on_any_update,
+        get=_get_slot_default,
+        set=_set_slot_default,
     )
     slot_bone: StringProperty(  # type: ignore[valid-type]
         name="Slot bone",
@@ -370,5 +543,6 @@ class ProscenioObjectProps(PropertyGroup):
             "quads edge-on. Empty string anchors the slot at the skeleton root."
         ),
         default="",
-        update=on_any_update,
+        get=_get_slot_bone,
+        set=_set_slot_bone,
     )

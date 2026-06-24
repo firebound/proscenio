@@ -75,9 +75,41 @@ def _vert_weight(obj, group_name, idx):
         return 0.0
 
 
+def _sprite_manifest(tmp_path):
+    # One sprite layer (two numbered frames) so the stamp is exercised on the
+    # sprite branch (stamp_sprite), not just meshes.
+    frame_dir = tmp_path / "eye"
+    frame_dir.mkdir(exist_ok=True)
+    _png(frame_dir, "0")
+    _png(frame_dir, "1")
+    manifest = {
+        "format_version": 1,
+        "doc": "sprite_only.psd",
+        "size": [128, 128],
+        "pixels_per_unit": 100.0,
+        "layers": [
+            {
+                "kind": "sprite",
+                "name": "eye",
+                "position": [10, 10],
+                "size": [20, 20],
+                "z_order": 0,
+                "frames": [
+                    {"index": 0, "path": "eye/0.png"},
+                    {"index": 1, "path": "eye/1.png"},
+                ],
+            },
+        ],
+    }
+    path = tmp_path / "sprite_manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    return path
+
+
 def test_import_stamps_manifest_source_path(automesh_fixture, tmp_path):
     # Every imported object remembers the absolute source manifest path so a
-    # per-Element reimport resolves it without a picker.
+    # per-Element reimport resolves it without a picker. The stamp is resolved
+    # to absolute (a relative import path would break the one-click reimport).
     from proscenio.importers.photoshop import import_manifest  # type: ignore[import-not-found]
 
     if bpy.context.mode != "OBJECT":
@@ -85,8 +117,23 @@ def test_import_stamps_manifest_source_path(automesh_fixture, tmp_path):
     manifest_path = _two_layer_manifest(tmp_path)
     result = import_manifest(manifest_path)
     assert result.meshes
+    expected = str(manifest_path.resolve())
     for obj in result.meshes:
-        assert obj.get("proscenio_import_manifest") == str(manifest_path)
+        assert obj.get("proscenio_import_manifest") == expected
+
+
+def test_import_stamps_manifest_source_path_on_sprite(automesh_fixture, tmp_path):
+    # The remembered-path stamp must reach sprite elements too, not only meshes -
+    # the stamp is documented as per imported mesh / sprite object.
+    from proscenio.importers.photoshop import import_manifest  # type: ignore[import-not-found]
+
+    if bpy.context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    manifest_path = _sprite_manifest(tmp_path)
+    result = import_manifest(manifest_path)
+    sprite = _by_origin(result.meshes, "eye")
+    assert sprite.get("proscenio_type") == "sprite"
+    assert sprite.get("proscenio_import_manifest") == str(manifest_path.resolve())
 
 
 def test_reimport_element_touches_only_target(automesh_fixture, tmp_path):

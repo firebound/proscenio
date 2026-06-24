@@ -80,8 +80,10 @@ class PROSCENIO_OT_reimport_element(bpy.types.Operator, ImportHelper):
             report_info(self, f"re-imported Element {result.layer_name!r}")
             return {"FINISHED"}
         # missing / skipped: a no-op that left the Element intact - report and
-        # FINISH (not CANCELLED) so the warning surfaces and the undo step is clean.
-        report_warn(self, result.warning or "Element left unchanged")
+        # FINISH (not CANCELLED) so the warning surfaces and the undo step is
+        # clean. always=True so the feedback shows even at the lowest verbosity,
+        # otherwise the click looks like a silent no-op.
+        report_warn(self, result.warning or "Element left unchanged", always=True)
         return {"FINISHED"}
 
 

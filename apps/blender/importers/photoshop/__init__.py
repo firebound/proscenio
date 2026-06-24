@@ -138,9 +138,12 @@ def _tag_manifest_source(
 
     Lets a per-Element reimport (the Element panel button) find its origin file
     without a picker. Per-object - two manifests imported into one scene each
-    carry their own source.
+    carry their own source. The path is resolved to absolute at stamp time:
+    ``psd_manifest.load`` keeps ``source_path`` exactly as passed, so a relative
+    import path would be stamped relative and break the one-click reimport after
+    the file is reopened or Blender's working directory changes.
     """
-    source = str(manifest.source_path)
+    source = str(manifest.source_path.expanduser().resolve())
     for obj in meshes:
         obj[PROSCENIO_IMPORT_MANIFEST] = source
 
@@ -205,15 +208,17 @@ def _layer_for_object(
 ) -> psd_manifest.MeshLayer | psd_manifest.SpriteLayer | None:
     """Resolve ``obj`` back to its source manifest layer.
 
-    Prefers the stamped ``proscenio_import_origin`` (robust to a Blender-side
-    object rename), falling back to the object name for a freshly-authored mesh
-    adopted under the layer's name. A PSD-side layer rename misses and returns
-    ``None`` (the caller degrades to a warn-and-no-op).
+    A stamped ``proscenio_import_origin`` is the authoritative link (robust to a
+    Blender-side object rename): it resolves only against its own layer, and a
+    miss returns ``None`` so the caller degrades to a warn-and-no-op rather than
+    silently restamping a different layer that happens to share the object name.
+    The object-name fallback applies only to an unstamped object (a
+    freshly-authored mesh adopted under the layer's name).
     """
     layer_by_name = {layer.name: layer for layer in manifest.layers}
     origin = _origin_layer_name(obj)
-    if origin is not None and origin in layer_by_name:
-        return layer_by_name[origin]
+    if origin is not None:
+        return layer_by_name.get(origin)
     return layer_by_name.get(obj.name)
 
 

@@ -15,6 +15,29 @@ import pytest
 
 from blender.exporters.godot.writer import scene_discovery, sprites
 
+# spec 037: the writer reads each per-Object field from its ``proscenio_*``
+# Custom Property (idprop) via ``obj.get``. ``_Obj`` is a bpy-Object stand-in
+# whose ``.get`` derives the idprop value from a ``proscenio=`` namespace, so
+# the test data stays readable while exercising the real idprop read path.
+_FIELD_TO_CP = {"element_type": "proscenio_type"}
+
+
+def _cp_key(field: str) -> str:
+    return _FIELD_TO_CP.get(field, f"proscenio_{field}")
+
+
+class _Obj(SimpleNamespace):
+    """A fake bpy Object: attribute access plus idprop-style ``.get``."""
+
+    def get(self, key, default=None):  # noqa: ANN001, ANN201
+        pg = getattr(self, "proscenio", None)
+        if pg is None:
+            return default
+        for field, value in vars(pg).items():
+            if _cp_key(field) == key:
+                return value
+        return default
+
 
 def _vgroup(index: int, name: str) -> SimpleNamespace:
     return SimpleNamespace(index=index, name=name)
@@ -36,19 +59,19 @@ def test_derive_modulate_returns_the_tint() -> None:
 
 def test_derive_z_index_none_at_the_front_layer() -> None:
     # Draw order 0 is the front layer; the default needs no z_index.
-    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=0))
+    obj = _Obj(proscenio=SimpleNamespace(y_draw_order=0))
     assert sprites._derive_z_index(obj) is None
 
 
 def test_derive_z_index_negates_the_draw_order() -> None:
     # A back layer (order 2) maps to z_index -2; Godot draws a lower z_index behind.
-    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=2))
+    obj = _Obj(proscenio=SimpleNamespace(y_draw_order=2))
     assert sprites._derive_z_index(obj) == -2
 
 
 def test_derive_z_index_pulls_forward_on_negative_order() -> None:
     # A negative order pulls the plane in front of the front layer (z_index 3).
-    obj = SimpleNamespace(proscenio=SimpleNamespace(y_draw_order=-3))
+    obj = _Obj(proscenio=SimpleNamespace(y_draw_order=-3))
     assert sprites._derive_z_index(obj) == 3
 
 
@@ -65,7 +88,7 @@ def test_derive_z_index_reads_the_custom_property_fallback() -> None:
 def test_derive_z_index_ignores_the_object_y() -> None:
     # The stored order is the source of truth; the object's Y (only the viewport
     # spacing) is never read, so a stray Y drag cannot shift the exported order.
-    obj = SimpleNamespace(location=_vec(y=0.123), proscenio=SimpleNamespace(y_draw_order=1))
+    obj = _Obj(location=_vec(y=0.123), proscenio=SimpleNamespace(y_draw_order=1))
     assert sprites._derive_z_index(obj) == -1
 
 
@@ -129,7 +152,7 @@ def test_resolve_sprite_bone_empty_when_no_bone_or_groups() -> None:
 
 
 def test_build_sprite_reads_grid_and_bone() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="face",
         parent_type="BONE",
         parent_bone="head",
@@ -156,7 +179,7 @@ def test_build_sprite_reads_grid_and_bone() -> None:
 
 
 def test_build_sprite_emits_derived_appearance() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="hat",
         parent_type="OBJECT",
         parent_bone="",
@@ -176,7 +199,7 @@ def test_build_sprite_emits_derived_appearance() -> None:
 
 
 def test_build_sprite_rejects_zero_grid() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="bad",
         parent_type="OBJECT",
         parent_bone="",
@@ -188,7 +211,7 @@ def test_build_sprite_rejects_zero_grid() -> None:
 
 
 def test_build_sprite_routes_sprite_kind() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="spark",
         parent_type="OBJECT",
         parent_bone="",
@@ -206,7 +229,7 @@ def test_build_sprite_routes_sprite_kind() -> None:
 
 
 def test_build_sprite_rejects_unknown_kind() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="weird",
         parent_type="OBJECT",
         parent_bone="",

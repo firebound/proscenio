@@ -13,6 +13,29 @@ from types import SimpleNamespace
 from blender.core.slot import slot_emit
 from blender.exporters.godot.writer import slots
 
+# spec 037: the writer reads each per-Object field from its ``proscenio_*``
+# Custom Property (idprop) via ``obj.get``. ``_Obj`` is a bpy-Object stand-in
+# whose ``.get`` derives the idprop value from a ``proscenio=`` namespace, so
+# the test data stays readable while exercising the real idprop read path.
+_FIELD_TO_CP = {"element_type": "proscenio_type"}
+
+
+def _cp_key(field: str) -> str:
+    return _FIELD_TO_CP.get(field, f"proscenio_{field}")
+
+
+class _Obj(SimpleNamespace):
+    """A fake bpy Object: attribute access plus idprop-style ``.get``."""
+
+    def get(self, key, default=None):  # noqa: ANN001, ANN201
+        pg = getattr(self, "proscenio", None)
+        if pg is None:
+            return default
+        for field, value in vars(pg).items():
+            if _cp_key(field) == key:
+                return value
+        return default
+
 
 def _mesh_child(name: str) -> SimpleNamespace:
     return SimpleNamespace(name=name, type="MESH")
@@ -26,7 +49,7 @@ def _slot_empty(
     bone: str = "",
     children: tuple[SimpleNamespace, ...] = (),
 ) -> SimpleNamespace:
-    return SimpleNamespace(
+    return _Obj(
         name=name,
         type="EMPTY",
         parent_type="BONE" if bone else "OBJECT",
@@ -37,21 +60,21 @@ def _slot_empty(
 
 
 def test_is_slot_empty_reads_pg_flag() -> None:
-    yes = SimpleNamespace(type="EMPTY", proscenio=SimpleNamespace(is_slot=True))
-    no = SimpleNamespace(type="EMPTY", proscenio=SimpleNamespace(is_slot=False))
-    not_empty = SimpleNamespace(type="MESH", proscenio=SimpleNamespace(is_slot=True))
+    yes = _Obj(type="EMPTY", proscenio=SimpleNamespace(is_slot=True))
+    no = _Obj(type="EMPTY", proscenio=SimpleNamespace(is_slot=False))
+    not_empty = _Obj(type="MESH", proscenio=SimpleNamespace(is_slot=True))
     assert slot_emit.is_slot_empty(yes) is True
     assert slot_emit.is_slot_empty(no) is False
     assert slot_emit.is_slot_empty(not_empty) is False
 
 
 def test_read_slot_default_from_pg() -> None:
-    obj = SimpleNamespace(proscenio=SimpleNamespace(slot_default="open"))
+    obj = _Obj(proscenio=SimpleNamespace(slot_default="open"))
     assert slots.read_slot_default(obj) == "open"
 
 
 def test_read_slot_default_empty_when_absent() -> None:
-    obj = SimpleNamespace(proscenio=SimpleNamespace(slot_default=""))
+    obj = _Obj(proscenio=SimpleNamespace(slot_default=""))
     assert slots.read_slot_default(obj) == ""
 
 
@@ -78,6 +101,6 @@ def test_build_slots_for_scene_collects_mesh_attachments() -> None:
 
 def test_build_slots_for_scene_skips_non_slot_and_non_empty() -> None:
     non_slot = _slot_empty("plain", is_slot=False)
-    a_mesh = SimpleNamespace(name="body", type="MESH", proscenio=SimpleNamespace(is_slot=True))
+    a_mesh = _Obj(name="body", type="MESH", proscenio=SimpleNamespace(is_slot=True))
     scene = SimpleNamespace(objects=[non_slot, a_mesh])
     assert slots.build_slots_for_scene(scene) == []

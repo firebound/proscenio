@@ -250,10 +250,10 @@ Each block answers three questions in plain language: what passing it proves (`i
 - status: regressed
 - review: keep
 - pre: A mesh or sprite element active.
-- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite) and a 'Y Location (Draw Order)' integer field. A hand-authored mesh with no Proscenio element data also shows a boxed 'hand-authored mesh - not a Proscenio element yet' note with an 'Incorporate as Element' button above the type dropdown. With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
-- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the Y Location (Draw Order) field, the Incorporate-as-Element note for an unincorporated mesh, the empty-state and locked-state labels, and inline validation rows.
-- code: apps/blender/panels/element.py:62-89; apps/blender/core/validation/active_element.py:9
-- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. blender-authoring-design added the Incorporate button; draw-order-authoring replaced the float Depth offset with the integer Y Location (Draw Order) field that positions the object in Y. Re-walk.
+- observe: The panel header reads 'Element: <name>' of the active element (dropping to plain 'Element' when nothing is active or the N-panel is narrow), mirroring the Skeleton header. With a mesh or sprite active, the panel root shows an element-type dropdown (Mesh / Sprite) and a 'Y Location (Draw Order)' integer field. An element imported from a PSD (one carrying an import origin) also shows a 'Re-import from PSD' button (icon FILE_REFRESH) below the fields. A hand-authored mesh with no Proscenio element data also shows a boxed 'hand-authored mesh - not a Proscenio element yet' note with an 'Incorporate as Element' button above the type dropdown. With nothing active it shows 'select a mesh or sprite element'. In Weight Paint mode the dropdown is greyed out with the label 'element type is locked in Weight Paint mode'. Any validation issues for the element render one row each; rows that name an object are clickable to select it.
+- intent: Confirm the Element root renders the 'Element: <name>' header, the type dropdown, the Y Location (Draw Order) field, the Re-import from PSD button for an imported element, the Incorporate-as-Element note for an unincorporated mesh, the empty-state and locked-state labels, and inline validation rows.
+- code: apps/blender/panels/element.py:62-99; apps/blender/core/validation/active_element.py:9
+- note: absorbs the old per-field root items; locked-mode behavior is BL-ELEM-ROOT-02. panel-restructure added the 'Element: <name>' header (mirrors Skeleton); the body no longer repeats the name. blender-authoring-design added the Incorporate button; draw-order-authoring replaced the float Depth offset with the integer Y Location (Draw Order) field that positions the object in Y. element-individual-reimport added the Re-import from PSD button (its own walk is BL-ELEM-ROOT-07). Re-walk.
 
 ### BL-ELEM-ROOT-01 · Element type chooses the subpanel and the Godot node
 - status: pass
@@ -320,6 +320,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: After the storage split (spec 037) every CP-canonical field has one home (its idprop) behind a get/set panel proxy; this confirms the GUI-only behaviours headless tests cannot - undo through the proxy and the disable/save/enable persistence cycle.
 - code: apps/blender/properties/object_props.py (get/set proxies); apps/blender/core/_shared/pg_cp_fallback.py; pinned mechanically by apps/blender/tests/operators/test_storage_proxy.py
 - note: storage-split. The proxy round-trip, frame clamp, and Drive-from-Bone idprop path are test-covered; this item is the undo + re-enable GUI walk only.
+
+### BL-ELEM-ROOT-07 · Re-import from PSD refreshes only the active Element
+- status: pending
+- review: todo
+- pre: A figure imported from a PSD manifest with at least two element layers; re-export one source layer's PNG from Photoshop with changed art (and optionally a changed bound). Paint weights on a different (sibling) element first.
+- steps:
+  1. With one imported element active, open the Element panel and click 'Re-import from PSD'.
+  2. Watch the active element refresh; then inspect the sibling element you painted.
+  3. Rename or delete that source layer in the PSD/manifest and click 'Re-import from PSD' again.
+- observe: The button shows only for elements imported from a PSD (those carrying an import origin). Clicking it refreshes just the active element's art in place with no file picker (the manifest path is remembered from import); a same-bounds change keeps its painted weights, a changed bound reprojects them. The sibling element is untouched (its mesh and painted weights unchanged) and does not shift position. When the source layer no longer resolves (renamed/removed), a warning reports the element was left as is and nothing changes. If the remembered manifest file is gone, the file picker opens to re-pick it.
+- intent: A per-element re-import scopes the spec 055 re-import contract to one manifest entry - refresh this element, preserve or reproject its weights, touch no sibling - so an artist who fixed one layer does not have to re-import the whole document.
+- code: apps/blender/operators/reimport_element.py; apps/blender/importers/photoshop/__init__.py (reimport_element); apps/blender/panels/element.py (Re-import button)
+- note: element-individual-reimport. Resolution + 055 contract + no re-anchor pinned by tests/operators/test_psd_reimport_single.py; this is the GUI button + remembered-path + picker-fallback walk.
 
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass

@@ -27,7 +27,7 @@ import bpy
 from ...core._shared.cp_keys import PROSCENIO_IMPORT_MANIFEST, PROSCENIO_IMPORT_ORIGIN
 from ...core.psd import psd_manifest
 from ...core.slot.slot_emit import is_slot_empty
-from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
+from .armature import DEFAULT_ROOT_BONE_NAME, ROOT_BONE_LENGTH, build_root_armature
 from .planes import stamp_mesh, stamp_sprite
 
 
@@ -64,6 +64,7 @@ def import_manifest(
     *,
     placement: Literal["centered", "landed"] = "landed",
     root_bone_name: str = DEFAULT_ROOT_BONE_NAME,
+    root_bone_length: float = ROOT_BONE_LENGTH,
 ) -> ImportResult:
     """Read ``manifest_path`` (PSD manifest) and stamp the scene.
 
@@ -80,7 +81,9 @@ def import_manifest(
 
     ``root_bone_name`` controls the single armature bone created at
     import time. Default is ``"root"``; rigs that follow a different
-    convention (e.g. ``"spine"``) can override.
+    convention (e.g. ``"spine"``) can override. ``root_bone_length``
+    sizes that bone (default 1 unit); it only sizes a freshly built
+    root, since a re-import reuses an existing root in place.
 
     Returns an :class:`ImportResult`. Raises
     :class:`psd_manifest.ManifestError` on shape mismatch.
@@ -91,6 +94,7 @@ def import_manifest(
     armature_obj = build_root_armature(
         name=_armature_name(manifest),
         root_bone_name=root_bone_name,
+        length=root_bone_length,
     )
     result = ImportResult(armature=armature_obj)
     if ppu_warning is not None:

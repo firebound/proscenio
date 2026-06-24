@@ -96,7 +96,7 @@ A few things happen regardless of tags:
 - A group whose direct children are named with plain numbers contiguous from zero (`0`, `1`, `2`, ...) is detected as a spritesheet on its own; `[spritesheet]` just forces that grouping.
 - Inside a spritesheet, frames of different sizes are padded with transparency to the largest frame's box, so the grid stays regular.
 - Locked layers export like any other - the lock is ignored.
-- Stacking order sets `z_order` (top of the stack is highest); Blender turns that into a tiny Y offset (`z_order * 0.001`) so planes do not Z-fight.
+- Stacking order seeds each plane's `Y Location (Draw Order)` (top of the stack is highest); Blender spreads them along Y so they do not Z-fight, and the export negates that integer order into the Godot `z_index`.
 - A horizontal and a vertical PSD guide define the figure's pivot, exported as the document anchor; Blender places world `(0, 0, 0)` there.
 
 Keep display names to ASCII letters, digits, dashes, and underscores. The manifest keeps your name verbatim, but anything else - dots, spaces - is replaced with `_` when the name becomes a PNG filename or a Godot node, so a clean name stays predictable across the pipeline. (Bracket tags are stripped first, so spaces inside a tag are fine.)

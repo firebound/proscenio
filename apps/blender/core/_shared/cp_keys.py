@@ -102,3 +102,8 @@ PROSCENIO_BLEND_MODE = "proscenio_blend_mode"
 # A re-import with the same placement is an art retouch - the mesh, any
 # automesh densification, and painted weights are left untouched.
 PROSCENIO_IMPORT_PLACEMENT = "proscenio_import_placement"
+# Absolute source manifest path stamped on every imported object, so a
+# per-Element reimport (the Element panel button) resolves its origin file
+# without a picker. Per-object - two manifests imported into one scene each
+# carry their own source - mirroring the per-object origin layer marker.
+PROSCENIO_IMPORT_MANIFEST = "proscenio_import_manifest"

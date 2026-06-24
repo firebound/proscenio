@@ -196,7 +196,7 @@ Maintained by the QA Companion tool (tools/qa-companion): one block per item. `s
   4. Blender: pose the bone again -> the mesh has been rebuilt to a fresh quad, so the painted weight VALUES and any automesh density are reset (the deformation no longer matches the step-1 baseline) per the documented "re-import is not weight-preserving" warning.
 - observe: a placement-changing PSD re-import keeps object/transform/parenting/vertex-group-names/per-sprite-settings/slots/name-targeted-anim but resets painted weight values + automesh density because the mesh is rebuilt to a quad. This is the PSD-re-import-LOSES leg - distinct from automesh-regen-PRESERVES and re-rig-LOSES.
 - intent: the LOSES leg for PSD re-import - the documented order-of-operations trap (rebuild to quad resets painted weight VALUES while names/parenting survive). Keep separate from automesh-regen-PRESERVES.
-- code: `apps/blender/importers/photoshop/planes.py`; docs `docs/00-guides/01-advanced/01-photoshop.md` (re-importing after PSD edits)
+- code: `apps/blender/importers/photoshop/planes.py`; docs `docs/00-guides/02-advanced/01-photoshop.md` (re-importing after PSD edits)
 
 ### FLOW-RERIG-01 · weights: re-rig LOSES weights and keys  (Blender, regression guard)
 - status: pending

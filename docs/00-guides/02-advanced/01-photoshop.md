@@ -1,6 +1,6 @@
 # Photoshop
 
-The deep guide to the Photoshop side: how to author a `.psd` so it exports cleanly, what the bracket tags do, and how re-importing into Blender after edits behaves. For the quick version, see the [basic walkthrough](../00-basic/01-photoshop.md).
+The deep guide to the Photoshop side: how to author a `.psd` so it exports cleanly, what the bracket tags do, and how re-importing into Blender after edits behaves. For the quick version, see the [basic walkthrough](../01-basic/01-photoshop.md).
 
 ## The contract
 
@@ -45,7 +45,7 @@ Either way the *object* is reused, so object-level data survives:
 - slot membership and animation tracks that target the plane by name.
 
 > [!NOTE]
-> Re-import **is** weight-preserving. This is the same snapshot-by-UV-then-reproject mechanism an [Automesh regen](../../02-blender-addon/06-weight-paint.md#snapshot) uses, so a re-import preserves weights the way an Automesh re-run does - distinct from a fresh re-bind (re-rig), which starts from a clean bind and does not consult the sidecar. You can still iterate the PSD freely before you skin, but you no longer have to: paint and rig once, then keep editing the art, and your weights follow.
+> Re-import **is** weight-preserving. This is the same snapshot-by-UV-then-reproject mechanism an [Automesh regen](../../02-tools/blender-addon/06-weight-paint.md#snapshot) uses, so a re-import preserves weights the way an Automesh re-run does - distinct from a fresh re-bind (re-rig), which starts from a clean bind and does not consult the sidecar. You can still iterate the PSD freely before you skin, but you no longer have to: paint and rig once, then keep editing the art, and your weights follow.
 
 ### Three names, one link
 

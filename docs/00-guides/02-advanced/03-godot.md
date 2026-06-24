@@ -1,6 +1,6 @@
 # Godot
 
-The deep guide to the Godot side: how to add scripts, effects, colliders, audio, and gameplay to a Proscenio character without losing that work on the next reimport. For the quick version, see the [basic walkthrough](../00-basic/03-godot.md).
+The deep guide to the Godot side: how to add scripts, effects, colliders, audio, and gameplay to a Proscenio character without losing that work on the next reimport. For the quick version, see the [basic walkthrough](../01-basic/03-godot.md).
 
 ## The contract
 
@@ -14,7 +14,7 @@ In the FileSystem dock the `.proscenio` still shows up as a single scene you can
 
 ## The wrapper
 
-The wrapper is a plain `.tscn` you own and version-control. Its root is your node with your script; the imported character is instanced as a child. Everything you add - scripts, AI, effects, colliders - lives on the wrapper, never inside the instanced character. (The on-disk folder layout is in the [basic walkthrough](../00-basic/03-godot.md#wrap-the-generated-scene).)
+The wrapper is a plain `.tscn` you own and version-control. Its root is your node with your script; the imported character is instanced as a child. Everything you add - scripts, AI, effects, colliders - lives on the wrapper, never inside the instanced character. (The on-disk folder layout is in the [basic walkthrough](../01-basic/03-godot.md#wrap-the-generated-scene).)
 
 A reimport regenerates the baked scene; your `.tscn` and `.gd` are untouched. This is the same instance-an-imported-asset pattern you already use for a `.glb` model: edit around it, never inside it. (The recipes below use a made-up `hero` character - swap in your own names; the node paths are illustrative.)
 

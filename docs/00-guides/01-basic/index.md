@@ -2,7 +2,7 @@
 
 The full Photoshop → Blender → Godot loop in one linear pass, grouped by the tool you are in at each stage.
 
-For depth on any single tool, see the per-tool guides: [Photoshop](../01-advanced/01-photoshop.md), [Blender](../01-advanced/02-blender.md), [Godot](../01-advanced/03-godot.md).
+For depth on any single tool, see the per-tool guides: [Photoshop](../02-advanced/01-photoshop.md), [Blender](../02-advanced/02-blender.md), [Godot](../02-advanced/03-godot.md).
 
 > [!NOTE]
 > **MVP in progress.** The full quickstart will land with the first end-to-end sample. The loop below describes the flow once both sides ship; some buttons exist ahead of the sample art.
@@ -11,4 +11,4 @@ For depth on any single tool, see the per-tool guides: [Photoshop](../01-advance
 2. [Blender](02-blender.md): import the layers, build the skeleton, skin the meshes, set sprite types, refine, add slots, animate, pack the atlas, and export.
 3. [Godot](03-godot.md): drop the `.proscenio` in and wrap the generated scene.
 
-That is one linear pass. Editing any stage and pushing the change through again is [the iteration loop](../02-iterate.md) that keeps both sides in sync.
+That is one linear pass. Editing any stage and pushing the change through again is [the iteration loop](../03-iterate.md) that keeps both sides in sync.

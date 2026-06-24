@@ -2,7 +2,7 @@
 
 How Proscenio is built: the three plugins, the systems inside each, the data they move, and where the complexity and risk sit. Read this before changing anything load-bearing.
 
-The three plugins never call each other - Photoshop, Blender, and Godot each hand the next a file, bound only by a shared versioned format. Each section below covers one plugin's internals; for the end-to-end flow, start with the [basic walkthrough](../00-guides/00-basic/index.md).
+The three plugins never call each other - Photoshop, Blender, and Godot each hand the next a file, bound only by a shared versioned format. Each section below covers one plugin's internals; for the end-to-end flow, start with the [basic walkthrough](../00-guides/01-basic/index.md).
 
 ## Photoshop - [UXP](https://developer.adobe.com/photoshop/uxp/2022/) plugin ([React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/))
 

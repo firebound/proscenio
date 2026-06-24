@@ -2,7 +2,7 @@
 
 The deep guide to the Blender side: how to author a Proscenio character, what survives saves and addon reloads, and what the addon does between Photoshop on one side and Godot on the other.
 
-For the quick version, see the [basic walkthrough](../00-basic/02-blender.md).
+For the quick version, see the [basic walkthrough](../01-basic/02-blender.md).
 
 ## The contract
 
@@ -33,7 +33,7 @@ The `.blend` is yours and stays authoritative for everything you author in Blend
 | - | - |
 | Save and reopen the `.blend` | Everything persists - normal Blender. |
 | Reload the addon | Scene data untouched; Proscenio settings re-hydrate on file open. You only lose live operator state, like a Quick Armature drag in progress. |
-| Re-import the PSD manifest | The object survives - transform, parenting (the root armature is reused, not rebuilt), settings, slots, and name-targeted animation all carry over, and so do **painted weights**: a same-placement re-import leaves the mesh fully intact, and a changed-placement one rebuilds the quad but reprojects the weights from the `proscenio_weight_sidecar` (the same preserve path an [Automesh regen](../../02-blender-addon/06-weight-paint.md#snapshot) uses). Automesh density resets on a rebuild - re-run Automesh to densify again. A fresh re-bind (re-rig) is the case that still drops weights, because it starts clean and never reads the sidecar. Orphaned layers are left alone and logged. See [the re-import contract](01-photoshop.md#re-importing-after-psd-edits). |
+| Re-import the PSD manifest | The object survives - transform, parenting (the root armature is reused, not rebuilt), settings, slots, and name-targeted animation all carry over, and so do **painted weights**: a same-placement re-import leaves the mesh fully intact, and a changed-placement one rebuilds the quad but reprojects the weights from the `proscenio_weight_sidecar` (the same preserve path an [Automesh regen](../../02-tools/blender-addon/06-weight-paint.md#snapshot) uses). Automesh density resets on a rebuild - re-run Automesh to densify again. A fresh re-bind (re-rig) is the case that still drops weights, because it starts clean and never reads the sidecar. Orphaned layers are left alone and logged. See [the re-import contract](01-photoshop.md#re-importing-after-psd-edits). |
 | Uninstall the addon | Scene data, weights, actions, atlas materials, and the raw `proscenio_*` properties stay. The panel UI vanishes, but `Drive from Bone` drivers keep working - they are native Blender drivers. |
 | Bump Blender versions | [Datablocks](https://docs.blender.org/manual/en/latest/files/data_blocks.html) carry over; the addon may break on `bpy` API drift, so test on the next LTS first. |
 | Move the project folder | Files move fine, but the sticky export path is absolute today - re-pick it on the next export. |

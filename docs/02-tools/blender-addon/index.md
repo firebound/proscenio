@@ -2,7 +2,7 @@
 
 Per-panel reference for the Proscenio sidebar. Open it in Blender at **3D Viewport > Sidebar (`N`) > Proscenio**.
 
-For the end-to-end workflow, start with the [Blender walkthrough](../00-guides/00-basic/02-blender.md); this section documents each panel and subpanel on its own.
+For the end-to-end workflow, start with the [Blender walkthrough](../../00-guides/01-basic/02-blender.md); this section documents each panel and subpanel on its own.
 
 > [!NOTE]
 > **Placeholder pages.** These reference pages are a first cut. Each panel and subpanel carries a brief, specific description that mirrors the in-addon `?` help; they expand over time.

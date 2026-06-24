@@ -6,7 +6,7 @@ Say you repaint a layer's PNG in Photoshop. To see it in the running Godot scene
 
 1. *Re-export from Photoshop*: the manifest + PNGs.
 
-2. *Re-import in Blender*: point at the manifest again. Idempotent for object-level work - your rig, parenting, slots, per-sprite settings, and painted weights carry over (a changed-placement layer rebuilds the quad but reprojects its weights from the sidecar; only Automesh density resets, so re-densify after). See [the re-import contract](01-advanced/01-photoshop.md#re-importing-after-psd-edits).
+2. *Re-import in Blender*: point at the manifest again. Idempotent for object-level work - your rig, parenting, slots, per-sprite settings, and painted weights carry over (a changed-placement layer rebuilds the quad but reprojects its weights from the sidecar; only Automesh density resets, so re-densify after). See [the re-import contract](02-advanced/01-photoshop.md#re-importing-after-psd-edits).
 
 3. *Re-export from Blender*: `Re-export` reuses the sticky path, no dialog.
 
@@ -22,4 +22,4 @@ Every hop above is manual on purpose - there is no hot reload across the tool bo
 
 - Hit a bug or want a feature? Open an issue: [Proscenio issues](https://github.com/firebound/proscenio/issues).
 - Want to contribute? See [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
-- Per-tool depth lives in the workflow guides: [Photoshop](01-advanced/01-photoshop.md), [Blender](01-advanced/02-blender.md), [Godot](01-advanced/03-godot.md).
+- Per-tool depth lives in the workflow guides: [Photoshop](02-advanced/01-photoshop.md), [Blender](02-advanced/02-blender.md), [Godot](02-advanced/03-godot.md).

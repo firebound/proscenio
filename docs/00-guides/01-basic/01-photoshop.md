@@ -29,7 +29,7 @@ Other tags shape how a layer exports:
 | `[blend:multiply]` / `[blend:screen]` / `[blend:additive]` | layer | tags the intended blend mode (kept as metadata; not exported to Godot yet) |
 | `[scale:N]` | layer or group | multiply the bounding-box size by `N` |
 
-The full taxonomy (every tag, the walk rules for groups and hidden layers, z-order, the document anchor) lives in the [Photoshop workflow](../01-advanced/01-photoshop.md).
+The full taxonomy (every tag, the walk rules for groups and hidden layers, z-order, the document anchor) lives in the [Photoshop workflow](../02-advanced/01-photoshop.md).
 
 ## Export the manifest and PNGs
 

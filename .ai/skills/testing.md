@@ -17,12 +17,20 @@ blender --background --python apps/blender/tests/run_tests.py
 
 ## Godot plugin
 
+No test framework dependency: CI runs each GDScript test directly. Sync the baked goldens into the gitignored dev project and prime the `class_name` cache first, then run each script:
+
 ```sh
-godot --headless --path apps/godot -s addons/gut/gut_cmdln.gd
+python scripts/godot/sync_fixtures.py
+godot --headless --path apps/godot --editor --quit
+godot --headless --path apps/godot --script res://tests/test_importer.gd
+godot --headless --path apps/godot --script res://tests/test_sprite_region.gd
+godot --headless --path apps/godot --script res://tests/test_slot_anchor.gd
+godot --headless --path apps/godot --script res://tests/test_golden_scenes.gd
 ```
 
-- GUT framework.
-- Fixtures: `.proscenio` files in `apps/godot/tests/fixtures/`.
+- Plain GDScript scripts under `apps/godot/tests/`, no GUT.
+- The `--editor --quit` pass populates the `class_name` cache so the `schema_bindings/` Resources resolve before a script run.
+- `sync_fixtures.py` copies the `examples/generated/**/*.expected.proscenio` goldens into the dev project so `test_golden_scenes.gd` walks the real baked output.
 - CI runs against Godot 4.6.2-stable on Linux.
 
 ## Schema validation

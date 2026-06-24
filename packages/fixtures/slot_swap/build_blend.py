@@ -172,9 +172,6 @@ def _build_material(name: str, image_path: Path) -> bpy.types.Material:
 
 def _stamp_polygon_props(obj: bpy.types.Object) -> None:
     """Set element_type=mesh on PG and CP mirrors."""
-    if hasattr(obj, "proscenio"):
-        obj.proscenio.element_type = "mesh"
-        obj.proscenio.centered = True
     obj["proscenio_type"] = "mesh"
     obj["proscenio_centered"] = True
 
@@ -215,10 +212,6 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty.parent_type = "OBJECT"
     empty.location = (0.32, 0.0, 0.0)
 
-    if hasattr(empty, "proscenio"):
-        empty.proscenio.is_slot = True
-        empty.proscenio.slot_default = "club"
-        empty.proscenio.slot_bone = ARM_BONE
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = "club"
     empty["proscenio_slot_bone"] = ARM_BONE
@@ -266,8 +259,6 @@ def _build_attachment(
     obj.parent = slot_empty
     obj.parent_type = "OBJECT"
     obj.location = (0.0, draw_order * 0.001, 0.0)
-    if hasattr(obj, "proscenio"):
-        obj.proscenio.y_draw_order = draw_order
     obj["proscenio_y_draw_order"] = draw_order
     mat = _build_material(f"{name}.mat", image_path)
     mesh.materials.append(mat)

@@ -36,9 +36,7 @@ def compute_region_from_uvs(uvs: list[list[float]]) -> list[float]:
 
 def resolve_region(obj: object, uvs: list[list[float]]) -> list[float]:
     """Return the manual region override or fall back to UV bounds."""
-    mode = str(
-        read_field(obj, pg_field="region_mode", cp_key="proscenio_region_mode", default="auto")
-    )
+    mode = str(read_field(obj, cp_key="proscenio_region_mode", default="auto"))
     if mode != "manual":
         return compute_region_from_uvs(uvs)
     return _manual_region_floats(obj)
@@ -50,17 +48,15 @@ def manual_region_or_none(obj: object) -> list[float] | None:
     Used by ``sprite`` where auto mode means "omit ``texture_region``
     entirely" (full atlas). Manual mode emits the four floats verbatim.
     """
-    mode = str(
-        read_field(obj, pg_field="region_mode", cp_key="proscenio_region_mode", default="auto")
-    )
+    mode = str(read_field(obj, cp_key="proscenio_region_mode", default="auto"))
     if mode != "manual":
         return None
     return _manual_region_floats(obj)
 
 
 def _manual_region_floats(obj: object) -> list[float]:
-    rx = float(read_field(obj, pg_field="region_x", cp_key="proscenio_region_x", default=0.0))
-    ry = float(read_field(obj, pg_field="region_y", cp_key="proscenio_region_y", default=0.0))
-    rw = float(read_field(obj, pg_field="region_w", cp_key="proscenio_region_w", default=1.0))
-    rh = float(read_field(obj, pg_field="region_h", cp_key="proscenio_region_h", default=1.0))
+    rx = float(read_field(obj, cp_key="proscenio_region_x", default=0.0))
+    ry = float(read_field(obj, cp_key="proscenio_region_y", default=0.0))
+    rw = float(read_field(obj, cp_key="proscenio_region_w", default=1.0))
+    rh = float(read_field(obj, cp_key="proscenio_region_h", default=1.0))
     return [round(rx, 6), round(ry, 6), round(rw, 6), round(rh, 6)]

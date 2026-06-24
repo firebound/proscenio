@@ -11,6 +11,31 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+
+# spec 037: the writer reads each per-Object field from its ``proscenio_*``
+# Custom Property (idprop) via ``obj.get``. ``_Obj`` is a bpy-Object stand-in
+# whose ``.get`` derives the idprop value from a ``proscenio=`` namespace, so
+# the test data stays readable while exercising the real idprop read path.
+_FIELD_TO_CP = {"element_type": "proscenio_type"}
+
+
+def _cp_key(field: str) -> str:
+    return _FIELD_TO_CP.get(field, f"proscenio_{field}")
+
+
+class _Obj(SimpleNamespace):
+    """A fake bpy Object: attribute access plus idprop-style ``.get``."""
+
+    def get(self, key, default=None):  # noqa: ANN001, ANN201
+        pg = getattr(self, "proscenio", None)
+        if pg is None:
+            return default
+        for field, value in vars(pg).items():
+            if _cp_key(field) == key:
+                return value
+        return default
+
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
@@ -28,12 +53,11 @@ def _mesh(polygon_count: int = 1, vert_count: int = 4) -> SimpleNamespace:
 
 
 def _mesh_obj(name: str = "torso", *, polygons: int = 1) -> SimpleNamespace:
-    return SimpleNamespace(
+    return _Obj(
         name=name,
         type="MESH",
         data=_mesh(polygons),
         proscenio=SimpleNamespace(element_type="mesh"),
-        get=lambda key, default=None: default,
     )
 
 
@@ -43,7 +67,7 @@ def _sprite_obj(
     hframes: int = 4,
     vframes: int = 1,
 ) -> SimpleNamespace:
-    return SimpleNamespace(
+    return _Obj(
         name=name,
         type="MESH",
         data=_mesh(1),
@@ -52,7 +76,6 @@ def _sprite_obj(
             hframes=hframes,
             vframes=vframes,
         ),
-        get=lambda key, default=None: default,
     )
 
 
@@ -60,13 +83,12 @@ def _plane_obj(name: str = "torso", *, order: int, y: float) -> SimpleNamespace:
     # A mesh element with a draw order and a Y position - the inputs the
     # divergence check reads. ``order`` is the stored Y Location (Draw Order),
     # ``y`` the object's actual Blender Y.
-    return SimpleNamespace(
+    return _Obj(
         name=name,
         type="MESH",
         data=_mesh(1),
         location=SimpleNamespace(x=0.0, y=y, z=0.0),
         proscenio=SimpleNamespace(element_type="mesh", y_draw_order=order),
-        get=lambda key, default=None: default,
     )
 
 
@@ -108,12 +130,11 @@ def test_active_sprite_zero_vframes_errors() -> None:
 
 
 def test_active_unknown_element_type_errors() -> None:
-    obj = SimpleNamespace(
+    obj = _Obj(
         name="weird",
         type="MESH",
         data=_mesh(1),
         proscenio=SimpleNamespace(element_type="banana"),
-        get=lambda key, default=None: default,
     )
     issues = validation.validate_active_element(obj)
     assert any(i.severity == "error" and "unknown" in i.message for i in issues)

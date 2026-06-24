@@ -131,12 +131,6 @@ def _build_sprite_plane(armature_obj: bpy.types.Object) -> bpy.types.Object:
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     mesh.materials.append(mat)
 
-    if hasattr(obj, "proscenio"):
-        obj.proscenio.element_type = "sprite"
-        obj.proscenio.hframes = HFRAMES
-        obj.proscenio.vframes = VFRAMES
-        obj.proscenio.frame = 0
-        obj.proscenio.centered = True
     obj["proscenio_type"] = "sprite"
     obj["proscenio_hframes"] = HFRAMES
     obj["proscenio_vframes"] = VFRAMES
@@ -166,12 +160,10 @@ def _build_blink_action() -> None:
     )
     for frame, value in sequence:
         bpy.context.scene.frame_set(frame)
-        if hasattr(sprite_obj, "proscenio"):
-            sprite_obj.proscenio.frame = value
-            sprite_obj.proscenio.keyframe_insert(data_path="frame", frame=frame)
-        else:
-            sprite_obj["proscenio_frame"] = value
-            sprite_obj.keyframe_insert(data_path='["proscenio_frame"]', frame=frame)
+        # Keyframe the Custom Property (idprop) directly - the field's one
+        # storage home and what the writer's sprite_frame bake reads.
+        sprite_obj["proscenio_frame"] = value
+        sprite_obj.keyframe_insert(data_path='["proscenio_frame"]', frame=frame)
 
 
 def _save_blend() -> None:

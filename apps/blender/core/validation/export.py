@@ -17,6 +17,7 @@ from .._shared.cp_keys import (
 from .._shared.material_images import iter_material_node_images
 from .._shared.pg_cp_fallback import read_field
 from .._shared.props_access import resolve_export_armature
+from ..armature.driver_targets import is_proscenio_driver_path
 from ..slot.slot_emit import is_slot_empty
 from ._shared import abspath_or_none, armature_bone_names, name_of
 from .active_element import validate_active_element
@@ -317,10 +318,10 @@ def _unique_driver_rotation_sources(obj: object) -> Iterator[tuple[object, str]]
 
 
 def _proscenio_driver_fcurves(obj: object) -> Iterator[object]:
-    """Yield the object's driver fcurves whose data_path is a ``proscenio.*`` property."""
+    """Yield the object's driver fcurves whose data_path is a proscenio idprop."""
     anim = getattr(obj, "animation_data", None)
     for fcurve in getattr(anim, "drivers", ()):
-        if str(getattr(fcurve, "data_path", "")).startswith("proscenio."):
+        if is_proscenio_driver_path(str(getattr(fcurve, "data_path", ""))):
             yield fcurve
 
 
@@ -409,18 +410,14 @@ def _validate_sprite_frame_uvs(obj: object) -> list[Issue]:
 
 def _is_sheet_sliced_sprite(obj: object) -> bool:
     """True for a multi-frame sprite whose region comes from UV bounds (auto)."""
-    element_type = str(
-        read_field(obj, pg_field="element_type", cp_key=PROSCENIO_TYPE, default="mesh")
-    )
+    element_type = str(read_field(obj, cp_key=PROSCENIO_TYPE, default="mesh"))
     if element_type != "sprite":
         return False
-    region_mode = str(
-        read_field(obj, pg_field="region_mode", cp_key=PROSCENIO_REGION_MODE, default="auto")
-    )
+    region_mode = str(read_field(obj, cp_key=PROSCENIO_REGION_MODE, default="auto"))
     if region_mode == "manual":
         return False
-    hframes = int(read_field(obj, pg_field="hframes", cp_key=PROSCENIO_HFRAMES, default=1))
-    vframes = int(read_field(obj, pg_field="vframes", cp_key=PROSCENIO_VFRAMES, default=1))
+    hframes = int(read_field(obj, cp_key=PROSCENIO_HFRAMES, default=1))
+    vframes = int(read_field(obj, cp_key=PROSCENIO_VFRAMES, default=1))
     return hframes * vframes > 1
 
 

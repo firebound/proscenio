@@ -21,7 +21,6 @@ import bpy
 from bpy.props import EnumProperty, IntProperty
 
 from ..core._shared.report import report_error, report_info  # type: ignore[import-not-found]
-from ..core.mirror import mirror_all_fields  # type: ignore[import-not-found]
 
 _INCORPORATE_CHOICE_ITEMS = (
     ("auto", "Auto (detect)", "Sprite for a single quad, Mesh for anything denser", 0),
@@ -115,11 +114,9 @@ class PROSCENIO_OT_incorporate_element(bpy.types.Operator):
             props.vframes = self.vframes
             props.frame = 0
             props.centered = True
-        # Stamp the Custom Property mirror explicitly: assigning a field that
-        # already holds its value fires no update callback, so the mirror (and
-        # the proscenio_type marker the panel + poll key on) must be written
-        # here regardless of whether element_type actually changed.
-        mirror_all_fields(props, obj)
+        # Each assignment above routes through the field's get/set proxy, which
+        # writes the proscenio_* Custom Property (the field's one storage home,
+        # and the proscenio_type marker the panel + poll key on) directly.
         report_info(self, f"incorporated '{obj.name}' as a {resolved} element")
         return {"FINISHED"}
 

@@ -17,20 +17,19 @@ def name_of(obj: object) -> str:
 
 
 def read_element_type(obj: object) -> str:
-    """PG-first / CP fallback read of the element type. Default ``"mesh"``."""
-    return str(read_field(obj, pg_field="element_type", cp_key="proscenio_type", default="mesh"))
+    """Read the element type from its ``proscenio_type`` idprop. Default ``"mesh"``."""
+    return str(read_field(obj, cp_key="proscenio_type", default="mesh"))
 
 
-def read_int(obj: object, prop_name: str, custom_key: str, default: int) -> int:
-    """PG-first / CP fallback read of an integer field.
+def read_int(obj: object, custom_key: str, default: int) -> int:
+    """Read an integer field from its ``custom_key`` idprop.
 
-    Routes the PG-first / CP-fallback resolution through
-    ``pg_cp_fallback.read_field`` and adds only the integer coercion: the
-    Custom Property fallback tolerates float-form strings (``"3.0"``) and
-    falls back to ``default`` for non-numeric values instead of
-    propagating a ``ValueError`` - a CP can hold arbitrary user data.
+    Routes the read through ``pg_cp_fallback.read_field`` and adds only the
+    integer coercion: a Custom Property can hold arbitrary user data, so it
+    tolerates float-form strings (``"3.0"``) and falls back to ``default``
+    for non-numeric values instead of propagating a ``ValueError``.
     """
-    raw = read_field(obj, pg_field=prop_name, cp_key=custom_key, default=_MISSING)
+    raw = read_field(obj, cp_key=custom_key, default=_MISSING)
     if isinstance(raw, int | float) and not isinstance(raw, bool):
         return int(raw)
     if isinstance(raw, str):

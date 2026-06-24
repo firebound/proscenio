@@ -1,7 +1,8 @@
 """Unit tests for the slot system slot validation rules.
 
-Pure pytest, no Blender. Mocks ``bpy.types.Object`` via ``SimpleNamespace``
-so the validation module is exercised without Blender's RNA layer.
+Pure pytest, no Blender. The slot flags read from their ``proscenio_*``
+Custom Properties (idprops) via ``.get`` (spec 037); ``_Empty`` is a fake
+bpy Object exposing both attribute access and that idprop ``.get``.
 """
 
 from __future__ import annotations
@@ -17,12 +18,25 @@ sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 from core.validation import slot_parent_bone, validate_active_slot  # noqa: E402
 
 
-def _slot_props(
+class _Empty(SimpleNamespace):
+    """Fake bpy Object: attribute access plus idprop-style ``.get``."""
+
+    def __init__(self, idprops: dict[str, Any] | None = None, **attrs: Any) -> None:
+        super().__init__(**attrs)
+        object.__setattr__(self, "_idprops", dict(idprops or {}))
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._idprops.get(key, default)
+
+
+def _slot_idprops(
     *, is_slot: bool = True, slot_default: str = "", slot_bone: str = ""
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        is_slot=is_slot, slot_default=slot_default, slot_bone=slot_bone
-    )
+) -> dict[str, Any]:
+    return {
+        "proscenio_is_slot": is_slot,
+        "proscenio_slot_default": slot_default,
+        "proscenio_slot_bone": slot_bone,
+    }
 
 
 def _empty(
@@ -31,15 +45,15 @@ def _empty(
     children: list[Any] | None = None,
     parent_bone: str = "",
     parent_type: str = "OBJECT",
-    props: SimpleNamespace | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
+    props: dict[str, Any] | None = None,
+) -> _Empty:
+    return _Empty(
+        props if props is not None else _slot_idprops(),
         name=name,
         type="EMPTY",
         children=tuple(children or ()),
         parent_bone=parent_bone,
         parent_type=parent_type,
-        proscenio=props if props is not None else _slot_props(),
     )
 
 
@@ -71,7 +85,7 @@ def test_non_empty_object_returns_no_issues() -> None:
 
 
 def test_empty_not_flagged_as_slot_returns_no_issues() -> None:
-    empty = _empty("loose_anchor", props=_slot_props(is_slot=False))
+    empty = _empty("loose_anchor", props=_slot_idprops(is_slot=False))
     assert validate_active_slot(empty) == []
 
 
@@ -87,7 +101,7 @@ def test_slot_with_valid_default_passes() -> None:
     empty = _empty(
         "eye.swap",
         children=[_mesh("open"), _mesh("closed")],
-        props=_slot_props(slot_default="open"),
+        props=_slot_idprops(slot_default="open"),
     )
     assert validate_active_slot(empty) == []
 
@@ -96,7 +110,7 @@ def test_slot_default_pointing_at_missing_child_errors() -> None:
     empty = _empty(
         "eye.swap",
         children=[_mesh("open"), _mesh("closed")],
-        props=_slot_props(slot_default="dead"),
+        props=_slot_idprops(slot_default="dead"),
     )
     issues = validate_active_slot(empty)
     assert any(i.severity == "error" and "default" in i.message for i in issues)
@@ -148,12 +162,12 @@ def test_slot_child_with_bone_transform_keys_warns() -> None:
 
 
 def test_slot_child_with_proscenio_only_keys_does_not_warn() -> None:
-    """An animated proscenio.frame fcurve is fine - the warning only fires
+    """An animated proscenio frame fcurve is fine - the warning only fires
     on location/rotation/scale paths."""
     empty = _empty(
         "eye.swap",
         children=[
-            _mesh("cycling", fcurves=[_fcurve("proscenio.frame")]),
+            _mesh("cycling", fcurves=[_fcurve('["proscenio_frame"]')]),
             _mesh("static"),
         ],
     )
@@ -195,7 +209,7 @@ def test_slot_parent_bone_reads_slot_bone_field_when_object_parented() -> None:
     # The new convention: object-parented Empty + slot_bone field set. The
     # resolver must report the field's bone, not "(unparented)".
     empty = _empty(
-        "face.slot", parent_type="OBJECT", props=_slot_props(slot_bone="head")
+        "face.slot", parent_type="OBJECT", props=_slot_idprops(slot_bone="head")
     )
     assert slot_parent_bone(empty) == "head"
 
@@ -206,7 +220,7 @@ def test_slot_parent_bone_prefers_slot_bone_over_parent_bone() -> None:
         "face.slot",
         parent_bone="jaw",
         parent_type="BONE",
-        props=_slot_props(slot_bone="head"),
+        props=_slot_idprops(slot_bone="head"),
     )
     assert slot_parent_bone(empty) == "head"
 
@@ -222,6 +236,6 @@ def test_bound_slot_with_field_emits_no_unparented_error() -> None:
         "face.slot",
         parent_type="OBJECT",
         children=[_mesh("face_neutral")],
-        props=_slot_props(slot_bone="head"),
+        props=_slot_idprops(slot_bone="head"),
     )
     assert validate_active_slot(empty) == []

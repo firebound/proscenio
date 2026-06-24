@@ -24,7 +24,7 @@ from typing import Literal
 
 import bpy
 
-from ...core._shared.cp_keys import PROSCENIO_IMPORT_ORIGIN
+from ...core._shared.cp_keys import PROSCENIO_IMPORT_MANIFEST, PROSCENIO_IMPORT_ORIGIN
 from ...core.psd import psd_manifest
 from ...core.slot.slot_emit import is_slot_empty
 from .armature import DEFAULT_ROOT_BONE_NAME, build_root_armature
@@ -40,6 +40,23 @@ class ImportResult:
     spritesheets: list[Path] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SingleReimportResult:
+    """Outcome of re-importing one Element from its source manifest entry.
+
+    ``status`` is ``"restamped"`` when the Element's layer resolved and its
+    art was refreshed (weights preserved or reprojected per the spec 055
+    contract), ``"skipped"`` when the layer resolved but its PNG was missing,
+    and ``"missing"`` when no manifest layer maps to the Element (renamed or
+    deleted in the PSD) - a no-op that leaves the Element fully intact.
+    """
+
+    status: Literal["restamped", "skipped", "missing"]
+    obj: bpy.types.Object | None = None
+    layer_name: str | None = None
+    warning: str | None = None
 
 
 def import_manifest(
@@ -79,22 +96,130 @@ def import_manifest(
     if ppu_warning is not None:
         result.warnings.append(ppu_warning)
     for layer in manifest.layers:
-        if layer.kind == "mesh":
-            obj = stamp_mesh(layer, manifest, armature_obj)
-            if obj is not None:
-                result.meshes.append(obj)
-            else:
-                result.skipped.append(f"mesh:{layer.name}")
-        elif layer.kind == "sprite":
-            stamped = stamp_sprite(layer, manifest, armature_obj)
-            if stamped is not None:
-                result.meshes.append(stamped.mesh_obj)
-                result.spritesheets.append(stamped.spritesheet_path)
-            else:
-                result.skipped.append(f"sprite:{layer.name}")
+        _stamp_layer(layer, manifest, armature_obj, result)
+    _tag_manifest_source(result.meshes, manifest)
     if placement == "landed":
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
+
+
+def _stamp_layer(
+    layer: psd_manifest.MeshLayer | psd_manifest.SpriteLayer,
+    manifest: psd_manifest.LoadedManifest,
+    armature_obj: bpy.types.Object,
+    result: ImportResult,
+) -> None:
+    """Stamp one manifest entry, appending its outcome to ``result``.
+
+    The per-entry tail shared by the whole-manifest loop and the single-Element
+    reimport (``reimport_element``): dispatches by ``kind`` to the mesh / sprite
+    stamper and records the stamped object, any composed spritesheet, or a skip.
+    """
+    if layer.kind == "mesh":
+        obj = stamp_mesh(layer, manifest, armature_obj)
+        if obj is not None:
+            result.meshes.append(obj)
+        else:
+            result.skipped.append(f"mesh:{layer.name}")
+    elif layer.kind == "sprite":
+        stamped = stamp_sprite(layer, manifest, armature_obj)
+        if stamped is not None:
+            result.meshes.append(stamped.mesh_obj)
+            result.spritesheets.append(stamped.spritesheet_path)
+        else:
+            result.skipped.append(f"sprite:{layer.name}")
+
+
+def _tag_manifest_source(
+    meshes: list[bpy.types.Object],
+    manifest: psd_manifest.LoadedManifest,
+) -> None:
+    """Stamp the absolute source manifest path on every imported object.
+
+    Lets a per-Element reimport (the Element panel button) find its origin file
+    without a picker. Per-object - two manifests imported into one scene each
+    carry their own source. The path is resolved to absolute at stamp time:
+    ``psd_manifest.load`` keeps ``source_path`` exactly as passed, so a relative
+    import path would be stamped relative and break the one-click reimport after
+    the file is reopened or Blender's working directory changes.
+    """
+    source = str(manifest.source_path.expanduser().resolve())
+    for obj in meshes:
+        obj[PROSCENIO_IMPORT_MANIFEST] = source
+
+
+def reimport_element(
+    obj: bpy.types.Object,
+    manifest_path: Path | str,
+) -> SingleReimportResult:
+    """Re-import the single Element ``obj`` from one entry of ``manifest_path``.
+
+    Maps ``obj`` back to exactly one manifest layer (by its stamped
+    ``proscenio_import_origin``, falling back to the object name), then re-stamps
+    only that entry - reusing the import's existing root armature and honouring
+    the spec 055 contract per entry (same-bounds keeps the mesh + painted
+    weights, changed-bounds reprojects). Every sibling Element is untouched, and
+    the whole-figure feet-anchor is deliberately skipped so the one Element does
+    not shift relative to its siblings.
+
+    A layer that no longer resolves (renamed / deleted in the PSD) is a
+    warn-and-no-op leaving the Element intact (``status="missing"``); a resolved
+    layer whose PNG is gone degrades to ``status="skipped"``.
+
+    Raises :class:`psd_manifest.ManifestError` on a malformed manifest.
+    """
+    manifest = psd_manifest.load(manifest_path)
+    layer = _layer_for_object(obj, manifest)
+    if layer is None:
+        origin = _origin_layer_name(obj)
+        return SingleReimportResult(
+            status="missing",
+            layer_name=origin,
+            warning=(
+                f"no manifest layer matches this Element"
+                f"{f' (origin {origin!r})' if origin else ''}; "
+                "it was renamed or removed in the PSD - leaving the Element as is"
+            ),
+        )
+    armature_obj = build_root_armature(name=_armature_name(manifest))
+    result = ImportResult(armature=armature_obj)
+    _stamp_layer(layer, manifest, armature_obj, result)
+    if result.meshes:
+        _tag_manifest_source(result.meshes, manifest)
+        return SingleReimportResult(status="restamped", obj=result.meshes[0], layer_name=layer.name)
+    return SingleReimportResult(
+        status="skipped",
+        layer_name=layer.name,
+        warning=f"source art for layer {layer.name!r} is missing; the Element was left as is",
+    )
+
+
+def _origin_layer_name(obj: bpy.types.Object) -> str | None:
+    """Return the layer name stamped on ``obj`` (``psd:`` stripped), or None."""
+    origin = obj.get(PROSCENIO_IMPORT_ORIGIN)
+    if not origin:
+        return None
+    return str(origin).removeprefix("psd:")
+
+
+def _layer_for_object(
+    obj: bpy.types.Object,
+    manifest: psd_manifest.LoadedManifest,
+) -> psd_manifest.MeshLayer | psd_manifest.SpriteLayer | None:
+    """Resolve ``obj`` back to its source manifest layer.
+
+    A stamped ``proscenio_import_origin`` is the authoritative link (robust to a
+    Blender-side object rename): it resolves only against its own layer, and a
+    miss returns ``None`` so the caller degrades to a warn-and-no-op rather than
+    silently restamping a different layer that happens to share the object name.
+    The object-name fallback applies only to an unstamped object (a
+    freshly-authored mesh adopted under the layer's name).
+    """
+    layer_by_name = {layer.name: layer for layer in manifest.layers}
+    origin = _origin_layer_name(obj)
+    if origin is not None:
+        return layer_by_name.get(origin)
+    return layer_by_name.get(obj.name)
 
 
 def _apply_flat_color_management() -> None:

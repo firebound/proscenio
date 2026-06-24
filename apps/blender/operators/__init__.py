@@ -21,6 +21,7 @@ Submodules / subpackages:
 - slot              - Create Slot, Add Attachment, Set Default, preview shader
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
+- reimport_element  - re-import one Element from its source manifest entry
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ from . import (
     import_photoshop,
     incorporate,
     pose_library,
+    reimport_element,
     selection,
     skinning,
     slot,
@@ -60,9 +62,11 @@ def register() -> None:
     sprite.register()
     atlas_pack.register()
     import_photoshop.register()
+    reimport_element.register()
 
 
 def unregister() -> None:
+    reimport_element.unregister()
     import_photoshop.unregister()
     atlas_pack.unregister()
     sprite.unregister()

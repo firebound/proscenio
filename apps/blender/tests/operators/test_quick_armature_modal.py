@@ -37,6 +37,7 @@ def quick_armature_session(automesh_fixture):
         _switch_mode = QA._switch_mode
         _world_tail_tips = QA._world_tail_tips
         _handle_reparent_pick = QA._handle_reparent_pick
+        _seed_chain_parent_from_active = QA._seed_chain_parent_from_active
         _PICK_RADIUS_PX = QA._PICK_RADIUS_PX
 
         def report(self, *_args, **_kwargs) -> None:
@@ -222,3 +223,42 @@ def test_reparent_pick_miss_keeps_chain_parent(quick_armature_session):
     op._handle_reparent_pick(bpy.context, object())
     assert cls._last_bone_name == "existing", "a miss must not clear the chain parent"
     assert cls._session_records == [], "a miss must not author a bone"
+
+
+def test_seed_chain_parent_from_active_bone(quick_armature_session):
+    op, arm, cls = quick_armature_session
+    # Author a bone and make it the armature's active bone (the importer root is
+    # the motivating case). Reset the chain parent the way invoke does, then seed.
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
+    )
+    root_name = arm.data.bones[0].name
+    arm.data.bones.active = arm.data.bones[0]
+    cls._last_bone_name = ""
+    op._seed_chain_parent_from_active()
+    assert cls._last_bone_name == root_name, "seed did not adopt the active bone"
+    # The next connected Draw chains onto the seeded bone.
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 1.0), (0.0, 0.0, 2.0), parent_to_last=True, connect=True
+    )
+    child = arm.data.bones[1]
+    assert child.parent is not None and child.parent.name == root_name
+
+
+def test_seed_chain_parent_noop_without_active_bone(quick_armature_session):
+    op, arm, cls = quick_armature_session
+    # No active bone: the seed must leave _last_bone_name untouched ("") so the
+    # first bone stays unparented exactly as before this feature.
+    arm.data.bones.active = None
+    cls._last_bone_name = ""
+    op._seed_chain_parent_from_active()
+    assert cls._last_bone_name == "", "seed wrote a parent with no active bone"
+
+
+def test_seed_chain_parent_noop_when_target_missing(quick_armature_session):
+    op, _arm, cls = quick_armature_session
+    # A target that does not resolve must not crash the seed (degrades silently).
+    cls._target_armature_name = "does-not-exist"
+    cls._last_bone_name = ""
+    op._seed_chain_parent_from_active()
+    assert cls._last_bone_name == ""

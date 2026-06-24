@@ -217,6 +217,7 @@ pathconv
 pathlib
 pgettext
 pipefail
+pipx
 pmdcode
 pngs
 positiving

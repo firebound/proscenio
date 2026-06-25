@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ._shared.cp_keys import PROSCENIO_TYPE
+from ._shared.cp_keys import PROSCENIO_TYPE, PROSCENIO_Y_DRAW_ORDER
 from .slot.slot_emit import is_slot_empty
 
 #: Object categories, in Outliner sort order.
@@ -107,15 +107,51 @@ def hierarchy_sort_key(obj: object, *, rank: int) -> tuple[int, str, int, str]:
     return (2, "", 0, name)
 
 
-def outliner_sort_key(obj: object, *, rank: int, sort_alpha: bool) -> tuple[int, str, int, str]:
-    """Sort key for the Outliner, honouring the native 'sort by name' toggle.
+def _draw_order_of(obj: object) -> int:
+    """The object's Y Location (Draw Order), 0 when unset / unreadable.
 
-    With ``sort_alpha`` on (the UIList A-Z button), every row collapses into one
-    bucket keyed by name, so the list is a plain alphabetical order and the
-    parenting tree is dropped - the native toggle reads naturally. Off, the rows
-    lay out as the parenting tree (:func:`hierarchy_sort_key`). The caller drops
-    the depth indent in alpha mode too (see :func:`outliner_depth`).
+    Reads the same ``proscenio_y_draw_order`` id-property the export and the
+    inline Outliner field use, so the by-order sort matches what the column
+    shows. Slots / armatures carry no draw order and read as 0.
     """
+    getter = getattr(obj, "get", None)
+    if not callable(getter):
+        return 0
+    try:
+        return int(getter(PROSCENIO_Y_DRAW_ORDER, 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def draw_order_sort_key(obj: object, *, rank: int) -> tuple[int, int, str]:
+    """Sort key laying the flat Outliner out by draw order, front-first.
+
+    The armature pins to the top (it has no draw order); every other row sorts
+    by descending draw order so the front-most plane (highest order, the top of
+    the Photoshop layer stack) reads at the top of the list, with name as the
+    tie-break. Mirrors the inline Y Location (Draw Order) column.
+    """
+    name = (getattr(obj, "name", "") or "").lower()
+    if rank == RANK_ARMATURE:
+        return (0, 0, name)
+    return (1, -_draw_order_of(obj), name)
+
+
+def outliner_sort_key(
+    obj: object, *, rank: int, sort_alpha: bool, sort_draw_order: bool = False
+) -> tuple[int, ...]:
+    """Sort key for the Outliner, honouring the active sort mode.
+
+    ``sort_draw_order`` (the Proscenio 'Sort by draw order' toggle) wins when on:
+    the rows lay out by draw order, front-first (:func:`draw_order_sort_key`).
+    Otherwise, with ``sort_alpha`` on (the UIList A-Z button) every row collapses
+    into one bucket keyed by name, so the list is a plain alphabetical order and
+    the parenting tree is dropped - the native toggle reads naturally. Off, the
+    rows lay out as the parenting tree (:func:`hierarchy_sort_key`). The caller
+    drops the depth indent in both flattening modes (see :func:`outliner_depth`).
+    """
+    if sort_draw_order:
+        return draw_order_sort_key(obj, rank=rank)
     if sort_alpha:
         return (0, "", 0, (getattr(obj, "name", "") or "").lower())
     return hierarchy_sort_key(obj, rank=rank)

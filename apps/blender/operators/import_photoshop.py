@@ -47,7 +47,9 @@ class PROSCENIO_OT_import_photoshop(bpy.types.Operator, ImportHelper):
                 "Landed (Feet on Z=0)",
                 "Shift the figure so its lowest point sits on world Z=0. "
                 "Matches the Godot / game-engine convention of pivoting "
-                "characters at the feet.",
+                "characters at the feet. An authored manifest anchor takes "
+                "precedence and keeps its placement (no feet shift), so a figure "
+                "with a prop below its feet does not float.",
             ),
             (
                 "centered",

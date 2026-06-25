@@ -173,6 +173,48 @@ def _draw_automesh_alpha(
     )
 
 
+# Per-tool icons for the live modal indicator (spec 066). Icon-forward: the
+# inactive tools show as an icon only, the active one gets its name too.
+_TOOL_ICONS = {
+    "auto": "MOD_REMESH",
+    "contour": "MESH_CIRCLE",
+    "extend": "ADD",
+    "cut": "MOD_BOOLEAN",
+    "fold": "MOD_SIMPLEDEFORM",
+    "point": "DOT",
+    "delete": "TRASH",
+}
+
+
+def _draw_modal_indicator(layout: bpy.types.UILayout) -> None:
+    """Show the live stage + active tool while the authoring modal runs.
+
+    Reads the operator's class-level state (set as it advances stages / cycles
+    tools). Only renders while the modal is active (its status-bar draw is
+    appended). A VIEW_3D tag_redraw on every stage/tool change repaints this
+    region too, so it tracks live.
+    """
+    from ..core.skinning.authoring_stages import stage_tools  # type: ignore[import-not-found]
+    from ..operators.automesh._status_bar import _TOOL_LABELS  # type: ignore[import-not-found]
+    from ..operators.automesh.automesh_authoring import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_automesh_authoring as op,
+    )
+
+    if not getattr(op, "_statusbar_appended", False):
+        return
+    box = layout.box()
+    box.label(text=op._current_stage_label, icon="MOD_REMESH")
+    active = op._current_active_tool
+    tools = stage_tools(op._current_stage)
+    if tools:
+        row = box.row(align=True)
+        row.label(text="Tab:")
+        for tool in tools:
+            icon = _TOOL_ICONS.get(tool, "DOT")
+            # icon-forward: active tool shows its name, the rest are icon-only.
+            row.label(text=_TOOL_LABELS[tool] if tool == active else "", icon=icon)
+
+
 def _draw_automesh_interactive(
     layout: bpy.types.UILayout,
     skinning_props: bpy.types.PropertyGroup | None,
@@ -183,6 +225,7 @@ def _draw_automesh_interactive(
     Button greys out when active obj is not MESH or has no image texture
     (modal validates these at invoke; the panel mirror is a UX cue).
     """
+    _draw_modal_indicator(layout)
     layout.label(text="Interactive trace and edit")
     if skinning_props is not None:
         row = layout.row(align=True)

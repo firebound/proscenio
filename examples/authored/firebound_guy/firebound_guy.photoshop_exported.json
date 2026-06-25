@@ -1,0 +1,281 @@
+{
+  "format_version": 1,
+  "doc": "firebound_guy.psd",
+  "size": [
+    1500,
+    1500
+  ],
+  "pixels_per_unit": 100,
+  "anchor": [
+    750,
+    1275
+  ],
+  "layers": [
+    {
+      "kind": "mesh",
+      "name": "char__eye__eye_glow",
+      "path": "images/char__eye__eye_glow.png",
+      "position": [
+        663,
+        539
+      ],
+      "size": [
+        221,
+        173
+      ],
+      "z_order": 0
+    },
+    {
+      "kind": "mesh",
+      "name": "char__eye__eye_iris",
+      "path": "images/char__eye__eye_iris.png",
+      "position": [
+        718,
+        519
+      ],
+      "size": [
+        133,
+        234
+      ],
+      "z_order": 1
+    },
+    {
+      "kind": "mesh",
+      "name": "char__eye__eyeball",
+      "path": "images/char__eye__eyeball.png",
+      "position": [
+        608,
+        469
+      ],
+      "size": [
+        333,
+        334
+      ],
+      "z_order": 2
+    },
+    {
+      "kind": "mesh",
+      "name": "char__fire",
+      "path": "images/char__fire.png",
+      "position": [
+        1180,
+        739
+      ],
+      "size": [
+        155,
+        170
+      ],
+      "z_order": 3
+    },
+    {
+      "kind": "mesh",
+      "name": "char__bag",
+      "path": "images/char__bag.png",
+      "position": [
+        940,
+        979
+      ],
+      "size": [
+        149,
+        192
+      ],
+      "z_order": 4
+    },
+    {
+      "kind": "mesh",
+      "name": "char__hand.R",
+      "path": "images/char__hand_R.png",
+      "position": [
+        403,
+        950
+      ],
+      "size": [
+        161,
+        191
+      ],
+      "z_order": 5
+    },
+    {
+      "kind": "mesh",
+      "name": "char__hand.L",
+      "path": "images/char__hand_L.png",
+      "position": [
+        1145,
+        919
+      ],
+      "size": [
+        168,
+        135
+      ],
+      "z_order": 6
+    },
+    {
+      "kind": "mesh",
+      "name": "char__forearm",
+      "path": "images/char__forearm.png",
+      "position": [
+        1069,
+        916
+      ],
+      "size": [
+        169,
+        197
+      ],
+      "z_order": 7
+    },
+    {
+      "kind": "mesh",
+      "name": "char__weapons__chicken",
+      "path": "images/char__weapons__chicken.png",
+      "position": [
+        360,
+        776
+      ],
+      "size": [
+        331,
+        630
+      ],
+      "z_order": 8
+    },
+    {
+      "kind": "mesh",
+      "name": "char__weapons__staff",
+      "path": "images/char__weapons__staff.png",
+      "position": [
+        301,
+        677
+      ],
+      "size": [
+        250,
+        601
+      ],
+      "z_order": 9
+    },
+    {
+      "kind": "mesh",
+      "name": "char__hoodie",
+      "path": "images/char__hoodie.png",
+      "position": [
+        141,
+        109
+      ],
+      "size": [
+        1058,
+        891
+      ],
+      "z_order": 10
+    },
+    {
+      "kind": "mesh",
+      "name": "char__cloak",
+      "path": "images/char__cloak.png",
+      "position": [
+        183,
+        838
+      ],
+      "size": [
+        1071,
+        391
+      ],
+      "z_order": 11
+    },
+    {
+      "kind": "mesh",
+      "name": "char__arm.L",
+      "path": "images/char__arm_L.png",
+      "position": [
+        960,
+        865
+      ],
+      "size": [
+        161,
+        232
+      ],
+      "z_order": 12
+    },
+    {
+      "kind": "mesh",
+      "name": "char__arm.R",
+      "path": "images/char__arm_R.png",
+      "position": [
+        354,
+        926
+      ],
+      "size": [
+        132,
+        139
+      ],
+      "z_order": 13
+    },
+    {
+      "kind": "mesh",
+      "name": "char__foream.R",
+      "path": "images/char__foream_R.png",
+      "position": [
+        326,
+        1040
+      ],
+      "size": [
+        173,
+        152
+      ],
+      "z_order": 14
+    },
+    {
+      "kind": "mesh",
+      "name": "char__torso",
+      "path": "images/char__torso.png",
+      "position": [
+        498,
+        874
+      ],
+      "size": [
+        564,
+        314
+      ],
+      "z_order": 15
+    },
+    {
+      "kind": "mesh",
+      "name": "char__leg.R",
+      "path": "images/char__leg_R.png",
+      "position": [
+        496,
+        1140
+      ],
+      "size": [
+        150,
+        145
+      ],
+      "z_order": 16
+    },
+    {
+      "kind": "mesh",
+      "name": "char__leg.L",
+      "path": "images/char__leg_L.png",
+      "position": [
+        763,
+        1110
+      ],
+      "size": [
+        276,
+        169
+      ],
+      "z_order": 17
+    },
+    {
+      "kind": "mesh",
+      "name": "char__cloak_back",
+      "path": "images/char__cloak_back.png",
+      "position": [
+        321,
+        914
+      ],
+      "size": [
+        831,
+        348
+      ],
+      "z_order": 18
+    }
+  ]
+}

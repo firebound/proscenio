@@ -22,6 +22,9 @@ def _png(tmp_path, name):
     img.filepath_raw = str(png)
     img.file_format = "PNG"
     img.save()
+    # Release the probe datablock; the importer loads the PNG from disk, so the
+    # file on ``png`` is all that is needed and bpy.data.images stays clean.
+    bpy.data.images.remove(img)
     return png
 
 

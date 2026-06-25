@@ -291,6 +291,7 @@ setdefault
 setitem
 shopt
 shutil
+simpledeform
 sitecustomize
 skipif
 sortsize

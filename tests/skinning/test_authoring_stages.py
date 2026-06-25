@@ -79,8 +79,9 @@ def test_stage_tools_per_stage():
     # Spec 066: Tab cycles these per-stage tools; stages without interaction
     # return an empty tuple.
     assert stage_tools(AuthoringStage.OUTER) == ("auto", "contour")
-    assert stage_tools(AuthoringStage.EDIT_OUTLINE) == ("extend", "cut")
-    assert stage_tools(AuthoringStage.EDIT_INTERIOR_POINTS) == ("point", "fold", "cut")
+    assert stage_tools(AuthoringStage.EDIT_OUTLINE) == ("extend", "cut", "delete")
+    # Interior dropped the redundant "cut" (same corridor hole as the Stage 2 cut).
+    assert stage_tools(AuthoringStage.EDIT_INTERIOR_POINTS) == ("point", "fold", "delete")
     assert stage_tools(AuthoringStage.INNER_LOOPS) == ()
     assert stage_tools(AuthoringStage.PREVIEW_INTERIOR) == ()
     assert stage_tools(AuthoringStage.APPLY) == ()
@@ -97,8 +98,10 @@ def test_next_tool_cycles_and_wraps():
     assert next_tool(AuthoringStage.OUTER, "auto") == "contour"
     assert next_tool(AuthoringStage.OUTER, "contour") == "auto"  # wrap
     assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "point") == "fold"
-    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "fold") == "cut"
-    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "cut") == "point"  # wrap
+    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "fold") == "delete"
+    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "delete") == "point"  # wrap
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "cut") == "delete"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "delete") == "extend"  # wrap
 
 
 def test_next_tool_no_tools_keeps_current():

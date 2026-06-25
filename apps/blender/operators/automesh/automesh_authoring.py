@@ -585,6 +585,17 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _neutral_event(
         self, context: bpy.types.Context, event: bpy.types.Event, stage: str
     ) -> set[str] | None:
+        # The Delete tool (spec 066): a plain LMB removes the stroke under the
+        # cursor (no Alt). It is its own Tab tool, so a click must NOT also drop
+        # a Steiner point. Ctrl+Z still undoes the last committed stroke.
+        if self._active_tool == "delete":
+            if event.type == "LEFTMOUSE" and event.value == "PRESS":
+                self._delete_at_mouse(context, event, stage)
+                _tag_redraw_view3d(context)
+                return {"RUNNING_MODAL"}
+            if event.type == "Z" and event.ctrl and event.value == "PRESS":
+                return self._pen_undo(context, stage)
+            return None
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
             if event.alt:
                 self._delete_at_mouse(context, event, stage)
@@ -804,20 +815,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return "interior" if self._stage == AuthoringStage.EDIT_INTERIOR_POINTS else "outer"
 
     def _refresh_pen_tooltip(self) -> None:
-        """Update the tooltip text for the current pen state without a mouse
-        move. Tap-toggle, wheel/digit subdivisions, and X/Z axis lock are
-        keyboard/wheel events that fire no MOUSEMOVE, so the tooltip would
-        otherwise go stale until the cursor moves.
+        """Clear the warning-only cursor tooltip (spec 066).
 
-        Background color is NOT touched here so a warn-red bg set by the last
-        MOUSEMOVE (cursor outside the silhouette) survives a key event; the
-        next MOUSEMOVE recomputes it.
+        The tooltip carries only a warning now (the shortcut list lives in the
+        panel + status bar). Key / wheel events (axis lock, subdivisions, enter /
+        exit draw) do not move the cursor, so clearing here avoids a stale
+        warning lingering until the next MOUSEMOVE re-evaluates it.
         """
-        stage = self._current_pen_stage()
-        if self._draw_active:
-            self._tooltip_text_ref[0] = self._pen_tooltip_text(stage)
-        else:
-            self._tooltip_text_ref[0] = self._neutral_tooltip_text(stage)
+        self._tooltip_text_ref[0] = ""
 
     def _pen_finish(self, context: bpy.types.Context, stage: str) -> set[str]:
         """Bake subdivisions into the pen polyline + commit it, then re-arm the
@@ -870,6 +875,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _pen_cancel(self, context: bpy.types.Context) -> None:
         self._exit_draw(context)
+        # Re-arm the same pen tool so the artist keeps drawing after cancelling
+        # the in-progress line (Tab picks the tool once; it stays armed). Without
+        # this, Esc dropped into a dead un-armed state with a stale tooltip.
+        if tool_is_pen(self._active_tool):
+            self._enter_draw(context, self._tool_stroke_kind(self._active_tool))
 
     def _commit_pen_stroke(
         self,
@@ -988,13 +998,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self, context: bpy.types.Context, event: bpy.types.Event, stage: str
     ) -> set[str]:
         self._tooltip_mouse_ref[0] = (event.mouse_region_x, event.mouse_region_y)
+        # Warning-only cursor tooltip (the Quick Armature "outside canvas"
+        # pattern): empty unless the active tool is heading the wrong way to do
+        # anything. The shortcut list lives in the panel + status bar.
+        self._tooltip_text_ref[0] = self._warn_text(context, event)
+        self._tooltip_color_ref[0] = _TOOLTIP_BG_WARN
         if self._draw_active:
-            warn = stage == "interior" and self._cursor_outside_outer(context, event)
-            text = self._pen_tooltip_text(stage)
-            if warn:
-                text += " - outside silhouette!"
-            self._tooltip_text_ref[0] = text
-            self._tooltip_color_ref[0] = _TOOLTIP_BG_WARN if warn else _TOOLTIP_BG_NORMAL
             self._delete_hover_points.clear()
             cursor = region_event_to_xz(context, event)
             self._live_preview["cursor"] = (
@@ -1002,40 +1011,35 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             )
             if self._stroke_active and cursor:
                 self._stroke_raw_points.append(cursor)
-            _tag_redraw_view3d(context)
-            return {"RUNNING_MODAL"}
-        # NEUTRAL feedback.
-        self._tooltip_text_ref[0] = self._neutral_tooltip_text(stage)
-        self._tooltip_color_ref[0] = _TOOLTIP_BG_NORMAL
-        hover = self._user_strokes if stage == "interior" else self._user_outer_strokes
-        if event.alt:
+        elif self._active_tool == "delete" or event.alt:
+            hover = self._user_strokes if stage == "interior" else self._user_outer_strokes
             self._update_delete_hover(context, event, hover)
         else:
             self._delete_hover_points.clear()
         _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
-    def _pen_tooltip_text(self, stage: str) -> str:
-        if stage == "contour":
-            verb = "Contour"
-        elif self._pen_kind == "cut":
-            verb = "Cut"
-        elif stage == "outer":
-            verb = "Extend"
-        else:
-            verb = "Fold"
-        axis = f" | {self._axis_lock.upper()}-lock" if self._axis_lock else ""
-        return (
-            f"{verb} pen | subdiv {self._pen_subdivisions}{axis} - "
-            "click=vert, drag=draw, X/Z=lock, wheel/0-9=subdiv, RMB/Enter=finish, Esc=cancel"
-        )
+    def _warn_text(self, context: bpy.types.Context, event: bpy.types.Event) -> str:
+        """The active tool's warning, or "" when the gesture is fine.
 
-    def _neutral_tooltip_text(self, stage: str) -> str:
-        if stage == "outer":
-            base = "tap Shift=Extend / Ctrl=Cut | Alt+click=delete"
-            summary = _outer_strokes_summary(self._user_outer_strokes)
-            return f"{base} | {summary} committed" if summary else base
-        return "click=point | tap Shift=Fold / Ctrl=Cut | Alt+click=delete"
+        Symmetric extend <-> cut: extend grows OUTWARD (warn while inside); cut
+        carves INWARD (warn while outside). Interior tools (fold / point) are
+        inside-only; delete is a destructive mode (always flagged). Contour and
+        auto never warn.
+        """
+        tool = self._active_tool
+        if tool == "delete":
+            return "delete: click a stroke to remove it"
+        outside = self._cursor_outside_outer(context, event)
+        if tool == "extend":
+            return (
+                "" if outside else "extend grows outward - finish the stroke OUTSIDE the silhouette"
+            )
+        if tool == "cut":
+            return "cut carves inward - finish the stroke INSIDE the mesh" if outside else ""
+        if tool in {"fold", "point"}:
+            return "interior tool - inside the silhouette only" if outside else ""
+        return ""
 
     def _commit_drag_stroke(
         self, context: bpy.types.Context, raw: list[tuple[float, float]], kind: str, stage: str
@@ -1230,7 +1234,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if obj is None or image is None:
             return
         if self._stage == AuthoringStage.OUTER:
-            self._output.outer = compute_outer(obj, image, params)
+            # Do not recompute the alpha trace while a manual contour is the
+            # active tool: a slider tweak would silently overwrite the silhouette
+            # the artist authored. The auto trace recomputes again on Tab back to
+            # the Auto tool (_recompute_auto_outer / _cycle_tool).
+            if self._active_tool != "contour":
+                self._output.outer = compute_outer(obj, image, params)
         elif self._stage == AuthoringStage.EDIT_OUTLINE:
             # A slider drag while editing the silhouette must also refresh the
             # base outer + the spliced preview, or both lag the live params and

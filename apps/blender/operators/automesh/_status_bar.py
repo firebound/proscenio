@@ -28,6 +28,7 @@ _TOOL_LABELS = {
     "cut": "Cut",
     "fold": "Fold",
     "point": "Point",
+    "delete": "Delete",
 }
 
 
@@ -56,8 +57,10 @@ def emit_authoring_chord_layout(
             chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "undo"))
         elif active_tool == "point":
             chord(layout, ("MOUSE_LMB", "point"))
-        if stage in {AuthoringStage.EDIT_OUTLINE, AuthoringStage.EDIT_INTERIOR_POINTS}:
-            chord(layout, ("EVENT_ALT", "+"), ("MOUSE_LMB", "delete"))
+            chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "undo"))
+        elif active_tool == "delete":
+            chord(layout, ("MOUSE_LMB", "remove stroke"))
+            chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "undo"))
     chord(layout, ("EVENT_RETURN", "next"))
     chord(layout, ("EVENT_BACKSPACE", "back"))
     chord(layout, ("EVENT_ESC", "cancel"))

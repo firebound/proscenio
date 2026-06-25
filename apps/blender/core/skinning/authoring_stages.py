@@ -38,9 +38,14 @@ class AuthoringStage(IntEnum):
 # APPLY are slider + navigation only).
 _STAGE_TOOLS: dict[AuthoringStage, tuple[str, ...]] = {
     AuthoringStage.OUTER: ("auto", "contour"),
-    AuthoringStage.EDIT_OUTLINE: ("extend", "cut"),
-    AuthoringStage.EDIT_INTERIOR_POINTS: ("point", "fold", "cut"),
+    AuthoringStage.EDIT_OUTLINE: ("extend", "cut", "delete"),
+    # Interior has no "cut": the Stage 4 cut produced the same corridor hole as
+    # the Stage 2 silhouette cut (both route into holes_world), so it was a
+    # redundant operation - dropped. Cut the silhouette in Edit silhouette.
+    AuthoringStage.EDIT_INTERIOR_POINTS: ("point", "fold", "delete"),
 }
+# Pen tools make LMB the click-pen. "delete" is a tool too but not a pen: its LMB
+# removes the committed stroke under the cursor (replacing the old Alt+click).
 _PEN_TOOLS = frozenset({"extend", "cut", "fold", "contour"})
 
 
@@ -82,10 +87,13 @@ class Stroke(TypedDict):
 
     kind="point": single Steiner from a click without drag.
     kind="stroke": resampled polyline that becomes constraint edges + verts.
-    kind="cut" on user_outer_strokes (Stage 2): perpendicular offset lens +
-        post-CDT face-prune removes faces inside the lens (silhouette trim).
-    kind="cut" on user_strokes (Stage 4): polyline constraint + post-CDT
-        bmesh.ops.split_edges rip - duplicates verts without removing material.
+    kind="cut": a perpendicular offset lens whose corridor is routed into
+        ``holes_world`` so the CDT carves it as a hole (removes faces). Both the
+        Stage 2 silhouette cut and the legacy Stage 4 interior cut took this same
+        path - there was never a material-preserving "rip" - so spec 066 dropped
+        the redundant interior cut (cut the silhouette in Edit silhouette). A
+        true rip / seam (split_edges, no material removed) stays a future
+        feature, not this kind.
     """
 
     kind: Literal["point", "stroke", "cut"]

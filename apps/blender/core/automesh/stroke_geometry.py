@@ -53,7 +53,9 @@ def contour_ring_from_pen(points: Sequence[Point2D], subdivisions: int) -> list[
     ring = list(points)
     if len(ring) >= 2 and ring[0] == ring[-1]:
         ring = ring[:-1]
-    if len(ring) < 3:
+    # Need three DISTINCT verts: a ring of 3 entries that are only 2 unique
+    # points (a back-and-forth click) is degenerate, not a silhouette.
+    if len(ring) < 3 or len(set(ring)) < 3:
         return None
     return subdivide_polyline(ring, subdivisions)
 

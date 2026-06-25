@@ -73,7 +73,9 @@ def import_manifest(
     - ``"landed"`` (default): every stamped mesh is shifted so the
       lowest point of the figure lands on world Z=0 - matches the
       Godot / game-engine convention of placing a character's pivot
-      at the feet.
+      at the feet. An authored manifest anchor takes precedence and
+      suppresses this shift (the anchor already places world origin),
+      so a figure with a prop hanging below its feet does not float.
     - ``"centered"``: figure stays centred around the manifest canvas
       centre (world origin), useful when the user already has a
       coordinate plan or wants to align multiple imports in a shared
@@ -102,7 +104,12 @@ def import_manifest(
     for layer in manifest.layers:
         _stamp_layer(layer, manifest, armature_obj, result)
     _tag_manifest_source(result.meshes, manifest)
-    if placement == "landed":
+    # An authored anchor is the pivot/ground the artist deliberately placed, so
+    # it prevails: it already put world origin where they want it. Re-landing on
+    # the figure's lowest mesh would override that and float the figure whenever
+    # its lowest mesh is a prop hanging below the feet (a held weapon, a trailing
+    # cloak). Feet-land only when there is no anchor to honour.
+    if placement == "landed" and manifest.anchor is None:
         _anchor_meshes_at_feet(result.meshes, manifest)
     return result
 

@@ -13,6 +13,7 @@
     "specs/backlog/bugs-found.md",
     "specs/backlog/ui-feedback.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
+    "specs/066-mesh-generation-interaction/interaction-mockup.html",
     "specs/025-code-duplication/raw/**",
     "tools/qa-companion/.backup/**",
     "tools/qa-companion/checklist/feedback.md"

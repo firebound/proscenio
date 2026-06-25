@@ -6,6 +6,10 @@ from core.skinning.authoring_stages import (
     AuthoringStage,
     StageOutput,
     StageParams,
+    default_tool,
+    next_tool,
+    stage_tools,
+    tool_is_pen,
 )
 
 
@@ -69,3 +73,50 @@ def test_authoring_stage_has_six_values_in_workflow_order():
 def test_stage_output_has_user_outer_strokes_field():
     out = StageOutput()
     assert out.user_outer_strokes == []
+
+
+def test_stage_tools_per_stage():
+    # Spec 066: Tab cycles these per-stage tools; stages without interaction
+    # return an empty tuple.
+    assert stage_tools(AuthoringStage.OUTER) == ("auto", "contour")
+    assert stage_tools(AuthoringStage.EDIT_OUTLINE) == ("extend", "cut", "delete")
+    # Interior dropped the redundant "cut" (same corridor hole as the Stage 2 cut).
+    assert stage_tools(AuthoringStage.EDIT_INTERIOR_POINTS) == ("point", "fold", "delete")
+    assert stage_tools(AuthoringStage.INNER_LOOPS) == ()
+    assert stage_tools(AuthoringStage.PREVIEW_INTERIOR) == ()
+    assert stage_tools(AuthoringStage.APPLY) == ()
+
+
+def test_default_tool_is_first_or_empty():
+    assert default_tool(AuthoringStage.OUTER) == "auto"
+    assert default_tool(AuthoringStage.EDIT_OUTLINE) == "extend"
+    assert default_tool(AuthoringStage.EDIT_INTERIOR_POINTS) == "point"
+    assert default_tool(AuthoringStage.APPLY) == ""
+
+
+def test_next_tool_cycles_and_wraps():
+    assert next_tool(AuthoringStage.OUTER, "auto") == "contour"
+    assert next_tool(AuthoringStage.OUTER, "contour") == "auto"  # wrap
+    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "point") == "fold"
+    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "fold") == "delete"
+    assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "delete") == "point"  # wrap
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "cut") == "delete"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "delete") == "extend"  # wrap
+
+
+def test_next_tool_no_tools_keeps_current():
+    # A stage with no interactive tools leaves the tool unchanged.
+    assert next_tool(AuthoringStage.APPLY, "anything") == "anything"
+
+
+def test_next_tool_stale_tool_resets_to_first():
+    # A tool not in the stage (e.g. left over from a previous stage) resets to
+    # the stage's first tool rather than raising.
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "fold") == "extend"
+
+
+def test_tool_is_pen_classification():
+    for pen in ("extend", "cut", "fold", "contour"):
+        assert tool_is_pen(pen) is True
+    for non_pen in ("auto", "point", ""):
+        assert tool_is_pen(non_pen) is False

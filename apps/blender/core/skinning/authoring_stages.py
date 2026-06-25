@@ -30,15 +30,70 @@ class AuthoringStage(IntEnum):
     APPLY = 5
 
 
+# Per-stage interactive tools (spec 066). The modal arms exactly one tool per
+# stage; bare Tab cycles within the stage's tuple. A pen tool (extend / cut /
+# fold / contour) makes LMB the click-pen; "point" drops a single Steiner on a
+# click; "auto" is the passive alpha-traced outer (no LMB interaction). A stage
+# absent from the map has no interactive tool (INNER_LOOPS / PREVIEW_INTERIOR /
+# APPLY are slider + navigation only).
+_STAGE_TOOLS: dict[AuthoringStage, tuple[str, ...]] = {
+    AuthoringStage.OUTER: ("auto", "contour"),
+    AuthoringStage.EDIT_OUTLINE: ("extend", "cut", "delete"),
+    # Interior has no "cut": the Stage 4 cut produced the same corridor hole as
+    # the Stage 2 silhouette cut (both route into holes_world), so it was a
+    # redundant operation - dropped. Cut the silhouette in Edit silhouette.
+    AuthoringStage.EDIT_INTERIOR_POINTS: ("point", "fold", "delete"),
+}
+# Pen tools make LMB the click-pen. "delete" is a tool too but not a pen: its LMB
+# removes the committed stroke under the cursor (replacing the old Alt+click).
+_PEN_TOOLS = frozenset({"extend", "cut", "fold", "contour"})
+
+
+def stage_tools(stage: AuthoringStage) -> tuple[str, ...]:
+    """Ordered interactive tools for ``stage`` (empty when it has none)."""
+    return _STAGE_TOOLS.get(stage, ())
+
+
+def default_tool(stage: AuthoringStage) -> str:
+    """The tool a stage arms on entry (its first); ``""`` when it has none."""
+    tools = stage_tools(stage)
+    return tools[0] if tools else ""
+
+
+def next_tool(stage: AuthoringStage, current: str) -> str:
+    """Cycle to the next tool of ``stage`` (wrapping).
+
+    Returns ``current`` unchanged when the stage has no tools; resets to the
+    first tool when ``current`` is not among the stage's tools (defensive: a
+    stage flip can leave a stale tool until the next entry re-arms the default).
+    """
+    tools = stage_tools(stage)
+    if not tools:
+        return current
+    try:
+        idx = tools.index(current)
+    except ValueError:
+        return tools[0]
+    return tools[(idx + 1) % len(tools)]
+
+
+def tool_is_pen(tool: str) -> bool:
+    """True when the tool makes LMB the click-pen (extend / cut / fold / contour)."""
+    return tool in _PEN_TOOLS
+
+
 class Stroke(TypedDict):
     """Stage 3 stroke or single-Steiner placement.
 
     kind="point": single Steiner from a click without drag.
     kind="stroke": resampled polyline that becomes constraint edges + verts.
-    kind="cut" on user_outer_strokes (Stage 2): perpendicular offset lens +
-        post-CDT face-prune removes faces inside the lens (silhouette trim).
-    kind="cut" on user_strokes (Stage 4): polyline constraint + post-CDT
-        bmesh.ops.split_edges rip - duplicates verts without removing material.
+    kind="cut": a perpendicular offset lens whose corridor is routed into
+        ``holes_world`` so the CDT carves it as a hole (removes faces). Both the
+        Stage 2 silhouette cut and the legacy Stage 4 interior cut took this same
+        path - there was never a material-preserving "rip" - so spec 066 dropped
+        the redundant interior cut (cut the silhouette in Edit silhouette). A
+        true rip / seam (split_edges, no material removed) stays a future
+        feature, not this kind.
     """
 
     kind: Literal["point", "stroke", "cut"]

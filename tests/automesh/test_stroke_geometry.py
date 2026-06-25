@@ -7,7 +7,41 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core.automesh.stroke_geometry import chaikin_smooth  # noqa: E402
+from core.automesh.stroke_geometry import (  # noqa: E402
+    chaikin_smooth,
+    contour_ring_from_pen,
+)
+
+
+def test_contour_ring_drops_closing_duplicate():
+    # The close-on-first-vert click leaves the first vert duplicated at the end;
+    # the ring drops it (no subdivision -> verts unchanged otherwise).
+    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 0.0)]
+    ring = contour_ring_from_pen(pts, subdivisions=0)
+    assert ring == [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+
+
+def test_contour_ring_keeps_open_loop_unchanged():
+    # An already-open ring (no trailing duplicate) is kept as-is.
+    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+    assert contour_ring_from_pen(pts, subdivisions=0) == pts
+
+
+def test_contour_ring_too_few_points_returns_none():
+    assert contour_ring_from_pen([(0.0, 0.0), (1.0, 0.0)], subdivisions=0) is None
+    # A degenerate close (only the duplicated first vert left) is also too few.
+    assert contour_ring_from_pen([(0.0, 0.0), (0.0, 0.0)], subdivisions=0) is None
+
+
+def test_contour_ring_subdivides_each_edge():
+    # subdivisions=1 inserts one midpoint per open edge of the 3-vert ring (the
+    # closing edge stays implicit, so 3 verts -> 3 + 2 inserted = 5).
+    pts = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 0.0)]
+    ring = contour_ring_from_pen(pts, subdivisions=1)
+    assert ring is not None
+    assert ring[0] == (0.0, 0.0)
+    assert (1.0, 0.0) in ring  # midpoint of the first edge
+    assert len(ring) == 5
 
 
 def test_chaikin_zero_iters_returns_input_unchanged():
@@ -81,6 +115,7 @@ def test_resample_empty_returns_empty():
 
 def test_resample_zero_or_negative_spacing_raises():
     import pytest
+
     with pytest.raises(ValueError, match="spacing"):
         resample_polyline([(0.0, 0.0), (1.0, 0.0)], spacing=0.0)
     with pytest.raises(ValueError, match="spacing"):
@@ -124,6 +159,7 @@ def test_snap_empty_candidates_returns_none():
 
 def test_snap_negative_max_dist_raises():
     import pytest
+
     with pytest.raises(ValueError, match="max_dist"):
         snap_endpoint((0.0, 0.0), [(1.0, 0.0)], max_dist=-1.0)
 

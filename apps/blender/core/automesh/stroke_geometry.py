@@ -40,6 +40,24 @@ def subdivide_polyline(points: Sequence[Point2D], n: int) -> list[Point2D]:
     return out
 
 
+def contour_ring_from_pen(points: Sequence[Point2D], subdivisions: int) -> list[Point2D] | None:
+    """Form an outer-contour ring from a closed pen polyline (spec 066).
+
+    The close-on-first-vert click leaves the first vert duplicated at the end;
+    drop it so the ring is not degenerate. A ring with fewer than 3 distinct
+    verts is not a silhouette and returns ``None`` (the caller keeps the prior
+    outer). Otherwise the ring is subdivided like any pen line; the closing edge
+    stays implicit (``output.outer`` is a polygon per the point_in_polygon
+    convention), so it is not re-subdivided.
+    """
+    ring = list(points)
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3:
+        return None
+    return subdivide_polyline(ring, subdivisions)
+
+
 def chaikin_smooth(points: Sequence[Point2D], iters: int) -> list[Point2D]:
     """Chaikin corner-cutting subdivision.
 

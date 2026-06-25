@@ -30,6 +30,53 @@ class AuthoringStage(IntEnum):
     APPLY = 5
 
 
+# Per-stage interactive tools (spec 066). The modal arms exactly one tool per
+# stage; bare Tab cycles within the stage's tuple. A pen tool (extend / cut /
+# fold / contour) makes LMB the click-pen; "point" drops a single Steiner on a
+# click; "auto" is the passive alpha-traced outer (no LMB interaction). A stage
+# absent from the map has no interactive tool (INNER_LOOPS / PREVIEW_INTERIOR /
+# APPLY are slider + navigation only).
+_STAGE_TOOLS: dict[AuthoringStage, tuple[str, ...]] = {
+    AuthoringStage.OUTER: ("auto", "contour"),
+    AuthoringStage.EDIT_OUTLINE: ("extend", "cut"),
+    AuthoringStage.EDIT_INTERIOR_POINTS: ("point", "fold", "cut"),
+}
+_PEN_TOOLS = frozenset({"extend", "cut", "fold", "contour"})
+
+
+def stage_tools(stage: AuthoringStage) -> tuple[str, ...]:
+    """Ordered interactive tools for ``stage`` (empty when it has none)."""
+    return _STAGE_TOOLS.get(stage, ())
+
+
+def default_tool(stage: AuthoringStage) -> str:
+    """The tool a stage arms on entry (its first); ``""`` when it has none."""
+    tools = stage_tools(stage)
+    return tools[0] if tools else ""
+
+
+def next_tool(stage: AuthoringStage, current: str) -> str:
+    """Cycle to the next tool of ``stage`` (wrapping).
+
+    Returns ``current`` unchanged when the stage has no tools; resets to the
+    first tool when ``current`` is not among the stage's tools (defensive: a
+    stage flip can leave a stale tool until the next entry re-arms the default).
+    """
+    tools = stage_tools(stage)
+    if not tools:
+        return current
+    try:
+        idx = tools.index(current)
+    except ValueError:
+        return tools[0]
+    return tools[(idx + 1) % len(tools)]
+
+
+def tool_is_pen(tool: str) -> bool:
+    """True when the tool makes LMB the click-pen (extend / cut / fold / contour)."""
+    return tool in _PEN_TOOLS
+
+
 class Stroke(TypedDict):
     """Stage 3 stroke or single-Steiner placement.
 

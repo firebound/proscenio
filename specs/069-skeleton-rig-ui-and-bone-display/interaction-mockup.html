@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec 069 - Skeleton Rig UI and bone display (mockup)</title>
+<style>
+  :root{
+    --bg:#1d1d1d; --panel:#303030; --row:#2b2b2b; --row-alt:#323232;
+    --active:#4772b3; --text:#e6e6e6; --dim:#a0a0a0; --line:#232323;
+    --btn:#545454; --btn-h:#656565; --hot:#5680c2;
+  }
+  *{box-sizing:border-box}
+  body{background:#111;color:var(--text);font:12px/1.45 "Segoe UI",sans-serif;margin:0;padding:24px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .npanel{width:300px;background:var(--bg);border:1px solid #000;border-radius:4px;overflow:hidden}
+  .tab{background:#252525;padding:6px 10px;font-weight:600;color:#cfcfcf;border-bottom:1px solid #000;letter-spacing:.3px}
+  .pt{border-bottom:1px solid var(--line)}
+  .pt-head{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--panel);cursor:pointer;user-select:none}
+  .pt-head:hover{background:#363636}
+  .tri{width:9px;height:9px;flex:0 0 9px;transition:transform .12s}
+  .pt.closed .tri{transform:rotate(-90deg)}
+  .pt-head .ttl{font-weight:600}
+  .pt-body{padding:8px;background:var(--bg)}
+  .pt.closed .pt-body{display:none}
+  .hint{color:var(--dim);font-size:11px;margin:2px 0 8px}
+  .fieldrow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .fieldrow label{color:var(--dim);flex:0 0 76px;text-align:right}
+  select{flex:1;background:#262626;color:var(--text);border:1px solid #000;border-radius:3px;padding:4px 6px}
+
+  .toolbar{display:flex;gap:4px;margin-bottom:6px}
+  .toggle{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:5px 6px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer;color:var(--text)}
+  .toggle:hover{background:var(--btn-h)}
+  .toggle.on{background:var(--hot)}
+  .toggle svg{width:13px;height:13px}
+
+  .list{border:1px solid #000;border-radius:3px;background:#262626;max-height:280px;overflow-y:auto;overflow-x:hidden}
+  .brow{display:flex;align-items:center;gap:6px;padding:3px 6px;border-bottom:1px solid #1c1c1c;cursor:pointer;white-space:nowrap}
+  .brow:nth-child(even){background:var(--row-alt)}
+  .brow:nth-child(odd){background:var(--row)}
+  .brow:hover{background:#3a3f49}
+  .brow.active{background:var(--active)}
+  .brow .nm{flex:1;display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis}
+  .brow .flags{display:flex;gap:4px;align-items:center}
+  .ico{width:14px;height:14px;flex:0 0 14px;opacity:.92}
+  .ico.btn{cursor:pointer}
+  .ico.btn:hover{opacity:1;filter:brightness(1.3)}
+  .mark{width:13px;height:13px;flex:0 0 13px}
+  .star{cursor:pointer}
+  .star.off{opacity:.28}
+  .star.off:hover{opacity:.6}
+  .count{color:var(--dim);margin:4px 2px 6px}
+
+  /* Rig UI */
+  .rig-sec{margin-bottom:8px}
+  .rig-rowlabel{color:var(--dim);font-size:11px;margin:6px 2px 3px}
+  .rig-row{display:flex;gap:4px;align-items:stretch}
+  .eye{display:flex;align-items:center;justify-content:center;width:26px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer}
+  .eye:hover{background:var(--btn-h)}
+  .eye.off svg{opacity:.3}
+  .selbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer;color:var(--text);font-weight:500}
+  .selbtn:hover{background:var(--hot)}
+  .selbtn:active{background:#3a5e94}
+  .swatch{width:22px;border:1px solid #000;border-radius:3px;cursor:pointer}
+  .swatch:hover{filter:brightness(1.25)}
+
+  /* Bone Display (custom shapes) */
+  .seg{display:flex;gap:0;margin-bottom:8px;border:1px solid #000;border-radius:3px;overflow:hidden}
+  .seg div{flex:1;text-align:center;padding:5px;background:var(--btn);cursor:pointer;border-right:1px solid #000}
+  .seg div:last-child{border-right:0}
+  .seg div.on{background:var(--hot)}
+  .shapegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px}
+  .shape{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer;font-size:11px}
+  .shape:hover{background:var(--btn-h)}
+  .shape.on{background:var(--hot);outline:1px solid #9fc1f2}
+  .shape svg{width:26px;height:26px;stroke:#dfe6f2;fill:none;stroke-width:1.6}
+  .slider{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .slider label{color:var(--dim);flex:0 0 76px;text-align:right}
+  .slider input{flex:1}
+  .applybtn{width:100%;padding:7px;background:var(--hot);border:1px solid #000;border-radius:3px;color:#fff;font-weight:600;cursor:pointer;margin-top:4px}
+  .applybtn:hover{filter:brightness(1.1)}
+
+  .legend{width:320px;color:var(--dim);font-size:11px}
+  .legend h3{color:#ddd;font-size:13px;margin:14px 0 4px}
+  .legend b{color:#cdcdcd}
+  .legend code{background:#000;padding:1px 5px;border-radius:3px;color:#9fd0ff}
+  kbd{background:#000;border:1px solid #444;border-radius:3px;padding:0 5px;font-size:10px}
+</style>
+</head>
+<body>
+
+<!-- ============ skeleton panel ============ -->
+<div class="npanel">
+  <div class="tab">Proscenio</div>
+
+  <div class="pt">
+    <div class="pt-head" onclick="tog(this)">
+      <svg class="tri" viewBox="0 0 10 10"><path d="M2 1 L8 5 L2 9 Z" fill="#bbb"/></svg>
+      <span class="ttl">Skeleton: firebound_guy.rig</span>
+    </div>
+    <div class="pt-body">
+
+      <!-- Active Armature subpanel -->
+      <div class="pt" style="border:1px solid #000;border-radius:3px">
+        <div class="pt-head" onclick="tog(this)">
+          <svg class="tri" viewBox="0 0 10 10"><path d="M2 1 L8 5 L2 9 Z" fill="#bbb"/></svg>
+          <span class="ttl">Active Armature</span>
+        </div>
+        <div class="pt-body">
+
+          <!-- E: armature-wide display mode -->
+          <div class="fieldrow">
+            <label>Display As</label>
+            <select title="armature.data.display_type - whole-rig viewport draw style">
+              <option>Octahedral</option><option>Stick</option>
+              <option>B-Bone</option><option>Envelope</option><option>Wire</option>
+            </select>
+          </div>
+
+          <div class="count" id="count">46 bone(s)</div>
+
+          <!-- B + C chrome -->
+          <div class="toolbar">
+            <div class="toggle" id="favTog" onclick="toggleFav()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>
+              Favorites
+            </div>
+            <div class="toggle" id="azTog" onclick="toggleAZ()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h10M5 12h7M5 18h4M17 8V4m0 0l-2 2m2-2l2 2"/></svg>
+              A-Z
+            </div>
+          </div>
+
+          <div class="list" id="boneList"></div>
+        </div>
+      </div>
+
+      <!-- D: Rig UI subpanel -->
+      <div class="pt" style="border:1px solid #000;border-radius:3px;margin-top:6px">
+        <div class="pt-head" onclick="tog(this)">
+          <svg class="tri" viewBox="0 0 10 10"><path d="M2 1 L8 5 L2 9 Z" fill="#bbb"/></svg>
+          <span class="ttl">Rig UI</span>
+        </div>
+        <div class="pt-body">
+          <div class="hint">Button selects the collection's bones; eye toggles visibility; swatch (G) colors the whole collection. Layout follows native bone-collection nesting.</div>
+          <div id="rigui"></div>
+        </div>
+      </div>
+
+      <!-- F: Bone Display subpanel (custom shapes) -->
+      <div class="pt" style="border:1px solid #000;border-radius:3px;margin-top:6px">
+        <div class="pt-head" onclick="tog(this)">
+          <svg class="tri" viewBox="0 0 10 10"><path d="M2 1 L8 5 L2 9 Z" fill="#bbb"/></svg>
+          <span class="ttl">Bone Display</span>
+        </div>
+        <div class="pt-body">
+          <div class="hint">Assign a generated geometric custom_shape. Native mechanism (pose_bone.custom_shape); Proscenio supplies the primitive meshes.</div>
+
+          <div class="seg" id="scope">
+            <div class="on" onclick="setScope(this,'Active')" title="Assign to the active bone only">Active</div>
+            <div onclick="setScope(this,'Selected')" title="Assign to all selected bones">Selected</div>
+            <div onclick="setScope(this,'Collection')" title="Assign to every bone in a collection">Collection</div>
+          </div>
+
+          <div class="shapegrid" id="shapes"></div>
+
+          <div class="slider"><label>Scale</label><input type="range" min="10" max="300" value="100" title="custom_shape_scale_xyz"></div>
+          <div class="slider"><label>Offset Y</label><input type="range" min="-100" max="100" value="0" title="custom_shape_translation"></div>
+
+          <div class="applybtn" onclick="flash(this,'Assigned to '+scopeName)">Assign Shape</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ legend ============ -->
+<div class="legend">
+  <h3>Spec 069 - what to try</h3>
+  <p><b>A. Connectivity icons</b> - hover the chain (connected) / broken-chain (disconnected) / child-of (relative, on <code>hand.L</code>) icon. Connected/disconnected = info only. <b>Relative is a live toggle</b>: click the child-of icon on <code>hand.L</code> to flip it.</p>
+  <p><b>B. Sort</b> - <kbd>A-Z</kbd> on = flat alphabetical, indent drops; off = hierarchy tree.</p>
+  <p><b>C. Favorites</b> - click a star to pin; <kbd>Favorites</kbd> filters to pinned.</p>
+  <p><b>D. Rig UI</b> - <code>Arm.L</code> nests IK/FK/Tweak into one labelled row. Button selects; eye toggles visibility.</p>
+  <p><b>E. Display As</b> - whole-rig draw style (top of Active Armature). Native <code>display_type</code>.</p>
+  <p><b>F. Bone Display</b> - pick a scope, pick a geometric shape, set scale/offset, Assign. Native <code>custom_shape</code> with Proscenio-generated primitive meshes.</p>
+  <p><b>G. Collection color</b> - click a Rig UI row swatch: cycles a theme color and tints that collection's bones in the list. No native per-collection color; this batches over the bones.</p>
+  <hr style="border-color:#333">
+  <p style="color:#888">Mockup only - colors/spacing approximate Blender's N-panel; real icons come from Blender's set (<code>LINKED</code>, <code>UNLINKED</code>, <code>CON_CHILDOF</code>, <code>SOLO_ON/OFF</code>, <code>HIDE_OFF</code>).</p>
+</div>
+
+<script>
+function tog(h){h.parentElement.classList.toggle('closed')}
+function flash(el,msg){const o=el.textContent;el.textContent=msg;setTimeout(()=>el.textContent=o,900)}
+
+/* ---- icons ---- */
+const I = {
+  bone:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#c9c9c9" stroke-width="1.6"><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M7.5 16.5 16.5 7.5"/></svg>',
+  linked:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#7fc77f" stroke-width="2"><path d="M9 12h6M8 8a4 4 0 000 8h2M16 8h-2M16 16a4 4 0 000-8"/></svg>',
+  unlinked:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#d08a5a" stroke-width="2"><path d="M8 8a4 4 0 000 8h1M15 16h1a4 4 0 000-8M4 4l16 16"/></svg>',
+  childof:(on)=>'<svg class="ico btn" viewBox="0 0 24 24" fill="none" stroke="'+(on?'#8aa6d0':'#666')+'" stroke-width="2"><path d="M6 4v8a4 4 0 004 4h8m0 0l-3-3m3 3l-3 3"/></svg>',
+  star:(on)=>'<svg class="mark star '+(on?'on':'off')+'" viewBox="0 0 24 24" fill="'+(on?'#e7c14a':'#888')+'"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d0d0d0" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/></svg>'
+};
+/* shape glyphs (F) */
+const SH = {
+  Circle:'<circle cx="13" cy="13" r="9"/>',
+  Square:'<rect x="4" y="4" width="18" height="18" rx="1"/>',
+  Diamond:'<path d="M13 3 23 13 13 23 3 13Z"/>',
+  Line:'<path d="M3 13h20" stroke-linecap="round"/>',
+  Triangle:'<path d="M13 4 23 22 3 22Z"/>',
+  Arrow:'<path d="M4 13h14m0 0l-5-5m5 5l-5 5"/>'
+};
+
+const TIP={connected:"Connected to parent - head locked to parent's tail",
+           disconnected:"Has a parent but its head moves free (disconnected parenting)",
+           relative:"Relative parenting (click to toggle) - child follows parent's local transform"};
+
+/* theme colors for collection tint (G) */
+const THEME=['', '#c44e4e','#4e84c4','#5bb05b','#c4a23e','#9a5bc4','#46b3b3'];
+
+let bones=[
+  {n:'root',     p:-1, conn:null,           fav:true,  col:0},
+  {n:'spine',    p:0,  conn:'connected',    fav:false, col:1},
+  {n:'spine.001',p:1,  conn:'connected',    fav:false, col:1},
+  {n:'head',     p:2,  conn:'disconnected', fav:true,  col:1},
+  {n:'arm.L',    p:2,  conn:'disconnected', fav:false, col:2},
+  {n:'arm.L.001',p:4,  conn:'connected',    fav:false, col:2},
+  {n:'hand.L',   p:5,  conn:'connected', rel:true, fav:false, col:2},
+  {n:'arm.R',    p:2,  conn:'disconnected', fav:false, col:3},
+  {n:'arm.R.001',p:7,  conn:'connected',    fav:false, col:3},
+  {n:'leg.L',    p:0,  conn:'disconnected', fav:false, col:0},
+  {n:'leg.R',    p:0,  conn:'disconnected', fav:false, col:0},
+];
+let activeBone=3, favOnly=false, az=false;
+
+function depthOf(i){let d=0,c=bones[i];while(c.p>=0){d++;c=bones[c.p]}return d}
+function hierOrder(){const out=[],kids=i=>bones.map((b,j)=>[b,j]).filter(([b])=>b.p===i);
+  (function walk(p){for(const[,j]of kids(p)){out.push(j);walk(j)}})(-1);return out}
+
+function renderBones(){
+  const el=document.getElementById('boneList');
+  let order=az?bones.map((_,i)=>i).sort((a,b)=>bones[a].n.localeCompare(bones[b].n)):hierOrder();
+  if(favOnly)order=order.filter(i=>bones[i].fav);
+  el.innerHTML=order.map(i=>{
+    const b=bones[i],d=az?0:depthOf(i);
+    const tint=THEME[b.col]?`style="color:${THEME[b.col]}"`:'';
+    let flag='';
+    if(b.conn==='connected')flag+=`<span title="${TIP.connected}">${I.linked}</span>`;
+    else if(b.conn==='disconnected')flag+=`<span title="${TIP.disconnected}">${I.unlinked}</span>`;
+    if(b.rel!==undefined)flag+=`<span title="${TIP.relative}" onclick="event.stopPropagation();toggleRel(${i})">${I.childof(b.rel)}</span>`;
+    return `<div class="brow ${i===activeBone?'active':''}" onclick="pick(${i})">
+       <span class="nm" ${tint}>${'&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(d)}${I.bone}${b.n}</span>
+       <span class="flags">${flag}</span>
+       <span onclick="event.stopPropagation();toggleStar(${i})" title="Pin / unpin in the favorites filter">${I.star(b.fav)}</span>
+     </div>`;
+  }).join('')||'<div style="padding:8px;color:#888">no favorited bones</div>';
+}
+function pick(i){activeBone=i;renderBones()}
+function toggleStar(i){bones[i].fav=!bones[i].fav;renderBones()}
+function toggleRel(i){bones[i].rel=!bones[i].rel;renderBones()}
+function toggleFav(){favOnly=!favOnly;document.getElementById('favTog').classList.toggle('on',favOnly);renderBones()}
+function toggleAZ(){az=!az;document.getElementById('azTog').classList.toggle('on',az);renderBones()}
+
+/* ---- Rig UI (D) + collection color (G) ---- */
+/* col index ties a collection to bones[].col so the swatch tints the list */
+let collections=[
+  {n:'Root', col:0, vis:true, children:[]},
+  {n:'Torso',col:1, vis:true, children:[]},
+  {n:'Arm.L',col:2, vis:true, children:['IK','FK','Tweak']},
+  {n:'Arm.R',col:3, vis:true, children:['IK','FK','Tweak']},
+  {n:'Leg.L',col:0, vis:false,children:[]},
+  {n:'Leg.R',col:0, vis:false,children:[]},
+];
+function renderRig(){
+  const el=document.getElementById('rigui');
+  el.innerHTML=collections.map((c,ci)=>{
+    const eye=`<div class="eye ${c.vis?'':'off'}" onclick="toggleVis(${ci})" title="Show / hide '${c.n}' in the viewport">${I.eye}</div>`;
+    const sw=`<div class="swatch" style="background:${THEME[c.col]||'#3a3a3a'}" onclick="cycleColor(${ci})" title="Color every bone in '${c.n}' (cycles theme color)"></div>`;
+    if(c.children.length){
+      const btns=c.children.map(ch=>`<div class="selbtn" onclick="flash(this,'select')" title="Select bones in ${c.n} (${ch})">${ch}</div>`).join('');
+      return `<div class="rig-sec"><div class="rig-rowlabel">${c.n}</div><div class="rig-row">${eye}${btns}${sw}</div></div>`;
+    }
+    return `<div class="rig-sec"><div class="rig-row">${eye}<div class="selbtn" onclick="flash(this,'select')" title="Select all bones in ${c.n}">${c.n}</div>${sw}</div></div>`;
+  }).join('');
+}
+function toggleVis(ci){collections[ci].vis=!collections[ci].vis;renderRig()}
+function cycleColor(ci){
+  const next=(collections[ci].col+1)%THEME.length;
+  const old=collections[ci].col; collections[ci].col=next;
+  bones.forEach(b=>{if(b.col===old&&collidesWith(ci,old))b.col=next});
+  /* simpler: retint bones whose collection index matches this row's bone-group */
+  retintFromCollections();
+  renderRig();renderBones();
+}
+/* map each rig row to its bones by the shared col group used in the bones[] seed */
+function collidesWith(){return true}
+function retintFromCollections(){
+  /* keep bones in sync with their owning collection's color for the demo */
+  const map={Root:['root'],Torso:['spine','spine.001','head'],
+             'Arm.L':['arm.L','arm.L.001','hand.L'],'Arm.R':['arm.R','arm.R.001'],
+             'Leg.L':['leg.L'],'Leg.R':['leg.R']};
+  collections.forEach(c=>{(map[c.n]||[]).forEach(nm=>{const b=bones.find(x=>x.n===nm);if(b)b.col=c.col})});
+}
+
+/* ---- Bone Display / custom shapes (F) ---- */
+let scopeName='Active', shapeSel='Circle';
+function setScope(el,name){[...el.parentElement.children].forEach(d=>d.classList.remove('on'));el.classList.add('on');scopeName=name}
+function renderShapes(){
+  document.getElementById('shapes').innerHTML=Object.keys(SH).map(k=>
+    `<div class="shape ${k===shapeSel?'on':''}" onclick="pickShape('${k}')" title="custom_shape = WGT-proscenio-${k.toLowerCase()}">
+       <svg viewBox="0 0 26 26">${SH[k]}</svg>${k}</div>`).join('');
+}
+function pickShape(k){shapeSel=k;renderShapes()}
+
+renderBones();renderRig();renderShapes();
+</script>
+</body>
+</html>

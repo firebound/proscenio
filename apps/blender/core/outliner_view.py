@@ -139,7 +139,7 @@ def draw_order_sort_key(obj: object, *, rank: int) -> tuple[int, int, str]:
 
 def outliner_sort_key(
     obj: object, *, rank: int, sort_alpha: bool, sort_draw_order: bool = False
-) -> tuple[int, ...]:
+) -> tuple[int | str, ...]:
     """Sort key for the Outliner, honouring the active sort mode.
 
     ``sort_draw_order`` (the Proscenio 'Sort by draw order' toggle) wins when on:

@@ -70,8 +70,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
         scene_props = getattr(context.scene, "proscenio", None)
         sort_draw_order = bool(
-            scene_props is not None
-            and getattr(scene_props, "outliner_sort_by_draw_order", False)
+            scene_props is not None and getattr(scene_props, "outliner_sort_by_draw_order", False)
         )
         # Both flattening sorts (alpha, draw order) drop the parenting tree, so
         # the indent goes with it.
@@ -185,8 +184,7 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # out by their Y Location (Draw Order).
         sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
         sort_draw_order = bool(
-            scene_props is not None
-            and getattr(scene_props, "outliner_sort_by_draw_order", False)
+            scene_props is not None and getattr(scene_props, "outliner_sort_by_draw_order", False)
         )
         return compute_list_filter(
             objects,
@@ -228,9 +226,7 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
         # The favorites-only and sort-by-draw-order toggles sit in the panel
         # header row, each labelled so the icon is not a bare guess.
         row = layout.row(align=True)
-        row.prop(
-            scene_props, "outliner_show_favorites", text="Favorites", icon="SOLO_ON"
-        )
+        row.prop(scene_props, "outliner_show_favorites", text="Favorites", icon="SOLO_ON")
         row.prop(
             scene_props,
             "outliner_sort_by_draw_order",

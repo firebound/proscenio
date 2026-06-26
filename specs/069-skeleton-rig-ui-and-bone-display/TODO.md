@@ -47,11 +47,11 @@ Implementation plan for the eight LOCKED decisions in [STUDY.md](STUDY.md). Orde
 
 ## Follow-up (2026-06-26) - nested-collection fix + theme read-out
 
-- [x] `core/bpy_helpers/_shared/bone_collections.py`: `iter_collection_bones` prefers `BoneCollection.bones_recursive` (fallback `bones`) so a parent collection resolves its 4.1+ nested children's bones - fixes "collection '<parent>' has no bones" on color / select / shape.
+- [x] `core/bpy_helpers/_shared/bone_collections.py`: `iter_collection_bones` prefers `BoneCollection.bones_recursive` (fallback `bones`) so a parent collection resolves its 4.1+ nested children's bones - fixes "collection '<parent>' has no bones" on color / select.
 - [x] `bone_collections.py`: `collection_theme_label(armature, name)` - the shared `THEME##` number when the collection's bones agree on one slot, else `""`.
 - [x] `panels/skeleton.py` Rig UI rows are three parts (user-specified 2026-06-26): fixed eye (`_RIG_UI_EYE_UNITS`) | flexible middle that the select button(s) split equally | fixed theme selector. Eye + theme selector are built only from non-stretching widgets so they match on every row, independent of the middle.
 - [x] `panels/skeleton.py` `_draw_swatch` / `_theme_bone_color_set`: theme selector = three same-width slots so themed/no-theme rows align - a dot (a fixed `template_node_socket` in the theme color when themed; an invisible non-breaking-space spacer when not, NOT a transparent socket, which still draws its outline as a redundant second circle), a number label (the `THEME##` number, or a ` ` spacer - an empty `""` collapses since `ui_units_x` is only a minimum), and ONE picker operator icon (`COLOR`) on every row (no separate `RADIOBUT_OFF` for no-theme - user asked for a single icon). NEVER a `prop(color)` field: it stretches and expands the whole selector. (`split` and a one-row tree were tried and rejected.)
-- [x] `interaction-mockup.html`: Rig UI section redone to the agreed three-part row (fixed eye | equal-split select buttons | fixed theme selector with color chip + number, or a dim empty marker), so the design is settled visually before the Blender translation.
+- [x] `interaction-mockup.html`: Rig UI section redone to the agreed three-part row (fixed eye | equal-split select buttons | fixed theme selector = colored dot + theme number + one picker icon, blank when no theme), and the dropped Bone Display section removed. Design settled visually before the Blender translation.
 - [x] `tests/operators/test_bone_display_ops.py`: nested-collection color reaches child bones.
 - [~] Custom-shape widgets (`bone_widgets.py`, `assign_bone_shape`, Bone Display subpanel) **DROPPED 2026-06-26**. A first fix re-oriented the outlines from the bone-local X-Z plane to Y-Z (so an arrow followed the bone instead of stabbing into the screen), but the deeper problem is unfixable without invasive roll work: a `custom_shape` is anchored in bone-local space, so flat 2D widgets only orient correctly when every bone's roll is consistent - a real rig's are not, so it only looked right on the bone pointing right. Removed in favor of the native `display_type` dropdown (E). See STUDY decision 7.
 
@@ -68,4 +68,5 @@ Implementation plan for the eight LOCKED decisions in [STUDY.md](STUDY.md). Orde
 
 ## Gates
 
-- [x] ruff, mypy, repo-root pytest, in-Blender operator tests, goldens (per the Blender gate set).
+- [x] Original spec-069 implementation: ruff, mypy, repo-root pytest, in-Blender operator tests, goldens.
+- [ ] **Re-gate the 2026-06-26 follow-ups** (export exclusion, Rig UI theme selector, custom-shape removal): repo-root pytest is green, but **ruff, mypy, and the in-Blender operator tests + goldens still need a local run** (not runnable in the dev environment they were authored in).

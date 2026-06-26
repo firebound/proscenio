@@ -491,9 +491,9 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
           blank when the collection's bones do not share one ``THEME##`` slot;
         - a number slot: a label with the theme number (blank when no theme) -
           a label, not button text, which would stretch;
-        - the picker: an icon-only operator (the only clickable part) - a color
-          icon when themed, a dim empty circle when not. Clicking opens the
-          palette dialog (a parent colors its whole subtree).
+        - the picker: an icon-only operator (the only clickable part), one
+          ``COLOR`` icon on every row, themed or not. Clicking opens the palette
+          dialog (a parent colors its whole subtree).
         """
         armature = bpy.data.objects.get(arm_name)
         label = collection_theme_label(armature, collection.name) if armature else ""

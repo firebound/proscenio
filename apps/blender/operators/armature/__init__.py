@@ -7,11 +7,19 @@ Subpackage with:
 - skeleton_target   - Set Proscenio active armature pointer
 - rotation_mode     - Convert bone rotation to XYZ Euler
 - quick_armature    - Quick Armature modal (the Quick Armature shortcut)
+- bone_appearance   - Assign custom shape, color a bone collection
 """
 
 from __future__ import annotations
 
-from . import authoring_camera, authoring_ik, quick_armature, rotation_mode, skeleton_target
+from . import (
+    authoring_camera,
+    authoring_ik,
+    bone_appearance,
+    quick_armature,
+    rotation_mode,
+    skeleton_target,
+)
 
 
 def register() -> None:
@@ -20,9 +28,11 @@ def register() -> None:
     skeleton_target.register()
     rotation_mode.register()
     quick_armature.register()
+    bone_appearance.register()
 
 
 def unregister() -> None:
+    bone_appearance.unregister()
     quick_armature.unregister()
     rotation_mode.unregister()
     skeleton_target.unregister()

@@ -6,9 +6,17 @@ The picker is a read-only field (Blender forbids writing scene data during a dra
 
 ## Active Armature
 
-A read-only list of every bone the writer would export, indented by depth, with `connected` / `disconnected` / `relative` flags. Click a bone to select it in the viewport; Shift / Ctrl extend or toggle the selection (the per-row marker shows in Pose and Edit mode). Inspection only - it never changes the `.proscenio`.
+A list of every bone the writer would export. The `Display As` dropdown at the top sets the whole rig's viewport draw style (Octahedral / Stick / B-Bone / Envelope / Wire) - the native armature display type, surfaced here so it is one click away while authoring. The bone list indents by hierarchy depth and reads as the parenting tree by default; the native A-Z toggle flattens it to a plain alphabetical order and drops the indent (mirroring the Outliner). Each row carries connectivity icons on the right: a chain (`connected`, the head is locked to the parent's tail) or a broken chain (`disconnected`, a child whose head moves freely), each a hover tooltip rather than text. Connect / disconnect itself stays in Blender's native Edit mode, since it snaps the head and is a geometry edit. The child-of icon is a live toggle for Relative Parenting (a pose-inheritance flag, no geometry change). The star pins a bone; the `Favorites` toggle in the count row hides every non-pinned bone. Per-bone favorites live on `bone.proscenio.is_favorite`, persisted in the .blend.
 
-Below the list, `Active to Euler` and `All to Euler` convert bone rotation mode to XYZ Euler. This is the one-click fix for the export validator's warning that a bone driving a sprite is not in the XYZ Euler mode the driver reads.
+Click a bone to select it in the viewport; Shift / Ctrl extend or toggle the selection (the per-row marker shows in Pose and Edit mode). Below the list, `Active to Euler` and `All to Euler` convert bone rotation mode to XYZ Euler. This is the one-click fix for the export validator's warning that a bone driving a sprite is not in the XYZ Euler mode the driver reads.
+
+## Rig UI
+
+Per-collection select buttons and visibility toggles built from the picked armature's native bone collections, all **blender-only** (it selects and shows bones, it never exports). The layout honors the 4.1+ collection nesting: a top-level collection with children renders as a labelled row of per-child select buttons (the Rigify-style "Arm.L: IK | FK | Tweak" grouping), a childless collection renders as a single-button row. Each row's button selects that collection's bones in the viewport, the eye toggles the collection's visibility (a hidden parent hides its children, the native inheritance), and the swatch opens a color dialog that applies a bone color to every bone in the collection at once - Blender has no per-collection color, so this batches over the bones. Assign bones to collections in Blender's native Bone Collections panel; this subpanel only consumes what is there, so with no collections it stays hidden.
+
+## Bone Display
+
+Assign a generated 2D outline as a bone's custom shape, **blender-only**. The grid offers a flat primitive set (circle, square, diamond, line, triangle, arrow); the meshes are generated on demand as `WGT-proscenio-<shape>` data-blocks and kept out of the scene. Clicking a shape assigns it to the active bone's `custom_shape` through the native mechanism (the same Rigify uses). The operator's redo panel switches the scope to the selected bones or a whole bone collection and sets the scale and offset. Proscenio is a 2D pipeline, so the shapes are planar outlines that read on the picture plane; 3D widgets are out of scope.
 
 ## Pose Mode
 

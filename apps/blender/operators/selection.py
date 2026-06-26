@@ -1,4 +1,9 @@
-"""Selection operators: validation issue, outliner row, outliner favorite toggle."""
+"""Selection operators: validation issue, outliner row, favorites, bone rows.
+
+Covers the issue / outliner / action row clicks and favorite toggles, plus the
+Skeleton-list bone-row affordances: the connectivity info tooltip, the Relative
+Parenting toggle, the per-bone favorite, and the Rig UI collection-select.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +17,9 @@ from ..core._shared.props_access import object_props  # type: ignore[import-not-
 from ..core._shared.report import report_warn  # type: ignore[import-not-found]
 from ..core.armature.skeleton_target import (  # type: ignore[import-not-found]
     resolve_skeleton_target,
+)
+from ..core.bpy_helpers._shared.bone_collections import (  # type: ignore[import-not-found]
+    iter_collection_bones,
 )
 from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
     bone_select_add,
@@ -304,12 +312,175 @@ class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):
         return {"FINISHED"}
 
 
+#: Hover-tooltip copy for the bone-row connectivity icons. Keyed by the flag the
+#: panel resolves from the bone, surfaced through the no-op info operator (a
+#: ``layout.label`` icon carries no tooltip, so the icon is a click-less operator
+#: button whose dynamic ``description`` is the explanation).
+_BONE_FLAG_TOOLTIPS = {
+    "connected": "Connected to parent - the bone head is locked to the parent's tail",
+    "disconnected": (
+        "Has a parent but its head moves freely (disconnected parenting). "
+        "Connect / disconnect in Edit mode (it snaps the head to the parent tail)"
+    ),
+}
+
+
+class PROSCENIO_OT_bone_flag_info(bpy.types.Operator):
+    """No-op info button: carries the connectivity tooltip, performs no action.
+
+    A ``layout.label`` icon renders no tooltip, so the bone row draws the
+    connected / disconnected glyph as this click-less operator whose dynamic
+    ``description`` is the per-flag explanation. Connect / disconnect itself is
+    an Edit-mode geometry edit (it snaps the head onto the parent tail), so the
+    panel only explains it, it does not toggle it.
+    """
+
+    bl_idname = "proscenio.bone_flag_info"
+    bl_label = "Proscenio: Bone Connectivity"
+    bl_options: ClassVar[set[str]] = {"INTERNAL"}
+
+    flag: StringProperty(  # type: ignore[valid-type]
+        name="Flag",
+        default="",
+    )
+
+    @classmethod
+    def description(
+        cls, _context: bpy.types.Context, properties: bpy.types.OperatorProperties
+    ) -> str:
+        return _BONE_FLAG_TOOLTIPS.get(getattr(properties, "flag", ""), "")
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        return {"CANCELLED"}
+
+
+class PROSCENIO_OT_toggle_bone_relative_parent(bpy.types.Operator):
+    """Flip a bone's Relative Parenting flag from the Skeleton list.
+
+    ``Bone.use_relative_parent`` is a pose-inheritance flag (the child follows
+    the parent's local transform), writable directly on the data bone in Pose /
+    Object mode with no geometric side effect - unlike connect / disconnect,
+    which is an Edit-mode topology edit. So this one is a real one-click toggle.
+    """
+
+    bl_idname = "proscenio.toggle_bone_relative_parent"
+    bl_label = "Proscenio: Toggle Relative Parenting"
+    bl_description = (
+        "Toggle Relative Parenting on this bone - the child follows the parent's "
+        "local transform instead of its rest offset. A pose flag, not a geometry edit"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    armature_name: StringProperty(  # type: ignore[valid-type]
+        name="Armature",
+        default="",
+    )
+    bone_name: StringProperty(  # type: ignore[valid-type]
+        name="Bone",
+        default="",
+    )
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        armature = bpy.data.objects.get(self.armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            report_warn(self, f"armature '{self.armature_name}' not found")
+            return {"CANCELLED"}
+        bone = getattr(armature.data, "bones", {}).get(self.bone_name)
+        if bone is None:
+            report_warn(self, f"bone '{self.bone_name}' not in '{armature.name}'")
+            return {"CANCELLED"}
+        bone.use_relative_parent = not bool(bone.use_relative_parent)
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_toggle_bone_favorite(bpy.types.Operator):
+    """Flip the Skeleton-list favorite flag on a bone (mirrors the outliner toggle)."""
+
+    bl_idname = "proscenio.toggle_bone_favorite"
+    bl_label = "Proscenio: Toggle Bone Favorite"
+    bl_description = (
+        "Pin / unpin this bone in the Skeleton list. Pinned bones survive the 'Favorites' filter"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    armature_name: StringProperty(  # type: ignore[valid-type]
+        name="Armature",
+        default="",
+    )
+    bone_name: StringProperty(  # type: ignore[valid-type]
+        name="Bone",
+        default="",
+    )
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        armature = bpy.data.objects.get(self.armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            report_warn(self, f"armature '{self.armature_name}' not found")
+            return {"CANCELLED"}
+        bone = getattr(armature.data, "bones", {}).get(self.bone_name)
+        if bone is None:
+            report_warn(self, f"bone '{self.bone_name}' not in '{armature.name}'")
+            return {"CANCELLED"}
+        props = getattr(bone, "proscenio", None)
+        if props is None:
+            report_warn(self, "PropertyGroup not registered on this bone")
+            return {"CANCELLED"}
+        props.is_favorite = not bool(props.is_favorite)
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_select_bone_collection(bpy.types.Operator):
+    """Select every bone in a bone collection from the Rig UI subpanel.
+
+    Replace semantics: the click selects exactly the collection's bones (the
+    first via ``bone_select_only``, which clears the prior selection, then the
+    rest added). Bone selection is real only in POSE / EDIT modes; in Object
+    mode the active bone still moves so the list highlight tracks the click.
+    """
+
+    bl_idname = "proscenio.select_bone_collection"
+    bl_label = "Proscenio: Select Bone Collection"
+    bl_description = "Selects every bone assigned to this bone collection in the viewport"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    armature_name: StringProperty(  # type: ignore[valid-type]
+        name="Armature",
+        default="",
+    )
+    collection_name: StringProperty(  # type: ignore[valid-type]
+        name="Bone collection",
+        default="",
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        armature = bpy.data.objects.get(self.armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            report_warn(self, f"armature '{self.armature_name}' not found")
+            return {"CANCELLED"}
+        bones = iter_collection_bones(armature, self.collection_name)
+        if not bones:
+            report_warn(self, f"collection '{self.collection_name}' has no bones")
+            return {"CANCELLED"}
+        # Make the armature the active object so bone ops act on it (object
+        # selection only - the per-bone selection is set below).
+        select_only(context, armature)
+        mode = context.mode
+        bone_select_only(armature, bones[0].name, mode)
+        for bone in bones[1:]:
+            bone_select_add(armature, bone.name, mode)
+        return {"FINISHED"}
+
+
 _classes: tuple[type, ...] = (
     PROSCENIO_OT_select_issue_object,
     PROSCENIO_OT_select_outliner_object,
     PROSCENIO_OT_select_bone_by_name,
     PROSCENIO_OT_set_active_action,
     PROSCENIO_OT_toggle_outliner_favorite,
+    PROSCENIO_OT_bone_flag_info,
+    PROSCENIO_OT_toggle_bone_relative_parent,
+    PROSCENIO_OT_toggle_bone_favorite,
+    PROSCENIO_OT_select_bone_collection,
 )
 
 

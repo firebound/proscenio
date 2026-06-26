@@ -444,6 +444,14 @@ class ProscenioSceneProps(PropertyGroup):
         default=0,
         min=0,
     )
+    skeleton_show_favorites: BoolProperty(  # type: ignore[valid-type]
+        name="Favorites only",
+        description=(
+            "When True, the Skeleton bone list hides every bone except those "
+            "flagged via bone.proscenio.is_favorite."
+        ),
+        default=False,
+    )
     pack_padding_px: IntProperty(  # type: ignore[valid-type]
         name="Pack padding",
         description="Pixels of padding reserved around each sprite in the packed atlas",

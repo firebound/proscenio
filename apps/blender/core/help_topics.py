@@ -182,6 +182,43 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         sections=(),
     ),
+    "rig_ui": HelpTopic(
+        title="Rig UI",
+        summary=(
+            "Per-collection select buttons + visibility toggles built from the picked"
+            " armature's native bone collections. Nested collections (Blender 4.1+)"
+            " group into a labelled row of child buttons. A Blender-only authoring"
+            " convenience - it selects and shows bones, it does not export."
+        ),
+        sections=(
+            _section(
+                _SECTION_HOW,
+                "Each row's button selects that collection's bones in the viewport."
+                " The eye toggles the collection's visibility (a hidden parent hides"
+                " its children). The swatch colors every bone in the collection at"
+                " once. Assign bones to collections in Blender's native Bone"
+                " Collections panel; this panel only consumes them.",
+            ),
+        ),
+    ),
+    "bone_display": HelpTopic(
+        title="Bone Display",
+        summary=(
+            "Assign a generated 2D outline as a bone's custom shape, and set the"
+            " whole armature's display style. The native custom_shape mechanism with"
+            " Proscenio-supplied flat widgets - a Blender-only posing aid."
+        ),
+        sections=(
+            _section(
+                _SECTION_HOW,
+                "Click a shape to assign it to the active bone. The operator's redo"
+                " panel switches the scope to the selected bones or a whole bone"
+                " collection and sets the scale / offset. The Display As dropdown on"
+                " the Active Armature subpanel sets the whole rig's draw style"
+                " (Octahedral / Stick / B-Bone / Envelope / Wire).",
+            ),
+        ),
+    ),
     "animation": HelpTopic(
         title="Animation",
         summary=(
@@ -627,6 +664,8 @@ _DOC_PATHS: dict[str, str] = {
     # under that section rather than owning a top-level section (Decision 5).
     "skeleton": "skeleton",
     "armature": "skeleton#active-armature",
+    "rig_ui": "skeleton#rig-ui",
+    "bone_display": "skeleton#bone-display",
     "pose_mode": "skeleton#pose-mode",
     "pose_library": "skeleton#save-pose-to-library",
     "quick_armature": "skeleton#quick-armature",

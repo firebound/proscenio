@@ -12,6 +12,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bone_view import bone_depth, bone_sort_key  # type: ignore[import-not-found]
 from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
     BONE_SELECT_MODES,
     bone_is_selected,
@@ -20,6 +21,8 @@ from ..core.bpy_helpers.armature import (  # type: ignore[import-not-found]
     IkChainScan,
     scan_ik_chains,
 )
+from ..core.bpy_helpers.bone_widgets import SHAPE_IDS  # type: ignore[import-not-found]
+from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 from ._list import ProscenioListMixin, draw_select_marker
 
@@ -65,9 +68,34 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
         added / removed on existing bones (those leave the count unchanged), so
         the tip / control icons went stale. A fresh scan per pass keeps the cue
         live; ``draw_item`` then reads the cached scan as an O(1) set lookup.
+
+        It also applies the hierarchy/flat-alpha sort (:func:`bone_sort_key`) and
+        the favorites-only filter, mirroring the Outliner: A-Z off keeps the
+        parenting tree, on flattens to plain alphabetical; the favorites toggle
+        on the Active Armature header hides every non-pinned bone.
         """
         self._ik_scan = self._scan_ik_for(data)  # type: ignore[attr-defined]
-        return super().filter_items(context, data, propname)
+        bones = list(getattr(data, propname))
+        scene_props = getattr(context.scene, "proscenio", None)
+        favorites_only = bool(
+            scene_props is not None and getattr(scene_props, "skeleton_show_favorites", False)
+        )
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
+
+        def _visible(bone: bpy.types.Bone) -> bool:
+            if not favorites_only:
+                return True
+            bone_props = getattr(bone, "proscenio", None)
+            return bool(bone_props is not None and getattr(bone_props, "is_favorite", False))
+
+        return compute_list_filter(
+            bones,
+            bitflag=self.bitflag_filter_item,
+            name_filter=self.filter_name or "",
+            name_of=lambda bone: bone.name,
+            visible=_visible,
+            sort_key=lambda bone: bone_sort_key(bone, sort_alpha=sort_alpha),
+        )
 
     def _scan_ik_for(self, data: bpy.types.AnyType) -> IkChainScan:
         """Scan the armature owning the list's ``data`` block for IK chains."""
@@ -114,16 +142,18 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
             row.label(text="", icon="CON_KINEMATIC")
         elif scan.is_control(item.name):
             row.label(text="", icon="EMPTY_ARROWS")
-        depth = 0
-        parent = item.parent
-        while parent is not None:
-            depth += 1
-            parent = parent.parent
+        # The native A-Z toggle flattens the list to plain alphabetical; the
+        # parenting-tree indent is meaningful only in the default (hierarchy)
+        # order, so it is dropped when sorting alphabetically (mirrors the
+        # Outliner).
+        sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
+        depth = 0 if sort_alpha else bone_depth(item)
+        arm_name = armature_obj.name if armature_obj is not None else ""
         # A bare operator button stretches and centers its text, which hid the
         # depth indent. Split the row and draw the name in a LEFT-aligned
         # sub-row so it hugs the left edge (same fix as the Outliner); the
-        # connectivity flags take the right side.
-        split = row.split(factor=0.7, align=True)
+        # connectivity icons + favorite star take the right side.
+        split = row.split(factor=0.62, align=True)
         name_row = split.row()
         name_row.alignment = "LEFT"
         op = name_row.operator(
@@ -132,21 +162,48 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
             icon="BONE_DATA",
             emboss=False,
         )
-        op.armature_name = armature_obj.name if armature_obj is not None else ""
+        op.armature_name = arm_name
         op.bone_name = item.name
-        flags = []
+        right = split.row(align=True)
+        right.alignment = "RIGHT"
+        self._draw_bone_flags(right, item, arm_name)
+
+    @staticmethod
+    def _draw_bone_flags(row: bpy.types.UILayout, item: bpy.types.Bone, arm_name: str) -> None:
+        """Draw the right-side connectivity icon, relative toggle, and favorite star.
+
+        Connectivity is a hover-tooltip info icon (a no-op operator - a
+        ``layout.label`` carries no tooltip): ``LINKED`` when connected,
+        ``UNLINKED`` for a disconnected child, nothing for a root. Relative
+        parenting is a live ``CON_CHILDOF`` toggle (only meaningful with a
+        parent). The favorite star pins the bone in the list.
+        """
         if getattr(item, "use_connect", False):
-            flags.append("connected")
+            info = row.operator("proscenio.bone_flag_info", text="", icon="LINKED", emboss=False)
+            info.flag = "connected"
         elif item.parent is not None:
-            # A child bone not connected to its parent. Disconnected parenting
-            # is a legitimate, common topology, not a mistake - but it was
-            # silent before, so flag it for parity with "connected".
-            flags.append("disconnected")
-        if getattr(item, "use_relative_parent", False):
-            flags.append("relative")
-        flag_row = split.row()
-        flag_row.alignment = "RIGHT"
-        flag_row.label(text=", ".join(flags))
+            info = row.operator("proscenio.bone_flag_info", text="", icon="UNLINKED", emboss=False)
+            info.flag = "disconnected"
+        if item.parent is not None:
+            rel = row.operator(
+                "proscenio.toggle_bone_relative_parent",
+                text="",
+                icon="CON_CHILDOF",
+                emboss=False,
+                depress=bool(getattr(item, "use_relative_parent", False)),
+            )
+            rel.armature_name = arm_name
+            rel.bone_name = item.name
+        bone_props = getattr(item, "proscenio", None)
+        is_fav = bool(bone_props is not None and getattr(bone_props, "is_favorite", False))
+        fav = row.operator(
+            "proscenio.toggle_bone_favorite",
+            text="",
+            icon="SOLO_ON" if is_fav else "SOLO_OFF",
+            emboss=False,
+        )
+        fav.armature_name = arm_name
+        fav.bone_name = item.name
 
 
 class PROSCENIO_PT_skeleton(bpy.types.Panel):
@@ -249,9 +306,17 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         if target is None or scene_props is None:
             return
         bones = getattr(target.data, "bones", [])
-        # The armature name now rides the Skeleton header; the body just
-        # carries the bone count.
-        layout.label(text=f"{len(bones)} bone(s)")
+        # Whole-rig viewport draw style (Octahedral / Stick / B-Bone / Envelope
+        # / Wire) - the native armature display_type, surfaced here so it is one
+        # click from the panel while authoring.
+        layout.prop(target.data, "display_type", text="Display As")
+        # The armature name rides the Skeleton header; the body carries the bone
+        # count plus the favorites-only filter toggle (mirrors the Outliner).
+        header = layout.row(align=True)
+        header.label(text=f"{len(bones)} bone(s)")
+        fav_toggle = header.row()
+        fav_toggle.alignment = "RIGHT"
+        fav_toggle.prop(scene_props, "skeleton_show_favorites", text="Favorites", icon="SOLO_ON")
         layout.template_list(
             "PROSCENIO_UL_bones",
             "",
@@ -270,6 +335,127 @@ class PROSCENIO_PT_armature(bpy.types.Panel):
         convert.operator(
             "proscenio.convert_rotation_to_euler", text="All to Euler", icon="DRIVER"
         ).scope = "ALL"
+
+
+class PROSCENIO_PT_rig_ui(bpy.types.Panel):
+    """Rig UI subpanel - per-collection select buttons + visibility toggles.
+
+    Reads the picked armature's native bone collections and honors their 4.1+
+    nesting: a top-level collection with children renders as a labelled row of
+    per-child select buttons (the Rigify-style "Arm.L: IK | FK | Tweak"
+    grouping); a childless collection renders as a single-button row. Each row
+    carries an eye bound to the collection's visibility and a swatch that
+    colors the whole collection. Selection + visibility only - assignment stays
+    in Blender's native Bone Collections panel.
+    """
+
+    bl_label = "Rig UI"
+    bl_idname = "PROSCENIO_PT_rig_ui"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 1
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        target = _explicit_target(context)
+        collections = getattr(getattr(target, "data", None), "collections", None)
+        return bool(collections)
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "rig_ui", "rig_ui")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        target = _explicit_target(context)
+        if target is None:
+            return
+        for collection in getattr(target.data, "collections", []):
+            self._draw_collection_row(layout, target.name, collection)
+
+    def _draw_collection_row(
+        self,
+        layout: bpy.types.UILayout,
+        arm_name: str,
+        collection: bpy.types.BoneCollection,
+    ) -> None:
+        children = list(getattr(collection, "children", []))
+        if children:
+            layout.label(text=collection.name)
+            row = layout.row(align=True)
+            self._draw_eye(row, collection)
+            for child in children:
+                btn = row.operator("proscenio.select_bone_collection", text=child.name)
+                btn.armature_name = arm_name
+                btn.collection_name = child.name
+            self._draw_swatch(row, arm_name, collection)
+            return
+        row = layout.row(align=True)
+        self._draw_eye(row, collection)
+        btn = row.operator("proscenio.select_bone_collection", text=collection.name)
+        btn.armature_name = arm_name
+        btn.collection_name = collection.name
+        self._draw_swatch(row, arm_name, collection)
+
+    @staticmethod
+    def _draw_eye(row: bpy.types.UILayout, collection: bpy.types.BoneCollection) -> None:
+        row.prop(
+            collection,
+            "is_visible",
+            text="",
+            icon="HIDE_OFF" if collection.is_visible else "HIDE_ON",
+            toggle=True,
+        )
+
+    @staticmethod
+    def _draw_swatch(
+        row: bpy.types.UILayout,
+        arm_name: str,
+        collection: bpy.types.BoneCollection,
+    ) -> None:
+        op = row.operator("proscenio.color_bone_collection", text="", icon="COLOR")
+        op.armature_name = arm_name
+        op.collection_name = collection.name
+
+
+class PROSCENIO_PT_bone_display(bpy.types.Panel):
+    """Bone Display subpanel - assign a generated 2D custom shape.
+
+    A grid of the generated 2D widget outlines; clicking one assigns it as the
+    active bone's ``custom_shape``. Scope (active / selected / collection),
+    scale, and offset live in the operator's redo panel, so a Selected or
+    whole-collection assignment is a redo-panel switch away. The native
+    ``custom_shape`` mechanism, with Proscenio-supplied primitive meshes.
+    """
+
+    bl_label = "Bone Display"
+    bl_idname = "PROSCENIO_PT_bone_display"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_parent_id = "PROSCENIO_PT_skeleton"
+    bl_order = 2
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        target = _explicit_target(context)
+        return target is not None and bool(getattr(target.data, "bones", None))
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "bone_display", "bone_display")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout = self.layout
+        layout.label(text="Assign 2D custom shape", icon="MESH_CIRCLE")
+        grid = layout.grid_flow(row_major=True, columns=3, even_columns=True)
+        for shape_id in SHAPE_IDS:
+            op = grid.operator("proscenio.assign_bone_shape", text=shape_id.capitalize())
+            op.shape = shape_id
+            op.scope = "ACTIVE"
+        layout.label(text="Scope / scale: operator redo panel", icon="INFO")
 
 
 def _active_ik_constraint(context: bpy.types.Context) -> bpy.types.Constraint | None:
@@ -363,7 +549,7 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
-    bl_order = 1
+    bl_order = 3
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
@@ -408,7 +594,7 @@ class PROSCENIO_PT_ik_chains(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
-    bl_order = 2
+    bl_order = 4
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -462,7 +648,7 @@ class PROSCENIO_PT_quick_armature(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_skeleton"
-    bl_order = 3
+    bl_order = 5
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
@@ -485,6 +671,8 @@ _classes: tuple[type, ...] = (
     PROSCENIO_UL_bones,
     PROSCENIO_PT_skeleton,
     PROSCENIO_PT_armature,
+    PROSCENIO_PT_rig_ui,
+    PROSCENIO_PT_bone_display,
     PROSCENIO_PT_pose_mode,
     PROSCENIO_PT_ik_chains,
     PROSCENIO_PT_quick_armature,

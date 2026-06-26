@@ -481,6 +481,16 @@ class ProscenioSceneProps(PropertyGroup):
         ),
         default=False,
     )
+    outliner_sort_by_draw_order: BoolProperty(  # type: ignore[valid-type]
+        name="Sort by draw order",
+        description=(
+            "When True, the outliner lists the plane rows by their Y Location "
+            "(Draw Order) - front (highest order) at the top, mirroring the "
+            "Photoshop layer stack - instead of the parenting tree. The armature "
+            "stays pinned to the top. Overrides the native A-Z sort while on."
+        ),
+        default=False,
+    )
     active_outliner_index: IntProperty(  # type: ignore[valid-type]
         name="Active outliner row",
         description="Selected row in the Proscenio outliner UIList",

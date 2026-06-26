@@ -59,24 +59,18 @@
   .selbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer;color:var(--text);font-weight:500}
   .selbtn:hover{background:var(--hot)}
   .selbtn:active{background:#3a5e94}
-  .swatch{width:22px;border:1px solid #000;border-radius:3px;cursor:pointer}
-  .swatch:hover{filter:brightness(1.25)}
-
-  /* Bone Display (custom shapes) */
-  .seg{display:flex;gap:0;margin-bottom:8px;border:1px solid #000;border-radius:3px;overflow:hidden}
-  .seg div{flex:1;text-align:center;padding:5px;background:var(--btn);cursor:pointer;border-right:1px solid #000}
-  .seg div:last-child{border-right:0}
-  .seg div.on{background:var(--hot)}
-  .shapegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px}
-  .shape{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;background:var(--btn);border:1px solid #000;border-radius:3px;cursor:pointer;font-size:11px}
-  .shape:hover{background:var(--btn-h)}
-  .shape.on{background:var(--hot);outline:1px solid #9fc1f2}
-  .shape svg{width:26px;height:26px;stroke:#dfe6f2;fill:none;stroke-width:1.6}
-  .slider{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-  .slider label{color:var(--dim);flex:0 0 76px;text-align:right}
-  .slider input{flex:1}
-  .applybtn{width:100%;padding:7px;background:var(--hot);border:1px solid #000;border-radius:3px;color:#fff;font-weight:600;cursor:pointer;margin-top:4px}
-  .applybtn:hover{filter:brightness(1.1)}
+  /* theme selector - fixed width, third part of every row. Built from
+     non-stretching slots (number | picker) so it never grows: the number is a
+     pinned-width label, the picker a small icon button. No live color field -
+     in Blender a color field is the one widget that cannot be pinned and
+     stretches the whole selector, so the theme is shown by its number. */
+  .theme-sel{flex:0 0 58px;display:flex;align-items:center;gap:4px;justify-content:flex-end;
+    background:var(--btn);border:1px solid #000;border-radius:3px;color:var(--text)}
+  .theme-sel .dot{flex:0 0 13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.5)}
+  .theme-sel .tnum{flex:0 0 14px;font-size:11px;text-align:right}
+  .theme-sel .pick{flex:0 0 18px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.85}
+  .theme-sel .pick:hover{opacity:1;filter:brightness(1.3)}
+  .theme-sel .pick svg{width:13px;height:13px}
 
   .legend{width:320px;color:var(--dim);font-size:11px}
   .legend h3{color:#ddd;font-size:13px;margin:14px 0 4px}
@@ -140,34 +134,14 @@
           <span class="ttl">Rig UI</span>
         </div>
         <div class="pt-body">
-          <div class="hint">Button selects the collection's bones; eye toggles visibility; swatch (G) colors the whole collection. Layout follows native bone-collection nesting.</div>
+          <div class="hint">Three parts per row: fixed eye | the collection / subcollection select buttons (split equally) | a fixed theme selector. The theme selector (G) shows a fixed colored dot (the theme color) + the theme number when the collection's bones share one theme, nothing when they do not; click the picker icon to recolor. (The dot is a fixed-size widget - Blender's `template_node_socket` - not a color field, which stretches and cannot be width-pinned.)</div>
           <div id="rigui"></div>
         </div>
       </div>
 
-      <!-- F: Bone Display subpanel (custom shapes) -->
-      <div class="pt" style="border:1px solid #000;border-radius:3px;margin-top:6px">
-        <div class="pt-head" onclick="tog(this)">
-          <svg class="tri" viewBox="0 0 10 10"><path d="M2 1 L8 5 L2 9 Z" fill="#bbb"/></svg>
-          <span class="ttl">Bone Display</span>
-        </div>
-        <div class="pt-body">
-          <div class="hint">Assign a generated geometric custom_shape. Native mechanism (pose_bone.custom_shape); Proscenio supplies the primitive meshes.</div>
-
-          <div class="seg" id="scope">
-            <div class="on" onclick="setScope(this,'Active')" title="Assign to the active bone only">Active</div>
-            <div onclick="setScope(this,'Selected')" title="Assign to all selected bones">Selected</div>
-            <div onclick="setScope(this,'Collection')" title="Assign to every bone in a collection">Collection</div>
-          </div>
-
-          <div class="shapegrid" id="shapes"></div>
-
-          <div class="slider"><label>Scale</label><input type="range" min="10" max="300" value="100" title="custom_shape_scale_xyz"></div>
-          <div class="slider"><label>Offset Y</label><input type="range" min="-100" max="100" value="0" title="custom_shape_translation"></div>
-
-          <div class="applybtn" onclick="flash(this,'Assigned to '+scopeName)">Assign Shape</div>
-        </div>
-      </div>
+      <!-- F (Bone Display / custom shapes) was DROPPED 2026-06-26 - a flat 2D
+           custom_shape cannot orient across a 2D rig's varying bone rolls. The
+           native "Display As" dropdown on Active Armature covers the need. -->
 
     </div>
   </div>
@@ -181,8 +155,8 @@
   <p><b>C. Favorites</b> - click a star to pin; <kbd>Favorites</kbd> filters to pinned.</p>
   <p><b>D. Rig UI</b> - <code>Arm.L</code> nests IK/FK/Tweak into one labelled row. Button selects; eye toggles visibility.</p>
   <p><b>E. Display As</b> - whole-rig draw style (top of Active Armature). Native <code>display_type</code>.</p>
-  <p><b>F. Bone Display</b> - pick a scope, pick a geometric shape, set scale/offset, Assign. Native <code>custom_shape</code> with Proscenio-generated primitive meshes.</p>
-  <p><b>G. Collection color</b> - click a Rig UI row swatch: cycles a theme color and tints that collection's bones in the list. No native per-collection color; this batches over the bones.</p>
+  <p><b>F. Bone Display</b> - <s>geometric custom shapes</s> <b>dropped</b>: a flat 2D <code>custom_shape</code> can't orient across a 2D rig's varying bone rolls. Use <b>Display As</b> (E) for the bone draw style instead.</p>
+  <p><b>G. Collection color</b> - the fixed theme selector at the end of each Rig UI row. Themed = a colored dot (theme color) + theme number + picker icon; no theme = a dim empty circle. Click the picker to cycle the theme and tint that collection's bones in the list. No native per-collection color; this batches over the bones. (Try <code>Root</code> / <code>Leg.L</code> / <code>Leg.R</code> - they start with no theme.) The colored dot is a fixed-size <code>template_node_socket</code>, not a color field - a color field stretches and cannot be width-pinned.</p>
   <hr style="border-color:#333">
   <p style="color:#888">Mockup only - colors/spacing approximate Blender's N-panel; real icons come from Blender's set (<code>LINKED</code>, <code>UNLINKED</code>, <code>CON_CHILDOF</code>, <code>SOLO_ON/OFF</code>, <code>HIDE_OFF</code>).</p>
 </div>
@@ -199,15 +173,6 @@ const I = {
   childof:(on)=>'<svg class="ico btn" viewBox="0 0 24 24" fill="none" stroke="'+(on?'#8aa6d0':'#666')+'" stroke-width="2"><path d="M6 4v8a4 4 0 004 4h8m0 0l-3-3m3 3l-3 3"/></svg>',
   star:(on)=>'<svg class="mark star '+(on?'on':'off')+'" viewBox="0 0 24 24" fill="'+(on?'#e7c14a':'#888')+'"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>',
   eye:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d0d0d0" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/></svg>'
-};
-/* shape glyphs (F) */
-const SH = {
-  Circle:'<circle cx="13" cy="13" r="9"/>',
-  Square:'<rect x="4" y="4" width="18" height="18" rx="1"/>',
-  Diamond:'<path d="M13 3 23 13 13 23 3 13Z"/>',
-  Line:'<path d="M3 13h20" stroke-linecap="round"/>',
-  Triangle:'<path d="M13 4 23 22 3 22Z"/>',
-  Arrow:'<path d="M4 13h14m0 0l-5-5m5 5l-5 5"/>'
 };
 
 const TIP={connected:"Connected to parent - head locked to parent's tail",
@@ -270,16 +235,33 @@ let collections=[
   {n:'Leg.L',col:0, vis:false,children:[]},
   {n:'Leg.R',col:0, vis:false,children:[]},
 ];
+/* theme selector (the row's fixed third part): color chip + number when the
+   collection has a theme, a dim empty marker when it does not. Always the same
+   width so the column lines up. */
+function themeSel(c,ci){
+  const themed=c.col>0;
+  const tip=themed?`Theme ${c.col} - recolor every bone in '${c.n}' (click to change)`
+                  :`No theme - click to color '${c.n}'`;
+  // chip | number | picker - chip+number blank when no theme; the picker (a small
+  // icon) is the only clickable part. Color icon when themed, dim circle when not.
+  // dot = fixed colored circle (the theme color) when themed, an invisible
+  // spacer otherwise (reserves width, draws nothing - no second circle).
+  const dot=themed?`<span class="dot" style="background:${THEME[c.col]}"></span>`:`<span class="dot" style="visibility:hidden"></span>`;
+  const tnum=`<span class="tnum">${themed?c.col:''}</span>`;
+  // one picker icon on every row (the color affordance), themed or not.
+  const pickIco=`<svg viewBox="0 0 24 24" fill="none" stroke="#dfe6f2" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 010 18z" fill="#dfe6f2"/></svg>`;
+  return `<div class="theme-sel" title="${tip}">${dot}${tnum}<span class="pick" onclick="cycleColor(${ci})">${pickIco}</span></div>`;
+}
 function renderRig(){
   const el=document.getElementById('rigui');
   el.innerHTML=collections.map((c,ci)=>{
     const eye=`<div class="eye ${c.vis?'':'off'}" onclick="toggleVis(${ci})" title="Show / hide '${c.n}' in the viewport">${I.eye}</div>`;
-    const sw=`<div class="swatch" style="background:${THEME[c.col]||'#3a3a3a'}" onclick="cycleColor(${ci})" title="Color every bone in '${c.n}' (cycles theme color)"></div>`;
+    const sel=themeSel(c,ci);
     if(c.children.length){
       const btns=c.children.map(ch=>`<div class="selbtn" onclick="flash(this,'select')" title="Select bones in ${c.n} (${ch})">${ch}</div>`).join('');
-      return `<div class="rig-sec"><div class="rig-rowlabel">${c.n}</div><div class="rig-row">${eye}${btns}${sw}</div></div>`;
+      return `<div class="rig-sec"><div class="rig-rowlabel">${c.n}</div><div class="rig-row">${eye}${btns}${sel}</div></div>`;
     }
-    return `<div class="rig-sec"><div class="rig-row">${eye}<div class="selbtn" onclick="flash(this,'select')" title="Select all bones in ${c.n}">${c.n}</div>${sw}</div></div>`;
+    return `<div class="rig-sec"><div class="rig-row">${eye}<div class="selbtn" onclick="flash(this,'select')" title="Select all bones in ${c.n}">${c.n}</div>${sel}</div></div>`;
   }).join('');
 }
 function toggleVis(ci){collections[ci].vis=!collections[ci].vis;renderRig()}
@@ -301,17 +283,9 @@ function retintFromCollections(){
   collections.forEach(c=>{(map[c.n]||[]).forEach(nm=>{const b=bones.find(x=>x.n===nm);if(b)b.col=c.col})});
 }
 
-/* ---- Bone Display / custom shapes (F) ---- */
-let scopeName='Active', shapeSel='Circle';
-function setScope(el,name){[...el.parentElement.children].forEach(d=>d.classList.remove('on'));el.classList.add('on');scopeName=name}
-function renderShapes(){
-  document.getElementById('shapes').innerHTML=Object.keys(SH).map(k=>
-    `<div class="shape ${k===shapeSel?'on':''}" onclick="pickShape('${k}')" title="custom_shape = WGT-proscenio-${k.toLowerCase()}">
-       <svg viewBox="0 0 26 26">${SH[k]}</svg>${k}</div>`).join('');
-}
-function pickShape(k){shapeSel=k;renderShapes()}
+/* Bone Display / custom shapes (F) were dropped 2026-06-26 - see the legend. */
 
-renderBones();renderRig();renderShapes();
+renderBones();renderRig();
 </script>
 </body>
 </html>

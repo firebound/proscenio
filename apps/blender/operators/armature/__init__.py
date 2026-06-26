@@ -7,7 +7,7 @@ Subpackage with:
 - skeleton_target   - Set Proscenio active armature pointer
 - rotation_mode     - Convert bone rotation to XYZ Euler
 - quick_armature    - Quick Armature modal (the Quick Armature shortcut)
-- bone_appearance   - Assign custom shape, color a bone collection
+- bone_appearance   - Color a bone collection
 """
 
 from __future__ import annotations

@@ -9,6 +9,7 @@ import bpy
 from mathutils import Matrix, Vector
 from proscenio_models import Bone, Skeleton
 
+from ....core.bone_export import bone_is_exported
 from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
 
 
@@ -67,15 +68,16 @@ def wrap_pi(a: float) -> float:
 
 
 def _nearest_deform_ancestor(bone: bpy.types.Bone) -> bpy.types.Bone | None:
-    """First ancestor of ``bone`` with ``use_deform`` set, or None.
+    """First exported ancestor of ``bone``, or None.
 
-    A deform bone parented under a filtered-out control bone re-parents to this
-    ancestor so the exported skeleton has no dangling parent reference (Godot
-    rejects a Bone2D whose ``parent`` names a bone the document never emits).
+    A bone parented under a filtered-out bone (a non-deform control or a rig
+    helper pinned off the export) re-parents to this ancestor so the exported
+    skeleton has no dangling parent reference (Godot rejects a Bone2D whose
+    ``parent`` names a bone the document never emits).
     """
     parent = bone.parent
     while parent is not None:
-        if parent.use_deform:
+        if bone_is_exported(parent):
             return parent
         parent = parent.parent
     return None
@@ -84,16 +86,17 @@ def _nearest_deform_ancestor(bone: bpy.types.Bone) -> bpy.types.Bone | None:
 def compute_bone_world_godot(armature_obj: bpy.types.Object, ppu: float) -> dict[str, BoneWorld]:
     """Return per-bone Godot world position (Vector2-ish) and rotation in radians.
 
-    Non-deforming bones (``.IK`` / ``.pole`` control scaffolding, any authoring
-    control) are skipped: the export is a deform skeleton for ``Polygon2D``
-    skinning, matching the ``use_deform`` rule the skinning code already follows.
+    Bones that do not export (``.IK`` / ``.pole`` control scaffolding, any
+    non-deform control, and rig helpers the rigger pinned off the export) are
+    skipped: the export is a deform skeleton for ``Polygon2D`` skinning, matching
+    the :func:`bone_is_exported` gate the skinning code already follows.
     """
     armature = expect_armature(armature_obj)
     arm_world = armature_obj.matrix_world
 
     out: dict[str, BoneWorld] = {}
     for bone in iter_bones(armature):
-        if not bone.use_deform:
+        if not bone_is_exported(bone):
             continue
         head_world_blender = arm_world @ bone.head_local
         tail_world_blender = arm_world @ bone.tail_local
@@ -127,10 +130,11 @@ def build_skeleton(
     rest_local: dict[str, BoneRestLocal] = {}
 
     for bone in iter_bones(armature):
-        # Non-deform control bones never enter the deform skeleton. A deform
-        # child of a filtered control re-parents to its nearest deform ancestor
-        # so no Bone2D references a parent the document never emits.
-        if not bone.use_deform:
+        # Non-exported bones (control scaffolding, rig helpers pinned off the
+        # export) never enter the deform skeleton. An exported child of a
+        # filtered bone re-parents to its nearest exported ancestor so no Bone2D
+        # references a parent the document never emits.
+        if not bone_is_exported(bone):
             continue
         w = world_godot[bone.name]
         parent_bone = _nearest_deform_ancestor(bone)

@@ -105,7 +105,6 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "active_sprite": FeatureStatus.GODOT_READY,
     "armature": FeatureStatus.GODOT_READY,
     "rig_ui": FeatureStatus.BLENDER_ONLY,
-    "bone_display": FeatureStatus.BLENDER_ONLY,
     "pose_mode": FeatureStatus.BLENDER_ONLY,
     "mesh_generation": FeatureStatus.BLENDER_ONLY,
     "automesh_alpha": FeatureStatus.BLENDER_ONLY,

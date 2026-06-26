@@ -1,11 +1,11 @@
-"""Shared bone-collection resolution for the Rig UI / color / shape operators.
+"""Shared bone-collection resolution for the Rig UI / color operators.
 
 One place resolves a bone collection by name on an armature and yields its
-bones, so the three collection operators - ``select_bone_collection``,
-``color_bone_collection``, ``assign_bone_shape`` (collection scope) - share one
-lookup and one missing-collection guard rather than re-deriving it. Reads
-``Armature.collections_all`` so a nested (4.1+) collection is reachable by name,
-falling back to the flat ``collections`` on older data.
+bones, so the collection operators - ``select_bone_collection`` and
+``color_bone_collection`` - share one lookup and one missing-collection guard
+rather than re-deriving it. Reads ``Armature.collections_all`` so a nested
+(4.1+) collection is reachable by name, falling back to the flat ``collections``
+on older data.
 """
 
 from __future__ import annotations
@@ -36,13 +36,40 @@ def resolve_collection(
 
 
 def iter_collection_bones(armature: bpy.types.Object, collection_name: str) -> list[bpy.types.Bone]:
-    """The bones assigned to ``collection_name`` on ``armature``, or an empty list.
+    """The bones in ``collection_name`` on ``armature``, nested ones included.
 
     An unknown collection (or one with no bones) yields ``[]`` so callers can
-    treat "nothing to act on" uniformly. Returns the data ``Bone`` objects;
-    callers that need pose bones index ``armature.pose.bones`` by name.
+    treat "nothing to act on" uniformly. Prefers ``bones_recursive`` so a parent
+    collection that holds bones only in its children (4.1+ nesting) still
+    resolves them, falling back to the direct ``bones`` on older data. Returns
+    the data ``Bone`` objects; callers that need pose bones index
+    ``armature.pose.bones`` by name.
     """
     collection = resolve_collection(armature, collection_name)
     if collection is None:
         return []
-    return list(getattr(collection, "bones", []))
+    bones = getattr(collection, "bones_recursive", None)
+    if bones is None:
+        bones = getattr(collection, "bones", [])
+    return list(bones)
+
+
+def collection_theme_label(armature: bpy.types.Object, collection_name: str) -> str:
+    """The theme-slot number every bone in ``collection_name`` shares, or ``""``.
+
+    The collection swatch applies one palette to every bone, so when the bones
+    still agree on a single ``THEME##`` slot we surface its number (``"1"`` ..
+    ``"15"``) next to the color icon. A DEFAULT/CUSTOM slot, a mix of slots, or
+    an empty collection yields ``""`` - nothing to show. Reads ``bone.color``,
+    absent on a pre-4.0 datablock, in which case it is treated as DEFAULT.
+    """
+    bones = iter_collection_bones(armature, collection_name)
+    if not bones:
+        return ""
+    palettes = {getattr(getattr(b, "color", None), "palette", "DEFAULT") for b in bones}
+    if len(palettes) != 1:
+        return ""
+    palette = next(iter(palettes))
+    if not palette.startswith("THEME"):
+        return ""
+    return palette[len("THEME") :].lstrip("0") or "0"

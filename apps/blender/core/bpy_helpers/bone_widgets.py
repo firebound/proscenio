@@ -47,27 +47,33 @@ def _polyline(
 
 
 def _geometry(shape: str) -> tuple[list[tuple[float, float, float]], list[tuple[int, int]]]:
-    """Verts + edges for ``shape`` in the local X-Z plane, unit-ish radius.
+    """Verts + edges for ``shape`` in the local X-Y plane (z = 0), unit-ish radius.
 
-    Unknown ids fall back to the circle so the assign operator always yields a
-    usable widget rather than an empty mesh.
+    The plane is deliberately X-Y: a custom shape is drawn in bone-local space,
+    and for a bone lying in the world picture plane (the X-Z plane a 2D Proscenio
+    rig draws into) the local Z axis points out of that plane along world Y. So a
+    mesh in the local X-Y plane has its normal along local Z = world Y, which
+    faces the front-ortho camera. A mesh in the local X-Z plane would instead lie
+    edge-on to that camera (every outline collapsing to a line) - the bug this
+    fixes. Unknown ids fall back to the circle so the assign operator always
+    yields a usable widget rather than an empty mesh.
     """
     if shape == "square":
-        return _ring([(-1, 0, -1), (1, 0, -1), (1, 0, 1), (-1, 0, 1)])
+        return _ring([(-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)])
     if shape == "diamond":
-        return _ring([(0, 0, -1), (1, 0, 0), (0, 0, 1), (-1, 0, 0)])
+        return _ring([(0, -1, 0), (1, 0, 0), (0, 1, 0), (-1, 0, 0)])
     if shape == "line":
         return _polyline([(-1, 0, 0), (1, 0, 0)])
     if shape == "triangle":
-        return _ring([(0, 0, 1), (1, 0, -1), (-1, 0, -1)])
+        return _ring([(0, 1, 0), (1, -1, 0), (-1, -1, 0)])
     if shape == "arrow":
-        return _polyline([(-1, 0, 0), (1, 0, 0), (0.4, 0, 0.5), (1, 0, 0), (0.4, 0, -0.5)])
+        return _polyline([(-1, 0, 0), (1, 0, 0), (0.4, 0.5, 0), (1, 0, 0), (0.4, -0.5, 0)])
     # circle (and the fallback for any unknown id)
     points = [
         (
             math.cos(2 * math.pi * i / _CIRCLE_SEGMENTS),
-            0.0,
             math.sin(2 * math.pi * i / _CIRCLE_SEGMENTS),
+            0.0,
         )
         for i in range(_CIRCLE_SEGMENTS)
     ]

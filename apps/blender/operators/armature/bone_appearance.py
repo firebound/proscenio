@@ -12,7 +12,13 @@ from __future__ import annotations
 from typing import ClassVar
 
 import bpy
-from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, StringProperty
+from bpy.props import (
+    BoolProperty,
+    EnumProperty,
+    FloatProperty,
+    FloatVectorProperty,
+    StringProperty,
+)
 
 from ...core._shared.report import report_warn  # type: ignore[import-not-found]
 from ...core.armature.skeleton_target import (  # type: ignore[import-not-found]
@@ -103,6 +109,11 @@ class PROSCENIO_OT_assign_bone_shape(bpy.types.Operator):
         soft_min=-2.0,
         soft_max=2.0,
     )
+    clear: BoolProperty(  # type: ignore[valid-type]
+        name="Clear",
+        description="Remove the custom shape from the scoped bones instead of assigning one",
+        default=False,
+    )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         armature = resolve_skeleton_target(context)
@@ -113,6 +124,12 @@ class PROSCENIO_OT_assign_bone_shape(bpy.types.Operator):
         if not targets:
             report_warn(self, "no target bones for this scope")
             return {"CANCELLED"}
+        # Clear: empty the custom_shape (the native "remove" is blanking the
+        # Custom Object field in Bone Properties; this is the panel shortcut).
+        if self.clear:
+            for pose_bone in targets:
+                pose_bone.custom_shape = None
+            return {"FINISHED"}
         widget = ensure_bone_widget(self.shape)
         for pose_bone in targets:
             pose_bone.custom_shape = widget
@@ -199,6 +216,10 @@ class PROSCENIO_OT_color_bone_collection(bpy.types.Operator):
                 bone.color.custom.normal = self.custom_normal
                 bone.color.custom.select = self.custom_select
                 bone.color.custom.active = self.custom_active
+        # Bone colors only render when the armature's "Bone Colors" viewport
+        # display is on; a rig with it off would show no change, reading as "the
+        # color did nothing". Enable it so the applied color is visible.
+        armature.data.show_bone_colors = True
         return {"FINISHED"}
 
 

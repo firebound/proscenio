@@ -455,6 +455,9 @@ class PROSCENIO_PT_bone_display(bpy.types.Panel):
             op = grid.operator("proscenio.assign_bone_shape", text=shape_id.capitalize())
             op.shape = shape_id
             op.scope = "ACTIVE"
+        clear = layout.operator("proscenio.assign_bone_shape", text="Clear Shape", icon="X")
+        clear.clear = True
+        clear.scope = "ACTIVE"
         layout.label(text="Scope / scale: operator redo panel", icon="INFO")
 
 

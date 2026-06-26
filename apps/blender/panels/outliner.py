@@ -68,7 +68,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
         # With the native 'sort by name' toggle on the tree is dropped for a flat
         # alphabetical order, so the indent goes too.
         sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
-        depth = 0 if sort_alpha else outliner_depth(rank)
+        scene_props = getattr(context.scene, "proscenio", None)
+        sort_draw_order = bool(
+            scene_props is not None and getattr(scene_props, "outliner_sort_by_draw_order", False)
+        )
+        # Both flattening sorts (alpha, draw order) drop the parenting tree, so
+        # the indent goes with it.
+        depth = 0 if (sort_alpha or sort_draw_order) else outliner_depth(rank)
         label = ("    " * depth) + label
         # A bare operator button stretches across the row and centers its
         # text. Split the row and draw the label in a LEFT-aligned sub-row so
@@ -173,8 +179,13 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
             )
 
         # The native 'sort by name' toggle (A-Z) flattens the list to plain
-        # alphabetical; off, the rows keep the parenting-tree order.
+        # alphabetical; off, the rows keep the parenting-tree order. The
+        # Proscenio 'sort by draw order' toggle overrides both, laying the rows
+        # out by their Y Location (Draw Order).
         sort_alpha = bool(getattr(self, "use_filter_sort_alpha", False))
+        sort_draw_order = bool(
+            scene_props is not None and getattr(scene_props, "outliner_sort_by_draw_order", False)
+        )
         return compute_list_filter(
             objects,
             bitflag=self.bitflag_filter_item,
@@ -182,7 +193,10 @@ class PROSCENIO_UL_sprite_outliner(bpy.types.UIList):
             name_of=lambda obj: obj.name,
             visible=_visible,
             sort_key=lambda obj: outliner_sort_key(
-                obj, rank=ranks[obj.name], sort_alpha=sort_alpha
+                obj,
+                rank=ranks[obj.name],
+                sort_alpha=sort_alpha,
+                sort_draw_order=sort_draw_order,
             ),
         )
 
@@ -209,9 +223,16 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
             return
         # Search is Blender's native "Filter by Name" (the UIList's expand
         # arrows); spec 043 dropped the redundant Proscenio search drawer.
-        # Only the favorites-only toggle stays in the panel header row.
+        # The favorites-only and sort-by-draw-order toggles sit in the panel
+        # header row, each labelled so the icon is not a bare guess.
         row = layout.row(align=True)
-        row.prop(scene_props, "outliner_show_favorites", text="", icon="SOLO_ON")
+        row.prop(scene_props, "outliner_show_favorites", text="Favorites", icon="SOLO_ON")
+        row.prop(
+            scene_props,
+            "outliner_sort_by_draw_order",
+            text="By draw order",
+            icon="SORTSIZE",
+        )
         layout.template_list(
             "PROSCENIO_UL_sprite_outliner",
             "",

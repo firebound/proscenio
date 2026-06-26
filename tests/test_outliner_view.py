@@ -24,6 +24,7 @@ from core.outliner_view import (  # noqa: E402
     RANK_HIDDEN,
     RANK_SLOT,
     category_rank,
+    draw_order_sort_key,
     hierarchy_sort_key,
     is_proscenio_member,
     outliner_depth,
@@ -283,6 +284,57 @@ def test_outliner_sort_key_tree_when_alpha_off() -> None:
     assert outliner_sort_key(glove, rank=rank, sort_alpha=False) == hierarchy_sort_key(
         glove, rank=rank
     )
+
+
+def _mesh_with_order(name: str, order: int) -> SimpleNamespace:
+    # Carries the proscenio_y_draw_order idprop the by-order sort reads.
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        parent=None,
+        get=lambda key, default=None: {"proscenio_y_draw_order": order}.get(
+            key, default
+        ),
+    )
+
+
+def test_draw_order_sort_lists_front_first_with_armature_pinned() -> None:
+    # Front (highest draw order) reads at the top; the armature pins above all.
+    arm = SimpleNamespace(name="Rig", type="ARMATURE")
+    back = _mesh_with_order("bag", 4)
+    mid = _mesh_with_order("hoodie", 10)
+    front = _mesh_with_order("arm_L", 12)
+    objs = [back, front, arm, mid]
+    ordered = sorted(objs, key=lambda o: draw_order_sort_key(o, rank=category_rank(o)))
+    assert [o.name for o in ordered] == ["Rig", "arm_L", "hoodie", "bag"]
+
+
+def test_draw_order_sort_breaks_ties_by_name() -> None:
+    a = _mesh_with_order("zeta", 5)
+    b = _mesh_with_order("alpha", 5)
+    ordered = sorted([a, b], key=lambda o: draw_order_sort_key(o, rank=category_rank(o)))
+    assert [o.name for o in ordered] == ["alpha", "zeta"]
+
+
+def test_outliner_sort_key_draw_order_overrides_alpha() -> None:
+    # The by-order toggle wins even when the native A-Z toggle is also on.
+    front = _mesh_with_order("zzz_front", 12)
+    back = _mesh_with_order("aaa_back", 1)
+    objs = [back, front]
+    ordered = sorted(
+        objs,
+        key=lambda o: outliner_sort_key(
+            o, rank=category_rank(o), sort_alpha=True, sort_draw_order=True
+        ),
+    )
+    # Alpha alone would put aaa_back first; draw order overrides to front-first.
+    assert [o.name for o in ordered] == ["zzz_front", "aaa_back"]
+
+
+def test_draw_order_missing_idprop_reads_as_zero() -> None:
+    # A row with no draw-order idprop sorts as order 0 rather than raising.
+    plain = SimpleNamespace(name="cube", type="MESH", parent=None)
+    assert draw_order_sort_key(plain, rank=category_rank(plain)) == (1, 0, "cube")
 
 
 def test_hierarchy_sort_keeps_a_slot_with_its_attachments() -> None:

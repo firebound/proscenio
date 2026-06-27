@@ -193,11 +193,14 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         sections=(
             _section(
                 _SECTION_HOW,
-                "Each row's button selects that collection's bones in the viewport."
-                " The eye toggles the collection's visibility (a hidden parent hides"
-                " its children). The swatch colors every bone in the collection at"
-                " once. Assign bones to collections in Blender's native Bone"
-                " Collections panel; this panel only consumes them.",
+                "Each row's button selects that collection's bones in the viewport"
+                " (a parent grabs its whole subtree). The eye toggles the"
+                " collection's visibility (a hidden parent hides its children). The"
+                " theme selector's columns line up on every row, but only a"
+                " top-level row's picker is live and colors that whole subtree -"
+                " one color control per tree; nested rows reserve the columns."
+                " Assign bones to collections in Blender's native Bone Collections"
+                " panel; this panel only consumes them.",
             ),
         ),
     ),

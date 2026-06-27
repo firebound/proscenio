@@ -41,9 +41,10 @@ def iter_collection_bones(armature: bpy.types.Object, collection_name: str) -> l
     An unknown collection (or one with no bones) yields ``[]`` so callers can
     treat "nothing to act on" uniformly. Prefers ``bones_recursive`` so a parent
     collection that holds bones only in its children (4.1+ nesting) still
-    resolves them, falling back to the direct ``bones`` on older data. Returns
-    the data ``Bone`` objects; callers that need pose bones index
-    ``armature.pose.bones`` by name.
+    resolves them - both selection (picking a group grabs its whole subtree) and
+    color (a top-level swatch colors the whole subtree) want this. Falls back to
+    the direct ``bones`` on older data. Returns the data ``Bone`` objects;
+    callers that need pose bones index ``armature.pose.bones`` by name.
     """
     collection = resolve_collection(armature, collection_name)
     if collection is None:
@@ -62,6 +63,9 @@ def collection_theme_label(armature: bpy.types.Object, collection_name: str) -> 
     ``"15"``) next to the color icon. A DEFAULT/CUSTOM slot, a mix of slots, or
     an empty collection yields ``""`` - nothing to show. Reads ``bone.color``,
     absent on a pre-4.0 datablock, in which case it is treated as DEFAULT.
+
+    Reads the subtree (nested bones included), matching the top-level color
+    swatch: the number shows when the whole subtree shares one theme.
     """
     bones = iter_collection_bones(armature, collection_name)
     if not bones:

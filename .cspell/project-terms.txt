@@ -38,6 +38,7 @@ gdextension
 gdshader
 goldenwriter
 greasepencil
+headerless
 hframe
 hframed
 hframes

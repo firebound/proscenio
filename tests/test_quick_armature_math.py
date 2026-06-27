@@ -19,7 +19,6 @@ from core.armature.quick_armature_math import (  # noqa: E402  - sys.path setup 
     DEFAULT_NAME_PREFIX,
     apply_axis_lock,
     format_bone_name,
-    next_mode,
     resolve_pick,
     resolve_press_mode,
     resolve_press_mode_label,
@@ -172,16 +171,6 @@ class TestFormatBoneName:
     def test_index_above_999_overflows(self) -> None:
         # Documented behaviour: padding floor is 3, larger indices grow.
         assert format_bone_name("def", 1000) == "def.1000"
-
-
-class TestNextMode:
-    """Tab cycles the modal sub-mode between Draw and Reparent."""
-
-    def test_draw_cycles_to_reparent(self) -> None:
-        assert next_mode("DRAW") == "REPARENT"
-
-    def test_reparent_cycles_back_to_draw(self) -> None:
-        assert next_mode("REPARENT") == "DRAW"
 
 
 class TestResolvePick:

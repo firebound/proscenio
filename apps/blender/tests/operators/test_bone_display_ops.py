@@ -7,7 +7,8 @@ against a built rig with bone collections, asserting the business effect:
   (and prove ``Bone.use_relative_parent`` is writable on the data bone, the lock
   the design rests on);
 - ``select_bone_collection`` selects exactly the collection's bones;
-- ``color_bone_collection`` applies a palette to every bone in the collection;
+- ``color_bone_collection`` applies a palette to the collection's whole subtree
+  (the Rig UI exposes it only on a top-level row);
 - ``toggle_bone_export`` flips the per-bone export-exclusion flag.
 """
 
@@ -159,19 +160,70 @@ def test_color_bone_collection_applies_palette_to_all(automesh_fixture):
     assert arm.data.bones["root"].color.palette == "DEFAULT"
 
 
-def test_color_bone_collection_reaches_nested_children(automesh_fixture):
-    # A parent collection that holds bones only in its children must still
-    # resolve them - the reported "collection 'arms' has no bones" regression.
-    arm = _make_rig("nested_rig")
+def test_color_bone_collection_colors_the_whole_subtree(automesh_fixture):
+    # The Rig UI exposes the color swatch only on a top-level row, and one click
+    # colors that whole subtree: a parent collection whose bones live in its
+    # children still tints them (nested children included).
+    arm = _make_rig("subtree_rig")
     parent = arm.data.collections.new("arms")
     child = arm.data.collections.new("arm.L", parent=parent)
     child.assign(arm.data.bones["spine"])
     child.assign(arm.data.bones["tip"])
 
     result = bpy.ops.proscenio.color_bone_collection(
-        armature_name="nested_rig", collection_name="arms", palette="THEME05"
+        armature_name="subtree_rig", collection_name="arms", palette="THEME05"
     )
 
     assert "FINISHED" in result
     assert arm.data.bones["spine"].color.palette == "THEME05"
     assert arm.data.bones["tip"].color.palette == "THEME05"
+
+
+def test_collection_theme_label_reads_the_subtree(automesh_fixture):
+    # The top-level row's theme number reflects its whole subtree: when every
+    # nested bone shares one theme the number shows on the parent.
+    from proscenio.core.bpy_helpers._shared.bone_collections import collection_theme_label
+
+    arm = _make_rig("label_rig")
+    parent = arm.data.collections.new("group")
+    child = arm.data.collections.new("leaf", parent=parent)
+    child.assign(arm.data.bones["spine"])
+    arm.data.bones["spine"].color.palette = "THEME07"
+
+    assert collection_theme_label(arm, "group") == "7"
+
+
+# --- Rig UI nesting view-model on real collections -----------------------
+
+
+def test_rig_ui_rows_recurses_real_nested_collections(automesh_fixture):
+    # The Rig UI subpanel's nesting flatten must hold on real BoneCollection
+    # objects (the .children / depth-first recursion the headless view-model
+    # tests assert with fakes), three levels deep: arms > arm.L > fingers.L,
+    # plus a leaf sibling arm.R and a separate top-level leaf "Spine".
+    from proscenio.core.rig_ui_view import rig_ui_rows
+
+    arm = _make_rig("rig_ui_rig")
+    arms = arm.data.collections.new("arms")
+    arm_l = arm.data.collections.new("arm.L", parent=arms)
+    arm.data.collections.new("arm.R", parent=arms)
+    arm.data.collections.new("fingers.L", parent=arm_l)
+    arm.data.collections.new("Spine")  # top-level leaf
+
+    rows = rig_ui_rows(arm.data.collections)
+
+    # Branch headers in depth-first pre-order, then the top-level leaf row.
+    assert [r.header for r in rows] == ["arms", "arm.L", None]
+    by_header = {r.header: r.member_names for r in rows}
+    assert by_header["arms"] == ("arm.L", "arm.R")
+    assert by_header["arm.L"] == ("fingers.L",)
+    # The headerless leaf row is its own select button.
+    leaf = next(r for r in rows if r.header is None)
+    assert leaf.collection_name == "Spine"
+    assert leaf.member_names == ("Spine",)
+    # Only top-level rows (arms, Spine) carry the theme selector; arm.L does not.
+    assert {r.collection_name: r.is_top_level for r in rows} == {
+        "arms": True,
+        "arm.L": False,
+        "Spine": True,
+    }

@@ -31,9 +31,11 @@ class PROSCENIO_OT_color_bone_collection(bpy.types.Operator):
     """Apply a bone color to every bone in a collection in one click.
 
     Blender has no per-collection color, so this batches ``bone.color`` over the
-    collection's data bones, leaving the pose-bone override at DEFAULT so the
-    color stays consistent across pose. A theme palette by default, with a
-    custom triplet when the palette is CUSTOM.
+    collection's data bones (the whole subtree - nested children included),
+    leaving the pose-bone override at DEFAULT so the color stays consistent across
+    pose. The Rig UI only exposes this on a top-level row, so one click colors a
+    whole tree. A theme palette by default, with a custom triplet when the palette
+    is CUSTOM.
     """
 
     bl_idname = "proscenio.color_bone_collection"

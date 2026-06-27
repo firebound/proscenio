@@ -13,11 +13,6 @@ from .._shared.nearest import nearest_index
 
 AxisLock: TypeAlias = Literal["X", "Z"] | None
 
-# Modal sub-mode. ``DRAW`` is the click-drag bone authoring (the historical
-# behaviour, unchanged); ``REPARENT`` hit-tests a bone tip to pick the parent
-# for the next Draw chain. Tab cycles between them.
-Mode = Literal["DRAW", "REPARENT"]
-
 DEFAULT_NAME_PREFIX = "qbone"
 
 # Minimum head->tail world distance for a bone to be created. A release
@@ -113,11 +108,6 @@ def apply_axis_lock(
     if axis == "Z":
         return (head[0], head[1], tail[2])
     return tail
-
-
-def next_mode(mode: Mode) -> Mode:
-    """Cycle the modal sub-mode (Tab). Two modes, so this toggles."""
-    return "REPARENT" if mode == "DRAW" else "DRAW"
 
 
 def resolve_pick(

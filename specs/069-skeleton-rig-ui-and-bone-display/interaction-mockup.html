@@ -40,6 +40,7 @@
   .brow.active{background:var(--active)}
   .brow .nm{flex:1;display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis}
   .brow .flags{display:flex;gap:4px;align-items:center}
+  .relbtn{display:inline-flex;align-items:center;cursor:pointer}
   .ico{width:14px;height:14px;flex:0 0 14px;opacity:.92}
   .ico.btn{cursor:pointer}
   .ico.btn:hover{opacity:1;filter:brightness(1.3)}
@@ -67,10 +68,12 @@
   .theme-sel{flex:0 0 58px;display:flex;align-items:center;gap:4px;justify-content:flex-end;
     background:var(--btn);border:1px solid #000;border-radius:3px;color:var(--text)}
   .theme-sel .dot{flex:0 0 13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.5)}
+  .theme-sel .dot.empty{background:transparent;border:1px solid #555}
   .theme-sel .tnum{flex:0 0 14px;font-size:11px;text-align:right}
   .theme-sel .pick{flex:0 0 18px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.85}
   .theme-sel .pick:hover{opacity:1;filter:brightness(1.3)}
   .theme-sel .pick svg{width:13px;height:13px}
+  .theme-sel .pick.disabled{visibility:hidden;cursor:default}
 
   .legend{width:320px;color:var(--dim);font-size:11px}
   .legend h3{color:#ddd;font-size:13px;margin:14px 0 4px}
@@ -134,7 +137,7 @@
           <span class="ttl">Rig UI</span>
         </div>
         <div class="pt-body">
-          <div class="hint">Three parts per row: fixed eye | the collection / subcollection select buttons (split equally) | a fixed theme selector. The theme selector (G) shows a fixed colored dot (the theme color) + the theme number when the collection's bones share one theme, nothing when they do not; click the picker icon to recolor. (The dot is a fixed-size widget - Blender's `template_node_socket` - not a color field, which stretches and cannot be width-pinned.)</div>
+          <div class="hint">Each row: fixed eye | the collection / subcollection select buttons (split equally and fill the row) | a fixed-width theme selector on top-level rows only. Nesting recurses: a collection with children is a header line then a row of its direct-child buttons, and each child that itself has children gets its own header row below (depth-first, no indent - the header groups it). The theme selector's three columns (dot | number | picker) are drawn on EVERY row so they line up and the buttons end at the same x; only a top-level row's picker is live and colors that whole subtree (one color control per tree). A nested row reserves the same columns with an empty dot and an inert picker. The dot is always a circle (theme color, or an empty outline), the number shows only when the subtree shares one theme. Same widgets on every row is what keeps the columns aligned - `ui_units_x` is only a minimum and cannot cap a wider widget. When the armature has no bone collections, the panel stays and shows an INFO notice pointing to Blender's Bone Collections panel rather than hiding.</div>
           <div id="rigui"></div>
         </div>
       </div>
@@ -150,13 +153,13 @@
 <!-- ============ legend ============ -->
 <div class="legend">
   <h3>Spec 069 - what to try</h3>
-  <p><b>A. Connectivity icons</b> - hover the chain (connected) / broken-chain (disconnected) / child-of (relative, on <code>hand.L</code>) icon. Connected/disconnected = info only. <b>Relative is a live toggle</b>: click the child-of icon on <code>hand.L</code> to flip it.</p>
+  <p><b>A. Connectivity (left icon)</b> - every row is a bone, so the row's left icon shows connectivity (chain = connected / broken chain = disconnected / plain bone glyph for a root), not a type icon. Indicator only - the left side is never interactive. <b>Relative parenting</b> is a live toggle on the <b>right</b> (on <code>hand.L</code>): click to flip. Like its neighbor toggles it stays flat and shows state by swapping the icon - a filled pushpin when on (pinned to follow the parent), a hollow pushpin when off (Blender <code>PINNED</code> / <code>UNPINNED</code>) - not a near-invisible depress. Everything on the right is interactive; connect / disconnect itself stays in Blender's Edit mode.</p>
   <p><b>B. Sort</b> - <kbd>A-Z</kbd> on = flat alphabetical, indent drops; off = hierarchy tree.</p>
   <p><b>C. Favorites</b> - click a star to pin; <kbd>Favorites</kbd> filters to pinned.</p>
-  <p><b>D. Rig UI</b> - <code>Arm.L</code> nests IK/FK/Tweak into one labelled row. Button selects; eye toggles visibility.</p>
+  <p><b>D. Rig UI</b> - nested collections recurse: <code>arms</code> groups <code>arm.L</code> / <code>arm.R</code> as buttons, and <code>arm.L</code> (which has its own children) gets its own header row below, down to <code>fingers.L</code> / <code>thumb.L</code>. Button selects; eye toggles visibility. Empty armature shows an INFO notice, not a hidden panel.</p>
   <p><b>E. Display As</b> - whole-rig draw style (top of Active Armature). Native <code>display_type</code>.</p>
   <p><b>F. Bone Display</b> - <s>geometric custom shapes</s> <b>dropped</b>: a flat 2D <code>custom_shape</code> can't orient across a 2D rig's varying bone rolls. Use <b>Display As</b> (E) for the bone draw style instead.</p>
-  <p><b>G. Collection color</b> - the fixed theme selector at the end of each Rig UI row. Themed = a colored dot (theme color) + theme number + picker icon; no theme = a dim empty circle. Click the picker to cycle the theme and tint that collection's bones in the list. No native per-collection color; this batches over the bones. (Try <code>Root</code> / <code>Leg.L</code> / <code>Leg.R</code> - they start with no theme.) The colored dot is a fixed-size <code>template_node_socket</code>, not a color field - a color field stretches and cannot be width-pinned.</p>
+  <p><b>G. Collection color</b> - the theme selector (dot | number | picker) is drawn on every row so the columns align, but only a <b>top-level</b> row's picker is live and colors that whole subtree (one color control per tree; nested rows reserve the columns with an empty dot + inert picker). Themed = a colored dot + theme number; no theme = an empty circle. Click the picker to cycle the theme and tint the subtree's bones in the list. No native per-collection color; this batches over the bones. The dot is a fixed-size <code>template_node_socket</code> drawn on every row (never a label) - identical widgets keep the column one width, since <code>ui_units_x</code> is only a minimum and cannot cap a wider widget.</p>
   <hr style="border-color:#333">
   <p style="color:#888">Mockup only - colors/spacing approximate Blender's N-panel; real icons come from Blender's set (<code>LINKED</code>, <code>UNLINKED</code>, <code>CON_CHILDOF</code>, <code>SOLO_ON/OFF</code>, <code>HIDE_OFF</code>).</p>
 </div>
@@ -170,7 +173,13 @@ const I = {
   bone:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#c9c9c9" stroke-width="1.6"><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M7.5 16.5 16.5 7.5"/></svg>',
   linked:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#7fc77f" stroke-width="2"><path d="M9 12h6M8 8a4 4 0 000 8h2M16 8h-2M16 16a4 4 0 000-8"/></svg>',
   unlinked:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#d08a5a" stroke-width="2"><path d="M8 8a4 4 0 000 8h1M15 16h1a4 4 0 000-8M4 4l16 16"/></svg>',
-  childof:(on)=>'<svg class="ico btn" viewBox="0 0 24 24" fill="none" stroke="'+(on?'#8aa6d0':'#666')+'" stroke-width="2"><path d="M6 4v8a4 4 0 004 4h8m0 0l-3-3m3 3l-3 3"/></svg>',
+  // Relative parenting: like Blender, state shows by SWAPPING the glyph (flat,
+  // no background) - a filled pushpin when on (pinned to follow the parent), a
+  // hollow pushpin when off. Blender PINNED / UNPINNED, same filled/hollow read
+  // as the favorite star.
+  childof:(on)=>on
+    ? '<svg class="ico btn" viewBox="0 0 24 24" fill="#c9c9c9" stroke="#c9c9c9" stroke-width="1.4"><path d="M9 3h6l-1 2v4l3 3v2H7v-2l3-3V5L9 3z"/><path d="M12 14v7" stroke-width="1.6"/></svg>'
+    : '<svg class="ico btn" viewBox="0 0 24 24" fill="none" stroke="#8f8f8f" stroke-width="1.6"><path d="M9 3h6l-1 2v4l3 3v2H7v-2l3-3V5L9 3z"/><path d="M12 14v7"/></svg>',
   star:(on)=>'<svg class="mark star '+(on?'on':'off')+'" viewBox="0 0 24 24" fill="'+(on?'#e7c14a':'#888')+'"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>',
   eye:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d0d0d0" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/></svg>'
 };
@@ -208,12 +217,17 @@ function renderBones(){
   el.innerHTML=order.map(i=>{
     const b=bones[i],d=az?0:depthOf(i);
     const tint=THEME[b.col]?`style="color:${THEME[b.col]}"`:'';
+    // Left icon = connectivity (every row is a bone, so the type icon is
+    // redundant): linked / unlinked / plain bone glyph for a root. Indicator
+    // only - all interactive controls live on the right.
+    const LEAD={connected:I.linked,disconnected:I.unlinked};
+    const lead=LEAD[b.conn]||I.bone;
+    // Right side: interactive only. Relative toggle is flat like its neighbors
+    // and shows state by swapping the icon (parent-space / world); then the star.
     let flag='';
-    if(b.conn==='connected')flag+=`<span title="${TIP.connected}">${I.linked}</span>`;
-    else if(b.conn==='disconnected')flag+=`<span title="${TIP.disconnected}">${I.unlinked}</span>`;
-    if(b.rel!==undefined)flag+=`<span title="${TIP.relative}" onclick="event.stopPropagation();toggleRel(${i})">${I.childof(b.rel)}</span>`;
+    if(b.rel!==undefined)flag+=`<span class="relbtn" title="${TIP.relative}" onclick="event.stopPropagation();toggleRel(${i})">${I.childof(b.rel)}</span>`;
     return `<div class="brow ${i===activeBone?'active':''}" onclick="pick(${i})">
-       <span class="nm" ${tint}>${'&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(d)}${I.bone}${b.n}</span>
+       <span class="nm" ${tint}>${'&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(d)}${lead}${b.n}</span>
        <span class="flags">${flag}</span>
        <span onclick="event.stopPropagation();toggleStar(${i})" title="Pin / unpin in the favorites filter">${I.star(b.fav)}</span>
      </div>`;
@@ -226,61 +240,95 @@ function toggleFav(){favOnly=!favOnly;document.getElementById('favTog').classLis
 function toggleAZ(){az=!az;document.getElementById('azTog').classList.toggle('on',az);renderBones()}
 
 /* ---- Rig UI (D) + collection color (G) ---- */
-/* col index ties a collection to bones[].col so the swatch tints the list */
+/* Nested collection tree (4.1+). col index ties a collection to bones[].col so
+   the swatch tints the list. children are nested collection nodes, not strings,
+   so the renderer recurses exactly like core.rig_ui_view.rig_ui_rows. */
 let collections=[
   {n:'Root', col:0, vis:true, children:[]},
   {n:'Torso',col:1, vis:true, children:[]},
-  {n:'Arm.L',col:2, vis:true, children:['IK','FK','Tweak']},
-  {n:'Arm.R',col:3, vis:true, children:['IK','FK','Tweak']},
+  {n:'arms', col:2, vis:true, children:[
+    {n:'arm.L', col:0, vis:true, children:[
+      {n:'fingers.L', col:0, vis:true, children:[
+        {n:'thumb.L', col:0, vis:true, children:[]},
+      ]},
+    ]},
+    {n:'arm.R', col:0, vis:true, children:[
+      {n:'fingers.R', col:0, vis:true, children:[]},
+    ]},
+  ]},
   {n:'Leg.L',col:0, vis:false,children:[]},
-  {n:'Leg.R',col:0, vis:false,children:[]},
 ];
+/* Flatten the tree into render rows (mirrors rig_ui_rows): a branch is a header
+   row whose buttons are its direct children, then each branch child recurses
+   into its own header row (depth-first, pre-order, no indent); a top-level leaf
+   is a single headerless self-button row. Each row keeps live node references so
+   the eye + theme picker act on the right collection. */
+function rigRows(){
+  const rows=[];
+  const visit=(node,top)=>{
+    if(node.children.length){
+      rows.push({header:node.n, node:node, members:node.children, top:top});
+      node.children.forEach(ch=>{if(ch.children.length)visit(ch,false)});
+    }else{
+      rows.push({header:null, node:node, members:[node], top:top});
+    }
+  };
+  collections.forEach(n=>visit(n,true));
+  return rows;
+}
 /* theme selector (the row's fixed third part): color chip + number when the
-   collection has a theme, a dim empty marker when it does not. Always the same
-   width so the column lines up. */
-function themeSel(c,ci){
-  const themed=c.col>0;
-  const tip=themed?`Theme ${c.col} - recolor every bone in '${c.n}' (click to change)`
-                  :`No theme - click to color '${c.n}'`;
-  // chip | number | picker - chip+number blank when no theme; the picker (a small
-  // icon) is the only clickable part. Color icon when themed, dim circle when not.
-  // dot = fixed colored circle (the theme color) when themed, an invisible
-  // spacer otherwise (reserves width, draws nothing - no second circle).
-  const dot=themed?`<span class="dot" style="background:${THEME[c.col]}"></span>`:`<span class="dot" style="visibility:hidden"></span>`;
-  const tnum=`<span class="tnum">${themed?c.col:''}</span>`;
-  // one picker icon on every row (the color affordance), themed or not.
+   collection has a theme, a dim empty marker when it does not. Pinned to one
+   fixed width so themed and no-theme rows line up and the middle buttons split
+   the same remaining width. */
+function themeSel(node,top){
+  // Drawn on EVERY row (top-level and nested) so the o|x|p columns line up and
+  // the middle buttons end at the same x. Only a top-level row is interactive.
+  const themed=top && node.col>0;
+  const tip=top?(themed?`Theme ${node.col} - recolor this whole subtree (click to change)`
+                       :`No theme - click to color this subtree`)
+               :`Color is set on the top-level row of this tree`;
+  // o - dot: theme color when themed, an empty circle otherwise; always present.
+  const dot=themed?`<span class="dot" style="background:${THEME[node.col]}"></span>`:`<span class="dot empty"></span>`;
+  // x - number: the theme number, or a reserved blank slot.
+  const tnum=`<span class="tnum">${themed?node.col:''}</span>`;
+  // p - picker: live on a top-level row, an inert reserved slot on a nested row.
   const pickIco=`<svg viewBox="0 0 24 24" fill="none" stroke="#dfe6f2" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 010 18z" fill="#dfe6f2"/></svg>`;
-  return `<div class="theme-sel" title="${tip}">${dot}${tnum}<span class="pick" onclick="cycleColor(${ci})">${pickIco}</span></div>`;
+  const pick=top?`<span class="pick" data-pick title="${tip}">${pickIco}</span>`:`<span class="pick disabled"></span>`;
+  return `<div class="theme-sel" title="${tip}">${dot}${tnum}${pick}</div>`;
 }
 function renderRig(){
   const el=document.getElementById('rigui');
-  el.innerHTML=collections.map((c,ci)=>{
-    const eye=`<div class="eye ${c.vis?'':'off'}" onclick="toggleVis(${ci})" title="Show / hide '${c.n}' in the viewport">${I.eye}</div>`;
-    const sel=themeSel(c,ci);
-    if(c.children.length){
-      const btns=c.children.map(ch=>`<div class="selbtn" onclick="flash(this,'select')" title="Select bones in ${c.n} (${ch})">${ch}</div>`).join('');
-      return `<div class="rig-sec"><div class="rig-rowlabel">${c.n}</div><div class="rig-row">${eye}${btns}${sel}</div></div>`;
-    }
-    return `<div class="rig-sec"><div class="rig-row">${eye}<div class="selbtn" onclick="flash(this,'select')" title="Select all bones in ${c.n}">${c.n}</div>${sel}</div></div>`;
+  const rows=rigRows();
+  el.innerHTML=rows.map(r=>{
+    const eye=`<div class="eye ${r.node.vis?'':'off'}" data-eye title="Show / hide '${r.node.n}' in the viewport">${I.eye}</div>`;
+    const btns=r.members.map(m=>`<div class="selbtn" onclick="flash(this,'select')" title="Select bones in ${m.n}">${m.n}</div>`).join('');
+    // Theme selector on EVERY row (columns line up); only top-level is live.
+    const sel=themeSel(r.node,r.top);
+    const head=r.header?`<div class="rig-rowlabel">${r.header}</div>`:'';
+    return `<div class="rig-sec">${head}<div class="rig-row">${eye}${btns}${sel}</div></div>`;
   }).join('');
+  // Wire eye + picker to their row's live node (rows share nodes by reference).
+  el.querySelectorAll('.rig-sec').forEach((sec,i)=>{
+    const node=rows[i].node;
+    const eye=sec.querySelector('[data-eye]'); if(eye)eye.onclick=()=>{node.vis=!node.vis;renderRig()};
+    const pick=sec.querySelector('[data-pick]'); if(pick)pick.onclick=()=>cycleColor(node);
+  });
 }
-function toggleVis(ci){collections[ci].vis=!collections[ci].vis;renderRig()}
-function cycleColor(ci){
-  const next=(collections[ci].col+1)%THEME.length;
-  const old=collections[ci].col; collections[ci].col=next;
-  bones.forEach(b=>{if(b.col===old&&collidesWith(ci,old))b.col=next});
-  /* simpler: retint bones whose collection index matches this row's bone-group */
+function cycleColor(node){
+  node.col=(node.col+1)%THEME.length;
   retintFromCollections();
   renderRig();renderBones();
 }
-/* map each rig row to its bones by the shared col group used in the bones[] seed */
-function collidesWith(){return true}
 function retintFromCollections(){
-  /* keep bones in sync with their owning collection's color for the demo */
+  /* keep bones in sync with their owning collection's color for the demo. A
+     top-level color applies to the whole subtree, so this walks descendants and
+     paints them with the top-level node's color (matches color_bone_collection
+     reading bones_recursive). */
   const map={Root:['root'],Torso:['spine','spine.001','head'],
-             'Arm.L':['arm.L','arm.L.001','hand.L'],'Arm.R':['arm.R','arm.R.001'],
-             'Leg.L':['leg.L'],'Leg.R':['leg.R']};
-  collections.forEach(c=>{(map[c.n]||[]).forEach(nm=>{const b=bones.find(x=>x.n===nm);if(b)b.col=c.col})});
+             'arms':['arm.L','arm.R'],'arm.L':['arm.L.001'],'fingers.L':['hand.L'],
+             'Leg.L':['leg.L']};
+  const paint=(node,col)=>{(map[node.n]||[]).forEach(nm=>{const b=bones.find(x=>x.n===nm);if(b)b.col=col});node.children.forEach(ch=>paint(ch,col))};
+  collections.forEach(top=>paint(top,top.col));
 }
 
 /* Bone Display / custom shapes (F) were dropped 2026-06-26 - see the legend. */

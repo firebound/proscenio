@@ -312,48 +312,6 @@ class PROSCENIO_OT_toggle_outliner_favorite(bpy.types.Operator):
         return {"FINISHED"}
 
 
-#: Hover-tooltip copy for the bone-row connectivity icons. Keyed by the flag the
-#: panel resolves from the bone, surfaced through the no-op info operator (a
-#: ``layout.label`` icon carries no tooltip, so the icon is a click-less operator
-#: button whose dynamic ``description`` is the explanation).
-_BONE_FLAG_TOOLTIPS = {
-    "connected": "Connected to parent - the bone head is locked to the parent's tail",
-    "disconnected": (
-        "Has a parent but its head moves freely (disconnected parenting). "
-        "Connect / disconnect in Edit mode (it snaps the head to the parent tail)"
-    ),
-}
-
-
-class PROSCENIO_OT_bone_flag_info(bpy.types.Operator):
-    """No-op info button: carries the connectivity tooltip, performs no action.
-
-    A ``layout.label`` icon renders no tooltip, so the bone row draws the
-    connected / disconnected glyph as this click-less operator whose dynamic
-    ``description`` is the per-flag explanation. Connect / disconnect itself is
-    an Edit-mode geometry edit (it snaps the head onto the parent tail), so the
-    panel only explains it, it does not toggle it.
-    """
-
-    bl_idname = "proscenio.bone_flag_info"
-    bl_label = "Proscenio: Bone Connectivity"
-    bl_options: ClassVar[set[str]] = {"INTERNAL"}
-
-    flag: StringProperty(  # type: ignore[valid-type]
-        name="Flag",
-        default="",
-    )
-
-    @classmethod
-    def description(
-        cls, _context: bpy.types.Context, properties: bpy.types.OperatorProperties
-    ) -> str:
-        return _BONE_FLAG_TOOLTIPS.get(getattr(properties, "flag", ""), "")
-
-    def execute(self, _context: bpy.types.Context) -> set[str]:
-        return {"CANCELLED"}
-
-
 class PROSCENIO_OT_toggle_bone_relative_parent(bpy.types.Operator):
     """Flip a bone's Relative Parenting flag from the Skeleton list.
 
@@ -520,7 +478,6 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_select_bone_by_name,
     PROSCENIO_OT_set_active_action,
     PROSCENIO_OT_toggle_outliner_favorite,
-    PROSCENIO_OT_bone_flag_info,
     PROSCENIO_OT_toggle_bone_relative_parent,
     PROSCENIO_OT_toggle_bone_favorite,
     PROSCENIO_OT_toggle_bone_export,

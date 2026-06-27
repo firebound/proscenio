@@ -25,7 +25,6 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 from ...core.armature.quick_armature_math import (
     BONE_TOO_SHORT_TOLERANCE,
     AxisLock,
-    Mode,
     PressMode,
 )
 from ...core.armature.quick_armature_math import (  # type: ignore[import-not-found]
@@ -36,12 +35,6 @@ from ...core.armature.quick_armature_math import (
 )
 from ...core.armature.quick_armature_math import (
     format_bone_name as _format_bone_name,
-)
-from ...core.armature.quick_armature_math import (
-    next_mode as _next_mode,
-)
-from ...core.armature.quick_armature_math import (
-    resolve_pick as _resolve_pick,
 )
 from ...core.armature.quick_armature_math import (
     resolve_press_mode as _resolve_press_mode,
@@ -65,8 +58,6 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
     find_window_region,
     mouse_event_to_plane_point,
     point_in_region_rect,
-    region_event_to_xz,
-    region_event_to_xz_offset,
     rv3d_is_front_ortho,
     view_pose_equal,
 )
@@ -100,16 +91,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     bl_label = "Proscenio: Quick Armature"
     bl_description = (
         "Click-drag in the 3D viewport to draw a bone (head -> tail). "
-        "Hold Shift to chain onto the previous bone. Tab switches to Reparent "
-        "mode (click a bone tip to pick the next chain parent). Esc or "
-        "right-click to exit."
+        "Hold Shift to chain onto the previous bone. Right-click a bone tip to "
+        "chain the next bone from it. Runs in Edit Mode; press Esc or Enter to "
+        "finish."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO", "BLOCKING"}
-
-    # Reparent pick tolerance as a screen-space pixel radius, converted to a
-    # world distance per pick so the hit target stays the same on-screen size
-    # at any zoom (the automesh authoring pick uses the same approach).
-    _PICK_RADIUS_PX: ClassVar[int] = 12
 
     lock_to_front_ortho: BoolProperty(  # type: ignore[valid-type]
         name="Lock to Front Orthographic",
@@ -127,12 +113,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _drag_head: ClassVar[tuple[float, float, float] | None] = None
     _drag_press_point: ClassVar[tuple[float, float, float] | None] = None
     _last_bone_name: ClassVar[str] = ""
-    # Modal sub-mode (Tab cycles). Draw is the click-drag authoring (default);
-    # Reparent hit-tests a bone tip to pick the next chain parent.
-    _mode: ClassVar[Mode] = "DRAW"
-    # Bone tip under the cursor in Reparent mode (the live pick target the
-    # overlay highlights); "" when no tip is within the pick radius.
-    _pick_target_name: ClassVar[str] = ""
     _shift_held: ClassVar[bool] = False
     _alt_held: ClassVar[bool] = False
     _press_mode: ClassVar[PressMode] = "connected"
@@ -158,6 +138,14 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_screen_y: ClassVar[int] = 0
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
+    # Set when the panel's "Exit Quick Armature" button is clicked while a
+    # session is live: the running modal sees it on its next event and finishes,
+    # instead of the re-invoke restarting a fresh session.
+    _exit_requested: ClassVar[bool] = False
+    # The object mode active when the session was invoked, restored on exit. The
+    # session runs in EDIT on the target armature (so right-click selects bones
+    # natively and bone authoring needs no per-bone mode round-trip).
+    _restore_mode: ClassVar[str] = "OBJECT"
     # Chord vocabulary, axis lock, grid snap, undo state.
     _default_chain: ClassVar[bool] = True
     _name_prefix: ClassVar[str] = _DEFAULT_NAME_PREFIX
@@ -176,6 +164,14 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             report_warn(self, "must run in a 3D viewport")
             return {"CANCELLED"}
         cls = type(self)
+        # Re-invoke while a session is live = the panel's "Exit Quick Armature"
+        # button: ask the running modal to finish on its next event rather than
+        # restarting a fresh session here.
+        if cls._statusbar_appended:
+            cls._exit_requested = True
+            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            return {"CANCELLED"}
+        cls._exit_requested = False
         # Defend against double-invoke: if a previous modal is still
         # alive (handlers registered, ClassVar state lingering), sweep
         # the stale handlers before starting a fresh session. Without
@@ -191,8 +187,6 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._drag_head = None
         cls._drag_press_point = None
         cls._last_bone_name = ""
-        cls._mode = "DRAW"
-        cls._pick_target_name = ""
         cls._shift_held = False
         cls._alt_held = False
         cls._press_mode = "connected"
@@ -242,7 +236,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # the same area.
         cls._invoke_region = find_window_region(context.area)
 
-        if self._ensure_armature(context) is None:
+        # Remember the mode to return to on exit, captured before this session
+        # switches the armature into EDIT.
+        cls._restore_mode = self._active_object_mode(context)
+
+        armature = self._ensure_armature(context)
+        if armature is None:
             report_error(self, "failed to create QuickRig armature")
             return {"CANCELLED"}
         self._seed_chain_parent_from_active()
@@ -251,6 +250,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         self._snapshot_selection(context)
         if self.lock_to_front_ortho:
             self._snap_to_front_ortho(context)
+        # The session authors and selects bones in EDIT on the target armature.
+        if not self._enter_armature_edit(context, armature):
+            report_error(self, "could not enter Edit Mode on the QuickRig armature")
+            return {"CANCELLED"}
 
         # Status bar text intentionally NOT set: the STATUSBAR header
         # append (registered in _register_handlers) renders the chord
@@ -262,6 +265,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        cls = type(self)
+        # The panel's "Exit Quick Armature" button sets this from a re-invoke;
+        # honour it like a bare Esc (discard an empty rig, keep authored bones).
+        if cls._exit_requested:
+            cls._exit_requested = False
+            cancelled = cls._drag_head is None and not cls._session_records
+            return self._exit(context, cancelled=cancelled)
         # Esc / RMB / Enter must work from any area so the user can
         # always exit the modal even if focus drifted to the Outliner.
         if _is_exit_event(event):
@@ -269,27 +279,19 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             # _last_bone_name: a Reparent pick writes _last_bone_name (the
             # chain parent) without creating a bone, so it must not flip a
             # bare Esc from cancel (discard the empty auto-rig) to keep.
-            cls = type(self)
             cancelled = cls._drag_head is None and not cls._session_records
             return self._exit(context, cancelled=cancelled)
         if _is_confirm_event(event):
             return self._exit(context, cancelled=False)
-        cls = type(self)
-        # Tab cycles the modal sub-mode. It sits above the per-mode dispatch
-        # so the switch is mode-independent (and never reaches bone authoring).
-        if _is_mode_switch_event(event):
-            self._switch_mode(context)
-            return {"RUNNING_MODAL"}
         # Track Ctrl state on every event so MOUSEMOVE can apply grid
         # snap without waiting for a press / release transition.
         cls._ctrl_held = bool(event.ctrl)
-        if cls._mode == "REPARENT":
-            return self._modal_reparent(context, event)
         return self._modal_draw(context, event)
 
     def _modal_draw(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
-        # Draw mode: the historical click-drag bone authoring, unchanged. The
-        # standalone tools (undo / redo / axis lock) live here, not in Reparent.
+        # The single authoring flow: LMB-drag draws bones; RMB on a bone tip
+        # re-points the chain parent (no separate mode); undo / redo / axis lock
+        # are standalone gestures.
         if _is_undo_event(event):
             self._undo_last_bone(context)
             return {"RUNNING_MODAL"}
@@ -309,19 +311,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             return {"PASS_THROUGH"}
         if event.type == "LEFTMOUSE":
             return self._handle_leftmouse_dispatch(context, event, in_canvas=in_canvas)
-        return {"PASS_THROUGH"}
-
-    def _modal_reparent(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
-        # Reparent mode reroutes only LEFTMOUSE (pick a bone tip as the next
-        # chain parent) + MOUSEMOVE (highlight the live pick target). Draw's
-        # PRESS / RELEASE / commit path is never touched.
-        in_canvas = self._event_in_invoke_region(context, event)
-        if event.type == "MOUSEMOVE":
-            self._handle_reparent_mousemove(context, event, in_canvas=in_canvas)
-            return {"PASS_THROUGH"}
-        if event.type == "LEFTMOUSE" and event.value == "PRESS" and in_canvas:
-            self._handle_reparent_pick(context, event)
-            return {"RUNNING_MODAL"}
+        # Right-click is left to Blender: it selects the bone natively, and the
+        # next draw chains from that selection (see _sync_chain_parent_to_active).
         return {"PASS_THROUGH"}
 
     def _toggle_axis_lock(self, context: bpy.types.Context, axis: str) -> None:
@@ -335,102 +326,35 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             context.area.tag_redraw()
         report_info(self, f"axis lock = {cls._axis_lock or 'off'}")
 
-    def _switch_mode(self, context: bpy.types.Context) -> None:
-        cls = type(self)
-        cls._mode = _next_mode(cls._mode)
-        # Leaving Draw mid-drag would strand a half-committed bone; drop the
-        # in-flight drag so the next Draw entry restarts clean. Clear the
-        # Reparent pick highlight too so a stale tip never lingers.
-        cls._drag_head = None
-        cls._drag_press_point = None
-        cls._pick_target_name = ""
-        # The cheatsheet reads the class-level mode, so the STATUSBAR must be
-        # repainted explicitly (it otherwise only refreshes on mouse move);
-        # VIEW_3D repaints so the overlay's Reparent branch lands at once.
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
-        report_info(self, f"{cls._mode.lower()} mode")
+    def _sync_chain_parent_to_active(self) -> None:
+        """Adopt the armature's active edit bone as the chain parent.
 
-    def _handle_reparent_mousemove(
-        self,
-        context: bpy.types.Context,
-        event: bpy.types.Event,
-        *,
-        in_canvas: bool,
-    ) -> None:
-        cls = type(self)
-        cls._cursor_in_canvas = in_canvas
-        cls._cursor_screen_x = event.mouse_x
-        cls._cursor_screen_y = event.mouse_y
-        cls._pick_target_name = self._resolve_pick_at_cursor(context, event)
-        if context.area is not None:
-            context.area.tag_redraw()
-
-    def _handle_reparent_pick(
-        self,
-        context: bpy.types.Context,
-        event: bpy.types.Event,
-    ) -> None:
-        cls = type(self)
-        hit = self._resolve_pick_at_cursor(context, event)
-        if not hit:
-            # A miss is a no-op with feedback: keep the current parent and stay
-            # in Reparent mode so the user can click again.
-            report_info(self, "no bone tip near cursor")
-            return
-        cls._last_bone_name = hit
-        cls._pick_target_name = hit
-        report_info(self, f"parent set to '{hit}'")
-        if context.area is not None:
-            context.area.tag_redraw()
-
-    def _resolve_pick_at_cursor(
-        self,
-        context: bpy.types.Context,
-        event: bpy.types.Event,
-    ) -> str:
-        """Nearest bone tip to the cursor within the pixel radius, or "".
-
-        Projects the cursor and each bone tail to the Y=0 XZ plane with the
-        same helpers Draw uses, so picks line up with drawn bones in any view.
+        Reparenting is just selection now: the user right-clicks a bone (the
+        native Edit-mode select, which passes through), and the next drawn bone
+        chains from it. Called at each press so a connected draw starts from
+        whatever is selected; with nothing active the last authored bone (already
+        in ``_last_bone_name``) stays the parent.
         """
-        cursor_xz = region_event_to_xz(context, event)
-        if cursor_xz is None:
-            return ""
-        tips = self._world_tail_tips()
-        if not tips:
-            return ""
-        radius = self._pick_radius_world(context, event, cursor_xz)
-        return _resolve_pick(cursor_xz, tips, radius) or ""
-
-    def _world_tail_tips(self) -> list[tuple[str, tuple[float, float]]]:
-        """Each bone paired with its world-space tail projected to XZ (Y=0)."""
         cls = type(self)
         armature = bpy.data.objects.get(cls._target_armature_name)
-        if armature is None or armature.type != "ARMATURE":
-            return []
-        matrix_world = armature.matrix_world
-        tips: list[tuple[str, tuple[float, float]]] = []
-        for bone in armature.data.bones:
-            tail_world = matrix_world @ bone.tail_local
-            tips.append((bone.name, (float(tail_world.x), float(tail_world.z))))
-        return tips
+        if armature is None or getattr(armature, "mode", "OBJECT") != "EDIT":
+            return
+        active = armature.data.edit_bones.active
+        if active is not None:
+            cls._last_bone_name = active.name
 
-    def _pick_radius_world(
-        self,
-        context: bpy.types.Context,
-        event: bpy.types.Event,
-        cursor_xz: tuple[float, float],
-    ) -> float:
-        """World-space pick radius for the screen-space pixel radius.
+    @staticmethod
+    def _live_bone_tails(armature: bpy.types.Object) -> list[tuple[str, Vector]]:
+        """Each bone's name + armature-space tail, valid in the live session mode.
 
-        Converts ``_PICK_RADIUS_PX`` to a world distance at the cursor so the
-        pick tolerance is screen-constant across zoom. Falls back to the grid
-        snap increment when the offset point cannot be projected."""
-        cls = type(self)
-        near = region_event_to_xz_offset(context, event, dx=cls._PICK_RADIUS_PX)
-        if near is None:
-            return cls._snap_increment
-        return ((near[0] - cursor_xz[0]) ** 2 + (near[1] - cursor_xz[1]) ** 2) ** 0.5
+        In Edit mode ``data.bones`` is stale, so read ``edit_bones`` (whose
+        ``tail`` is already armature-space); in Object / Pose read ``data.bones``
+        (``tail_local``). The connect-snap reads the chain parent's tail through
+        this rather than ``data.bones`` directly.
+        """
+        if getattr(armature, "mode", "OBJECT") == "EDIT":
+            return [(b.name, b.tail.copy()) for b in armature.data.edit_bones]
+        return [(b.name, b.tail_local.copy()) for b in armature.data.bones]
 
     def _handle_mousemove(
         self,
@@ -528,6 +452,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # collapses them in Front Ortho.
         cls = type(self)
         if event.value == "PRESS":
+            # Chain from whatever the user has selected: the native right-click
+            # selection sets the active edit bone, so adopt it as the chain parent
+            # before resolving the press (a connected draw then starts from it).
+            self._sync_chain_parent_to_active()
             raw_press_point = mouse_event_to_plane_point(context, event, plane_axis="Y")
             # Apply grid snap to head so chained bones share an aligned
             # origin. Axis lock is only meaningful between PRESS and
@@ -604,12 +532,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         armature = bpy.data.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return press_point
-        bone = armature.data.bones.get(cls._last_bone_name)
-        if bone is None:
+        # Read the live (Edit-mode-aware) tail: data.bones is stale mid-session.
+        tail = dict(self._live_bone_tails(armature)).get(cls._last_bone_name)
+        if tail is None:
             return press_point
         # ``matrix_world`` maps the local tail to world space; safe even
         # though QuickRig sits at the origin.
-        tail_world = armature.matrix_world @ bone.tail_local
+        tail_world = armature.matrix_world @ tail
         return (float(tail_world.x), float(tail_world.y), float(tail_world.z))
 
     def _resolve_release_tail(
@@ -695,9 +624,39 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         armature = bpy.data.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return
-        active = armature.data.bones.active
+        # Read the active bone from the live collection: Edit mode keeps it on
+        # ``edit_bones`` (``data.bones`` is stale once the session is in Edit).
+        if getattr(armature, "mode", "OBJECT") == "EDIT":
+            active = armature.data.edit_bones.active
+        else:
+            active = armature.data.bones.active
         if active is not None:
             cls._last_bone_name = active.name
+
+    @staticmethod
+    def _active_object_mode(context: bpy.types.Context) -> str:
+        """The active object's mode (``OBJECT`` / ``EDIT`` / ``POSE`` ...).
+
+        Captured at invoke and restored on exit, so a session entered from Pose
+        or Edit returns the user to where they were.
+        """
+        return getattr(getattr(context, "object", None), "mode", "OBJECT") or "OBJECT"
+
+    @staticmethod
+    def _enter_armature_edit(context: bpy.types.Context, armature: bpy.types.Object) -> bool:
+        """Make ``armature`` the active object and enter EDIT mode (idempotent).
+
+        The session lives in EDIT on the target armature, so authoring, undo, and
+        redo all operate on ``edit_bones`` directly with no per-bone mode round
+        trip - and right-click stays a native bone selection. A no-op when the
+        armature is already the active edit object. Returns ``True`` on success.
+        """
+        if context.view_layer.objects.active is not armature:
+            armature.select_set(True)
+            context.view_layer.objects.active = armature
+        if getattr(armature, "mode", "OBJECT") != "EDIT":
+            bpy.ops.object.mode_set(mode="EDIT")
+        return armature.mode == "EDIT"
 
     def _create_bone(
         self,
@@ -712,46 +671,29 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None:
             return
-        prev_active = context.view_layer.objects.active
-        prev_selected = [obj for obj in context.view_layer.objects if obj.select_get()]
-        for obj in context.view_layer.objects:
-            obj.select_set(False)
-        armature.select_set(True)
-        context.view_layer.objects.active = armature
-        bpy.ops.object.mode_set(mode="EDIT")
-        bone_name = ""
+        if not self._enter_armature_edit(context, armature):
+            return
+        edit_bones = armature.data.edit_bones
+        bone_name = _format_bone_name(cls._name_prefix, len(edit_bones))
+        new_bone = edit_bones.new(bone_name)
+        last = cls._last_bone_name
+        parent_bone = edit_bones[last] if (parent_to_last and last and last in edit_bones) else None
         actual_head: tuple[float, float, float] = head
-        try:
-            edit_bones = armature.data.edit_bones
-            bone_name = _format_bone_name(cls._name_prefix, len(edit_bones))
-            new_bone = edit_bones.new(bone_name)
-            last = cls._last_bone_name
-            parent_bone = (
-                edit_bones[last] if (parent_to_last and last and last in edit_bones) else None
+        if parent_bone is not None and connect:
+            # Snap head to the parent's tail so chained bones share an exact
+            # junction (Blender E extrude convention).
+            actual_head = (
+                float(parent_bone.tail.x),
+                float(parent_bone.tail.y),
+                float(parent_bone.tail.z),
             )
-            if parent_bone is not None and connect:
-                # Snap head to the parent's tail so chained bones share
-                # an exact junction (Blender E extrude convention).
-                actual_head = (
-                    float(parent_bone.tail.x),
-                    float(parent_bone.tail.y),
-                    float(parent_bone.tail.z),
-                )
-            new_bone.head = Vector(actual_head)
-            new_bone.tail = Vector(tail)
-            if parent_bone is not None:
-                new_bone.parent = parent_bone
-                new_bone.use_connect = bool(connect)
-        finally:
-            bpy.ops.object.mode_set(mode="OBJECT")
-            # Restore prior selection set + active so the user's "frame
-            # selected" (numpad-period) keeps working outside the modal.
-            for obj in context.view_layer.objects:
-                obj.select_set(False)
-            for obj in prev_selected:
-                obj.select_set(True)
-            if prev_active is not None:
-                context.view_layer.objects.active = prev_active
+        new_bone.head = Vector(actual_head)
+        new_bone.tail = Vector(tail)
+        if parent_bone is not None:
+            new_bone.parent = parent_bone
+            new_bone.use_connect = bool(connect)
+        # Make the fresh bone the active edit bone so it reads as selected.
+        edit_bones.active = new_bone
         if bone_name:
             cls._last_bone_name = bone_name
             cls._session_records.append(
@@ -777,18 +719,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return
-        prev_active = context.view_layer.objects.active
-        armature.select_set(True)
-        context.view_layer.objects.active = armature
-        bpy.ops.object.mode_set(mode="EDIT")
-        try:
-            edit_bones = armature.data.edit_bones
-            if record.name in edit_bones:
-                edit_bones.remove(edit_bones[record.name])
-        finally:
-            bpy.ops.object.mode_set(mode="OBJECT")
-            if prev_active is not None:
-                context.view_layer.objects.active = prev_active
+        if not self._enter_armature_edit(context, armature):
+            return
+        edit_bones = armature.data.edit_bones
+        if record.name in edit_bones:
+            edit_bones.remove(edit_bones[record.name])
         cls._last_bone_name = cls._session_records[-1].name if cls._session_records else ""
         report_info(self, f"undone '{record.name}'")
         if context.area is not None:
@@ -972,16 +907,26 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
 
     def _exit(self, context: bpy.types.Context, *, cancelled: bool) -> set[str]:
         cls = type(self)
-        bones_created = self._count_session_bones()
         self._unregister_handlers()
+        # Commit the edit-mode session back to OBJECT first: the bone count, the
+        # empty-rig sweep, and the selection restore all read object-mode state.
+        if self._active_object_mode(context) == "EDIT":
+            with contextlib.suppress(RuntimeError):
+                bpy.ops.object.mode_set(mode="OBJECT")
+        bones_created = self._count_session_bones()
         self._restore_view()
         self._restore_selection(context)
         self._sweep_empty_armature()
+        # Return the user to the mode they invoked from (Object / Pose / Edit),
+        # now that the active object is restored. Guarded: the restored active may
+        # not support the mode (or the empty QuickRig was just swept).
+        if cls._restore_mode != "OBJECT" and context.view_layer.objects.active is not None:
+            with contextlib.suppress(RuntimeError):
+                bpy.ops.object.mode_set(mode=cls._restore_mode)
+        cls._restore_mode = "OBJECT"
         cls._drag_head = None
         cls._cursor_world = None
         cls._last_bone_name = ""
-        cls._mode = "DRAW"
-        cls._pick_target_name = ""
         cls._shift_held = False
         cls._ctrl_held = False
         cls._axis_lock = None
@@ -1013,18 +958,9 @@ def _log_view(label: str, rv3d: bpy.types.RegionView3D) -> None:
 
 
 def _is_exit_event(event: bpy.types.Event) -> bool:
-    return event.type in {"ESC", "RIGHTMOUSE"} and event.value == "PRESS"
-
-
-def _is_mode_switch_event(event: bpy.types.Event) -> bool:
-    """Tab press (no modifiers) cycles the modal sub-mode."""
-    return bool(
-        event.type == "TAB"
-        and event.value == "PRESS"
-        and not event.ctrl
-        and not event.shift
-        and not event.alt
-    )
+    # Esc only. Right-click is deliberately NOT an exit: the session runs in Edit
+    # mode, where right-click is the native bone selection (it passes through).
+    return event.type == "ESC" and event.value == "PRESS"
 
 
 def _is_confirm_event(event: bpy.types.Event) -> bool:

@@ -16,14 +16,33 @@ snap/lock/name math is unit-tested in ``tests/test_quick_armature_math.py``.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any, ClassVar
 
 import bpy
 import pytest
 
 
+def _bones(arm: bpy.types.Object):
+    """The live bone collection: ``edit_bones`` in Edit mode, else ``data.bones``.
+
+    The Quick Armature session now stays in Edit mode, where ``data.bones`` is
+    stale - reads must go through ``edit_bones`` until the session exits.
+    """
+    return arm.data.edit_bones if arm.mode == "EDIT" else arm.data.bones
+
+
+def _bone_names(arm: bpy.types.Object) -> list[str]:
+    return [b.name for b in _bones(arm)]
+
+
 @pytest.fixture
 def quick_armature_session(automesh_fixture):
+    # A prior test may have left Blender in Edit mode on its armature; reset so
+    # each session starts from Object mode (what the operator's invoke assumes).
+    if bpy.context.object is not None and bpy.context.object.mode != "OBJECT":
+        with contextlib.suppress(RuntimeError):
+            bpy.ops.object.mode_set(mode="OBJECT")
     from proscenio.operators.armature.quick_armature import (  # type: ignore[import-not-found]
         PROSCENIO_OT_quick_armature as QA,
     )
@@ -34,11 +53,12 @@ def quick_armature_session(automesh_fixture):
         _undo_last_bone = QA._undo_last_bone
         _redo_last_bone = QA._redo_last_bone
         _post_process_world_point = QA._post_process_world_point
-        _switch_mode = QA._switch_mode
-        _world_tail_tips = QA._world_tail_tips
-        _handle_reparent_pick = QA._handle_reparent_pick
         _seed_chain_parent_from_active = QA._seed_chain_parent_from_active
-        _PICK_RADIUS_PX = QA._PICK_RADIUS_PX
+        _sync_chain_parent_to_active = QA._sync_chain_parent_to_active
+        # Static on the real class - rewrap so the probe doesn't bind ``self``.
+        _enter_armature_edit = staticmethod(QA._enter_armature_edit)
+        _live_bone_tails = staticmethod(QA._live_bone_tails)
+        modal = QA.modal
 
         def report(self, *_args, **_kwargs) -> None:
             return None
@@ -54,8 +74,7 @@ def quick_armature_session(automesh_fixture):
         _drag_head = None
         _drag_press_point = None
         _axis_lock = None
-        _mode = "DRAW"
-        _pick_target_name = ""
+        _exit_requested = False
 
     arm_data = bpy.data.armatures.new("QA_TEST")
     arm = bpy.data.objects.new("QA_TEST", arm_data)
@@ -65,18 +84,14 @@ def quick_armature_session(automesh_fixture):
     return _Probe(), arm, _Probe
 
 
-def _bone_names(arm: bpy.types.Object) -> list[str]:
-    return [b.name for b in arm.data.bones]
-
-
 def test_create_bone_appends_to_session_stack(quick_armature_session):
     op, arm, cls = quick_armature_session
     op._create_bone(
         bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
     assert len(cls._session_records) == 1
-    assert len(arm.data.bones) == 1
-    assert cls._last_bone_name == arm.data.bones[0].name
+    assert len(_bones(arm)) == 1
+    assert cls._last_bone_name == _bones(arm)[0].name
 
 
 def test_chained_bone_parents_to_previous(quick_armature_session):
@@ -84,11 +99,11 @@ def test_chained_bone_parents_to_previous(quick_armature_session):
     op._create_bone(
         bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
-    root_name = arm.data.bones[0].name
+    root_name = _bones(arm)[0].name
     op._create_bone(
         bpy.context, (0.0, 0.0, 1.0), (0.0, 0.0, 2.0), parent_to_last=True, connect=True
     )
-    child = arm.data.bones[1]
+    child = _bones(arm)[1]
     assert child.parent is not None
     assert child.parent.name == root_name
     assert child.use_connect is True
@@ -119,17 +134,17 @@ def test_undo_to_empty_then_redo_restores_chain(quick_armature_session):
     assert len(full) == 2
 
     op._undo_last_bone(bpy.context)
-    assert len(arm.data.bones) == 1
+    assert len(_bones(arm)) == 1
     assert len(cls._redo_records) == 1
     op._undo_last_bone(bpy.context)
-    assert len(arm.data.bones) == 0
+    assert len(_bones(arm)) == 0
     assert cls._last_bone_name == ""
 
     op._redo_last_bone(bpy.context)
     op._redo_last_bone(bpy.context)
     assert _bone_names(arm) == full, "redo did not restore the same bones in order"
     assert len(cls._redo_records) == 0
-    assert arm.data.bones[1].parent is not None, "redo lost the chain parenting"
+    assert _bones(arm)[1].parent is not None, "redo lost the chain parenting"
 
 
 def test_post_process_snaps_then_axis_locks(quick_armature_session):
@@ -158,71 +173,63 @@ def test_post_process_snaps_and_pins_y_without_a_lock(quick_armature_session):
     assert result == pytest.approx((1.0, 0.0, 1.0))
 
 
-def test_switch_mode_cycles_draw_to_reparent_and_back(quick_armature_session):
+def test_exit_requested_finishes_modal_on_next_event(quick_armature_session):
     op, _arm, cls = quick_armature_session
-    assert cls._mode == "DRAW"
-    op._switch_mode(bpy.context)
-    assert cls._mode == "REPARENT"
-    op._switch_mode(bpy.context)
-    assert cls._mode == "DRAW"
+    # The panel's "Exit Quick Armature" button sets _exit_requested from a
+    # re-invoke; the running modal must honour it on its next event (finishing,
+    # not authoring), then clear the flag. Stub _exit so no viewport teardown runs.
+    calls: list[bool] = []
+
+    def _fake_exit(_context, *, cancelled):
+        calls.append(cancelled)
+        return {"CANCELLED"}
+
+    op._exit = _fake_exit  # type: ignore[method-assign]
+    cls._drag_head = None
+    cls._session_records = []
+    cls._exit_requested = True
+
+    result = op.modal(bpy.context, object())
+
+    assert cls._exit_requested is False, "the flag must clear so it fires once"
+    assert calls == [True], "an empty session exits cancelled (discards the empty rig)"
+    assert result == {"CANCELLED"}
 
 
-def test_switch_mode_drops_in_flight_drag_and_pick(quick_armature_session):
-    op, _arm, cls = quick_armature_session
-    # A drag in progress + a stale pick highlight must not survive a mode flip.
-    cls._drag_head = (0.0, 0.0, 1.0)
-    cls._drag_press_point = (0.0, 0.0, 0.0)
-    cls._pick_target_name = "stale"
-    op._switch_mode(bpy.context)
-    assert cls._drag_head is None
-    assert cls._drag_press_point is None
-    assert cls._pick_target_name == ""
-
-
-def test_world_tail_tips_projects_bone_tails_to_xz(quick_armature_session):
-    op, _arm, _cls = quick_armature_session
-    # Author two bones with known tails; the tips list pairs each name with its
-    # world tail projected to the Y=0 XZ plane - the input the pick resolver scans.
+def test_sync_chain_parent_adopts_the_active_edit_bone(quick_armature_session):
+    op, arm, cls = quick_armature_session
+    # Reparent = selection: author two bones, then make the FIRST the active edit
+    # bone (what a right-click would do). The press-time sync adopts it as the
+    # chain parent, so the next connected draw chains from the selected bone.
     op._create_bone(
-        bpy.context, (0.0, 0.0, 0.0), (2.0, 0.0, 3.0), parent_to_last=False, connect=False
+        bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
     op._create_bone(
-        bpy.context, (5.0, 0.0, 0.0), (5.0, 0.0, 7.0), parent_to_last=False, connect=False
+        bpy.context, (0.0, 0.0, 1.0), (0.0, 0.0, 2.0), parent_to_last=True, connect=True
     )
-    tips = op._world_tail_tips()
-    by_name = dict(tips)
-    assert len(tips) == 2
-    assert by_name[_arm.data.bones[0].name] == pytest.approx((2.0, 3.0))
-    assert by_name[_arm.data.bones[1].name] == pytest.approx((5.0, 7.0))
+    first = _bones(arm)[0]
+    _bones(arm).active = first
+    op._sync_chain_parent_to_active()
+    assert cls._last_bone_name == first.name, "sync did not adopt the selected bone"
+
+    op._create_bone(
+        bpy.context, (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), parent_to_last=True, connect=False
+    )
+    # The freshly drawn bone chains from the bone that was selected, not the
+    # last-authored one.
+    drawn = _bones(arm)[-1]
+    assert drawn.parent is not None and drawn.parent.name == first.name
 
 
-def test_world_tail_tips_empty_without_an_armature(quick_armature_session):
-    op, _arm, cls = quick_armature_session
-    cls._target_armature_name = "does-not-exist"
-    assert op._world_tail_tips() == []
-
-
-def test_reparent_pick_sets_chain_parent_without_authoring_a_bone(quick_armature_session):
-    op, _arm, cls = quick_armature_session
-    # A Reparent pick re-points the chain parent (_last_bone_name) but authors
-    # no bone, so the session-authored signal (_session_records, which the Esc
-    # label + cancel determination key on) must stay empty. Stub only the
-    # viewport-math pick so the real field-writing path runs headless.
-    op._resolve_pick_at_cursor = lambda _context, _event: "picked_bone"  # type: ignore[method-assign]
-    op._handle_reparent_pick(bpy.context, object())
-    assert cls._last_bone_name == "picked_bone", "pick did not set the chain parent"
-    assert cls._session_records == [], "a Reparent pick must not author a bone"
-
-
-def test_reparent_pick_miss_keeps_chain_parent(quick_armature_session):
-    op, _arm, cls = quick_armature_session
-    cls._last_bone_name = "existing"
-    # A miss (no tip within the radius) is a no-op: keep the current parent and
-    # never touch the session-authored signal.
-    op._resolve_pick_at_cursor = lambda _context, _event: ""  # type: ignore[method-assign]
-    op._handle_reparent_pick(bpy.context, object())
-    assert cls._last_bone_name == "existing", "a miss must not clear the chain parent"
-    assert cls._session_records == [], "a miss must not author a bone"
+def test_sync_chain_parent_noop_without_an_active_bone(quick_armature_session):
+    op, arm, cls = quick_armature_session
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
+    )
+    last = cls._last_bone_name
+    _bones(arm).active = None
+    op._sync_chain_parent_to_active()
+    assert cls._last_bone_name == last, "no active bone must leave the chain parent unchanged"
 
 
 def test_seed_chain_parent_from_active_bone(quick_armature_session):
@@ -232,8 +239,8 @@ def test_seed_chain_parent_from_active_bone(quick_armature_session):
     op._create_bone(
         bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
-    root_name = arm.data.bones[0].name
-    arm.data.bones.active = arm.data.bones[0]
+    root_name = _bones(arm)[0].name
+    _bones(arm).active = _bones(arm)[0]
     cls._last_bone_name = ""
     op._seed_chain_parent_from_active()
     assert cls._last_bone_name == root_name, "seed did not adopt the active bone"
@@ -241,7 +248,7 @@ def test_seed_chain_parent_from_active_bone(quick_armature_session):
     op._create_bone(
         bpy.context, (0.0, 0.0, 1.0), (0.0, 0.0, 2.0), parent_to_last=True, connect=True
     )
-    child = arm.data.bones[1]
+    child = _bones(arm)[1]
     assert child.parent is not None and child.parent.name == root_name
 
 
@@ -249,7 +256,7 @@ def test_seed_chain_parent_noop_without_active_bone(quick_armature_session):
     op, arm, cls = quick_armature_session
     # No active bone: the seed must leave _last_bone_name untouched ("") so the
     # first bone stays unparented exactly as before this feature.
-    arm.data.bones.active = None
+    _bones(arm).active = None
     cls._last_bone_name = ""
     op._seed_chain_parent_from_active()
     assert cls._last_bone_name == "", "seed wrote a parent with no active bone"

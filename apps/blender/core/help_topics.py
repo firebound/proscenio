@@ -201,24 +201,6 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
         ),
     ),
-    "bone_display": HelpTopic(
-        title="Bone Display",
-        summary=(
-            "Assign a generated 2D outline as a bone's custom shape, and set the"
-            " whole armature's display style. The native custom_shape mechanism with"
-            " Proscenio-supplied flat widgets - a Blender-only posing aid."
-        ),
-        sections=(
-            _section(
-                _SECTION_HOW,
-                "Click a shape to assign it to the active bone. The operator's redo"
-                " panel switches the scope to the selected bones or a whole bone"
-                " collection and sets the scale / offset. The Display As dropdown on"
-                " the Active Armature subpanel sets the whole rig's draw style"
-                " (Octahedral / Stick / B-Bone / Envelope / Wire).",
-            ),
-        ),
-    ),
     "animation": HelpTopic(
         title="Animation",
         summary=(
@@ -665,7 +647,6 @@ _DOC_PATHS: dict[str, str] = {
     "skeleton": "skeleton",
     "armature": "skeleton#active-armature",
     "rig_ui": "skeleton#rig-ui",
-    "bone_display": "skeleton#bone-display",
     "pose_mode": "skeleton#pose-mode",
     "pose_library": "skeleton#save-pose-to-library",
     "quick_armature": "skeleton#quick-armature",

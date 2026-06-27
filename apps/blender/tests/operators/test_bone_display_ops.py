@@ -7,8 +7,8 @@ against a built rig with bone collections, asserting the business effect:
   (and prove ``Bone.use_relative_parent`` is writable on the data bone, the lock
   the design rests on);
 - ``select_bone_collection`` selects exactly the collection's bones;
-- ``assign_bone_shape`` sets a generated widget as the pose bone's custom shape;
-- ``color_bone_collection`` applies a palette to every bone in the collection.
+- ``color_bone_collection`` applies a palette to every bone in the collection;
+- ``toggle_bone_export`` flips the per-bone export-exclusion flag.
 """
 
 from __future__ import annotations
@@ -79,6 +79,26 @@ def test_toggle_bone_favorite_cancels_for_missing_bone(automesh_fixture):
     assert "CANCELLED" in result
 
 
+# --- per-bone export exclusion -------------------------------------------
+
+
+def test_toggle_bone_export_flips_exclude_flag(automesh_fixture):
+    arm = _make_rig("exp_rig")
+    assert arm.data.bones["spine"].proscenio.exclude_from_export is False
+
+    bpy.ops.proscenio.toggle_bone_export(armature_name="exp_rig", bone_name="spine")
+    assert arm.data.bones["spine"].proscenio.exclude_from_export is True
+
+    bpy.ops.proscenio.toggle_bone_export(armature_name="exp_rig", bone_name="spine")
+    assert arm.data.bones["spine"].proscenio.exclude_from_export is False
+
+
+def test_toggle_bone_export_cancels_for_missing_bone(automesh_fixture):
+    _make_rig("exp_rig2")
+    result = bpy.ops.proscenio.toggle_bone_export(armature_name="exp_rig2", bone_name="nope")
+    assert "CANCELLED" in result
+
+
 # --- relative parenting toggle (data-bone write access) --------------------
 
 
@@ -122,66 +142,6 @@ def test_select_bone_collection_cancels_for_empty_collection(automesh_fixture):
     assert "CANCELLED" in result
 
 
-# --- custom shape assignment ----------------------------------------------
-
-
-def test_assign_bone_shape_sets_custom_shape(automesh_fixture):
-    arm = _make_rig("shape_rig")
-    bpy.context.scene.proscenio.active_armature = arm
-    arm.data.bones.active = arm.data.bones["spine"]
-
-    bpy.ops.proscenio.assign_bone_shape(shape="square", scope="ACTIVE")
-
-    widget = arm.pose.bones["spine"].custom_shape
-    assert widget is not None
-    assert widget.name == "WGT-proscenio-square"
-
-
-def test_assign_bone_shape_collection_scope_hits_every_bone(automesh_fixture):
-    arm = _make_rig("shape_rig2")
-    _collection_with(arm, "Arm", ("spine", "tip"))
-    bpy.context.scene.proscenio.active_armature = arm
-
-    bpy.ops.proscenio.assign_bone_shape(shape="circle", scope="COLLECTION", collection_name="Arm")
-
-    assert arm.pose.bones["spine"].custom_shape is not None
-    assert arm.pose.bones["tip"].custom_shape is not None
-    assert arm.pose.bones["root"].custom_shape is None
-
-
-def test_widget_plane_faces_the_front_camera(automesh_fixture):
-    # Regression for the edge-on bug: the rig's bones point +Z (they lie in the
-    # X-Z picture plane a 2D Proscenio rig draws into). The widget mesh must end
-    # up facing the front-ortho camera (which looks along world Y), i.e. its
-    # world-space normal is along Y, not Z. The old X-Z widget geometry put the
-    # normal along world Z, so every outline collapsed to a line.
-    from mathutils import Vector
-
-    arm = _make_rig("plane_rig")
-    bpy.context.scene.proscenio.active_armature = arm
-    arm.data.bones.active = arm.data.bones["spine"]
-    _enter_pose(arm)
-    bpy.ops.proscenio.assign_bone_shape(shape="circle", scope="ACTIVE")
-
-    pose_bone = arm.pose.bones["spine"]
-    verts = [Vector(v.co) for v in pose_bone.custom_shape.data.vertices[:3]]
-    local_normal = (verts[1] - verts[0]).cross(verts[2] - verts[0]).normalized()
-    world_normal = (pose_bone.matrix.to_3x3() @ local_normal).normalized()
-    assert abs(world_normal.y) > 0.9, f"widget edge-on to front camera: {tuple(world_normal)}"
-    assert abs(world_normal.z) < 0.1
-
-
-def test_clear_bone_shape_removes_custom_shape(automesh_fixture):
-    arm = _make_rig("clear_rig")
-    bpy.context.scene.proscenio.active_armature = arm
-    arm.data.bones.active = arm.data.bones["spine"]
-    bpy.ops.proscenio.assign_bone_shape(shape="square", scope="ACTIVE")
-    assert arm.pose.bones["spine"].custom_shape is not None
-
-    bpy.ops.proscenio.assign_bone_shape(clear=True, scope="ACTIVE")
-    assert arm.pose.bones["spine"].custom_shape is None
-
-
 # --- per-collection color ------------------------------------------------
 
 
@@ -197,5 +157,21 @@ def test_color_bone_collection_applies_palette_to_all(automesh_fixture):
     assert arm.data.bones["tip"].color.palette == "THEME03"
     # A bone outside the collection is untouched.
     assert arm.data.bones["root"].color.palette == "DEFAULT"
-    # The op enables the armature's bone-color display so the result is visible.
-    assert arm.data.show_bone_colors is True
+
+
+def test_color_bone_collection_reaches_nested_children(automesh_fixture):
+    # A parent collection that holds bones only in its children must still
+    # resolve them - the reported "collection 'arms' has no bones" regression.
+    arm = _make_rig("nested_rig")
+    parent = arm.data.collections.new("arms")
+    child = arm.data.collections.new("arm.L", parent=parent)
+    child.assign(arm.data.bones["spine"])
+    child.assign(arm.data.bones["tip"])
+
+    result = bpy.ops.proscenio.color_bone_collection(
+        armature_name="nested_rig", collection_name="arms", palette="THEME05"
+    )
+
+    assert "FINISHED" in result
+    assert arm.data.bones["spine"].color.palette == "THEME05"
+    assert arm.data.bones["tip"].color.palette == "THEME05"

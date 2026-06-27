@@ -190,6 +190,7 @@ mergear
 metaclass
 mgmt
 mirrors-mypy
+misalign
 misaligns
 mkstemp
 monkeypatch
@@ -309,6 +310,7 @@ strftime
 stubgen
 stylised
 subclassing
+subcollection
 subdirs
 subdiv
 subfolders

@@ -257,6 +257,15 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         props.driver_source_armature = armature
         props.driver_source_bone = self.bone_name
 
+        # Pin the source bone off the Godot export: a Drive-from-Bone source is a
+        # rig helper that drives a sprite property in Blender and does nothing as
+        # a Bone2D in Godot. Mirrors how IK control bones stay out of the export.
+        # Reversible from the Skeleton list's per-bone export toggle.
+        source_bone = bones.get(self.bone_name)
+        bone_props = getattr(source_bone, "proscenio", None) if source_bone is not None else None
+        if bone_props is not None:
+            bone_props.exclude_from_export = True
+
         report_info(
             self,
             f"driver on '{sprite.name}.{data_path}' "

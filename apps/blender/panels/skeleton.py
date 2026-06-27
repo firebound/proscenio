@@ -12,7 +12,11 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bone_export import bone_is_exported  # type: ignore[import-not-found]
 from ..core.bone_view import bone_depth, bone_sort_key  # type: ignore[import-not-found]
+from ..core.bpy_helpers._shared.bone_collections import (  # type: ignore[import-not-found]
+    collection_theme_label,
+)
 from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
     BONE_SELECT_MODES,
     bone_is_selected,
@@ -21,7 +25,6 @@ from ..core.bpy_helpers.armature import (  # type: ignore[import-not-found]
     IkChainScan,
     scan_ik_chains,
 )
-from ..core.bpy_helpers.bone_widgets import SHAPE_IDS  # type: ignore[import-not-found]
 from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 from ._list import ProscenioListMixin, draw_select_marker
@@ -35,6 +38,40 @@ def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
     """Return the scene's picked Active Armature object, or None."""
     scene_props = getattr(context.scene, "proscenio", None)
     return scene_props.active_armature if scene_props is not None else None
+
+
+def _theme_bone_color_set(theme_label: str) -> bpy.types.ThemeBoneColorSet | None:
+    """The theme's bone color set for a ``"1"``..``"15"`` theme label, or None.
+
+    ``THEME0N`` maps to ``bone_color_sets[N - 1]`` on the active theme; the set's
+    ``normal`` color is what the Rig UI swatch draws as a fixed colored dot. Any
+    gap - empty label, no themes, out-of-range - is a clean None.
+    """
+    if not theme_label:
+        return None
+    try:
+        idx = int(theme_label) - 1
+    except ValueError:
+        return None
+    themes = getattr(bpy.context.preferences, "themes", None)
+    sets = themes[0].bone_color_sets if themes else None
+    if sets is None or not (0 <= idx < len(sets)):
+        return None
+    return sets[idx]
+
+
+# Rig UI rows are three parts: a fixed eye, a flexible middle that the select
+# button(s) split equally, and a fixed theme selector. The eye and the theme
+# selector are built only from non-stretching widgets (an icon-only toggle /
+# button and a label) each pinned to a UI-unit width, so they stay the same size
+# on every row and the middle's text buttons absorb all the extra width.
+# Deliberately NO color field in the selector: a color field (and a text button)
+# stretches and grabs the row's spare width on a wide panel - ui_units_x only
+# sets a minimum - so the theme number is a label and the picker an icon-only
+# button. All GUI-tunable.
+_RIG_UI_EYE_UNITS = 1.4
+_RIG_UI_DOT_UNITS = 0.9
+_RIG_UI_NUM_UNITS = 1.2
 
 
 # Below this N-panel width the Skeleton header drops the picked-armature name
@@ -176,7 +213,8 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
         ``layout.label`` carries no tooltip): ``LINKED`` when connected,
         ``UNLINKED`` for a disconnected child, nothing for a root. Relative
         parenting is a live ``CON_CHILDOF`` toggle (only meaningful with a
-        parent). The favorite star pins the bone in the list.
+        parent). The export toggle pins a rig helper off the Godot export. The
+        favorite star pins the bone in the list.
         """
         if getattr(item, "use_connect", False):
             info = row.operator("proscenio.bone_flag_info", text="", icon="LINKED", emboss=False)
@@ -194,6 +232,23 @@ class PROSCENIO_UL_bones(ProscenioListMixin, bpy.types.UIList):
             )
             rel.armature_name = arm_name
             rel.bone_name = item.name
+        # Export toggle: an exported bone shows the EXPORT tray; a non-exported
+        # one (control scaffolding or a helper the rigger pinned off) shows a
+        # CANCEL glyph, depressed so the excluded few stand out in the list. The
+        # icon reads the combined gate so an IK control reads "won't export" too,
+        # but clicking only flips the rigger's own exclude_from_export flag.
+        # (Render/visibility icons are deliberately avoided - this is about the
+        # Godot export, not the viewport or render.)
+        exported = bone_is_exported(item)
+        exp = row.operator(
+            "proscenio.toggle_bone_export",
+            text="",
+            icon="EXPORT" if exported else "CANCEL",
+            emboss=False,
+            depress=not exported,
+        )
+        exp.armature_name = arm_name
+        exp.bone_name = item.name
         bone_props = getattr(item, "proscenio", None)
         is_fav = bool(bone_props is not None and getattr(bone_props, "is_favorite", False))
         fav = row.operator(
@@ -381,22 +436,32 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
         arm_name: str,
         collection: bpy.types.BoneCollection,
     ) -> None:
+        """Draw one collection row: eye + select button(s) | color swatch.
+
+        A parent collection prints its name as a header line, then a row whose
+        buttons are its child collections side by side; a childless collection is
+        a single full-width button. Either way the row is a single ``split`` at a
+        fixed factor - eye + buttons in the left cell, swatch in the right - so
+        the swatch column lines up on every row regardless of the button count,
+        and the split caps the swatch cell so a color field cannot expand it.
+        """
         children = list(getattr(collection, "children", []))
         if children:
             layout.label(text=collection.name)
-            row = layout.row(align=True)
-            self._draw_eye(row, collection)
-            for child in children:
-                btn = row.operator("proscenio.select_bone_collection", text=child.name)
-                btn.armature_name = arm_name
-                btn.collection_name = child.name
-            self._draw_swatch(row, arm_name, collection)
-            return
         row = layout.row(align=True)
-        self._draw_eye(row, collection)
-        btn = row.operator("proscenio.select_bone_collection", text=collection.name)
-        btn.armature_name = arm_name
-        btn.collection_name = collection.name
+        # Three parts: fixed eye | flexible middle | fixed theme selector.
+        # 1. Eye - pinned width, independent of the rest.
+        eye = row.row(align=True)
+        eye.ui_units_x = _RIG_UI_EYE_UNITS
+        self._draw_eye(eye, collection)
+        # 2. Middle - takes the remaining width; the collection / subcollection
+        #    select buttons split it equally (three children -> three thirds).
+        middle = row.row(align=True)
+        for member in children or [collection]:
+            btn = middle.operator("proscenio.select_bone_collection", text=member.name)
+            btn.armature_name = arm_name
+            btn.collection_name = member.name
+        # 3. Theme selector - pinned width (a parent colors its whole subtree).
         self._draw_swatch(row, arm_name, collection)
 
     @staticmethod
@@ -411,54 +476,51 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
 
     @staticmethod
     def _draw_swatch(
-        row: bpy.types.UILayout,
+        layout: bpy.types.UILayout,
         arm_name: str,
         collection: bpy.types.BoneCollection,
     ) -> None:
-        op = row.operator("proscenio.color_bone_collection", text="", icon="COLOR")
+        """Draw the fixed-width theme selector (the row's third part).
+
+        Three non-stretching, UI-unit-pinned slots so the selector is the same
+        size on every row and never grabs the middle's spare width:
+
+        - a dot slot: the theme color as a fixed-size ``template_node_socket``
+          circle (NOT a ``prop`` color field - that one widget stretches and
+          expands the whole selector, the bug that kept the red bar growing);
+          blank when the collection's bones do not share one ``THEME##`` slot;
+        - a number slot: a label with the theme number (blank when no theme) -
+          a label, not button text, which would stretch;
+        - the picker: an icon-only operator (the only clickable part), one
+          ``COLOR`` icon on every row, themed or not. Clicking opens the palette
+          dialog (a parent colors its whole subtree).
+        """
+        armature = bpy.data.objects.get(arm_name)
+        label = collection_theme_label(armature, collection.name) if armature else ""
+        color_set = _theme_bone_color_set(label)
+        theme = layout.row(align=True)
+        # Dot slot: the theme color as a fixed-size template_node_socket circle
+        # when themed; otherwise just an invisible spacer (a non-breaking-space
+        # label) that reserves the same width WITHOUT drawing a second circle -
+        # an empty "" label would collapse and misalign the row, and a
+        # transparent socket still draws its outline (the redundant extra icon).
+        dot = theme.row(align=True)
+        dot.ui_units_x = _RIG_UI_DOT_UNITS
+        if color_set is not None and hasattr(dot, "template_node_socket"):
+            dot.template_node_socket(color=(*tuple(color_set.normal), 1.0))
+        else:
+            dot.label(text="\u00a0")
+        # Number slot: a non-breaking space when there is no number, NOT "" -
+        # an empty label collapses (ui_units_x is only a minimum and is ignored
+        # for empty content), which is what made the no-theme rows narrower.
+        num = theme.row(align=True)
+        num.ui_units_x = _RIG_UI_NUM_UNITS
+        num.alignment = "RIGHT"
+        num.label(text=label or "\u00a0")
+        # One picker icon for every row (the "color" affordance), themed or not.
+        op = theme.operator("proscenio.color_bone_collection", text="", icon="COLOR")
         op.armature_name = arm_name
         op.collection_name = collection.name
-
-
-class PROSCENIO_PT_bone_display(bpy.types.Panel):
-    """Bone Display subpanel - assign a generated 2D custom shape.
-
-    A grid of the generated 2D widget outlines; clicking one assigns it as the
-    active bone's ``custom_shape``. Scope (active / selected / collection),
-    scale, and offset live in the operator's redo panel, so a Selected or
-    whole-collection assignment is a redo-panel switch away. The native
-    ``custom_shape`` mechanism, with Proscenio-supplied primitive meshes.
-    """
-
-    bl_label = "Bone Display"
-    bl_idname = "PROSCENIO_PT_bone_display"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "Proscenio"
-    bl_parent_id = "PROSCENIO_PT_skeleton"
-    bl_order = 2
-    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context: bpy.types.Context) -> bool:
-        target = _explicit_target(context)
-        return target is not None and bool(getattr(target.data, "bones", None))
-
-    def draw_header_preset(self, context: bpy.types.Context) -> None:
-        draw_subpanel_header(self.layout, context, "bone_display", "bone_display")
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout = self.layout
-        layout.label(text="Assign 2D custom shape", icon="MESH_CIRCLE")
-        grid = layout.grid_flow(row_major=True, columns=3, even_columns=True)
-        for shape_id in SHAPE_IDS:
-            op = grid.operator("proscenio.assign_bone_shape", text=shape_id.capitalize())
-            op.shape = shape_id
-            op.scope = "ACTIVE"
-        clear = layout.operator("proscenio.assign_bone_shape", text="Clear Shape", icon="X")
-        clear.clear = True
-        clear.scope = "ACTIVE"
-        layout.label(text="Scope / scale: operator redo panel", icon="INFO")
 
 
 def _active_ik_constraint(context: bpy.types.Context) -> bpy.types.Constraint | None:
@@ -675,7 +737,6 @@ _classes: tuple[type, ...] = (
     PROSCENIO_PT_skeleton,
     PROSCENIO_PT_armature,
     PROSCENIO_PT_rig_ui,
-    PROSCENIO_PT_bone_display,
     PROSCENIO_PT_pose_mode,
     PROSCENIO_PT_ik_chains,
     PROSCENIO_PT_quick_armature,

@@ -67,6 +67,23 @@ def test_create_driver_builds_range_expression(automesh_fixture):
     assert target.bone_target == "wrist"
 
 
+def test_create_driver_pins_source_bone_off_export(automesh_fixture):
+    # A Drive-from-Bone source is a rig helper that does nothing as a Bone2D in
+    # Godot, so the operator marks it excluded from export (reversible).
+    _activate("hand")
+    rig = bpy.data.objects["automesh.hand_rig"]
+    assert rig.data.bones["wrist"].proscenio.exclude_from_export is False
+
+    result = bpy.ops.proscenio.create_driver(
+        armature_name="automesh.hand_rig",
+        bone_name="wrist",
+        target_property="region_x",
+        source_axis="ROT_Y",
+    )
+    assert "FINISHED" in result
+    assert rig.data.bones["wrist"].proscenio.exclude_from_export is True
+
+
 def test_create_driver_advanced_keeps_raw_expression(automesh_fixture):
     obj = _activate("hand")
     result = bpy.ops.proscenio.create_driver(

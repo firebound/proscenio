@@ -429,6 +429,49 @@ class PROSCENIO_OT_toggle_bone_favorite(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PROSCENIO_OT_toggle_bone_export(bpy.types.Operator):
+    """Flip the per-bone ``exclude_from_export`` flag from the Skeleton list.
+
+    The rigger's authorship over what reaches Godot: a deform bone that is a
+    rig helper (a Drive-from-Bone source, a tweak handle) can be pinned off the
+    export here. Non-deform control bones are already dropped by the export gate,
+    so toggling them changes nothing - the marker just reads "won't export".
+    """
+
+    bl_idname = "proscenio.toggle_bone_export"
+    bl_label = "Proscenio: Toggle Bone Export"
+    bl_description = (
+        "Include / exclude this bone from the Godot export. Exclude a rig helper "
+        "that only makes sense in Blender so it does not ship as a dead Bone2D"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    armature_name: StringProperty(  # type: ignore[valid-type]
+        name="Armature",
+        default="",
+    )
+    bone_name: StringProperty(  # type: ignore[valid-type]
+        name="Bone",
+        default="",
+    )
+
+    def execute(self, _context: bpy.types.Context) -> set[str]:
+        armature = bpy.data.objects.get(self.armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            report_warn(self, f"armature '{self.armature_name}' not found")
+            return {"CANCELLED"}
+        bone = getattr(armature.data, "bones", {}).get(self.bone_name)
+        if bone is None:
+            report_warn(self, f"bone '{self.bone_name}' not in '{armature.name}'")
+            return {"CANCELLED"}
+        props = getattr(bone, "proscenio", None)
+        if props is None:
+            report_warn(self, "PropertyGroup not registered on this bone")
+            return {"CANCELLED"}
+        props.exclude_from_export = not bool(props.exclude_from_export)
+        return {"FINISHED"}
+
+
 class PROSCENIO_OT_select_bone_collection(bpy.types.Operator):
     """Select every bone in a bone collection from the Rig UI subpanel.
 
@@ -480,6 +523,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_bone_flag_info,
     PROSCENIO_OT_toggle_bone_relative_parent,
     PROSCENIO_OT_toggle_bone_favorite,
+    PROSCENIO_OT_toggle_bone_export,
     PROSCENIO_OT_select_bone_collection,
 )
 

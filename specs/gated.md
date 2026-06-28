@@ -21,7 +21,7 @@ The Spine-parity expressiveness wave (the day-one appearance slice - modulate / 
 
 ## Mesh authoring
 
-- **manual-hull-pen-tool** - Demand class confirmed (Spine / Live2D / Moho), but a new interactive modal is the max GUI test-burden, and Edit Mode + Reproject UV is a workable fallback, so only gesture convenience is missing. **Trigger:** an artist hits a hull alpha-trace cannot produce AND the Edit Mode fallback proves too clumsy in a logged session; revisit after the extend/cut splice soaks. Prune if not fired by 1.0.
+- **manual-hull-pen-tool** - SHIPPED 2026-06-27 (spec 066, PR #162): the gate was reopened and built. The OUTER stage of the automesh interactive modal gained a Manual contour tool on the existing click-pen machine (click points, close the loop, it replaces `output.outer`), selected via the new bare-Tab per-stage tool cycle. Kept here as the record. Note: the contour pen still edits an existing mesh element's contour and ends at APPLY; a from-blank pen-creation tool and persistent re-editing are the open follow-on (`mesh-pen-authoring` in [backlog/ui-feedback.md](backlog/ui-feedback.md)). Original gate framing: demand class confirmed (Spine / Live2D / Moho), Edit Mode + Reproject UV was the fallback that made it gesture-convenience only.
 
 ## Skinning and weight paint
 

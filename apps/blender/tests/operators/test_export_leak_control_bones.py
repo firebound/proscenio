@@ -63,3 +63,35 @@ def test_control_bone_absent_from_skeleton_and_tracks(
         track["target"] for anim in doc.get("animations", []) for track in anim["tracks"]
     }
     assert control_name not in track_targets, "control bone leaked into an animation track"
+
+
+def test_excluded_deform_bone_absent_from_export(automesh_fixture: None, tmp_path: Path) -> None:
+    # A deform bone the rigger pinned off the export (proscenio.exclude_from_export
+    # via the Skeleton list toggle) must drop from both the skeleton and any
+    # animation track, exactly like a non-deform control - the rig-helper path.
+    from proscenio.exporters.godot import writer
+
+    rig = _enter_pose_with_active_bone("automesh.hand_rig", "fingertip")
+    try:
+        assert rig.data.bones["fingertip"].use_deform is True, "test precondition: deform bone"
+        rig.data.bones["fingertip"].proscenio.exclude_from_export = True
+
+        tip = rig.pose.bones["fingertip"]
+        tip.location = (0.0, 0.0, 0.0)
+        assert tip.keyframe_insert(data_path="location", frame=1)
+        tip.location = (0.2, 0.0, 0.3)
+        assert tip.keyframe_insert(data_path="location", frame=10)
+    finally:
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    out = tmp_path / "excluded.proscenio"
+    writer.export(out, pixels_per_unit=100.0)
+    doc = json.loads(out.read_text(encoding="utf-8"))
+
+    skeleton_names = [b["name"] for b in doc["skeleton"]["bones"]]
+    assert "fingertip" not in skeleton_names, "excluded deform bone leaked into skeleton bones[]"
+
+    track_targets = {
+        track["target"] for anim in doc.get("animations", []) for track in anim["tracks"]
+    }
+    assert "fingertip" not in track_targets, "excluded deform bone leaked into an animation track"

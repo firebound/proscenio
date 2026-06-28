@@ -317,6 +317,7 @@ SUBPANEL_SECTIONS: dict[str, tuple[str, str]] = {
     "active_slot": ("slots", "active-slot"),
     # Skeleton subpanels.
     "armature": ("skeleton", "active-armature"),
+    "rig_ui": ("skeleton", "rig-ui"),
     "pose_mode": ("skeleton", "pose-mode"),
     "quick_armature": ("skeleton", "quick-armature"),
     # Mesh Generation subpanels.

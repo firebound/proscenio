@@ -67,6 +67,26 @@ def test_create_driver_builds_range_expression(automesh_fixture):
     assert target.bone_target == "wrist"
 
 
+def test_create_driver_leaves_source_bone_export_untouched(automesh_fixture):
+    # The Drive-from-Bone source is NOT auto-excluded from export: a source can be
+    # a real deform bone (an eye sprite driven by the deforming head bone), and
+    # silently dropping it would corrupt the Godot skeleton. A non-deform helper is
+    # already dropped by bone_is_exported; a deform helper is excluded explicitly
+    # via the Skeleton list toggle. So creating a driver leaves the flag alone.
+    _activate("hand")
+    rig = bpy.data.objects["automesh.hand_rig"]
+    assert rig.data.bones["wrist"].proscenio.exclude_from_export is False
+
+    result = bpy.ops.proscenio.create_driver(
+        armature_name="automesh.hand_rig",
+        bone_name="wrist",
+        target_property="region_x",
+        source_axis="ROT_Y",
+    )
+    assert "FINISHED" in result
+    assert rig.data.bones["wrist"].proscenio.exclude_from_export is False
+
+
 def test_create_driver_advanced_keeps_raw_expression(automesh_fixture):
     obj = _activate("hand")
     result = bpy.ops.proscenio.create_driver(

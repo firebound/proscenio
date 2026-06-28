@@ -679,12 +679,12 @@ Each block answers three questions in plain language: what passing it proves (`i
 
 ### BL-SKEL-ARMATURE-SWEEP · Active Armature subpanel inventory (visual pass)
 - status: pending
-- review: keep
+- review: todo
 - pre: A rig picked.
-- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list where each bone name is left-aligned and indented by its depth (the indent is now visible - names were centered before), and tagged 'connected' or 'disconnected' (a parented child not connected to its parent) and/or 'relative' on the right where those flags apply. The list now carries Blender's native 'Filter by Name' search under its expand arrows, and in Pose / Edit mode each row leads with a selection marker (a filled radio dot when the bone is selected, an empty one otherwise). Below the list sits a row of two buttons: 'Active to Euler' and 'All to Euler'.
-- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, the native search, the per-row selection marker, the connected/disconnected/relative flags, and the two Convert-rotation-to-Euler buttons; behavior lives in the named tests.
-- code: apps/blender/panels/skeleton.py PROSCENIO_UL_bones (ProscenioListMixin + draw_select_marker)
-- note: shared-list-component: the bone list moved onto the shared component (gains native search + the selection marker). blender-authoring-design added the two convert-to-Euler buttons. Re-walk the inventory.
+- observe: The subpanel is titled 'Active Armature' (was 'Armature'); the Skeleton parent panel header reads 'Skeleton: <name>' with the picked rig at a normal width, dropping to just 'Skeleton' when the N-panel is narrowed (the name disappears, the base title stays). The subpanel body shows the bone count ('N bone(s)') and a read-only bone list. Each row reads left to right: in Pose / Edit mode a selection marker (a filled radio dot when the bone is selected, an empty one otherwise); a non-interactive connectivity icon (a linked icon when the bone is connected to its parent, an unlinked icon for a parented-but-disconnected child, a generic bone icon for a root); the bone name left-aligned and indented by its depth (the indent zeroes when the list is sorted A-Z); then a right cluster of three flat (borderless) toggles - a relative-parent pin (filled when the bone uses relative parenting, hollow when not), a Godot export toggle (an export icon when the bone is exported, a cancel icon and depressed when it is excluded), and a favorite star (filled / hollow). The list carries Blender's native 'Filter by Name' search under its expand arrows. Below the list sits a row of two buttons: 'Active to Euler' and 'All to Euler'.
+- intent: Confirm the renamed subpanel, the 'Skeleton: <name>' header that drops the name when narrow, the bone-count body, the native search, the per-row selection marker, the left connectivity icon, and the right cluster (relative-parent pin, Godot export toggle, favorite star); behavior lives in the named tests.
+- code: apps/blender/panels/skeleton.py PROSCENIO_UL_bones (_bone_connectivity_icon + _draw_bone_flags) + ProscenioListMixin (draw_select_marker)
+- note: skeleton-rig-ui: the row was split left (connectivity icon, non-interactive) / right (interactive relative-pin + export-exclude + favorite). The old text 'connected'/'disconnected'/'relative' tags are gone. Re-walk the inventory.
 
 ### BL-SKEL-ARMATURE-01 · Clicking a bone selects it in the viewport
 - status: pending
@@ -719,6 +719,41 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: The export validator warns when a sprite-driving bone is not in XYZ Euler, and Convert rotation to Euler (active bone or whole armature) is the one-click fix that clears it.
 - code: apps/blender/operators/armature/rotation_mode.py; apps/blender/core/validation/export.py _validate_driver_rotation_modes
 - note: blender-authoring-design. Validator + operator pinned by tests/test_validation_export.py and tests/operators/test_rotation_mode.py; this is the GUI loop across Skeleton + Validate.
+
+### BL-SKEL-ARMATURE-04 · Per-bone export toggle keeps a bone out of the Godot export
+- status: pending
+- review: todo
+- pre: A rig picked with at least one deform bone; ready to export a .proscenio.
+- steps:
+  1. In the Active Armature bone list, click a deform bone's export toggle so it shows the excluded (cancel) icon and depresses.
+  2. Export via Pipeline > Export and inspect the generated skeleton.
+  3. Click the export toggle on a non-deform bone (e.g. an .IK control), then set up Drive from Bone on a sprite from a deform bone and re-check that source bone's export toggle.
+- observe: A deform bone toggled off (cancel icon, depressed) is omitted from the exported Godot skeleton - its deform children reparent to the nearest still-exported ancestor rather than disappearing. A bone left on (export icon) exports as before. Clicking the toggle on a non-deform bone is refused with a warning (it is already out of the export, so no hidden state is stored). Creating a Drive-from-Bone driver does NOT change its source bone's export toggle - the source may be a real deform bone, so it is never auto-excluded. The toggle has no viewport effect - it only governs the Godot export.
+- intent: The per-bone export toggle (combined with use_deform) gates whether a deform bone reaches the Godot skeleton; excluded bones are skipped with their deform children reparented, the toggle refuses non-deform bones, and a Drive-from-Bone source is left untouched.
+- code: apps/blender/operators/selection.py PROSCENIO_OT_toggle_bone_export; apps/blender/exporters/godot/writer/skeleton.py <- core/bone_export.py bone_is_exported; apps/blender/operators/driver.py create_driver
+- note: skeleton-rig-ui: new authoring control. Export-skip + reparent + non-deform refusal pinned by tests/test_bone_export.py and tests/operators/ (toggle, non-deform reject, driver leaves-untouched, export-leak guard).
+
+### BL-SKEL-RIGUI-SWEEP · Rig UI subpanel inventory (visual pass)
+- status: pending
+- review: todo
+- pre: A rig picked.
+- observe: The Rig UI subpanel renders one row per bone collection as a tree. A top-level collection with children is a header row; its direct-child collections render as a grouped button row under it, and each child branch recurses into its own header row below (grouped by header, not indented). A top-level collection with no children is a single self-button row. Every row reads left to right: a fixed-width eye toggle (the collection's viewport visibility), one or more equal-width select buttons that split the middle, and a fixed-width theme selector - a colored dot (the collection's shared theme color, or an empty circle when its bones share no one theme), the theme number, and a color-picker icon. The picker icon is live only on top-level rows (one color control per tree); nested rows reserve the column but the picker is inert. When the rig has no bone collections the subpanel shows an INFO notice 'no bone collections - add them in Blender's Bone Collections panel' instead of vanishing. The eye, select buttons, and theme selector line up in the same columns across every row regardless of depth or theme.
+- intent: Confirm the Rig UI subpanel renders the recursive collection tree (header + grouped child buttons at every depth), the per-row eye / select / theme-selector columns aligned across rows, the top-level-only color picker, and the empty-state notice when no collections exist.
+- code: apps/blender/panels/skeleton.py PROSCENIO_PT_rig_ui (_draw_row + _draw_swatch) <- core/rig_ui_view.py rig_ui_rows
+- note: skeleton-rig-ui: new subpanel. Custom bone-shape widgets were dropped (native display_type dropdown instead). Walk a rig with 3+ levels of nested collections.
+
+### BL-SKEL-RIGUI-01 · Eye hides, select picks, color tints a whole collection tree
+- status: pending
+- review: todo
+- pre: A rig picked with at least one top-level bone collection that has nested child collections.
+- steps:
+  1. Click a collection row's eye toggle.
+  2. Click a select button on a collection row (top-level and a nested one).
+  3. On a top-level row, click the color picker and choose a theme color.
+- observe: The eye toggles that collection's viewport visibility. A select button selects every bone of that collection (replacing the current selection), including bones in its nested children for a parent collection. Picking a color on a top-level row re-tints every bone in that collection's whole subtree (the dot and theme number update on the parent and its nested rows); nested rows have no live picker of their own. A missing or empty collection reports a warning and changes nothing.
+- intent: The eye drives collection visibility, the select button selects the collection's bones (recursive for a parent), and the single top-level color picker tints the entire subtree (one color control per tree).
+- code: apps/blender/operators/selection.py PROSCENIO_OT_select_bone_collection; apps/blender/operators/armature/bone_appearance.py PROSCENIO_OT_color_bone_collection <- core/bpy_helpers/_shared/bone_collections.py iter_collection_bones
+- note: skeleton-rig-ui: select + color both resolve a collection's bones recursively (BoneCollection.bones_recursive). Pinned by tests/operators/test_bone_display_ops.py.
 
 ### BL-SKEL-POSE-SWEEP · Pose Mode subpanel inventory (visual pass)
 - status: pass
@@ -782,19 +817,20 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/skeleton.py:183-187 -> pose_library.py:27-94
 
 ### BL-SKEL-QUICKARM-SWEEP · Quick Armature subpanel inventory (visual pass)
-- status: pass
-- review: keep
+- status: pending
+- review: todo
 - pre: Quick Armature subpanel expanded.
-- observe: The subpanel shows the Quick Armature launch button and four option fields that each keep their value: Lock to Front Orthographic, Default = chain connected, Bone name prefix, and Snap increment.
-- intent: Confirm the Quick Armature subpanel renders its four options and they persist; the modal behaviour is BL-SKEL-QUICKARM-01.
-- code: apps/blender/panels/skeleton.py:217-220 -> scene_props.py:29-67
+- observe: The subpanel shows the Quick Armature launch button and four option fields that each keep their value: Lock to Front Orthographic, Default = chain connected, Bone name prefix, and Snap increment. While no session is running the launch button reads 'Quick Armature' (grease-pencil icon); a collapsible 'Shortcuts' section sits below it, closed by default and empty until a session runs. While a session IS running the launch button reads 'Exit Quick Armature' (an X icon) and the expanded 'Shortcuts' section mirrors the live gesture cheat-sheet (the same chords shown on the status bar).
+- intent: Confirm the Quick Armature subpanel renders its four options and they persist, the launch button swaps to 'Exit Quick Armature' while a session runs, and the collapsible 'Shortcuts' section mirrors the live cheat-sheet only during a session; the modal behaviour is BL-SKEL-QUICKARM-01.
+- code: apps/blender/panels/skeleton.py PROSCENIO_PT_quick_armature (_quick_armature_is_running + _draw_quick_armature_shortcuts) -> scene_props.py
+- note: skeleton-rig-ui: added the Exit toggle + the collapsible Shortcuts cheat-sheet mirror. Re-walk the inventory.
 
 ### BL-SKEL-QUICKARM-01 · Quick Armature modal walk (consolidated)
 - status: pending
 - review: keep
 - pre: The mouse is over a 3D viewport; the Quick Armature subpanel is open.
 - steps:
-  1. Click Quick Armature to start. It creates or reuses the QuickRig target, remembers your view and selection, optionally snaps to Front Ortho, and shows the preview and cheat-sheet overlays.
+  1. Click Quick Armature to start. It creates or reuses the QuickRig target, enters Edit mode on it, remembers your entry mode + view + selection, optionally snaps to Front Ortho, and shows the preview and cheat-sheet overlays.
   2. Draw a bone: press, drag, and release the left mouse button inside the viewport. A bone is created (its head snaps to the previous bone's tail when chaining); a too-short drag is skipped with a message.
   3. Hold Shift while dragging to flip between chaining and starting a new root; the preview tints to show the unparented mode.
   4. Hold Alt while dragging to parent to the previous bone but start the new bone at the cursor; a dashed link line shows the disconnected parent.
@@ -802,11 +838,12 @@ Each block answers three questions in plain language: what passing it proves (`i
   6. Hold Ctrl while drawing to snap the bone ends to the grid increment; the preview follows the snapped point.
   7. Press Ctrl+Z to undo the last bone you drew, Ctrl+Shift+Z to redo it; undoing or redoing past the ends reports there is nothing to do.
   8. Press Enter to finish (the status-bar hint reads 'finish'): the overlays clear, your view and selection are restored, and a confirmation reports how many bones you authored.
-  9. Press Esc or right-click: with nothing drawn the hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored the hint reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Your view and selection are restored either way.
+  9. Press Esc (or Enter): with nothing drawn the Esc hint reads 'cancel (discards empty rig)' and it removes the auto-created empty rig; once a bone is authored it reads 'exit (keeps bones)' and the bones survive (labels-only - Esc is not destructive). Right-click does NOT exit (see step 11). On exit you are returned to your entry mode and your view + selection are restored.
   10. The subpanel's 'Lock to Front Orthographic' field (also overridable per-launch in the redo panel), when on, snaps to Front Ortho on launch and restores your prior view on exit; off leaves the view alone. The field takes effect on the first launch - no redo override needed.
-  11. Press Tab to cycle Draw and Reparent modes; the status-bar cheat-sheet swaps to show only the active mode's chords. In Reparent mode, click near a bone tip to set it as the next bone's parent (a highlight marks the tip under the cursor); clicking empty space reports 'no bone tip near cursor' and changes nothing.
-  12. Seed from an active bone: before launching, select one bone of an existing rig (e.g. an imported figure's 'root' bone) so it is the armature's active bone, then launch Quick Armature and draw a chaining bone. The first bone parents onto that selected bone (no Tab/Reparent dance needed). Launch with no active bone and the first bone is unparented as usual.
-- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar only - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored. Step 12: a pre-selected active bone seeds the first chain bone's parent; no active bone leaves it unparented.
+  11. Reparent by native selection: right-click a bone to select it (the session stays in Edit mode, so this is Blender's own bone select - it does not exit). The next connected draw chains from the selected (active) bone instead of the last one you drew; with nothing selected the chain continues from the last-authored bone as usual. There is no Tab, no Draw/Reparent modes, and no tail-tip picking.
+  12. Seed from an active bone: before launching, select one bone of an existing rig (e.g. an imported figure's 'root' bone) so it is the armature's active bone, then launch Quick Armature and draw a chaining bone. The first bone parents onto that selected bone. Launch with no active bone and the first bone is unparented as usual.
+  13. Exit from the panel: while the session runs the subpanel button reads 'Exit Quick Armature'; clicking it finishes the running session (it does not start a second one) - an empty session is discarded, an authored one keeps its bones.
+- observe: Each chord behaves as its step describes; the live preview overlay tracks the active chord (different tints for chaining, unparented, and disconnected, plus an 'outside canvas' warning when the cursor leaves the viewport). The chord cheat-sheet shows on the bottom status bar (and is mirrored in the panel's collapsible Shortcuts section) - the 3D viewport header no longer carries a duplicate strip (spec 045), and after exiting + reopening the file no leftover strip lingers. The confirm / exit hints differ ('finish' vs 'cancel'/'exit') and the Esc hint changes once a bone is authored. Right-click selects a bone in Edit mode (reparent) rather than exiting. Step 12: a pre-selected active bone seeds the first chain bone's parent; no active bone leaves it unparented.
 - intent: One session covers launch, the draw/chain/disconnect chords, axis lock, grid snap, in-modal undo/redo, finish, cancel, the front-ortho option, the live overlay, the status-bar-only cheat-sheet with dynamic finish/exit hints, and the active-bone chain seed (select the importer root, launch, draw -> chain seeds from root with no new chord).
 - code: apps/blender/panels/skeleton.py:212 -> apps/blender/operators/armature/quick_armature.py (modal + Tab mode dispatch + the invoke active-bone seed + exit); core/armature/quick_armature_math.py (next_mode, resolve_pick); _overlay.py; _status_bar.py emit_chord_layout
 

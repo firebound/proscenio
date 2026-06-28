@@ -38,6 +38,7 @@ gdextension
 gdshader
 goldenwriter
 greasepencil
+headerless
 hframe
 hframed
 hframes
@@ -80,6 +81,7 @@ reimports
 relinks
 remesh
 reparent
+reparented
 reparenteia
 reparents
 reproject
@@ -91,6 +93,7 @@ respace
 retarget
 retargeted
 riggable
+rigui
 rightmouse
 SHADERFX
 shapekey
@@ -144,3 +147,5 @@ multiframe
 multiget
 reparentar
 wirar
+CHILDOF
+BBONE

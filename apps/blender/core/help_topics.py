@@ -182,6 +182,28 @@ HELP_TOPICS: dict[str, HelpTopic] = {
         ),
         sections=(),
     ),
+    "rig_ui": HelpTopic(
+        title="Rig UI",
+        summary=(
+            "Per-collection select buttons + visibility toggles built from the picked"
+            " armature's native bone collections. Nested collections (Blender 4.1+)"
+            " group into a labelled row of child buttons. A Blender-only authoring"
+            " convenience - it selects and shows bones, it does not export."
+        ),
+        sections=(
+            _section(
+                _SECTION_HOW,
+                "Each row's button selects that collection's bones in the viewport"
+                " (a parent grabs its whole subtree). The eye toggles the"
+                " collection's visibility (a hidden parent hides its children). The"
+                " theme selector's columns line up on every row, but only a"
+                " top-level row's picker is live and colors that whole subtree -"
+                " one color control per tree; nested rows reserve the columns."
+                " Assign bones to collections in Blender's native Bone Collections"
+                " panel; this panel only consumes them.",
+            ),
+        ),
+    ),
     "animation": HelpTopic(
         title="Animation",
         summary=(
@@ -627,6 +649,7 @@ _DOC_PATHS: dict[str, str] = {
     # under that section rather than owning a top-level section (Decision 5).
     "skeleton": "skeleton",
     "armature": "skeleton#active-armature",
+    "rig_ui": "skeleton#rig-ui",
     "pose_mode": "skeleton#pose-mode",
     "pose_library": "skeleton#save-pose-to-library",
     "quick_armature": "skeleton#quick-armature",

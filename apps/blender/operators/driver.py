@@ -257,6 +257,13 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         props.driver_source_armature = armature
         props.driver_source_bone = self.bone_name
 
+        # The source bone is NOT auto-excluded from export here. A Drive-from-Bone
+        # source can be a real deform bone (e.g. an eye sprite driven by the head
+        # bone that also deforms the mesh); auto-excluding it would silently drop a
+        # deform bone from the Godot skeleton. A non-deform helper is already
+        # dropped by ``bone_is_exported`` (the use_deform gate), so the rigger
+        # excludes a deform helper explicitly via the Skeleton list export toggle.
+
         report_info(
             self,
             f"driver on '{sprite.name}.{data_path}' "

@@ -19,6 +19,9 @@ Submodules per concern:
 - ``object_props.py``     ``ProscenioObjectProps`` + EnumProperty items
                           tuples (sprite type, region mode, driver target,
                           driver source axis) + the idprop get/set proxies.
+- ``bone_props.py``       ``ProscenioBoneProps`` - per-bone GUI state
+                          (Skeleton-list favorite), registered on
+                          ``bpy.types.Bone``.
 - ``scene_props.py``      ``ProscenioSceneProps`` - sticky export path,
                           atlas packer params, outliner state, validation
                           results collection.
@@ -41,6 +44,7 @@ import contextlib
 
 import bpy
 from bpy.props import PointerProperty
+from bpy.types import Bone as _Bone
 from bpy.types import Object as _Object
 from bpy.types import Scene
 
@@ -48,6 +52,7 @@ from ._handlers import (
     on_blend_load,
     on_depsgraph_update,
 )
+from .bone_props import ProscenioBoneProps
 from .object_props import ProscenioObjectProps
 from .scene_props import (
     ProscenioQuickArmatureProps,
@@ -58,6 +63,7 @@ from .validation_issue import ProscenioValidationIssue
 
 _classes: tuple[type, ...] = (
     ProscenioObjectProps,
+    ProscenioBoneProps,
     ProscenioValidationIssue,
     ProscenioQuickArmatureProps,
     ProscenioSkinningProps,
@@ -69,6 +75,7 @@ def register() -> None:
     for cls in _classes:
         bpy.utils.register_class(cls)
     _Object.proscenio = PointerProperty(type=ProscenioObjectProps)
+    _Bone.proscenio = PointerProperty(type=ProscenioBoneProps)
     Scene.proscenio = PointerProperty(type=ProscenioSceneProps)
     if on_blend_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(on_blend_load)
@@ -83,6 +90,8 @@ def unregister() -> None:
         bpy.app.handlers.load_post.remove(on_blend_load)
     if hasattr(Scene, "proscenio"):
         del Scene.proscenio
+    if hasattr(_Bone, "proscenio"):
+        del _Bone.proscenio
     if hasattr(_Object, "proscenio"):
         del _Object.proscenio
     for cls in reversed(_classes):

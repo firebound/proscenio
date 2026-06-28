@@ -17,13 +17,26 @@ import bpy
 
 
 def chord(layout: bpy.types.UILayout, *parts: tuple[str, str]) -> None:
-    """Emit one aligned chord row. Each part is ``(icon, text)``; an empty
-    icon prints text only, an empty text prints the icon only. Uses
-    Blender's native ``EVENT_*`` / ``MOUSE_*`` icons so the hint visually
-    matches Blender's own modal status bars (knife / loop cut)."""
+    """Emit one chord row. Each part is ``(icon, text)``; an empty icon prints
+    text only, an empty text prints the icon only. Uses Blender's native
+    ``EVENT_*`` / ``MOUSE_*`` icons so the hint matches Blender's own modal
+    status bars (knife / loop cut).
+
+    Spacing: a keycap icon (``EVENT_CTRL`` etc.) butts straight up against its
+    label text, so each non-empty text gets a leading space (labels keep leading
+    spaces - the bone list indents the same way) to read as "Ctrl grid snap"
+    rather than the run-together "Ctrl" + "grid snap". The row's ``alignment``
+    is forced to ``LEFT``: the default
+    (``EXPAND``) splits the row width equally between the labels, which pushed a
+    combo's meaning to the panel's right edge (the "huge gap" bug). LEFT packs the
+    labels against the left so a combo reads as one tight cluster.
+    """
     row = layout.row(align=True)
+    row.alignment = "LEFT"
     for icon, text in parts:
-        row.label(text=text, icon=icon or "NONE")
+        # The leading space only separates a keycap icon from its label; a
+        # text-only part keeps its raw text (the "text only" contract).
+        row.label(text=(f" {text}" if icon and text else text), icon=icon or "NONE")
 
 
 def append_statusbar_draw(operator_cls: type, draw_fn: Callable[..., None]) -> None:

@@ -51,6 +51,7 @@ from proscenio_models import (
     Element as ElementModel,
 )
 
+from ....core.bone_export import bone_is_exported
 from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
 from .animations import build_animations
 from .scene_discovery import doc_name, find_armature, find_atlas_image, find_sprite_meshes
@@ -160,11 +161,14 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
     slots = build_slots_for_scene(scene)
     atlas = find_atlas_image(path)
 
-    # The deform set is the export-leak guard for the animation path: a stray
-    # control-bone fcurve would otherwise resolve through _REST_FALLBACK and
-    # emit a track. Derived from the armature directly so it does not depend on
-    # the skeleton builder having already filtered.
-    deform_bones = {b.name for b in iter_bones(expect_armature(armature_obj)) if b.use_deform}
+    # The exported-bone set is the export-leak guard for the animation path: a
+    # stray control-bone or pinned-off-helper fcurve would otherwise resolve
+    # through _REST_FALLBACK and emit a track. Derived from the armature directly
+    # so it does not depend on the skeleton builder having already filtered, and
+    # uses the same bone_is_exported gate the skeleton builder reads.
+    deform_bones = {
+        b.name for b in iter_bones(expect_armature(armature_obj)) if bone_is_exported(b)
+    }
     animations = build_animations(scene.render.fps, pixels_per_unit, bone_rest_local, deform_bones)
     slot_anims = build_slot_animations(scene)
     if slot_anims:

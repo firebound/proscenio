@@ -8,6 +8,7 @@ from core.skinning.authoring_stages import (
     StageParams,
     default_tool,
     next_tool,
+    resolve_launch_mode,
     stage_tools,
     tool_is_pen,
 )
@@ -120,3 +121,14 @@ def test_tool_is_pen_classification():
         assert tool_is_pen(pen) is True
     for non_pen in ("auto", "point", ""):
         assert tool_is_pen(non_pen) is False
+
+
+def test_resolve_launch_mode():
+    # No authored anchors, no from-blank flag -> the existing alpha trace.
+    assert resolve_launch_mode(has_authored_outer=False, from_blank=False) == "trace"
+    # A fresh from-blank launch -> empty contour.
+    assert resolve_launch_mode(has_authored_outer=False, from_blank=True) == "blank"
+    # Stored anchors -> re-edit, regardless of the from-blank flag (re-edit wins,
+    # so a stale flag can never wipe an authored outline).
+    assert resolve_launch_mode(has_authored_outer=True, from_blank=False) == "reedit"
+    assert resolve_launch_mode(has_authored_outer=True, from_blank=True) == "reedit"

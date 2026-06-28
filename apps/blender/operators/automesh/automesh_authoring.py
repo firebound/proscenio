@@ -42,8 +42,10 @@ from ...core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[im
     compute_outer,
     compute_outer_preview,
     compute_triangulation_preview,
+    read_authored_outer_contour,
     read_user_outer_strokes,
     read_user_strokes,
+    write_authored_outer_contour,
     write_user_outer_strokes,
     write_user_strokes,
 )
@@ -66,6 +68,7 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     Stroke,
     default_tool,
     next_tool,
+    resolve_launch_mode,
     stage_tools,
     tool_is_pen,
 )
@@ -202,6 +205,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     # Active tool of the current stage (spec 066: bare Tab cycles it). Mirrored
     # at class level so the statusbar draw callback can highlight it.
     _current_active_tool: str = "auto"
+    # Set by ``proscenio.pen_mesh_new`` right before it launches this modal on a
+    # freshly created (empty, no alpha to trace) mesh element: the next invoke
+    # starts from a blank outer with the contour pen armed and the SIMPLE stage
+    # list, instead of alpha-tracing. Read-and-cleared in invoke (spec 070).
+    _launch_from_blank: ClassVar[bool] = False
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -238,6 +246,18 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # Stage list depends on interior mode; navigation walks this ordered
         # list by index, not raw enum arithmetic.
         self._interior_mode: str = params.interior_mode
+        # Launch mode (spec 070): a re-edit (the element carries authored anchors)
+        # loads them instead of alpha-tracing; a from-blank launch starts empty
+        # with the contour pen on the SIMPLE stage list. Re-edit wins if both hold
+        # (a re-launch on an authored element is a re-edit, not a fresh blank).
+        authored_outer = read_authored_outer_contour(obj)
+        launch_mode = resolve_launch_mode(
+            has_authored_outer=authored_outer is not None,
+            from_blank=type(self)._launch_from_blank,
+        )
+        type(self)._launch_from_blank = False
+        if launch_mode == "blank":
+            self._interior_mode = "SIMPLE"
         self._active_stages: list[AuthoringStage] = _stages_for_mode(self._interior_mode)
         self._output = StageOutput()
         self._handles = {
@@ -310,7 +330,21 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._user_outer_strokes: list[Stroke] = []
 
         try:
-            self._output.outer = compute_outer(obj, image, params)
+            if authored_outer is not None:
+                # Re-edit: load the stored anchors as the outer ring and arm the
+                # contour pen so the artist can redraw / extend it (add points in
+                # EDIT_OUTLINE), instead of re-tracing the alpha silhouette.
+                self._output.outer = list(authored_outer)
+                self._active_tool = "contour"
+                self._enter_draw(context, "stroke")
+            elif launch_mode == "blank":
+                # From blank: nothing to trace; arm the contour pen on an empty
+                # outer so the first click drops the first vert.
+                self._output.outer = []
+                self._active_tool = "contour"
+                self._enter_draw(context, "stroke")
+            else:
+                self._output.outer = compute_outer(obj, image, params)
             self._handles = register_overlay(self._stage, self._output)
             type(self)._current_stage_label = _stage_label(self._stage, self._interior_mode)
             type(self)._current_stage = self._stage
@@ -867,6 +901,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             report_warn(self, "manual contour needs at least 3 points", always=True)
             return
         self._output.outer = ring
+        # Persist the user's clicked anchors (pre-subdivision) so a later launch
+        # reloads this outline for re-editing instead of re-tracing the alpha
+        # silhouette (spec 070). The ring above is the subdivided render/build
+        # geometry; the anchors are the editable handles.
+        obj = context.active_object
+        if obj is not None:
+            write_authored_outer_contour(obj, list(pts))
         self._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )

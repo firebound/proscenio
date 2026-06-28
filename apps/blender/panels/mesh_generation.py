@@ -45,6 +45,11 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        # From-blank pen authoring (spec 070): creates a mesh element from an
+        # image and opens the pen. Shown always - unlike the edit tools below it
+        # does not need a mesh element active (it makes one).
+        layout.operator("proscenio.pen_mesh_new", text="New Pen Mesh", icon="GREASEPENCIL")
+        layout.separator()
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             layout.label(text="select a mesh to generate or edit", icon="INFO")

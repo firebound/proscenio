@@ -446,6 +446,61 @@ def test_user_strokes_round_trip(automesh_fixture):
     assert len(restored[1]["points"]) == 3
 
 
+def test_create_pen_mesh_element_builds_a_mesh_element(automesh_fixture, tmp_path):
+    """The from-blank helper builds an imported-shape mesh element from an image:
+    a MESH with an image material, the placement tag, element_type 'mesh', active."""
+    from pathlib import Path
+
+    from proscenio.core._shared.cp_keys import (  # type: ignore[import-not-found]
+        PROSCENIO_IMPORT_PLACEMENT,
+    )
+    from proscenio.core._shared.material_images import (  # type: ignore[import-not-found]
+        first_material_image,
+    )
+    from proscenio.core._shared.props_access import (  # type: ignore[import-not-found]
+        element_type_of,
+    )
+    from proscenio.operators.automesh.pen_mesh_new import (  # type: ignore[import-not-found]
+        create_pen_mesh_element,
+    )
+
+    img_path = Path(tmp_path) / "pen_src.png"
+    img = bpy.data.images.new("pen_src", width=64, height=32)
+    img.filepath_raw = str(img_path)
+    img.file_format = "PNG"
+    img.save()
+
+    obj = create_pen_mesh_element(bpy.context, img_path, "PenTest")
+    assert obj.type == "MESH"
+    assert element_type_of(obj) == "mesh"
+    assert PROSCENIO_IMPORT_PLACEMENT in obj
+    assert first_material_image(obj) is not None
+    assert bpy.context.view_layer.objects.active is obj
+
+
+def test_authored_outer_contour_round_trip(automesh_fixture):
+    """The clicked outer anchors round-trip; absent reads None; degenerate reads None."""
+    obj = _activate("hand")
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        read_authored_outer_contour,
+        write_authored_outer_contour,
+    )
+
+    if "proscenio_authored_outer_contour" in obj:
+        del obj["proscenio_authored_outer_contour"]
+    # Never authored -> None (so a launch alpha-traces as usual, not re-edits).
+    assert read_authored_outer_contour(obj) is None
+
+    anchors = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+    write_authored_outer_contour(obj, anchors)
+    restored = read_authored_outer_contour(obj)
+    assert restored == [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+
+    # A degenerate payload (cannot form a loop) reads None, not a broken ring.
+    write_authored_outer_contour(obj, [(0.0, 0.0), (1.0, 0.0)])
+    assert read_authored_outer_contour(obj) is None
+
+
 def test_user_strokes_legacy_fallback(automesh_fixture):
     """Legacy proscenio_user_steiners (flat list) reads as kind=point strokes."""
     obj = _activate("hand")

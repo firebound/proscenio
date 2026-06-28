@@ -82,6 +82,26 @@ def tool_is_pen(tool: str) -> bool:
     return tool in _PEN_TOOLS
 
 
+def resolve_launch_mode(*, has_authored_outer: bool, from_blank: bool) -> str:
+    """The OUTER-stage launch mode for the authoring modal (spec 070).
+
+    - ``"reedit"``: the element carries stored pen anchors - load them as the
+      outer and arm the contour pen (re-edit the placed outline).
+    - ``"blank"``: a from-blank launch on a fresh element - empty outer, contour
+      pen armed, first click drops the first vert.
+    - ``"trace"``: the existing behavior - alpha-trace the silhouette.
+
+    Re-edit wins over from-blank: a re-launch on an already-authored element is a
+    re-edit, never a fresh blank, so a stale from-blank flag cannot wipe an
+    authored outline.
+    """
+    if has_authored_outer:
+        return "reedit"
+    if from_blank:
+        return "blank"
+    return "trace"
+
+
 class Stroke(TypedDict):
     """Stage 3 stroke or single-Steiner placement.
 

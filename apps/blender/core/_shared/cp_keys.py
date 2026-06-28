@@ -91,6 +91,11 @@ PROSCENIO_MIRROR_X = "proscenio_mirror_x"
 PROSCENIO_USER_STEINERS = "proscenio_user_steiners"
 PROSCENIO_USER_STROKES = "proscenio_user_strokes"
 PROSCENIO_USER_OUTER_STROKES = "proscenio_user_outer_strokes"
+# The user's clicked outer-contour anchor points (pre-subdivision), stored when
+# the OUTER stage is authored with the pen contour tool. Lets a re-launch reload
+# the authored outline as live, editable pen anchors instead of re-tracing the
+# alpha silhouette - the basis of pen re-editing (spec 070).
+PROSCENIO_AUTHORED_OUTER_CONTOUR = "proscenio_authored_outer_contour"
 
 # Photoshop import tags. Stamped onto imported meshes by the photoshop
 # importer: the source-layer origin marker (``psd:<layer>``), the manifest

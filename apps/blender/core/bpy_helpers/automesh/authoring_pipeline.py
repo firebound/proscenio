@@ -14,6 +14,9 @@ import bpy
 from mathutils import Vector
 
 from ..._shared.cp_keys import (
+    PROSCENIO_AUTHORED_OUTER_CONTOUR as _AUTHORED_OUTER_KEY,
+)
+from ..._shared.cp_keys import (
     PROSCENIO_USER_OUTER_STROKES as _EDIT_OUTLINE_STROKES_KEY,
 )
 from ..._shared.cp_keys import (
@@ -182,6 +185,24 @@ def read_user_outer_strokes(obj: bpy.types.Object) -> list[Stroke]:
 def write_user_outer_strokes(obj: bpy.types.Object, strokes: list[Stroke]) -> None:
     """Persist Stage 2 (EDIT_OUTLINE) strokes as JSON string."""
     obj[_EDIT_OUTLINE_STROKES_KEY] = _encode_strokes(strokes)
+
+
+def read_authored_outer_contour(obj: bpy.types.Object) -> list[Point2D] | None:
+    """The user's clicked outer-contour anchors (pre-subdivision), or None.
+
+    None means the element was never authored with the pen contour tool (so a
+    launch should alpha-trace as usual). A present-but-degenerate payload (fewer
+    than 3 valid points) also reads None - it cannot form a loop to re-edit.
+    """
+    if _AUTHORED_OUTER_KEY not in obj:
+        return None
+    points = _parse_stroke_points(read_json_list_cp(obj, _AUTHORED_OUTER_KEY))
+    return points if len(points) >= 3 else None
+
+
+def write_authored_outer_contour(obj: bpy.types.Object, points: list[Point2D]) -> None:
+    """Persist the clicked outer-contour anchors as a JSON list of ``[x, y]``."""
+    obj[_AUTHORED_OUTER_KEY] = json.dumps([[float(x), float(y)] for x, y in points])
 
 
 def _parse_stroke_points(raw_pts: list[object]) -> list[tuple[float, float]]:

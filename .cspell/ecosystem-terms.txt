@@ -110,6 +110,7 @@ extname
 favorited
 fdopen
 filelayer
+fileselect
 findall
 flexi
 footgun

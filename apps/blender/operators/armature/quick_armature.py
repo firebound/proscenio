@@ -91,8 +91,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     bl_label = "Proscenio: Quick Armature"
     bl_description = (
         "Click-drag in the 3D viewport to draw a bone (head -> tail). "
-        "Hold Shift to chain onto the previous bone. Right-click a bone tip to "
-        "chain the next bone from it. Runs in Edit Mode; press Esc or Enter to "
+        "Hold Shift to chain onto the previous bone. Right-click-select a bone "
+        "to chain the next bone from it. Runs in Edit Mode; press Esc or Enter to "
         "finish."
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO", "BLOCKING"}
@@ -138,6 +138,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_screen_y: ClassVar[int] = 0
     _cursor_warning_handle_2d: ClassVar[Any] = None
     _statusbar_appended: ClassVar[bool] = False
+    # The live-session sentinel. Distinct from ``_statusbar_appended`` (which only
+    # tracks the STATUSBAR draw handler): a leaked handler must NOT make a fresh
+    # invoke think a session is running, or it would just set ``_exit_requested``
+    # and cancel instead of sweeping the stale state and recovering.
+    _modal_running: ClassVar[bool] = False
     # Set when the panel's "Exit Quick Armature" button is clicked while a
     # session is live: the running modal sees it on its next event and finishes,
     # instead of the re-invoke restarting a fresh session.
@@ -167,7 +172,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # Re-invoke while a session is live = the panel's "Exit Quick Armature"
         # button: ask the running modal to finish on its next event rather than
         # restarting a fresh session here.
-        if cls._statusbar_appended:
+        if cls._modal_running:
             cls._exit_requested = True
             tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
             return {"CANCELLED"}
@@ -251,7 +256,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         if self.lock_to_front_ortho:
             self._snap_to_front_ortho(context)
         # The session authors and selects bones in EDIT on the target armature.
+        # On failure, undo the partial session set up above (view snap, selection
+        # snapshot, the auto-created empty rig) so a failed invoke leaves no trace.
         if not self._enter_armature_edit(context, armature):
+            self._restore_view()
+            self._restore_selection(context)
+            self._sweep_empty_armature()
+            cls._restore_mode = "OBJECT"
             report_error(self, "could not enter Edit Mode on the QuickRig armature")
             return {"CANCELLED"}
 
@@ -261,6 +272,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # so an extra plain-text status line would just duplicate.
         self._register_handlers(context)
         context.window_manager.modal_handler_add(self)
+        cls._modal_running = True
         report_info(self, "modal active")
         return {"RUNNING_MODAL"}
 
@@ -276,7 +288,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # always exit the modal even if focus drifted to the Outliner.
         if _is_exit_event(event):
             # "Nothing authored" keys on the session-authored signal, not
-            # _last_bone_name: a Reparent pick writes _last_bone_name (the
+            # _last_bone_name: selecting a bone writes _last_bone_name (the
             # chain parent) without creating a bone, so it must not flip a
             # bare Esc from cancel (discard the empty auto-rig) to keep.
             cancelled = cls._drag_head is None and not cls._session_records
@@ -289,9 +301,9 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         return self._modal_draw(context, event)
 
     def _modal_draw(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
-        # The single authoring flow: LMB-drag draws bones; RMB on a bone tip
-        # re-points the chain parent (no separate mode); undo / redo / axis lock
-        # are standalone gestures.
+        # The single authoring flow: LMB-drag draws bones; RMB is left to Blender
+        # to select a bone, and the next draw chains from that selection; undo /
+        # redo / axis lock are standalone gestures.
         if _is_undo_event(event):
             self._undo_last_bone(context)
             return {"RUNNING_MODAL"}
@@ -907,6 +919,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
 
     def _exit(self, context: bpy.types.Context, *, cancelled: bool) -> set[str]:
         cls = type(self)
+        cls._modal_running = False
         self._unregister_handlers()
         # Commit the edit-mode session back to OBJECT first: the bone count, the
         # empty-rig sweep, and the selection restore all read object-mode state.

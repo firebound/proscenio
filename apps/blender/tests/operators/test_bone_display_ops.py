@@ -100,6 +100,19 @@ def test_toggle_bone_export_cancels_for_missing_bone(automesh_fixture):
     assert "CANCELLED" in result
 
 
+def test_toggle_bone_export_rejects_non_deform_bone(automesh_fixture):
+    # A non-deform bone is already out of the export (bone_is_exported ignores the
+    # flag when use_deform is off), so the toggle must refuse rather than store
+    # hidden state the "won't export" icon does not reflect.
+    arm = _make_rig("exp_rig3")
+    arm.data.bones["spine"].use_deform = False
+    assert arm.data.bones["spine"].proscenio.exclude_from_export is False
+
+    result = bpy.ops.proscenio.toggle_bone_export(armature_name="exp_rig3", bone_name="spine")
+    assert "CANCELLED" in result
+    assert arm.data.bones["spine"].proscenio.exclude_from_export is False
+
+
 # --- relative parenting toggle (data-bone write access) --------------------
 
 

@@ -34,7 +34,9 @@ def chord(layout: bpy.types.UILayout, *parts: tuple[str, str]) -> None:
     row = layout.row(align=True)
     row.alignment = "LEFT"
     for icon, text in parts:
-        row.label(text=f" {text}" if text else "", icon=icon or "NONE")
+        # The leading space only separates a keycap icon from its label; a
+        # text-only part keeps its raw text (the "text only" contract).
+        row.label(text=(f" {text}" if icon and text else text), icon=icon or "NONE")
 
 
 def append_statusbar_draw(operator_cls: type, draw_fn: Callable[..., None]) -> None:

@@ -95,18 +95,25 @@ class PROSCENIO_OT_color_bone_collection(bpy.types.Operator):
     def execute(self, _context: bpy.types.Context) -> set[str]:
         armature = bpy.data.objects.get(self.armature_name)
         if armature is None or armature.type != "ARMATURE":
-            report_warn(self, f"armature '{self.armature_name}' not found")
+            report_warn(self, f"armature '{self.armature_name}' not found", always=True)
             return {"CANCELLED"}
         bones = iter_collection_bones(armature, self.collection_name)
         if not bones:
-            report_warn(self, f"collection '{self.collection_name}' has no bones")
+            report_warn(self, f"collection '{self.collection_name}' has no bones", always=True)
             return {"CANCELLED"}
+        pose_bones = getattr(getattr(armature, "pose", None), "bones", None)
         for bone in bones:
             bone.color.palette = self.palette
             if self.palette == "CUSTOM":
                 bone.color.custom.normal = self.custom_normal
                 bone.color.custom.select = self.custom_select
                 bone.color.custom.active = self.custom_active
+            # A PoseBone.color override masks the data-bone color in Pose mode, so
+            # clear it back to DEFAULT (inherit) - otherwise the recolor would not
+            # show on a bone that was individually tinted in pose.
+            pose_bone = pose_bones.get(bone.name) if pose_bones is not None else None
+            if pose_bone is not None:
+                pose_bone.color.palette = "DEFAULT"
         # Bone colors only render when the armature's "Bone Colors" viewport
         # display is on; a rig with it off would show no change, reading as "the
         # color did nothing". Enable it so the applied color is visible.

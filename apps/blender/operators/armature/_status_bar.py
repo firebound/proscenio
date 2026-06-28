@@ -62,23 +62,23 @@ def _emit_draw_rows(
     chord(layout, ("EVENT_X", "/"), ("EVENT_Z", "axis lock"))
     chord(layout, ("EVENT_CTRL", "grid snap"))
     chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "undo"))
+    chord(layout, ("EVENT_CTRL", "+"), ("EVENT_SHIFT", "+"), ("EVENT_Z", "redo"))
 
 
 def _emit_exit_rows(
     layout: bpy.types.UILayout,
     cls: type[PROSCENIO_OT_quick_armature],
 ) -> None:
-    """Confirm / exit chords, shared across modes.
+    """Confirm / exit chords.
 
     Confirm / exit read as synonyms and never change, so the two gestures
     looked identical. Relabel and make the Esc hint track session state: a
     bare Esc discards the empty auto-rig, but once a bone is authored both
-    Esc and Enter keep the bones (only the report verb differs today). The
-    session-state-aware label persists across both modes' cheatsheets.
+    Esc and Enter keep the bones (only the report verb differs today).
     """
     chord(layout, ("EVENT_RETURN", "finish"))
-    # Key the Esc label on the session-authored signal, not _last_bone_name: a
-    # Reparent pick writes _last_bone_name (the chain parent) without authoring
+    # Key the Esc label on the session-authored signal, not _last_bone_name:
+    # selecting a bone writes _last_bone_name (the chain parent) without authoring
     # a bone, so it must read "keeps bones" only once a bone exists this session.
     if cls._session_records:
         chord(layout, ("EVENT_ESC", "exit (keeps bones)"))

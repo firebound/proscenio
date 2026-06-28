@@ -66,9 +66,9 @@ def test_control_bone_absent_from_skeleton_and_tracks(
 
 
 def test_excluded_deform_bone_absent_from_export(automesh_fixture: None, tmp_path: Path) -> None:
-    # A deform bone the rigger pinned off the export (proscenio.exclude_from_export)
-    # must drop from both the skeleton and any animation track, exactly like a
-    # non-deform control - the Drive-from-Bone / rig-helper authorship path.
+    # A deform bone the rigger pinned off the export (proscenio.exclude_from_export
+    # via the Skeleton list toggle) must drop from both the skeleton and any
+    # animation track, exactly like a non-deform control - the rig-helper path.
     from proscenio.exporters.godot import writer
 
     rig = _enter_pose_with_active_bone("automesh.hand_rig", "fingertip")

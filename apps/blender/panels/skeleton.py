@@ -799,33 +799,32 @@ class PROSCENIO_PT_quick_armature(bpy.types.Panel):
 
 
 def _quick_armature_is_running() -> bool:
-    """True while a Quick Armature modal session is live (its status bar is up)."""
+    """True while a Quick Armature modal session is live."""
     from ..operators.armature.quick_armature import (  # type: ignore[import-not-found]
         PROSCENIO_OT_quick_armature as op,
     )
 
-    return bool(getattr(op, "_statusbar_appended", False))
+    return bool(getattr(op, "_modal_running", False))
 
 
 def _draw_quick_armature_shortcuts(layout: bpy.types.UILayout) -> None:
     """Mirror the modal's status-bar cheatsheet on the panel while it runs.
 
     The Quick Armature modal already paints a gesture cheatsheet on the STATUSBAR
-    and the 3D header (:func:`operators.armature._status_bar.emit_chord_layout`,
-    which swaps per Draw / Reparent sub-mode). The same call renders into any
-    layout, so here it doubles onto the panel while the modal is active - the same
-    pattern the automesh interactive subpanel uses for its modal indicator.
+    and the 3D header (:func:`operators.armature._status_bar.emit_chord_layout`).
+    The same call renders into any layout, so here it doubles onto the panel while
+    the modal is active - the same pattern the automesh interactive subpanel uses
+    for its modal indicator.
 
     Drawn in a native collapsible section (``layout.panel``), closed by default so
-    it stays out of the way; the header names the live sub-mode. Only drawn while
-    the modal is running (the status-bar callback is appended).
+    it stays out of the way. Only drawn while the modal is running.
     """
     from ..operators.armature._status_bar import emit_chord_layout  # type: ignore[import-not-found]
     from ..operators.armature.quick_armature import (  # type: ignore[import-not-found]
         PROSCENIO_OT_quick_armature as op,
     )
 
-    if not getattr(op, "_statusbar_appended", False):
+    if not getattr(op, "_modal_running", False):
         return
     header, body = layout.panel("proscenio_quick_armature_shortcuts", default_closed=True)
     header.label(text="Shortcuts", icon="GREASEPENCIL")

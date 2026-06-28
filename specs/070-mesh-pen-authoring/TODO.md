@@ -1,58 +1,53 @@
-# Spec 070 TODO: Mesh pen authoring (from-blank + re-editable)
+# Spec 070 TODO: Draw mesh with vertices (manual contour)
 
-Drives the locked [STUDY](STUDY.md). All three decisions locked to (A) on the Spine / Moho precedent: D1 a from-blank operator that requires an image at create and launches the 066 contour pen over it; D2 persist the user's clicked anchor points (`proscenio_authored_outer_contour`) so a re-launch re-edits them; D3 the from-blank session runs the SIMPLE stage list with the interior-point tool.
+Drives the rewritten [STUDY](STUDY.md). The feature is the SIMPLE contour placed by hand on a selected element, with the live triangulation preview the auto-gen already shows. Recommendations are (A) across the board; **confirm / lock with the user before implementing** (the first draft misread the feature, so this plan waits on a go).
 
-Reuses the spec 066 machinery wholesale (the click-pen, the OUTER contour tool, the bare-Tab cycle, the CDT triangulation, APPLY). The new surface is one create-and-launch operator, one persistence field, and two branches in the modal's invoke. Dependency-first: the pure / persistence layer and its tests land before the operator and the modal wiring that consume them.
+Reuses the spec 066 OUTER contour tool + `compute_triangulation_preview` + the modal/overlay/APPLY. New surface: live-preview-while-drawing, RMB vertex drag, the LMB/RMB/DEL/ENTER scheme, the panel entry.
 
-## 1. Persistence field for the authored outer contour (D2)
+## 0. Discard the wrong first cut (before anything)
 
-- [ ] `apps/blender/core/_shared/cp_keys.py`: add `PROSCENIO_AUTHORED_OUTER_CONTOUR` (the JSON anchor-points key), next to the existing `PROSCENIO_USER_*` keys.
-- [ ] `apps/blender/operators/automesh/authoring_pipeline.py`: `read_authored_outer_contour(obj) -> list[Point2D] | None` and `write_authored_outer_contour(obj, points)` mirroring `read_user_strokes` / `write_user_strokes` (JSON round-trip, missing/malformed degrades to None).
-- [ ] In-Blender test (`apps/blender/tests/operators/`): the anchor points round-trip through the object idprop; a missing key reads None; a malformed value degrades to None (the test-quality posture: assert the real read path, not a mock).
+- [ ] Close PR #166 and delete branch `feat/070-mesh-pen-authoring` (the image-picker / from-blank / persisted-re-edit build). Start the corrected work on a fresh branch.
+- [ ] Drop the wrong pieces: `operators/automesh/pen_mesh_new.py`, the `proscenio_authored_outer_contour` CP + its read/write helpers + `resolve_launch_mode` + the from-blank invoke branches + the from-blank panel button. (Keep nothing from the wrong draft unless decision 1 actually needs it.)
 
-## 2. Persist the anchors on author (D2)
+## 1. Live triangulation preview while drawing (decision 2)
 
-- [ ] `apps/blender/operators/automesh/automesh_authoring.py` `_commit_contour`: capture the pre-subdivision `_pen_points` (the user's clicked anchors) and `write_authored_outer_contour(obj, anchors)` so the ring survives the session. The subdivided ring still feeds `_output.outer` via `contour_ring_from_pen` unchanged.
-- [ ] APPLY: ensure the authored anchors persist on commit too (re-write from the live anchors if the OUTER tool was used this session), so a post-APPLY re-launch finds them.
-- [ ] Test: after a contour commit + APPLY, `read_authored_outer_contour` returns the clicked anchors (not the subdivided ring).
+- [ ] Drive `compute_triangulation_preview` from the in-progress contour: while the OUTER contour tool is active, set `output.outer` to the placed verts and recompute the preview on each placement / vertex drag-end (one CDT per change, never per MOUSEMOVE - the existing caching rule).
+- [ ] Cursor ghost: per MOUSEMOVE, draw the next edge from the last vert to the cursor plus the candidate triangle (once 2+ verts exist), dashed / lighter - no CDT.
+- [ ] Headless test where reachable: a contour of N placed verts yields a non-empty `triangulation_preview` (the pure preview path already tests; assert the in-progress drive).
 
-## 3. Re-edit branch in invoke (D2)
+## 2. RMB drag a placed vertex (decision 3)
 
-- [ ] `automesh_authoring.py` `invoke`: before `compute_outer`, if `read_authored_outer_contour(obj)` is present, load it into `self._output.outer` and arm the OUTER stage with the "contour" tool and those anchors as live pen points (skip the alpha trace). Otherwise keep the existing `compute_outer` path.
-- [ ] Test: an element carrying `proscenio_authored_outer_contour` re-invokes with the contour tool armed and `_output.outer` equal to the stored ring (no alpha trace ran).
+- [ ] RMB press hit-tests the nearest placed vertex within a screen-pixel radius (reuse the stroke-delete nearest-pick pattern); a hit starts a drag, a miss is a no-op.
+- [ ] RMB drag moves the grabbed vertex live and re-previews on move / release.
+- [ ] RMB no longer finishes the pen (see decision 4); ENTER is the finish.
+- [ ] Pure test: the nearest-vertex pick returns the right index within radius and None outside.
 
-## 4. From-blank session mode (D1, D3)
+## 3. Control scheme + gesture remap, scoped to this tool (decision 4)
 
-- [ ] `automesh_authoring.py`: a class-level `_launch_from_blank: ClassVar[bool]` signal (set by the new operator, read-and-cleared in `invoke`). When set: skip `compute_outer` (there is no alpha), start `_output.outer` empty, force the SIMPLE `_active_stages` (D3), and arm the OUTER "contour" tool so the first click drops the first vert.
-- [ ] Guard interaction: the from-blank flag and the re-edit branch (step 3) are mutually exclusive - re-edit wins if both somehow hold (a re-launch on an already-authored element is a re-edit, not a fresh blank).
-- [ ] Test: with `_launch_from_blank` set on a fresh element, invoke arms the contour tool, `_output.outer` is empty, and `_active_stages` is the SIMPLE list.
+- [ ] In the upgraded contour tool: **DEL** deletes the last placed vertex (keep Ctrl+Z as a synonym), **ENTER** confirms, **RMB** drags, **ESC** cancels. Keep the composable extras (X/Z axis lock; wheel / digits = subdivide the last edge).
+- [ ] Update `operators/automesh/_status_bar.py` OUTER-contour chords to the new scheme.
+- [ ] Do NOT change the 066 contour pen's behavior outside this tool.
 
-## 5. The from-blank create-and-launch operator (D1)
+## 4. Entry + launch (decisions 1, 5)
 
-- [ ] `apps/blender/operators/automesh/pen_mesh_new.py` (new) `PROSCENIO_OT_pen_mesh_new`:
-  - File-select invoke (`StringProperty(subtype="FILE_PATH")` + `context.window_manager.fileselect_add`).
-  - `execute`: load the image (`bpy.data.images.load`), read its pixel dimensions, derive the quad extent from the scene pixels-per-unit (mirror import), create a fresh MESH object (empty geometry), attach the unlit image material via the shared `_attach_material` (refactor it out of `planes.py` to a reusable home if it is private), stamp `element_type="mesh"` and the `PROSCENIO_IMPORT_PLACEMENT` extent (so UVs at APPLY map into real texture space), link + activate the object, set `_launch_from_blank`, and launch `bpy.ops.proscenio.automesh_authoring("INVOKE_DEFAULT")`.
-  - Guard: a missing / unreadable image reports and cancels; report the created element on success.
-- [ ] `operators/automesh/__init__.py`: register the new operator.
-- [ ] Test: the operator builds a valid Proscenio mesh element (element_type="mesh", an image material with a TEX_IMAGE node, the placement tag) from an image path; a bad path cancels.
+- [ ] `panels/mesh_generation.py`: a **Draw with vertices** button (shown for a selected mesh element, beside Author Mesh) that launches the modal straight into the OUTER contour tool with the auto-trace skipped (empty outer, contour armed).
+- [ ] The modal's invoke gains a "start in contour, no trace" launch path (a class flag set by the button, read-and-cleared in invoke) - the ONE small invoke change the corrected design keeps from the first cut.
+- [ ] ENTER on the contour tool APPLYs directly (writes the mesh on the selected element); the existing stages stay reachable by Tab / advance for users who want extend / interior first.
 
-## 6. UV correctness for a from-blank mesh
+## 5. Study / future (the user's "outras features" - not this PR unless trivial)
 
-- [ ] Verify APPLY assigns UVs to the contour-authored mesh from the stamped placement / image extent the same way an imported element gets them (read how `build_automesh` / the bridge maps world XZ to UV). If the existing UV path keys on the base quad (which a from-blank mesh lacks until APPLY), seed the placement-derived extent so the UVs land. Add a headless assertion that a from-blank APPLY produces a mesh with a UV layer covering the image.
+- [ ] Scroll = subdivide the last edge (the modal already subdivides; scope it to the last edge during drawing).
+- [ ] Click-drag = spaced / smoothed verts (Moho/Spine free-draw with smoothing).
+- [ ] Survey other Moho / Spine pen affordances for a follow-on.
 
-## 7. Panel entry (D1)
+## 6. Tests + gates
 
-- [ ] `apps/blender/panels/mesh_generation.py`: a "New Pen Mesh" button on the Mesh Generation panel (or its Automesh Interactive subpanel) that runs `proscenio.pen_mesh_new`. Unlike the existing "Author Mesh (interactive)" button it is NOT gated on an active mesh element (it creates one), so it shows when no mesh element is active - the empty-state entry point.
-- [ ] Help / docstring: note it creates an element from an image and opens the pen.
+- [ ] Pure tests (preview drive, nearest-vertex pick) in repo-root `tests/`; in-Blender where the modal is needed.
+- [ ] `run_operator_tests.py` + `run_tests.py` goldens (8/8 - manual authoring does not touch the writer fixtures).
+- [ ] ruff (0.8.4) + mypy (`--config-file apps/blender/pyproject.toml`, from repo root) + repo-root `uv run pytest tests/`.
 
-## 8. Tests + gates
+## 7. Post-merge cleanup (ONLY after the maintainer squash-merges)
 
-- [ ] Pure / persistence tests (steps 1-4) green in the repo-root `tests/` where bpy-free, in `apps/blender/tests/operators/` where they need Blender.
-- [ ] `run_operator_tests.py` (full) + `run_tests.py` goldens (8/8 - from-blank authoring does not touch the writer's fixtures, so goldens are byte-unchanged).
-- [ ] `ruff check` + `ruff format --check` (pinned 0.8.4) on `apps/blender`; `mypy --config-file apps/blender/pyproject.toml` from repo root; repo-root `uv run pytest tests/`.
-
-## 9. Post-merge cleanup (ONLY after the maintainer squash-merges the PR)
-
-- [ ] QA Companion: a from-blank pen walk (create-from-image -> draw contour -> APPLY) and a re-edit walk (re-open an applied pen mesh -> add a point), next free `BL-MESH-...` ids.
-- [ ] Lock the calls in [`decisions.md`](../decisions.md) under a "Mesh pen authoring" subsection; note the `mesh-pen-authoring` backlog item shipped (remove it from [`backlog/ui-feedback.md`](../backlog/ui-feedback.md)).
-- [ ] Prune this spec folder, index in [`_index.md`](../_index.md) with the PR number (flip 070 from planned to pruned).
+- [ ] QA Companion: a "Draw with vertices" walk (place verts -> live preview -> RMB drag -> DEL -> ENTER), next free `BL-MESH-...` id.
+- [ ] Lock the calls in [`decisions.md`](../decisions.md); remove the `mesh-pen-authoring` item from [`backlog/ui-feedback.md`](../backlog/ui-feedback.md).
+- [ ] Prune this spec folder, index in [`_index.md`](../_index.md) with the PR number (070 planned -> pruned).

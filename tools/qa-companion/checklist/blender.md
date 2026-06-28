@@ -950,25 +950,28 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: The Author Mesh modal is running.
 - steps:
   1. Press Enter to advance through the stages (OUTER, edit outline, inner loops, edit interior points, preview interior, apply); the stage label counts up and the overlay refreshes each step with a count report.
-  2. Press Backspace to step back to the previous stage; the overlay refreshes and pen stages reset their draw state.
-  3. Press Esc to cancel: the overlay and status bar are removed, your session is restored, and no geometry changes.
-  4. On the final stage, press Enter to commit: the mesh is written and a confirmation reports the vertex and face counts (with a warning if any drawn points fell outside).
-  5. Flip the Interior Mode mid-modal: the stage list rebuilds (Simple drops the inner-loops stage).
-- observe: Each key behaves as its step describes, and the mesh only changes on the final commit.
+  2. On the OUTER stage, press bare Tab to switch from Auto-trace to Manual contour, then click points to author the outer hull; click the first vert (or close) to finish the loop. The closed loop replaces the alpha-traced outer; pressing Tab back to Auto-trace recomputes the traced contour (reversible).
+  3. Press Backspace to step back to the previous stage; the overlay refreshes and pen stages reset their draw state.
+  4. Press Esc to cancel: the overlay and status bar are removed, your session is restored, and no geometry changes.
+  5. On the final stage, press Enter to commit: the mesh is written and a confirmation reports the vertex and face counts (with a warning if any drawn points fell outside).
+  6. Flip the Interior Mode mid-modal: the stage list rebuilds (Simple drops the inner-loops stage).
+- observe: Each key behaves as its step describes, the Manual contour loop becomes the outer, and the mesh only changes on the final commit.
 - intent: One walk over the modal stage transitions, cancel, commit, and live re-snapshot.
 - code: apps/blender/operators/automesh/automesh_authoring.py:342-348,355,987,1015-1038,1068,1264
 
-### BL-MESH-INTERACTIVE-04 · Author Mesh pen editing (consolidated)
+### BL-MESH-INTERACTIVE-04 · Author Mesh tool cycle + pen editing (consolidated)
 - status: pending
 - review: todo
-- pre: The Author Mesh modal is on a pen stage.
+- pre: The Author Mesh modal is on a tool stage.
 - steps:
-  1. On the edit-outline stage, tap Shift for the extend pen or Ctrl for the cut pen; click to place points or drag to free-draw, then right-click or Enter to finish. The tooltip names the active pen; extend reshapes the outline, cut marks a corridor that is carved at apply.
-  2. On the edit-interior stage, click to drop an interior point, tap Shift for the fold pen or Ctrl for the cut pen, then draw and finish. The tooltip turns red when a gesture aims outside the silhouette.
-  3. While penning: press X or Z to lock to an axis, use the mouse wheel or number keys to set subdivisions, Alt+click to remove a stroke, and Ctrl+Z to drop the last point or stroke.
-- observe: Each pen gesture behaves per its step; the status bar shows the stage and chords, the viewport draws the contour and preview overlays, and the cursor tooltip reflects the held modifier.
-- intent: One walk over outline and interior pen editing, the pen chords, and the overlay/status-bar/cursor feedback.
-- code: apps/blender/operators/automesh/automesh_authoring.py:365,452,458,486,539,599-624,933,1305; _status_bar.py:19-43
+  1. Press bare Tab to cycle the active tool of the current stage; the status bar and the panel's stage indicator name the new tool. Per stage: OUTER cycles Auto-trace and Manual contour; edit-outline cycles Extend and Cut; edit-interior cycles Point, Fold, and Cut. LMB always acts with the active tool (there is no Shift/Ctrl tap-toggle anymore).
+  2. On the edit-outline stage with Extend or Cut active, click to place points or drag to free-draw, then right-click or Enter to finish. Extend reshapes the outline; Cut marks a corridor that is carved at apply.
+  3. On the edit-interior stage with Point active, click to drop a single interior point. Tab to Fold or Cut for the pen, then draw and finish. The overlay turns red when a pen gesture aims outside the silhouette.
+  4. While a pen tool is active: press X or Z to lock to an axis, use the mouse wheel or number keys to set subdivisions, Alt+click to remove a stroke, Ctrl+Z to drop the last point or stroke, and Esc to clear the in-progress line without leaving the tool.
+- observe: Bare Tab cycles the tool and re-arms the pen (or exits to a passive/point tool); each gesture behaves per its step; the status bar shows the stage, the active tool, and the Tab cycle; the viewport draws the contour and preview overlays. Blender's Ctrl+Tab and Shift+Tab are untouched.
+- intent: One walk over the bare-Tab per-stage tool cycle and the outline/interior pen editing, the pen chords, and the overlay/status-bar feedback.
+- code: apps/blender/operators/automesh/automesh_authoring.py (_active_tool, bare-Tab cycle, _handle_pen_event) <- core/skinning/authoring_stages.py (stage_tools / next_tool / default_tool / tool_is_pen); operators/automesh/_status_bar.py
+- note: mesh-generation-interaction (spec 066): the Shift/Ctrl tap-toggle was deleted for a bare-Tab tool cycle. Re-walk the pen flow.
 
 ### BL-MESH-DEBUG-01 · Debug stage leaves a wireframe companion
 - status: pass

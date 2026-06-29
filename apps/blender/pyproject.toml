@@ -7,7 +7,7 @@ license = { text = "GPL-3.0-or-later" }
 
 [dependency-groups]
 dev = [
-    "ruff>=0.6",
+    "ruff>=0.15.20",
     "mypy>=1.13",
     "check-jsonschema>=0.29",
     "pytest>=8",

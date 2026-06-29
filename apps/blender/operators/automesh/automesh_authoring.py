@@ -11,6 +11,7 @@ import traceback
 from typing import ClassVar, Literal, cast
 
 import bpy
+from bpy.props import EnumProperty
 
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
@@ -26,6 +27,8 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 )
 from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
+    event_in_canvas,
+    find_window_region,
     region_event_to_xz,
     region_event_to_xz_offset,
 )
@@ -59,6 +62,7 @@ from ...core.bpy_helpers.automesh.authoring_session import (
 from ...core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
     collect_bone_segments,
 )
+from ...core.bpy_helpers.automesh.vertex_pen import VertexPen  # type: ignore[import-not-found]
 from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
     StageOutput,
@@ -67,12 +71,25 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     default_tool,
     next_tool,
     stage_tools,
+    tool_is_island,
     tool_is_pen,
 )
 from .._status_bar import append_statusbar_draw, remove_statusbar_draw
+from ._authoring_modal_guard import is_running, mark_running, mark_stopped, other_running
 from ._status_bar import emit_authoring_chord_layout
 
+# Authoring-modal guard key (spec 070): the mesh-gen modes are mutually
+# exclusive, so this modal refuses to launch while Manual Draw is live (and
+# vice versa).
+_MODAL_NAME = "automesh"
+
 _TIMER_INTERVAL = 0.1
+# Mouse events the pen consumes; gated to the viewport canvas so they pass
+# through to the N-panel (slider edits) when the cursor is over the UI (spec 070
+# mid-flight editing). Keyboard gestures + nav are not gated.
+_MOUSE_GATE_TYPES = frozenset(
+    {"MOUSEMOVE", "LEFTMOUSE", "RIGHTMOUSE", "WHEELUPMOUSE", "WHEELDOWNMOUSE"}
+)
 # Cursor tooltip background colors (passed to the overlay via _tooltip_color_ref).
 _TOOLTIP_BG_NORMAL = (0.0, 0.0, 0.0, 0.6)
 _TOOLTIP_BG_WARN = (0.35, 0.05, 0.05, 0.85)  # red: gesture would clip/drop the stroke
@@ -149,21 +166,28 @@ def _stage_label(stage: AuthoringStage, mode: str) -> str:
     return f"{idx + 1}/{len(stages)} {_stage_base_name(stage, mode)}"
 
 
-def _outer_strokes_summary(strokes: list[Stroke]) -> str:
-    """Running 'N extend(s), M cut(s)' count of committed Stage 2 outer strokes.
+# Edit-silhouette stroke kinds -> (singular, plural) report labels, in display
+# order. "stroke" is the legacy open extend, kept so old data still reads.
+_OUTER_STROKE_LABELS: tuple[tuple[str, str, str], ...] = (
+    ("add", "add", "adds"),
+    ("cut", "knife", "knives"),
+    ("remove", "remove", "removes"),
+    ("stroke", "extend", "extends"),
+)
 
-    A committed cut carves its corridor only at APPLY, so it changes no overlay
-    and reads as a no-op the moment it is drawn; surfacing this count in the
-    report + tooltip acknowledges the commit. Empty when no strokes are
-    committed.
+
+def _outer_strokes_summary(strokes: list[Stroke]) -> str:
+    """Running count of committed Edit-silhouette strokes by kind (spec 070).
+
+    A committed KNIFE / REMOVE changes no overlay (it carves only at APPLY) and
+    reads as a no-op the moment it is drawn; surfacing this count in the report +
+    tooltip acknowledges the commit. Empty when no strokes are committed.
     """
-    extends = sum(1 for stroke in strokes if stroke["kind"] == "stroke")
-    cuts = sum(1 for stroke in strokes if stroke["kind"] == "cut")
     parts: list[str] = []
-    if extends:
-        parts.append(f"{extends} extend" + ("s" if extends != 1 else ""))
-    if cuts:
-        parts.append(f"{cuts} cut" + ("s" if cuts != 1 else ""))
+    for kind, singular, plural in _OUTER_STROKE_LABELS:
+        n = sum(1 for stroke in strokes if stroke["kind"] == kind)
+        if n:
+            parts.append(f"{n} {singular if n == 1 else plural}")
     return ", ".join(parts)
 
 
@@ -202,15 +226,30 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     # Active tool of the current stage (spec 066: bare Tab cycles it). Mirrored
     # at class level so the statusbar draw callback can highlight it.
     _current_active_tool: str = "auto"
+    # Set by the panel's "Exit" button (a re-invoke while live): the running modal
+    # sees it on its next event and finishes (Quick Armature toggle pattern).
+    _exit_requested: ClassVar[bool] = False
+    # Set by the panel's Back / Next step buttons: "ADVANCE" / "RETREAT" / "". The
+    # running modal applies it on its next event (the timer ticks within 0.1 s).
+    _nav_request: ClassVar[str] = ""
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             return False
+        if other_running(_MODAL_NAME):  # Manual Draw is live - the modes are exclusive
+            return False
         return first_material_image(obj) is not None
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
+        # Re-invoke while a session is live = the panel's "Exit" button: ask the
+        # running modal to finish on its next event instead of starting fresh
+        # (Quick Armature toggle pattern).
+        if is_running(_MODAL_NAME):
+            type(self)._exit_requested = True
+            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            return {"CANCELLED"}
         obj = context.active_object
         if obj is None or obj.type != "MESH":
             report_error(self, "active object must be a mesh")
@@ -232,6 +271,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             return {"CANCELLED"}
 
         self._session = capture_session(context, obj)
+        # The viewport canvas region (not the N-panel the button fired from), so
+        # the modal can pass mouse events over the UI through for live editing.
+        self._invoke_area: bpy.types.Area | None = context.area
+        self._invoke_region: bpy.types.Region | None = (
+            find_window_region(context.area) if context.area is not None else None
+        )
         params = _snapshot_params(context)
         self._last_params = params
         self._stage = AuthoringStage.OUTER
@@ -275,12 +320,18 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._pen_active: bool = False
         self._pen_kind: str = "stroke"  # committed Stroke kind: "stroke" or "cut"
         self._pen_points: list[tuple[float, float]] = []
-        self._pen_subdivisions: int = 0
+        self._pen_subdivisions: int = 0  # current count (next edge / rubber-band)
+        self._pen_edge_subdivs: list[int] = []  # per placed-edge count (spec 070)
         self._axis_lock: str = ""  # "", "x" (horizontal/world-X), "z" (vertical/world-Z)
+        # Closed-loop island pen (spec 070): the shared VertexPen, armed when the
+        # Edit-silhouette ADD / REMOVE tool is active. None when an open-stroke /
+        # passive tool is active. It writes into _live_preview (below) so the
+        # existing overlay draws it without a second handler.
+        self._island_pen: VertexPen | None = None
 
-        # Live in-progress preview (Stage 4). Single mutable dict held by the
+        # Live in-progress preview. Single mutable dict held by the
         # _draw_live_preview handler; fields mutated in-place so the colored
-        # pen / free-draw feedback renders without re-registration. See
+        # pen / free-draw / island feedback renders without re-registration. See
         # authoring_overlay._draw_live_preview for the key contract.
         self._live_preview: dict[str, object] = {
             "active": False,
@@ -290,6 +341,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "mode": "pen",
             "axis": "",  # active axis lock ("", "x", "z") for the guide line
             "subdivisions": 0,  # ghost subdivision verts to preview
+            "close_loop": False,  # island pen sets True for the cursor->first ghost
         }
 
         # Tooltip live state - single-element lists mutated in-place so the
@@ -326,43 +378,71 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._finish(context, cancel=True)
             return {"CANCELLED"}
 
+        mark_running(_MODAL_NAME)
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         try:
-            # Bare Tab cycles the active tool of an interactive stage (spec 066),
-            # consumed BEFORE the per-stage dispatch so it never reaches the pen.
-            # Scoped to bare Tab so Blender's Ctrl+Tab / Shift+Tab are untouched;
-            # a stage with no tools lets Tab pass through unchanged.
-            if _is_tool_cycle_event(event) and stage_tools(self._stage):
-                return self._cycle_tool(context)
-            # Stage handlers get first crack so a pen line in progress can
-            # intercept Enter/RMB (finish) + Esc (discard line) BEFORE modal
-            # nav. A non-pen tool returns None for those keys, so nav runs.
-            if self._stage == AuthoringStage.OUTER and self._active_tool == "contour":
-                handled = self._handle_outer_contour_event(context, event)
-                if handled is not None:
-                    return handled
-            if self._stage == AuthoringStage.EDIT_OUTLINE:
-                handled = self._handle_user_outer_event(context, event)
-                if handled is not None:
-                    return handled
-            if self._stage == AuthoringStage.EDIT_INTERIOR_POINTS:
-                handled = self._handle_user_steiners_event(context, event)
-                if handled is not None:
-                    return handled
-            if event.type == "ESC" and event.value == "PRESS":
-                return self._finish(context, cancel=True)
-            if event.type in {"RET", "NUMPAD_ENTER"} and event.value == "PRESS":
-                return self._advance(context)
-            if event.type == "BACK_SPACE" and event.value == "PRESS":
-                return self._retreat(context)
-            if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
-                self._handle_timer_tick(context)
+            early = self._consume_early(context, event)
+            if early is not None:
+                return early
+            staged = self._dispatch_stage(context, event)
+            if staged is not None:
+                return staged
+            return self._dispatch_nav(context, event)
         except Exception:
             traceback.print_exc()
             return self._finish(context, cancel=True)
+
+    def _consume_early(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str] | None:
+        """Pre-dispatch guards: the panel Exit handshake, the UI-canvas pass-
+        through (keeps the N-panel editable mid-flight), and the bare-Tab tool
+        cycle. Returns a status when consumed, else None."""
+        if type(self)._exit_requested:
+            type(self)._exit_requested = False
+            return self._finish(context, cancel=True)
+        # The panel's Back / Next step buttons set this; apply it like ENTER /
+        # BACKSPACE so the stages can be driven from the panel too.
+        if type(self)._nav_request:
+            req = type(self)._nav_request
+            type(self)._nav_request = ""
+            return self._advance(context) if req == "ADVANCE" else self._retreat(context)
+        # Mouse over the UI (N-panel) -> let it through so sliders stay editable
+        # mid-flight (the timer then re-previews). Keyboard + nav are not gated.
+        if event.type in _MOUSE_GATE_TYPES and not event_in_canvas(
+            event, self._invoke_region, self._invoke_area
+        ):
+            return {"PASS_THROUGH"}
+        # Bare Tab cycles the active tool (spec 066), consumed before the per-
+        # stage dispatch; Blender's Ctrl+Tab / Shift+Tab are untouched.
+        if _is_tool_cycle_event(event) and stage_tools(self._stage):
+            return self._cycle_tool(context)
+        return None
+
+    def _dispatch_stage(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str] | None:
+        """Per-stage tool handlers get first crack so an in-progress pen/island
+        intercepts its gestures before modal nav. Returns a status when the stage
+        handler consumed the event, else None (modal nav runs)."""
+        if self._stage == AuthoringStage.EDIT_OUTLINE:
+            return self._handle_user_outer_event(context, event)
+        if self._stage == AuthoringStage.EDIT_INTERIOR_POINTS:
+            return self._handle_user_steiners_event(context, event)
+        return None
+
+    def _dispatch_nav(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        """Modal navigation: ESC cancels, ENTER advances, BACKSPACE retreats, the
+        TIMER re-previews on a param change; anything else passes through."""
+        if event.type == "ESC" and event.value == "PRESS":
+            return self._finish(context, cancel=True)
+        if event.type in {"RET", "NUMPAD_ENTER"} and event.value == "PRESS":
+            return self._advance(context)
+        if event.type == "BACK_SPACE" and event.value == "PRESS":
+            return self._retreat(context)
+        if event.type == "TIMER" and getattr(event, "timer", None) is self._timer:
+            self._handle_timer_tick(context)
         return {"PASS_THROUGH"}
 
     def _handle_timer_tick(self, context: bpy.types.Context) -> None:
@@ -378,9 +458,47 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _handle_user_outer_event(
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> set[str] | None:
-        """Stage 2 (EDIT_OUTLINE) -> shared toggle-pen dispatch (outer). Shift =
-        extend, Ctrl = cut, Alt+click = delete."""
+        """Edit silhouette dispatch (spec 070). ADD / REMOVE islands go through
+        the shared closed-loop VertexPen; KNIFE / delete use the open-stroke pen
+        machine."""
+        if tool_is_island(self._active_tool):
+            return self._handle_island_event(context, event)
         return self._handle_pen_event(context, event, "outer")
+
+    def _handle_island_event(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[str] | None:
+        """Drive the closed-loop island pen (ADD / REMOVE). ENTER / nav keys
+        return None so the modal handles them; ESC clears an in-progress island
+        (a second ESC, with nothing placed, falls through to the modal cancel)."""
+        if self._island_pen is None:
+            return None
+        if event.type == "ESC" and event.value == "PRESS" and self._island_pen.points:
+            self._island_pen.arm()  # clear the in-progress island, keep drawing
+            _tag_redraw_view3d(context)
+            return {"RUNNING_MODAL"}
+        action = self._island_pen.handle(context, event, list(self._output.outer))
+        if action is None:
+            return None
+        if action == "closed":
+            self._commit_island(context)
+            return {"RUNNING_MODAL"}
+        _tag_redraw_view3d(context)
+        return {"RUNNING_MODAL"}
+
+    def _commit_island(self, context: bpy.types.Context) -> None:
+        """Commit the closed island as an ADD (grow) or REMOVE (hole) outer
+        stroke, then re-arm the pen for the next island. Too few verts warns and
+        keeps drawing."""
+        ring = self._island_pen.ring() if self._island_pen is not None else None
+        if self._island_pen is not None:
+            self._island_pen.arm()
+        if ring is None:
+            report_warn(self, "island needs at least 3 points", always=True)
+            _tag_redraw_view3d(context)
+            return
+        self._user_outer_strokes.append({"kind": self._active_tool, "points": ring})
+        self._append_persist(context, "outer")
 
     def _outer_stroke_undo(self, context: bpy.types.Context) -> set[str]:
         if self._user_outer_strokes:
@@ -468,13 +586,6 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Stage 4 (EDIT_INTERIOR_POINTS) -> shared Tab-tool dispatch (interior)."""
         return self._handle_pen_event(context, event, "interior")
 
-    def _handle_outer_contour_event(
-        self, context: bpy.types.Context, event: bpy.types.Event
-    ) -> set[str] | None:
-        """Stage 1 (OUTER) with the Manual contour tool active -> shared pen
-        dispatch. The closed loop replaces the auto-traced outer (spec 066)."""
-        return self._handle_pen_event(context, event, "contour")
-
     def _handle_pen_event(
         self, context: bpy.types.Context, event: bpy.types.Event, stage: str
     ) -> set[str] | None:
@@ -491,24 +602,25 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return self._neutral_event(context, event, stage)
 
     def _tool_stroke_kind(self, tool: str) -> str:
-        """Map a pen tool to the committed Stroke kind ("cut" or "stroke")."""
-        return "cut" if tool == "cut" else "stroke"
+        """Committed Stroke kind for a tool: KNIFE -> a cut corridor, ADD /
+        REMOVE -> the island kind, everything else (fold) -> a fold-line."""
+        if tool == "knife":
+            return "cut"
+        if tool in ("add", "remove"):
+            return tool
+        return "stroke"
 
     def _cycle_tool(self, context: bpy.types.Context) -> set[str]:
         """Bare Tab: advance to the next tool of the current stage and re-arm.
 
-        A pen tool enters the click-pen with its Stroke kind; a non-pen tool
-        ("point" / "auto") exits the pen. Switching back to the OUTER "auto" tool
-        restores the alpha trace so Auto <-> Manual contour is reversible.
+        An island tool (add / remove) arms the shared VertexPen; an open-stroke
+        pen (knife / fold) enters the click-pen; a passive tool (auto / point /
+        delete) exits both. Switching back to OUTER "auto" restores the trace.
         """
         self._active_tool = next_tool(self._stage, self._active_tool)
-        type(self)._current_active_tool = self._active_tool
-        if tool_is_pen(self._active_tool):
-            self._enter_draw(context, self._tool_stroke_kind(self._active_tool))
-        else:
-            self._exit_draw(context)
-            if self._stage == AuthoringStage.OUTER and self._active_tool == "auto":
-                self._recompute_auto_outer(context)
+        self._arm_active_tool(context)
+        if self._stage == AuthoringStage.OUTER and self._active_tool == "auto":
+            self._recompute_auto_outer(context)
         tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
         report_info(self, f"tool: {self._active_tool}")
         return {"RUNNING_MODAL"}
@@ -516,16 +628,41 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _arm_stage_default_tool(self, context: bpy.types.Context) -> None:
         """Arm the current stage's default tool on entry (after _reset_draw_state).
 
-        EDIT_OUTLINE defaults to the Extend pen (drawing immediately, no tap);
-        EDIT_INTERIOR_POINTS to "point" (click drops a Steiner); OUTER to "auto"
-        (passive). Keeps the active-tool state and the statusbar mirror in sync.
+        EDIT_OUTLINE defaults to the ADD island; EDIT_INTERIOR_POINTS to "point";
+        OUTER to "auto" (passive). Keeps the active-tool state + statusbar mirror
+        in sync.
         """
         self._active_tool = default_tool(self._stage)
+        self._arm_active_tool(context)
+
+    def _arm_active_tool(self, context: bpy.types.Context) -> None:
+        """Arm whatever ``self._active_tool`` is: island pen / open pen / passive,
+        and mirror the active tool to the class for the statusbar."""
         type(self)._current_active_tool = self._active_tool
-        if tool_is_pen(self._active_tool):
+        if tool_is_island(self._active_tool):
+            self._arm_island_pen(context)
+        elif tool_is_pen(self._active_tool):
+            self._disarm_island_pen()
             self._enter_draw(context, self._tool_stroke_kind(self._active_tool))
         else:
+            self._disarm_island_pen()
             self._exit_draw(context)
+
+    def _arm_island_pen(self, context: bpy.types.Context) -> None:
+        """Arm the closed-loop island pen (spec 070) for the active ADD / REMOVE
+        tool. It writes into ``_live_preview`` so the existing overlay shows it
+        with no second handler; the open-stroke draw state is cleared first."""
+        self._exit_draw(context)
+        self._island_pen = VertexPen(kind=self._active_tool, live_preview=self._live_preview)
+        self._island_pen.arm()
+        self._refresh_pen_tooltip()
+        _tag_redraw_view3d(context)
+
+    def _disarm_island_pen(self) -> None:
+        """Drop the island pen + hide its live preview (no-op when not armed)."""
+        if self._island_pen is not None:
+            self._island_pen.reset()
+            self._island_pen = None
 
     def _recompute_auto_outer(self, context: bpy.types.Context) -> None:
         """Restore the alpha-traced outer (OUTER stage, switching back to Auto)."""
@@ -545,14 +682,17 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._pen_active = False
         self._pen_points.clear()
         self._pen_subdivisions = 0
+        self._pen_edge_subdivs.clear()
         self._axis_lock = ""
         self._live_preview["active"] = True
         self._live_preview["mode"] = "pen"
         self._live_preview["kind"] = kind
         self._live_preview["points"] = self._pen_points
+        self._live_preview["edge_subdivs"] = self._pen_edge_subdivs
         self._live_preview["cursor"] = None
         self._live_preview["axis"] = ""
         self._live_preview["subdivisions"] = 0
+        self._live_preview["close_loop"] = False  # open-stroke pen: no closing ghost
         self._refresh_pen_tooltip()
         _tag_redraw_view3d(context)
 
@@ -562,6 +702,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._stroke_active = False
         self._pen_points.clear()
         self._pen_subdivisions = 0
+        self._pen_edge_subdivs.clear()
         self._axis_lock = ""
         self._live_preview["active"] = False
         self._live_preview["cursor"] = None
@@ -570,14 +711,16 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _reset_draw_state(self) -> None:
         """Clear all pen state on stage entry/exit so a stale draw mode,
-        pen line, or live preview never carries across stages."""
+        pen line, island, or live preview never carries across stages."""
         self._draw_active = False
         self._pen_active = False
         self._stroke_active = False
         self._pen_points.clear()
         self._pen_subdivisions = 0
+        self._pen_edge_subdivs.clear()
         self._axis_lock = ""
         self._stroke_raw_points.clear()
+        self._disarm_island_pen()
         self._live_preview["active"] = False
         self._live_preview["cursor"] = None
         self._delete_hover_points.clear()
@@ -727,10 +870,15 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         pt, close = self._snap_pen_click(context, event, world_pt, stage)
         self._pen_active = True
         self._pen_points.append(pt)
+        if len(self._pen_points) >= 2:
+            # The new edge bakes the current subdivision count (spec 070 per-edge:
+            # later scrolls only change the next segment).
+            self._pen_edge_subdivs.append(self._pen_subdivisions)
         self._live_preview["active"] = True
         self._live_preview["mode"] = "pen"
         self._live_preview["kind"] = self._pen_kind
         self._live_preview["points"] = list(self._pen_points)
+        self._live_preview["edge_subdivs"] = list(self._pen_edge_subdivs)
         self._live_preview["cursor"] = None
         if close:
             # Clicked the first vert again -> close the loop + commit.
@@ -829,6 +977,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         same pen tool so the next line draws without re-selecting (Tab picks the
         tool once)."""
         pts = list(self._pen_points)
+        edge_subdivs = list(self._pen_edge_subdivs)
         kind = self._pen_kind
         subdiv = self._pen_subdivisions
         self._exit_draw(context)
@@ -840,10 +989,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 self._persist_and_redraw(context)
         elif len(pts) >= 2:
             from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
-                subdivide_polyline,
+                subdivide_polyline_edges,
             )
 
-            dense = subdivide_polyline(pts, subdiv)
+            # Per-edge subdivide (spec 070): each segment keeps the count it was
+            # drawn with, not a single global value.
+            dense = subdivide_polyline_edges(pts, edge_subdivs)
             self._commit_pen_stroke(context, kind, dense, stage)
         if tool_is_pen(self._active_tool):
             self._enter_draw(context, self._tool_stroke_kind(self._active_tool))
@@ -944,23 +1095,23 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         _tag_redraw_view3d(context)
 
     def _outer_preview_relevant(self) -> bool:
-        """True when the spliced preview can change. Cut strokes carve corridor
-        holes (not the contour) and never feed compute_outer_preview, so a
-        cut-only commit/undo/delete skips the splice + resample when no extend
-        stroke is currently in the list AND the preview is already empty."""
+        """True when the spliced preview can change. Only legacy extends (kind=
+        'stroke') feed compute_outer_preview; ADD islands render as an overlay
+        (not this line) and KNIFE / REMOVE carve holes, so a non-extend
+        commit/undo/delete skips the splice + resample when the preview is
+        already empty."""
         if self._output.outer_preview:
             return True
         return any(s["kind"] == "stroke" for s in self._user_outer_strokes)
 
     def _refresh_outer_preview(self, context: bpy.types.Context) -> None:
-        """Recompute the Stage 2 spliced-outer preview in place so the
-        artist sees the silhouette APPLY will build after extend edits.
+        """Recompute the legacy-extend spliced-outer preview in place.
 
         ``compute_outer_preview`` reads ``output.user_outer_strokes``; that
         field is only synced into ``self._output`` at APPLY / stage 5 entry,
-        so during Stage 2 editing we have to mirror the live operator list
-        first or the preview is computed against an empty list and never
-        renders.
+        so during editing we mirror the live operator list first or the preview
+        is computed against an empty list and never renders. ADD islands do not
+        feed this preview (they render as a dimmer overlay; merge is APPLY-only).
         """
         self._output.user_outer_strokes = self._user_outer_strokes
         preview = compute_outer_preview(self._output, _snapshot_params(context))
@@ -988,8 +1139,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if not self._pen_points:
             return {"RUNNING_MODAL"}
         self._pen_points.pop()
+        if self._pen_edge_subdivs:
+            self._pen_edge_subdivs.pop()  # drop the removed edge's baked count
         self._pen_active = bool(self._pen_points)
         self._live_preview["points"] = list(self._pen_points)
+        self._live_preview["edge_subdivs"] = list(self._pen_edge_subdivs)
         self._live_preview["active"] = bool(self._pen_points)
         _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
@@ -1020,23 +1174,19 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def _warn_text(self, context: bpy.types.Context, event: bpy.types.Event) -> str:
-        """The active tool's warning, or "" when the gesture is fine.
+        """The active OPEN-stroke / passive tool's warning, or "" when fine.
 
-        Symmetric extend <-> cut: extend grows OUTWARD (warn while inside); cut
-        carves INWARD (warn while outside). Interior tools (fold / point) are
-        inside-only; delete is a destructive mode (always flagged). Contour and
-        auto never warn.
+        Only reached for the open-stroke pen (KNIFE / fold) + delete; the ADD /
+        REMOVE islands run through the island-pen path, not here. KNIFE carves
+        INWARD (warn while outside); interior fold / point are inside-only;
+        delete is a destructive mode (always flagged); auto never warns.
         """
         tool = self._active_tool
         if tool == "delete":
             return "delete: click a stroke to remove it"
         outside = self._cursor_outside_outer(context, event)
-        if tool == "extend":
-            return (
-                "" if outside else "extend grows outward - finish the stroke OUTSIDE the silhouette"
-            )
-        if tool == "cut":
-            return "cut carves inward - finish the stroke INSIDE the mesh" if outside else ""
+        if tool == "knife":
+            return "knife carves inward - finish the stroke INSIDE the mesh" if outside else ""
         if tool in {"fold", "point"}:
             return "interior tool - inside the silhouette only" if outside else ""
         return ""
@@ -1361,6 +1511,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         skinning = context.scene.proscenio.skinning
         return float(skinning.automesh_interior_spacing)
 
+    def cancel(self, context: bpy.types.Context) -> None:
+        # Blender calls cancel() when the modal is killed externally (window close,
+        # file load). Without this the guard set by mark_running stays stuck active
+        # and both authoring polls fail until reload. Mirror the user exit path.
+        self._finish(context, cancel=True)
+
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
         try:
             unregister_overlay(self._handles)
@@ -1368,6 +1524,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 context.window_manager.event_timer_remove(self._timer)
                 self._timer = None
             self._remove_statusbar()
+            mark_stopped(_MODAL_NAME)
             if self._session is not None:
                 restore_session(context, self._session)
         finally:
@@ -1439,7 +1596,40 @@ def _tag_redraw_view3d(context: bpy.types.Context) -> None:
     tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
 
 
-_classes: tuple[type, ...] = (PROSCENIO_OT_automesh_authoring,)
+class PROSCENIO_OT_automesh_step(bpy.types.Operator):
+    """Advance / step back the running Automesh Interactive modal from the panel.
+
+    Sets a request flag the live modal applies on its next event (the same
+    advance / retreat as ENTER / BACKSPACE), so the stages can be driven by the
+    panel's Back / Next buttons in addition to the keyboard.
+    """
+
+    bl_idname = "proscenio.automesh_step"
+    bl_label = "Automesh Step"
+    bl_description = "Advance to the next stage / step back, in the running Automesh modal"
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    direction: EnumProperty(  # type: ignore[valid-type]
+        name="Direction",
+        items=[
+            ("ADVANCE", "Next", "Advance to the next stage"),
+            ("RETREAT", "Back", "Step back to the previous stage"),
+        ],
+        default="ADVANCE",
+        options={"SKIP_SAVE"},
+    )
+
+    @classmethod
+    def poll(cls, _context: bpy.types.Context) -> bool:
+        return is_running(_MODAL_NAME)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        PROSCENIO_OT_automesh_authoring._nav_request = self.direction
+        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        return {"FINISHED"}
+
+
+_classes: tuple[type, ...] = (PROSCENIO_OT_automesh_authoring, PROSCENIO_OT_automesh_step)
 
 
 def register() -> None:

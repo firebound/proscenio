@@ -17,7 +17,10 @@ import bpy
 from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
     PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
 )
-from ...core._shared.props_access import active_armature  # type: ignore[import-not-found]
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
+    active_armature,
+    require_object_visible,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -79,6 +82,13 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         if preconditions is None:
             return {"CANCELLED"}
         obj, armature, scene_props, sidecar = preconditions
+
+        # A hidden mesh or armature cannot become active, so the mode_set calls
+        # below would crash ('Context missing active object'); warn + bail instead.
+        if not require_object_visible(self, armature, action="edit weights"):
+            return {"CANCELLED"}
+        if not require_object_visible(self, obj, action="edit weights"):
+            return {"CANCELLED"}
 
         skinning = getattr(scene_props, "skinning", None)
         prior_overlay = (

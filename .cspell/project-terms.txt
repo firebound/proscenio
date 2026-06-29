@@ -151,3 +151,11 @@ reparentar
 wirar
 CHILDOF
 BBONE
+automeshes
+subdivs
+unsubdivided
+vertexpen
+flipv
+zsword
+abow
+adversarialmente

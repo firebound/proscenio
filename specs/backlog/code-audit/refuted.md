@@ -1,0 +1,15 @@
+# Refuted findings (false positives)
+
+Phase-1 findings the adversarial verification pass **disproved** by reading the real code. Recorded so nobody re-flags them - each is a sanctioned convention or a factual error in the original claim. Do NOT act on these.
+
+- **bone-modes-cp-io** (claimed: misplaced - bpy custom-property IO in a bpy-free package) - **REFUTED.** [bone_modes.py](../../../apps/blender/core/skinning/bone_modes.py) imports bpy only under `TYPE_CHECKING`; there is no runtime bpy. Custom-property access is dict-style (`obj[...]` / `obj.get`), which is the **documented package-wide convention** (cp_keys.py:8-13, json_cp.py:10-13 state the runtime stays bpy-free precisely by using dict-style access that the headless writer and pytest satisfy without registering the addon). 11 of ~13 core/skinning modules do this. Moving the functions would break the existing bpy-free test and invert layering (bpy_helpers depend on core, not the reverse).
+
+- **validation-abspath-bpy** (claimed: misplaced - `abspath_or_none` imports bpy inside core/) - **REFUTED.** [_shared.py:50-56](../../../apps/blender/core/validation/_shared.py#L50) imports bpy **lazily inside the function body**, wrapped in try/except ImportError with a bpy-free fallback. The core/ contract (core/__init__.py:6-8) explicitly permits "import bpy lazily inside one function". Sanctioned pattern.
+
+- **apply-atlas-snapshot** (claimed: SRP - operator owns a full snapshot/restore state machine) - **REFUTED.** [apply.py:99-157](../../../apps/blender/operators/atlas_pack/apply.py#L99) holds two private methods used only inside this operator; the reusable primitives are **already extracted** into `operators/atlas_pack/_paths.py` and shared with unpack.py. What remains in apply.py is operator-specific orchestration, correctly placed.
+
+- **slot-attachment-keyframe** (claimed: SRP - four unrelated operators bundled) - **REFUTED.** [attachment.py](../../../apps/blender/operators/slot/attachment.py) holds four operators that are all slot-attachment-themed and share the same `proscenio.is_slot` poll on the active Empty - they are tightly related, not unrelated. The "four unrelated parenting operators" framing is factually wrong.
+
+- **known-topic-ids-dead** (claimed: dead code - zero references) - **REFUTED.** [help_topics.py:696-698](../../../apps/blender/core/help_topics.py#L696) - `known_topic_ids()` has a **live reference and a dedicated test**: `tests/test_help_topics.py:31` (import) and `:238` (`test_known_topic_ids_returns_registration_order`). Phase 1's grep missed the repo-root test. Not dead.
+
+- **weight-transfer-test-docs** (claimed: test-org - bare docstring + generic names) - **REFUTED.** [test_weight_transfer.py](../../../apps/blender/tests/operators/test_weight_transfer.py) - both test functions already have behavior-describing docstrings (line 9, line 46) and behavior-descriptive names. The "bare one-liner / generic names" claim is false. (The separate `weight-transfer-cancel-partial-write` coverage gap in [test-quality.md](test-quality.md) is real and stands.)

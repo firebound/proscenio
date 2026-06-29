@@ -29,6 +29,8 @@ from .contour import (
     extract_holes,
     extract_inner_contour,
     extract_outer_contour,
+    extract_outer_contour_with_islands,
+    fill_polygon_into_mask,
     find_first_boundary,
     trace_contour,
 )
@@ -73,6 +75,8 @@ __all__ = [
     "extract_holes",
     "extract_inner_contour",
     "extract_outer_contour",
+    "extract_outer_contour_with_islands",
+    "fill_polygon_into_mask",
     "filter_points_too_close_to_boundary",
     "find_best_inner_rotation",
     "find_first_boundary",

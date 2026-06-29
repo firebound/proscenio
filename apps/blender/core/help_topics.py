@@ -138,6 +138,11 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 " driver shortcuts.",
             ),
             _section(
+                "experimental",
+                "Implemented and usable, but under active development - the surface"
+                " and its output may still change. Test before relying on it.",
+            ),
+            _section(
                 "planned",
                 "Designed but not yet implemented. The UI surface exists today as a"
                 " placeholder so the future feature has a discoverable home.",
@@ -547,6 +552,32 @@ HELP_TOPICS: dict[str, HelpTopic] = {
             ),
         ),
     ),
+    "manual_mesh": HelpTopic(
+        title="Manual Mesh",
+        summary=(
+            "Build a mesh element's silhouette by hand - click the vertices instead of"
+            " tracing the alpha. A separate mode from the automeshes (one way per element);"
+            " a live triangulation previews the result."
+        ),
+        sections=(
+            _list_section(
+                _SECTION_HOW,
+                "Select a mesh element with an image texture, then Draw with vertices.",
+                "LMB places a vertex; click the first vertex to close the loop.",
+                "RMB drags a placed vertex; DEL (or Ctrl+Z) drops the last.",
+                "Wheel / 0-9 subdivide the edge being drawn; X / Z lock the axis.",
+                "ENTER builds the mesh, ESC cancels. The panel button toggles to Exit.",
+            ),
+            _section(
+                _SECTION_WHERE,
+                "Use this instead of Automesh when the alpha trace cannot find the shape"
+                " (faint edges, overlapping art) or you want exact control. The automesh"
+                " trace fields do not apply here; its own Interior mode toggle picks SIMPLE"
+                " (just your contour) or DENSE (a uniform interior fill), and Tab adds"
+                " interior point / fold detail inside the shape.",
+            ),
+        ),
+    ),
     "debug_pipeline": HelpTopic(
         title="Debug Pipeline",
         summary="Part of Mesh Generation. A developer aid, shown only with debug mode on.",
@@ -658,6 +689,8 @@ _DOC_PATHS: dict[str, str] = {
     "automesh_alpha": "mesh-generation#automesh-from-alpha",
     "automesh_interactive": "mesh-generation#automesh-interactive",
     "debug_pipeline": "mesh-generation#debug-pipeline",
+    # Manual Mesh - its own top-level panel + page (spec 070).
+    "manual_mesh": "manual-mesh",
     # Weight Paint panel + its subpanels.
     "weight_paint": "weight-paint",
     "bind": "weight-paint#bind",

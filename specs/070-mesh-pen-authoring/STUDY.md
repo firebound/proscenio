@@ -1,106 +1,127 @@
-# Spec 070: Draw mesh with vertices (manual contour)
+# Spec 070: Manual mesh authoring (island silhouette control + standalone Manual Draw)
 
-A manual version of the SIMPLE-mode contour: instead of the alpha trace placing the silhouette automatically, the artist clicks the vertices one by one, with the same live triangulation preview the interactive auto-gen already shows. The Moho / Spine / Illustrator pen, expressed as "the simple flow, but I place the points".
+Two manual-authoring capabilities that share a closed-loop vertex pen but live in different places. **Manual Draw is a concept apart from the automeshes** - the artist picks one of three mutually-exclusive ways to make a mesh element, one per element:
 
-Logged as `mesh-pen-authoring` in [backlog/ui-feedback.md](../backlog/ui-feedback.md).
+1. **Automesh from Alpha** - fully automatic, no control (unchanged).
+2. **Automesh Interactive** - the alpha trace as the base silhouette, then **manual island control** to add / remove / knife the silhouette + the interior stages. This spec replaces the silhouette-edit tools (see Part A).
+3. **Manual Draw ("Draw with vertices")** - a standalone, isolated mode: the artist builds the whole mesh by clicking vertices, zero auto. This spec adds it (see Part B).
 
-> **This STUDY was rewritten 2026-06-28 after the first draft misread the feature.** The first draft invented an image-picker / from-blank element-creation flow and a persistence-for-re-edit field; that was wrong. The real feature is a manual point-placement contour on an ALREADY-selected element, with a live triangulation preview, run through the existing SIMPLE pipeline. The first implementation (PR #166) matches the wrong draft and is to be discarded - see the verdict.
+> **Rewritten 2026-06-28 (third pass).** Earlier drafts (a) invented an image-picker/from-blank flow, then (b) made "Draw with vertices" an upgrade of the Automesh OUTER "Manual contour" tool. Both wrong. The Automesh modal and Manual Draw must NOT be coupled (the modes are exclusive - using two on one element corrupts it, and the shared-operator launch let the draw open mid-automesh and break). The current branch (`feat/070`, uncommitted) carries the wrong coupling and is reverted by this plan.
 
-## The flow (as specified by the user)
+## Part A - Automesh Interactive: manual island control on the silhouette
 
-1. Select an element (an existing mesh element).
-2. Mesh Generation > **Draw with vertices**.
-3. Click = place 1 vertex.
-4. Click again = +1 vertex and +1 edge (chained from the previous).
-5. With 2+ vertices placed, a live preview shows the next triangle at the mouse position (dashed / lighter), the same simulation the SIMPLE interactive auto-gen draws.
-6. Each click adds the next vertex + edge; the preview keeps showing how the verts will triangulate.
-7. Controls: **LMB** place a vertex, **RMB** drag vertices, **DEL** delete the last placed vertex, **ENTER** confirm, **ESC** cancel.
+The alpha trace stays the base. The artist refines that silhouette with manual closed-loop **islands** plus the existing corridor knife, applied additively (never replacing the trace):
 
-The live triangulation preview is on the whole time, mirroring the SIMPLE interactive preview (`compute_triangulation_preview`).
+- **ADD** (closed island, NEW - replaces the open-stroke `extend`): a closed loop drawn over the silhouette edge **grows** it (union). The part of the loop outside the current silhouette is added. Must overlap the silhouette (a disjoint loop is dropped + warned).
+- **KNIFE** (open stroke corridor - the current `cut`, renamed): an open stroke offset into a corridor that carves a gap. Unchanged behavior, new name.
+- **REMOVE** (closed island, NEW): a closed loop **excludes** its area (a hole). The loop is the hole polygon directly.
+- The old OUTER-stage **"Manual contour"** tool (closed loop that REPLACED the auto trace) is removed - its replace semantics are gone; its closed-loop pen tech is reused by ADD / REMOVE and by Part B.
 
-## Scope
+The interior stages (interior points / fold, the triangulation preview, APPLY) are unchanged.
 
-- **In:** a "Draw with vertices" entry on a selected mesh element; manual click-to-place vertices building the outer contour; a live triangulation preview during placement (not only at the preview stage); RMB to drag a placed vertex; DEL to drop the last; ENTER to commit; ESC to cancel.
-- **Reuse:** the SIMPLE triangulation + its preview (`compute_triangulation_preview`), the `output.outer` -> downstream -> APPLY commit, the modal overlay + the contour click-pen that spec 066 already built.
-- **Out (this spec):** DENSE authoring from manual verts; creating an element from nothing / an image picker (the element exists - this draws its mesh); a persisted re-editable authoring layer (not in the described flow).
-- **Study / future (the user's "outras features"):** scroll = subdivide the last edge (the interactive modal already subdivides); click-drag = spaced / smoothed verts (Moho/Spine free-draw); other Moho / Spine pen affordances.
+## Part B - Manual Draw ("Draw with vertices"): standalone isolated mode
 
-## Open decisions
+A new operator, separate from the Automesh modal. The artist places the silhouette vertices by clicking; with 2+ verts a live triangulation preview tracks the cursor; the result is the SIMPLE triangulation of the hand-drawn contour. No alpha, no auto, no automesh stages.
 
-### 1. Where it lives: upgrade the spec 066 contour tool, or a separate tool / modal?
+Controls: **LMB** place a vertex, **RMB** drag a placed vertex, **DEL** (Ctrl+Z synonym) delete the last, **ENTER** apply (write the mesh), **ESC** cancel. Live triangulation + cursor ghost the whole time (mirrors the SIMPLE interactive preview).
 
-**Code anchors:** `apps/blender/operators/automesh/automesh_authoring.py` (`PROSCENIO_OT_automesh_authoring`; the OUTER stage's "contour" tool `_handle_outer_contour_event` ~471 + `_commit_contour` ~858 already place manual verts and write `self._output.outer`; the bare-Tab tool cycle `_cycle_tool` ~534; `invoke` ~213 requires a selected MESH element with an image); `apps/blender/core/skinning/authoring_stages.py` (`stage_tools(OUTER) == ("auto", "contour")` - the manual contour is already a tool there); `apps/blender/panels/mesh_generation.py` (`_draw_automesh_interactive` ~218, the "Author Mesh (interactive)" button - the existing modal entry). Locked context: `decisions.md` "Mesh generation interaction" (spec 066: the contour reuses the click-pen in the OUTER stage; bare Tab cycles the tool).
+Exclusivity: Manual Draw refuses to launch while the Automesh modal runs, and vice versa (one authoring modal at a time; the modes do not mix on an element).
 
-**Question:** Spec 066 already ships a "Manual contour" tool in the OUTER stage (Tab to it, click verts, close the loop). But it has a different interaction model than the one specified here: it finishes on RMB/Enter, undoes with Ctrl+Z, free-draws on drag, and shows only the polyline (no live triangulation, no vertex dragging). Is "Draw with vertices" an upgrade of that tool, a second tool beside it, or a standalone modal?
+## Decisions
 
-**Options:**
-- (A) Upgrade the 066 contour tool into "Draw with vertices": add the live triangulation preview, RMB-drag-vertex, DEL-last, and the ENTER-confirm model to the existing OUTER contour tool, and add a direct "Draw with vertices" button that launches the modal straight into it. One manual-contour tool, no duplication; the gesture remap (decision 4) lands on it.
-- (B) A second OUTER tool ("vertices") beside "auto" and "contour" in the Tab cycle, with the new model, leaving the 066 contour tool as-is. No remap risk to 066, but two near-identical manual-contour tools confuse the cycle.
-- (C) A standalone modal operator separate from the auto-gen modal, sharing only the triangulation core + overlay. Cleanest gesture model, but it re-implements the modal scaffolding (overlay, stage commit, APPLY) the auto-gen modal already owns - the most code and test burden.
+### 1. Manual Draw is a standalone operator, not a tool inside the Automesh modal - LOCKED
 
-**Recommendation:** **(A).** The 066 contour tool is already "place verts for the outer manually"; this spec is that tool done right (live triangulation + vertex editing + the cleaner LMB/RMB/DEL/ENTER model). Upgrading it keeps one manual path and reuses the whole modal (overlay, the `output.outer` commit, the downstream stages, APPLY). (B) leaves two manual-contour tools - exactly the saturation 066 just removed. (C) duplicates the hardest, least-testable code in the addon. **Decide whether the "Draw with vertices" button launches into the contour tool with the auto trace skipped (recommended) or whether the auto-trace still runs first and the user switches via Tab.** Size **M** for (A).
+The three modes are mutually exclusive (one per element); coupling them lets the user run both and corrupt the element, and a shared modal operator made the draw openable mid-automesh (class-level state clash). Manual Draw is its own modal operator (`PROSCENIO_OT_draw_mesh_vertices`, name TBD) with its own overlay + status bar, reusing only the PURE helpers (`contour_ring_from_pen`, `compute_triangulation_preview`, `apply_mesh` with a manual outer, `nearest_index`, the overlay draw functions). It does NOT touch the automesh stage machine. A poll/guard blocks overlap with the Automesh modal.
 
-### 2. The live triangulation preview during placement
+### 2. Automesh silhouette edits are additive islands, not a replace - LOCKED
 
-**Code anchors:** `apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py` (`compute_triangulation_preview` ~477 - runs the real `build_automesh` on a throwaway copy and returns WORLD-XZ edge pairs; "callers compute this on stage-enter + param-dirty and cache it rather than every TIMER tick - one CDT per refresh"); `apps/blender/operators/automesh/automesh_authoring.py` (the PREVIEW_INTERIOR stage "Vertex preview" ~115/1192 where the triangulation preview is shown today; `self._output.triangulation_preview`); `apps/blender/core/skinning/authoring_stages.py` (`StageOutput.triangulation_preview` ~143). Locked context: the SIMPLE preview is the exact APPLY triangulation, drawn so the artist sees what they will get.
+The OUTER "Manual contour" replace tool is removed. Silhouette editing happens on top of the auto trace via ADD (grow), REMOVE (exclude), KNIFE (corridor). Lives in the silhouette-edit stage (today `EDIT_OUTLINE`). The `extend` open-stroke tool is replaced by ADD; `cut` is renamed KNIFE; REMOVE is new.
 
-**Question:** The triangulation preview exists, but it is computed at the PREVIEW_INTERIOR stage from the finished contour, not live while the contour is being drawn. The feature wants it on continuously: as each vertex is placed (and as a vertex is dragged), re-triangulate the in-progress contour and draw it, plus a ghost of the next triangle at the cursor. How is it driven cheaply enough?
+### 3. ADD island must overlap the silhouette (grow), via rasterize-into-mask - LOCKED
 
-**Options:**
-- (A) Recompute `compute_triangulation_preview` from the in-progress verts (set `output.outer` to the placed verts) on each placement / drag-end - one CDT per vertex, matching the existing "one CDT per refresh" cadence - and draw the ghost next-edge/triangle to the cursor per MOUSEMOVE (cheap, no CDT). Cache between placements; never CDT on the bare mouse-move.
-- (B) Full re-triangulate on every MOUSEMOVE so the filled preview tracks the cursor exactly. Most faithful, but a CDT per mouse event is the cost the existing code explicitly avoids - risks lag on a large contour.
-- (C) Only draw the polyline + a ghost triangle at the cursor while drawing, and the full triangulation preview only on a pause / the existing preview stage. Cheapest, but it is not the "live simulation like the auto-gen" the user asked for.
+ADD grows the existing silhouette by **true union**, not a grafted arc. The first cut tried the extend-splice (`apply_outer_extends`) and it was wrong: a closed loop fed as an open extend grafts the loop as a *detour* (the contour "follows the drawing" with a spike - the bug the user hit). **Shipped implementation: rasterize the ADD island polygon into the alpha mask, then re-trace** (`compute_outer_merged` -> `fill_polygon_into_mask` + `extract_outer_contour_with_islands`). An overlapping island becomes one combined foreground blob, so the trace walks a single merged boundary - a clean union at trace resolution (consistent with the auto silhouette). `_split_outer_strokes` returns ADD islands as their own list; `_build_authoring_mesh` uses the merged contour as the outer override so APPLY + the live preview agree. World-XZ -> pixel is the inverse of `pixel_contour_to_world` (+ `matrix_world`).
 
-**Recommendation:** **(A).** It delivers the live filled preview the user wants while honoring the codebase's own rule (CDT per placement, not per mouse-move): the heavy preview updates when the contour actually changes (a click or a drag-release), and the lightweight cursor ghost (the next edge + the candidate triangle to the cursor) tracks the mouse every frame without a CDT. (B) reintroduces the per-tick CDT cost the preview caching was built to avoid. (C) under-delivers the simulation. **Decide the cursor ghost's fidelity: just the next edge to the cursor, or the full candidate triangle (recommended) once 2+ verts exist.** Size **M** (drive the existing preview from in-progress verts + the cursor-ghost overlay).
+A disjoint island (no overlap) does not merge - the trace finds the main silhouette and the island is effectively ignored (this is how "must overlap" self-enforces).
 
-### 3. RMB drag to move a placed vertex
+**Guidance UX (the user's question "how to tell the artist it must touch"):**
 
-**Code anchors:** `apps/blender/operators/automesh/automesh_authoring.py` (`_draw_event` ~634 + `_draw_lmb_press` / `_draw_lmb_release` - the click-vs-drag machine; RMB currently finishes the pen at ~710 `event.type in {"RET", "NUMPAD_ENTER", "RIGHTMOUSE"}`; `_remove_outer_stroke_at_mouse` ~433 and the stroke pick `~1390` - the existing nearest-vertex-within-pixel-radius hit-test pattern to copy for grabbing a vert); `apps/blender/core/automesh/` (the pure 2D nearest-index helper the pick uses). Locked context: spec 066 "bare Tab cycles the tool; RMB/Enter finish".
+- The auto silhouette is always drawn so the artist sees where to overlap.
+- The island pen snaps its verts to the silhouette boundary when near (`VertexPen` takes the silhouette verts as snap candidates).
+- The committed merged-outer preview shows the grow live. (A live red "must overlap" cursor warning is a deferred polish - the island path does not run the per-cursor warn-tooltip yet.)
 
-**Question:** RMB must drag a placed vertex (grab the nearest one, move it, re-preview). The modal has no vertex-move gesture today, and RMB is currently bound to "finish the pen". What does the grab hit-test, and what does RMB stop doing?
+### 4. REMOVE island = exact polygon hole; KNIFE = the existing corridor - LOCKED
 
-**Options:**
-- (A) RMB press hit-tests the nearest placed vertex within a screen-pixel radius (the same pattern the stroke-delete pick uses); if hit, RMB-drag moves it (live, re-previewing on move/release); if it hits nothing, RMB is a no-op. ENTER becomes the sole "confirm". The contour's vertices are the draggable handles.
-- (B) A separate "edit verts" sub-tool (Tab) where LMB drags verts, leaving RMB free. Keeps RMB unbound but splits placing and moving across a mode switch the user did not ask for (they said RMB drags, in the same flow).
-- (C) Move only the last-placed vertex with RMB (no hit-test). Trivial, but it cannot fix an earlier vertex - far short of "drag vertices".
+REMOVE is a closed loop, so it is a hole polygon directly - routed into `holes_world` (the same path alpha holes + the knife corridor already use, with the centroid prune). Exact, resolution-independent, no rasterize. KNIFE keeps the current corridor offset (`perpendicular_offsets` + `lens_polygon` -> `holes_world`), only the label changes.
 
-**Recommendation:** **(A).** The user specified RMB drags vertices in the same drawing flow, so RMB grabs the nearest placed vertex and moves it, and ENTER takes over as the confirm (RMB stops finishing). It reuses the nearest-within-radius hit-test the delete pick already implements, so the grab is a known pattern. (B) forces a mode the user did not ask for; (C) is too weak. **Decide whether a vertex drag is undoable independently (DEL / Ctrl+Z) or only the placement order is.** Size **M** (the grab hit-test + the drag-move + re-preview; the gesture remap rides decision 4).
+### 5. Keep the `outer_is_manual` pipeline plumbing - LOCKED
 
-### 4. The control scheme and the gesture remap
+Part B applies the hand-drawn contour through `apply_mesh`, which needs `_build_authoring_mesh` to honor a manual outer (no alpha re-trace, no resample). That plumbing (already added on the branch) stays; it also fixes the latent gap where the old 066 manual contour never reached APPLY.
 
-**Code anchors:** `apps/blender/operators/automesh/automesh_authoring.py` (`_draw_event` ~634 - the pen's key/mouse handling: Ctrl+Z undo, RMB/Enter finish, X/Z lock, wheel/digit subdivisions, ESC cancel; `apps/blender/operators/automesh/_status_bar.py` - the chord cheatsheet the OUTER contour shows). Locked context: spec 066 "the fixed gestures survive as distinct keys (Ctrl+Z / X-Z lock / 0-9 / wheel / RMB-Enter / Esc / Alt+click)".
+### 6. Revert the wrong coupling from the Automesh modal - LOCKED
 
-**Question:** The specified controls are LMB place, RMB drag, DEL last, ENTER confirm, ESC cancel - which reassigns RMB (was finish) and adds DEL (the 066 pen undoes with Ctrl+Z). Does the remap apply only inside "Draw with vertices", or to the 066 contour pen generally? And do the 066 extras (X/Z lock, wheel subdivisions) stay?
+Remove from `automesh_authoring.py`: the `start_contour` prop + launch branch, the OUTER live triangulation, RMB-drag-vertex, DEL-last, ENTER-applies, the OUTER live overlay registration, and the OUTER "Manual contour" tool itself. The closed-loop pen tech moves to the ADD/REMOVE island tools (Part A) and the standalone Manual Draw operator (Part B).
 
-**Options:**
-- (A) Remap within the upgraded contour tool (decision 1A): DEL = delete last vertex (keep Ctrl+Z as a synonym), ENTER = confirm, RMB = drag (no longer finish), ESC = cancel. Keep the 066 extras that compose (X/Z axis lock; wheel/digit = subdivide the last edge - decision 5 / the study item). The cheatsheet updates to the new scheme.
-- (B) A global remap of the contour pen for every entry point. Simpler mental model, but it changes the 066-shipped contour behavior for existing users with no new entry.
-- (C) Minimal: add DEL + RMB-drag, leave RMB also finishing on a no-hit. Ambiguous (RMB both drags and finishes) - rejected on principle.
+## Open items - resolved (shipped)
 
-**Recommendation:** **(A).** Scope the new scheme to the "Draw with vertices" tool so the 066 contour pen's shipped behavior is not changed out from under anyone, and keep the composable extras (axis lock; wheel = subdivide the last edge, which is the user's first listed study feature and already exists as a gesture). DEL deletes the last vertex with Ctrl+Z as a synonym; ENTER is the sole finish; RMB drags. (B) is a behavior change with no trigger; (C)'s RMB overload is ambiguous. **Decide whether to keep Ctrl+Z as a DEL synonym (recommended) or DEL-only.** Size **S** (key handling + the cheatsheet copy).
+- Stage/labeling: ADD / KNIFE / REMOVE are the `EDIT_OUTLINE` stage tools (Tab-cycled); OUTER is auto-only. **Confirmed by the user.**
+- REMOVE via exact polygon hole (not rasterize). **Confirmed.**
+- Manual Draw operator = `proscenio.draw_mesh_vertices`, panel label "Draw with vertices". **Confirmed.**
+- Islands are silhouette-only; the interior stage keeps point / fold (additive detail), no islands. **Confirmed by the user.**
+- Deferred polish: a live per-cursor "ADD must overlap" warning (the island path does not run the warn-tooltip yet); ADD currently warns only on the console when it splices to nothing.
 
-### 5. Commit + the relationship to the downstream stages
+## Testing feedback (2026-06-28, live iteration)
 
-**Code anchors:** `apps/blender/operators/automesh/automesh_authoring.py` (`_commit_contour` ~858 writes `self._output.outer`; the stage machine `_advance` ~1090 / APPLY ~1138-1196 triangulates and writes the mesh; `_stages_for_mode("SIMPLE")` ~136); `apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py` (`apply_mesh` - the final write). Locked context: spec 066 "the contour lives in the OUTER stage; downstream stages triangulate it unchanged".
+- **ADD result is correct, but the live merged-contour preview misreads.** A union outline can never align exactly with the drawn loop, so the green "this is what the merge will be" line was confusing. **Fix:** drop the live merged preview; render the islands as a dimmer overlay (alpha 0.6) ON TOP of the generated silhouette, and let the real union happen only at APPLY. (`compute_outer_preview` ignores ADD islands; `_ISLAND_ADD_COLOR` / `_ISLAND_REMOVE_COLOR` dimmed.)
+- **Subdivision marks vanished once an edge was confirmed.** The scroll-to-subdivide ghosts only showed on the live rubber-band, not on already-placed edges. **Fix:** `_draw_placed_subdiv_ghosts` draws the subdivision ghost dots on every placed edge of the in-progress line (all pen tools).
+- **Subdivision was global, should be per-edge.** Scrolling changed the density of every edge; the expected flow is: place vert, scroll to set this edge's density, place next vert (edge baked at that count), scroll again for the next. **Fix:** per-edge counts. `subdivisions` is now the CURRENT count (next edge / rubber-band); each placement bakes it into an `edge_subdivs` list; the ring/stroke subdivides per edge (`contour_ring_from_pen_edges` / `subdivide_polyline_edges`). Applies to VertexPen (Manual Draw + islands) and the open-stroke pen (knife / fold).
 
-**Question:** The flow ends at ENTER = confirm. Does ENTER commit the contour and jump straight to writing the mesh (APPLY), or commit the contour and leave the user in the existing stage flow (so they can still extend / add interior points before APPLY)?
+## UX overhaul (2026-06-29, panel + modal parity with Quick Armature)
 
-**Options:**
-- (A) ENTER commits the contour and APPLYs immediately (writes the mesh on the selected element), the shortest path matching "place verts, confirm, done". The user re-enters the modal for further edits (extend / interior) if they want them.
-- (B) ENTER commits the contour and advances through the normal stages (edit outline -> interior -> apply), so the full toolset is one session. More power, but it is more than the described flow and re-introduces the multi-stage walk the user did not mention.
-- (C) A preference / a modifier on ENTER chooses. Flexible, more surface.
+The Mesh Generation panel read as cluttered and the modals did not follow the Quick Armature interaction conventions. Four changes:
 
-**Recommendation:** **(A) as the default, with the stages reachable.** The specified flow is place-confirm-done, so ENTER from "Draw with vertices" should produce the mesh directly. Because it is the same modal, a user who wants the edit-outline / interior tools can still Tab / advance before pressing ENTER - so (A) is really "ENTER applies; the stages are there if you walk them", which is (A) and (B) without a hard either/or. (C) adds surface for a choice the default already covers. **Decide whether ENTER on the contour tool APPLYs directly (recommended) or always advances one stage.** Size **S** (route ENTER on the contour tool to APPLY).
+- **Manual Draw is its own top-level panel.** It is manual mesh AUTHORING, not generation, and shares none of the automesh trace fields - sitting it under Mesh Generation made those shared fields look like they affected it. Now `PROSCENIO_PT_manual_draw` is a sibling panel (bl_order 6); Mesh Generation keeps the automeshes + their shared fields.
+- **Buttons toggle (start / Exit).** Both "Author Mesh (interactive)" and "Draw with vertices" re-invoke as an Exit while their modal runs (Quick Armature `is_running` + `_exit_requested` handshake); the button shows "Exit ...", an X icon, and depressed. The guard module gained `is_running`.
+- **Collapsible cheatsheet panel mirror.** While a modal runs, a `layout.panel(default_closed=True)` "Shortcuts" section mirrors the status-bar chords (`emit_authoring_chord_layout` / `emit_manual_draw_chords`), replacing the old minimal box indicator.
+- **Mid-flight editing now works.** The pen consumed every mouse event, eating the cursor so the N-panel was unreachable. Now both modals gate mouse events to the viewport canvas (`event_in_canvas` via the stored invoke WINDOW region) and PASS_THROUGH over the UI - so sliders + the Exit button stay live, and the 0.1 s param timer re-previews the change. Keyboard gestures + nav are not gated. Removed the dead OUTER "Manual contour" dispatch + method (OUTER is auto-only now).
 
-## Verdict summary
+## UX round 2 (2026-06-29, panel nav + Manual Mesh standards)
 
-"Draw with vertices" is the SIMPLE contour, placed by hand: upgrade the spec 066 OUTER contour tool (decision 1A) with a live triangulation preview driven from the in-progress verts plus a cursor ghost (2A), RMB-drag-to-move-a-vertex via the existing nearest-pick (3A), and the specified LMB/RMB/DEL/ENTER/ESC scheme scoped to this tool (4A), with ENTER applying directly while the existing stages stay reachable (5A). A "Draw with vertices" button on the Mesh Generation panel launches the modal straight into it on the selected element. It reuses `compute_triangulation_preview`, the `output.outer` commit, and the whole auto-gen modal; the new surface is the live-preview-while-drawing, the vertex drag, and the gesture remap. Open locks for the user: skip-the-trace-on-launch (1), cursor-ghost fidelity (2), drag undo granularity (3), Ctrl+Z-as-DEL-synonym (4), ENTER-applies-directly (5). Total size **M**.
+- **Stage nav from the panel.** While the Automesh Interactive modal runs, the panel shows the current step label + **Back / Next** buttons above Exit. A small `proscenio.automesh_step` operator (direction enum) sets a `_nav_request` flag the modal applies on its next event (same as ENTER / BACKSPACE), so the stages are drivable without the keyboard.
+- **Renamed "Manual Draw" -> "Manual Mesh"** (panel + feature id + help topic + doc page) - the old name did not read as mesh manipulation. The button stays "Draw with vertices". `PROSCENIO_PT_manual_mesh`.
+- **Manual Mesh now follows the panel standards:** WARNS instead of hiding on a sprite / non-mesh (mirroring Mesh Generation's draw), and carries the standard status badge + help button (`draw_subpanel_header`, `manual_mesh` feature id = BLENDER_ONLY, `manual_mesh` help topic). As a new top-level panel it gets its own docs page (`docs/02-tools/blender-addon/09-manual-mesh.md`) + `_DOC_PATHS` + the `PANEL_PAGES` mirror entry (spec 064 exact-mirror).
 
-**Discard the first implementation.** PR #166 / branch `feat/070-mesh-pen-authoring` built the wrong (image-picker, from-blank, persisted-re-edit) draft and must be closed; the corrected feature reuses the 066 contour tool rather than creating elements.
+## Verdict
+
+Spec 070 grows into two parts: **(A)** replace the Automesh Interactive silhouette-edit tools with ADD (closed island, grow), KNIFE (renamed corridor cut), REMOVE (closed island, hole), additive on the auto trace; **(B)** a standalone **Manual Draw** mode (Draw with vertices), fully isolated from the automeshes. Revert the wrong draw-into-automesh coupling on the branch; keep the `outer_is_manual` plumbing. The closed-loop vertex pen is the shared building block.
+
+## Part C - Manual Mesh authoring upgrades (2026-06-29, LOCKED)
+
+The standalone Manual Mesh modal shipped as "draw a closed contour, apply the SIMPLE triangulation". The user asked for four upgrades; all map onto machinery the automesh pipeline already has, so the work is wiring + a modal phase split, not new geometry. Decisions LOCKED via Q&A (all four in spec 070; dense via an own panel toggle).
+
+The unifying change is a **two-phase modal**: phase 1 DRAW the open contour (place / drag / per-edge subdiv / axis-lock, as today); closing the loop no longer auto-applies - it enters phase 2 EDIT (move verts, insert on edges, per-edge subdiv of placed edges, interior point/fold tools, dense toggle), where ENTER applies. This phase split is what makes items 1/3/4 coherent rather than four bolt-ons.
+
+### C1. Dense fill toggle (decision: own panel toggle)
+
+New scene prop `manual_interior_mode` (Enum SIMPLE/DENSE, default SIMPLE) on `ProscenioSkinningProps`, shown in the Manual Mesh panel; DENSE reveals the existing `automesh_interior_spacing` (shared world-unit knob). The modal `_params` reads it instead of hardcoding `interior_mode="SIMPLE"`. Outer stays verbatim (manual, no resample) in both modes; DENSE only changes the interior fill. Preview: today `compute_triangulation_preview` returns `[]` for non-SIMPLE (automesh shows a Steiner cloud instead). For Manual Mesh the throwaway-build-edges path works for both modes, so generalize it to a `compute_mesh_preview_edges(obj, image, output, params)` that returns the resulting mesh edges for ANY interior mode (SIMPLE keeps the existing helper as a thin wrapper); the manual overlay then shows a real wireframe in DENSE too.
+
+### C2. Re-edit / continue a drawing (decision: store the source ring CP)
+
+New Custom Property `proscenio_manual_contour` = `{points: [[x,z]...] LOCAL, edge_subdivs: [int...]}`; interior strokes reuse the existing `proscenio_user_strokes` CP. Reconstructing the source contour from the final triangulated mesh is lossy (subdiv + fill verts), so the source ring is stored explicitly. At apply (after a successful build) the modal writes the CP; at a fresh invoke (not the Exit handshake) it reads the CP and preloads the VertexPen (`points` world-converted via `matrix_world`, `edge_subdivs`, the interior strokes, the saved interior mode) directly into the EDIT phase, so the artist continues the existing drawing; ENTER re-applies (overwrites). LOCAL XZ storage keeps it stable if the object moves. A reverted element (071) clears this CP.
+
+### C3. Interior verts / fold (decision: interior tool mode)
+
+In the EDIT phase a tool toggle (Tab) switches OUTER (move/insert verts on the contour) <-> INTERIOR (point + fold). INTERIOR reuses the pipeline's `output.user_strokes` (kind `point` = single Steiner on click, `fold` = polyline on drag) - the exact inputs `_build_stroke_cdt_inputs` already consumes - and the existing `_draw_user_strokes` overlay. To avoid duplicating the automesh Stage-4 gesture capture, extract the click-vs-drag interior-stroke capture into a small shared helper used by both the automesh interior stage and the manual modal (`InteriorStrokePen` alongside `VertexPen`); if extraction proves entangled, fall back to a minimal in-modal capture writing the same `Stroke` dicts. Manual modal keeps `_user_strokes: list[Stroke]`, fed to `apply_mesh` via `output.user_strokes`.
+
+### C4. Verts on existing edges (decision: in the EDIT phase)
+
+`VertexPen` gains an EDIT phase (entered on close, not apply): clicking on a placed edge away from any vert inserts a vert splitting that edge (the two halves inherit a sensible subdiv); scrolling while hovering a placed edge changes THAT edge's `edge_subdivs` (today scroll only targets the in-progress next edge, which no longer exists once closed). RMB-drag of an existing vert and DEL stay available. This is the same `edge_subdivs` model extended from "the next edge" to "the hovered edge".
+
+### Part C verdict
+
+A two-phase Manual Mesh modal (DRAW -> close -> EDIT -> apply) backed by: a `manual_interior_mode` prop + a mode-agnostic preview helper (C1), a `proscenio_manual_contour` CP with preload-into-EDIT (C2), an interior point/fold tool reusing `user_strokes` (C3), and a `VertexPen` EDIT phase for on-edge insert + per-edge subdiv (C4). Sequenced cheap-first: C1, C2, then the EDIT-phase rework carrying C4 + C3. Spec 071 (revert-to-quad) is built alongside as its own operator.
 
 ## Sources
 
-- The user's specified flow (2026-06-28), captured verbatim under "The flow" above.
-- Spec 066 (mesh-generation-interaction), the contour pen + SIMPLE triangulation preview this upgrades; see `_index.md` and `decisions.md` "Mesh generation interaction".
-- `backlog/ui-feedback.md` - the `mesh-pen-authoring` entry.
-- Code anchors above, current as of 2026-06-28 (`apps/blender/operators/automesh/automesh_authoring.py`, `core/bpy_helpers/automesh/authoring_pipeline.py`, `core/skinning/authoring_stages.py`, `panels/mesh_generation.py`).
+- User direction (2026-06-29): the four Manual Mesh upgrades (continue/re-edit; dense fill base; interior verts like fold; verts on existing edges); "todos os 4 na spec 070"; dense via an own panel toggle; build 071 too.
+- User direction (2026-06-28): the 3 exclusive modes; "Manual Draw is a concept apart from the automeshes"; ADD-island-replaces-extend, cut->KNIFE, REMOVE island new; ADD must overlap; "tudo junto nesta spec 70".
+- Code anchors: `apps/blender/operators/automesh/automesh_authoring.py` (modal, OUTER/EDIT stages, the pen), `core/bpy_helpers/automesh/authoring_pipeline.py` (`_build_authoring_mesh`, `compute_triangulation_preview`, `compute_outer`), `core/bpy_helpers/automesh/bridge.py` (`_read_alpha_and_extract_contours`, `holes_world`, `outer_override`), `core/automesh/outer_splice.py` (the old extend), `core/automesh/cut_geometry.py` (the corridor knife), `core/skinning/authoring_stages.py` (stage tools), `panels/mesh_generation.py` (entries).

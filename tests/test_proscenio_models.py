@@ -17,7 +17,13 @@ def _quad_kwargs() -> dict[str, object]:
 
 
 def _sprite_kwargs() -> dict[str, object]:
-    return {"type": "sprite", "name": "head", "bone": "neck", "hframes": 1, "vframes": 1}
+    return {
+        "type": "sprite",
+        "name": "head",
+        "bone": "neck",
+        "hframes": 1,
+        "vframes": 1,
+    }
 
 
 def test_mesh_element_accepts_multi_face_polygons() -> None:
@@ -70,7 +76,11 @@ def test_mesh_element_rejects_a_negative_color_channel() -> None:
 
 def test_sprite_element_round_trips_appearance() -> None:
     element = SpriteElement(
-        **_sprite_kwargs(), modulate=[1.0, 0.5, 0.25, 1.0], z_index=-2, flip_h=True, flip_v=False
+        **_sprite_kwargs(),
+        modulate=[1.0, 0.5, 0.25, 1.0],
+        z_index=-2,
+        flip_h=True,
+        flip_v=False,
     )
     back = SpriteElement.model_validate_json(element.model_dump_json())
     assert back.modulate == [1.0, 0.5, 0.25, 1.0]

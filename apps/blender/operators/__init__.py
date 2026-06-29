@@ -22,6 +22,7 @@ Submodules / subpackages:
 - atlas_pack        - Pack, Apply, Unpack
 - import_photoshop  - single-operator file (Import Photoshop Manifest)
 - reimport_element  - re-import one Element from its source manifest entry
+- revert_to_plane   - revert a mesh element to its original imported plane
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ from . import (
     incorporate,
     pose_library,
     reimport_element,
+    revert_to_plane,
     selection,
     skinning,
     slot,
@@ -63,9 +65,11 @@ def register() -> None:
     atlas_pack.register()
     import_photoshop.register()
     reimport_element.register()
+    revert_to_plane.register()
 
 
 def unregister() -> None:
+    revert_to_plane.unregister()
     reimport_element.unregister()
     import_photoshop.unregister()
     atlas_pack.unregister()

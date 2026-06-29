@@ -142,7 +142,11 @@ def test_from_json_raises_value_error_on_non_numeric_weight():
             "vertex_group_names": ["arm"],
             "mesh_topology_hash": "x",
             "entries": [
-                {"uv_anchor": [0.0, 0.0], "weights": {"arm": None}, "provenance": "user_paint"}
+                {
+                    "uv_anchor": [0.0, 0.0],
+                    "weights": {"arm": None},
+                    "provenance": "user_paint",
+                }
             ],
         }
     )

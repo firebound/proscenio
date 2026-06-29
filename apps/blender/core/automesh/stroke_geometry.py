@@ -32,11 +32,62 @@ def subdivide_polyline(points: Sequence[Point2D], n: int) -> list[Point2D]:
     if n <= 0 or len(points) < 2:
         return list(points)
     out: list[Point2D] = [points[0]]
-    for (ax, ay), (bx, by) in itertools.pairwise(points):
-        for i in range(1, n + 1):
-            t = i / (n + 1)
-            out.append((ax + (bx - ax) * t, ay + (by - ay) * t))
-        out.append((bx, by))
+    for a, b in itertools.pairwise(points):
+        out.extend(_subdivide_one_edge(a, b, n))
+        out.append(b)
+    return out
+
+
+def _subdivide_one_edge(a: Point2D, b: Point2D, n: int) -> list[Point2D]:
+    """``n`` evenly-spaced interior points along edge ``a -> b`` (exclusive)."""
+    out: list[Point2D] = []
+    for i in range(1, n + 1):
+        t = i / (n + 1)
+        out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return out
+
+
+def subdivide_polyline_edges(
+    points: Sequence[Point2D], edge_subdivs: Sequence[int]
+) -> list[Point2D]:
+    """Per-edge open subdivide: edge ``i`` (``points[i] -> points[i+1]``) gets
+    ``edge_subdivs[i]`` interior verts (0 when missing), so each segment keeps
+    the subdivision count it was drawn with (spec 070). Polylines shorter than
+    2 points return the input unchanged."""
+    if len(points) < 2:
+        return list(points)
+    out: list[Point2D] = [points[0]]
+    for i, (a, b) in enumerate(itertools.pairwise(points)):
+        n = edge_subdivs[i] if i < len(edge_subdivs) else 0
+        out.extend(_subdivide_one_edge(a, b, max(0, n)))
+        out.append(b)
+    return out
+
+
+def contour_ring_from_pen_edges(
+    points: Sequence[Point2D], edge_subdivs: Sequence[int]
+) -> list[Point2D] | None:
+    """Closed-ring form of :func:`subdivide_polyline_edges` (spec 070 per-edge).
+
+    Drops the close-on-first-vert duplicate, requires >= 3 distinct verts (else
+    ``None``), and subdivides EVERY edge - including the wrap (last -> first) -
+    by its own count from ``edge_subdivs``. A wrap edge with no recorded count
+    (the loop was confirmed open, not closed onto the first vert) gets 0, so the
+    implicit closing edge stays unsubdivided, matching the polygon convention.
+    """
+    ring = list(points)
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3 or len(set(ring)) < 3:
+        return None
+    out: list[Point2D] = []
+    n = len(ring)
+    for i in range(n):
+        a = ring[i]
+        b = ring[(i + 1) % n]
+        out.append(a)
+        count = edge_subdivs[i] if i < len(edge_subdivs) else 0
+        out.extend(_subdivide_one_edge(a, b, max(0, count)))
     return out
 
 

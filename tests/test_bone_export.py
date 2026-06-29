@@ -18,7 +18,9 @@ from core.bone_export import bone_is_exported  # noqa: E402
 
 
 def _bone(*, use_deform: bool = True, exclude: bool = False) -> SimpleNamespace:
-    return SimpleNamespace(use_deform=use_deform, proscenio=SimpleNamespace(exclude_from_export=exclude))
+    return SimpleNamespace(
+        use_deform=use_deform, proscenio=SimpleNamespace(exclude_from_export=exclude)
+    )
 
 
 def test_deform_bone_without_flag_exports() -> None:

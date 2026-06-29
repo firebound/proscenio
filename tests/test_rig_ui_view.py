@@ -76,7 +76,9 @@ def test_deep_nesting_recurses_every_branch_depth_first() -> None:
 
 
 def test_multiple_top_level_collections_keep_input_order() -> None:
-    rows = rig_ui_rows([_col("arms", [_col("arm.L")]), _col("Bones"), _col("legs", [_col("leg.L")])])
+    rows = rig_ui_rows(
+        [_col("arms", [_col("arm.L")]), _col("Bones"), _col("legs", [_col("leg.L")])]
+    )
     assert [r.header if r.header is not None else r.collection_name for r in rows] == [
         "arms",
         "Bones",
@@ -89,7 +91,10 @@ def test_only_top_level_rows_are_flagged_for_the_theme_selector() -> None:
     # color control), false for every recursed sub-collection row.
     tree = _col("arms", [_col("arm.L", [_col("fingers.L")]), _col("arm.R")])
     rows = rig_ui_rows([tree, _col("Bones")])
-    flags = {r.header if r.header is not None else r.collection_name: r.is_top_level for r in rows}
+    flags = {
+        r.header if r.header is not None else r.collection_name: r.is_top_level
+        for r in rows
+    }
     assert flags == {"arms": True, "arm.L": False, "Bones": True}
 
 

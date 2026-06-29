@@ -10,7 +10,38 @@ sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 from core.automesh.stroke_geometry import (  # noqa: E402
     chaikin_smooth,
     contour_ring_from_pen,
+    contour_ring_from_pen_edges,
+    subdivide_polyline_edges,
 )
+
+
+def test_subdivide_polyline_edges_per_edge_counts():
+    # Open polyline, edge 0 gets 2 verts, edge 1 gets 0 (spec 070 per-edge).
+    pts = [(0.0, 0.0), (3.0, 0.0), (3.0, 3.0)]
+    out = subdivide_polyline_edges(pts, [2, 0])
+    assert len(out) == 5  # 3 anchors + 2 on edge 0 + 0 on edge 1
+    assert out[0] == (0.0, 0.0)
+    assert out[3] == (3.0, 0.0)  # second anchor after the 2 inserted
+
+
+def test_subdivide_polyline_edges_missing_counts_default_zero():
+    pts = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]
+    assert subdivide_polyline_edges(pts, []) == pts  # no counts -> unchanged
+
+
+def test_contour_ring_per_edge_subdivides_each_edge_independently():
+    # Triangle, wrap edge subdivided too (closed loop confirmed on first vert).
+    pts = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0)]
+    ring = contour_ring_from_pen_edges(pts, [1, 0, 2])
+    # edge0 +1, edge1 +0, wrap edge2 +2 -> 3 anchors + 3 inserted = 6.
+    assert len(ring) == 6
+
+
+def test_contour_ring_per_edge_drops_closing_dup_and_guards_min_verts():
+    closed = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 0.0)]
+    ring = contour_ring_from_pen_edges(closed, [0, 0, 0])
+    assert ring == [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0)]  # dup dropped, no subdiv
+    assert contour_ring_from_pen_edges([(0.0, 0.0), (1.0, 0.0)], [0]) is None
 
 
 def test_contour_ring_drops_closing_duplicate():

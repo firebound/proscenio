@@ -55,9 +55,7 @@ def test_bone_emitted_only_when_set() -> None:
 
 
 def test_empty_attachments_omits_default() -> None:
-    slot = build_slot(
-        SlotInput(name="s", bone="", slot_default="", attachments=())
-    )
+    slot = build_slot(SlotInput(name="s", bone="", slot_default="", attachments=()))
     assert slot.attachments == []
     assert slot.default is None
 

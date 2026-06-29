@@ -15,17 +15,19 @@ import bpy
 from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
     stage_tools,
+    tool_is_island,
     tool_is_pen,
 )
 from .._status_bar import chord
 
-# Display labels for the per-stage tools (spec 066). The active one is bracketed
-# in the Tab cycle so the artist sees what LMB will do.
+# Display labels for the per-stage tools. The active one is bracketed in the Tab
+# cycle so the artist sees what LMB will do. (spec 070 renamed the silhouette
+# tools: ADD island / KNIFE / REMOVE island.)
 _TOOL_LABELS = {
     "auto": "Auto",
-    "contour": "Manual contour",
-    "extend": "Extend",
-    "cut": "Cut",
+    "add": "Add",
+    "knife": "Knife",
+    "remove": "Remove",
     "fold": "Fold",
     "point": "Point",
     "delete": "Delete",
@@ -49,7 +51,16 @@ def emit_authoring_chord_layout(
             f"[{_TOOL_LABELS[t]}]" if t == active_tool else _TOOL_LABELS[t] for t in tools
         )
         chord(layout, ("EVENT_TAB", "tool:"), ("", cycle))
-        if tool_is_pen(active_tool):
+        if tool_is_island(active_tool):
+            # Closed-loop island pen (spec 070): LMB places, RMB drags, DEL drops
+            # the last, clicking the first vert closes + commits.
+            chord(layout, ("MOUSE_LMB", "place vert"))
+            chord(layout, ("MOUSE_RMB", "drag vert"))
+            chord(layout, ("EVENT_X", "/"), ("EVENT_Z", "axis lock"))
+            chord(layout, ("MOUSE_MMB", "/ 0-9 = subdiv"))
+            chord(layout, ("EVENT_CTRL", "+"), ("EVENT_Z", "/ Del = last vert"))
+            chord(layout, ("", "click 1st vert = close"))
+        elif tool_is_pen(active_tool):
             chord(layout, ("MOUSE_LMB", "vert / drag=draw"))
             chord(layout, ("EVENT_X", "/"), ("EVENT_Z", "axis lock"))
             chord(layout, ("MOUSE_MMB", "/ 0-9 = subdiv"))

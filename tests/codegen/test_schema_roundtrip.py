@@ -85,9 +85,9 @@ def test_committed_schemas_match_emit(tmp_path: Path) -> None:
 def test_pydantic_model_accepts_every_committed_fixture() -> None:
     """Every shipped fixture is a valid ProscenioDocument."""
     fixtures = _fixture_paths()
-    assert fixtures, (
-        "expected at least one .expected.proscenio under examples/generated/"
-    )
+    assert (
+        fixtures
+    ), "expected at least one .expected.proscenio under examples/generated/"
     for fixture in fixtures:
         payload = json.loads(fixture.read_text(encoding="utf-8"))
         # raises ValidationError on shape mismatch (the assertion)
@@ -128,9 +128,9 @@ def test_model_dump_json_reproduces_goldens(fixture_path: Path) -> None:
 
 def test_proscenio_schema_on_disk_matches_models() -> None:
     """The on-disk .proscenio schema dump matches the in-memory build."""
-    assert PROSCENIO_SCHEMA.is_file(), (
-        "Run `python -m proscenio_codegen schemas` to regenerate."
-    )
+    assert (
+        PROSCENIO_SCHEMA.is_file()
+    ), "Run `python -m proscenio_codegen schemas` to regenerate."
     on_disk = json.loads(PROSCENIO_SCHEMA.read_text(encoding="utf-8"))
     in_memory = build_proscenio_schema()
     assert on_disk == in_memory, (
@@ -141,9 +141,9 @@ def test_proscenio_schema_on_disk_matches_models() -> None:
 
 def test_psd_manifest_schema_on_disk_matches_models() -> None:
     """The on-disk PSD manifest schema dump matches the in-memory build."""
-    assert PSD_MANIFEST_SCHEMA.is_file(), (
-        "Run `python -m proscenio_codegen schemas` to regenerate."
-    )
+    assert (
+        PSD_MANIFEST_SCHEMA.is_file()
+    ), "Run `python -m proscenio_codegen schemas` to regenerate."
     on_disk = json.loads(PSD_MANIFEST_SCHEMA.read_text(encoding="utf-8"))
     in_memory = build_psd_manifest_schema()
     assert on_disk == in_memory, (

@@ -158,6 +158,30 @@ class ProscenioSkinningProps(PropertyGroup):
         ],
         default="SIMPLE",
     )
+    # Spec 070 C1: the standalone Manual Mesh modal carries its own interior-mode
+    # toggle so it is independent of the automesh trace fields (a concept apart).
+    manual_interior_mode: EnumProperty(  # type: ignore[valid-type]
+        name="Interior mode",
+        description=(
+            "How the hand-drawn mesh interior is filled. SIMPLE triangulates only "
+            "the contour you draw plus your interior verts (sparse, Spine-like). "
+            "DENSE adds the uniform interior grid (more deformable triangles)."
+        ),
+        items=[
+            (
+                "SIMPLE",
+                "Simple (sparse, Spine-like)",
+                "Constrained Delaunay over the drawn contour + your verts only; "
+                "no automatic interior fill",
+            ),
+            (
+                "DENSE",
+                "Dense (uniform fill)",
+                "Uniform interior grid over the drawn contour (interior spacing)",
+            ),
+        ],
+        default="SIMPLE",
+    )
     automesh_interior_spacing: FloatProperty(  # type: ignore[valid-type]
         name="Interior spacing",
         description=(

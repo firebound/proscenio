@@ -135,11 +135,18 @@ def _install_mathutils_stub() -> None:
         def __matmul__(self, other: object) -> object:
             if isinstance(other, Vector):
                 v = (other.x, other.y, other.z)
-                return Vector(tuple(sum(self.rows[i][j] * v[j] for j in range(3)) for i in range(3)))
+                return Vector(
+                    tuple(
+                        sum(self.rows[i][j] * v[j] for j in range(3)) for i in range(3)
+                    )
+                )
             if isinstance(other, Matrix):
                 return Matrix(
                     [
-                        [sum(self.rows[i][k] * other.rows[k][j] for k in range(3)) for j in range(3)]
+                        [
+                            sum(self.rows[i][k] * other.rows[k][j] for k in range(3))
+                            for j in range(3)
+                        ]
                         for i in range(3)
                     ]
                 )
@@ -170,14 +177,18 @@ def _install_mathutils_stub() -> None:
         """Euler angles with ``to_matrix``; only the ``XYZ`` order is supported
         (the only order the writer constructs)."""
 
-        def __init__(self, angles: object = (0.0, 0.0, 0.0), order: str = "XYZ") -> None:
+        def __init__(
+            self, angles: object = (0.0, 0.0, 0.0), order: str = "XYZ"
+        ) -> None:
             a = list(angles)  # type: ignore[call-overload]
             self.x, self.y, self.z = float(a[0]), float(a[1]), float(a[2])
             self.order = order
 
         def to_matrix(self) -> Matrix:
             if self.order != "XYZ":
-                raise NotImplementedError(f"stub Euler supports XYZ only, got {self.order!r}")
+                raise NotImplementedError(
+                    f"stub Euler supports XYZ only, got {self.order!r}"
+                )
             # Blender composes order "XYZ" as Rz @ Ry @ Rx (verified vs Blender 5.1).
             return _rot_z(self.z) @ _rot_y(self.y) @ _rot_x(self.x)  # type: ignore[return-value]
 

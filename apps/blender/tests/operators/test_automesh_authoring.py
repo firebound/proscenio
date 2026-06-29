@@ -75,14 +75,18 @@ def test_outer_strokes_summary_acknowledges_committed_cuts(automesh_fixture):
     )
 
     assert _outer_strokes_summary([]) == ""
-    assert _outer_strokes_summary([{"kind": "cut", "points": []}]) == "1 cut"
+    assert _outer_strokes_summary([{"kind": "cut", "points": []}]) == "1 knife"
     assert _outer_strokes_summary([{"kind": "stroke", "points": []}]) == "1 extend"
+    assert _outer_strokes_summary([{"kind": "add", "points": []}]) == "1 add"
+    assert _outer_strokes_summary([{"kind": "remove", "points": []}]) == "1 remove"
+    # Display order is add, knife, remove, extend; knife pluralizes to knives.
     mixed = [
-        {"kind": "stroke", "points": []},
+        {"kind": "add", "points": []},
         {"kind": "cut", "points": []},
         {"kind": "cut", "points": []},
+        {"kind": "remove", "points": []},
     ]
-    assert _outer_strokes_summary(mixed) == "1 extend, 2 cuts"
+    assert _outer_strokes_summary(mixed) == "1 add, 2 knives, 1 remove"
 
 
 def test_density_under_bones_defaults_off(automesh_fixture):
@@ -866,3 +870,284 @@ def test_apply_mesh_cut_to_alpha_severs_to_boundary(automesh_fixture):
         f"cut-to-alpha did not carve a corridor: baseline={baseline['total_faces']} "
         f"cut={cut['total_faces']}"
     )
+
+
+# --- Draw with vertices (spec 070): manual contour reaches APPLY + preview ---
+
+
+def _simple_params():
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageParams,
+    )
+
+    return StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+        interior_mode="SIMPLE",
+    )
+
+
+# Small square centred on the palm: the hand sits at world X=-3.0 and mesh-local
+# origin maps there, so this is a 0.4-world-unit box at local [-0.2, 0.2] on both
+# axes - well inside the opaque palm and far smaller than the full silhouette.
+_MANUAL_SQUARE = [(-3.2, -0.2), (-2.8, -0.2), (-2.8, 0.2), (-3.2, 0.2)]
+
+
+def test_apply_mesh_manual_outer_overrides_alpha_trace(automesh_fixture):
+    """A hand-authored outer (Draw with vertices) replaces the alpha trace at
+    APPLY: the mesh matches the small manual square, NOT the full hand
+    silhouette. Without the outer_is_manual plumbing the pipeline re-traced the
+    alpha over the manual ring, so this guards the core of spec 070."""
+    obj = _activate("hand")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+    )
+
+    params = _simple_params()
+    apply_mesh(obj, image, StageOutput(), params, None)
+    auto_extent = max(abs(v.co.x) for v in obj.data.vertices)
+
+    manual = apply_mesh(
+        obj,
+        image,
+        StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True),
+        params,
+        None,
+    )
+    assert manual["total_faces"] >= 1
+    max_x = max(abs(v.co.x) for v in obj.data.vertices)
+    max_z = max(abs(v.co.z) for v in obj.data.vertices)
+    # Mesh confined to the manual square (small float epsilon), not the hand.
+    assert max_x < 0.3, f"manual mesh wider than the authored square: {max_x}"
+    assert max_z < 0.3, f"manual mesh taller than the authored square: {max_z}"
+    # And distinctly smaller than the alpha-traced silhouette.
+    assert (
+        max_x < auto_extent
+    ), f"manual outer did not override the alpha trace: manual={max_x} auto={auto_extent}"
+
+
+def test_triangulation_preview_honors_manual_outer(automesh_fixture):
+    """The SIMPLE preview (drawn live while Draw with vertices draws) honors a
+    hand-authored outer: its edges trace the small manual square, not the full
+    hand silhouette. Shares the _build_authoring_mesh outer path with APPLY."""
+    obj = _activate("hand")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        compute_triangulation_preview,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+    )
+
+    edges = compute_triangulation_preview(
+        obj,
+        image,
+        StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True),
+        _simple_params(),
+    )
+    assert len(edges) >= 3  # a square triangulates to >= a couple of edges
+    xs = [c[0] for edge in edges for c in edge]
+    zs = [c[1] for edge in edges for c in edge]
+    # Preview endpoints are WORLD XZ; confined to the manual square's world box.
+    assert min(xs) >= -3.3 and max(xs) <= -2.7, f"preview x out of square: {min(xs)}..{max(xs)}"
+    assert min(zs) >= -0.3 and max(zs) <= 0.3, f"preview z out of square: {min(zs)}..{max(zs)}"
+
+
+def test_manual_outer_dense_fills_more_than_simple(automesh_fixture):
+    """Spec 070 C1: the same hand-drawn contour applied DENSE adds the uniform
+    interior grid, so the mesh has strictly more verts than SIMPLE."""
+    from dataclasses import replace
+
+    obj = _activate("hand")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+    )
+
+    out = StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True)
+    apply_mesh(obj, image, out, _simple_params(), None)
+    simple_verts = len(obj.data.vertices)
+    apply_mesh(obj, image, out, replace(_simple_params(), interior_mode="DENSE"), None)
+    dense_verts = len(obj.data.vertices)
+    assert dense_verts > simple_verts, f"dense={dense_verts} not > simple={simple_verts}"
+
+
+def test_mesh_preview_edges_works_for_dense_manual(automesh_fixture):
+    """Spec 070 C1: the mode-agnostic preview helper returns a wireframe for
+    DENSE too, where the SIMPLE-only wrapper returns []."""
+    from dataclasses import replace
+
+    obj = _activate("hand")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        compute_mesh_preview_edges,
+        compute_triangulation_preview,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+    )
+
+    out = StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True)
+    dense = replace(_simple_params(), interior_mode="DENSE")
+    assert compute_triangulation_preview(obj, image, out, dense) == []
+    assert len(compute_mesh_preview_edges(obj, image, out, dense)) >= 3
+
+
+def test_manual_outer_with_interior_fold_adds_geometry(automesh_fixture):
+    """Spec 070 C3: a hand-drawn contour plus an interior fold stroke applies with
+    the fold's verts present - more than the bare contour."""
+    obj = _activate("hand")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+    )
+
+    apply_mesh(
+        obj,
+        image,
+        StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True),
+        _simple_params(),
+        None,
+    )
+    bare = len(obj.data.vertices)
+    fold = {"kind": "stroke", "points": [(-3.1, -0.05), (-2.9, 0.05)]}  # inside the square
+    apply_mesh(
+        obj,
+        image,
+        StageOutput(outer=list(_MANUAL_SQUARE), outer_is_manual=True, user_strokes=[fold]),
+        _simple_params(),
+        None,
+    )
+    assert len(obj.data.vertices) > bare
+
+
+# --- Automesh Interactive island silhouette control (spec 070, Part A) ---
+
+
+def test_apply_mesh_add_island_grows_silhouette(automesh_fixture):
+    """An ADD island (kind='add', spec 070) is UNIONED into the alpha mask before
+    tracing, so an island poking past the right edge grows the silhouette
+    rightward (a merge, not a grafted detour). Proven by the mesh's max local-x
+    extending beyond the bare trace toward the island."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+    )
+    # Closed box straddling the hand's right edge (~world X=-2.5) and poking out
+    # to X=-1.5 - the part outside the silhouette grows it (mesh-local +1.5).
+    add_output = StageOutput(
+        user_outer_strokes=[
+            {
+                "kind": "add",
+                "points": [(-2.6, 0.4), (-1.5, 0.4), (-1.5, -0.4), (-2.6, -0.4)],
+            }
+        ]
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    apply_mesh(obj, image, StageOutput(), params, armature)
+    baseline_max_x = max(v.co.x for v in obj.data.vertices)
+    grown = apply_mesh(obj, image, add_output, params, armature)
+    grown_max_x = max(v.co.x for v in obj.data.vertices)
+    assert grown["total_faces"] > 0
+    assert grown_max_x > baseline_max_x + 0.1, (
+        f"ADD island did not grow the silhouette: baseline max-x={baseline_max_x:.3f} "
+        f"grown max-x={grown_max_x:.3f}"
+    )
+
+
+def test_apply_mesh_remove_island_carves_hole(automesh_fixture):
+    """A REMOVE island (kind='remove', spec 070) is a closed loop routed
+    directly to holes_world - it carves a hole (interior boundary edges appear)
+    without a corridor offset."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    params = StageParams(
+        resolution=0.25,
+        alpha_threshold=1,
+        margin_pixels=0,
+        contour_vertices=64,
+        inner_loop_count=0,
+        inner_loop_spacing=0.15,
+        interior_spacing=0.1,
+        bone_radius=0.5,
+        bone_factor=2,
+        interior_mode="DENSE",
+    )
+    # Closed box well inside the palm centre (hand at world X=-3.0).
+    remove_output = StageOutput(
+        user_outer_strokes=[
+            {
+                "kind": "remove",
+                "points": [(-3.15, 0.15), (-2.85, 0.15), (-2.85, -0.15), (-3.15, -0.15)],
+            }
+        ]
+    )
+    armature = bpy.data.objects["automesh.hand_rig"]
+    result = apply_mesh(obj, image, remove_output, params, armature)
+    assert result["total_verts"] > 0
+    assert result["total_faces"] > 0
+    boundary = sum(
+        1
+        for edge in obj.data.edges
+        if len([p for p in obj.data.polygons if edge.key in p.edge_keys]) == 1
+    )
+    assert boundary > 0, "remove island produced no interior boundary edges"
+
+
+def test_automesh_step_operator_registered_with_direction(automesh_fixture):
+    """The panel Back/Next buttons drive proscenio.automesh_step; its direction
+    prop must register (the future-annotations bpy.props path), and its poll is
+    False when no modal is running (nothing to step)."""
+    rna = bpy.ops.proscenio.automesh_step.get_rna_type()
+    assert "direction" in rna.properties
+    assert {item.identifier for item in rna.properties["direction"].enum_items} == {
+        "ADVANCE",
+        "RETREAT",
+    }
+    assert bpy.ops.proscenio.automesh_step.poll() is False

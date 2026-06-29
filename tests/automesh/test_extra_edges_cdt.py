@@ -1,4 +1,5 @@
 """Pure tests for CDT extra_edges threading and the silhouette pre-filter."""
+
 from __future__ import annotations
 
 import sys
@@ -82,10 +83,10 @@ def test_build_stroke_node_indices_drops_outside_vert_no_edge_across_gap():
     outer_contour = _OUTER
     # Stroke verts in local space (no snap - far from contour edges)
     pts_local = [
-        (0.2, 0.5),   # A - inside - index interior_base_index + 0
-        (2.0, 2.0),   # B - OUTSIDE -> dropped
-        (0.6, 0.5),   # C - inside - index interior_base_index + 1
-        (0.8, 0.5),   # D - inside - index interior_base_index + 2
+        (0.2, 0.5),  # A - inside - index interior_base_index + 0
+        (2.0, 2.0),  # B - OUTSIDE -> dropped
+        (0.6, 0.5),  # C - inside - index interior_base_index + 1
+        (0.8, 0.5),  # D - inside - index interior_base_index + 2
     ]
     extras_local: list = []
     node_indices, dropped = _build_stroke_node_indices(

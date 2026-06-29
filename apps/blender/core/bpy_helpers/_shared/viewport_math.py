@@ -160,6 +160,29 @@ def find_window_region(area: bpy.types.Area) -> bpy.types.Region | None:
     return None
 
 
+def event_in_canvas(
+    event: bpy.types.Event,
+    window_region: bpy.types.Region | None,
+    area: bpy.types.Area | None,
+) -> bool:
+    """True when the cursor is over the invoke viewport canvas (not an overlay).
+
+    A modal keeps ``context.region`` at the invoke region (the N-panel when fired
+    from a button), so mouse events are filtered by window coords against the
+    resolved WINDOW rect, then the non-WINDOW overlays (N-panel / header / tools)
+    are excluded. Lets a modal leave panel clicks / scrolls to the UI mid-flight
+    instead of eating them. Missing region/area -> True (do not over-filter).
+    """
+    if window_region is None or area is None:
+        return True
+    x, y = event.mouse_x, event.mouse_y
+    if not point_in_region_rect(x, y, window_region):
+        return False
+    return not any(
+        region.type != "WINDOW" and point_in_region_rect(x, y, region) for region in area.regions
+    )
+
+
 def view_pose_equal(
     loc: Vector,
     rot: Quaternion,

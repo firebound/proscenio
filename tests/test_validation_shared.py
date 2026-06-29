@@ -54,7 +54,9 @@ def test_read_int_default_when_absent() -> None:
 
 def test_armature_bone_names_collects_the_set() -> None:
     arm = SimpleNamespace(
-        data=SimpleNamespace(bones=[SimpleNamespace(name="root"), SimpleNamespace(name="arm")]),
+        data=SimpleNamespace(
+            bones=[SimpleNamespace(name="root"), SimpleNamespace(name="arm")]
+        ),
     )
     assert armature_bone_names(arm) == {"root", "arm"}
 
@@ -63,7 +65,9 @@ def test_armature_bone_names_empty_when_malformed() -> None:
     assert armature_bone_names(SimpleNamespace(data=None)) == set()
 
 
-def test_abspath_or_none_returns_plain_path_without_bpy(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_abspath_or_none_returns_plain_path_without_bpy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setitem(sys.modules, "bpy", None)
     assert abspath_or_none("textures/atlas.png") == "textures/atlas.png"
 

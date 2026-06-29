@@ -369,6 +369,6 @@ class TestExtractContours:
         """
         alpha = _donut_alpha(12, hole_inset=4)
         _outer, _inner, holes = extract_contours(alpha, threshold=0, margin_px=0)
-        assert len(holes) == 1, (
-            f"genuine enclosed hole not detected after B3 fix - got {len(holes)}"
-        )
+        assert (
+            len(holes) == 1
+        ), f"genuine enclosed hole not detected after B3 fix - got {len(holes)}"

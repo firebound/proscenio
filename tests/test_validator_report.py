@@ -48,11 +48,15 @@ def _payload(*, failures: tuple[str, ...], with_leaks: bool) -> SpritePayload:
         ),
         hole_bleed_count=0,
     )
-    return SpritePayload(metrics=metrics, invariants=Invariants(failures=failures, warnings=("minor",)))
+    return SpritePayload(
+        metrics=metrics, invariants=Invariants(failures=failures, warnings=("minor",))
+    )
 
 
 def test_print_report_passing_returns_zero() -> None:
-    report = ValidationReport(sprites={"blob": _payload(failures=(), with_leaks=False)}, failures=[])
+    report = ValidationReport(
+        sprites={"blob": _payload(failures=(), with_leaks=False)}, failures=[]
+    )
     assert print_report(report) == 0
 
 
@@ -65,7 +69,9 @@ def test_print_report_failing_returns_failure_count() -> None:
 
 
 def test_write_json_report_writes_valid_json(tmp_path: Path) -> None:
-    report = ValidationReport(sprites={"blob": _payload(failures=(), with_leaks=True)}, failures=[])
+    report = ValidationReport(
+        sprites={"blob": _payload(failures=(), with_leaks=True)}, failures=[]
+    )
     out = tmp_path / "nested" / "report.json"
     write_json_report(report, out)
     assert out.exists()

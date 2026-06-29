@@ -18,6 +18,7 @@ class FeatureStatus(Enum):
 
     GODOT_READY = "godot-ready"
     BLENDER_ONLY = "blender-only"
+    EXPERIMENTAL = "experimental"
     PLANNED = "planned"
     OUT_OF_SCOPE = "out-of-scope"
 
@@ -48,8 +49,16 @@ STATUS_BADGES: dict[FeatureStatus, StatusBadge] = {
             "does NOT alter the .proscenio export."
         ),
     ),
-    FeatureStatus.PLANNED: StatusBadge(
+    FeatureStatus.EXPERIMENTAL: StatusBadge(
         icon="EXPERIMENTAL",
+        short_label="experimental",
+        tooltip=(
+            "Implemented but under active development - the surface and its output "
+            "may still change. Usable today; test before relying on it."
+        ),
+    ),
+    FeatureStatus.PLANNED: StatusBadge(
+        icon="TIME",
         short_label="planned",
         tooltip=("Designed but not yet implemented. The UI surface exists today as a placeholder."),
     ),
@@ -108,7 +117,8 @@ FEATURE_STATUS: dict[str, FeatureStatus] = {
     "pose_mode": FeatureStatus.BLENDER_ONLY,
     "mesh_generation": FeatureStatus.BLENDER_ONLY,
     "automesh_alpha": FeatureStatus.BLENDER_ONLY,
-    "automesh_interactive": FeatureStatus.BLENDER_ONLY,
+    "automesh_interactive": FeatureStatus.EXPERIMENTAL,
+    "manual_mesh": FeatureStatus.BLENDER_ONLY,
     "debug_pipeline": FeatureStatus.BLENDER_ONLY,
     "weight_paint": FeatureStatus.GODOT_READY,
     "bind": FeatureStatus.GODOT_READY,

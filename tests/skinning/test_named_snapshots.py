@@ -15,11 +15,15 @@ from core.skinning.sidecar_schema import (
 
 
 def _entry(weight: float) -> SidecarEntry:
-    return SidecarEntry(uv_anchor=(0.0, 0.0), weights={"bone": weight}, provenance="user_paint")
+    return SidecarEntry(
+        uv_anchor=(0.0, 0.0), weights={"bone": weight}, provenance="user_paint"
+    )
 
 
 def _sidecar() -> WeightSidecar:
-    return WeightSidecar(version=1, vertex_group_names=["bone"], mesh_topology_hash="h", entries=[])
+    return WeightSidecar(
+        version=1, vertex_group_names=["bone"], mesh_topology_hash="h", entries=[]
+    )
 
 
 def test_add_named_snapshot_appends() -> None:
@@ -73,7 +77,10 @@ def test_snapshots_survive_json_round_trip() -> None:
 
     restored = from_json(to_json(sidecar))
 
-    assert [(s.name, s.kind) for s in restored.snapshots] == [("pose-a", "manual"), ("auto-0", "auto")]
+    assert [(s.name, s.kind) for s in restored.snapshots] == [
+        ("pose-a", "manual"),
+        ("auto-0", "auto"),
+    ]
     assert restored.snapshots[0].entries[0].weights == {"bone": 0.4}
 
 

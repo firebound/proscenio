@@ -54,7 +54,9 @@ def test_load_preloads_points_and_subdivs_for_reedit():
     assert pen.edge_subdivs == [1, 1, 0]
     assert pen._active is True
     ring = pen.ring()
-    assert ring is not None and len(ring) == len(pts) + 2  # both open edges subdivided once
+    assert (
+        ring is not None and len(ring) == len(pts) + 2
+    )  # both open edges subdivided once
 
 
 def test_close_enters_edit_phase_and_pads_subdivs():

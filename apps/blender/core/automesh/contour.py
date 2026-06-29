@@ -13,6 +13,7 @@ Proscenio targets (alpha grids downscaled to <=256x256 before tracing).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 
 AlphaGrid = list[list[int]]
@@ -292,22 +293,26 @@ def fill_polygon_into_mask(mask: BinaryMask, polygon: list[tuple[float, float]])
     y_hi = min(height - 1, int(max(ys)) + 1)
     n = len(polygon)
     for y in range(y_lo, y_hi + 1):
+        # Sample at the cell center (y + 0.5), and span only cells whose center
+        # (x + 0.5) the polygon encloses - so the docstring's "cell center"
+        # contract holds (a span x in [2, 6) does not paint the x=6 cell).
+        scan_y = y + 0.5
         crossings: list[float] = []
         prev = n - 1
         for i in range(n):
             yi = polygon[i][1]
             yj = polygon[prev][1]
-            # Edge straddles the scanline y (half-open so shared verts count once).
-            if (yi <= y < yj) or (yj <= y < yi):
+            # Edge straddles the scanline (half-open so shared verts count once).
+            if (yi <= scan_y < yj) or (yj <= scan_y < yi):
                 xi = polygon[i][0]
                 xj = polygon[prev][0]
-                crossings.append(xi + (y - yi) / (yj - yi) * (xj - xi))
+                crossings.append(xi + (scan_y - yi) / (yj - yi) * (xj - xi))
             prev = i
         crossings.sort()
+        row = mask[y]
         for k in range(0, len(crossings) - 1, 2):
-            x_start = max(0, round(crossings[k]))
-            x_end = min(width - 1, round(crossings[k + 1]))
-            row = mask[y]
+            x_start = max(0, math.ceil(crossings[k] - 0.5))
+            x_end = min(width - 1, math.floor(crossings[k + 1] - 0.5))
             for x in range(x_start, x_end + 1):
                 row[x] = True
 
@@ -330,11 +335,35 @@ def extract_outer_contour_with_islands(
     if dilate_px > 0:
         mask = dilate(mask, dilate_px)
     for polygon in island_polygons:
-        fill_polygon_into_mask(mask, polygon)
+        _union_island_if_overlapping(mask, polygon)
     seed = find_first_boundary(mask)
     if seed is None:
         raise ValueError(_NO_FOREGROUND_MSG)
     return trace_contour(mask, seed)
+
+
+def _union_island_if_overlapping(mask: BinaryMask, polygon: list[tuple[float, float]]) -> None:
+    """Union an ADD island into ``mask`` only when it overlaps the existing
+    foreground (spec 070: ADD must overlap). ``trace_contour`` walks one connected
+    component, so a fully detached island painted directly could be traced instead
+    of the real silhouette; drop it. Painted into a scratch mask first, then ORed
+    in only on overlap.
+    """
+    if len(polygon) < 3 or not mask or not mask[0]:
+        return
+    height = len(mask)
+    width = len(mask[0])
+    island = [[False] * width for _ in range(height)]
+    fill_polygon_into_mask(island, polygon)
+    overlaps = any(mask[y][x] and island[y][x] for y in range(height) for x in range(width))
+    if not overlaps:
+        return
+    for y in range(height):
+        mask_row = mask[y]
+        island_row = island[y]
+        for x in range(width):
+            if island_row[x]:
+                mask_row[x] = True
 
 
 def extract_inner_contour(

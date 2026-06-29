@@ -919,7 +919,18 @@ def _hole_loop_for_stroke(
     stroke offset into a corridor lens. Returns (loop_or_None, dropped_count)."""
     if stroke["kind"] == "remove":
         loop = [project(p) for p in stroke["points"]]
-        return (loop, 0) if len(loop) >= 3 else (None, 0)
+        if len(loop) < 3:
+            return None, 0
+        # Drop a REMOVE island that does not sit inside the fill region (outside the
+        # outer, or inside the inner hole): routing it as a CDT hole otherwise feeds
+        # an invalid loop. Mirror the cut path's drop-and-warn (dropped_count > 0).
+        cx = sum(p[0] for p in loop) / len(loop)
+        cz = sum(p[1] for p in loop) / len(loop)
+        centroid = (cx, cz)
+        inside = point_in_polygon(centroid, outer_world_local) and not (
+            inner_world_local is not None and point_in_polygon(centroid, inner_world_local)
+        )
+        return (loop, 0) if inside else (None, len(loop))
     return _cut_stroke_to_hole_loop(
         stroke, project, outer_world_local, inner_world_local, holes_world_local, cut_half
     )

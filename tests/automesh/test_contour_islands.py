@@ -71,6 +71,17 @@ def test_island_overlapping_silhouette_merges_into_one_larger_contour():
     assert len(merged) >= len(bare)
 
 
+def test_detached_island_is_dropped_not_traced():
+    """A fully detached ADD island is ignored (spec 070: ADD must overlap). Without
+    the connectivity guard trace_contour could walk the detached island instead of
+    the real silhouette; the merged contour must equal the bare one."""
+    alpha = _solid_block_alpha(40, 40, 4, 14, 4, 14)  # block top-left
+    bare = extract_outer_contour(alpha, 127, 0)
+    detached = [(25.0, 25.0), (35.0, 25.0), (35.0, 35.0), (25.0, 35.0)]  # far away
+    merged = extract_outer_contour_with_islands(alpha, 127, 0, [detached])
+    assert merged == bare
+
+
 def test_no_islands_matches_plain_extract():
     alpha = _solid_block_alpha(30, 30, 4, 18, 6, 22)
     assert extract_outer_contour_with_islands(

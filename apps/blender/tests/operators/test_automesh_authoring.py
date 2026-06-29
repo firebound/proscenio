@@ -1129,15 +1129,27 @@ def test_apply_mesh_remove_island_carves_hole(automesh_fixture):
         ]
     )
     armature = bpy.data.objects["automesh.hand_rig"]
+
+    def _boundary_edges(mesh_obj) -> int:
+        # Edges bordering exactly one face = the mesh boundary. A carved hole adds
+        # its own boundary loop, so a real REMOVE raises this above the no-island
+        # baseline (the bare silhouette already has boundary edges, so > 0 alone
+        # would pass even if the island were ignored).
+        return sum(
+            1
+            for edge in mesh_obj.data.edges
+            if sum(1 for p in mesh_obj.data.polygons if edge.key in p.edge_keys) == 1
+        )
+
+    apply_mesh(obj, image, StageOutput(), params, armature)  # baseline, no island
+    baseline_boundary = _boundary_edges(obj)
     result = apply_mesh(obj, image, remove_output, params, armature)
     assert result["total_verts"] > 0
     assert result["total_faces"] > 0
-    boundary = sum(
-        1
-        for edge in obj.data.edges
-        if len([p for p in obj.data.polygons if edge.key in p.edge_keys]) == 1
-    )
-    assert boundary > 0, "remove island produced no interior boundary edges"
+    carved_boundary = _boundary_edges(obj)
+    assert (
+        carved_boundary > baseline_boundary
+    ), "remove island carved no extra boundary loop (hole not applied)"
 
 
 def test_automesh_step_operator_registered_with_direction(automesh_fixture):

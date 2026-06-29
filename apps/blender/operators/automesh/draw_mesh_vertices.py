@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import replace
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, cast
 
 import bpy
 from mathutils import Vector
@@ -509,6 +509,15 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
             > self._DRAG_THRESHOLD_PX**2
         )
         if moved and len(path) >= 2:  # free-draw drag (either tool): a fold line
+            # The whole path must stay inside the contour, not just the release
+            # point - a stroke that leaves and re-enters would feed out-of-contour
+            # constraints into the CDT. Drop it with the warning if any vert is out.
+            contour = list(self._pen.points)
+            if any(not point_in_polygon(p, contour) for p in path):
+                self._tooltip_text_ref[0] = "fold left the contour - keep it inside"
+                self._tooltip_color_ref[0] = _TOOLTIP_BG_WARN
+                self._tag_redraw(context)
+                return {"RUNNING_MODAL"}
             self._user_strokes.append(
                 {"kind": "stroke", "points": _downsample(path, self._INTERIOR_MAX_PATH)}
             )
@@ -581,6 +590,10 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
                 self._pen.live_preview["points"] = list(self._pen.points)
             return
         _, si, pi = target
+        # An interior vert must stay inside the contour; ignore a drag that would
+        # push it out (the contour verts themselves, the "outer" branch, move free).
+        if not point_in_polygon(world, list(self._pen.points)):
+            return
         if 0 <= si < len(self._user_strokes):
             pts = self._user_strokes[si]["points"]
             if 0 <= pi < len(pts):
@@ -686,10 +699,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         """Scene params with the interior mode taken from the Manual Mesh panel's
         own ``manual_interior_mode`` toggle (spec 070 C1) - independent of the
         automesh trace fields."""
-        mode = cast(
-            'Literal["SIMPLE", "DENSE"]',
-            context.scene.proscenio.skinning.manual_interior_mode,
-        )
+        mode = context.scene.proscenio.skinning.manual_interior_mode
         return cast("StageParams", replace(_snapshot_params(context), interior_mode=mode))
 
     def _register_overlay(self) -> OverlayHandles:
@@ -703,6 +713,12 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
             interior_live_ref=self._interior_live,
             delete_hover_ref=self._delete_hover,
         )
+
+    def cancel(self, context: bpy.types.Context) -> None:
+        # Blender calls cancel() when the modal is killed externally (window close,
+        # file load). Without this the modal guard stays stuck and both authoring
+        # polls fail until reload. Mirror the user exit path.
+        self._finish(context, cancel=True)
 
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
         try:

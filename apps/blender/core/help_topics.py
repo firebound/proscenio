@@ -572,8 +572,9 @@ HELP_TOPICS: dict[str, HelpTopic] = {
                 _SECTION_WHERE,
                 "Use this instead of Automesh when the alpha trace cannot find the shape"
                 " (faint edges, overlapping art) or you want exact control. The automesh"
-                " trace fields do not apply here - it is the simple triangulation of your"
-                " contour.",
+                " trace fields do not apply here; its own Interior mode toggle picks SIMPLE"
+                " (just your contour) or DENSE (a uniform interior fill), and Tab adds"
+                " interior point / fold detail inside the shape.",
             ),
         ),
     ),

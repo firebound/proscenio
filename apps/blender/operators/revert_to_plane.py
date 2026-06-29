@@ -103,7 +103,7 @@ class PROSCENIO_OT_revert_to_plane(bpy.types.Operator):
         col.label(text="- the automesh / hand-drawn geometry")
         col.label(text="- all vertex groups + bound weights")
         col.label(text="- the authoring strokes")
-        layout.label(text="The image + placement are kept. This cannot be undone.", icon="INFO")
+        layout.label(text="The image + placement are kept. Ctrl+Z undoes it.", icon="INFO")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object

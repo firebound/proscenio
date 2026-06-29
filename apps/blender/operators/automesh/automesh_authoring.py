@@ -1511,6 +1511,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         skinning = context.scene.proscenio.skinning
         return float(skinning.automesh_interior_spacing)
 
+    def cancel(self, context: bpy.types.Context) -> None:
+        # Blender calls cancel() when the modal is killed externally (window close,
+        # file load). Without this the guard set by mark_running stays stuck active
+        # and both authoring polls fail until reload. Mirror the user exit path.
+        self._finish(context, cancel=True)
+
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
         try:
             unregister_overlay(self._handles)

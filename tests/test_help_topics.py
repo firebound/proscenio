@@ -94,9 +94,9 @@ def test_every_topic_has_required_fields() -> None:
             assert isinstance(section.body, str), f"non-str body in {topic_id!r}"
             assert section.body.strip(), f"empty section body in {topic_id!r}"
             for item in section.body.split("\n"):
-                assert (
-                    item.strip()
-                ), f"blank list item in {topic_id!r}/{section.heading!r}"
+                assert item.strip(), (
+                    f"blank list item in {topic_id!r}/{section.heading!r}"
+                )
 
 
 def test_panel_topics_are_one_shallow_overview() -> None:
@@ -108,9 +108,9 @@ def test_panel_topics_are_one_shallow_overview() -> None:
     """
     for topic_id in PANEL_TOPIC_IDS:
         topic = HELP_TOPICS[topic_id]
-        assert (
-            topic.sections == ()
-        ), f"panel topic {topic_id!r} must have sections == () (Decision 2A)"
+        assert topic.sections == (), (
+            f"panel topic {topic_id!r} must have sections == () (Decision 2A)"
+        )
         assert len(topic.summary) <= PANEL_SUMMARY_BUDGET, (
             f"panel topic {topic_id!r} summary is {len(topic.summary)} chars, "
             f"over the {PANEL_SUMMARY_BUDGET}-char overview budget"
@@ -440,9 +440,9 @@ def test_doc_pages_on_disk_equal_the_locked_panel_set() -> None:
         f"extra={sorted(on_disk - set(PANEL_PAGES))} "
         f"missing={sorted(set(PANEL_PAGES) - on_disk)}"
     )
-    assert not (
-        DOCS_DIR / "09-validation.md"
-    ).exists(), "09-validation.md must be folded into pipeline.md#validate (spec 064)"
+    assert not (DOCS_DIR / "09-validation.md").exists(), (
+        "09-validation.md must be folded into pipeline.md#validate (spec 064)"
+    )
 
 
 def test_mirror_tables_partition_the_doc_paths() -> None:
@@ -458,9 +458,9 @@ def test_mirror_tables_partition_the_doc_paths() -> None:
         | (panel_topics & set(ANCHOR_TOPICS))
         | (set(SUBPANEL_SECTIONS) & set(ANCHOR_TOPICS))
     )
-    assert (
-        not overlaps
-    ), f"topics classified in more than one mirror table: {sorted(overlaps)}"
+    assert not overlaps, (
+        f"topics classified in more than one mirror table: {sorted(overlaps)}"
+    )
     assert classified == set(_DOC_PATHS), (
         f"mirror tables disagree with _DOC_PATHS: "
         f"only_in_tables={sorted(classified - set(_DOC_PATHS))} "
@@ -476,13 +476,13 @@ def test_every_doc_path_matches_its_mirror_classification() -> None:
     for page, topic in PANEL_PAGES.items():
         if topic is None:
             continue
-        assert (
-            _DOC_PATHS[topic] == page
-        ), f"{topic}: panel topic must map to bare {page!r}"
+        assert _DOC_PATHS[topic] == page, (
+            f"{topic}: panel topic must map to bare {page!r}"
+        )
     for topic, (page, anchor) in {**SUBPANEL_SECTIONS, **ANCHOR_TOPICS}.items():
-        assert (
-            _DOC_PATHS[topic] == f"{page}#{anchor}"
-        ), f"{topic}: must map to {page}#{anchor!r}"
+        assert _DOC_PATHS[topic] == f"{page}#{anchor}", (
+            f"{topic}: must map to {page}#{anchor!r}"
+        )
 
 
 def test_every_doc_path_resolves_to_a_page_and_anchor_on_disk() -> None:
@@ -490,9 +490,9 @@ def test_every_doc_path_resolves_to_a_page_and_anchor_on_disk() -> None:
     ``#anchor``, a real heading on that page."""
     for topic, rel in _DOC_PATHS.items():
         page, _, anchor = rel.partition("#")
-        assert page in {
-            _doc_page_slug(p) for p in DOCS_DIR.glob("*.md")
-        }, f"{topic}: doc page {page!r} is missing"
+        assert page in {_doc_page_slug(p) for p in DOCS_DIR.glob("*.md")}, (
+            f"{topic}: doc page {page!r} is missing"
+        )
         if anchor:
             anchors = {
                 a
@@ -512,9 +512,9 @@ def test_every_subpanel_section_is_an_h2_on_its_parent_page() -> None:
     """
     for topic, (page, anchor) in SUBPANEL_SECTIONS.items():
         h2s = set(_page_headings(page).get(2, []))
-        assert (
-            anchor in h2s
-        ), f"{topic}: #{anchor} must be an H2 on {page}.md (H2s there: {sorted(h2s)})"
+        assert anchor in h2s, (
+            f"{topic}: #{anchor} must be an H2 on {page}.md (H2s there: {sorted(h2s)})"
+        )
 
 
 def test_every_h2_on_a_subpanel_page_has_a_subpanel_topic() -> None:
@@ -550,9 +550,9 @@ def test_every_wired_question_button_topic_has_a_doc_path() -> None:
     """
     wired = _wired_help_topics()
     # Sanity: the parser actually found the wirings, not an empty set.
-    assert (
-        "pipeline_overview" in wired and "validation" in wired
-    ), f"help-topic wiring parser found too little: {sorted(wired)}"
+    assert "pipeline_overview" in wired and "validation" in wired, (
+        f"help-topic wiring parser found too little: {sorted(wired)}"
+    )
     missing = sorted(t for t in wired if t not in _DOC_PATHS)
     assert not missing, f"wired ? topics with no _DOC_PATHS deep-link: {missing}"
 
@@ -575,6 +575,6 @@ def test_topic_for_fills_doc_url_for_every_mapped_topic() -> None:
     for topic_id, rel in _DOC_PATHS.items():
         topic = topic_for(topic_id)
         assert topic is not None, f"{topic_id} not in HELP_TOPICS"
-        assert (
-            topic.doc_url == _DOCS_BASE + rel
-        ), f"{topic_id}: doc_url {topic.doc_url!r} != base + {rel!r}"
+        assert topic.doc_url == _DOCS_BASE + rel, (
+            f"{topic_id}: doc_url {topic.doc_url!r} != base + {rel!r}"
+        )

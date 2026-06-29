@@ -60,7 +60,11 @@ def require_object_visible(
         report_warn(op, f"no object to {action}", always=True)
         return False
     if not object_is_visible(obj):
-        name = getattr(obj, "name", "the object")
+        try:
+            name = getattr(obj, "name", "the object")
+        except (RuntimeError, ReferenceError):
+            # visible_get() can fail on a dead RNA object; reading name may too.
+            name = "the object"
         report_warn(
             op,
             f"'{name}' is hidden - unhide it (Outliner eye / Alt+H) to {action}",

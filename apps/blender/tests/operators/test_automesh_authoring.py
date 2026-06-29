@@ -932,9 +932,7 @@ def test_apply_mesh_manual_outer_overrides_alpha_trace(automesh_fixture):
     assert max_x < 0.3, f"manual mesh wider than the authored square: {max_x}"
     assert max_z < 0.3, f"manual mesh taller than the authored square: {max_z}"
     # And distinctly smaller than the alpha-traced silhouette.
-    assert (
-        max_x < auto_extent
-    ), f"manual outer did not override the alpha trace: manual={max_x} auto={auto_extent}"
+    assert max_x < auto_extent, f"manual outer ignored: manual={max_x} auto={auto_extent}"
 
 
 def test_triangulation_preview_honors_manual_outer(automesh_fixture):
@@ -1147,9 +1145,7 @@ def test_apply_mesh_remove_island_carves_hole(automesh_fixture):
     assert result["total_verts"] > 0
     assert result["total_faces"] > 0
     carved_boundary = _boundary_edges(obj)
-    assert (
-        carved_boundary > baseline_boundary
-    ), "remove island carved no extra boundary loop (hole not applied)"
+    assert carved_boundary > baseline_boundary, "REMOVE carved no extra boundary loop"
 
 
 def test_automesh_step_operator_registered_with_direction(automesh_fixture):

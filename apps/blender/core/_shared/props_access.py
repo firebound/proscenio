@@ -22,8 +22,52 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from .report import ReportTarget, report_warn
+
 if TYPE_CHECKING:
     import bpy
+
+
+def object_is_visible(obj: bpy.types.Object | None) -> bool:
+    """True when ``obj`` exists and is visible in the active view layer.
+
+    A hidden object cannot become the active object, so an operator that runs
+    ``bpy.ops.object.mode_set`` on it crashes with 'Context missing active
+    object'. Mode-entering operators gate on this. Tolerant of objects / mocks
+    without ``visible_get`` (treated as visible) and of a dead reference.
+    """
+    if obj is None:
+        return False
+    visible_get = getattr(obj, "visible_get", None)
+    if not callable(visible_get):
+        return True
+    try:
+        return bool(visible_get())
+    except (RuntimeError, ReferenceError):
+        return False
+
+
+def require_object_visible(
+    op: ReportTarget, obj: bpy.types.Object | None, *, action: str = "edit this object"
+) -> bool:
+    """Guard for operators that make ``obj`` active + enter a mode.
+
+    Returns ``True`` when ``obj`` is usable; otherwise reports a controlled
+    warning (telling the user to unhide it) and returns ``False`` - turning a
+    hard ``mode_set`` crash on a hidden object into a graceful no-op.
+    """
+    if obj is None:
+        report_warn(op, f"no object to {action}", always=True)
+        return False
+    if not object_is_visible(obj):
+        name = getattr(obj, "name", "the object")
+        report_warn(
+            op,
+            f"'{name}' is hidden - unhide it (Outliner eye / Alt+H) to {action}",
+            always=True,
+        )
+        return False
+    return True
 
 
 def scene_props(context: bpy.types.Context) -> object | None:

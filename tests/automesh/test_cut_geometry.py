@@ -1,4 +1,5 @@
 """Pure tests for cut_geometry."""
+
 from __future__ import annotations
 
 import math

@@ -14,6 +14,9 @@ import bpy
 from mathutils import Vector
 
 from ..._shared.cp_keys import (
+    PROSCENIO_MANUAL_CONTOUR as _MANUAL_CONTOUR_KEY,
+)
+from ..._shared.cp_keys import (
     PROSCENIO_USER_OUTER_STROKES as _EDIT_OUTLINE_STROKES_KEY,
 )
 from ..._shared.cp_keys import (
@@ -31,6 +34,7 @@ from ...automesh import (
     binarize,
     compute_inner_loops,
     extract_outer_contour,
+    extract_outer_contour_with_islands,
     interior_points_for_annulus,
     point_in_polygon,
     to_float_contour,
@@ -77,6 +81,66 @@ def compute_outer(
     pixel_contour = extract_outer_contour(alpha_grid, params.alpha_threshold, outer_dilate)
     world_scale = 1.0 / resolve_pixels_per_unit(bpy.context)
     source_width, source_height = image.size[0], image.size[1]
+    local = pixel_contour_to_world(
+        to_float_contour(pixel_contour),
+        params.resolution,
+        world_scale,
+        source_width,
+        source_height,
+    )
+    return _to_world_xz(obj, local)
+
+
+def _world_xz_poly_to_pixel(
+    obj: bpy.types.Object,
+    world_poly: list[Point2D],
+    downscale_factor: float,
+    world_scale: float,
+    source_width: int,
+    source_height: int,
+) -> list[Point2D]:
+    """Inverse of ``pixel_contour_to_world`` (+ ``matrix_world``): world-XZ ->
+    downscaled-grid pixel coordinates, for rasterizing an ADD island into the
+    alpha mask."""
+    factor = world_scale / downscale_factor
+    half_w = source_width * world_scale / 2.0
+    half_h = source_height * world_scale / 2.0
+    half_cell = factor / 2.0
+    inv = obj.matrix_world.inverted()
+    out: list[Point2D] = []
+    for wx, wz in world_poly:
+        local = inv @ Vector((wx, 0.0, wz))
+        px = (local.x + half_w - half_cell) / factor
+        py = (half_h - local.z - half_cell) / factor
+        out.append((px, py))
+    return out
+
+
+def compute_outer_merged(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    params: StageParams,
+    add_islands_world: list[list[Point2D]],
+) -> list[Point2D]:
+    """Like ``compute_outer`` but UNION the ADD islands into the alpha mask
+    before tracing (spec 070), so an island overlapping the silhouette merges
+    into one combined contour rather than grafting a detour. With no islands this
+    matches ``compute_outer``.
+    """
+    outer_dilate = max(1, round(params.margin_pixels * params.resolution))
+    alpha_grid = read_alpha_grid(image, params.resolution)
+    world_scale = 1.0 / resolve_pixels_per_unit(bpy.context)
+    source_width, source_height = image.size[0], image.size[1]
+    island_polys_pixel = [
+        _world_xz_poly_to_pixel(
+            obj, poly, params.resolution, world_scale, source_width, source_height
+        )
+        for poly in add_islands_world
+        if len(poly) >= 3
+    ]
+    pixel_contour = extract_outer_contour_with_islands(
+        alpha_grid, params.alpha_threshold, outer_dilate, island_polys_pixel
+    )
     local = pixel_contour_to_world(
         to_float_contour(pixel_contour),
         params.resolution,
@@ -144,6 +208,57 @@ def write_user_steiners(obj: bpy.types.Object, points: list[Point2D]) -> None:
     obj[_EDIT_INTERIOR_POINTS_KEY] = json.dumps([[p[0], p[1]] for p in points])
 
 
+def read_manual_contour(obj: bpy.types.Object) -> tuple[list[Point2D], list[int]]:
+    """Read the Manual Mesh source contour CP (spec 070 C2).
+
+    Returns ``(points LOCAL XZ, edge_subdivs)``; ``([], [])`` when absent or
+    corrupt. The standalone Draw-with-vertices modal reloads this to continue
+    editing a drawing (the final triangulated mesh is too lossy to reverse).
+    """
+    raw = obj.get(_MANUAL_CONTOUR_KEY)
+    if not isinstance(raw, str):
+        return [], []
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return [], []
+    if not isinstance(data, dict):
+        return [], []
+    points: list[Point2D] = []
+    for item in data.get("points", []):
+        if isinstance(item, list | tuple) and len(item) == 2:
+            try:
+                points.append((float(item[0]), float(item[1])))
+            except (TypeError, ValueError):
+                continue
+    edge_subdivs: list[int] = []
+    for n in data.get("edge_subdivs", []):
+        try:
+            edge_subdivs.append(max(0, int(n)))
+        except (TypeError, ValueError):
+            continue
+    return points, edge_subdivs
+
+
+def write_manual_contour(
+    obj: bpy.types.Object, points: list[Point2D], edge_subdivs: list[int]
+) -> None:
+    """Persist the Manual Mesh source contour (LOCAL XZ points + per-edge subdiv)
+    as a JSON-object CP so a later re-invoke can reload it (spec 070 C2)."""
+    obj[_MANUAL_CONTOUR_KEY] = json.dumps(
+        {
+            "points": [[p[0], p[1]] for p in points],
+            "edge_subdivs": [int(n) for n in edge_subdivs],
+        }
+    )
+
+
+def clear_manual_contour(obj: bpy.types.Object) -> None:
+    """Drop the Manual Mesh source contour CP (spec 071 revert clears it)."""
+    if _MANUAL_CONTOUR_KEY in obj:
+        del obj[_MANUAL_CONTOUR_KEY]
+
+
 def read_user_strokes(obj: bpy.types.Object) -> list[Stroke]:
     """Read obj['proscenio_user_strokes']; backward compat with legacy
     proscenio_user_steiners flat list (treated as kind='point' strokes).
@@ -209,7 +324,7 @@ def _parse_strokes(data: object) -> list[Stroke]:
         if not isinstance(item, dict):
             continue
         kind = item.get("kind")
-        if kind not in ("point", "stroke", "cut"):
+        if kind not in ("point", "stroke", "cut", "add", "remove"):
             continue
         raw_pts = item.get("points")
         if not isinstance(raw_pts, list):
@@ -314,35 +429,44 @@ def _build_stroke_cdt_inputs(
 
 def _split_outer_strokes(
     strokes: list[Stroke],
-) -> tuple[list[list[Point2D]], list[Stroke]]:
-    """Partition Stage 2 outer strokes into (extend_point_lists, cut_strokes).
+) -> tuple[list[list[Point2D]], list[list[Point2D]], list[Stroke]]:
+    """Partition Edit-silhouette strokes into (extends, add_islands, hole_strokes).
 
-    kind='stroke' -> extend list (raw point sequences for splice_extend_strokes).
-    kind='cut'    -> cut list (passed to lens pipeline unchanged).
-    kind='point'  -> ignored at Stage 2 (no silhouette-point semantic here).
+    Grow the silhouette:
+    - kind='add'    -> add-island list: a closed loop UNIONED into the alpha mask
+      before tracing (spec 070), so an overlapping island merges cleanly.
+    - kind='stroke' -> extend list (legacy open extend spliced into the contour;
+      kept so old data still reads).
+    Exclude from the silhouette (both routed into ``holes_world``):
+    - kind='cut'    -> hole list (the KNIFE corridor, offset at CDT time).
+    - kind='remove' -> hole list (closed island, used as the hole loop directly).
+    kind='point' is ignored at the silhouette stage.
     """
     extends: list[list[Point2D]] = []
-    cuts: list[Stroke] = []
+    add_islands: list[list[Point2D]] = []
+    holes: list[Stroke] = []
     for s in strokes:
         if s["kind"] == "stroke":
             extends.append(list(s["points"]))
-        elif s["kind"] == "cut":
-            cuts.append(s)
-    return extends, cuts
+        elif s["kind"] == "add":
+            add_islands.append(list(s["points"]))
+        elif s["kind"] in ("cut", "remove"):
+            holes.append(s)
+    return extends, add_islands, holes
 
 
 def compute_outer_preview(output: StageOutput, params: StageParams) -> list[Point2D]:
-    """World-XZ spliced outer contour after Stage 2 extend strokes.
+    """World-XZ spliced outer contour after legacy extend strokes.
 
-    Returns the silhouette APPLY will actually build (extends spliced in,
-    resampled to contour_vertices) so the artist previews their edits before
-    committing. Returns ``[]`` when there are no extend strokes or the splice
-    is a no-op. Cut strokes carve corridor holes (not the contour), so they
-    do not change this preview.
+    Spec 070: ADD islands do NOT drive this preview - a live union outline can
+    never align exactly with the drawn loop, so the islands render as a dimmer
+    overlay on top of the silhouette and the real merge happens only at APPLY.
+    Only legacy extend strokes (kind='stroke') splice into a live preview here;
+    returns ``[]`` otherwise (KNIFE / REMOVE / ADD do not feed this line).
     """
     from ...automesh.outer_splice import apply_outer_extends
 
-    extends, _cuts = _split_outer_strokes(output.user_outer_strokes)
+    extends, _add_islands, _holes = _split_outer_strokes(output.user_outer_strokes)
     if not extends or len(output.outer) < 3:
         return []
     spliced = apply_outer_extends(list(output.outer), extends)
@@ -381,6 +505,54 @@ def apply_mesh(
     return counters
 
 
+def _resolve_outer_inputs(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    output: StageOutput,
+    params: StageParams,
+) -> tuple[list[Point2D], list[Point2D] | None, list[Stroke]]:
+    """Resolve the outer contour for the build (spec 070). Returns
+    ``(outer_world_local, outer_override_local, outer_holes)``.
+
+    Base pick: a hand-authored manual contour is honored verbatim (no resample);
+    ADD islands are UNIONED into the alpha mask before tracing
+    (``compute_outer_merged``) so an overlap merges into one contour; otherwise
+    the alpha trace re-runs fresh. Legacy extend strokes splice on top. The
+    override is what ``build_automesh`` must use instead of its internal trace
+    (manual = verbatim, ADD-merged / extended = resampled); ``None`` lets the
+    internal alpha trace stand (plain auto). ``outer_holes`` = KNIFE / REMOVE.
+    """
+    manual_outer = output.outer_is_manual and len(output.outer) >= 3
+    outer_extends, add_islands, outer_holes = _split_outer_strokes(output.user_outer_strokes)
+
+    if manual_outer:
+        base = list(output.outer)
+    elif add_islands:
+        base = compute_outer_merged(obj, image, params, add_islands)
+    else:
+        base = compute_outer(obj, image, params)
+
+    override: list[Point2D] | None = None
+    if outer_extends:
+        override = _resolve_outer_override_local(obj, base, outer_extends, params.contour_vertices)
+    if override is None and manual_outer:
+        # Manual contour, no extends: verbatim override (no resample - it would
+        # redistribute the hand-placed verts).
+        override = [_world_to_local_xz(obj, p) for p in base]
+    elif override is None and add_islands:
+        # Merged ADD base: override the internal trace with it (resampled) or the
+        # islands are lost.
+        local_raw = [_world_to_local_xz(obj, p) for p in base]
+        override = list(arc_length_resample(local_raw, params.contour_vertices))
+
+    if override is not None:
+        outer_world_local = override
+    else:
+        local_raw = [_world_to_local_xz(obj, p) for p in base]
+        outer_world_local = list(arc_length_resample(local_raw, params.contour_vertices))
+    return outer_world_local, override, outer_holes
+
+
 def _build_authoring_mesh(
     obj: bpy.types.Object,
     image: bpy.types.Image,
@@ -391,25 +563,14 @@ def _build_authoring_mesh(
     """Assemble the CDT inputs + run build_automesh. Shared by apply_mesh
     (which wraps it with the weight-sidecar reproject) and the SIMPLE
     triangulation preview (which runs it on a throwaway obj copy). Does NOT
-    touch the weight sidecar, so it is safe to call without an armature."""
+    touch the weight sidecar, so it is safe to call without an armature. The
+    outer contour (manual / ADD-merged / auto + extends + holes) is resolved by
+    ``_resolve_outer_inputs``.
+    """
     world_scale = 1.0 / resolve_pixels_per_unit(bpy.context)
-    outer_world_raw = compute_outer(obj, image, params)
-
-    outer_extends, outer_cuts = _split_outer_strokes(output.user_outer_strokes)
-
-    outer_override_local: list[Point2D] | None = None
-    if outer_extends:
-        outer_override_local = _resolve_outer_override_local(
-            obj, outer_world_raw, outer_extends, params.contour_vertices
-        )
-
-    if outer_override_local is not None:
-        outer_world_local = outer_override_local
-    else:
-        outer_world_local_raw = [_world_to_local_xz(obj, p) for p in outer_world_raw]
-        outer_world_local = list(
-            arc_length_resample(outer_world_local_raw, params.contour_vertices)
-        )
+    outer_world_local, outer_override_local, outer_cuts = _resolve_outer_inputs(
+        obj, image, output, params
+    )
 
     # Extra (stroke) verts are indexed from a sentinel namespace; build_automesh
     # remaps them to their true coord position once the auto-fill count is known.
@@ -453,26 +614,24 @@ def _build_authoring_mesh(
     return counters
 
 
-def compute_triangulation_preview(
+def compute_mesh_preview_edges(
     obj: bpy.types.Object,
     image: bpy.types.Image,
     output: StageOutput,
     params: StageParams,
 ) -> list[tuple[Point2D, Point2D]]:
-    """SIMPLE-mode triangulation preview.
+    """Mode-agnostic wireframe preview (spec 070 C1).
 
-    Runs the real `build_automesh` on a throwaway copy of ``obj`` so the
-    artist sees the exact triangulation APPLY will produce - silhouette +
-    holes + fold/cut/steiner verts, no dense fill - without mutating the
-    source mesh. Returns the resulting mesh edges as WORLD XZ endpoint
-    pairs. Returns ``[]`` for DENSE (which keeps the dense Steiner-point
-    preview drawn from ``all_steiners`` instead).
+    Runs the real `build_automesh` on a throwaway copy of ``obj`` and returns
+    the resulting mesh edges as WORLD XZ endpoint pairs - the EXACT mesh APPLY
+    would produce, for ANY interior mode (SIMPLE = silhouette + holes + verts;
+    DENSE = + the uniform interior grid). The standalone Manual Mesh modal draws
+    this in both modes; ``compute_triangulation_preview`` is the SIMPLE-only
+    wrapper the automesh stage uses (it shows a Steiner cloud for DENSE instead).
 
     Callers compute this on stage-enter + param-dirty and cache the result
     rather than every TIMER tick (one CDT per refresh).
     """
-    if params.interior_mode != "SIMPLE":
-        return []
     # Allocate temp object + mesh INSIDE the try so any failure (OOM on a huge
     # mesh, library-linked source mesh, etc.) cannot leak orphan datablocks.
     temp_obj: bpy.types.Object | None = None
@@ -495,6 +654,24 @@ def compute_triangulation_preview(
             bpy.data.objects.remove(temp_obj, do_unlink=True)
         if temp_mesh is not None:
             bpy.data.meshes.remove(temp_mesh, do_unlink=True)
+
+
+def compute_triangulation_preview(
+    obj: bpy.types.Object,
+    image: bpy.types.Image,
+    output: StageOutput,
+    params: StageParams,
+) -> list[tuple[Point2D, Point2D]]:
+    """SIMPLE-mode triangulation preview (thin wrapper over
+    ``compute_mesh_preview_edges``).
+
+    Returns the throwaway-build edges for SIMPLE, or ``[]`` for DENSE (the
+    automesh stage keeps the dense Steiner-point preview drawn from
+    ``all_steiners`` instead).
+    """
+    if params.interior_mode != "SIMPLE":
+        return []
+    return compute_mesh_preview_edges(obj, image, output, params)
 
 
 def _world_to_local_xz(obj: bpy.types.Object, world_pt: Point2D) -> Point2D:
@@ -729,6 +906,36 @@ def _cut_stroke_to_hole_loop(
     return lens_polygon(left_loop, right_loop), len(pts_local) - inside_count
 
 
+def _hole_loop_for_stroke(
+    stroke: Stroke,
+    project: Callable[[Point2D], Point2D],
+    outer_world_local: list[Point2D],
+    inner_world_local: list[Point2D] | None,
+    holes_world_local: list[list[Point2D]] | None,
+    cut_half: float,
+) -> tuple[list[Point2D] | None, int]:
+    """The hole loop for a silhouette-excluding stroke. REMOVE (spec 070) is a
+    closed island - the loop IS the hole (>= 3 verts). KNIFE / cut is an open
+    stroke offset into a corridor lens. Returns (loop_or_None, dropped_count)."""
+    if stroke["kind"] == "remove":
+        loop = [project(p) for p in stroke["points"]]
+        if len(loop) < 3:
+            return None, 0
+        # Drop a REMOVE island that does not sit inside the fill region (outside the
+        # outer, or inside the inner hole): routing it as a CDT hole otherwise feeds
+        # an invalid loop. Mirror the cut path's drop-and-warn (dropped_count > 0).
+        cx = sum(p[0] for p in loop) / len(loop)
+        cz = sum(p[1] for p in loop) / len(loop)
+        centroid = (cx, cz)
+        inside = point_in_polygon(centroid, outer_world_local) and not (
+            inner_world_local is not None and point_in_polygon(centroid, inner_world_local)
+        )
+        return (loop, 0) if inside else (None, len(loop))
+    return _cut_stroke_to_hole_loop(
+        stroke, project, outer_world_local, inner_world_local, holes_world_local, cut_half
+    )
+
+
 def _strokes_to_cdt_inputs(
     obj: bpy.types.Object,
     strokes: list[Stroke],
@@ -788,8 +995,9 @@ def _strokes_to_cdt_inputs(
             )
             continue
 
-        if stroke["kind"] == "cut":
-            lens_loop, dropped = _cut_stroke_to_hole_loop(
+        if stroke["kind"] in ("cut", "remove"):
+            # KNIFE corridor or REMOVE island (spec 070) - both carve a hole.
+            hole_loop, dropped = _hole_loop_for_stroke(
                 stroke,
                 project,
                 outer_world_local,
@@ -798,8 +1006,8 @@ def _strokes_to_cdt_inputs(
                 cut_half,
             )
             total_dropped += dropped
-            if lens_loop is not None:
-                cut_hole_loops.append(lens_loop)
+            if hole_loop is not None:
+                cut_hole_loops.append(hole_loop)
             continue
 
         # kind == "stroke" (fold-line)

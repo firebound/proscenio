@@ -9,7 +9,7 @@ Ponto de entrada para onde o trabalho ainda-não-entregue é rastreado. Roteia p
 - **Held behind a trigger** - [`gated.md`](../gated.md). Valor real, construído só quando um sinal de demanda escrito dispara.
 - **Sequenced second-stage** - [`deferred.md`](../deferred.md). Valor real esperando a vez, geralmente para pegar carona numa mudança relacionada e dividir o custo.
 - **Declined** - [`dropped.md`](../dropped.md). Valor abaixo do custo, mantido com o racional para um item podado nunca ser re-litigado.
-- **Buckets vivos (recebem achados novos)** - [`bugs-found.md`](bugs-found.md) (bugs ainda-quebrados de teste manual), [`ui-feedback.md`](ui-feedback.md) (polish de UI), [`code-quality.md`](code-quality.md) (saúde de tipo/lint, com a baseline de auditoria preservada). Esvaziados na drenagem de 2026-06-20; seguem abertos para o que walk novo achar.
+- **Buckets vivos (recebem achados novos)** - [`bugs-found.md`](bugs-found.md) (bugs ainda-quebrados de teste manual), [`ui-feedback.md`](ui-feedback.md) (polish de UI), [`code-quality.md`](code-quality.md) (saúde de tipo/lint, com a baseline de auditoria preservada), [`code-audit/`](code-audit/index.md) (smells estruturais de `apps/blender` - god modules, código mal colocado, DRY, código morto, qualidade de teste - da auditoria multi-agente de 2026-06-28, verificada adversarialmente; arquivos temáticos + refutados). Esvaziados na drenagem de 2026-06-20; seguem abertos para o que walk novo achar.
 
 ## Fila da sprint
 

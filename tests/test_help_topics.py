@@ -281,7 +281,7 @@ def test_every_topic_has_a_panel_or_operator_caller() -> None:
 
 DOCS_DIR = REPO_ROOT / "docs" / "02-tools" / "blender-addon"
 
-#: The eleven pages the mirror allows: the ten top-level panels plus the index
+#: The twelve pages the mirror allows: the eleven top-level panels plus the index
 #: (the About footer panel). Bare page slug -> the panel topic that owns it. The
 #: index has no panel topic of its own (status_legend deep-links to an anchor on
 #: it but is not a panel), so it maps to None.
@@ -292,6 +292,7 @@ PANEL_PAGES: dict[str, str | None] = {
     "slots": "slot_system",
     "skeleton": "skeleton",
     "mesh-generation": "mesh_generation",
+    "manual-mesh": "manual_mesh",
     "weight-paint": "weight_paint",
     "animation": "animation",
     "atlas": "atlas",
@@ -427,7 +428,7 @@ def _wired_help_topics() -> set[str]:
 
 
 def test_doc_pages_on_disk_equal_the_locked_panel_set() -> None:
-    """The page set is exactly the ten panels plus index - no extras, no missing.
+    """The page set is exactly the eleven panels plus index - no extras, no missing.
 
     After the spec-064 fold there is no standalone 09-validation.md; Validate is
     a section of the Pipeline page. ``_category_.json`` is sidebar metadata, not

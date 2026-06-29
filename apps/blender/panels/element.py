@@ -98,6 +98,11 @@ class PROSCENIO_PT_element(bpy.types.Panel):
             layout.operator(
                 "proscenio.reimport_element", text="Re-import from PSD", icon="FILE_REFRESH"
             )
+        if props.element_type == "mesh" and obj.get("proscenio_import_placement") is not None:
+            # Spec 071: revert a generated mesh back to its original imported plane.
+            # PSD-imported mesh elements only (the placement tag is the rebuild
+            # source); the operator raises a destructive-action confirm.
+            layout.operator("proscenio.revert_to_plane", text="Revert to Plane", icon="LOOP_BACK")
         for issue in validation.validate_active_element(
             obj, layer_spacing=y_location_spacing(context)
         ):

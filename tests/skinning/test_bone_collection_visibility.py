@@ -12,7 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Module lives under bpy_helpers/skinning/ for organization, but the package
 # __init__.py eagerly imports bpy-bound siblings. Load the bpy-free file
 # directly via importlib.util to bypass the package init.
-_MOD_PATH = REPO_ROOT / "apps/blender/core/bpy_helpers/skinning/bone_collection_visibility.py"
+_MOD_PATH = (
+    REPO_ROOT / "apps/blender/core/bpy_helpers/skinning/bone_collection_visibility.py"
+)
 _spec = importlib.util.spec_from_file_location("bone_collection_visibility", _MOD_PATH)
 assert _spec is not None and _spec.loader is not None
 _mod = importlib.util.module_from_spec(_spec)
@@ -27,7 +29,8 @@ snapshot = _mod.snapshot
 def _armature_4x(visible_names: list[str], all_names: list[str]) -> SimpleNamespace:
     """Blender 4.0+ armature: data.collections + is_visible per collection."""
     collections = [
-        SimpleNamespace(name=name, is_visible=(name in visible_names)) for name in all_names
+        SimpleNamespace(name=name, is_visible=(name in visible_names))
+        for name in all_names
     ]
     return SimpleNamespace(
         data=SimpleNamespace(
@@ -44,7 +47,9 @@ def _armature_3x(bone_hide: dict[str, bool]) -> SimpleNamespace:
 
 
 def test_snapshot_4x_captures_visible_collection_names():
-    arm = _armature_4x(visible_names=["arms", "legs"], all_names=["arms", "legs", "face"])
+    arm = _armature_4x(
+        visible_names=["arms", "legs"], all_names=["arms", "legs", "face"]
+    )
     snap = snapshot(arm)
     assert snap.visible_names == ["arms", "legs"]
     assert snap.bone_hide_states == {}

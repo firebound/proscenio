@@ -91,6 +91,11 @@ PROSCENIO_MIRROR_X = "proscenio_mirror_x"
 PROSCENIO_USER_STEINERS = "proscenio_user_steiners"
 PROSCENIO_USER_STROKES = "proscenio_user_strokes"
 PROSCENIO_USER_OUTER_STROKES = "proscenio_user_outer_strokes"
+# Manual Mesh source contour (spec 070 C2). The hand-drawn closed-loop ring as
+# {"points": [[x, z], ...] LOCAL, "edge_subdivs": [int, ...]} so the standalone
+# Draw-with-vertices modal can reload + continue editing a drawing (the final
+# triangulated mesh is lossy). LOCAL XZ stays stable if the object moves.
+PROSCENIO_MANUAL_CONTOUR = "proscenio_manual_contour"
 
 # Photoshop import tags. Stamped onto imported meshes by the photoshop
 # importer: the source-layer origin marker (``psd:<layer>``), the manifest

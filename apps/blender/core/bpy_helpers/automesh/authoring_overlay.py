@@ -19,12 +19,14 @@ re-cycle the GPU state on every batch (see draw_batch's docstring).
 from __future__ import annotations
 
 import contextlib
+import itertools
 from typing import TypedDict, cast
 
 import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
+from ..._shared.geometry_2d import Point2D
 from ...automesh.stroke_geometry import subdivide_polyline
 from ...skinning.authoring_stages import AuthoringStage, StageOutput, Stroke
 from .._shared.modal_overlay import draw_batch, draw_text_panel_2d
@@ -38,10 +40,25 @@ _INNER_BASE = (0.2, 1.0, 0.4, 0.85)
 _INNER_DIM = (0.1, 0.5, 0.2, 0.5)
 _STEINER_COLOR = (1.0, 0.3, 0.3, 0.7)
 _TRIANGULATION_COLOR = (0.2, 0.9, 0.9, 0.85)  # cyan - SIMPLE triangulation preview wireframe
+# Lighter cyan for the in-progress live triangulation (Manual Draw + ADD/REMOVE
+# islands): reads as a ghost, distinct from the committed preview stage.
+_TRIANGULATION_LIVE_COLOR = (0.2, 0.9, 0.9, 0.4)
 _TRIANGULATION_LINE_WIDTH = 1.5
 _USER_DOT_COLOR = (1.0, 1.0, 0.2, 0.95)
 _STROKE_VERT_COLOR_FOLD = (0.3, 0.7, 1.0, 1.0)  # blue - fold-line stroke (Stage 4 default)
-_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - cut (both Stage 2 + Stage 4)
+_STROKE_VERT_COLOR_CUT_RIP = (1.0, 0.3, 0.3, 1.0)  # red - cut / knife corridor
+# Silhouette ISLANDS (spec 070) render as a dimmer overlay ON TOP of the
+# generated silhouette - the real union/hole happens at APPLY, so the island
+# loop is just an annotation, not a merged-contour preview.
+_ISLAND_ADD_COLOR = (0.2, 1.0, 0.5, 0.6)  # green, dimmed - ADD island (grow)
+_ISLAND_REMOVE_COLOR = (1.0, 0.3, 0.3, 0.6)  # red, dimmed - REMOVE island (hole)
+# Axis-lock guide line (spec 070 pen): a long constraint line through the anchor
+# vert so the locked axis is visible like Blender's transform constraint. X lock
+# (keeps world-Z) = horizontal red; Z lock (keeps world-X) = vertical green.
+_AXIS_X_COLOR = (1.0, 0.3, 0.3, 0.7)
+_AXIS_Z_COLOR = (0.4, 1.0, 0.4, 0.7)
+_AXIS_GUIDE_HALF_LEN = 1000.0  # world units; effectively spans the viewport
+_AXIS_GUIDE_LINE_WIDTH = 1.0
 _LINE_WIDTH = 2.0
 _DOT_SIZE_USER = 8.0
 _DOT_SIZE_STEINER = 4.0
@@ -315,6 +332,82 @@ def register_overlay(
     return handles
 
 
+def register_manual_draw_overlay(
+    *,
+    triangulation: list[tuple[Point2D, Point2D]],
+    live_preview_ref: dict[str, object],
+    tooltip_mouse_ref: list[tuple[int, int]],
+    tooltip_text_ref: list[str],
+    tooltip_color_ref: list[tuple[float, float, float, float]],
+    user_strokes: list[Stroke] | None = None,
+    interior_live_ref: dict[str, object] | None = None,
+    delete_hover_ref: list[tuple[float, float]] | None = None,
+) -> OverlayHandles:
+    """Overlay for the standalone Manual Draw modal (spec 070, a concept apart
+    from the automeshes): the in-progress closed-loop pen (``live_preview``) +
+    its live triangulation (lighter cyan) + the cursor tooltip, plus the
+    committed interior point/fold strokes (spec 070 C3) when ``user_strokes`` is
+    passed, the in-progress interior capture (``interior_live_ref``), and the
+    Alt+click delete-hover highlight (``delete_hover_ref``). No automesh stage
+    handlers. Pair with ``unregister_overlay``; re-register when the
+    triangulation list changes (the dict + stroke list are read by reference).
+    """
+    handles: OverlayHandles = {
+        "outer": None,
+        "outer_preview": None,
+        "inner": None,
+        "steiners": None,
+        "triangulation": None,
+        "user_dots": None,
+        "user_strokes": None,
+        "user_outer_strokes": None,
+        "live_preview": None,
+        "delete_hover": None,
+        "tooltip": None,
+    }
+    if triangulation:
+        handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_edges,
+            (list(triangulation), _TRIANGULATION_LIVE_COLOR, _TRIANGULATION_LINE_WIDTH),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    handles["live_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+        _draw_live_preview,
+        (live_preview_ref,),
+        "WINDOW",
+        "POST_VIEW",
+    )
+    if user_strokes is not None:
+        handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_user_strokes,
+            (user_strokes,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if interior_live_ref is not None:
+        handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_live_preview,
+            (interior_live_ref,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    if delete_hover_ref is not None:
+        handles["delete_hover"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_delete_hover,
+            (delete_hover_ref,),
+            "WINDOW",
+            "POST_VIEW",
+        )
+    handles["tooltip"] = bpy.types.SpaceView3D.draw_handler_add(
+        _draw_tooltip,
+        (tooltip_mouse_ref, tooltip_text_ref, tooltip_color_ref),
+        "WINDOW",
+        "POST_PIXEL",
+    )
+    return handles
+
+
 def unregister_overlay(handles: OverlayHandles) -> None:
     """No-op-safe cleanup; tolerates partial registration."""
     for key in (
@@ -444,12 +537,18 @@ def _draw_stroke_lines(
 def _resolve_stroke_color(kind: str) -> tuple[float, float, float, float]:
     """Return the overlay color for a stroke given its kind.
 
-    kind="point"  -> YELLOW (single Steiner dot)
-    kind="stroke" -> BLUE   (fold-line)
-    kind="cut"    -> RED    (cut, both Stage 2 + Stage 4)
+    kind="point"   -> YELLOW (single Steiner dot)
+    kind="stroke"  -> BLUE   (fold-line)
+    kind="cut"     -> RED    (KNIFE corridor)
+    kind="add"     -> GREEN, dimmed (island that grows the silhouette, spec 070)
+    kind="remove"  -> RED, dimmed   (island that excludes area)
     """
     if kind == "point":
         return _USER_DOT_COLOR
+    if kind == "add":
+        return _ISLAND_ADD_COLOR
+    if kind == "remove":
+        return _ISLAND_REMOVE_COLOR
     if kind == "cut":
         return _STROKE_VERT_COLOR_CUT_RIP
     # kind="stroke" (fold-line) and any unknown kind fall through to blue.
@@ -517,14 +616,15 @@ def _draw_live_preview(state: dict[str, object]) -> None:
       mode:   str    - "pen" (rubber-band) or "free" (path only)
       subdivisions: int - ghost subdivision verts to preview on the rubber-band
       axis:   str    - active axis lock ("", "x", "z"); cursor is pre-snapped
+      close_loop: bool - closed-loop pen: also draw the cursor -> first-vert edge
+                  so the candidate triangle a placement would form is shown
     """
     if not state.get("active"):
         return
     pts = cast("list[tuple[float, float]]", state.get("points") or [])
     if not pts:
         return
-    kind = state.get("kind", "stroke")
-    color = _STROKE_VERT_COLOR_CUT_RIP if kind == "cut" else _STROKE_VERT_COLOR_FOLD
+    color = _resolve_stroke_color(str(state.get("kind", "stroke")))
     coords = [(p[0], 0.0, p[1]) for p in pts]
     shader = gpu.shader.from_builtin(_UNIFORM_COLOR_SHADER)
     gpu.state.blend_set("ALPHA")
@@ -536,30 +636,119 @@ def _draw_live_preview(state: dict[str, object]) -> None:
         batch_v.draw(shader)
         if len(coords) >= 2:
             _draw_stroke_lines(shader, coords, color)
-        cursor = cast("tuple[float, float] | None", state.get("cursor"))
-        if state.get("mode") == "pen" and cursor is not None:
-            cursor_coord = (cursor[0], 0.0, cursor[1])
-            dim = (color[0], color[1], color[2], _LIVE_RUBBER_ALPHA)
-            rubber = batch_for_shader(shader, "LINES", {"pos": [coords[-1], cursor_coord]})
-            shader.uniform_float("color", dim)
-            gpu.state.line_width_set(1.5)
-            rubber.draw(shader)
-            # Ghost dots for the subdivisions that will be baked into
-            # the segment (cursor is already axis-locked by the operator, so the
-            # rubber-band doubles as the X/Z guide line).
-            subdiv = int(cast("int", state.get("subdivisions") or 0))
-            if subdiv > 0:
-                ghosts = subdivide_polyline([pts[-1], cursor], subdiv)[1:-1]
-                if ghosts:
-                    ghost_coords = [(g[0], 0.0, g[1]) for g in ghosts]
-                    gbatch = batch_for_shader(shader, "POINTS", {"pos": ghost_coords})
-                    shader.uniform_float("color", dim)
-                    gpu.state.point_size_set(_LIVE_VERT_SIZE * 0.6)
-                    gbatch.draw(shader)
+        # EDIT phase (spec 070 C4): the contour is a closed ring, so draw the wrap
+        # edge (last -> first) too; the open DRAW phase leaves it to the cursor.
+        if state.get("closed") and len(coords) >= 3:
+            wrap = batch_for_shader(shader, "LINES", {"pos": [coords[-1], coords[0]]})
+            shader.uniform_float("color", color)
+            gpu.state.line_width_set(2.0)
+            wrap.draw(shader)
+        _draw_placed_subdiv_ghosts(shader, pts, state, color)
+        _draw_axis_guide(shader, state, pts)
+        _draw_pen_cursor_feedback(shader, state, pts, coords, color)
     finally:
         gpu.state.point_size_set(1.0)
         gpu.state.line_width_set(1.0)
         gpu.state.blend_set("NONE")
+
+
+def _draw_placed_subdiv_ghosts(
+    shader: gpu.types.GPUShader,
+    pts: list[tuple[float, float]],
+    state: dict[str, object],
+    color: tuple[float, float, float, float],
+) -> None:
+    """Ghost dots for the subdivisions baked into the PLACED edges, so the
+    subdivision density stays visible after an edge is confirmed - not only on
+    the live rubber-band (spec 070 feedback). One set of ghosts per placed edge.
+    """
+    edge_subdivs = cast("list[int]", state.get("edge_subdivs") or [])
+    if len(pts) < 2:
+        return
+    ghosts: list[tuple[float, float]] = []
+    for i, (a, b) in enumerate(itertools.pairwise(pts)):
+        n = edge_subdivs[i] if i < len(edge_subdivs) else 0
+        if n > 0:
+            ghosts.extend(subdivide_polyline([a, b], n)[1:-1])
+    # EDIT phase (spec 070 C4): the wrap edge (last -> first) carries its own count.
+    if state.get("closed") and len(pts) >= 3:
+        wrap_n = edge_subdivs[len(pts) - 1] if len(pts) - 1 < len(edge_subdivs) else 0
+        if wrap_n > 0:
+            ghosts.extend(subdivide_polyline([pts[-1], pts[0]], wrap_n)[1:-1])
+    if not ghosts:
+        return
+    dim = (color[0], color[1], color[2], _LIVE_RUBBER_ALPHA)
+    ghost_coords = [(g[0], 0.0, g[1]) for g in ghosts]
+    gbatch = batch_for_shader(shader, "POINTS", {"pos": ghost_coords})
+    shader.uniform_float("color", dim)
+    gpu.state.point_size_set(_LIVE_VERT_SIZE * 0.6)
+    gbatch.draw(shader)
+
+
+def _draw_axis_guide(
+    shader: gpu.types.GPUShader,
+    state: dict[str, object],
+    pts: list[tuple[float, float]],
+) -> None:
+    """Long constraint line through the last placed vert when an axis is locked,
+    so the locked direction reads like Blender's transform guide. X lock keeps
+    world-Z (horizontal red); Z lock keeps world-X (vertical green). No-op when
+    no axis is locked or no anchor vert exists yet."""
+    axis = str(state.get("axis") or "")
+    if axis not in {"x", "z"} or not pts:
+        return
+    ax, az = pts[-1]
+    if axis == "x":  # horizontal: world-X varies, world-Z fixed at the anchor
+        ends = [(ax - _AXIS_GUIDE_HALF_LEN, 0.0, az), (ax + _AXIS_GUIDE_HALF_LEN, 0.0, az)]
+        color = _AXIS_X_COLOR
+    else:  # vertical: world-Z varies, world-X fixed at the anchor
+        ends = [(ax, 0.0, az - _AXIS_GUIDE_HALF_LEN), (ax, 0.0, az + _AXIS_GUIDE_HALF_LEN)]
+        color = _AXIS_Z_COLOR
+    batch = batch_for_shader(shader, "LINES", {"pos": ends})
+    shader.uniform_float("color", color)
+    gpu.state.line_width_set(_AXIS_GUIDE_LINE_WIDTH)
+    batch.draw(shader)
+
+
+def _draw_pen_cursor_feedback(
+    shader: gpu.types.GPUShader,
+    state: dict[str, object],
+    pts: list[tuple[float, float]],
+    coords: list[tuple[float, float, float]],
+    color: tuple[float, float, float, float],
+) -> None:
+    """Pen-mode cursor feedback: the dimmed rubber-band (last vert -> cursor),
+    the closed-loop candidate edge (cursor -> first vert, when ``close_loop``),
+    and the ghost subdivision dots. No-op for free-draw or with no live cursor.
+    Split out of ``_draw_live_preview`` to keep its branching shallow."""
+    cursor = cast("tuple[float, float] | None", state.get("cursor"))
+    if state.get("mode") != "pen" or cursor is None:
+        return
+    cursor_coord = (cursor[0], 0.0, cursor[1])
+    dim = (color[0], color[1], color[2], _LIVE_RUBBER_ALPHA)
+    rubber = batch_for_shader(shader, "LINES", {"pos": [coords[-1], cursor_coord]})
+    shader.uniform_float("color", dim)
+    gpu.state.line_width_set(1.5)
+    rubber.draw(shader)
+    # Closed-loop pen: close the candidate triangle with the cursor -> first-vert
+    # edge (the rubber-band above is last -> cursor) so the artist sees the tri a
+    # placement here would add.
+    if state.get("close_loop") and len(coords) >= 2:
+        closing = batch_for_shader(shader, "LINES", {"pos": [cursor_coord, coords[0]]})
+        shader.uniform_float("color", dim)
+        gpu.state.line_width_set(1.5)
+        closing.draw(shader)
+    # Ghost dots for the subdivisions baked into the segment (cursor is already
+    # axis-locked, so the rubber-band doubles as the X/Z guide line).
+    subdiv = int(cast("int", state.get("subdivisions") or 0))
+    if subdiv > 0:
+        ghosts = subdivide_polyline([pts[-1], cursor], subdiv)[1:-1]
+        if ghosts:
+            ghost_coords = [(g[0], 0.0, g[1]) for g in ghosts]
+            gbatch = batch_for_shader(shader, "POINTS", {"pos": ghost_coords})
+            shader.uniform_float("color", dim)
+            gpu.state.point_size_set(_LIVE_VERT_SIZE * 0.6)
+            gbatch.draw(shader)
 
 
 def _draw_delete_hover(points_ref: list[tuple[float, float]]) -> None:

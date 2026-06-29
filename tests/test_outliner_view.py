@@ -312,7 +312,9 @@ def test_draw_order_sort_lists_front_first_with_armature_pinned() -> None:
 def test_draw_order_sort_breaks_ties_by_name() -> None:
     a = _mesh_with_order("zeta", 5)
     b = _mesh_with_order("alpha", 5)
-    ordered = sorted([a, b], key=lambda o: draw_order_sort_key(o, rank=category_rank(o)))
+    ordered = sorted(
+        [a, b], key=lambda o: draw_order_sort_key(o, rank=category_rank(o))
+    )
     assert [o.name for o in ordered] == ["alpha", "zeta"]
 
 

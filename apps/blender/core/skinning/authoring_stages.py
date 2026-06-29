@@ -30,23 +30,32 @@ class AuthoringStage(IntEnum):
     APPLY = 5
 
 
-# Per-stage interactive tools (spec 066). The modal arms exactly one tool per
-# stage; bare Tab cycles within the stage's tuple. A pen tool (extend / cut /
-# fold / contour) makes LMB the click-pen; "point" drops a single Steiner on a
-# click; "auto" is the passive alpha-traced outer (no LMB interaction). A stage
-# absent from the map has no interactive tool (INNER_LOOPS / PREVIEW_INTERIOR /
-# APPLY are slider + navigation only).
+# Per-stage interactive tools. The modal arms exactly one tool per stage; bare
+# Tab cycles within the stage's tuple. Tools come in three interaction families:
+# - an OPEN-stroke pen ("knife" / "fold") makes LMB the click/free-draw pen;
+# - a closed-loop ISLAND tool ("add" / "remove", spec 070) uses the shared
+#   VertexPen to click a closed loop;
+# - a single-shot / passive tool ("point" drops a Steiner, "auto" is the
+#   alpha trace, "delete" removes a committed stroke).
+# A stage absent from the map has no interactive tool (INNER_LOOPS /
+# PREVIEW_INTERIOR / APPLY are slider + navigation only).
 _STAGE_TOOLS: dict[AuthoringStage, tuple[str, ...]] = {
-    AuthoringStage.OUTER: ("auto", "contour"),
-    AuthoringStage.EDIT_OUTLINE: ("extend", "cut", "delete"),
-    # Interior has no "cut": the Stage 4 cut produced the same corridor hole as
-    # the Stage 2 silhouette cut (both route into holes_world), so it was a
-    # redundant operation - dropped. Cut the silhouette in Edit silhouette.
+    # OUTER is auto-only now: manual silhouette work is the additive ADD/REMOVE
+    # islands in Edit silhouette (spec 070), and the fully-manual mesh is the
+    # standalone Manual Draw mode - the old replace-the-trace "contour" is gone.
+    AuthoringStage.OUTER: ("auto",),
+    # Edit silhouette (spec 070): ADD island grows the trace, KNIFE (the former
+    # "cut") carves a corridor, REMOVE island excludes a closed area.
+    AuthoringStage.EDIT_OUTLINE: ("add", "knife", "remove", "delete"),
+    # Interior stays additive detail on the auto fill (mark points, add fold
+    # edges); islands do not apply here.
     AuthoringStage.EDIT_INTERIOR_POINTS: ("point", "fold", "delete"),
 }
-# Pen tools make LMB the click-pen. "delete" is a tool too but not a pen: its LMB
-# removes the committed stroke under the cursor (replacing the old Alt+click).
-_PEN_TOOLS = frozenset({"extend", "cut", "fold", "contour"})
+# Open-stroke pen tools: LMB is the click/free-draw pen (the old machine).
+_PEN_TOOLS = frozenset({"knife", "fold"})
+# Closed-loop island tools (spec 070): driven by the shared VertexPen, not the
+# open-stroke pen machine.
+_ISLAND_TOOLS = frozenset({"add", "remove"})
 
 
 def stage_tools(stage: AuthoringStage) -> tuple[str, ...]:
@@ -78,25 +87,35 @@ def next_tool(stage: AuthoringStage, current: str) -> str:
 
 
 def tool_is_pen(tool: str) -> bool:
-    """True when the tool makes LMB the click-pen (extend / cut / fold / contour)."""
+    """True when the tool makes LMB the open-stroke click-pen (knife / fold)."""
     return tool in _PEN_TOOLS
 
 
-class Stroke(TypedDict):
-    """Stage 3 stroke or single-Steiner placement.
+def tool_is_island(tool: str) -> bool:
+    """True when the tool draws a closed-loop island via the shared VertexPen
+    (add / remove, spec 070)."""
+    return tool in _ISLAND_TOOLS
 
-    kind="point": single Steiner from a click without drag.
-    kind="stroke": resampled polyline that becomes constraint edges + verts.
+
+class Stroke(TypedDict):
+    """A user-authored stroke or island.
+
+    kind="point": single Steiner from a click without drag (interior).
+    kind="stroke": resampled polyline that becomes constraint edges + verts
+        (interior fold-line).
     kind="cut": a perpendicular offset lens whose corridor is routed into
-        ``holes_world`` so the CDT carves it as a hole (removes faces). Both the
-        Stage 2 silhouette cut and the legacy Stage 4 interior cut took this same
-        path - there was never a material-preserving "rip" - so spec 066 dropped
-        the redundant interior cut (cut the silhouette in Edit silhouette). A
-        true rip / seam (split_edges, no material removed) stays a future
-        feature, not this kind.
+        ``holes_world`` so the CDT carves it as a hole (the KNIFE tool, spec 070;
+        formerly the Edit-silhouette "cut"). A true rip / seam (split_edges, no
+        material removed) stays a future feature, not this kind.
+    kind="add": a closed-loop silhouette ISLAND (spec 070) that GROWS the auto
+        trace - spliced in as an outer extend (the part outside the trace is
+        added; a fully-outside island is dropped + warned).
+    kind="remove": a closed-loop silhouette ISLAND that EXCLUDES its area -
+        routed directly into ``holes_world`` as a hole polygon (the loop is the
+        hole; no corridor offset).
     """
 
-    kind: Literal["point", "stroke", "cut"]
+    kind: Literal["point", "stroke", "cut", "add", "remove"]
     points: list[tuple[float, float]]  # WORLD XZ, post-smooth + post-resample
 
 
@@ -134,6 +153,12 @@ class StageOutput:
     # APPLY will build. Mutated in-place so the overlay handler sees updates
     # without re-registration.
     outer: list[Point2D] = field(default_factory=list)
+    # True when ``outer`` was authored by hand (the Draw-with-vertices manual
+    # contour) rather than the alpha trace. APPLY + the SIMPLE preview honor a
+    # manual outer verbatim - no alpha re-trace, no arc-length resample (which
+    # would redistribute the artist's exact verts); an auto outer is re-traced
+    # fresh at APPLY so slider tweaks are reflected.
+    outer_is_manual: bool = False
     outer_preview: list[Point2D] = field(default_factory=list)
     user_outer_strokes: list[Stroke] = field(default_factory=list)  # Stage 2
     inner_loops: list[list[Point2D]] = field(default_factory=list)

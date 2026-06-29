@@ -288,7 +288,9 @@ class TestExcludeZones:
         points = interior_points_for_annulus(outer, [], 1.0, exclude_zones=zones)
         for x, z in points:
             d = ((x - 5.0) ** 2 + (z - 5.0) ** 2) ** 0.5
-            assert d > 2.0 - 1e-6, f"point ({x}, {z}) at distance {d} violates exclusion"
+            assert d > 2.0 - 1e-6, (
+                f"point ({x}, {z}) at distance {d} violates exclusion"
+            )
 
     def test_none_behaves_as_before(self) -> None:
         outer = _square(10.0)

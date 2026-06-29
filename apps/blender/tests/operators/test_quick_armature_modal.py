@@ -84,6 +84,19 @@ def quick_armature_session(automesh_fixture):
     return _Probe(), arm, _Probe
 
 
+def test_enter_armature_edit_refuses_hidden_armature(quick_armature_session):
+    """A hidden armature cannot become active, so _enter_armature_edit returns
+    False instead of crashing bpy.ops.object.mode_set ('Context missing active
+    object'). Guards Quick Armature against a hidden selected rig."""
+    op, arm, _cls = quick_armature_session
+    arm.hide_set(True)
+    try:
+        assert arm.visible_get() is False
+        assert op._enter_armature_edit(bpy.context, arm) is False
+    finally:
+        arm.hide_set(False)
+
+
 def test_create_bone_appends_to_session_stack(quick_armature_session):
     op, arm, cls = quick_armature_session
     op._create_bone(

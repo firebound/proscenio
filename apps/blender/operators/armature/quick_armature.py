@@ -17,6 +17,10 @@ import bpy
 from bpy.props import BoolProperty
 from mathutils import Quaternion, Vector
 
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
+    object_is_visible,
+    require_object_visible,
+)
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
@@ -248,6 +252,10 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         armature = self._ensure_armature(context)
         if armature is None:
             report_error(self, "failed to create QuickRig armature")
+            return {"CANCELLED"}
+        # A hidden armature cannot become active, so mode_set(EDIT) below would
+        # crash ('Context missing active object'); bail with a clear warning.
+        if not require_object_visible(self, armature, action="enter Edit Mode on the rig"):
             return {"CANCELLED"}
         self._seed_chain_parent_from_active()
 
@@ -663,6 +671,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         trip - and right-click stays a native bone selection. A no-op when the
         armature is already the active edit object. Returns ``True`` on success.
         """
+        # Defense-in-depth: a hidden object cannot be made active, so mode_set
+        # would crash ('Context missing active object'). Callers guard with a
+        # user-facing warning; this returns False so any other caller fails soft.
+        if not object_is_visible(armature):
+            return False
         if context.view_layer.objects.active is not armature:
             armature.select_set(True)
             context.view_layer.objects.active = armature

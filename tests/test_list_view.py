@@ -36,7 +36,9 @@ def test_default_shows_every_row_keeping_source_order() -> None:
 
 def test_explicit_name_sort_reorders() -> None:
     rows = _rows("Charlie", "alpha", "Bravo")
-    _, neworder = compute_list_filter(rows, bitflag=_BIT, sort_key=lambda r: r.name.lower())
+    _, neworder = compute_list_filter(
+        rows, bitflag=_BIT, sort_key=lambda r: r.name.lower()
+    )
 
     # neworder[source_index] = post-sort position; case-insensitive name sort
     # gives alpha(1) < Bravo(2) < Charlie(0).
@@ -65,7 +67,9 @@ def test_visible_predicate_drops_rows_before_name_filter() -> None:
 def test_custom_sort_key_orders_neworder() -> None:
     rows = _rows("a", "bb", "ccc")
     # Sort by descending name length: ccc(2) < bb(1) < a(0) in new order.
-    _, neworder = compute_list_filter(rows, bitflag=_BIT, sort_key=lambda r: -len(r.name))
+    _, neworder = compute_list_filter(
+        rows, bitflag=_BIT, sort_key=lambda r: -len(r.name)
+    )
 
     assert neworder == [2, 1, 0]
 

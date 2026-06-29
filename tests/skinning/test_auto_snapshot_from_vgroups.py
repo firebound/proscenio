@@ -1,4 +1,5 @@
 """Pure tests for build_sidecar_from_vgroup_data (M1)."""
+
 from __future__ import annotations
 
 from core.skinning.weight_snapshot import build_sidecar_from_vgroup_data

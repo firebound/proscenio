@@ -76,12 +76,21 @@ def test_stage_output_has_user_outer_strokes_field():
 
 
 def test_stage_tools_per_stage():
-    # Spec 066: Tab cycles these per-stage tools; stages without interaction
+    # Spec 070: OUTER is auto-only (no replace-the-trace contour); the silhouette
+    # edits are the additive islands + the knife; stages without interaction
     # return an empty tuple.
-    assert stage_tools(AuthoringStage.OUTER) == ("auto", "contour")
-    assert stage_tools(AuthoringStage.EDIT_OUTLINE) == ("extend", "cut", "delete")
-    # Interior dropped the redundant "cut" (same corridor hole as the Stage 2 cut).
-    assert stage_tools(AuthoringStage.EDIT_INTERIOR_POINTS) == ("point", "fold", "delete")
+    assert stage_tools(AuthoringStage.OUTER) == ("auto",)
+    assert stage_tools(AuthoringStage.EDIT_OUTLINE) == (
+        "add",
+        "knife",
+        "remove",
+        "delete",
+    )
+    assert stage_tools(AuthoringStage.EDIT_INTERIOR_POINTS) == (
+        "point",
+        "fold",
+        "delete",
+    )
     assert stage_tools(AuthoringStage.INNER_LOOPS) == ()
     assert stage_tools(AuthoringStage.PREVIEW_INTERIOR) == ()
     assert stage_tools(AuthoringStage.APPLY) == ()
@@ -89,19 +98,22 @@ def test_stage_tools_per_stage():
 
 def test_default_tool_is_first_or_empty():
     assert default_tool(AuthoringStage.OUTER) == "auto"
-    assert default_tool(AuthoringStage.EDIT_OUTLINE) == "extend"
+    assert default_tool(AuthoringStage.EDIT_OUTLINE) == "add"
     assert default_tool(AuthoringStage.EDIT_INTERIOR_POINTS) == "point"
     assert default_tool(AuthoringStage.APPLY) == ""
 
 
 def test_next_tool_cycles_and_wraps():
-    assert next_tool(AuthoringStage.OUTER, "auto") == "contour"
-    assert next_tool(AuthoringStage.OUTER, "contour") == "auto"  # wrap
+    assert (
+        next_tool(AuthoringStage.OUTER, "auto") == "auto"
+    )  # single tool wraps to itself
     assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "point") == "fold"
     assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "fold") == "delete"
     assert next_tool(AuthoringStage.EDIT_INTERIOR_POINTS, "delete") == "point"  # wrap
-    assert next_tool(AuthoringStage.EDIT_OUTLINE, "cut") == "delete"
-    assert next_tool(AuthoringStage.EDIT_OUTLINE, "delete") == "extend"  # wrap
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "add") == "knife"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "knife") == "remove"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "remove") == "delete"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "delete") == "add"  # wrap
 
 
 def test_next_tool_no_tools_keeps_current():
@@ -112,11 +124,21 @@ def test_next_tool_no_tools_keeps_current():
 def test_next_tool_stale_tool_resets_to_first():
     # A tool not in the stage (e.g. left over from a previous stage) resets to
     # the stage's first tool rather than raising.
-    assert next_tool(AuthoringStage.EDIT_OUTLINE, "fold") == "extend"
+    assert next_tool(AuthoringStage.EDIT_OUTLINE, "fold") == "add"
 
 
 def test_tool_is_pen_classification():
-    for pen in ("extend", "cut", "fold", "contour"):
+    # Open-stroke pens use the click/free-draw machine; islands + singles do not.
+    for pen in ("knife", "fold"):
         assert tool_is_pen(pen) is True
-    for non_pen in ("auto", "point", ""):
+    for non_pen in ("auto", "point", "add", "remove", "delete", ""):
         assert tool_is_pen(non_pen) is False
+
+
+def test_tool_is_island_classification():
+    from core.skinning.authoring_stages import tool_is_island  # type: ignore[import-not-found]
+
+    for island in ("add", "remove"):
+        assert tool_is_island(island) is True
+    for non_island in ("auto", "knife", "fold", "point", "delete", ""):
+        assert tool_is_island(non_island) is False

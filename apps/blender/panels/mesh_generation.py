@@ -123,6 +123,32 @@ class PROSCENIO_PT_automesh_interactive(bpy.types.Panel):
         _draw_automesh_interactive(self.layout, _scene_skinning(context), context.active_object)
 
 
+class PROSCENIO_PT_manual_mesh(bpy.types.Panel):
+    """Manual Mesh - the standalone Draw-with-vertices mode (spec 070).
+
+    A TOP-LEVEL panel, separate from Mesh Generation: it is manual mesh
+    AUTHORING, not automatic generation, and shares none of the automesh trace
+    fields - keeping it apart avoids implying those fields affect it. Mutually
+    exclusive with the Automesh modes (one per element). Like the other mesh
+    panels it WARNS (not hides) on a sprite / non-mesh and carries the standard
+    status badge + help button.
+    """
+
+    bl_label = "Manual Mesh"
+    bl_idname = "PROSCENIO_PT_manual_mesh"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Proscenio"
+    bl_order = 6  # just after Mesh Generation (bl_order 5)
+    bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
+
+    def draw_header_preset(self, context: bpy.types.Context) -> None:
+        draw_subpanel_header(self.layout, context, "manual_mesh", "manual_mesh")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        _draw_manual_mesh(self.layout, context)
+
+
 class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
     """Debug Pipeline subpanel - the automesh debug stage enum + clear button."""
 
@@ -132,7 +158,7 @@ class PROSCENIO_PT_debug_pipeline(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Proscenio"
     bl_parent_id = "PROSCENIO_PT_mesh_generation"
-    bl_order = 2
+    bl_order = 3
     bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -173,46 +199,57 @@ def _draw_automesh_alpha(
     )
 
 
-# Per-tool icons for the live modal indicator (spec 066). Icon-forward: the
-# inactive tools show as an icon only, the active one gets its name too.
-_TOOL_ICONS = {
-    "auto": "MOD_REMESH",
-    "contour": "MESH_CIRCLE",
-    "extend": "ADD",
-    "cut": "MOD_BOOLEAN",
-    "fold": "MOD_SIMPLEDEFORM",
-    "point": "DOT",
-    "delete": "TRASH",
-}
+def _automesh_running() -> bool:
+    from ..operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+    )
+
+    return is_running("automesh")
 
 
-def _draw_modal_indicator(layout: bpy.types.UILayout) -> None:
-    """Show the live stage + active tool while the authoring modal runs.
+def _manual_draw_running() -> bool:
+    from ..operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+    )
 
-    Reads the operator's class-level state (set as it advances stages / cycles
-    tools). Only renders while the modal is active (its status-bar draw is
-    appended). A VIEW_3D tag_redraw on every stage/tool change repaints this
-    region too, so it tracks live.
-    """
-    from ..core.skinning.authoring_stages import stage_tools  # type: ignore[import-not-found]
-    from ..operators.automesh._status_bar import _TOOL_LABELS  # type: ignore[import-not-found]
+    return is_running("manual_draw")
+
+
+def _draw_automesh_cheatsheet(layout: bpy.types.UILayout) -> None:
+    """Collapsible mirror of the Automesh modal's status-bar cheatsheet while it
+    runs (Quick Armature pattern: ``layout.panel`` default-closed, full chords)."""
+    from ..operators.automesh._status_bar import (  # type: ignore[import-not-found]
+        emit_authoring_chord_layout,
+    )
     from ..operators.automesh.automesh_authoring import (  # type: ignore[import-not-found]
         PROSCENIO_OT_automesh_authoring as op,
     )
 
-    if not getattr(op, "_statusbar_appended", False):
+    if not _automesh_running():
         return
-    box = layout.box()
-    box.label(text=op._current_stage_label, icon="MOD_REMESH")
-    active = op._current_active_tool
-    tools = stage_tools(op._current_stage)
-    if tools:
-        row = box.row(align=True)
-        row.label(text="Tab:")
-        for tool in tools:
-            icon = _TOOL_ICONS.get(tool, "DOT")
-            # icon-forward: active tool shows its name, the rest are icon-only.
-            row.label(text=_TOOL_LABELS[tool] if tool == active else "", icon=icon)
+    header, body = layout.panel("proscenio_automesh_shortcuts", default_closed=True)
+    header.label(text="Shortcuts", icon="MOD_REMESH")
+    if body is not None:
+        emit_authoring_chord_layout(
+            body, op._current_stage_label, op._current_stage, op._current_active_tool
+        )
+
+
+def _draw_manual_draw_cheatsheet(layout: bpy.types.UILayout) -> None:
+    """Collapsible mirror of the Manual Draw modal's cheatsheet while it runs."""
+    from ..operators.automesh.draw_mesh_vertices import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_draw_mesh_vertices as op,
+    )
+    from ..operators.automesh.draw_mesh_vertices import (  # type: ignore[import-not-found]
+        emit_manual_draw_chords,
+    )
+
+    if not _manual_draw_running():
+        return
+    header, body = layout.panel("proscenio_manual_draw_shortcuts", default_closed=True)
+    header.label(text=f"Shortcuts - {op._current_tool}", icon="GREASEPENCIL")
+    if body is not None:
+        emit_manual_draw_chords(body, op._current_tool)
 
 
 def _draw_automesh_interactive(
@@ -220,12 +257,10 @@ def _draw_automesh_interactive(
     skinning_props: bpy.types.PropertyGroup | None,
     obj: bpy.types.Object | None,
 ) -> None:
-    """Interactive modal automesh authoring entry - drawn on the subpanel layout.
-
-    Button greys out when active obj is not MESH or has no image texture
-    (modal validates these at invoke; the panel mirror is a UX cue).
-    """
-    _draw_modal_indicator(layout)
+    """Interactive modal automesh authoring entry. The button TOGGLES: it starts
+    the modal, and re-invokes as an Exit while it runs (Quick Armature pattern);
+    the trace fields stay editable mid-flight (the modal polls them live)."""
+    running = _automesh_running()
     layout.label(text="Interactive trace and edit")
     if skinning_props is not None:
         row = layout.row(align=True)
@@ -237,13 +272,71 @@ def _draw_automesh_interactive(
         # toggle here so the regen trigger and its weight-preserve control sit
         # together.
         layout.prop(skinning_props, "preserve_on_regen")
+    if running:
+        _draw_automesh_step_nav(layout)
     row = layout.row()
-    row.enabled = _authoring_button_enabled(obj)
+    # Stay enabled while running so the Exit click lands; otherwise gate on a
+    # MESH + image texture.
+    row.enabled = running or _authoring_button_enabled(obj)
     row.operator(
         "proscenio.automesh_authoring",
-        text="Author Mesh (interactive)",
-        icon="MOD_REMESH",
+        text="Exit Author Mesh" if running else "Author Mesh (interactive)",
+        icon="X" if running else "MOD_REMESH",
+        depress=running,
     )
+    _draw_automesh_cheatsheet(layout)
+
+
+def _draw_automesh_step_nav(layout: bpy.types.UILayout) -> None:
+    """Stage nav for the running modal: the current step label + Back / Next
+    buttons that drive the modal from the panel (spec 070), above the Exit row."""
+    from ..operators.automesh.automesh_authoring import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_automesh_authoring as op,
+    )
+
+    layout.label(text=op._current_stage_label, icon="MOD_REMESH")
+    row = layout.row(align=True)
+    back = row.operator("proscenio.automesh_step", text="Back", icon="TRIA_LEFT")
+    back.direction = "RETREAT"
+    nxt = row.operator("proscenio.automesh_step", text="Next", icon="TRIA_RIGHT")
+    nxt.direction = "ADVANCE"
+
+
+def _draw_manual_mesh(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
+    """Manual Mesh panel body (spec 070) - the standalone Draw-with-vertices mode.
+
+    WARNS (not hides) on a non-mesh / sprite, mirroring Mesh Generation. Toggles
+    like the automesh entry (start / Exit); the button greys out without a MESH +
+    image texture and stays live while running so the Exit click lands.
+    """
+    obj = context.active_object
+    if obj is None or obj.type != "MESH":
+        layout.label(text="select a mesh to author", icon="INFO")
+        return
+    if not _is_mesh_element(context):
+        # warn-not-hide: a sprite element is a Blender mesh, but drawing a mesh
+        # would replace its single quad. Point at native bone-parenting.
+        layout.label(text="mesh tools are mesh-only (this is a sprite)", icon="INFO")
+        layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
+        return
+    running = _manual_draw_running()
+    layout.label(text="Build the mesh by clicking vertices")
+    skinning_props = _scene_skinning(context)
+    if skinning_props is not None:
+        # Spec 070 C1: Manual Mesh has its own interior-mode toggle (independent
+        # of the automesh fields); DENSE reveals the shared interior spacing knob.
+        layout.prop(skinning_props, "manual_interior_mode")
+        if skinning_props.manual_interior_mode == "DENSE":
+            layout.prop(skinning_props, "automesh_interior_spacing")
+    row = layout.row()
+    row.enabled = running or _authoring_button_enabled(obj)
+    row.operator(
+        "proscenio.draw_mesh_vertices",
+        text="Exit Draw with vertices" if running else "Draw with vertices",
+        icon="X" if running else "GREASEPENCIL",
+        depress=running,
+    )
+    _draw_manual_draw_cheatsheet(layout)
 
 
 def _authoring_button_enabled(obj: bpy.types.Object | None) -> bool:
@@ -285,6 +378,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_PT_mesh_generation,
     PROSCENIO_PT_automesh_alpha,
     PROSCENIO_PT_automesh_interactive,
+    PROSCENIO_PT_manual_mesh,
     PROSCENIO_PT_debug_pipeline,
 )
 

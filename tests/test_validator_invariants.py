@@ -9,9 +9,15 @@ from __future__ import annotations
 from typing import Any
 
 from proscenio_validator._types import Metrics, Quadrants
-from proscenio_validator.invariants import SPRITE_BOUNDS, SpriteInvariants, check_invariants
+from proscenio_validator.invariants import (
+    SPRITE_BOUNDS,
+    SpriteInvariants,
+    check_invariants,
+)
 
-_BOUNDS = SpriteInvariants(verts=(200, 400), faces=(350, 700), min_coverage=0.98, max_hole_bleed=0)
+_BOUNDS = SpriteInvariants(
+    verts=(200, 400), faces=(350, 700), min_coverage=0.98, max_hole_bleed=0
+)
 
 
 def _metrics(**overrides: Any) -> Metrics:
@@ -69,7 +75,9 @@ def test_face_count_outside_bounds_fails() -> None:
 
 
 def test_missing_coverage_measurement_fails() -> None:
-    assert any("coverage measurement unavailable" in f for f in _failures(coverage_pct=None))
+    assert any(
+        "coverage measurement unavailable" in f for f in _failures(coverage_pct=None)
+    )
 
 
 def test_coverage_below_minimum_fails() -> None:

@@ -13,6 +13,7 @@ Proscenio targets (alpha grids downscaled to <=256x256 before tracing).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 
 AlphaGrid = list[list[int]]
@@ -55,6 +56,12 @@ _MAX_CONTOUR_STEPS: int = 200_000
 pathological inputs that would otherwise loop indefinitely. Above
 the cap the trace returns whatever it has so the caller never
 hangs the Blender UI thread."""
+
+
+_NO_FOREGROUND_MSG = (
+    "alpha grid contains no foreground pixels above the threshold; "
+    "check the image alpha channel and the threshold setting"
+)
 
 
 def binarize(alpha: AlphaGrid, threshold: int) -> BinaryMask:
@@ -264,11 +271,99 @@ def extract_outer_contour(
         mask = dilate(mask, dilate_px)
     seed = find_first_boundary(mask)
     if seed is None:
-        raise ValueError(
-            "alpha grid contains no foreground pixels above the threshold; "
-            "check the image alpha channel and the threshold setting"
-        )
+        raise ValueError(_NO_FOREGROUND_MSG)
     return trace_contour(mask, seed)
+
+
+def fill_polygon_into_mask(mask: BinaryMask, polygon: list[tuple[float, float]]) -> None:
+    """Set every cell whose center the polygon encloses to foreground (in place).
+
+    Even-odd scanline fill on the integer grid (spec 070: an ADD island is
+    painted into the alpha mask so the trace UNIONS it with the silhouette
+    instead of grafting it as a detour). ``polygon`` is float (x, y) cell
+    coordinates; a polygon of fewer than 3 verts paints nothing. Cells outside
+    the grid are clipped.
+    """
+    if len(polygon) < 3 or not mask or not mask[0]:
+        return
+    height = len(mask)
+    width = len(mask[0])
+    ys = [p[1] for p in polygon]
+    y_lo = max(0, int(min(ys)))
+    y_hi = min(height - 1, int(max(ys)) + 1)
+    n = len(polygon)
+    for y in range(y_lo, y_hi + 1):
+        # Sample at the cell center (y + 0.5), and span only cells whose center
+        # (x + 0.5) the polygon encloses - so the docstring's "cell center"
+        # contract holds (a span x in [2, 6) does not paint the x=6 cell).
+        scan_y = y + 0.5
+        crossings: list[float] = []
+        prev = n - 1
+        for i in range(n):
+            yi = polygon[i][1]
+            yj = polygon[prev][1]
+            # Edge straddles the scanline (half-open so shared verts count once).
+            if (yi <= scan_y < yj) or (yj <= scan_y < yi):
+                xi = polygon[i][0]
+                xj = polygon[prev][0]
+                crossings.append(xi + (scan_y - yi) / (yj - yi) * (xj - xi))
+            prev = i
+        crossings.sort()
+        row = mask[y]
+        for k in range(0, len(crossings) - 1, 2):
+            x_start = max(0, math.ceil(crossings[k] - 0.5))
+            x_end = min(width - 1, math.floor(crossings[k + 1] - 0.5))
+            for x in range(x_start, x_end + 1):
+                row[x] = True
+
+
+def extract_outer_contour_with_islands(
+    alpha: AlphaGrid,
+    threshold: int,
+    dilate_px: int,
+    island_polygons: list[list[tuple[float, float]]],
+) -> Contour:
+    """Threshold + dilate + paint ADD islands + trace the merged outer boundary.
+
+    Like :func:`extract_outer_contour`, but each polygon in ``island_polygons``
+    (float cell coordinates) is filled into the mask after dilation, so an island
+    overlapping the silhouette UNIONS with it - the trace walks one combined
+    boundary (spec 070 ADD). Islands are applied even when ``island_polygons`` is
+    empty (then this matches ``extract_outer_contour``).
+    """
+    mask = binarize(alpha, threshold)
+    if dilate_px > 0:
+        mask = dilate(mask, dilate_px)
+    for polygon in island_polygons:
+        _union_island_if_overlapping(mask, polygon)
+    seed = find_first_boundary(mask)
+    if seed is None:
+        raise ValueError(_NO_FOREGROUND_MSG)
+    return trace_contour(mask, seed)
+
+
+def _union_island_if_overlapping(mask: BinaryMask, polygon: list[tuple[float, float]]) -> None:
+    """Union an ADD island into ``mask`` only when it overlaps the existing
+    foreground (spec 070: ADD must overlap). ``trace_contour`` walks one connected
+    component, so a fully detached island painted directly could be traced instead
+    of the real silhouette; drop it. Painted into a scratch mask first, then ORed
+    in only on overlap.
+    """
+    if len(polygon) < 3 or not mask or not mask[0]:
+        return
+    height = len(mask)
+    width = len(mask[0])
+    island = [[False] * width for _ in range(height)]
+    fill_polygon_into_mask(island, polygon)
+    overlaps = any(mask[y][x] and island[y][x] for y in range(height) for x in range(width))
+    if not overlaps:
+        return
+    for y in range(height):
+        mask_row = mask[y]
+        island_row = island[y]
+        for x in range(width):
+            if island_row[x]:
+                mask_row[x] = True
 
 
 def extract_inner_contour(
@@ -413,10 +508,7 @@ def extract_contours(
     outer_mask = dilate(raw_mask, outer_dilate) if outer_dilate > 0 else raw_mask
     seed = find_first_boundary(outer_mask)
     if seed is None:
-        raise ValueError(
-            "alpha grid contains no foreground pixels above the threshold; "
-            "check the image alpha channel and the threshold setting"
-        )
+        raise ValueError(_NO_FOREGROUND_MSG)
     outer = trace_contour(outer_mask, seed)
     # Detect holes on the RAW (undilated) mask: foreground dilation
     # would close 1-2 cell inter-finger corridors at low resolution

@@ -16,6 +16,7 @@ import bpy
 
 from ..._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY
 from ..._shared.props_access import scene_skinning
+from ..._shared.report import ReportTarget, report_warn
 from ...skinning.sidecar_schema import (
     SIDECAR_VERSION,
     NamedSnapshot,
@@ -24,13 +25,16 @@ from ...skinning.sidecar_schema import (
     compute_topology_hash,
     from_json,
     to_json,
+    weight_bearing_bone_names,
 )
 from ...skinning.weight_reproject import reproject_entries
 from .sidecar_io import apply_sidecar, per_vert_uv_anchors, snapshot_sidecar
 
 
 def maybe_pre_regen_snapshot(
-    obj: bpy.types.Object, armature: bpy.types.Object | None
+    obj: bpy.types.Object,
+    armature: bpy.types.Object | None,
+    op: ReportTarget | None = None,
 ) -> WeightSidecar | None:
     """Snapshot current weights before automesh wipes the mesh.
 
@@ -43,6 +47,11 @@ def maybe_pre_regen_snapshot(
     populated (e.g. user bound via Ctrl+P Armature Auto Weights without our
     bind operator), build the sidecar on-the-fly from current vgroup data so
     weights survive the next automesh regen.
+
+    ``op`` (optional) receives a WARNING when a present-but-corrupt sidecar
+    forces the vgroup fallback: that path can recover the live weights but not
+    the painted-vs-auto provenance the corrupt CP carried, so the loss is
+    surfaced rather than swallowed.
     """
     if armature is None or armature.type != "ARMATURE":
         return None
@@ -51,7 +60,7 @@ def maybe_pre_regen_snapshot(
         return None
     payload = obj.get(_SIDECAR_KEY)
     if payload is not None:
-        return _snapshot_from_existing_sidecar(obj, armature, payload)
+        return _snapshot_from_existing_sidecar(obj, armature, payload, op)
     return _snapshot_from_vgroups_fallback(obj, armature)
 
 
@@ -59,19 +68,24 @@ def _snapshot_from_existing_sidecar(
     obj: bpy.types.Object,
     armature: bpy.types.Object,
     payload: str,
+    op: ReportTarget | None = None,
 ) -> WeightSidecar | None:
     """Existing sidecar present - snapshot from live vgroup state.
 
     Falls through to the vgroup fallback when (a) the JSON is corrupt or (b)
     the sidecar has zero entries. The fall-through is required: a corrupted or
     empty sidecar would otherwise silently wipe the user's vgroup-based weights
-    on regen.
+    on regen. The fallback rebuilds from live vgroups with a flat ``auto_seed``
+    provenance, so any painted-vs-auto provenance the bad CP held is lost - warn
+    ``op`` so that loss is visible, not silent.
     """
     try:
         existing = from_json(payload)
     except ValueError:
+        _warn_provenance_loss(op, "sidecar is corrupt")
         return _snapshot_from_vgroups_fallback(obj, armature)
     if not existing.entries:
+        _warn_provenance_loss(op, "sidecar has no entries")
         return _snapshot_from_vgroups_fallback(obj, armature)
     # Snapshot the live weights, then carry the prior sidecar's per-vert
     # provenance + its saved snapshots forward. snapshot_sidecar tags every
@@ -172,10 +186,16 @@ def maybe_post_regen_reproject(
 ) -> dict[str, int]:
     """Reproject prior_sidecar entries onto obj's new topology + apply.
 
-    Counters: {reprojected, auto_seed, total, topology_changed}.
+    Counters: {reprojected, auto_seed, total, topology_changed, rig_mismatch}.
     topology_changed = 1 when the new hash differs from prior, 0 when
     identical (entries reapplied as-is without going through reproject).
+    rig_mismatch = 1 when the prior weights reference bones absent from the
+    current armature's deform bones (a picker rig switch between bind and regen):
+    the carried weights would orphan to dead groups, so the caller must warn
+    rather than claim a clean preserve.
     """
+    deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
+    rig_mismatch = _rig_mismatch(prior_sidecar, deform_bone_names)
     new_hash = compute_topology_hash(
         len(obj.data.vertices),
         [list(p.vertices) for p in obj.data.polygons],
@@ -189,6 +209,7 @@ def maybe_post_regen_reproject(
             "auto_seed": 0,
             "total": applied["verts_applied"],
             "topology_changed": 0,
+            "rig_mismatch": rig_mismatch,
         }
     new_anchors = per_vert_uv_anchors(obj)
     if new_anchors is None:
@@ -203,9 +224,9 @@ def maybe_post_regen_reproject(
             "auto_seed": len(stub.entries),
             "total": len(stub.entries),
             "topology_changed": 1,
+            "rig_mismatch": rig_mismatch,
         }
-    deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
-    return _reproject_and_apply(
+    counts = _reproject_and_apply(
         obj,
         prior_sidecar.entries,
         new_anchors,
@@ -213,6 +234,8 @@ def maybe_post_regen_reproject(
         deform_bone_names,
         prior_sidecar.snapshots,
     )
+    counts["rig_mismatch"] = rig_mismatch
+    return counts
 
 
 def _reprojected_or_fallback(
@@ -317,6 +340,33 @@ def reproject_stored_sidecar(obj: bpy.types.Object) -> dict[str, int] | None:
     return _reproject_and_apply(
         obj, prior.entries, new_anchors, new_hash, prior.vertex_group_names, prior.snapshots
     )
+
+
+def _rig_mismatch(prior_sidecar: WeightSidecar, deform_bone_names: list[str]) -> int:
+    """1 when prior weights reference a bone the current rig does not deform.
+
+    A picker rig switch between bind and regen leaves the carried entries keyed
+    by the OLD rig's bones; ``apply_sidecar`` only writes a weight when its group
+    exists, so those weights silently orphan under the new rig. Flag it so the
+    caller can warn instead of reporting a clean preserve. 0 when the prior
+    carries no weights (nothing to orphan) or every weight bone still deforms.
+    """
+    prior_names = set(weight_bearing_bone_names(prior_sidecar.entries))
+    if not prior_names:
+        return 0
+    return 0 if prior_names <= set(deform_bone_names) else 1
+
+
+def _warn_provenance_loss(op: ReportTarget | None, reason: str) -> None:
+    """Warn ``op`` (when present) that a corrupt/empty sidecar forced the vgroup
+    fallback, which cannot recover the painted-vs-auto provenance."""
+    if op is not None:
+        report_warn(
+            op,
+            f"{reason} - rebuilt weights from vertex groups, but painted-vs-auto "
+            "provenance could not be recovered",
+            always=True,
+        )
 
 
 def _get_skinning_props() -> bpy.types.PropertyGroup | None:

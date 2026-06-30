@@ -32,6 +32,7 @@ from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     find_snapshot,
     from_json,
     to_json,
+    weight_bearing_bone_names,
 )
 
 
@@ -145,9 +146,14 @@ class PROSCENIO_OT_restore_named_snapshot(bpy.types.Operator):
                 "with preserve_on_regen ON to re-establish it",
             )
             return {"CANCELLED"}
+        # Recreate the groups the snapshot's own weights reference, NOT the live
+        # baseline's vertex_group_names: a re-bind under a renamed deform bone
+        # drifts the baseline names away from the snapshot's keys, and apply only
+        # writes a weight when its bone group exists - so baseline names here
+        # silently drop every snapshot weight (same topology, no error).
         restore_sidecar = WeightSidecar(
             version=sidecar.version,
-            vertex_group_names=sidecar.vertex_group_names,
+            vertex_group_names=weight_bearing_bone_names(snapshot.entries),
             mesh_topology_hash=sidecar.mesh_topology_hash,
             entries=snapshot.entries,
         )

@@ -42,6 +42,7 @@ from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     from_json,
 )
 from .._status_bar import append_statusbar_draw, remove_statusbar_draw
+from ._status_bar import emit_edit_weights_chords
 
 # Poll cadence for the mode-watch timer. A native mode exit (header dropdown,
 # tab, pie) delivers no event to this modal, so a timer is the only signal
@@ -286,15 +287,10 @@ def _tag_redraw_view3d(context: bpy.types.Context) -> None:
 
 def _draw_statusbar_edit_weights(self: bpy.types.Header, _context: bpy.types.Context) -> None:
     layout = self.layout
-    row = layout.row(align=True)
-    row.label(text="", icon="BRUSHES_ALL")
-    row.label(text="Edit Weights:")
-    row = layout.row(align=True)
-    row.label(text="", icon="EVENT_ESC")
-    row.label(text="exit")
-    row = layout.row(align=True)
-    row.label(text="", icon="MOD_MIRROR")
-    row.label(text="mirror = target.proscenio_mirror_x")
+    title = layout.row(align=True)
+    title.label(text="", icon="BRUSHES_ALL")
+    title.label(text="Edit Weights:")
+    emit_edit_weights_chords(layout)
 
 
 _classes: tuple[type, ...] = (PROSCENIO_OT_edit_weights_modal,)

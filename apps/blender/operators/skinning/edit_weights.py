@@ -162,6 +162,12 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
             return self._finish(context, cancel=True)
         return {"PASS_THROUGH"}
 
+    def cancel(self, context: bpy.types.Context) -> None:
+        # Blender calls cancel() when the modal is killed externally (window close,
+        # file load). Without it _finish never runs, leaking the timer, overlay, and
+        # statusbar and leaving the paint session unrestored. Mirror the exit path.
+        self._finish(context, cancel=True)
+
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
         try:
             with contextlib.suppress(RuntimeError):

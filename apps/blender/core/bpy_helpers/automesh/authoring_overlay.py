@@ -94,6 +94,28 @@ class OverlayHandles(TypedDict):
     tooltip: object | None  # POST_PIXEL intent text; Stage 2 + Stage 4 only
 
 
+def empty_overlay_handles() -> OverlayHandles:
+    """All-None OverlayHandles - the single source for every initial handle set.
+
+    The two register_* functions and both authoring operators seed their handle
+    dict from here so a new OverlayHandles key cannot be forgotten in one place
+    (the 'outer_preview' gap that left a handler out of unregister's teardown).
+    """
+    return {
+        "outer": None,
+        "outer_preview": None,
+        "inner": None,
+        "steiners": None,
+        "triangulation": None,
+        "user_dots": None,
+        "user_strokes": None,
+        "user_outer_strokes": None,
+        "live_preview": None,
+        "delete_hover": None,
+        "tooltip": None,
+    }
+
+
 def _draw_tooltip(
     mouse_pos_ref: list[tuple[int, int]],
     text_ref: list[str],
@@ -275,60 +297,52 @@ def register_overlay(
     see the current live state without needing re-registration on each
     MOUSEMOVE event.
     """
-    handles: OverlayHandles = {
-        "outer": None,
-        "outer_preview": None,
-        "inner": None,
-        "steiners": None,
-        "triangulation": None,
-        "user_dots": None,
-        "user_strokes": None,
-        "user_outer_strokes": None,
-        "live_preview": None,
-        "delete_hover": None,
-        "tooltip": None,
-    }
-    _register_contour_handlers(handles, stage, output)
-    if stage == AuthoringStage.EDIT_OUTLINE:
-        # Stage 2: outer strokes only (cut = red). The spliced-outer
-        # preview holds the live output.outer_preview list by
-        # reference so the operator can update it in-place after each edit.
-        handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_polyline,
-            (output.outer_preview, _OUTER_PREVIEW_COLOR, _LINE_WIDTH),
-            "WINDOW",
-            "POST_VIEW",
-        )
-        _register_interactive_handlers(
-            handles,
-            user_outer_strokes,
-            tooltip_mouse_ref,
-            tooltip_text_ref,
-            live_preview_ref=live_preview_ref,
-            tooltip_color_ref=tooltip_color_ref,
-            delete_hover_ref=delete_hover_ref,
-        )
-    elif stage == AuthoringStage.EDIT_INTERIOR_POINTS:
-        # Stage 4: interior strokes, plus outer strokes kept visible via a
-        # separate handler stored in "user_outer_strokes". Cut = red in both
-        # stages. The colored live preview supersedes the gray raw-stroke.
-        _register_interactive_handlers(
-            handles,
-            user_strokes,
-            tooltip_mouse_ref,
-            tooltip_text_ref,
-            live_preview_ref=live_preview_ref,
-            tooltip_color_ref=tooltip_color_ref,
-            delete_hover_ref=delete_hover_ref,
-        )
-        if user_outer_strokes is not None:
-            handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
-                _draw_user_strokes,
-                (user_outer_strokes,),
+    handles = empty_overlay_handles()
+    try:
+        _register_contour_handlers(handles, stage, output)
+        if stage == AuthoringStage.EDIT_OUTLINE:
+            # Stage 2: outer strokes only (cut = red). The spliced-outer
+            # preview holds the live output.outer_preview list by
+            # reference so the operator can update it in-place after each edit.
+            handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+                _draw_polyline,
+                (output.outer_preview, _OUTER_PREVIEW_COLOR, _LINE_WIDTH),
                 "WINDOW",
                 "POST_VIEW",
             )
-    _register_preview_handlers(handles, stage, output, user_strokes, user_outer_strokes)
+            _register_interactive_handlers(
+                handles,
+                user_outer_strokes,
+                tooltip_mouse_ref,
+                tooltip_text_ref,
+                live_preview_ref=live_preview_ref,
+                tooltip_color_ref=tooltip_color_ref,
+                delete_hover_ref=delete_hover_ref,
+            )
+        elif stage == AuthoringStage.EDIT_INTERIOR_POINTS:
+            # Stage 4: interior strokes, plus outer strokes kept visible via a
+            # separate handler stored in "user_outer_strokes". Cut = red in both
+            # stages. The colored live preview supersedes the gray raw-stroke.
+            _register_interactive_handlers(
+                handles,
+                user_strokes,
+                tooltip_mouse_ref,
+                tooltip_text_ref,
+                live_preview_ref=live_preview_ref,
+                tooltip_color_ref=tooltip_color_ref,
+                delete_hover_ref=delete_hover_ref,
+            )
+            if user_outer_strokes is not None:
+                handles["user_outer_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+                    _draw_user_strokes,
+                    (user_outer_strokes,),
+                    "WINDOW",
+                    "POST_VIEW",
+                )
+        _register_preview_handlers(handles, stage, output, user_strokes, user_outer_strokes)
+    except Exception:
+        unregister_overlay(handles)  # a partial handler set must not leak on raise
+        raise
     return handles
 
 
@@ -352,59 +366,51 @@ def register_manual_draw_overlay(
     handlers. Pair with ``unregister_overlay``; re-register when the
     triangulation list changes (the dict + stroke list are read by reference).
     """
-    handles: OverlayHandles = {
-        "outer": None,
-        "outer_preview": None,
-        "inner": None,
-        "steiners": None,
-        "triangulation": None,
-        "user_dots": None,
-        "user_strokes": None,
-        "user_outer_strokes": None,
-        "live_preview": None,
-        "delete_hover": None,
-        "tooltip": None,
-    }
-    if triangulation:
-        handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_edges,
-            (list(triangulation), _TRIANGULATION_LIVE_COLOR, _TRIANGULATION_LINE_WIDTH),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    handles["live_preview"] = bpy.types.SpaceView3D.draw_handler_add(
-        _draw_live_preview,
-        (live_preview_ref,),
-        "WINDOW",
-        "POST_VIEW",
-    )
-    if user_strokes is not None:
-        handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_user_strokes,
-            (user_strokes,),
-            "WINDOW",
-            "POST_VIEW",
-        )
-    if interior_live_ref is not None:
-        handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+    handles = empty_overlay_handles()
+    try:
+        if triangulation:
+            handles["triangulation"] = bpy.types.SpaceView3D.draw_handler_add(
+                _draw_edges,
+                (list(triangulation), _TRIANGULATION_LIVE_COLOR, _TRIANGULATION_LINE_WIDTH),
+                "WINDOW",
+                "POST_VIEW",
+            )
+        handles["live_preview"] = bpy.types.SpaceView3D.draw_handler_add(
             _draw_live_preview,
-            (interior_live_ref,),
+            (live_preview_ref,),
             "WINDOW",
             "POST_VIEW",
         )
-    if delete_hover_ref is not None:
-        handles["delete_hover"] = bpy.types.SpaceView3D.draw_handler_add(
-            _draw_delete_hover,
-            (delete_hover_ref,),
+        if user_strokes is not None:
+            handles["user_strokes"] = bpy.types.SpaceView3D.draw_handler_add(
+                _draw_user_strokes,
+                (user_strokes,),
+                "WINDOW",
+                "POST_VIEW",
+            )
+        if interior_live_ref is not None:
+            handles["outer_preview"] = bpy.types.SpaceView3D.draw_handler_add(
+                _draw_live_preview,
+                (interior_live_ref,),
+                "WINDOW",
+                "POST_VIEW",
+            )
+        if delete_hover_ref is not None:
+            handles["delete_hover"] = bpy.types.SpaceView3D.draw_handler_add(
+                _draw_delete_hover,
+                (delete_hover_ref,),
+                "WINDOW",
+                "POST_VIEW",
+            )
+        handles["tooltip"] = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_tooltip,
+            (tooltip_mouse_ref, tooltip_text_ref, tooltip_color_ref),
             "WINDOW",
-            "POST_VIEW",
+            "POST_PIXEL",
         )
-    handles["tooltip"] = bpy.types.SpaceView3D.draw_handler_add(
-        _draw_tooltip,
-        (tooltip_mouse_ref, tooltip_text_ref, tooltip_color_ref),
-        "WINDOW",
-        "POST_PIXEL",
-    )
+    except Exception:
+        unregister_overlay(handles)  # a partial handler set must not leak on raise
+        raise
     return handles
 
 

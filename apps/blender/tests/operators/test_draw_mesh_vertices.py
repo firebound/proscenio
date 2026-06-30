@@ -10,6 +10,7 @@ Manual Draw's apply runs the same ``apply_mesh`` with ``outer_is_manual=True``.
 from __future__ import annotations
 
 import bpy
+import pytest
 
 
 def _activate(name: str) -> bpy.types.Object:
@@ -157,6 +158,89 @@ def test_finish_survives_a_closed_window(automesh_fixture, monkeypatch):
         assert teardown_calls == [True], "cursor_set on a None window aborted the teardown"
     finally:
         mark_stopped("manual_draw")
+
+
+def test_empty_overlay_handles_has_every_key(automesh_fixture):
+    """The shared empty-handles factory must cover every OverlayHandles key. The
+    operators seed self._handles from it, and unregister_overlay walks the key
+    set - a missing key (the historical 'outer_preview' gap) silently skips that
+    handler's teardown, leaking it on cleanup."""
+    from proscenio.core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
+        OverlayHandles,
+        empty_overlay_handles,
+    )
+
+    handles = empty_overlay_handles()
+    assert set(handles) == set(OverlayHandles.__annotations__)
+    assert all(value is None for value in handles.values())
+
+
+def test_register_manual_draw_overlay_rolls_back_on_partial_failure(automesh_fixture, monkeypatch):
+    """If a draw_handler_add midway through registration raises, the handlers
+    already added must be removed before the error propagates - a partial set
+    left registered leaks GPU draw handlers for the rest of the session."""
+    from proscenio.core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+        authoring_overlay as ov,
+    )
+
+    added: list[object] = []
+    removed: list[object] = []
+    state = {"n": 0}
+
+    def fake_add(_func: object, _args: object, _region: object, _event: object) -> object:
+        state["n"] += 1
+        if state["n"] == 2:  # first add (triangulation) lands, second (live_preview) fails
+            raise RuntimeError("simulated GPU handler failure")
+        handle = object()
+        added.append(handle)
+        return handle
+
+    monkeypatch.setattr(ov.bpy.types.SpaceView3D, "draw_handler_add", fake_add)
+    monkeypatch.setattr(
+        ov.bpy.types.SpaceView3D, "draw_handler_remove", lambda h, _region: removed.append(h)
+    )
+
+    with pytest.raises(RuntimeError, match="simulated"):
+        ov.register_manual_draw_overlay(
+            triangulation=[((0.0, 0.0), (1.0, 0.0))],
+            live_preview_ref={},
+            tooltip_mouse_ref=[(0, 0)],
+            tooltip_text_ref=[""],
+            tooltip_color_ref=[(0.0, 0.0, 0.0, 1.0)],
+        )
+    assert added, "test did not exercise a partial registration"
+    assert removed == added, "partial overlay registration leaked the added handlers"
+
+
+def test_finish_removes_registered_overlay_handles(automesh_fixture, monkeypatch):
+    """The invoke setup-failure path now routes through _finish (mirroring the
+    automesh modal): _finish must remove every overlay handler it holds. Guards
+    the leak where a failed setup returned CANCELLED with the draw handlers the
+    earlier _register_overlay added still live. The full modal invoke is not
+    headless-testable, so this exercises the _finish teardown the except calls."""
+    from types import SimpleNamespace
+
+    from proscenio.core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+        authoring_overlay as ov,
+    )
+    from proscenio.operators.automesh import (  # type: ignore[import-not-found]
+        draw_mesh_vertices as mod,
+    )
+
+    removed: list[object] = []
+    monkeypatch.setattr(
+        ov.bpy.types.SpaceView3D, "draw_handler_remove", lambda h, _r: removed.append(h)
+    )
+    handle = object()
+    handles = ov.empty_overlay_handles()
+    handles["live_preview"] = handle  # a handler a partial setup had registered
+    ctx = SimpleNamespace(window=None, window_manager=None)
+    stub = SimpleNamespace(
+        _handles=handles, _session=None, _remove_statusbar=lambda: None, _tag_redraw=lambda _c: None
+    )
+
+    mod.PROSCENIO_OT_draw_mesh_vertices._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+    assert removed == [handle], "finish left the registered overlay handler leaked"
 
 
 def test_authoring_modal_guard_tracks_running_state(automesh_fixture):

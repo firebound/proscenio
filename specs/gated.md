@@ -21,7 +21,7 @@ The Spine-parity expressiveness wave (the day-one appearance slice - modulate / 
 
 ## Mesh authoring
 
-- **manual-hull-pen-tool** - SHIPPED 2026-06-27 (spec 066, PR #162): the gate was reopened and built. The OUTER stage of the automesh interactive modal gained a Manual contour tool on the existing click-pen machine (click points, close the loop, it replaces `output.outer`), selected via the new bare-Tab per-stage tool cycle. Kept here as the record. Note: the contour pen still edits an existing mesh element's contour and ends at APPLY; a from-blank pen-creation tool and persistent re-editing are the open follow-on (`mesh-pen-authoring` in [backlog/ui-feedback.md](backlog/ui-feedback.md)). Original gate framing: demand class confirmed (Spine / Live2D / Moho), Edit Mode + Reproject UV was the fallback that made it gesture-convenience only.
+- **manual-hull-pen-tool** - SHIPPED 2026-06-27 (spec 066, PR #162): the gate was reopened and built. The OUTER stage of the automesh interactive modal gained a Manual contour tool on the existing click-pen machine (click points, close the loop, it replaces `output.outer`), selected via the new bare-Tab per-stage tool cycle. Kept here as the record. Note: the contour pen edits an existing mesh element's contour and ends at APPLY; the from-blank pen-creation tool and persistent re-editing follow-on (`mesh-pen-authoring`) SHIPPED 2026-06-29 in spec 070 (PR #167) as the standalone Manual Mesh modal, and the OUTER manual-contour tool itself was reverted there (silhouette edits moved to additive ADD/KNIFE/REMOVE islands). Original gate framing: demand class confirmed (Spine / Live2D / Moho), Edit Mode + Reproject UV was the fallback that made it gesture-convenience only.
 
 ## Skinning and weight paint
 

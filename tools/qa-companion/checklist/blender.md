@@ -334,6 +334,20 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/reimport_element.py; apps/blender/importers/photoshop/__init__.py (reimport_element); apps/blender/panels/element.py (Re-import button)
 - note: element-individual-reimport. Resolution + 055 contract + no re-anchor pinned by tests/operators/test_psd_reimport_single.py; this is the GUI button + remembered-path + picker-fallback walk.
 
+### BL-ELEM-ROOT-08 · Revert to Plane rebuilds the original imported plane
+- status: pending
+- review: todo
+- pre: A PSD-imported mesh element that has been automeshed and weight-painted (it carries an import placement tag). Also have a hand-incorporated mesh element (no placement tag) to test the guard.
+- steps:
+  1. With the imported, automeshed element active, open the Element panel and click 'Revert to Plane'.
+  2. Read the confirmation dialog, then confirm.
+  3. Inspect the element: geometry, vertex groups, the image material, and the import tags.
+  4. Press Ctrl+Z, then repeat step 1 on the incorporated element that has no placement tag.
+- observe: The button shows only for a mesh element carrying a placement tag. Clicking it raises a confirm dialog warning the generated mesh and weight paint will be destroyed (and noting the image + placement are kept and Ctrl+Z undoes it). Confirming rebuilds the flat textured quad (4 verts / 1 face), drops every deform vertex group + the weight sidecar + the automesh and manual-contour authoring data, and keeps the image material, element type, and import placement/origin/manifest tags; a report summarizes what was cleared. Ctrl+Z restores the prior mesh. On the no-placement (incorporated) element the action is a warn-and-no-op ('no original plane recorded') and the mesh is untouched.
+- intent: Revert to Plane returns a Proscenio-generated mesh to its original imported textured plane, distinct from a PSD re-import (which re-runs automesh); it is destructive (confirmed) but undoable and restricted to placement-tagged elements.
+- code: apps/blender/operators/revert_to_plane.py; apps/blender/panels/element.py (Revert to Plane button)
+- note: spec 071 (#167). Operator behavior pinned by the headless revert tests; this is the GUI confirm + destructive-scope + no-placement-guard walk.
+
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass
 - review: keep
@@ -916,13 +930,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/automesh/automesh.py:195-209,257-279
 
 ### BL-MESH-INTERACTIVE-SWEEP · Interactive subpanel inventory (visual pass)
-- status: pass
-- review: keep
+- status: pending
+- review: todo
 - pre: Automesh Interactive subpanel expanded.
-- observe: The subpanel shows a label 'Interactive trace and edit', the Loops, Spacing, and Cut margin fields, the Preserve weights on regen toggle, and the Author Mesh (interactive) button. The button is enabled only when a mesh with an image texture is active; otherwise a 'select a mesh first' label shows.
-- intent: Confirm the Interactive subpanel renders its fields, the regen toggle, and the Author Mesh button with its enable rule; behavior lives in the named tests.
-- code: apps/blender/panels/mesh_generation.py:195-214; scene_props.py:287,310-333
-- note: Preserve weights on regen behavior -> GAP-REGEN-PRESERVE.
+- observe: The subpanel header carries an 'experimental' status badge (the automesh_interactive feature is flagged experimental). The body shows a label 'Interactive trace and edit', the Loops, Spacing, and Cut margin fields, the Preserve weights on regen toggle, and the Author Mesh (interactive) button (it reads 'Exit Author Mesh' while the modal runs). The button is enabled only when a mesh with an image texture is active; otherwise a 'select a mesh first' label shows.
+- intent: Confirm the Interactive subpanel renders its fields, the experimental badge, the regen toggle, and the Author Mesh toggle button with its enable rule; behavior lives in the named tests.
+- code: apps/blender/panels/mesh_generation.py:103-123,255-290; core/_shared/feature_status.py:120
+- note: spec 070 (#167): the automesh_interactive feature gained the EXPERIMENTAL badge. Re-walk the header inventory. Preserve weights on regen behavior -> GAP-REGEN-PRESERVE.
 
 ### BL-MESH-INTERACTIVE-01 · Author Mesh launches the interactive modal
 - status: pending
@@ -950,28 +964,29 @@ Each block answers three questions in plain language: what passing it proves (`i
 - pre: The Author Mesh modal is running.
 - steps:
   1. Press Enter to advance through the stages (OUTER, edit outline, inner loops, edit interior points, preview interior, apply); the stage label counts up and the overlay refreshes each step with a count report.
-  2. On the OUTER stage, press bare Tab to switch from Auto-trace to Manual contour, then click points to author the outer hull; click the first vert (or close) to finish the loop. The closed loop replaces the alpha-traced outer; pressing Tab back to Auto-trace recomputes the traced contour (reversible).
+  2. On the OUTER stage, confirm it is auto-only: bare Tab does not offer a manual-contour tool there (manual silhouette work is the ADD/KNIFE/REMOVE islands on the edit-outline stage, walked in -04; whole-contour hand authoring is the standalone Manual Mesh modal, BL-MESH-MANUAL-01).
   3. Press Backspace to step back to the previous stage; the overlay refreshes and pen stages reset their draw state.
   4. Press Esc to cancel: the overlay and status bar are removed, your session is restored, and no geometry changes.
-  5. On the final stage, press Enter to commit: the mesh is written and a confirmation reports the vertex and face counts (with a warning if any drawn points fell outside).
+  5. On the final stage, press Enter to commit: the mesh is written and a confirmation reports the vertex and face counts (with a warning if any island fell fully outside the silhouette).
   6. Flip the Interior Mode mid-modal: the stage list rebuilds (Simple drops the inner-loops stage).
-- observe: Each key behaves as its step describes, the Manual contour loop becomes the outer, and the mesh only changes on the final commit.
+- observe: Each key behaves as its step describes, the OUTER stage stays auto-only, and the mesh only changes on the final commit.
 - intent: One walk over the modal stage transitions, cancel, commit, and live re-snapshot.
-- code: apps/blender/operators/automesh/automesh_authoring.py:342-348,355,987,1015-1038,1068,1264
+- code: apps/blender/operators/automesh/automesh_authoring.py; core/skinning/authoring_stages.py:42-53
+- note: spec 070 (#167): the OUTER manual-contour tool was reverted (OUTER is auto-only); silhouette edits moved to additive islands. Re-walk OUTER + the commit warning.
 
-### BL-MESH-INTERACTIVE-04 · Author Mesh tool cycle + pen editing (consolidated)
+### BL-MESH-INTERACTIVE-04 · Author Mesh tool cycle + island / pen editing (consolidated)
 - status: pending
 - review: todo
 - pre: The Author Mesh modal is on a tool stage.
 - steps:
-  1. Press bare Tab to cycle the active tool of the current stage; the status bar and the panel's stage indicator name the new tool. Per stage: OUTER cycles Auto-trace and Manual contour; edit-outline cycles Extend and Cut; edit-interior cycles Point, Fold, and Cut. LMB always acts with the active tool (there is no Shift/Ctrl tap-toggle anymore).
-  2. On the edit-outline stage with Extend or Cut active, click to place points or drag to free-draw, then right-click or Enter to finish. Extend reshapes the outline; Cut marks a corridor that is carved at apply.
-  3. On the edit-interior stage with Point active, click to drop a single interior point. Tab to Fold or Cut for the pen, then draw and finish. The overlay turns red when a pen gesture aims outside the silhouette.
+  1. Press bare Tab to cycle the active tool of the current stage; the status bar and the panel's stage indicator name the new tool. Per stage: edit-outline cycles Add, Knife, Remove, Delete; edit-interior cycles Point, Fold, Delete. LMB always acts with the active tool (there is no Shift/Ctrl tap-toggle).
+  2. On the edit-outline stage with Add active, draw a closed loop that overlaps the silhouette and finish: it unions into one merged contour that grows the outline. Draw a loop fully detached from the silhouette and finish: it is dropped with a warning (an island must overlap). With Knife active, draw a corridor that is carved at apply; with Remove active, draw a closed loop whose area is excluded (a hole). With Delete active, click a committed stroke to remove it.
+  3. On the edit-interior stage with Point active, click to drop a single interior point. Tab to Fold for the pen, then draw and finish; Delete removes a committed interior stroke. The overlay turns red when a pen gesture aims outside the silhouette.
   4. While a pen tool is active: press X or Z to lock to an axis, use the mouse wheel or number keys to set subdivisions, Alt+click to remove a stroke, Ctrl+Z to drop the last point or stroke, and Esc to clear the in-progress line without leaving the tool.
-- observe: Bare Tab cycles the tool and re-arms the pen (or exits to a passive/point tool); each gesture behaves per its step; the status bar shows the stage, the active tool, and the Tab cycle; the viewport draws the contour and preview overlays. Blender's Ctrl+Tab and Shift+Tab are untouched.
-- intent: One walk over the bare-Tab per-stage tool cycle and the outline/interior pen editing, the pen chords, and the overlay/status-bar feedback.
-- code: apps/blender/operators/automesh/automesh_authoring.py (_active_tool, bare-Tab cycle, _handle_pen_event) <- core/skinning/authoring_stages.py (stage_tools / next_tool / default_tool / tool_is_pen); operators/automesh/_status_bar.py
-- note: mesh-generation-interaction (spec 066): the Shift/Ctrl tap-toggle was deleted for a bare-Tab tool cycle. Re-walk the pen flow.
+- observe: Bare Tab cycles the tool and re-arms the pen (or exits to the island/point tool); each gesture behaves per its step; an overlapping Add grows the outline while a detached Add is dropped + warned; Remove carves a hole; the status bar shows the stage, the active tool, and the Tab cycle. Blender's Ctrl+Tab and Shift+Tab are untouched.
+- intent: One walk over the bare-Tab per-stage tool cycle, the additive ADD/KNIFE/REMOVE island edits, the interior point/fold pen, the pen chords, and the overlay/status-bar feedback.
+- code: apps/blender/operators/automesh/automesh_authoring.py <- core/skinning/authoring_stages.py:42-58 (stage_tools / next_tool / tool_is_pen / tool_is_island); core/automesh/contour.py (extract_outer_contour_with_islands); operators/automesh/_status_bar.py
+- note: spec 070 (#167): edit-outline became additive islands (Add/Knife/Remove/Delete; Knife is the old Cut renamed) and interior dropped Cut (Point/Fold/Delete). Re-walk the island flow + the detached-island drop.
 
 ### BL-MESH-DEBUG-01 · Debug stage leaves a wireframe companion
 - status: pass
@@ -992,6 +1007,43 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: All debug companions for the active object are removed, and a confirmation reports how many were cleared.
 - intent: Clear Debug Companions deletes the wireframe companions left by debug runs.
 - code: apps/blender/panels/mesh_generation.py:245 -> automesh.py:339,356
+
+## Manual Mesh panel: standalone Draw-with-vertices authoring (spec 070)
+
+### BL-MESH-MANUAL-SWEEP · Manual Mesh panel inventory (visual pass)
+- status: pending
+- review: todo
+- pre: Manual Mesh panel expanded; switch the active object between a mesh, a sprite, and nothing.
+- observe: With a mesh active the panel shows the Interior Mode selector (Simple / Dense; Dense reveals the interior-spacing field) and the Draw with vertices button (it reads 'Exit Draw with vertices' while the modal runs). With no mesh active a guard label shows instead of the button. The panel is independent of Mesh Generation's automesh trace params (its own interior mode).
+- intent: Confirm the Manual Mesh panel renders its own interior-mode toggle and the Draw-with-vertices toggle button with its guard; behavior lives in the named tests.
+- code: apps/blender/panels/mesh_generation.py:127-137,306-335
+- note: spec 070 (#167): new standalone Manual Mesh panel + modal.
+
+### BL-MESH-MANUAL-01 · Draw with vertices authors a contour in two phases (consolidated)
+- status: pending
+- review: todo
+- pre: A mesh element active; the Manual Mesh panel open.
+- steps:
+  1. Click Draw with vertices: a modal starts with its own overlay + status-bar cheat-sheet; nothing is written yet. (Launching it while the Automesh modal runs is refused, and vice-versa - one authoring modal at a time.)
+  2. DRAW phase - LMB places contour points (each adds a vert + edge); the triangulation preview shows the candidate triangle at the cursor; X or Z locks to an axis (the axis guide line draws); the mouse wheel / number keys subdivide the edge being drawn; Ctrl+Z (or Del) drops the last point.
+  3. Close the loop (click the first vert): this enters the EDIT phase - it does NOT auto-apply. In EDIT: RMB-drag moves a vert; click on a placed edge inserts a vert splitting it (both halves keep the edge's subdiv); scroll over a hovered edge changes only that edge's subdivisions.
+  4. Press Enter to apply: the mesh is written to the drawn shape and a confirmation reports the vertex / face counts. Press Esc instead to clear the in-progress line, then again to exit with no change.
+- observe: Each gesture behaves per its step; the contour closes into an editable ring (not an immediate apply); the active phase / tool shows in the status bar + the panel's collapsible Shortcuts mirror (never as a cursor tooltip); the mesh changes only on Enter.
+- intent: One walk over the Draw-with-vertices two-phase flow (DRAW -> close -> EDIT -> apply), the per-edge subdivision, and the exclusivity guard.
+- code: apps/blender/operators/automesh/draw_mesh_vertices.py <- core/bpy_helpers/automesh/vertex_pen.py (VertexPen); operators/automesh/_authoring_modal_guard.py
+
+### BL-MESH-MANUAL-02 · Interior tools, dense fill, and re-edit (consolidated)
+- status: pending
+- review: todo
+- pre: The Draw with vertices modal in the EDIT phase on a closed contour.
+- steps:
+  1. Press Tab to cycle OUTER / INTERIOR POINT / INTERIOR FOLD; the status bar names the active tool. With INTERIOR POINT, click inside the contour to drop interior points. With INTERIOR FOLD, drag to free-draw a fold or click to lay free edges / a chain. A gesture aiming outside the contour turns the cursor warning red and is rejected.
+  2. Press Enter to apply, then re-open Draw with vertices on the same element: the stored contour (points + per-edge subdivs) and interior strokes preload straight into the EDIT phase so you can continue editing.
+  3. On the Manual Mesh panel set Interior Mode to Dense (reveal the spacing field) and apply a contour: the result has more interior verts than the same contour applied in Simple.
+- observe: Interior points / folds are accepted only inside the contour (red warning outside); a re-invoke rehydrates the prior contour + strokes; Dense yields a denser interior than Simple on the same outline.
+- intent: One walk over the Tab-cycled interior tools, the inside-contour gating, the re-edit rehydration, and the Simple-vs-Dense interior fill.
+- code: apps/blender/operators/automesh/draw_mesh_vertices.py; core/bpy_helpers/automesh/vertex_pen.py; core/automesh (point_in_polygon); cp key proscenio_manual_contour
+- note: spec 070 (#167): C2 re-edit CP + C1 dense toggle + C3 interior tools. The 071 Revert to Plane clears the stored contour (see BL-ELEM-ROOT-08).
 
 ## Weight Paint panel: five bind modes, Edit Weights modal, brush preset, copy weights, sidecar IO, snapshot restore
 

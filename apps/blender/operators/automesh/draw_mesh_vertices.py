@@ -729,7 +729,8 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         # (mirrors edit_weights._finish).
         mark_stopped(_MODAL_NAME)
         try:
-            context.window.cursor_set("DEFAULT")  # drop the CROSSHAIR set over the canvas
+            if context.window is not None:  # None on the window-close cancel path
+                context.window.cursor_set("DEFAULT")  # drop the CROSSHAIR over the canvas
             with contextlib.suppress(RuntimeError):
                 unregister_overlay(self._handles)
             self._remove_statusbar()

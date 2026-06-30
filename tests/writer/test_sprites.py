@@ -308,6 +308,23 @@ def test_build_sprite_weights_uses_fallback_for_zero_weight_vertex() -> None:
     assert {w.bone: w.values for w in weights} == {"arm": [1.0]}
 
 
+def test_build_sprite_weights_falls_back_when_attach_bone_is_not_a_real_bone() -> None:
+    # The fallback (attach) bone need not name a real armature bone; a zero-weight
+    # vertex must still get a deterministic real-bone fallback from known_groups,
+    # not an all-zero (undeformed) weight column.
+    obj = SimpleNamespace(
+        name="s", vertex_groups=[_vgroup(0, "ghost"), _vgroup(1, "arm")]
+    )
+    mesh = SimpleNamespace(
+        vertices=[SimpleNamespace(groups=[])]
+    )  # vertex carries no weight
+    weights = sprites.build_sprite_weights(
+        obj, mesh, [0], fallback_bone="ghost", available_bones={"arm"}
+    )
+    assert weights, "zero-weight vertex got an all-zero weight column (no fallback)"
+    assert {w.bone: w.values for w in weights} == {"arm": [1.0]}
+
+
 @pytest.mark.parametrize(
     "image, expected",
     [

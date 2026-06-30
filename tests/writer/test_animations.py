@@ -303,6 +303,17 @@ def test_collect_bone_keys_without_deform_set_keeps_every_bone() -> None:
     assert set(anim.collect_bone_keys(action, fps=10)) == {"anything.IK"}
 
 
+def test_frame_zero_bone_key_clamps_to_nonnegative_time() -> None:
+    # A bone keyed at Blender frame 0 yields (0 - 1) / fps, a NEGATIVE time, which
+    # trips the Key(time >= 0) constraint and aborts the whole export. The
+    # sprite_frame / slot writers already clamp at 0; the bone writer must match.
+    fc = _fcurve('pose.bones["arm"].rotation_euler', 0, [(0, 0.5)])
+    action = SimpleNamespace(fcurves=[fc])
+    by_time = anim.collect_bone_keys(action, fps=10)["arm"]
+    track = anim.build_bone_track("arm", by_time, ppu=1.0, rest_local=_REST_X)
+    assert [k.time for k in track.keys] == [0.0]
+
+
 def test_build_animation_returns_none_when_no_bone_keys() -> None:
     action = SimpleNamespace(name="idle", fcurves=[], frame_range=(1.0, 10.0))
     assert anim.build_animation(action, fps=10, ppu=100.0, rest_local=_REST) is None

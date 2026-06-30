@@ -43,6 +43,7 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
 )
 from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
+    empty_overlay_handles,
     register_manual_draw_overlay,
     unregister_overlay,
 )
@@ -238,6 +239,10 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         self._tooltip_text_ref: list[str] = [""]
         self._tooltip_color_ref: list[tuple[float, float, float, float]] = [_TOOLTIP_BG_NORMAL]
 
+        # Seed a complete empty handle set BEFORE registering so the except path
+        # can _finish() (which tears the overlay down) even if registration itself
+        # raised - mirrors the automesh modal's invoke.
+        self._handles = empty_overlay_handles()
         try:
             self._handles = self._register_overlay()
             self._append_statusbar()
@@ -245,6 +250,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
             self._tag_redraw(context)
         except Exception as exc:
             report_error(self, f"Manual Draw setup failed: {exc}")
+            self._finish(context, cancel=True)
             return {"CANCELLED"}
 
         context.window_manager.modal_handler_add(self)

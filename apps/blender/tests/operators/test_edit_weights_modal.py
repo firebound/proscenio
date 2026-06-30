@@ -157,6 +157,51 @@ def test_panel_button_present_when_sidecar_populated(automesh_fixture):
     assert bpy.ops.proscenio.edit_weights.poll() is True
 
 
+def test_midstroke_pressure_dip_keeps_tracking_tail_verts(automesh_fixture, monkeypatch):
+    """A tablet pressure dip mid-stroke must NOT end the stroke: verts painted
+    AFTER the dip must still flip to user_paint on release. The bug let a
+    pressure<1e-6 MOUSEMOVE flip+reset the tracker mid-stroke, so the release
+    became a no-op and the post-dip tail kept its old (non-user_paint) provenance."""
+    from types import SimpleNamespace
+
+    from proscenio.core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+        StrokeDiffTracker,
+    )
+    from proscenio.core.skinning.sidecar_schema import from_json  # type: ignore[import-not-found]
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    wrist = obj.vertex_groups["wrist"]
+    obj.vertex_groups.active_index = wrist.index
+    # Clean wrist group so each painted vert is an unambiguous touch vs the snapshot.
+    for vert in obj.data.vertices:
+        wrist.add([vert.index], 0.0, "REPLACE")
+
+    monkeypatch.setattr(mod, "_tag_redraw_view3d", lambda _c: None)
+    tracker = StrokeDiffTracker(obj, from_json(obj["proscenio_weight_sidecar"]))
+    stub = SimpleNamespace(_stroke_tracker=tracker, _stroke_active=False)
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    ctx = SimpleNamespace()
+
+    def event(type_: str, value: str = "", pressure: float = 1.0) -> object:
+        return SimpleNamespace(type=type_, value=value, pressure=pressure)
+
+    cls.modal(stub, ctx, event("LEFTMOUSE", "PRESS"))  # snapshot the (empty) baseline
+    for i in (0, 1):  # head of the stroke
+        wrist.add([i], 0.9, "REPLACE")
+    cls.modal(stub, ctx, event("MOUSEMOVE", pressure=0.0))  # mid-stroke pressure dip
+    tail = (2, 3)
+    for i in tail:  # painted AFTER the dip
+        wrist.add([i], 0.9, "REPLACE")
+    cls.modal(stub, ctx, event("LEFTMOUSE", "RELEASE"))  # flips the whole stroke
+
+    final = from_json(obj["proscenio_weight_sidecar"])
+    tail_user_paint = all(final.entries[i].provenance == "user_paint" for i in tail)
+    assert tail_user_paint, "mid-stroke pressure dip dropped the tail verts' user_paint flip"
+
+
 def test_cancel_delegates_to_finish():
     """Blender calls cancel() when the modal is killed externally (window close,
     file load). Edit Weights must delegate it to _finish(cancel=True) so the

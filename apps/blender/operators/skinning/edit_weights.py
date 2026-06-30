@@ -68,6 +68,9 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
     _overlay_handle: object | None = None
     _statusbar_appended: bool = False
     _timer: object | None = None
+    # True between LMB PRESS and RELEASE. Gates the tablet pen-lift (pressure ~0)
+    # end-of-stroke so a mid-stroke pressure DIP does not flip+reset the tracker.
+    _stroke_active: bool = False
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -143,17 +146,28 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
                     return self._finish(context, cancel=False)
                 return {"PASS_THROUGH"}
             if event.type == "LEFTMOUSE" and event.value == "PRESS":
+                self._stroke_active = True
                 self._stroke_tracker.snapshot_active_vg()
                 return {"PASS_THROUGH"}
             if event.type == "LEFTMOUSE" and event.value == "RELEASE":
+                self._stroke_active = False
                 if self._stroke_tracker.flip_touched_after_stroke():
                     _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}
             if event.type == "WINDOW_DEACTIVATE":
+                self._stroke_active = False
                 if self._stroke_tracker.flip_touched_after_stroke():
                     _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}
-            if event.type == "MOUSEMOVE" and getattr(event, "pressure", 1.0) < 1e-6:
+            # Tablet pen-lift drops pressure to ~0 = end of stroke. Gate it on
+            # _stroke_active: a mid-stroke pressure DIP (pen still down) must not
+            # flip+reset the tracker, or the RELEASE flip becomes a no-op and the
+            # post-dip tail of the stroke keeps its old provenance.
+            if (
+                event.type == "MOUSEMOVE"
+                and not self._stroke_active
+                and getattr(event, "pressure", 1.0) < 1e-6
+            ):
                 if self._stroke_tracker.flip_touched_after_stroke():
                     _tag_redraw_view3d(context)
                 return {"PASS_THROUGH"}

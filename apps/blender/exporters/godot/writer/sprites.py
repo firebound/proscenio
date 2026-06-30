@@ -388,10 +388,19 @@ def build_sprite_weights(
             f"remove them so the sprite can use rigid attach."
         )
 
+    # Fallback bone for unweighted verts. The caller's fallback_bone can be a name
+    # that does not resolve to a real bone (a non-bone attach name); fall back to a
+    # deterministic real bone from known_groups (guaranteed non-empty above) so a
+    # zero-weight vertex never ends up with an all-zero weight column = undeformed.
+    effective_fallback = (
+        fallback_bone
+        if fallback_bone and fallback_bone in available_bones
+        else min(known_groups.values())
+    )
+
     n = len(vertex_indices)
     bone_to_values: dict[str, list[float]] = {name: [0.0] * n for name in known_groups.values()}
-    if fallback_bone and fallback_bone in available_bones:
-        bone_to_values.setdefault(fallback_bone, [0.0] * n)
+    bone_to_values.setdefault(effective_fallback, [0.0] * n)
 
     for slot, mesh_vi in enumerate(vertex_indices):
         weights_here = _vertex_bone_weights(vertex_at(mesh, mesh_vi), known_groups)
@@ -399,8 +408,8 @@ def build_sprite_weights(
         if total > _WEIGHT_EPS:
             for bone, w in weights_here.items():
                 bone_to_values[bone][slot] = w / total
-        elif fallback_bone in bone_to_values:
-            bone_to_values[fallback_bone][slot] = 1.0
+        else:
+            bone_to_values[effective_fallback][slot] = 1.0
 
     return [
         Weight(bone=bone, values=[round(v, 6) for v in values])

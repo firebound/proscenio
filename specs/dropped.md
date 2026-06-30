@@ -1,6 +1,6 @@
 # Dropped work
 
-Items where value does not justify cost. Removed from the live backlog during the 2026-06-11 reconciliation (the durable number-to-topic map is [_index.md](_index.md)). Kept here, not deleted, so a pruned item never loses its reasoning - a future reader sees it was considered and consciously declined. Re-propose only if the premise changes (a new consuming runtime, a schema feature it would ride, a real demand signal). Companion homes: [gated.md](gated.md), [deferred.md](deferred.md), [decisions.md](decisions.md). One line each: item - the decisive reason.
+Items where value does not justify cost. Removed from the live backlog during the 2026-06-11 reconciliation (the durable number-to-topic map is `index.md`). Kept here, not deleted, so a pruned item never loses its reasoning - a future reader sees it was considered and consciously declined. Re-propose only if the premise changes (a new consuming runtime, a schema feature it would ride, a real demand signal). Companion homes: [gated.md](gated.md), [deferred.md](deferred.md), [decisions.md](decisions.md). One line each: item - the decisive reason.
 
 ## Schema expressiveness
 

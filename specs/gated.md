@@ -1,6 +1,6 @@
 # Gated work
 
-Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out during the 2026-06-11 reconciliation (the durable number-to-topic map is [_index.md](_index.md)). Companion homes: [deferred.md](deferred.md) (sequenced second-stage), [dropped.md](dropped.md) (value below cost), [decisions.md](decisions.md) (locked calls); product backlog indexed from [backlog](backlog/index.md). One line each: item - rationale. **Trigger:** what fires it.
+Items with real value held behind a written trigger. Each proceeds only when its trigger fires; none is built on imagined demand. Carved out during the 2026-06-11 reconciliation (the durable number-to-topic map is `index.md`). Companion homes: [deferred.md](deferred.md) (sequenced second-stage), [dropped.md](dropped.md) (value below cost), [decisions.md](decisions.md) (locked calls); product backlog indexed from [backlog](backlog/index.md). One line each: item - rationale. **Trigger:** what fires it.
 
 ## Schema expressiveness
 

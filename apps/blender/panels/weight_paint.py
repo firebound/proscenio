@@ -108,6 +108,27 @@ class PROSCENIO_PT_edit_weights(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         _draw_edit_weights(self.layout, context.active_object, _active_armature(context))
         _draw_weight_overlay_controls(self.layout, context)
+        _draw_edit_weights_shortcuts(self.layout)
+
+
+def _draw_edit_weights_shortcuts(layout: bpy.types.UILayout) -> None:
+    """Collapsible mirror of the Edit Weights modal's status-bar cheatsheet while
+    it runs (the shared interactive-tool pattern: ``layout.panel`` default-closed,
+    gated on the operator's ``_statusbar_appended`` flag). Canonical sibling:
+    ``_draw_manual_draw_cheatsheet`` in ``panels/mesh_generation.py``."""
+    from ..operators.skinning._status_bar import (  # type: ignore[import-not-found]
+        emit_edit_weights_chords,
+    )
+    from ..operators.skinning.edit_weights import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_edit_weights_modal as op,
+    )
+
+    if not op._statusbar_appended:
+        return
+    header, body = layout.panel("proscenio_edit_weights_shortcuts", default_closed=True)
+    header.label(text="Shortcuts", icon="BRUSHES_ALL")
+    if body is not None:
+        emit_edit_weights_chords(body)
 
 
 class PROSCENIO_PT_snapshot(bpy.types.Panel):

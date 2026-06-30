@@ -91,6 +91,42 @@ def test_manual_contour_cp_round_trips(automesh_fixture):
     assert read_manual_contour(obj) == ([], [])
 
 
+def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monkeypatch):
+    """A teardown step raising inside ``_finish`` must NOT leave the modal marked
+    running - the guard set by ``mark_running`` would stay stuck and lock out
+    BOTH authoring modes (Automesh + Manual Draw) until an addon reload."""
+    import contextlib
+    from types import SimpleNamespace
+
+    from proscenio.operators.automesh import (
+        draw_mesh_vertices as mod,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+        mark_running,
+        mark_stopped,
+    )
+
+    def _boom(_handles: object) -> None:
+        raise RuntimeError("overlay teardown failed")
+
+    monkeypatch.setattr(mod, "unregister_overlay", _boom)
+    # A bpy Operator cannot be constructed headlessly, so drive the real _finish
+    # with a minimal stand-in self (the operator instance is the I/O boundary).
+    ctx = SimpleNamespace(window=SimpleNamespace(cursor_set=lambda *_: None), window_manager=None)
+    stub = SimpleNamespace(
+        _handles={}, _session=None, _remove_statusbar=lambda: None, _tag_redraw=lambda _c: None
+    )
+
+    mark_running("manual_draw")
+    try:
+        with contextlib.suppress(RuntimeError):
+            mod.PROSCENIO_OT_draw_mesh_vertices._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+        assert is_running("manual_draw") is False
+    finally:
+        mark_stopped("manual_draw")
+
+
 def test_authoring_modal_guard_tracks_running_state(automesh_fixture):
     """The guard drives the toggle (button -> 'Exit') + mutual exclusivity: a
     marked-running modal reads as running to itself (is_running) and as the

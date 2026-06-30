@@ -160,6 +160,38 @@ def test_undo_to_empty_then_redo_restores_chain(quick_armature_session):
     assert _bones(arm)[1].parent is not None, "redo lost the chain parenting"
 
 
+def test_redo_uses_the_records_parent_not_the_live_chain(quick_armature_session):
+    """Redo must reparent the bone to the parent it was CREATED with (the
+    record), not the live _last_bone_name - which a reparent-by-selection or the
+    undo itself can have moved. Otherwise redo silently corrupts the authored
+    bone chain (spec 069 reparent-by-selection makes this readily reachable)."""
+    op, arm, cls = quick_armature_session
+    # A (root), then B chained on A.
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
+    )
+    a_name = _bones(arm)[0].name
+    op._create_bone(
+        bpy.context, (0.0, 0.0, 1.0), (0.0, 0.0, 2.0), parent_to_last=True, connect=True
+    )
+    # Reparent-by-selection: pick A again as the chain parent.
+    _bones(arm).active = _bones(arm)[0]
+    op._sync_chain_parent_to_active()
+    assert cls._last_bone_name == a_name
+    # C drawn on A.
+    op._create_bone(
+        bpy.context, (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), parent_to_last=True, connect=False
+    )
+    c_before = _bones(arm)[-1]
+    assert c_before.parent is not None and c_before.parent.name == a_name
+    # Undo C (this rewinds _last_bone_name to B), then redo it.
+    op._undo_last_bone(bpy.context)
+    op._redo_last_bone(bpy.context)
+    c_after = _bones(arm)[-1]
+    assert c_after.parent is not None, "redo lost C's parent"
+    assert c_after.parent.name == a_name, "redo reparented C to the live chain, not its record"
+
+
 def test_post_process_snaps_then_axis_locks(quick_armature_session):
     op, _arm, cls = quick_armature_session
     cls._ctrl_held = True

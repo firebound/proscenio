@@ -155,3 +155,20 @@ def test_panel_button_present_when_sidecar_populated(automesh_fixture):
     # The panel draw runs in the UI layer; we only assert the operator is
     # registered + poll-passes for the active obj.
     assert bpy.ops.proscenio.edit_weights.poll() is True
+
+
+def test_cancel_delegates_to_finish():
+    """Blender calls cancel() when the modal is killed externally (window close,
+    file load). Edit Weights must delegate it to _finish(cancel=True) so the
+    timer, overlay, statusbar, and session restore all run - without cancel()
+    that cleanup never happens and the paint session leaks."""
+    from types import SimpleNamespace
+
+    from proscenio.operators.skinning import (  # type: ignore[import-not-found]
+        edit_weights as mod,
+    )
+
+    calls: list[bool] = []
+    stub = SimpleNamespace(_finish=lambda _context, *, cancel: calls.append(cancel))
+    mod.PROSCENIO_OT_edit_weights_modal.cancel(stub, context=None)
+    assert calls == [True], "cancel must delegate to _finish(cancel=True)"

@@ -35,6 +35,7 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
 )
 from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
+    empty_overlay_handles,
     refresh_overlay,
     register_overlay,
     unregister_overlay,
@@ -286,18 +287,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._interior_mode: str = params.interior_mode
         self._active_stages: list[AuthoringStage] = _stages_for_mode(self._interior_mode)
         self._output = StageOutput()
-        self._handles = {
-            "outer": None,
-            "inner": None,
-            "steiners": None,
-            "triangulation": None,
-            "user_dots": None,
-            "user_strokes": None,
-            "user_outer_strokes": None,
-            "live_preview": None,
-            "delete_hover": None,
-            "tooltip": None,
-        }
+        self._handles = empty_overlay_handles()
         self._timer = None
         # Click-vs-drag tracking + free-draw sample buffer (shared by both pen
         # stages). _stroke_raw_points is mutated in-place so any handler holding

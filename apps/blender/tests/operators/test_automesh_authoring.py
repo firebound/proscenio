@@ -1165,7 +1165,6 @@ def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monke
     """A teardown step raising inside ``_finish`` must NOT leave the modal marked
     running - the guard set by ``mark_running`` would stay stuck and lock out
     BOTH authoring modes (Automesh + Manual Draw) until an addon reload."""
-    import contextlib
     from types import SimpleNamespace
 
     from proscenio.operators.automesh import (
@@ -1189,8 +1188,10 @@ def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monke
 
     mark_running("automesh")
     try:
-        with contextlib.suppress(RuntimeError):
-            mod.PROSCENIO_OT_automesh_authoring._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+        # Call _finish directly (no test-side suppress): the production contract is
+        # that _finish itself swallows the teardown RuntimeError *and* clears the
+        # guard, so a leaked exception here is a regression the test must catch.
+        mod.PROSCENIO_OT_automesh_authoring._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
         assert is_running("automesh") is False
     finally:
         mark_stopped("automesh")

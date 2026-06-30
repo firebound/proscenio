@@ -102,6 +102,19 @@ def find_snapshot(sidecar: WeightSidecar, name: str) -> NamedSnapshot | None:
     return next((s for s in sidecar.snapshots if s.name == name), None)
 
 
+def weight_bearing_bone_names(entries: list[SidecarEntry]) -> list[str]:
+    """Sorted union of every bone name carrying weight across ``entries``.
+
+    The authoritative group set for restoring a snapshot: a :class:`NamedSnapshot`
+    stores only its per-vert entries (no ``vertex_group_names`` of its own), so the
+    groups to recreate are exactly the names its weights reference - not the live
+    baseline's names, which a deform-bone rename / re-rig can have moved out from
+    under it. Also used to detect a rig switch (prior weight bones not present in
+    the new armature's deform bones).
+    """
+    return sorted({name for entry in entries for name in entry.weights})
+
+
 def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str:
     """sha1 over vert count + flattened face index tuples.
 

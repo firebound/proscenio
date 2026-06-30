@@ -117,6 +117,38 @@ def test_save_snapshot_cancels_on_topology_drift(automesh_fixture):
         bpy.ops.proscenio.save_weight_snapshot(snapshot_name="late")
 
 
+def test_restore_named_snapshot_uses_its_own_groups_not_baseline(automesh_fixture):
+    """A named snapshot stores only its per-vert entries, not its own group names.
+    Restore must recreate the groups the snapshot's weights actually reference -
+    not the live baseline's names, which a re-bind under a renamed deform bone
+    moves out from under the snapshot. Using the baseline names there recreates
+    the wrong (renamed) groups and silently drops every snapshot weight."""
+    import json
+
+    obj = _bound_hand()
+    original = _first_wrist_weight(obj)
+    assert original > 0.0
+    bpy.ops.proscenio.save_weight_snapshot(snapshot_name="pose-a")
+
+    # Stand in for a re-bind after a deform-bone rename (same topology): the
+    # baseline's vertex_group_names drift to renamed bones while the saved
+    # snapshot's entries keep the original bone keys.
+    payload = json.loads(obj["proscenio_weight_sidecar"])
+    payload["vertex_group_names"] = [f"{n}_renamed" for n in payload["vertex_group_names"]]
+    obj["proscenio_weight_sidecar"] = json.dumps(payload)
+
+    # Mutate live weights so the restore has to do real work.
+    wrist = obj.vertex_groups["wrist"]
+    for vert in obj.data.vertices:
+        wrist.add([vert.index], 0.0, "REPLACE")
+
+    result = bpy.ops.proscenio.restore_named_snapshot(snapshot_name="pose-a")
+    assert "FINISHED" in result
+    kept_snapshot_group = "wrist" in obj.vertex_groups
+    assert kept_snapshot_group, "restore used baseline names, dropping the snapshot's groups"
+    assert abs(_first_wrist_weight(obj) - original) < 1e-3
+
+
 def test_restore_unknown_name_cancels(automesh_fixture):
     _bound_hand()
     with pytest.raises(RuntimeError, match="no snapshot named"):

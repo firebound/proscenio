@@ -10,6 +10,7 @@ the authoring-modal guard.
 
 from __future__ import annotations
 
+import contextlib
 import traceback
 from dataclasses import replace
 from typing import ClassVar, cast
@@ -721,11 +722,17 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         self._finish(context, cancel=True)
 
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
+        # Clear the exclusivity guard FIRST: a teardown step raising below must
+        # never leave the modal marked running - that would lock out both
+        # authoring modes until an addon reload. The bpy teardown call is
+        # suppressed so a stale handle never aborts the rest of the teardown
+        # (mirrors edit_weights._finish).
+        mark_stopped(_MODAL_NAME)
         try:
             context.window.cursor_set("DEFAULT")  # drop the CROSSHAIR set over the canvas
-            unregister_overlay(self._handles)
+            with contextlib.suppress(RuntimeError):
+                unregister_overlay(self._handles)
             self._remove_statusbar()
-            mark_stopped(_MODAL_NAME)
             if self._session is not None and cancel:
                 restore_session(context, self._session)
         finally:

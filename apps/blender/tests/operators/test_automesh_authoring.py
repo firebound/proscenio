@@ -1195,3 +1195,39 @@ def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monke
         assert is_running("automesh") is False
     finally:
         mark_stopped("automesh")
+
+
+def test_authoring_state_snapshots_the_modal_fields():
+    # The Mesh Generation panel reads the modal via authoring_state() rather than
+    # the operator's private _current_* ClassVars; the snapshot must mirror them
+    # and reflect the run guard in `active`.
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        AuthoringStage,
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        mark_running,
+        mark_stopped,
+    )
+    from proscenio.operators.automesh.automesh_authoring import (  # type: ignore[import-not-found]
+        AuthoringModalState,
+        PROSCENIO_OT_automesh_authoring,
+    )
+
+    op = PROSCENIO_OT_automesh_authoring
+    prior = (op._current_stage, op._current_stage_label, op._current_active_tool)
+    try:
+        op._current_stage = AuthoringStage.INNER_LOOPS
+        op._current_stage_label = "Inner loops"
+        op._current_active_tool = "knife"
+        mark_stopped("automesh")
+        assert op.authoring_state() == AuthoringModalState(
+            active=False,
+            stage=AuthoringStage.INNER_LOOPS,
+            label="Inner loops",
+            tool="knife",
+        )
+        mark_running("automesh")
+        assert op.authoring_state().active is True
+    finally:
+        op._current_stage, op._current_stage_label, op._current_active_tool = prior
+        mark_stopped("automesh")

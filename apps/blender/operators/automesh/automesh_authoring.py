@@ -26,7 +26,9 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
-from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
+    tag_redraw_view3d_statusbar,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -250,7 +252,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # (Quick Armature toggle pattern).
         if is_running(_MODAL_NAME):
             type(self)._exit_requested = True
-            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
         obj = context.active_object
         if obj is None or obj.type != "MESH":
@@ -612,7 +614,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._arm_active_tool(context)
         if self._stage == AuthoringStage.OUTER and self._active_tool == "auto":
             self._recompute_auto_outer(context)
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
         report_info(self, f"tool: {self._active_tool}")
         return {"RUNNING_MODAL"}
 
@@ -1591,7 +1593,7 @@ def _tag_redraw_view3d(context: bpy.types.Context) -> None:
     may have been invoked from one but the user may be looking at another.
     The statusbar reads class-level stage state, so a stage advance/retreat
     must repaint it explicitly (it otherwise only refreshes on mouse move)."""
-    tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+    tag_redraw_view3d_statusbar(context.window_manager)
 
 
 class PROSCENIO_OT_automesh_step(bpy.types.Operator):
@@ -1623,7 +1625,7 @@ class PROSCENIO_OT_automesh_step(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         PROSCENIO_OT_automesh_authoring._nav_request = self.direction
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
         return {"FINISHED"}
 
 

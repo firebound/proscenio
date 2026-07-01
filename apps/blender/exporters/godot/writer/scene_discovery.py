@@ -45,6 +45,16 @@ def _iter_linked_images() -> Iterator[bpy.types.Image]:
         yield from iter_material_node_images(mat)
 
 
+def image_abspath(image: bpy.types.Image) -> Path | None:
+    """Absolute on-disk path of an image's ``filepath``, or None when it has none.
+
+    The single home for the ``bpy.path.abspath`` + empty-filepath guard shared by
+    the filename derivation here and the atlas bundle's source-copy resolution.
+    """
+    fp = str(getattr(image, "filepath", "") or "")
+    return Path(bpy.path.abspath(fp)) if fp else None
+
+
 def image_filename(image: bpy.types.Image) -> str | None:
     """On-disk filename for an Image datablock, or a synthesised ``<name>.png``
     when it has only a datablock name; ``None`` when it has neither.
@@ -55,9 +65,9 @@ def image_filename(image: bpy.types.Image) -> str | None:
     (``Image.001``) for an extension - the writer only emits PNG. The single
     home for both the per-sprite ``texture`` filename and the atlas filename.
     """
-    fp = str(getattr(image, "filepath", "") or "")
-    if fp:
-        return Path(bpy.path.abspath(fp)).name
+    abspath = image_abspath(image)
+    if abspath is not None:
+        return abspath.name
     name = str(getattr(image, "name", ""))
     if not name:
         return None

@@ -34,7 +34,9 @@ from ...core.automesh import point_in_polygon  # type: ignore[import-not-found]
 from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
     subdivide_polyline_edges,
 )
-from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
+    tag_redraw_view3d_statusbar,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -182,7 +184,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         # to finish on its next event instead of starting fresh.
         if is_running(_MODAL_NAME):
             type(self)._exit_requested = True
-            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
         obj = context.active_object
         if obj is None or obj.type != "MESH":
@@ -753,7 +755,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         remove_statusbar_draw(type(self), _draw_statusbar_manual_draw)
 
     def _tag_redraw(self, context: bpy.types.Context) -> None:
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
 
 
 _TOOL_LABELS = {"outer": "Outer contour", "point": "Interior point", "fold": "Interior fold"}

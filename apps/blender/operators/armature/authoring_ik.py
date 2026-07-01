@@ -386,9 +386,10 @@ class PROSCENIO_OT_toggle_ik_inplane_lock(bpy.types.Operator):
         for member in members:
             _set_inplane_lock(member, locked=lock)
         if lock:
-            # Seed a bend on the interior bones only (skip the tip and the root
-            # anchor) so the solver picks a consistent elbow direction.
-            for member in members[1:]:
+            # Seed a bend on the interior bones only (skip the tip at members[0]
+            # AND the root anchor at members[-1]) so the solver picks a consistent
+            # elbow direction without nudging the anchor off its rest pose.
+            for member in members[1:-1]:
                 _seed_inplane_prebend(member)
         report_info(
             self,

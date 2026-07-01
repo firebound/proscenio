@@ -81,6 +81,34 @@ def test_sprite_offset_tracks_an_off_centre_pivot(addon: None) -> None:
     assert sprite.offset == [50.0, -50.0]
 
 
+def test_sprite_offset_ignores_vertical_flip(addon: None) -> None:
+    import math
+
+    from proscenio.exporters.godot.writer.sprites import build_sprite
+
+    # An off-centre quad authored in local XY then stood up 90deg on X, so local
+    # Y is the vertical (flip_v) axis. The vertical flip is a Sprite2D flag; the
+    # pivot offset must NOT also carry it, or the quad is shifted twice. So the
+    # flipped sprite's offset must match the upright one's.
+    def _upright_off_centre(name: str, *, flip: bool) -> bpy.types.Object:
+        obj = _new_quad(
+            name,
+            [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)],
+        )
+        obj.rotation_euler = (math.pi / 2.0, 0.0, 0.0)  # local Y -> world vertical
+        if flip:
+            obj.scale.y = -1.0
+        bpy.context.view_layer.update()  # refresh matrix_world after the transform
+        return obj
+
+    upright = build_sprite(_upright_off_centre("upright", flip=False), ppu=100.0)
+    flipped = build_sprite(_upright_off_centre("flipped", flip=True), ppu=100.0)
+
+    assert upright.offset is not None, "the quad must be off-centre for this to bite"
+    assert flipped.flip_v is True
+    assert flipped.offset == upright.offset, "vertical flip double-counted in the offset"
+
+
 def test_mesh_emits_modulate_and_z_index(addon: None) -> None:
     from proscenio.exporters.godot.writer.sprites import build_element
 

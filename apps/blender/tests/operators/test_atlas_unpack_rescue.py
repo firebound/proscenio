@@ -93,3 +93,21 @@ def test_unpack_leaves_slot_when_material_is_gone(automesh_fixture):
     assert "FINISHED" in result
     # No name match and no marker to rescue: the UVs-only path leaves the slot.
     assert obj.data.materials[0] is atlas_dummy
+
+
+def test_unpack_drops_a_corrupt_pre_pack_snapshot(automesh_fixture):
+    from proscenio.core._shared.cp_keys import (  # type: ignore[import-not-found]
+        PROSCENIO_PRE_PACK,
+    )
+
+    _object_mode()
+    atlas_dummy = bpy.data.materials.new("corrupt_atlas_dummy")
+    obj = _obj_in_slot("corrupt_obj", atlas_dummy)
+    obj[PROSCENIO_PRE_PACK] = "{ this is not valid json"  # corrupt snapshot
+
+    bpy.context.view_layer.objects.active = obj
+    result = bpy.ops.proscenio.unpack_atlas()
+    assert "FINISHED" in result
+    # A corrupt snapshot can never be restored; Unpack must clear the stale key
+    # instead of leaving the object stuck reporting an unrestorable snapshot.
+    assert PROSCENIO_PRE_PACK not in obj

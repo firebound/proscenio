@@ -59,6 +59,12 @@ class PROSCENIO_OT_unpack_atlas(bpy.types.Operator):
                 continue
             snapshot = pre_pack_snapshot_for(obj)
             if snapshot is None:
+                # None means absent OR unusable (corrupt/empty JSON) - the reader
+                # cannot tell them apart. If the key is still present it is the
+                # unusable case, so drop it: otherwise the object stays stuck
+                # forever reporting a snapshot Unpack can never restore.
+                if PROSCENIO_PRE_PACK in obj:
+                    del obj[PROSCENIO_PRE_PACK]
                 continue
             self._restore_object(obj, snapshot, partial)
             del obj[PROSCENIO_PRE_PACK]

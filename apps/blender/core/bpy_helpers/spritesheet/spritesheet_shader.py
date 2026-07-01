@@ -116,6 +116,15 @@ def _populate_slicer_group(group: Any) -> None:
     row_idx.operation = "FLOOR"
     row_idx.location = (-300, -420)
     links.new(row_idx_div.outputs[0], row_idx.inputs[0])
+    # Wrap the row by vframes - the mirror of col_idx's MODULO on hframes - so a
+    # frame past the last cell wraps back to the top rows instead of walking off
+    # the bottom of the sheet. Keeps the preview graph in sync with the pure
+    # ``spritesheet_math.cell_offset_y`` (``(frame // hframes) % vframes``).
+    row_wrapped = nodes.new("ShaderNodeMath")
+    row_wrapped.operation = "MODULO"
+    row_wrapped.location = (-190, -420)
+    links.new(row_idx.outputs[0], row_wrapped.inputs[0])
+    links.new(grp_in.outputs[_SOCK_VFRAMES], row_wrapped.inputs[1])
 
     off_x = nodes.new("ShaderNodeMath")
     off_x.operation = "MULTIPLY"
@@ -127,7 +136,7 @@ def _populate_slicer_group(group: Any) -> None:
     row_plus_one.operation = "ADD"
     row_plus_one.location = (-100, -420)
     row_plus_one.inputs[1].default_value = 1.0
-    links.new(row_idx.outputs[0], row_plus_one.inputs[0])
+    links.new(row_wrapped.outputs[0], row_plus_one.inputs[0])
     row_scaled = nodes.new("ShaderNodeMath")
     row_scaled.operation = "MULTIPLY"
     row_scaled.location = (100, -420)
@@ -251,8 +260,9 @@ def remove_slicer_from_material(material: Any) -> bool:
     tex_node = _find_image_texture_node(nt)
     if tex_node is not None and upstream is not None:
         nt.links.new(upstream, tex_node.inputs["Vector"])
+    slicer_name = slicer.name
     nt.nodes.remove(slicer)
-    _drop_slicer_drivers(material)
+    _drop_slicer_drivers(material, slicer_name)
     return True
 
 
@@ -346,17 +356,25 @@ def _wire_slicer_drivers(slicer: Any, obj: Any) -> None:
         target.data_path = f'["proscenio_{prop_name}"]'
 
 
-def _drop_slicer_drivers(material: Any) -> None:
-    """Best-effort: drop drivers attached to any slicer-shaped node in the material.
+def _drop_slicer_drivers(material: Any, node_name: str) -> None:
+    """Drop the drivers the removed slicer node left on the material's node tree.
 
-    Called after the slicer node itself is removed; iterates remaining
-    animation_data drivers + clears any whose data_path points at a node
-    socket that no longer exists.
+    The slicer's frame/hframes/vframes drivers were added on the node's input
+    sockets, so they live on ``material.node_tree.animation_data`` - NOT the
+    material's own ``animation_data`` (which the old code read, so it never found
+    them). After the node is removed the fcurves are orphaned: their data_path
+    still names the gone node (``nodes["<name>"].inputs[N].default_value``), so
+    match on that name and remove them.
     """
-    anim = getattr(material, "animation_data", None)
+    node_tree = getattr(material, "node_tree", None)
+    anim = getattr(node_tree, "animation_data", None)
     if anim is None:
         return
-    drivers = list(getattr(anim, "drivers", ()))
-    for fcurve in drivers:
-        if "Proscenio.SpriteFrameSlicer" in str(getattr(fcurve, "data_path", "")):
-            anim.drivers.remove(fcurve)
+    needle = f'nodes["{node_name}"]'
+    orphaned = [
+        fcurve
+        for fcurve in getattr(anim, "drivers", ())
+        if needle in str(getattr(fcurve, "data_path", ""))
+    ]
+    for fcurve in orphaned:
+        anim.drivers.remove(fcurve)

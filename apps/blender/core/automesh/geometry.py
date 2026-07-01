@@ -126,16 +126,21 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
     edge_start = contour[0]
     edge_end = contour[1]
     edge_length = math.hypot(edge_end[0] - edge_start[0], edge_end[1] - edge_start[1])
+    # Arc length to the START of the current edge, carried incrementally. Samples
+    # run in increasing target_distance order and edge_index only ever advances,
+    # so accumulating as we cross each edge is exact - and O(N) overall, versus
+    # the previous re-sum-from-zero per sample (which was O(N^2) and duplicated
+    # perimeter_length's edge walk).
+    accumulated = 0.0
 
     for sample in range(target_count):
         target_distance = sample * step
-        accumulated = edge_index_start_distance(contour, edge_index)
         while accumulated + edge_length < target_distance and edge_index < len(contour) - 1:
+            accumulated += edge_length
             edge_index += 1
             edge_start = contour[edge_index]
             edge_end = contour[(edge_index + 1) % len(contour)]
             edge_length = math.hypot(edge_end[0] - edge_start[0], edge_end[1] - edge_start[1])
-            accumulated = edge_index_start_distance(contour, edge_index)
         if edge_length <= 0.0:
             # Defensive only - dedupe above eliminates zero-length
             # edges. Reached only if a future caller passes
@@ -150,24 +155,6 @@ def arc_length_resample(contour: Contour2D, target_count: int) -> Contour2D:
         output.append((sample_x, sample_y))
 
     return output
-
-
-def edge_index_start_distance(contour: Contour2D, edge_index: int) -> float:
-    """Cumulative arc length up to the start of edge ``edge_index``.
-
-    Helper for :func:`arc_length_resample`. Walks edges 0..edge_index
-    summing their lengths so the resample loop can convert a global
-    target distance into an offset within the current edge without
-    re-traversing from the start.
-    """
-    if edge_index <= 0:
-        return 0.0
-    total = 0.0
-    for index in range(min(edge_index, len(contour))):
-        x0, y0 = contour[index]
-        x1, y1 = contour[(index + 1) % len(contour)]
-        total += math.hypot(x1 - x0, y1 - y0)
-    return total
 
 
 def relax_contour(
@@ -213,8 +200,13 @@ def find_best_inner_rotation(
     produce clean strip triangulation.
 
     Requires equal-length contours. Returns 0 for empty inner.
-    Pure data, no numpy - O(N^2) but N is small (32-64 vertices)
-    so the worst-case is ~4k operations.
+    Pure data, no numpy. O(N^2) in the vertex count N, which is the
+    authored automesh density (UI soft-capped at 64, so the typical
+    worst case is ~4k operations). This runs once per contour build,
+    not per frame, so the quadratic scan is left as-is: capping the
+    search window would change the chosen radial alignment (and thus
+    the annulus triangulation), a behaviour change this cold path does
+    not warrant.
     """
     if not inner:
         return 0

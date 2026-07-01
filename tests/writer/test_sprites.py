@@ -240,12 +240,16 @@ def test_build_sprite_rejects_unknown_kind() -> None:
         sprites.build_element(obj, {}, ppu=100.0)
 
 
-def test_resolve_known_groups_keeps_matching_and_drops_unknown() -> None:
+def test_resolve_known_groups_keeps_matching_and_drops_unknown(capsys) -> None:
     obj = SimpleNamespace(
         name="s", vertex_groups=[_vgroup(0, "arm"), _vgroup(1, "ghost")]
     )
     known = sprites._resolve_known_groups(obj, available_bones={"arm"})
-    assert known == {0: "arm"}  # the warn for the dropped group also runs here
+    assert known == {0: "arm"}
+    # The dropped group must also surface the warning the comment claimed but
+    # never asserted: capture the side-effect so a silent regression is caught.
+    warned = capsys.readouterr().out
+    assert "ghost" in warned and "matching bone" in warned
 
 
 def test_vertex_bone_weights_sums_known_groups_only() -> None:

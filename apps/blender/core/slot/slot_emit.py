@@ -93,19 +93,21 @@ def build_slot(slot: SlotInput) -> Slot:
 
 
 def _resolve_default(slot_default: str, attachments: tuple[str, ...]) -> str:
-    """Explicit slot_default wins when valid; else first sorted attachment.
+    """Explicit slot_default wins when valid; else the first attachment.
 
     Empty attachments list yields ``""`` (no default emitted). An invalid
     ``slot_default`` (names a child that does not exist) silently falls
-    through to the sorted-first fallback - the panel's validation pass
+    through to the first-attachment fallback - the panel's validation pass
     surfaces it as an error so the user sees the broken reference, but
-    the writer keeps emitting a usable default in the meantime.
+    the writer keeps emitting a usable default in the meantime. The fallback
+    is the first attachment in child order (what the artist sees at the top of
+    the list), not the alphabetically-smallest name.
     """
     if not attachments:
         return ""
     if slot_default and slot_default in attachments:
         return slot_default
-    return min(attachments)
+    return attachments[0]
 
 
 def build_slots(slots: list[SlotInput]) -> list[Slot]:

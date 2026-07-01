@@ -379,3 +379,7 @@ readback
 evals
 mislocated
 capsys
+readouterr
+unrestorable
+bboxed
+midstroke

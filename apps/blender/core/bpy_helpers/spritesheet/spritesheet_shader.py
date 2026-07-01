@@ -18,6 +18,11 @@ from ..._shared.region import manual_region_or_none
 
 SLICER_GROUP_NAME = "Proscenio.SpriteFrameSlicer"
 SLICER_NODE_LABEL = "Proscenio Sprite Frame Slicer"
+# Bump when the slicer node graph changes shape so a group cached in an older
+# .blend (right topology name, stale wiring) is rebuilt instead of reused.
+# v2 = the V-Frames row-wrap MODULO (an out-of-range frame wraps to the top rows).
+_SLICER_GROUP_SCHEMA_KEY = "proscenio_slicer_schema_version"
+_SLICER_GROUP_SCHEMA_VERSION = 2
 
 _SOCK_UV = "UV"
 _SOCK_FRAME = "Frame"
@@ -44,7 +49,7 @@ def ensure_slicer_group(node_groups: Any) -> Any:
     """
     group = node_groups.get(SLICER_GROUP_NAME)
     if group is not None:
-        if _group_has_region(group):
+        if _group_is_current(group):
             return group
         group.nodes.clear()
         _clear_group_interface(group)
@@ -53,6 +58,20 @@ def ensure_slicer_group(node_groups: Any) -> Any:
     group = node_groups.new(name=SLICER_GROUP_NAME, type="ShaderNodeTree")
     _populate_slicer_group(group)
     return group
+
+
+def _group_is_current(group: Any) -> bool:
+    """True when the cached group is at the current schema (region sockets AND
+    the current graph version), so it can be reused without a rebuild.
+
+    Gating on the version is what lets a .blend saved after the region-socket
+    migration but before a later graph change (the V-Frames row wrap) still get
+    rebuilt - checking region sockets alone would wrongly reuse the stale graph.
+    """
+    return (
+        _group_has_region(group)
+        and group.get(_SLICER_GROUP_SCHEMA_KEY) == _SLICER_GROUP_SCHEMA_VERSION
+    )
 
 
 def _group_has_region(group: Any) -> bool:
@@ -116,6 +135,15 @@ def _populate_slicer_group(group: Any) -> None:
     row_idx.operation = "FLOOR"
     row_idx.location = (-300, -420)
     links.new(row_idx_div.outputs[0], row_idx.inputs[0])
+    # Wrap the row by vframes - the mirror of col_idx's MODULO on hframes - so a
+    # frame past the last cell wraps back to the top rows instead of walking off
+    # the bottom of the sheet. Keeps the preview graph in sync with the pure
+    # ``spritesheet_math.cell_offset_y`` (``(frame // hframes) % vframes``).
+    row_wrapped = nodes.new("ShaderNodeMath")
+    row_wrapped.operation = "MODULO"
+    row_wrapped.location = (-190, -420)
+    links.new(row_idx.outputs[0], row_wrapped.inputs[0])
+    links.new(grp_in.outputs[_SOCK_VFRAMES], row_wrapped.inputs[1])
 
     off_x = nodes.new("ShaderNodeMath")
     off_x.operation = "MULTIPLY"
@@ -127,7 +155,7 @@ def _populate_slicer_group(group: Any) -> None:
     row_plus_one.operation = "ADD"
     row_plus_one.location = (-100, -420)
     row_plus_one.inputs[1].default_value = 1.0
-    links.new(row_idx.outputs[0], row_plus_one.inputs[0])
+    links.new(row_wrapped.outputs[0], row_plus_one.inputs[0])
     row_scaled = nodes.new("ShaderNodeMath")
     row_scaled.operation = "MULTIPLY"
     row_scaled.location = (100, -420)
@@ -188,6 +216,9 @@ def _populate_slicer_group(group: Any) -> None:
     links.new(final_x.outputs[0], combine.inputs["X"])
     links.new(final_y.outputs[0], combine.inputs["Y"])
     links.new(combine.outputs["Vector"], grp_out.inputs["UV"])
+    # Stamp the schema so a later graph change rebuilds this group instead of
+    # reusing it stale (see ensure_slicer_group / _group_is_current).
+    group[_SLICER_GROUP_SCHEMA_KEY] = _SLICER_GROUP_SCHEMA_VERSION
 
 
 def apply_slicer_to_material(
@@ -251,8 +282,9 @@ def remove_slicer_from_material(material: Any) -> bool:
     tex_node = _find_image_texture_node(nt)
     if tex_node is not None and upstream is not None:
         nt.links.new(upstream, tex_node.inputs["Vector"])
+    slicer_name = slicer.name
     nt.nodes.remove(slicer)
-    _drop_slicer_drivers(material)
+    _drop_slicer_drivers(material, slicer_name)
     return True
 
 
@@ -346,17 +378,25 @@ def _wire_slicer_drivers(slicer: Any, obj: Any) -> None:
         target.data_path = f'["proscenio_{prop_name}"]'
 
 
-def _drop_slicer_drivers(material: Any) -> None:
-    """Best-effort: drop drivers attached to any slicer-shaped node in the material.
+def _drop_slicer_drivers(material: Any, node_name: str) -> None:
+    """Drop the drivers the removed slicer node left on the material's node tree.
 
-    Called after the slicer node itself is removed; iterates remaining
-    animation_data drivers + clears any whose data_path points at a node
-    socket that no longer exists.
+    The slicer's frame/hframes/vframes drivers were added on the node's input
+    sockets, so they live on ``material.node_tree.animation_data`` - NOT the
+    material's own ``animation_data`` (which the old code read, so it never found
+    them). After the node is removed the fcurves are orphaned: their data_path
+    still names the gone node (``nodes["<name>"].inputs[N].default_value``), so
+    match on that name and remove them.
     """
-    anim = getattr(material, "animation_data", None)
+    node_tree = getattr(material, "node_tree", None)
+    anim = getattr(node_tree, "animation_data", None)
     if anim is None:
         return
-    drivers = list(getattr(anim, "drivers", ()))
-    for fcurve in drivers:
-        if "Proscenio.SpriteFrameSlicer" in str(getattr(fcurve, "data_path", "")):
-            anim.drivers.remove(fcurve)
+    needle = f'nodes["{node_name}"]'
+    orphaned = [
+        fcurve
+        for fcurve in getattr(anim, "drivers", ())
+        if needle in str(getattr(fcurve, "data_path", ""))
+    ]
+    for fcurve in orphaned:
+        anim.drivers.remove(fcurve)

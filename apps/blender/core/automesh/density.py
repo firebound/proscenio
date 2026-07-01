@@ -127,6 +127,39 @@ def point_in_polygon(point: Point2D, polygon: Sequence[Point2D]) -> bool:
     return inside
 
 
+def polygon_bboxes(
+    polygons: Sequence[Sequence[Point2D]],
+) -> list[tuple[tuple[float, float, float, float], Sequence[Point2D]]]:
+    """Precompute ``(bbox, polygon)`` pairs for repeated point-in-any tests.
+
+    Pairs each polygon (with >= 3 verts) with its bounding box ONCE so a caller
+    testing many points against the same polygon set pays the O(verts) box walk
+    per polygon, not per point. Feeds :func:`point_in_any_bboxed_polygon`.
+    """
+    return [(bounding_box(list(polygon)), polygon) for polygon in polygons if len(polygon) >= 3]
+
+
+def point_in_any_bboxed_polygon(
+    point: Point2D,
+    bboxed_polygons: Sequence[tuple[tuple[float, float, float, float], Sequence[Point2D]]],
+) -> bool:
+    """True when ``point`` is inside any polygon, bbox-rejecting first.
+
+    Equivalent to ``any(point_in_polygon(point, poly) for poly in polys)`` but a
+    point outside a polygon's bounding box cannot be inside it, so the cheap box
+    test skips the linear :func:`point_in_polygon` scan for the common miss. The
+    box edges use strict comparisons so a point ON a box edge still runs the full
+    test (which reports the boundary as outside), keeping the result identical.
+    """
+    px, py = point
+    for (min_x, min_y, max_x, max_y), polygon in bboxed_polygons:
+        if px < min_x or px > max_x or py < min_y or py > max_y:
+            continue
+        if point_in_polygon(point, polygon):
+            return True
+    return False
+
+
 def point_on_contour(point: Point2D, polygon: Sequence[Point2D]) -> bool:
     """True when ``point`` lies on (within epsilon of) any edge of the polygon.
 

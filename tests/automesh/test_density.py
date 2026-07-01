@@ -26,13 +26,38 @@ from core.automesh.density import (  # noqa: E402  - sys.path setup above
     filter_inside_annulus,
     filter_points_too_close_to_boundary,
     interior_points_for_annulus,
+    point_in_any_bboxed_polygon,
     point_in_polygon,
+    polygon_bboxes,
     uniform_interior_grid,
 )
 
 
 def _square(size: float) -> list[Point2D]:
     return [(0.0, 0.0), (size, 0.0), (size, size), (0.0, size)]
+
+
+def test_point_in_any_bboxed_polygon_matches_brute_force() -> None:
+    # The bbox-pruned test must return EXACTLY what the brute-force
+    # any(point_in_polygon(...)) returns for every point - the bbox only skips
+    # the linear scan for a point that cannot possibly be inside. Two disjoint
+    # holes; sweep a fine grid spanning and overshooting both.
+    holes = [
+        [(1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)],
+        [(6.0, 6.0), (9.0, 6.0), (9.0, 9.0), (6.0, 9.0)],
+    ]
+    bboxed = polygon_bboxes(holes)
+    for i in range(-2, 24):
+        for j in range(-2, 24):
+            point = (i * 0.5, j * 0.5)
+            brute = any(point_in_polygon(point, hole) for hole in holes)
+            assert point_in_any_bboxed_polygon(point, bboxed) == brute, point
+
+
+def test_point_in_any_bboxed_polygon_empty_is_false() -> None:
+    assert point_in_any_bboxed_polygon((1.0, 1.0), []) is False
+    # A sub-triangle polygon is dropped by polygon_bboxes and never matches.
+    assert polygon_bboxes([[(0.0, 0.0), (1.0, 0.0)]]) == []
 
 
 def _centered_square(center: Point2D, half_size: float) -> list[Point2D]:

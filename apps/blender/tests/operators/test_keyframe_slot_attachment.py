@@ -103,6 +103,62 @@ def test_keyframe_projects_to_the_writer_slot_attachment_track(automesh_fixture)
     assert hit, f"keyed attachment '{axe}' did not reach the writer track: {swap_keys}"
 
 
+def test_writer_resolves_attachment_by_name_after_an_earlier_delete(automesh_fixture):
+    """The index-drift guard: key `axe`, then delete an EARLIER attachment
+    (`sword`). The keyed index would now slide onto the wrong (or a now
+    out-of-range) child if the writer resolved against the LIVE child order;
+    binding it to the snapshotted name order keeps it resolving `axe`."""
+    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
+        build_slot_animations,
+    )
+
+    empty, sword, axe = _make_slot_with_two_attachments()
+    bpy.context.scene.frame_set(5)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
+
+    # Remove the earlier attachment: the live child list shrinks to [axe], so
+    # axe's keyed index (1) is now out of range against the live children.
+    bpy.data.objects.remove(bpy.data.objects[sword], do_unlink=True)
+    bpy.context.view_layer.update()
+
+    anims = build_slot_animations(bpy.context.scene)
+    swap_keys = [k for a in anims for t in a.tracks if t.target == empty.name for k in t.keys]
+    assert swap_keys, "the keyed swap vanished after deleting an unrelated attachment"
+    resolved_axe = all(k.attachment == axe for k in swap_keys)
+    assert resolved_axe, f"index drift: the key must still resolve {axe!r}, got {swap_keys}"
+
+
+def test_keyframe_order_snapshot_is_append_only(automesh_fixture):
+    """A later delete + re-key must not remap an earlier key: keying `axe`, then
+    deleting `sword` and keying a freshly-added `shield`, must leave the first
+    key still resolving `axe` (append-only order), not slide it onto `shield`."""
+    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
+        build_slot_animations,
+    )
+
+    empty, sword, axe = _make_slot_with_two_attachments()
+    bpy.context.scene.frame_set(5)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
+
+    # Delete the earlier attachment, add a new one, and key the new one.
+    bpy.data.objects.remove(bpy.data.objects[sword], do_unlink=True)
+    shield = _new_mesh_object("shield", (0.0, 0.0, 2.0))
+    shield.parent = empty
+    bpy.context.view_layer.update()
+    bpy.context.view_layer.objects.active = empty
+    bpy.context.scene.frame_set(10)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="shield")
+
+    anims = build_slot_animations(bpy.context.scene)
+    resolved = {
+        k.attachment for a in anims for t in a.tracks if t.target == empty.name for k in t.keys
+    }
+    # Append-only -> both keys resolve their own name. Overwriting the snapshot
+    # would collapse both onto `shield` (the earlier `axe` key would be lost).
+    both_resolve = resolved == {axe, "shield"}
+    assert both_resolve, f"append-only order broke the binding: {resolved}"
+
+
 def test_keyframe_rejects_a_non_attachment(automesh_fixture):
     empty, _sword, _axe = _make_slot_with_two_attachments()
     result = bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="not_a_child")

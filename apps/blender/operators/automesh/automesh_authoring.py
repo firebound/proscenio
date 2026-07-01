@@ -35,6 +35,9 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
     region_event_to_xz,
     region_event_to_xz_offset,
 )
+from ...core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+    clear_alpha_grid_cache,
+)
 from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
     empty_overlay_handles,
@@ -278,6 +281,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         obj = validate_authoring_invoke(self, context, _MODAL_NAME)
         if obj is None:
             return {"CANCELLED"}
+        # Fresh session: drop any cached alpha grid so an edited texture is
+        # re-read. Within the session the cache then serves every threshold /
+        # margin drag without re-walking the whole image.
+        clear_alpha_grid_cache()
         # Validated non-None by validate_authoring_invoke; re-read for the pipeline.
         image = first_material_image(obj)
 
@@ -1018,6 +1025,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             report_warn(self, "manual contour needs at least 3 points", always=True)
             return
         self._output.outer = ring
+        # A manually authored outer must pin ``outer_is_manual`` so APPLY keeps
+        # the artist's exact ring instead of re-tracing it. (This path is dead
+        # today - the OUTER stage only exposes "auto" - but leaving the flag
+        # unset would be a silent trap if the contour tool is ever re-added.)
+        self._output.outer_is_manual = True
         self._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )

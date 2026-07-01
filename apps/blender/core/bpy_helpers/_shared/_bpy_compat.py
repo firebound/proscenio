@@ -73,16 +73,6 @@ def vertex_group_at(obj: bpy.types.Object, index: int) -> bpy.types.VertexGroup:
     return cast(bpy.types.VertexGroup, obj.vertex_groups[index])  # type: ignore[index]
 
 
-def iter_action_layers(action: bpy.types.Action) -> Iterator[bpy.types.ActionLayer]:
-    """Iterate ``action.layers`` (stub omits __iter__ on ActionLayers)."""
-    return iter(cast(Iterator[bpy.types.ActionLayer], action.layers))
-
-
-def iter_action_strips(layer: bpy.types.ActionLayer) -> Iterator[bpy.types.ActionStrip]:
-    """Iterate ``layer.strips`` (stub omits __iter__ on ActionStrips)."""
-    return iter(cast(Iterator[bpy.types.ActionStrip], layer.strips))
-
-
 def iter_shader_nodes(tree: bpy.types.NodeTree) -> Iterator[bpy.types.Node]:
     """Iterate ``tree.nodes`` (stub omits __iter__ on Nodes)."""
     return iter(cast(Iterator[bpy.types.Node], tree.nodes))

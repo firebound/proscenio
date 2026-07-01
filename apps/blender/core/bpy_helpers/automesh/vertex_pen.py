@@ -158,10 +158,6 @@ class VertexPen:
             self.live_preview["points"] = list(self.points)
             self.live_preview["edge_subdivs"] = list(self.edge_subdivs)
 
-    @property
-    def dragging(self) -> bool:
-        return self._drag_index is not None
-
     def ring(self) -> list[Point2D] | None:
         """The finished contour ring (closing-dup dropped, each edge subdivided
         by its own baked count), or None when fewer than 3 distinct verts."""

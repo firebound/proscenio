@@ -22,12 +22,12 @@ from ...skinning.sidecar_schema import (
     NamedSnapshot,
     SidecarEntry,
     WeightSidecar,
-    compute_topology_hash,
     from_json,
     to_json,
     weight_bearing_bone_names,
 )
 from ...skinning.weight_reproject import reproject_entries
+from ._helpers import topology_hash_of
 from .sidecar_io import apply_sidecar, per_vert_uv_anchors, snapshot_sidecar
 
 
@@ -167,10 +167,7 @@ def snapshot_live_vgroups(obj: bpy.types.Object) -> WeightSidecar | None:
         )
     if not any_weight:
         return None
-    new_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
+    new_hash = topology_hash_of(obj)
     return WeightSidecar(
         version=SIDECAR_VERSION,
         vertex_group_names=group_names,
@@ -196,10 +193,7 @@ def maybe_post_regen_reproject(
     """
     deform_bone_names = [b.name for b in armature.data.bones if b.use_deform]
     rig_mismatch = _rig_mismatch(prior_sidecar, deform_bone_names)
-    new_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
+    new_hash = topology_hash_of(obj)
     if new_hash == prior_sidecar.mesh_topology_hash:
         # identical topology = entries reapply verbatim
         applied = apply_sidecar(obj, prior_sidecar)
@@ -333,10 +327,7 @@ def reproject_stored_sidecar(obj: bpy.types.Object) -> dict[str, int] | None:
     new_anchors = per_vert_uv_anchors(obj)
     if new_anchors is None:
         return None
-    new_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
+    new_hash = topology_hash_of(obj)
     return _reproject_and_apply(
         obj, prior.entries, new_anchors, new_hash, prior.vertex_group_names, prior.snapshots
     )

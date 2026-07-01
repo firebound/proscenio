@@ -178,6 +178,31 @@ def from_json(payload: str) -> WeightSidecar:
     )
 
 
+def count_entries_by_provenance(payload: str | None) -> dict[str, int] | None:
+    """Count sidecar entries by provenance kind; None when there is no sidecar.
+
+    A lenient summary for the weight panel's provenance pill: it parses the raw
+    JSON (not the strict ``from_json``) so a version-mismatched or partial
+    sidecar still surfaces its entry counts. A missing or unparseable payload
+    returns None. Pure so the panel keeps the bpy Custom-Property read and this
+    stays unit-testable without Blender.
+    """
+    if payload is None:
+        return None
+    try:
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        return None
+    # Explicit display order for the panel pill (user paint first).
+    counts: dict[str, int] = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
+    entries = data.get("entries", []) if isinstance(data, dict) else []
+    for entry in entries or []:
+        provenance = entry.get("provenance") if isinstance(entry, dict) else None
+        if provenance in counts:
+            counts[provenance] += 1
+    return counts
+
+
 def _snapshot_from_dict(item: object) -> NamedSnapshot:
     if not isinstance(item, dict):
         raise ValueError("sidecar snapshot must be a JSON object")

@@ -37,3 +37,13 @@ def tag_redraw_areas(
         for area in screen.areas:
             if area.type in area_types:
                 area.tag_redraw()
+
+
+def tag_redraw_view3d_statusbar(window_manager: bpy.types.WindowManager | None) -> None:
+    """Redraw the VIEW_3D + STATUSBAR pair - the authoring modals' repaint set.
+
+    The modal tools (Quick Armature, Automesh, Manual Draw) repaint the viewport
+    and the status bar together on every state change; this names that recurring
+    pair so the ``{"VIEW_3D", "STATUSBAR"}`` literal lives in one place.
+    """
+    tag_redraw_areas(window_manager, {"VIEW_3D", "STATUSBAR"})

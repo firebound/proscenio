@@ -102,3 +102,53 @@ def test_landed_without_anchor_drops_lowest_mesh_to_zero(automesh_fixture, tmp_p
     assert prop.location.z == pytest.approx(0.15)
     # The prop's bottom (centre - half height) is on the ground.
     assert prop.location.z - 0.15 == pytest.approx(0.0, abs=1e-6)
+
+
+def _sprite_manifest_with_origin(tmp_path):
+    # One sprite layer whose [origin] shifts the pivot off the bbox centre. The
+    # origin only moves the object pivot; the visible quad's world position is
+    # unchanged, so a landed import must still land the *visible* bottom on Z=0
+    # regardless of where the pivot sits.
+    _png(tmp_path, "hero")
+    manifest = {
+        "format_version": 1,
+        "doc": "sprite_origin.psd",
+        "size": [200, 200],
+        "pixels_per_unit": 100.0,
+        "layers": [
+            {
+                "kind": "sprite",
+                "name": "hero",
+                "position": [90, 160],
+                "size": [20, 20],
+                "z_order": 0,
+                # Pivot at the canvas centre-top (100, 100), far above the bbox
+                # centre - a pivot offset the naive location-only feet math misses.
+                "origin": [100, 100],
+                "frames": [{"index": 0, "path": "hero.png"}],
+            },
+        ],
+    }
+    path = tmp_path / "manifest_sprite_origin.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    return path
+
+
+def _visible_bottom_z(obj):
+    """Lowest world Z the mesh actually occupies (pivot-independent)."""
+    return obj.location.z + min(v.co.z for v in obj.data.vertices)
+
+
+def test_landed_sprite_with_origin_lands_visible_bottom_on_zero(automesh_fixture, tmp_path):
+    from proscenio.importers.photoshop import import_manifest  # type: ignore[import-not-found]
+
+    if bpy.context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    path = _sprite_manifest_with_origin(tmp_path)
+    result = import_manifest(path, placement="landed")
+    hero = _by_origin(result.meshes, "hero")
+    # The origin baked a geometry offset into the quad, so the pivot
+    # (obj.location.z) sits above the visible art. Feet-landing that reads only
+    # the pivot lifts the figure by the wrong amount and the art floats. The
+    # visible bottom - pivot plus the lowest local vertex - must land on Z=0.
+    assert _visible_bottom_z(hero) == pytest.approx(0.0, abs=1e-6)

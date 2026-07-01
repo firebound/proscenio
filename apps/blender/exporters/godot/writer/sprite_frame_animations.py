@@ -34,6 +34,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     iter_objects,
     pose_bone_by_name,
 )
+from .animations import action_length
 
 _FRAME_DRIVER_PATH = '["proscenio_frame"]'
 _ROT_COMPONENT = {"ROT_X": 0, "ROT_Y": 1, "ROT_Z": 2}
@@ -207,12 +208,6 @@ def _bake_track(
     return Track(type="sprite_frame", target=fd.sprite.name, keys=keys)
 
 
-def _action_length(action: bpy.types.Action, fps: int) -> float:
-    frame_start = float(action.frame_range[0])
-    frame_end = float(action.frame_range[1])
-    return round(max(0.001, (frame_end - frame_start) / float(fps)), 6)
-
-
 def _direct_frame_track(
     sprite: bpy.types.Object, action: bpy.types.Action, fps: int
 ) -> Track | None:
@@ -272,7 +267,7 @@ def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Anim
         track = _direct_frame_track(obj, action, fps)
         if track is not None:
             by_action.setdefault(action.name, []).append(track)
-            lengths[action.name] = _action_length(action, fps)
+            lengths[action.name] = action_length(action, fps)
 
     # Bone-driven frames (steps the scene to evaluate each driver).
     drivers = _collect_frame_drivers(scene)
@@ -288,7 +283,7 @@ def build_sprite_frame_animations(scene: bpy.types.Scene, fps: int) -> list[Anim
                 if track is None:
                     continue
                 by_action.setdefault(action.name, []).append(track)
-                lengths[action.name] = _action_length(action, fps)
+                lengths[action.name] = action_length(action, fps)
         finally:
             scene.frame_set(saved_frame)
 

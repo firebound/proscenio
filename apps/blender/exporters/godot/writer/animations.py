@@ -12,7 +12,7 @@ from proscenio_models import Animation, Key, Track
 
 from ....core._shared.action_fcurves import action_fcurves
 from ....core.bpy_helpers._shared._bpy_compat import iter_actions, iter_keyframe_points
-from .skeleton import BoneRestLocal, wrap_pi
+from .skeleton import BoneRestLocal, rotate_vec2, wrap_pi
 
 __all__ = ["action_fcurves", "build_animations"]
 
@@ -143,6 +143,18 @@ def build_bone_track(
     return Track(type="bone_transform", target=bone_name, keys=keys)
 
 
+def action_length(action: bpy.types.Action, fps: int) -> float:
+    """Godot animation length (seconds) for ``action`` at ``fps``, rounded to 6dp.
+
+    The one home for the ``frame_range`` -> length math shared by the bone,
+    slot, and sprite-frame animation builders; clamped to a 0.001s floor so a
+    single-frame action still emits a valid non-zero length.
+    """
+    frame_start = float(action.frame_range[0])
+    frame_end = float(action.frame_range[1])
+    return round(max(0.001, (frame_end - frame_start) / float(fps)), 6)
+
+
 def build_animation(
     action: bpy.types.Action,
     fps: int,
@@ -157,13 +169,9 @@ def build_animation(
     tracks = [
         build_bone_track(name, by_time, ppu, rest_local) for name, by_time in bone_keys.items()
     ]
-    frame_start = float(action.frame_range[0])
-    frame_end = float(action.frame_range[1])
-    length = max(0.001, (frame_end - frame_start) / float(fps))
-
     return Animation(
         name=action.name,
-        length=round(length, 6),
+        length=action_length(action, fps),
         loop=True,
         tracks=tracks,
     )
@@ -248,12 +256,8 @@ def _resolve_pose_entry(
             # correct only when the parent is unrotated, sideways otherwise.
             screen_x = world.x * ppu
             screen_y = -world.z * ppu
-            cos_p = math.cos(-rest.parent_world_rot)
-            sin_p = math.sin(-rest.parent_world_rot)
-            position = [
-                round(screen_x * cos_p - screen_y * sin_p, 6),
-                round(screen_x * sin_p + screen_y * cos_p, 6),
-            ]
+            local_x, local_y = rotate_vec2(screen_x, screen_y, -rest.parent_world_rot)
+            position = [round(local_x, 6), round(local_y, 6)]
 
     rotation = _screen_rotation_delta(entry, rest)
 

@@ -59,6 +59,18 @@ def godot_world_angle_from_dir(dir_blender: Vector) -> float:
     return math.atan2(-dir_blender.z, dir_blender.x)
 
 
+def rotate_vec2(dx: float, dy: float, angle: float) -> tuple[float, float]:
+    """Rotate the 2D vector ``(dx, dy)`` by ``angle`` radians (CCW).
+
+    The one home for the parent-local projection the writers share: a world
+    delta rotated by ``-parent_rot`` lands in the parent's local frame (Bone2D
+    position / vertex / animation-delta tracks all live parent-local).
+    """
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    return (dx * cos_a - dy * sin_a, dx * sin_a + dy * cos_a)
+
+
 def wrap_pi(a: float) -> float:
     while a > math.pi:
         a -= 2.0 * math.pi
@@ -146,9 +158,7 @@ def build_skeleton(
             p = world_godot[parent_bone.name]
             dx = w.x - p.x
             dy = w.y - p.y
-            cos_p = math.cos(-p.rot)
-            sin_p = math.sin(-p.rot)
-            local_pos = (dx * cos_p - dy * sin_p, dx * sin_p + dy * cos_p)
+            local_pos = rotate_vec2(dx, dy, -p.rot)
             local_rot = wrap_pi(w.rot - p.rot)
             parent_world_rot = p.rot
 

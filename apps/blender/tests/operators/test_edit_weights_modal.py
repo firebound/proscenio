@@ -37,28 +37,20 @@ def test_invoke_enters_weight_paint_with_preset_applied(automesh_fixture):
     armature = bpy.data.objects["automesh.hand_rig"]
     _set_picker("automesh.hand_rig")
     bpy.ops.proscenio.bind_mesh_to_armature()
-    # Headless Blender cannot run modal operators end-to-end: bpy.ops
-    # rejects INVOKE_DEFAULT for modals with "Invalid operator call"
-    # (no event loop) and direct class instantiation of bpy.types.Operator
-    # subclasses is forbidden ("bpy_struct.__new__ expected a single
-    # argument"). Replicate the invoke setup block to verify its observable
-    # side effects: mode == WEIGHT_PAINT and 2D-safe brush preset applied
-    # (use_frontface off). The modal lifecycle proper is covered by manual
-    # testing.
+    # Headless Blender cannot run modal operators end-to-end (no event loop, and
+    # a bpy.types.Operator subclass cannot be instantiated). Drive the REAL
+    # extracted _enter_weight_paint - the headless half of invoke() - instead of
+    # re-implementing its block inline, so a regression in that wiring is caught
+    # here rather than slipping past a copy. The modal-only wiring is covered by
+    # the modal/_finish lifecycle tests below.
     from proscenio.core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
-        apply_paint_preset,
         read_mirror_flag,
     )
+    from proscenio.operators.skinning.edit_weights import (  # type: ignore[import-not-found]
+        _enter_weight_paint,
+    )
 
-    armature.select_set(True)
-    bpy.context.view_layer.objects.active = armature
-    if armature.mode != "POSE":
-        bpy.ops.object.mode_set(mode="POSE")
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    if obj.mode != "WEIGHT_PAINT":
-        bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
-    apply_paint_preset(bpy.context, mirror_x=read_mirror_flag(armature))
+    _enter_weight_paint(bpy.context, obj, armature, mirror_x=read_mirror_flag(armature))
     assert obj.mode == "WEIGHT_PAINT"
     brush = bpy.context.tool_settings.weight_paint.brush
     assert bool(getattr(brush, "use_frontface", True)) is False
@@ -217,3 +209,147 @@ def test_cancel_delegates_to_finish():
     stub = SimpleNamespace(_finish=lambda _context, *, cancel: calls.append(cancel))
     mod.PROSCENIO_OT_edit_weights_modal.cancel(stub, context=None)
     assert calls == [True], "cancel must delegate to _finish(cancel=True)"
+
+
+# --- modal() dispatch + _finish() teardown lifecycle (the audit's one medium) --
+#
+# The invoke/modal/_finish lifecycle proper is not headless-runnable, so drive
+# modal() and _finish() directly on a plain SimpleNamespace stub (a
+# bpy.types.Operator subclass cannot be instantiated in 5.1) with fabricated
+# events and stubbed collaborators - the _Probe pattern from
+# test_quick_armature_modal.py. This is the coverage spec 075 Phase C's D6 waits
+# on before the large operator splits.
+
+
+def _raise(exc: Exception):
+    def _fn(*_args, **_kwargs):
+        raise exc
+
+    return _fn
+
+
+def test_modal_timer_external_exit_finishes_non_cancel(automesh_fixture):
+    from types import SimpleNamespace
+
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    calls: list[bool] = []
+    stub = SimpleNamespace(_finish=lambda _c, *, cancel: calls.append(cancel) or {"FINISHED"})
+
+    # A native exit from weight-paint (header dropdown / tab) sends no event, so
+    # the TIMER poll sees the mode changed and finishes NON-cancel.
+    ctx = SimpleNamespace(active_object=SimpleNamespace(mode="OBJECT"))
+    cls.modal(stub, ctx, SimpleNamespace(type="TIMER", value=""))
+    assert calls == [False], "TIMER external-exit must finish non-cancel"
+
+    # Still painting -> the timer just passes through, no finish.
+    calls.clear()
+    ctx = SimpleNamespace(active_object=SimpleNamespace(mode="WEIGHT_PAINT"))
+    result = cls.modal(stub, ctx, SimpleNamespace(type="TIMER", value=""))
+    assert calls == [] and result == {"PASS_THROUGH"}
+
+
+def test_modal_esc_finishes_cancel(automesh_fixture):
+    from types import SimpleNamespace
+
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    calls: list[bool] = []
+    stub = SimpleNamespace(_finish=lambda _c, *, cancel: calls.append(cancel) or {"CANCELLED"})
+    cls.modal(stub, SimpleNamespace(), SimpleNamespace(type="ESC", value="PRESS"))
+    assert calls == [True], "ESC must finish cancel"
+
+
+def test_modal_exception_finishes_cancel(automesh_fixture):
+    from types import SimpleNamespace
+
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    calls: list[bool] = []
+    # A raising tracker inside modal() must be caught and routed to a cancel
+    # finish (never leak the paint session on an unexpected error).
+    stub = SimpleNamespace(
+        _finish=lambda _c, *, cancel: calls.append(cancel) or {"CANCELLED"},
+        _stroke_active=False,
+        _stroke_tracker=SimpleNamespace(snapshot_active_vg=_raise(RuntimeError("boom"))),
+    )
+    cls.modal(stub, SimpleNamespace(), SimpleNamespace(type="LEFTMOUSE", value="PRESS"))
+    assert calls == [True], "an exception in modal must finish cancel"
+
+
+def _finish_stub(events: list, **overrides):
+    from types import SimpleNamespace
+
+    base = {
+        "_timer": "TIMER_OBJ",
+        "_overlay_handle": "OVERLAY",
+        "_session": "SESSION",
+        "_remove_statusbar": lambda: events.append("statusbar"),
+        "_capture_auto_snapshot": lambda: events.append("snapshot"),
+        "report": lambda *_a, **_k: None,
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def _finish_ctx(timer_removed: list):
+    from types import SimpleNamespace
+
+    wm = SimpleNamespace(event_timer_remove=lambda t: timer_removed.append(t))
+    return SimpleNamespace(window_manager=wm)
+
+
+def test_finish_tears_down_and_snapshots_on_non_cancel(automesh_fixture, monkeypatch):
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    events: list[str] = []
+    timer_removed: list[object] = []
+    monkeypatch.setattr(mod, "unregister_handler", lambda h: events.append(f"unregister:{h}"))
+    monkeypatch.setattr(mod, "restore_session", lambda _c, s: events.append(f"restore:{s}"))
+
+    stub = _finish_stub(events)
+    result = cls._finish(stub, _finish_ctx(timer_removed), cancel=False)
+
+    assert result == {"FINISHED"}
+    assert timer_removed == ["TIMER_OBJ"], "the mode-watch timer was not removed"
+    assert "unregister:OVERLAY" in events, "the provenance overlay was not unregistered"
+    assert "statusbar" in events, "the status bar draw was not removed"
+    assert "snapshot" in events, "a normal finish must capture the auto-snapshot"
+    assert "restore:SESSION" in events, "the session was not restored"
+    assert stub._timer is None and stub._overlay_handle is None, "handles not cleared"
+
+
+def test_finish_suppresses_snapshot_on_cancel(automesh_fixture, monkeypatch):
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    events: list[str] = []
+    monkeypatch.setattr(mod, "unregister_handler", lambda h: events.append("unregister"))
+    monkeypatch.setattr(mod, "restore_session", lambda _c, s: events.append("restore"))
+
+    result = cls._finish(_finish_stub(events), _finish_ctx([]), cancel=True)
+
+    assert result == {"CANCELLED"}
+    assert "snapshot" not in events, "cancel must NOT capture an auto-snapshot"
+    assert "restore" in events, "restore must run on every exit path"
+
+
+def test_finish_suppresses_a_failing_snapshot(automesh_fixture, monkeypatch):
+    from proscenio.operators.skinning import edit_weights as mod  # type: ignore[import-not-found]
+
+    cls = mod.PROSCENIO_OT_edit_weights_modal
+    events: list[str] = []
+    monkeypatch.setattr(mod, "unregister_handler", lambda h: events.append("unregister"))
+    monkeypatch.setattr(mod, "restore_session", lambda _c, s: events.append("restore"))
+
+    # A snapshot failure must be swallowed so the mode/selection restore below it
+    # still runs (cleanup must complete on every exit path).
+    stub = _finish_stub(events, _capture_auto_snapshot=_raise(RuntimeError("snap fail")))
+    result = cls._finish(stub, _finish_ctx([]), cancel=False)
+
+    assert result == {"FINISHED"}, "a failing snapshot must not abort the finish"
+    assert "restore" in events, "cleanup must continue past the snapshot failure"

@@ -142,9 +142,12 @@ def _eval_frame(expression: str, values: dict[str, float]) -> int | None:
     """
     try:
         result = eval(expression, {"__builtins__": {}}, {**_SAFE_MATH, **values})
+        return int(result)
     except Exception:
+        # Includes the int() coercion: a non-numeric result (a string, None, a
+        # complex) returns None rather than raising out of the writer. Callers
+        # already treat None as "skip this driven frame".
         return None
-    return int(result)
 
 
 def _grid_max_frame(sprite: bpy.types.Object) -> int:

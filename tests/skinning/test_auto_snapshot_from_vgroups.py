@@ -28,3 +28,13 @@ def test_mismatched_lengths_truncate_to_shorter():
     weights = [{"a": 1.0}]
     sidecar = build_sidecar_from_vgroup_data(uvs, weights)
     assert len(sidecar.entries) == 1
+
+
+def test_mismatched_lengths_truncate_when_weights_longer():
+    # The mirror of the uvs-longer case: more weight dicts than uvs must also
+    # truncate to the shorter. zip is symmetric today, but pinning both sides
+    # locks the contract against a future asymmetric change.
+    uvs = [(0.0, 0.0)]
+    weights = [{"a": 1.0}, {"b": 1.0}]
+    sidecar = build_sidecar_from_vgroup_data(uvs, weights)
+    assert len(sidecar.entries) == 1

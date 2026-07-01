@@ -35,6 +35,7 @@ def test_idprop_write_reads_back_through_the_proxy(sprite_obj: bpy.types.Object)
     sprite_obj["proscenio_vframes"] = 2
     assert sprite_obj.proscenio.frame == 3
     assert sprite_obj.proscenio.hframes == 4
+    assert sprite_obj.proscenio.vframes == 2  # the third field must round-trip too
 
 
 def test_frame_setter_clamps_into_the_grid(sprite_obj: bpy.types.Object) -> None:

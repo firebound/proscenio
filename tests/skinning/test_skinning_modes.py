@@ -45,6 +45,11 @@ def test_proximity_normalizes_per_vert():
         [((0.0, 0.0), (0.0, 0.0), "A"), ((1.0, 0.0), (1.0, 0.0), "B")],
     )
     assert math.isclose(out["A"][0] + out["B"][0], 1.0)
+    # The vert is equidistant (0.5) from both bones, so the falloff must split it
+    # 0.5/0.5 - a degenerate 1.0/0.0 also sums to 1.0 and would pass the
+    # normalization check alone, so pin the actual split.
+    assert math.isclose(out["A"][0], 0.5)
+    assert math.isclose(out["B"][0], 0.5)
 
 
 def test_envelope_inside_radius_full_outside_zero():

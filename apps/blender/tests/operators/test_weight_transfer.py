@@ -61,6 +61,14 @@ def test_copy_weights_zero_coverage_returns_cancelled(automesh_fixture):
     src.select_set(True)
     dup.select_set(True)
     bpy.context.view_layer.objects.active = src
+    # Baseline: the copied mesh may already carry group definitions (Blender
+    # stores them with the mesh data), so the invariant is "no NEW group", not
+    # "zero groups".
+    groups_before = len(dup.vertex_groups)
 
     result = bpy.ops.proscenio.copy_weights_to_selected(max_distance=0.001)
     assert "CANCELLED" in result
+    # Cancel on zero coverage must be a true no-op: the transfer adds a vertex
+    # group only for a vert that actually received weight, so nothing transferred
+    # means no group is created. Lock the no-partial-write invariant.
+    assert len(dup.vertex_groups) == groups_before

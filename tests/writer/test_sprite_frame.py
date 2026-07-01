@@ -67,6 +67,30 @@ def test_direct_frame_unset_grid_warns_and_collapses(capsys) -> None:
     assert [k.frame for k in track.keys] == [0]  # the collapsed single cell
 
 
+def test_eval_frame_resolves_math_and_vars() -> None:
+    assert sfa._eval_frame("floor(x)", {"x": 2.7}) == 2
+    assert sfa._eval_frame("v * 2", {"v": 3.0}) == 6
+
+
+def test_eval_frame_name_error_returns_none() -> None:
+    # An undefined name (no such driver variable) fails closed, not raising.
+    assert sfa._eval_frame("undefined_name", {}) is None
+
+
+def test_eval_frame_disallowed_builtin_returns_none() -> None:
+    # __builtins__ is stripped, so neither a dangerous nor a benign builtin
+    # resolves - both degrade to None (this is a build-time tool, not an RCE gate,
+    # but the sandbox must still hold).
+    assert sfa._eval_frame("__import__('os')", {}) is None
+    assert sfa._eval_frame("abs(-3)", {}) is None
+
+
+def test_eval_frame_non_numeric_returns_none() -> None:
+    # A non-numeric result must not raise out of the writer: int() lives inside
+    # the guard, so a string / None result degrades to None like any failure.
+    assert sfa._eval_frame("'a string'", {}) is None
+
+
 def test_direct_frame_set_grid_does_not_warn(capsys) -> None:
     # With a real grid the frames do not collapse, so no warning fires.
     sprite = _Sprite("eyes", {"proscenio_hframes": 2, "proscenio_vframes": 2})

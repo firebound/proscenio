@@ -36,8 +36,14 @@ def test_ring_bakes_per_edge_subdivisions():
     pen.edge_subdivs = [1, 1]  # one per open edge; the wrap edge has no count
     base = VertexPen()
     base.points = list(pen.points)
+    ring = pen.ring()
     # Two open edges subdivided by 1 each -> +2; the implicit wrap stays bare.
-    assert len(pen.ring()) == len(base.ring()) + 2
+    assert len(ring) == len(base.ring()) + 2
+    # Pin WHERE the inserted verts land, not just the total: the midpoints of the
+    # two subdivided edges must appear, so subdividing a DIFFERENT edge by the
+    # same total count does not slip through on the length alone.
+    assert (1.0, 0.0) in ring  # midpoint of edge 0: (0,0) -> (2,0)
+    assert (2.0, 1.0) in ring  # midpoint of edge 1: (2,0) -> (2,2)
 
 
 def test_load_preloads_points_and_subdivs_for_reedit():

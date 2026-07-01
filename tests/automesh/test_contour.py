@@ -286,8 +286,13 @@ class TestExtractHoles:
         mask = binarize(_donut_alpha(10, hole_inset=4), 127)
         holes = extract_holes(mask)
         assert len(holes) == 1
-        # Hole is the 2x2 transparent center: 4 boundary cells.
-        assert len(holes[0]) >= 1
+        # The transparent centre is the 2x2 cell block x,y in {4,5}. Pin its exact
+        # extent (min/max x,y) so a hole traced on the wrong cells - or a larger /
+        # smaller region - fails instead of passing on any non-empty result.
+        hole = holes[0]
+        xs = [cell[0] for cell in hole]
+        ys = [cell[1] for cell in hole]
+        assert (min(xs), max(xs), min(ys), max(ys)) == (4, 5, 4, 5)
 
     def test_border_background_not_a_hole(self) -> None:
         # An inset square's surrounding transparent border is NOT a hole.

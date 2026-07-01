@@ -2,15 +2,29 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix
 from proscenio_models import Bone, Skeleton
 
 from ....core.bone_export import bone_is_exported
 from ....core.bpy_helpers._shared._bpy_compat import expect_armature, iter_bones
+from ....core.godot_export_math import (
+    godot_world_angle_from_dir,
+    rotate_vec2,
+    world_to_godot_xy,
+    wrap_pi,
+)
+
+# Re-exported so the writer's existing importers (sprites, animations,
+# tests/writer/test_skeleton) keep importing these from ``skeleton``.
+__all__ = [
+    "godot_world_angle_from_dir",
+    "rotate_vec2",
+    "world_to_godot_xy",
+    "wrap_pi",
+]
 
 
 @dataclass(frozen=True)
@@ -47,36 +61,6 @@ class BoneWorld:
     y: float
     rot: float
     length: float
-
-
-def world_to_godot_xy(p: Vector, ppu: float) -> Vector:
-    """Blender world (XZ plane, Y into screen) -> Godot world XY."""
-    return Vector((p.x * ppu, -p.z * ppu))
-
-
-def godot_world_angle_from_dir(dir_blender: Vector) -> float:
-    """Angle in Godot 2D from +X axis to the projection of `dir_blender` on XZ."""
-    return math.atan2(-dir_blender.z, dir_blender.x)
-
-
-def rotate_vec2(dx: float, dy: float, angle: float) -> tuple[float, float]:
-    """Rotate the 2D vector ``(dx, dy)`` by ``angle`` radians (CCW).
-
-    The one home for the parent-local projection the writers share: a world
-    delta rotated by ``-parent_rot`` lands in the parent's local frame (Bone2D
-    position / vertex / animation-delta tracks all live parent-local).
-    """
-    cos_a = math.cos(angle)
-    sin_a = math.sin(angle)
-    return (dx * cos_a - dy * sin_a, dx * sin_a + dy * cos_a)
-
-
-def wrap_pi(a: float) -> float:
-    while a > math.pi:
-        a -= 2.0 * math.pi
-    while a < -math.pi:
-        a += 2.0 * math.pi
-    return a
 
 
 def _nearest_deform_ancestor(bone: bpy.types.Bone) -> bpy.types.Bone | None:

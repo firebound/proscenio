@@ -14,13 +14,12 @@ import bpy  # conftest stub
 import pytest
 from mathutils import Matrix, Vector  # conftest stub
 
-from blender.exporters.godot.writer.skeleton import (
-    BoneWorld,
-    build_skeleton,
+from blender.core.godot_export_math import (
     godot_world_angle_from_dir,
     world_to_godot_xy,
     wrap_pi,
 )
+from blender.exporters.godot.writer.skeleton import BoneWorld, build_skeleton
 
 # Identity rest orientation for fake bones; build_skeleton reads
 # ``bone.matrix_local.to_3x3()`` for the rest_basis these tests do not assert.

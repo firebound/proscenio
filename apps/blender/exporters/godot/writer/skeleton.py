@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import bpy
@@ -99,14 +100,18 @@ def compute_bone_world_godot(armature_obj: bpy.types.Object, ppu: float) -> dict
         head_godot = world_to_godot_xy(head_world_blender, ppu)
         dir_blender = tail_world_blender - head_world_blender
         angle = godot_world_angle_from_dir(dir_blender)
-        # Use bone.length * ppu (armature-local rest length), NOT the head->tail
-        # distance in Godot space: the projection drops the depth axis, so a bone
-        # pointing into the screen would project to length 0.
+        # Use the bone's 3D world length (head->tail magnitude in world space),
+        # NOT the head->tail distance in Godot *screen* space: the projection
+        # drops the depth axis, so a bone pointing into the screen would project
+        # to length 0. Taking the magnitude before projection keeps the full
+        # length AND folds in the armature object's scale - ``bone.length`` is
+        # the armature-local rest length and ignores an un-applied object scale.
+        length = math.hypot(dir_blender.x, dir_blender.y, dir_blender.z)
         out[bone.name] = BoneWorld(
             x=head_godot.x,
             y=head_godot.y,
             rot=angle,
-            length=bone.length * ppu,
+            length=length * ppu,
         )
     return out
 

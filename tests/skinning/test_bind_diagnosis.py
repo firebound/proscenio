@@ -64,6 +64,14 @@ def test_diagnose_islands_two_islands_returns_warn():
     assert d.severity == "warn"
 
 
+def test_diagnose_islands_out_of_range_index_does_not_raise():
+    # A corrupt/stale face member (>= vert_count or negative) must not crash a
+    # pure diagnosis that is only ever meant to warn: out-of-range members drop,
+    # so the two faces still link every in-range vert into one component.
+    d = diagnose_isolated_islands([[0, 1, 99], [1, 2, -1]], vert_count=3)
+    assert d is None
+
+
 def test_diagnose_bone_bbox_all_inside_returns_none():
     mesh_bbox = ((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
     bones = [((0.0, 0.0, 0.0), (0.5, 0.5, 0.0), "A")]

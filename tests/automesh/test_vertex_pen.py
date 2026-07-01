@@ -80,6 +80,22 @@ def test_close_drops_trailing_duplicate_first_vert():
     assert pen.points == [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0)]
 
 
+def test_close_refuses_a_degenerate_two_vert_loop():
+    """A 2-vert loop is degenerate: close() must NOT enter the EDIT phase (it
+    would leave a stray dup vert + edge_subdiv that corrupts the next CDT).
+    The pen stays open so drawing can continue or re-arm cleanly."""
+    pen = VertexPen()
+    pen.points = [(0.0, 0.0), (1.0, 0.0)]
+    pen.edge_subdivs = [0]
+    pen.close()
+    assert pen.closed is False
+    # a close-on-first-vert click on two points (dup of the first) also refuses
+    pen.points = [(0.0, 0.0), (1.0, 0.0), (0.0, 0.0)]
+    pen.edge_subdivs = [0, 0]
+    pen.close()
+    assert pen.closed is False
+
+
 def test_insert_on_edge_splits_and_inherits_subdiv():
     """Spec 070 C4: inserting a vert on a placed edge grows the ring at that spot
     and both halves inherit the edge's subdivision count."""

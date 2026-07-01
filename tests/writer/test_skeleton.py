@@ -19,7 +19,11 @@ from blender.core.godot_export_math import (
     world_to_godot_xy,
     wrap_pi,
 )
-from blender.exporters.godot.writer.skeleton import BoneWorld, build_skeleton
+from blender.exporters.godot.writer.skeleton import (
+    BoneWorld,
+    build_skeleton,
+    compute_bone_world_godot,
+)
 
 # Identity rest orientation for fake bones; build_skeleton reads
 # ``bone.matrix_local.to_3x3()`` for the rest_basis these tests do not assert.
@@ -64,6 +68,49 @@ def _bone(
     return SimpleNamespace(
         name=name, parent=parent, matrix_local=_I, use_deform=use_deform
     )
+
+
+def test_compute_bone_length_folds_in_armature_scale() -> None:
+    # An un-applied armature object scale must scale the emitted bone length:
+    # ``bone.length`` is the armature-local rest length and ignores the object
+    # scale, so the length is taken from the head->tail vector in *world* space
+    # (which carries the scale). Regression for bone-length-armature-scale.
+    from mathutils import Vector
+
+    bone = SimpleNamespace(
+        name="arm",
+        parent=None,
+        use_deform=True,
+        head_local=Vector((0.0, 0.0, 0.0)),
+        tail_local=Vector((1.0, 0.0, 0.0)),  # unit rest length in armature space
+    )
+    scale_2x = Matrix(((2.0, 0.0, 0.0), (0.0, 2.0, 0.0), (0.0, 0.0, 2.0)))
+    armature_obj = SimpleNamespace(
+        data=_armature_obj([bone]).data, matrix_world=scale_2x
+    )
+    world = compute_bone_world_godot(armature_obj, ppu=10.0)
+    # world head->tail length = |diag(2) @ (1,0,0)| = 2; * ppu(10) = 20.
+    assert world["arm"].length == pytest.approx(20.0)
+
+
+def test_compute_bone_length_unit_scale_matches_rest_length() -> None:
+    # With a unit-scale armature the world length equals the armature-local rest
+    # length, so existing (unit-scale) fixtures / goldens are unchanged.
+    from mathutils import Vector
+
+    bone = SimpleNamespace(
+        name="arm",
+        parent=None,
+        use_deform=True,
+        head_local=Vector((0.0, 0.0, 0.0)),
+        tail_local=Vector((3.0, 0.0, 0.0)),
+    )
+    identity = Matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    armature_obj = SimpleNamespace(
+        data=_armature_obj([bone]).data, matrix_world=identity
+    )
+    world = compute_bone_world_godot(armature_obj, ppu=10.0)
+    assert world["arm"].length == pytest.approx(30.0)  # 3 * ppu, scale-free
 
 
 def test_build_skeleton_root_bone_uses_world_transform() -> None:

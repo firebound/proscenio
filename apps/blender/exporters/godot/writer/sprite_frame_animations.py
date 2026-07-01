@@ -228,9 +228,19 @@ def _direct_frame_track(
     if fcurve is None:
         return None
     max_frame = _grid_max_frame(sprite)
+    points = list(iter_keyframe_points(fcurve))
+    if max_frame == 0 and len({round(float(kp.co[1])) for kp in points}) > 1:
+        # Grid unset / 1x1: every frame wraps to cell 0, so distinct frame keys
+        # collapse into one and the animation is silently lost. Warn instead of
+        # swallowing it - the fix is to set hframes/vframes on the sprite.
+        print(
+            f"  WARN: sprite {sprite.name!r} has frame keyframes but its grid is "
+            f"unset (1x1) - the frame animation collapses to a single cell; set "
+            f"hframes/vframes to export it"
+        )
     keys: list[Key] = []
     last: int | None = None
-    for kp in iter_keyframe_points(fcurve):
+    for kp in points:
         value = _wrap_frame(round(float(kp.co[1])), max_frame)
         time = round(max(0.0, (float(kp.co[0]) - 1.0) / float(fps)), 6)
         if value != last:

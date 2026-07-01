@@ -125,9 +125,13 @@ def diagnose_isolated_islands(
 
     used: set[int] = set()
     for face in face_indices:
-        used.update(face)
-        for i in range(1, len(face)):
-            union(face[0], face[i])
+        # Guard raw exported face members: a corrupt/stale index (>= vert_count
+        # or negative) would index past ``parent`` and crash a pure diagnosis
+        # that must only ever warn. Drop out-of-range members instead.
+        members = [idx for idx in face if 0 <= idx < vert_count]
+        used.update(members)
+        for i in range(1, len(members)):
+            union(members[0], members[i])
 
     roots = {find(v) for v in used}
     if len(roots) <= 1:

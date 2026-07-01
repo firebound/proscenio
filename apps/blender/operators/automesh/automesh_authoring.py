@@ -1018,6 +1018,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             report_warn(self, "manual contour needs at least 3 points", always=True)
             return
         self._output.outer = ring
+        # A manually authored outer must pin ``outer_is_manual`` so APPLY keeps
+        # the artist's exact ring instead of re-tracing it. (This path is dead
+        # today - the OUTER stage only exposes "auto" - but leaving the flag
+        # unset would be a silent trap if the contour tool is ever re-added.)
+        self._output.outer_is_manual = True
         self._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )

@@ -379,3 +379,4 @@ readback
 evals
 mislocated
 capsys
+readouterr

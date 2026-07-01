@@ -44,7 +44,9 @@ from ...automesh import (
     find_best_inner_rotation,
     interior_points_for_annulus,
     laplacian_smooth,
+    point_in_any_bboxed_polygon,
     point_in_polygon,
+    polygon_bboxes,
     to_float_contour,
 )
 from .base_sprite import (
@@ -185,6 +187,22 @@ def _max_alpha_in_block(
     return max_alpha
 
 
+# Per-session cache: reading + MAX-downsampling the full image is O(source
+# pixels), and the authoring modal re-runs the build on every threshold / margin
+# drag. Those knobs do NOT change the alpha grid (only the downscale does), so
+# caching the grid by (image, size, downscale) lets a drag reuse it instead of
+# re-walking the whole image. A sprite's texture is static within an authoring
+# session; ``clear_alpha_grid_cache`` drops the cache when authoring (re-)starts
+# so a texture edited between sessions is re-read. The grid is consumed read-only
+# downstream (``binarize`` copies it into a fresh mask), so sharing it is safe.
+_ALPHA_GRID_CACHE: dict[tuple[str, int, int, float], AlphaGrid] = {}
+
+
+def clear_alpha_grid_cache() -> None:
+    """Drop the per-session alpha-grid cache (call when authoring (re-)starts)."""
+    _ALPHA_GRID_CACHE.clear()
+
+
 def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     """Read an image's alpha channel into a downscaled int grid.
 
@@ -220,6 +238,10 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     source_w, source_h = image.size[0], image.size[1]
     if source_w <= 0 or source_h <= 0:
         raise ValueError(f"image has zero size ({source_w}x{source_h})")
+    cache_key = (image.name, source_w, source_h, downscale_factor)
+    cached = _ALPHA_GRID_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     pixels = list(image.pixels[:])
     target_w = max(1, int(source_w * downscale_factor))
     target_h = max(1, int(source_h * downscale_factor))
@@ -236,6 +258,7 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
             row[target_x] = _max_alpha_in_block(
                 pixels, source_w, sx_start, sx_end, sy_start, sy_end
             )
+    _ALPHA_GRID_CACHE[cache_key] = grid
     return grid
 
 
@@ -563,10 +586,11 @@ def _compute_steiner_points(
     )
     if holes_world:
         before_hole_filter = len(interior_points)
+        hole_bboxes = polygon_bboxes(holes_world)
         interior_points = [
             point
             for point in interior_points
-            if not any(point_in_polygon(point, hole) for hole in holes_world)
+            if not point_in_any_bboxed_polygon(point, hole_bboxes)
         ]
         print(
             f"[automesh] interior_points dropped_inside_holes="
@@ -610,6 +634,7 @@ def _merge_extra_steiners(
     """
     accepted: list[tuple[float, float]] = []
     late_dropped = 0
+    hole_bboxes = polygon_bboxes(holes_world)
     for point in extra_steiners:
         if not point_in_polygon(point, outer_world):
             late_dropped += 1
@@ -617,7 +642,7 @@ def _merge_extra_steiners(
         if inner_world and point_in_polygon(point, inner_world):
             late_dropped += 1
             continue
-        if any(point_in_polygon(point, hole) for hole in holes_world):
+        if point_in_any_bboxed_polygon(point, hole_bboxes):
             late_dropped += 1
             continue
         accepted.append(point)

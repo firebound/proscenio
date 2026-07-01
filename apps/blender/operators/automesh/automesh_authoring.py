@@ -35,6 +35,9 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
     region_event_to_xz,
     region_event_to_xz_offset,
 )
+from ...core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+    clear_alpha_grid_cache,
+)
 from ...core.bpy_helpers.automesh.authoring_overlay import (  # type: ignore[import-not-found]
     OverlayHandles,
     empty_overlay_handles,
@@ -278,6 +281,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         obj = validate_authoring_invoke(self, context, _MODAL_NAME)
         if obj is None:
             return {"CANCELLED"}
+        # Fresh session: drop any cached alpha grid so an edited texture is
+        # re-read. Within the session the cache then serves every threshold /
+        # margin drag without re-walking the whole image.
+        clear_alpha_grid_cache()
         # Validated non-None by validate_authoring_invoke; re-read for the pipeline.
         image = first_material_image(obj)
 

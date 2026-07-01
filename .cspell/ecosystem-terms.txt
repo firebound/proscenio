@@ -381,3 +381,4 @@ mislocated
 capsys
 readouterr
 unrestorable
+bboxed

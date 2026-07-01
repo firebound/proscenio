@@ -38,14 +38,15 @@ from .density import (
     bounding_box,
     filter_points_too_close_to_boundary,
     interior_points_for_annulus,
+    point_in_any_bboxed_polygon,
     point_in_polygon,
+    polygon_bboxes,
 )
 from .erosion_loops import compute_inner_loops
 from .geometry import (
     Contour2D,
     arc_length_resample,
     build_annulus_edge_pairs,
-    edge_index_start_distance,
     find_best_inner_rotation,
     laplacian_smooth,
     perimeter_length,
@@ -66,7 +67,6 @@ __all__ = [
     "build_annulus_edge_pairs",
     "compute_inner_loops",
     "dilate",
-    "edge_index_start_distance",
     "erode",
     "extract_contour_pair",
     "extract_contours",
@@ -81,7 +81,9 @@ __all__ = [
     "interior_points_for_annulus",
     "laplacian_smooth",
     "perimeter_length",
+    "point_in_any_bboxed_polygon",
     "point_in_polygon",
+    "polygon_bboxes",
     "to_float_contour",
     "trace_contour",
 ]

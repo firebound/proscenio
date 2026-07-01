@@ -20,7 +20,6 @@ from ...core._shared.material_images import (  # type: ignore[import-not-found]
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     active_armature,
-    element_type_of,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
@@ -80,7 +79,8 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     tool_is_pen,
 )
 from .._status_bar import append_statusbar_draw, remove_statusbar_draw
-from ._authoring_modal_guard import is_running, mark_running, mark_stopped, other_running
+from ._authoring_modal_guard import is_running, mark_running, mark_stopped
+from ._authoring_preconditions import poll_mesh_with_image, validate_authoring_invoke
 from ._status_bar import emit_authoring_chord_layout
 
 # Authoring-modal guard key (spec 070): the mesh-gen modes are mutually
@@ -255,12 +255,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            return False
-        if other_running(_MODAL_NAME):  # Manual Draw is live - the modes are exclusive
-            return False
-        return first_material_image(obj) is not None
+        return poll_mesh_with_image(context, _MODAL_NAME)
 
     @classmethod
     def authoring_state(cls) -> AuthoringModalState:
@@ -280,25 +275,11 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             type(self)._exit_requested = True
             tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            report_error(self, "active object must be a mesh")
+        obj = validate_authoring_invoke(self, context, _MODAL_NAME)
+        if obj is None:
             return {"CANCELLED"}
-        if element_type_of(obj) == "sprite":
-            report_warn(
-                self,
-                "active object is a sprite element - mesh authoring is mesh-only; it "
-                "would replace its quad. To attach a sprite to a bone, parent it with "
-                "Ctrl+P > Bone instead",
-            )
-            return {"CANCELLED"}
+        # Validated non-None by validate_authoring_invoke; re-read for the pipeline.
         image = first_material_image(obj)
-        if image is None:
-            report_error(
-                self,
-                "active mesh has no image texture - add a material with a TEX_IMAGE node first",
-            )
-            return {"CANCELLED"}
 
         self._session = capture_session(context, obj)
         # The viewport canvas region (not the N-panel the button fired from), so

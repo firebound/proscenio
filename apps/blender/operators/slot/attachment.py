@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from typing import ClassVar
 
 import bpy
 from bpy.props import StringProperty
 
 from ...core._shared.action_fcurves import action_fcurves  # type: ignore[import-not-found]
-from ...core._shared.cp_keys import PROSCENIO_SLOT_INDEX  # type: ignore[import-not-found]
+from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
+    PROSCENIO_SLOT_ATTACHMENT_ORDER,
+    PROSCENIO_SLOT_INDEX,
+)
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared._bpy_compat import (  # type: ignore[import-not-found]
     iter_keyframe_points,
@@ -194,6 +198,11 @@ class PROSCENIO_OT_keyframe_slot_attachment(bpy.types.Operator):
         index = attachments.index(self.attachment_name)
         data_path = f'["{PROSCENIO_SLOT_INDEX}"]'
         frame = context.scene.frame_current
+        # Snapshot the attachment name order the index is resolved against, so the
+        # writer maps the keyed index to a name via this stable list instead of
+        # the live child order. Deleting an earlier attachment then no longer
+        # slides this and every later keyframe onto the wrong child.
+        empty[PROSCENIO_SLOT_ATTACHMENT_ORDER] = json.dumps(attachments)
         empty[PROSCENIO_SLOT_INDEX] = index
         empty.keyframe_insert(data_path=data_path, frame=frame)
         _set_slot_index_constant(empty, data_path)

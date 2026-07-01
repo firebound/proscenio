@@ -17,6 +17,8 @@ load or save time.
 
 from __future__ import annotations
 
+from typing import Any
+
 import bpy
 
 from ..core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
@@ -99,30 +101,60 @@ def _clear_dangling_active_armature(scene: bpy.types.Scene, proscenio: bpy.types
     _tag_view3d_areas_redraw()
 
 
+def _active_view_layer_object() -> bpy.types.Object | None:
+    """The viewport's active object, or None when there is no active context."""
+    view_layer = getattr(bpy.context, "view_layer", None)
+    return getattr(getattr(view_layer, "objects", None), "active", None)
+
+
+def _sync_index_to_active(
+    scene: bpy.types.Scene,
+    index_attr: str,
+    active: Any,
+    *,
+    source: Any,
+    relevant: bool,
+) -> None:
+    """Point ``scene.proscenio.<index_attr>`` at ``active``'s row in ``source``.
+
+    Shared by the Outliner / Slots / Skeleton-bone depsgraph follow. The
+    fast-path identity guard (the stored index already names ``active``)
+    short-circuits the O(n) name scan, so each per-tick callback stays cheap -
+    this lands the guard the bone sync already had onto the outliner + slots
+    syncs too. A no-op when the props are unregistered, ``active`` is None, or
+    ``relevant`` is False (a non-Proscenio active object leaves the highlight
+    untouched rather than pointing it at a hidden row).
+    """
+    proscenio = getattr(scene, "proscenio", None)
+    if proscenio is None or not hasattr(proscenio, index_attr):
+        return
+    if active is None or not relevant:
+        return
+    current = getattr(proscenio, index_attr)
+    if 0 <= current < len(source) and source[current].name == active.name:
+        return
+    idx = source_index_for_name(source, active.name)
+    if idx is None or getattr(proscenio, index_attr) == idx:
+        return
+    setattr(proscenio, index_attr, idx)
+    _tag_view3d_areas_redraw()
+
+
 def sync_outliner_to_active_object(scene: bpy.types.Scene) -> None:
     """Move the Outliner highlight to follow the viewport's active object.
 
     Closes the selection loop the Outliner click already drives the other
     way: selecting an object in the 3D viewport points
     ``active_outliner_index`` at that object's source-collection row.
-    Early-outs keep the depsgraph callback cheap - it does nothing unless
-    the active object is a Proscenio-relevant row whose index differs from
-    what the panel already shows. A non-Proscenio active object (camera,
-    light) leaves the highlight untouched rather than pointing it at a
-    hidden row.
     """
-    proscenio = getattr(scene, "proscenio", None)
-    if proscenio is None or not hasattr(proscenio, "active_outliner_index"):
-        return
-    view_layer = getattr(bpy.context, "view_layer", None)
-    active = getattr(getattr(view_layer, "objects", None), "active", None)
-    if active is None or not is_outliner_relevant(active):
-        return
-    idx = source_index_for_name(bpy.data.objects, active.name)
-    if idx is None or proscenio.active_outliner_index == idx:
-        return
-    proscenio.active_outliner_index = idx
-    _tag_view3d_areas_redraw()
+    active = _active_view_layer_object()
+    _sync_index_to_active(
+        scene,
+        "active_outliner_index",
+        active,
+        source=bpy.data.objects,
+        relevant=active is not None and is_outliner_relevant(active),
+    )
 
 
 def sync_slots_to_active_object(scene: bpy.types.Scene) -> None:
@@ -132,20 +164,16 @@ def sync_slots_to_active_object(scene: bpy.types.Scene) -> None:
     separate active-index props, so without this the Slots row stays lit on the
     previously clicked slot when the active object changes elsewhere (the
     cross-list-deselect bug). A non-slot active object leaves the highlight
-    untouched. Cheap early-outs keep the per-tick depsgraph callback light.
+    untouched.
     """
-    proscenio = getattr(scene, "proscenio", None)
-    if proscenio is None or not hasattr(proscenio, "active_slot_index"):
-        return
-    view_layer = getattr(bpy.context, "view_layer", None)
-    active = getattr(getattr(view_layer, "objects", None), "active", None)
-    if active is None or not is_slot_empty(active):
-        return
-    idx = source_index_for_name(bpy.data.objects, active.name)
-    if idx is None or proscenio.active_slot_index == idx:
-        return
-    proscenio.active_slot_index = idx
-    _tag_view3d_areas_redraw()
+    active = _active_view_layer_object()
+    _sync_index_to_active(
+        scene,
+        "active_slot_index",
+        active,
+        source=bpy.data.objects,
+        relevant=active is not None and is_slot_empty(active),
+    )
 
 
 def sync_bone_index_to_active_bone(scene: bpy.types.Scene) -> None:
@@ -153,26 +181,19 @@ def sync_bone_index_to_active_bone(scene: bpy.types.Scene) -> None:
 
     Closes the same loop for bones: selecting a bone in the viewport points the
     Skeleton list at it. Targets the picked Active Armature (the rig the list
-    shows). The fast-path guard reads the bone already under the highlight, so
-    the O(bones) index scan only runs when the active bone actually changed -
-    this callback fires on every transform.
+    shows).
     """
     proscenio = getattr(scene, "proscenio", None)
-    if proscenio is None or not hasattr(proscenio, "active_bone_index"):
-        return
-    armature = getattr(proscenio, "active_armature", None)
+    armature = getattr(proscenio, "active_armature", None) if proscenio is not None else None
     bones = getattr(getattr(armature, "data", None), "bones", None)
     active_bone = getattr(bones, "active", None) if bones is not None else None
-    if active_bone is None:
-        return
-    current = proscenio.active_bone_index
-    if 0 <= current < len(bones) and bones[current].name == active_bone.name:
-        return
-    idx = source_index_for_name(bones, active_bone.name)
-    if idx is None or proscenio.active_bone_index == idx:
-        return
-    proscenio.active_bone_index = idx
-    _tag_view3d_areas_redraw()
+    _sync_index_to_active(
+        scene,
+        "active_bone_index",
+        active_bone,
+        source=bones if bones is not None else (),
+        relevant=active_bone is not None,
+    )
 
 
 def _tag_view3d_areas_redraw() -> None:

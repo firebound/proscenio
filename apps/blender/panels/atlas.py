@@ -7,6 +7,9 @@ from typing import ClassVar
 
 import bpy
 
+from ..core._shared.material_images import (
+    iter_material_image_nodes,  # type: ignore[import-not-found]
+)
 from ..core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
     scene_has_pre_pack_snapshot,
 )
@@ -89,16 +92,16 @@ def _discover_atlas() -> tuple[str, bool] | None:
     discovered source image so the panel can label which one is linked.
     """
     packed = _packed_atlas_filename()
+    # Keep the bpy.data.materials outer scope (the panel probes every material
+    # in the file, not one object's slots); route the inner node walk through
+    # the shared TEX_IMAGE finder.
     for mat in bpy.data.materials:
-        if not mat.use_nodes or mat.node_tree is None:
-            continue
-        for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image is not None:
-                fp = node.image.filepath
-                if not fp:
-                    return f"{node.image.name} (unsaved)", False
-                name = Path(bpy.path.abspath(fp)).name
-                return name, (packed is not None and name == packed)
+        for node in iter_material_image_nodes(mat):
+            fp = node.image.filepath
+            if not fp:
+                return f"{node.image.name} (unsaved)", False
+            name = Path(bpy.path.abspath(fp)).name
+            return name, (packed is not None and name == packed)
     return None
 
 

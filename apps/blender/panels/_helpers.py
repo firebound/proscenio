@@ -204,3 +204,17 @@ def draw_issue_row(layout: bpy.types.UILayout, issue: Issue) -> None:
         op.obj_name = issue.obj_name
     else:
         row.label(text=issue.message, icon=icon)
+
+
+def draw_picture_plane_warning(col: bpy.types.UILayout, bone: str, hint_lines: list[str]) -> None:
+    """Alert box: ``bone`` lies in the camera picture plane, plus caller hints.
+
+    The shared box body for the two picture-plane warnings (the slot
+    bone-parent collapse and the sprite bone-parent rotation). Each caller keeps
+    its own guard condition and passes its own follow-up ``hint_lines``.
+    """
+    box = col.box().column(align=True)
+    box.alert = True
+    box.label(text=f"bone '{bone}' lies in the picture plane", icon="ERROR")
+    for line in hint_lines:
+        box.label(text=line, icon="BLANK1")

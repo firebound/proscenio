@@ -1159,3 +1159,39 @@ def test_automesh_step_operator_registered_with_direction(automesh_fixture):
         "RETREAT",
     }
     assert bpy.ops.proscenio.automesh_step.poll() is False
+
+
+def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monkeypatch):
+    """A teardown step raising inside ``_finish`` must NOT leave the modal marked
+    running - the guard set by ``mark_running`` would stay stuck and lock out
+    BOTH authoring modes (Automesh + Manual Draw) until an addon reload."""
+    from types import SimpleNamespace
+
+    from proscenio.operators.automesh import (
+        automesh_authoring as mod,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+        mark_running,
+        mark_stopped,
+    )
+
+    def _boom(*_a: object, **_k: object) -> None:
+        raise RuntimeError("overlay teardown failed")
+
+    monkeypatch.setattr(mod, "unregister_overlay", _boom)
+    monkeypatch.setattr(mod, "report_info", lambda *a, **k: None)
+    # A bpy Operator cannot be constructed headlessly, so drive the real _finish
+    # with a minimal stand-in self (the operator instance is the I/O boundary).
+    ctx = SimpleNamespace(window_manager=None)
+    stub = SimpleNamespace(_handles={}, _timer=None, _session=None, _remove_statusbar=lambda: None)
+
+    mark_running("automesh")
+    try:
+        # Call _finish directly (no test-side suppress): the production contract is
+        # that _finish itself swallows the teardown RuntimeError *and* clears the
+        # guard, so a leaked exception here is a regression the test must catch.
+        mod.PROSCENIO_OT_automesh_authoring._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+        assert is_running("automesh") is False
+    finally:
+        mark_stopped("automesh")

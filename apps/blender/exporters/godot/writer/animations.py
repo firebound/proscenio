@@ -77,7 +77,10 @@ def collect_bone_keys(
         if deform_bones is not None and bone_name not in deform_bones:
             continue
         for kp in iter_keyframe_points(fc):
-            time = (float(kp.co.x) - 1.0) / float(fps)
+            # Clamp at 0: a bone keyed at Blender frame 0 would yield a negative
+            # time, which trips the Key(time >= 0) constraint and aborts the
+            # export. Matches the sprite_frame / slot writers.
+            time = max(0.0, (float(kp.co.x) - 1.0) / float(fps))
             entry = bone_keys.setdefault(bone_name, {}).setdefault(time, {})
             entry.setdefault(prop, {})[fc.array_index] = float(kp.co[1])
     return bone_keys

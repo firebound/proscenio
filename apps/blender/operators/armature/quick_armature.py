@@ -760,6 +760,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             report_info(self, "nothing to redo")
             return
         record = cls._redo_records.pop()
+        # Pin the chain parent to the one the bone was CREATED with, not the live
+        # _last_bone_name: a reparent-by-selection or the undo itself can have
+        # moved it, and _create_bone derives the parent from _last_bone_name -
+        # so redo would otherwise silently reparent the bone and corrupt the chain.
+        cls._last_bone_name = record.parent_to_last_name
         # Re-create using the captured geometry. ``_create_bone`` will
         # push the record onto the session stack and clear the redo
         # stack as a side effect; restore the redo state we just popped

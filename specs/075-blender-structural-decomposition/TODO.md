@@ -1,0 +1,44 @@
+# Spec 075 TODO: Blender structural decomposition
+
+Drives [STUDY](STUDY.md). Behaviour-preserving module restructuring - **zero behaviour change** (D2: facade/re-export keeps callers stable; goldens stay byte-identical). Sequenced small-safe-first (D1). Each item: `id - split - guard`. Verified at HEAD 2026-06-29; locate by symbol.
+
+Gates each PR: `uv run ruff check` + `ruff format --check` (+ `uvx ruff format --check`) + `uv run mypy --config-file apps/blender/pyproject.toml` + repo-root `uv run pytest tests/` + in-Blender `run_operator_tests.py` + `run_tests.py` goldens (8/8 - byte-identical is the bar).
+
+## Phase A - Small internal SRP splits (facade-safe, blast radius ~0; group a few per PR by area)
+
+- [ ] **create-slot-execute** - `operators/slot/create.py`: extract `_make_slot_empty(scene, name)` / `_anchor_to_bone(...)` / `_anchor_to_seed(...)` from `execute`. - GUARD: `test_create_slot`, `test_bind_slot_to_bone`.
+- [ ] **create-driver-execute** - `operators/driver.py`: extract `_configure_driver_target(driver, armature, bone, axis)` + `_mirror_props_back(props)` from `execute` (the target-config block mutates bpy - not a bpy-free helper). - GUARD: `test_driver_management`, `test_driver_shortcut`, `test_storage_proxy`.
+- [ ] **godot-export-orchestration** - `exporters/godot/writer/__init__.py`: extract `_rest_pose_for_geometry(armature_obj)` + `_unhidden(sprite_objs)` as context managers (the two try/finally blocks); hoist the mid-function `from mathutils import Matrix` to module top. - GUARD: goldens (slot_swap/blink_eyes/mouth_drive exercise rest-pose + unhide) + `tests/writer/`.
+- [ ] **godot-writer-sprites** - `exporters/godot/writer/sprites.py` (409): split `mesh_element.py` (`build_element` + `_build_polygon_topology`) / `sprite_element.py` (`build_sprite` + flips/offset) / `weights.py` (`build_sprite_weights` + helpers) + a shared module for `_derive_modulate`/`_derive_z_index`/`resolve_sprite_bone`; `sprites/__init__.py` facade re-exports `build_element`. - GUARD: `tests/writer/test_sprites.py`, `test_multi_polygon_export`, `test_appearance_export` + goldens. (Coordinate with 074 `unweighted-vertex-zero-column` if not yet landed.)
+- [ ] **validation-export-module** - `core/validation/export.py` (479): move the ~8 inline check families to `validation/checks/*.py`; keep `validate_export` as the orchestrator; `validation/__init__.py` still re-exports it. - GUARD: `test_validation_export`, `test_validation`, `test_validator_invariants`.
+- [ ] **operators-selection** - `operators/selection.py` (506) -> `selection/` subpackage: `objects.py` / `bones.py` (the `_BoneRowRequest` mixin + 3 toggles + `select_bone_by_name`) / `actions.py`; `selection/__init__.py` re-exports + registers (bl_idname unchanged). - GUARD: `test_outliner_selection`, `test_skeleton_list`, `test_bone_display_ops`, `test_set_active_action`.
+- [ ] **panels-skeleton** - `panels/skeleton.py` (853): extract `panels/_draw_ik.py` (the IK helper cluster) + `panels/_draw_rig_ui.py` (swatch/theme); **keep `_active_ik_constraint` re-exported from `skeleton.py`** (`test_ik_authoring_ergonomics` imports it). - GUARD: `test_ik_authoring_ergonomics`, `test_ik_control_affordances`, `test_skeleton_list`, `test_rig_ui_view`.
+- [ ] **help-topics-module** - `core/help_topics.py` (731): split `help_topics_model.py` (dataclasses + reflow) / `help_topics_content.py` (the `HELP_TOPICS` table) / `help_doc_paths.py` (`_DOC_PATHS` + dispatch); `help_topics.py` facade re-exports `topic_for`/`known_topic_ids`/`HELP_TOPICS`/`HelpTopic`. - GUARD: `test_help_topics`.
+- [ ] **atlas-paths-mixed** - `operators/atlas_pack/_paths.py` (68): keep path derivation in `_paths.py`, move snapshotting to `_snapshot.py`, material image mutation to `_materials.py`; update the 3 import sites (apply/pack/unpack). - GUARD: `test_atlas_apply_count`, `test_atlas_unpack_rescue`, `test_atlas_exclude`, `test_atlas_packer`. (Coordinate with spec 062 TODO touching this file.)
+- [ ] **props-access-armature** - `core/_shared/props_access.py` (235): extract the 5 armature-resolution functions (`active_armature`/`resolve_target_armature`/`resolve_export_armature`/`_picked_scene_armature`/`describe_export_target`) -> `core/_shared/armature_resolve.py`; ~13 importers update. - GUARD: `test_props_access`, `test_skeleton_target` + export goldens.
+
+## Phase B - Photoshop planes split (medium; coordinate with 074)
+
+- [ ] **photoshop-planes-module** - `importers/photoshop/planes.py` (584): split `placement.py` (`_layer_placement`/`_origin_for_kind`/`_Placement`) / `mesh_build.py` (`_ensure_mesh`/`_build_quad`/`_find_existing`/`_placement_unchanged`/`_snapshot_before_rebuild`) / `material.py` (`_attach_material`/`_set_material_blend_method`) / `tags.py` (the 5 `_tag_*`); `planes.py` stays the thin orchestrator (`stamp_mesh`/`stamp_sprite`/`_place_and_tag`). **Land after** 074's `place-and-tag-hidden-dep` (thread `spacing` down) + `planes-placement-math` (move to `core/psd/placement.py`) so this split rebases onto the cleaned file. - GUARD: `test_import_placement`, `test_psd_reimport`, `test_psd_reimport_single`, `test_psd_manifest`.
+
+## Phase C - Large splits (one PR each; D3; lands AFTER spec 074 Phase 5 per D6)
+
+> Depends on 074 Phase 5: the modal-lifecycle + `_output` + monolith test coverage must be green first - those are the guards that make these splits provably behaviour-preserving.
+
+- [ ] **quick-armature-operator** - `operators/armature/quick_armature.py` (1084): extract `ViewSnapshot` + `HandlerLifecycle` (bpy-bound -> `core/bpy_helpers/armature/`), `SelectionSnapshot`, `BoneSession` (records + create/undo/redo; `_BoneRecord` is already a frozen dataclass); leave a thin operator shell. **Keep `_modal_running` on the shell** (panel reads it; coordinate with 074's `panel-reads-quickarm-private` accessor). - GUARD: `test_quick_armature_modal`, `test_quick_armature_math`, `test_viewport_state`.
+- [ ] **automesh-authoring-operator** - `operators/automesh/automesh_authoring.py` (1642): extract `OpenStrokePen` (the inline open-stroke click-pen, sibling of `VertexPen`) + a `stroke_pick` hover/hit-test helper -> `core/bpy_helpers/automesh/`; leave the operator as stage-nav + event dispatch. **Keep `_snapshot_params` + `_MOUSE_GATE_TYPES` importable** from `automesh_authoring` (`draw_mesh_vertices` imports them) - or move both to a shared module both import. **Land after** 074's `automesh-snap-math-dup` + `automesh-modal-preamble`. - GUARD: `test_automesh_authoring`, `test_draw_mesh_vertices`, `test_vertex_pen` + automesh goldens.
+- [ ] **skinning-props-pg** (breaking - O1 confirm first) - `properties/scene_props.py`: nest `AutomeshProps`/`BindProps`/`AuthoringProps`/`DebugProps` under a slimmer `ProscenioSkinningProps` (mirrors the existing `ProscenioQuickArmatureProps` nesting). Mechanical rename of 30 files / 67 `.skinning.<field>` sites + the `_snapshot_params` reads + any `bl_rna` string lookups. - GUARD: full skinning suite (`test_automesh_authoring`, `test_automesh_regen`, `test_bind_mesh`, `test_edit_weights_modal`, `test_brush_presets`, `test_restore_snapshot`, `test_set_bone_mode`, `test_mixed_flow_auto_snapshot`) + `test_properties`.
+
+## Phase D - Structural correctness gap
+
+- [ ] **no-orphan-sweep** - move the authoring modals' `_handles`/`_timer` from per-instance to ClassVars + add `_sweep_orphan_handlers` to both modules' `unregister` (mirrors `quick_armature._sweep_orphan_handlers`), so an addon reload while a modal is live recovers the leaked draw handlers/timer. Builds on the spec-070 `cancel()` (which covers external kill but not reload). - GUARD: add a module-`unregister`-with-a-live-class-handle test asserting `draw_handler_remove` + statusbar removal ran (mirror `test_quick_armature_modal`).
+
+## No action (recorded)
+
+- **build-automesh-debug-stages** - `core/bpy_helpers/automesh/bridge.py` `build_automesh` is already decomposed into named helpers; the 6 debug-stage early-returns snapshot intermediates that cannot cleanly move to a stage table. Leave as-is unless a future change opens it.
+- **authoring-ik-module** - REFUTED as a god-module (single cohesive IK feature; do not split by operator).
+
+## Post-merge cleanup (ONLY after the final phase merges)
+
+- [ ] Drain the resolved items from [backlog/code-audit/god-modules-and-srp.md](../backlog/code-audit/god-modules-and-srp.md); any genuinely-deferred remainder moves to [deferred.md](../deferred.md).
+- [ ] Prune this spec folder; index in [`index.md`](../index.md) with the PR number(s) (075 -> pruned).

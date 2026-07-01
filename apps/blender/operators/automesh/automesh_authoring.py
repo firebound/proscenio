@@ -7,6 +7,7 @@ Coexists with the one-shot automesh_from_alpha operator.
 
 from __future__ import annotations
 
+import contextlib
 import traceback
 from typing import ClassVar, Literal, cast
 
@@ -1518,13 +1519,20 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._finish(context, cancel=True)
 
     def _finish(self, context: bpy.types.Context, *, cancel: bool) -> set[str]:
+        # Clear the exclusivity guard FIRST: a teardown step raising below must
+        # never leave the modal marked running - that would lock out both
+        # authoring modes until an addon reload. The bpy teardown calls are
+        # suppressed so a stale handle / timer never aborts the rest of the
+        # teardown (mirrors edit_weights._finish).
+        mark_stopped(_MODAL_NAME)
         try:
-            unregister_overlay(self._handles)
+            with contextlib.suppress(RuntimeError):
+                unregister_overlay(self._handles)
             if self._timer is not None:
-                context.window_manager.event_timer_remove(self._timer)
+                with contextlib.suppress(RuntimeError):
+                    context.window_manager.event_timer_remove(self._timer)
                 self._timer = None
             self._remove_statusbar()
-            mark_stopped(_MODAL_NAME)
             if self._session is not None:
                 restore_session(context, self._session)
         finally:

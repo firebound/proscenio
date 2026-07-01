@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import traceback
+from dataclasses import dataclass
 from typing import ClassVar, Literal, cast
 
 import bpy
@@ -195,6 +196,21 @@ def _outer_strokes_summary(strokes: list[Stroke]) -> str:
     return ", ".join(parts)
 
 
+@dataclass(frozen=True)
+class AuthoringModalState:
+    """Read-only snapshot of the Automesh authoring modal for the panel.
+
+    The Mesh Generation panel consumes this instead of reaching into the
+    operator's private ``_current_*`` ClassVars, keeping the panel -> operator
+    dependency to one public surface.
+    """
+
+    active: bool
+    stage: AuthoringStage
+    label: str
+    tool: str
+
+
 class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     """Multi-stage modal preview of the automesh pipeline."""
 
@@ -245,6 +261,16 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if other_running(_MODAL_NAME):  # Manual Draw is live - the modes are exclusive
             return False
         return first_material_image(obj) is not None
+
+    @classmethod
+    def authoring_state(cls) -> AuthoringModalState:
+        """Public snapshot (active + stage + label + tool) for the panel."""
+        return AuthoringModalState(
+            active=is_running(_MODAL_NAME),
+            stage=cls._current_stage,
+            label=cls._current_stage_label,
+            tool=cls._current_active_tool,
+        )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         # Re-invoke while a session is live = the panel's "Exit" button: ask the

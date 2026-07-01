@@ -225,14 +225,13 @@ def _draw_automesh_cheatsheet(layout: bpy.types.UILayout) -> None:
         PROSCENIO_OT_automesh_authoring as op,
     )
 
-    if not _automesh_running():
+    state = op.authoring_state()
+    if not state.active:
         return
     header, body = layout.panel("proscenio_automesh_shortcuts", default_closed=True)
     header.label(text="Shortcuts", icon="MOD_REMESH")
     if body is not None:
-        emit_authoring_chord_layout(
-            body, op._current_stage_label, op._current_stage, op._current_active_tool
-        )
+        emit_authoring_chord_layout(body, state.label, state.stage, state.tool)
 
 
 def _draw_manual_draw_cheatsheet(layout: bpy.types.UILayout) -> None:
@@ -294,7 +293,7 @@ def _draw_automesh_step_nav(layout: bpy.types.UILayout) -> None:
         PROSCENIO_OT_automesh_authoring as op,
     )
 
-    layout.label(text=op._current_stage_label, icon="MOD_REMESH")
+    layout.label(text=op.authoring_state().label, icon="MOD_REMESH")
     row = layout.row(align=True)
     back = row.operator("proscenio.automesh_step", text="Back", icon="TRIA_LEFT")
     back.direction = "RETREAT"

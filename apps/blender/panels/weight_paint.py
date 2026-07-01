@@ -20,6 +20,9 @@ from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
     overrides_apply_under_bind_mode,
     read_bone_modes,
 )
+from ..core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
+    count_entries_by_provenance,
+)
 from ._helpers import (
     _active_armature,
     _is_mesh_element,
@@ -463,24 +466,10 @@ def _draw_named_snapshots(layout: bpy.types.UILayout, obj: bpy.types.Object | No
 
 
 def _sidecar_counts(obj: bpy.types.Object | None) -> dict[str, int] | None:
-    """Parse the sidecar JSON + count entries by provenance. None = no sidecar."""
+    """Count the object's sidecar entries by provenance. None = no sidecar."""
     if obj is None or obj.type != "MESH":
         return None
-    payload = obj.get(PROSCENIO_WEIGHT_SIDECAR)
-    if payload is None:
-        return None
-    try:
-        import json
-
-        data = json.loads(payload)
-    except (ValueError, TypeError):
-        return None
-    counts = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
-    for entry in data.get("entries", []) or []:
-        provenance = entry.get("provenance") if isinstance(entry, dict) else None
-        if provenance in counts:
-            counts[provenance] += 1
-    return counts
+    return count_entries_by_provenance(obj.get(PROSCENIO_WEIGHT_SIDECAR))
 
 
 _classes: tuple[type, ...] = (

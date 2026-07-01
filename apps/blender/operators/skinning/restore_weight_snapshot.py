@@ -19,11 +19,11 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
 )
-from ...core.bpy_helpers.skinning import apply_sidecar  # type: ignore[import-not-found]
-from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
-    compute_topology_hash,
-    from_json,
+from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+    apply_sidecar,
+    topology_hash_of,
 )
+from ...core.skinning.sidecar_schema import from_json  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
@@ -72,10 +72,7 @@ class PROSCENIO_OT_restore_weight_snapshot(bpy.types.Operator):
                 "sidecar has no entries (legacy bind) - re-bind to populate",
             )
             return {"CANCELLED"}
-        current_hash = compute_topology_hash(
-            len(obj.data.vertices),
-            [list(p.vertices) for p in obj.data.polygons],
-        )
+        current_hash = topology_hash_of(obj)
         if current_hash != sidecar.mesh_topology_hash:
             report_error(
                 self,

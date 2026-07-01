@@ -6,8 +6,7 @@ and panels see them at register time.
 """
 
 from . import addon_prefs, operators, panels, properties
-from .core import i18n
-from .core.bpy_helpers import preview_icons
+from .core.bpy_helpers import i18n, preview_icons
 
 
 def register() -> None:

@@ -22,7 +22,7 @@ import bpy
 
 from ..._shared.geometry_2d import Point2D
 from ..._shared.nearest import nearest_index
-from ...automesh.stroke_geometry import contour_ring_from_pen_edges
+from ...automesh.stroke_geometry import apply_pen_axis_lock, contour_ring_from_pen_edges
 from .._shared.viewport_math import region_event_to_xz, region_event_to_xz_offset
 
 # Action returned by ``handle`` for a consumed event. ``closed`` means the artist
@@ -157,10 +157,6 @@ class VertexPen:
         else:
             self.live_preview["points"] = list(self.points)
             self.live_preview["edge_subdivs"] = list(self.edge_subdivs)
-
-    @property
-    def dragging(self) -> bool:
-        return self._drag_index is not None
 
     def ring(self) -> list[Point2D] | None:
         """The finished contour ring (closing-dup dropped, each edge subdivided
@@ -448,12 +444,8 @@ class VertexPen:
     # -- geometry ----------------------------------------------------------
 
     def _apply_axis_lock(self, world_pt: Point2D) -> Point2D:
-        if not self.axis_lock or not self.points:
-            return world_pt
-        last_x, last_z = self.points[-1]
-        if self.axis_lock == "x":  # horizontal: keep the last vert's world-Z
-            return (world_pt[0], last_z)
-        return (last_x, world_pt[1])  # vertical: keep the last vert's world-X
+        last = self.points[-1] if self.points else None
+        return apply_pen_axis_lock(world_pt, last, self.axis_lock)
 
     def _snap(
         self,

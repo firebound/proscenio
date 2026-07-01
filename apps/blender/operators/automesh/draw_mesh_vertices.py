@@ -23,7 +23,6 @@ from ...core._shared.material_images import (  # type: ignore[import-not-found]
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     active_armature,
-    element_type_of,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
@@ -34,7 +33,9 @@ from ...core.automesh import point_in_polygon  # type: ignore[import-not-found]
 from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
     subdivide_polyline_edges,
 )
-from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
+    tag_redraw_view3d_statusbar,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -71,7 +72,8 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     Stroke,
 )
 from .._status_bar import append_statusbar_draw, chord, remove_statusbar_draw
-from ._authoring_modal_guard import is_running, mark_running, mark_stopped, other_running
+from ._authoring_modal_guard import is_running, mark_running, mark_stopped
+from ._authoring_preconditions import poll_mesh_with_image, validate_authoring_invoke
 from .automesh_authoring import _MOUSE_GATE_TYPES, _snapshot_params
 
 _MODAL_NAME = "manual_draw"
@@ -170,41 +172,17 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.active_object
-        if obj is None or obj.type != "MESH" or obj.data is None:
-            return False
-        if other_running(_MODAL_NAME):  # an Automesh modal is live - exclusive
-            return False
-        return first_material_image(obj) is not None
+        return poll_mesh_with_image(context, _MODAL_NAME)
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         # Re-invoke while live = the panel's "Exit" button: ask the running modal
         # to finish on its next event instead of starting fresh.
         if is_running(_MODAL_NAME):
             type(self)._exit_requested = True
-            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            report_error(self, "active object must be a mesh")
-            return {"CANCELLED"}
-        if element_type_of(obj) == "sprite":
-            report_warn(
-                self,
-                "active object is a sprite element - mesh authoring is mesh-only; it "
-                "would replace its quad. To attach a sprite to a bone, parent it with "
-                "Ctrl+P > Bone instead",
-            )
-            return {"CANCELLED"}
-        image = first_material_image(obj)
-        if image is None:
-            report_error(
-                self,
-                "active mesh has no image texture - add a material with a TEX_IMAGE node first",
-            )
-            return {"CANCELLED"}
-        if other_running(_MODAL_NAME):
-            report_warn(self, "an authoring modal is already running - finish it first")
+        obj = validate_authoring_invoke(self, context, _MODAL_NAME)
+        if obj is None:
             return {"CANCELLED"}
 
         self._session = capture_session(context, obj)
@@ -753,7 +731,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         remove_statusbar_draw(type(self), _draw_statusbar_manual_draw)
 
     def _tag_redraw(self, context: bpy.types.Context) -> None:
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
 
 
 _TOOL_LABELS = {"outer": "Outer contour", "point": "Interior point", "fold": "Interior fold"}

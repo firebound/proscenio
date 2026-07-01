@@ -16,15 +16,61 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.armature.quick_armature_math import (  # noqa: E402  - sys.path setup above
+    PREVIEW_COLOR,
+    PREVIEW_COLOR_DISCONNECTED,
+    PREVIEW_COLOR_INVALID,
+    PREVIEW_COLOR_UNPARENTED,
     DEFAULT_NAME_PREFIX,
     apply_axis_lock,
+    axis_guideline_endpoints,
     format_bone_name,
+    preview_color_for,
     resolve_pick,
     resolve_press_mode,
     resolve_press_mode_label,
     sanitize_prefix,
     snap_world_point_xz,
 )
+
+
+class TestPreviewColorFor:
+    def test_off_canvas_is_invalid_red(self) -> None:
+        assert preview_color_for(cursor_in_canvas=False, press_mode="connected") == (
+            PREVIEW_COLOR_INVALID
+        )
+
+    def test_unparented_is_cyan(self) -> None:
+        assert preview_color_for(cursor_in_canvas=True, press_mode="unparented") == (
+            PREVIEW_COLOR_UNPARENTED
+        )
+
+    def test_disconnected_is_yellow(self) -> None:
+        assert preview_color_for(cursor_in_canvas=True, press_mode="disconnected") == (
+            PREVIEW_COLOR_DISCONNECTED
+        )
+
+    def test_connected_is_the_default_orange(self) -> None:
+        assert (
+            preview_color_for(cursor_in_canvas=True, press_mode="connected")
+            == PREVIEW_COLOR
+        )
+
+
+class TestAxisGuidelineEndpoints:
+    def test_x_axis_spans_horizontally_through_head(self) -> None:
+        assert axis_guideline_endpoints((1.0, 2.0, 3.0), "X", 10.0) == (
+            (-9.0, 2.0, 3.0),
+            (11.0, 2.0, 3.0),
+        )
+
+    def test_z_axis_spans_in_depth_through_head(self) -> None:
+        assert axis_guideline_endpoints((1.0, 2.0, 3.0), "Z", 10.0) == (
+            (1.0, 2.0, -7.0),
+            (1.0, 2.0, 13.0),
+        )
+
+    def test_no_lock_returns_none(self) -> None:
+        assert axis_guideline_endpoints((1.0, 2.0, 3.0), None, 10.0) is None
 
 
 class TestResolvePressMode:

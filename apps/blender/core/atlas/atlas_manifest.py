@@ -1,0 +1,57 @@
+"""Atlas manifest read.
+
+Pure JSON parser (bpy-free): it returns the typed ``Rect`` from the sibling
+``atlas_packer`` and is consumed by the bpy-bound ``operators/atlas_pack/apply``
+through the ``core/bpy_helpers/atlas`` facade.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from .atlas_packer import Rect
+
+
+@dataclass(frozen=True)
+class Placement:
+    """Manifest entry: slot rect in atlas + slice rect in source image."""
+
+    slot: Rect
+    source_w: int
+    source_h: int
+    slice: Rect
+
+
+def read_manifest(manifest_path: Path) -> tuple[int, int, int, dict[str, Placement]]:
+    """Inverse of ``compose.write_manifest``.
+
+    Returns ``(atlas_w, atlas_h, padding, placements)``. Placements written
+    without a known source image carry only the slot rect; those default
+    ``slice`` to ``Rect(0, 0, slot.w, slot.h)`` and ``source_w/h`` to
+    ``slot.w/h`` so the apply operator's slice-aware code path stays correct
+    (the slice covers the full slot from its origin).
+    """
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    placements: dict[str, Placement] = {}
+    for name, r in payload["placements"].items():
+        slot = Rect(int(r["x"]), int(r["y"]), int(r["w"]), int(r["h"]))
+        slice_rect = Rect(
+            int(r.get("slice_x", 0)),
+            int(r.get("slice_y", 0)),
+            int(r.get("slice_w", slot.w)),
+            int(r.get("slice_h", slot.h)),
+        )
+        placements[name] = Placement(
+            slot=slot,
+            source_w=int(r.get("source_w", slot.w)),
+            source_h=int(r.get("source_h", slot.h)),
+            slice=slice_rect,
+        )
+    return (
+        int(payload["atlas_w"]),
+        int(payload["atlas_h"]),
+        int(payload.get("padding", 0)),
+        placements,
+    )

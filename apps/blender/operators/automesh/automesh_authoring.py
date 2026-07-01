@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import traceback
+from dataclasses import dataclass
 from typing import ClassVar, Literal, cast
 
 import bpy
@@ -19,14 +20,15 @@ from ...core._shared.material_images import (  # type: ignore[import-not-found]
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     active_armature,
-    element_type_of,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,
     report_warn,
 )
-from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
+    tag_redraw_view3d_statusbar,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -77,7 +79,8 @@ from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found
     tool_is_pen,
 )
 from .._status_bar import append_statusbar_draw, remove_statusbar_draw
-from ._authoring_modal_guard import is_running, mark_running, mark_stopped, other_running
+from ._authoring_modal_guard import is_running, mark_running, mark_stopped
+from ._authoring_preconditions import poll_mesh_with_image, validate_authoring_invoke
 from ._status_bar import emit_authoring_chord_layout
 
 # Authoring-modal guard key (spec 070): the mesh-gen modes are mutually
@@ -193,6 +196,21 @@ def _outer_strokes_summary(strokes: list[Stroke]) -> str:
     return ", ".join(parts)
 
 
+@dataclass(frozen=True)
+class AuthoringModalState:
+    """Read-only snapshot of the Automesh authoring modal for the panel.
+
+    The Mesh Generation panel consumes this instead of reaching into the
+    operator's private ``_current_*`` ClassVars, keeping the panel -> operator
+    dependency to one public surface.
+    """
+
+    active: bool
+    stage: AuthoringStage
+    label: str
+    tool: str
+
+
 class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     """Multi-stage modal preview of the automesh pipeline."""
 
@@ -237,12 +255,17 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            return False
-        if other_running(_MODAL_NAME):  # Manual Draw is live - the modes are exclusive
-            return False
-        return first_material_image(obj) is not None
+        return poll_mesh_with_image(context, _MODAL_NAME)
+
+    @classmethod
+    def authoring_state(cls) -> AuthoringModalState:
+        """Public snapshot (active + stage + label + tool) for the panel."""
+        return AuthoringModalState(
+            active=is_running(_MODAL_NAME),
+            stage=cls._current_stage,
+            label=cls._current_stage_label,
+            tool=cls._current_active_tool,
+        )
 
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         # Re-invoke while a session is live = the panel's "Exit" button: ask the
@@ -250,27 +273,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # (Quick Armature toggle pattern).
         if is_running(_MODAL_NAME):
             type(self)._exit_requested = True
-            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
-        obj = context.active_object
-        if obj is None or obj.type != "MESH":
-            report_error(self, "active object must be a mesh")
+        obj = validate_authoring_invoke(self, context, _MODAL_NAME)
+        if obj is None:
             return {"CANCELLED"}
-        if element_type_of(obj) == "sprite":
-            report_warn(
-                self,
-                "active object is a sprite element - mesh authoring is mesh-only; it "
-                "would replace its quad. To attach a sprite to a bone, parent it with "
-                "Ctrl+P > Bone instead",
-            )
-            return {"CANCELLED"}
+        # Validated non-None by validate_authoring_invoke; re-read for the pipeline.
         image = first_material_image(obj)
-        if image is None:
-            report_error(
-                self,
-                "active mesh has no image texture - add a material with a TEX_IMAGE node first",
-            )
-            return {"CANCELLED"}
 
         self._session = capture_session(context, obj)
         # The viewport canvas region (not the N-panel the button fired from), so
@@ -612,7 +621,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._arm_active_tool(context)
         if self._stage == AuthoringStage.OUTER and self._active_tool == "auto":
             self._recompute_auto_outer(context)
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
         report_info(self, f"tool: {self._active_tool}")
         return {"RUNNING_MODAL"}
 
@@ -929,12 +938,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _apply_axis_lock(self, world_pt: tuple[float, float]) -> tuple[float, float]:
         """Snap the new vert to share the locked axis with the last pen vert."""
-        if not self._axis_lock or not self._pen_points:
-            return world_pt
-        last_x, last_z = self._pen_points[-1]
-        if self._axis_lock == "x":  # horizontal: keep world-Z of the last vert
-            return (world_pt[0], last_z)
-        return (last_x, world_pt[1])  # vertical: keep world-X of the last vert
+        from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+            apply_pen_axis_lock,
+        )
+
+        last = self._pen_points[-1] if self._pen_points else None
+        return apply_pen_axis_lock(world_pt, last, self._axis_lock)
 
     def _toggle_axis_lock(self, context: bpy.types.Context, axis: str) -> None:
         self._axis_lock = "" if self._axis_lock == axis else axis
@@ -1591,7 +1600,7 @@ def _tag_redraw_view3d(context: bpy.types.Context) -> None:
     may have been invoked from one but the user may be looking at another.
     The statusbar reads class-level stage state, so a stage advance/retreat
     must repaint it explicitly (it otherwise only refreshes on mouse move)."""
-    tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+    tag_redraw_view3d_statusbar(context.window_manager)
 
 
 class PROSCENIO_OT_automesh_step(bpy.types.Operator):
@@ -1623,7 +1632,7 @@ class PROSCENIO_OT_automesh_step(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         PROSCENIO_OT_automesh_authoring._nav_request = self.direction
-        tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+        tag_redraw_view3d_statusbar(context.window_manager)
         return {"FINISHED"}
 
 

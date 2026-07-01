@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from .._shared.geometry_2d import Point2D
 from .contour import (
-    HOLE_SAFETY_DILATE_CELLS,
     AlphaGrid,
     BinaryMask,
     Contour,
@@ -54,7 +53,6 @@ from .geometry import (
 )
 
 __all__ = [
-    "HOLE_SAFETY_DILATE_CELLS",
     "AlphaGrid",
     "BinaryMask",
     "BoneSegment2D",

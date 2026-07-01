@@ -12,13 +12,13 @@ from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     FeatureStatus,
 )
 from ..core._shared.report import report_info  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface  # type: ignore[import-not-found]
 from ..core.help_topics import (  # type: ignore[import-not-found]
     POPUP_WIDTH,
     POPUP_WRAP_CHARS,
     reflow_paragraph,
     topic_for,
 )
-from ..core.i18n import iface  # type: ignore[import-not-found]
 
 
 class PROSCENIO_OT_status_info(bpy.types.Operator):
@@ -83,8 +83,9 @@ class PROSCENIO_OT_help(bpy.types.Operator):
             return
         # Translate each user-facing string as one whole-string unit under a
         # per-topic context (the topic id), THEN reflow - so a populated locale
-        # table (core/i18n.py) takes effect without re-churning the copy. With the
-        # table empty, iface() returns the msgid unchanged, so this is a no-op today.
+        # table (core/bpy_helpers/i18n.py) takes effect without re-churning the
+        # copy. With the table empty, iface() returns the msgid unchanged, so
+        # this is a no-op today.
         ctx = self.topic
         header = layout.row()
         header.label(text=iface(topic.title, ctx), icon="QUESTION")

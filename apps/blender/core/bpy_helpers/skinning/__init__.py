@@ -1,5 +1,6 @@
 """bpy-bound skinning helpers (the weight-paint productivity follow-up)."""
 
+from ._helpers import topology_hash_of
 from .automesh_hook import (
     maybe_post_regen_reproject,
     maybe_pre_regen_snapshot,
@@ -54,5 +55,6 @@ __all__ = [
     "snapshot_live_vgroups",
     "snapshot_paint_preset",
     "snapshot_sidecar",
+    "topology_hash_of",
     "unregister_handler",
 ]

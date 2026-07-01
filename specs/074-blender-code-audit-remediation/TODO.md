@@ -110,7 +110,7 @@ Performance:
 
 ## Structural decomposition -> spec 075 (NOT here)
 
-The entire god-modules / SRP decomposition theme (the 3 large splits `automesh-authoring-operator` / `quick-armature-operator` / `skinning-props-pg`, the ~14 smaller SRP extractions, and `no-orphan-sweep`'s per-instance->ClassVar refactor) moved to [075-blender-structural-decomposition](../075-blender-structural-decomposition/TODO.md) per D4 - actively worked, not gated. Coordinate the overlaps: `automesh-snap-math-dup` / `place-and-tag-hidden-dep` (here, Phase 3) touch files 075 splits; land the 074 cleanup first or note the conflict.
+The entire god-modules / SRP decomposition theme (the 3 large splits `automesh-authoring-operator` / `quick-armature-operator` / `skinning-props-pg`, the ~14 smaller SRP extractions, and `no-orphan-sweep`'s per-instance->ClassVar refactor) moved to [075-blender-structural-decomposition](../075-blender-structural-decomposition/TODO.md) per D4 - actively worked, not gated. Coordinate the overlaps: `automesh-snap-math-dup` / `place-and-tag-hidden-dep` / `planes-placement-math` (here, Phase 3) touch files 075 splits. **Resolved (PR #182):** all Phase 3 cleanups have LANDED, and 075's TODO/STUDY were updated to note the unblocked splits + the two accessors (`is_running()`, `authoring_state()`) the operator shells must keep.
 
 ## Post-merge cleanup (ONLY after the final phase merges)
 

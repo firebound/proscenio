@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Literal, NotRequired, TypedDict
 
 import bpy
@@ -24,7 +23,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     vertex_group_at,
 )
 from .scene_discovery import image_filename
-from .skeleton import BoneWorld, world_to_godot_xy
+from .skeleton import BoneWorld, rotate_vec2, world_to_godot_xy
 
 _WEIGHT_EPS = 1e-9
 _OPAQUE_WHITE = [1.0, 1.0, 1.0, 1.0]
@@ -231,9 +230,7 @@ def build_element(
         else:
             dx = world_godot_pos.x - bone_world.x
             dy = world_godot_pos.y - bone_world.y
-            cos_b = math.cos(-bone_world.rot)
-            sin_b = math.sin(-bone_world.rot)
-            local = Vector((dx * cos_b - dy * sin_b, dx * sin_b + dy * cos_b))
+            local = Vector(rotate_vec2(dx, dy, -bone_world.rot))
         polygon.append([round(local.x, 6), round(local.y, 6)])
 
         if uv_layer is not None:

@@ -8,7 +8,7 @@ from proscenio_models import Animation, Key, Track
 from ....core._shared.cp_keys import PROSCENIO_SLOT_INDEX
 from ....core.bpy_helpers._shared._bpy_compat import iter_keyframe_points, iter_objects
 from ....core.slot.slot_emit import is_slot_empty
-from .animations import action_fcurves
+from .animations import action_fcurves, action_length
 
 
 def build_slot_animations(scene: bpy.types.Scene) -> list[Animation]:
@@ -34,13 +34,10 @@ def build_slot_animations(scene: bpy.types.Scene) -> list[Animation]:
         track = _build_slot_attachment_track(obj, action, fps)
         if track is None:
             continue
-        frame_start = float(action.frame_range[0])
-        frame_end = float(action.frame_range[1])
-        length = max(0.001, (frame_end - frame_start) / float(fps))
         out.append(
             Animation(
                 name=action.name,
-                length=round(length, 6),
+                length=action_length(action, fps),
                 loop=True,
                 tracks=[track],
             )

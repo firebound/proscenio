@@ -144,3 +144,49 @@ def sanitize_prefix(raw: str | None) -> str:
 def format_bone_name(prefix: str, index: int) -> str:
     """Compose ``f'{prefix}.{index:03d}'`` with the convention's padding."""
     return f"{prefix}.{index:03d}"
+
+
+# Bone drag-preview colors keyed by drag validity + parent-connection state.
+PREVIEW_COLOR = (1.0, 0.6, 0.0, 0.9)  # connected (Blender modal-progress orange)
+PREVIEW_COLOR_UNPARENTED = (0.4, 0.8, 1.0, 0.9)  # cyan = no parent
+PREVIEW_COLOR_DISCONNECTED = (1.0, 0.85, 0.2, 0.9)  # yellow = parent + free head
+PREVIEW_COLOR_INVALID = (0.9, 0.25, 0.25, 0.85)  # red = cursor off the canvas
+
+Rgba: TypeAlias = tuple[float, float, float, float]
+Point3: TypeAlias = tuple[float, float, float]
+
+
+def preview_color_for(cursor_in_canvas: bool, press_mode: str) -> Rgba:
+    """Pick the bone drag-preview color from validity + parent-connection state.
+
+    Off-canvas is invalid (red); otherwise the color encodes whether the bone
+    would land unparented (cyan) or parent-connected / disconnected.
+    """
+    if not cursor_in_canvas:
+        return PREVIEW_COLOR_INVALID
+    if press_mode == "unparented":
+        return PREVIEW_COLOR_UNPARENTED
+    if press_mode == "disconnected":
+        return PREVIEW_COLOR_DISCONNECTED
+    return PREVIEW_COLOR
+
+
+def axis_guideline_endpoints(
+    head: Point3, axis: AxisLock, half_length: float
+) -> tuple[Point3, Point3] | None:
+    """Endpoints of the infinite-looking axis guideline through ``head``.
+
+    Only X and Z lock (the authoring plane is Y=0), so the line extends
+    +/- ``half_length`` along that axis; returns None for any other axis value.
+    """
+    if axis == "X":
+        return (
+            (head[0] - half_length, head[1], head[2]),
+            (head[0] + half_length, head[1], head[2]),
+        )
+    if axis == "Z":
+        return (
+            (head[0], head[1], head[2] - half_length),
+            (head[0], head[1], head[2] + half_length),
+        )
+    return None

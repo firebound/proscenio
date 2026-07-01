@@ -155,7 +155,8 @@ def test_keyframe_order_snapshot_is_append_only(automesh_fixture):
     }
     # Append-only -> both keys resolve their own name. Overwriting the snapshot
     # would collapse both onto `shield` (the earlier `axe` key would be lost).
-    assert resolved == {axe, "shield"}, f"append-only order broke the binding: {resolved}"
+    both_resolve = resolved == {axe, "shield"}
+    assert both_resolve, f"append-only order broke the binding: {resolved}"
 
 
 def test_keyframe_rejects_a_non_attachment(automesh_fixture):

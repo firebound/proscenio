@@ -195,8 +195,12 @@ def count_entries_by_provenance(payload: str | None) -> dict[str, int] | None:
         return None
     # Explicit display order for the panel pill (user paint first).
     counts: dict[str, int] = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
-    entries = data.get("entries", []) if isinstance(data, dict) else []
-    for entry in entries or []:
+    entries = data.get("entries") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        # A corrupt sidecar with a non-list "entries" (int, bool, ...) still
+        # returns the zero counts rather than raising - the leniency contract.
+        return counts
+    for entry in entries:
         provenance = entry.get("provenance") if isinstance(entry, dict) else None
         if provenance in counts:
             counts[provenance] += 1

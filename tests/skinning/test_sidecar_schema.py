@@ -50,6 +50,15 @@ def test_count_entries_by_provenance_ignores_unknown_kinds_and_no_entries():
     assert count_entries_by_provenance(json.dumps({})) == zero
 
 
+def test_count_entries_by_provenance_non_list_entries_does_not_raise():
+    # A corrupt sidecar whose "entries" is a truthy non-list must NOT raise
+    # (the leniency contract) - it returns the zero counts.
+    zero = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
+    assert count_entries_by_provenance(json.dumps({"entries": 5})) == zero
+    assert count_entries_by_provenance(json.dumps({"entries": True})) == zero
+    assert count_entries_by_provenance(json.dumps({"entries": "user_paint"})) == zero
+
+
 def test_topology_hash_sensitive_to_vert_count():
     a = compute_topology_hash(4, [[0, 1, 2]])
     b = compute_topology_hash(5, [[0, 1, 2]])

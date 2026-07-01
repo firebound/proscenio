@@ -156,7 +156,7 @@ Rgba: TypeAlias = tuple[float, float, float, float]
 Point3: TypeAlias = tuple[float, float, float]
 
 
-def preview_color_for(cursor_in_canvas: bool, press_mode: str) -> Rgba:
+def preview_color_for(cursor_in_canvas: bool, press_mode: PressMode) -> Rgba:
     """Pick the bone drag-preview color from validity + parent-connection state.
 
     Off-canvas is invalid (red); otherwise the color encodes whether the bone

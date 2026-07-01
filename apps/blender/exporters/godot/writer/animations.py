@@ -276,38 +276,71 @@ def _interp_delta_at(t: float, samples: list[tuple[float, float]]) -> float:
     return samples[-1][1]
 
 
+def _ancestor_rotation_samples(
+    parent_name: str,
+    bone_keys: dict[str, dict[float, dict[str, dict[int, float]]]],
+    rest_local: dict[str, BoneRestLocal],
+) -> list[list[tuple[float, float]]]:
+    """Sorted ``(time, screen-rotation delta)`` samples for the parent AND every
+    animated ancestor above it.
+
+    A bone's WORLD rotation is its parent's world rotation plus its OWN local
+    rotation, so the direct parent's posed world rotation delta is the sum of the
+    local rotation deltas of the parent and all its ancestors. Walks up the chain
+    via ``parent_name`` collecting each ancestor that has rotation keys - so a
+    rotating grandparent still turns a child's position even when the direct
+    parent has no rotation key of its own.
+    """
+    chain: list[list[tuple[float, float]]] = []
+    ancestor: str | None = parent_name
+    seen: set[str] = set()
+    while ancestor is not None and ancestor not in seen:
+        seen.add(ancestor)
+        anc_by_time = bone_keys.get(ancestor)
+        anc_rest = rest_local.get(ancestor)
+        if anc_rest is None:
+            break
+        if anc_by_time:
+            samples = sorted(
+                (t, _screen_rotation_delta(entry, anc_rest) or 0.0)
+                for t, entry in anc_by_time.items()
+                if _entry_has_rotation(entry)
+            )
+            if samples:
+                chain.append(samples)
+        ancestor = anc_rest.parent_name
+    return chain
+
+
 def _posed_parent_rotations(
     bone_name: str,
     by_time: dict[float, dict[str, dict[int, float]]],
     bone_keys: dict[str, dict[float, dict[str, dict[int, float]]]],
     rest_local: dict[str, BoneRestLocal],
 ) -> dict[float, float]:
-    """The parent's POSED world rotation at each of the child's key times.
+    """The direct parent's POSED world rotation at each of the child's key times.
 
-    Recovered analytically from the parent's OWN rotation keys - its posed world
-    rotation is ``rest.parent_world_rot`` plus the parent's screen-rotation delta
-    at that time (:func:`_screen_rotation_delta`, the same math the parent's own
-    track uses), interpolated to the child's key times. Empty when the parent is
-    a root or is NOT rotation-animated, so a static-parent child keeps its rest
-    projection unchanged (and every existing golden with it). Consistent with the
-    writer's fcurve-only model: a parent posed by a driver/constraint has no
-    rotation track to export, so nothing to sample.
+    Recovered analytically: the parent's posed world rotation is
+    ``rest.parent_world_rot`` plus the sum of the screen-rotation deltas of the
+    parent AND all its animated ancestors at that time (a bone's world rotation
+    = its parent's world rotation + its own local rotation, so the deltas chain
+    up - see :func:`_ancestor_rotation_samples`), interpolated to the child's key
+    times. Empty when the parent is a root or nothing up the chain is
+    rotation-animated, so a static-parent child keeps its rest projection (and
+    every existing golden with it). Consistent with the writer's fcurve-only
+    model: an ancestor posed by a driver/constraint has no rotation track to
+    export, so nothing to sample.
     """
     rest = rest_local.get(bone_name)
     if rest is None or rest.parent_name is None:
         return {}
-    parent_by_time = bone_keys.get(rest.parent_name)
-    parent_rest = rest_local.get(rest.parent_name)
-    if not parent_by_time or parent_rest is None:
+    chain = _ancestor_rotation_samples(rest.parent_name, bone_keys, rest_local)
+    if not chain:
         return {}
-    samples = sorted(
-        (t, _screen_rotation_delta(entry, parent_rest) or 0.0)
-        for t, entry in parent_by_time.items()
-        if _entry_has_rotation(entry)
-    )
-    if not samples:
-        return {}
-    return {t: rest.parent_world_rot + _interp_delta_at(t, samples) for t in by_time}
+    return {
+        t: rest.parent_world_rot + sum(_interp_delta_at(t, samples) for samples in chain)
+        for t in by_time
+    }
 
 
 def _resolve_pose_entry(

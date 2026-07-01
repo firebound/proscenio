@@ -44,9 +44,8 @@ def test_slicer_group_wraps_the_row_by_vframes(automesh_fixture) -> None:
         return bool(socket.is_linked and socket.links[0].from_socket.name == _SOCK_VFRAMES)
 
     modulos = [n for n in group.nodes if n.type == "MATH" and n.operation == "MODULO"]
-    assert any(
-        _fed_by_vframes(n) for n in modulos
-    ), "row path has no MODULO-by-V-Frames wrap (mirror of the column path)"
+    has_row_wrap = any(_fed_by_vframes(n) for n in modulos)
+    assert has_row_wrap, "row path has no MODULO-by-V-Frames wrap (mirror of the column path)"
 
 
 def test_removing_slicer_drops_its_node_tree_drivers(automesh_fixture) -> None:
@@ -60,9 +59,8 @@ def test_removing_slicer_drops_its_node_tree_drivers(automesh_fixture) -> None:
 
     assert apply_slicer_to_material(mat, obj=obj, node_groups=bpy.data.node_groups)
     anim = mat.node_tree.animation_data
-    assert (
-        anim is not None and len(anim.drivers) > 0
-    ), "slicer drivers must live on the material's node tree"
+    drivers_on_tree = anim is not None and len(anim.drivers) > 0
+    assert drivers_on_tree, "slicer drivers must live on the material's node tree"
 
     assert remove_slicer_from_material(mat)
     anim = mat.node_tree.animation_data

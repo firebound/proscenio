@@ -124,9 +124,8 @@ def test_writer_resolves_attachment_by_name_after_an_earlier_delete(automesh_fix
     anims = build_slot_animations(bpy.context.scene)
     swap_keys = [k for a in anims for t in a.tracks if t.target == empty.name for k in t.keys]
     assert swap_keys, "the keyed swap vanished after deleting an unrelated attachment"
-    assert all(
-        k.attachment == axe for k in swap_keys
-    ), f"index drift: the key must still resolve {axe!r}, got {swap_keys}"
+    resolved_axe = all(k.attachment == axe for k in swap_keys)
+    assert resolved_axe, f"index drift: the key must still resolve {axe!r}, got {swap_keys}"
 
 
 def test_keyframe_rejects_a_non_attachment(automesh_fixture):

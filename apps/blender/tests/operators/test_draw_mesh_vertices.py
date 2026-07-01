@@ -290,9 +290,8 @@ def test_output_pins_manual_outer_and_folds_the_provisional_chain(automesh_fixtu
     assert out.outer == ring
     assert out.outer_is_manual is True
     assert out.user_strokes[0]["kind"] == "point", "committed stroke dropped"
-    assert any(
-        s["kind"] == "stroke" for s in out.user_strokes[1:]
-    ), "in-progress fold chain did not ride in as a provisional stroke"
+    folded_in = any(s["kind"] == "stroke" for s in out.user_strokes[1:])
+    assert folded_in, "in-progress fold chain did not ride in as a provisional stroke"
 
     # A chain shorter than 2 verts contributes no provisional stroke.
     probe._fold_chain = [(0.1, 0.1)]

@@ -8,10 +8,12 @@ the mesh-attachment collection - with hand-built fakes.
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
+from blender.core._shared.cp_keys import PROSCENIO_SLOT_ATTACHMENT_ORDER
 from blender.core.slot import slot_emit
-from blender.exporters.godot.writer import slots
+from blender.exporters.godot.writer import slot_animations, slots
 
 # spec 037: the writer reads each per-Object field from its ``proscenio_*``
 # Custom Property (idprop) via ``obj.get``. ``_Obj`` is a bpy-Object stand-in
@@ -104,3 +106,71 @@ def test_build_slots_for_scene_skips_non_slot_and_non_empty() -> None:
     a_mesh = _Obj(name="body", type="MESH", proscenio=SimpleNamespace(is_slot=True))
     scene = SimpleNamespace(objects=[non_slot, a_mesh])
     assert slots.build_slots_for_scene(scene) == []
+
+
+# -- slot_attachment keyframe binding (O3: resolve the keyed index against the
+#    snapshotted name order, not the live child list) --------------------------
+
+
+class _SlotObj(SimpleNamespace):
+    """A slot Empty stand-in with a dict-style ``.get`` over raw idprops."""
+
+    def get(self, key, default=None):  # noqa: ANN001, ANN201
+        return getattr(self, "_cps", {}).get(key, default)
+
+
+def _mesh(name: str) -> SimpleNamespace:
+    return SimpleNamespace(name=name, type="MESH")
+
+
+def test_resolve_attachment_order_prefers_the_snapshot() -> None:
+    # The snapshot names survive a later child delete: live children shrank to
+    # [axe] but the keyed index still resolves against the stored order.
+    obj = _SlotObj(
+        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps(["sword", "axe"])},
+        children=[_mesh("axe")],
+    )
+    assert slot_animations._resolve_attachment_order(obj) == ("sword", "axe")
+
+
+def test_resolve_attachment_order_falls_back_to_live_children() -> None:
+    obj = _SlotObj(
+        _cps={},
+        children=[_mesh("a"), _mesh("b"), SimpleNamespace(name="cam", type="LIGHT")],
+    )
+    assert slot_animations._resolve_attachment_order(obj) == ("a", "b")
+
+
+def test_resolve_attachment_order_falls_back_on_malformed_snapshot() -> None:
+    corrupt = _SlotObj(
+        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: "{not json"}, children=[_mesh("a")]
+    )
+    non_list = _SlotObj(
+        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps({"a": 1})},
+        children=[_mesh("a")],
+    )
+    assert slot_animations._resolve_attachment_order(corrupt) == ("a",)
+    assert slot_animations._resolve_attachment_order(non_list) == ("a",)
+
+
+def test_build_slot_attachment_track_resolves_index_against_the_order() -> None:
+    obj = _SlotObj(
+        name="weapon",
+        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps(["sword", "axe"])},
+        children=[_mesh("axe")],  # sword deleted; only axe remains live
+    )
+    kp = SimpleNamespace(co=SimpleNamespace(x=5.0, y=1.0))  # index 1 at frame 5
+    fcurve = SimpleNamespace(data_path='["proscenio_slot_index"]', keyframe_points=[kp])
+    action = SimpleNamespace(fcurves=[fcurve], layers=[])
+    track = slot_animations._build_slot_attachment_track(obj, action, fps=24)
+    assert track is not None
+    assert [k.attachment for k in track.keys] == ["axe"]  # order[1], not live[1]
+    assert all(k.interp == "constant" for k in track.keys)
+
+
+def test_build_slot_attachment_track_none_without_mesh_children() -> None:
+    obj = _SlotObj(
+        name="empty_slot", _cps={}, children=[SimpleNamespace(name="cam", type="LIGHT")]
+    )
+    action = SimpleNamespace(fcurves=[], layers=[])
+    assert slot_animations._build_slot_attachment_track(obj, action, fps=24) is None

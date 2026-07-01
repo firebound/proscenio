@@ -87,3 +87,23 @@ def test_bundle_flags_two_sources_sharing_one_filename(automesh_fixture, tmp_pat
 
     assert "torso.png" in result.collisions
     assert result.copied.count("torso.png") == 1, "both sources bundled under one name"
+
+
+def test_bundle_flags_a_pathless_image_colliding_with_a_saved_one(automesh_fixture, tmp_path):
+    from proscenio.exporters.godot.writer.bundle import (  # type: ignore[import-not-found]
+        bundle_textures,
+    )
+
+    # A generated/unsaved image (no filepath) whose synthesised name collides
+    # with a saved one is still a collision - the loser's art would otherwise be
+    # dropped silently even though it has no path to compare.
+    saved = _png_image("logo_src", tmp_path / "images" / "logo.png")  # -> logo.png
+    pathless = bpy.data.images.new("logo", width=2, height=2, alpha=True)  # synth -> logo.png
+    obj_a = _textured_mesh("saved_fig", saved)
+    obj_b = _textured_mesh("pathless_fig", pathless)
+    dest = tmp_path / "export"
+    dest.mkdir()
+
+    result = bundle_textures([obj_a, obj_b], dest)
+
+    assert "logo.png" in result.collisions

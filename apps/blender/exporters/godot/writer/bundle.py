@@ -50,7 +50,11 @@ def _register_image(
         by_name[filename] = image
         source_by_name[filename] = source
         return
-    collided = source is not None and source != source_by_name[filename]
+    # A distinct source (including one with no on-disk path yet) resolving to an
+    # already-claimed filename is a collision. The same image referenced twice
+    # compares equal (same abspath), so it never false-flags; only a genuinely
+    # different source trips this.
+    collided = source != source_by_name[filename]
     if collided and filename not in collisions:
         collisions.append(filename)
         print(

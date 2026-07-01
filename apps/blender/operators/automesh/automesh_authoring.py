@@ -938,12 +938,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _apply_axis_lock(self, world_pt: tuple[float, float]) -> tuple[float, float]:
         """Snap the new vert to share the locked axis with the last pen vert."""
-        if not self._axis_lock or not self._pen_points:
-            return world_pt
-        last_x, last_z = self._pen_points[-1]
-        if self._axis_lock == "x":  # horizontal: keep world-Z of the last vert
-            return (world_pt[0], last_z)
-        return (last_x, world_pt[1])  # vertical: keep world-X of the last vert
+        from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
+            apply_pen_axis_lock,
+        )
+
+        last = self._pen_points[-1] if self._pen_points else None
+        return apply_pen_axis_lock(world_pt, last, self._axis_lock)
 
     def _toggle_axis_lock(self, context: bpy.types.Context, axis: str) -> None:
         self._axis_lock = "" if self._axis_lock == axis else axis

@@ -22,7 +22,7 @@ from ..core.bpy_helpers.slot import (  # type: ignore[import-not-found]
 )
 from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ..core.slot.slot_emit import is_slot_empty  # type: ignore[import-not-found]
-from ._helpers import draw_issue_row, draw_subpanel_header
+from ._helpers import draw_issue_row, draw_picture_plane_warning, draw_subpanel_header
 
 
 def _is_slot(obj: bpy.types.Object) -> bool:
@@ -134,11 +134,14 @@ def _draw_follow_state(
         row.alert = True
         row.label(text="slot_bone set but inert - Bind to Bone to follow in Blender", icon="ERROR")
     elif shape == "bone_parent" and bone_parent_collapses(empty):
-        box = col.box().column(align=True)
-        box.alert = True
-        box.label(text=f"bone '{bone}' lies in the picture plane", icon="ERROR")
-        box.label(text="bone-parenting collapses the quads edge-on", icon="BLANK1")
-        box.label(text="Unbind, then Bind to Bone for a flat follow", icon="BLANK1")
+        draw_picture_plane_warning(
+            col,
+            bone,
+            [
+                "bone-parenting collapses the quads edge-on",
+                "Unbind, then Bind to Bone for a flat follow",
+            ],
+        )
 
 
 def _draw_follow_button(col: bpy.types.UILayout, shape: str) -> None:

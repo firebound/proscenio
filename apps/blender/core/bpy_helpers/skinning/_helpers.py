@@ -6,9 +6,24 @@ from collections.abc import Iterator
 
 import bpy
 
+from ...skinning.sidecar_schema import compute_topology_hash
 from ..automesh.base_sprite import BASE_SPRITE_GROUP_NAME
 
 Vec3 = tuple[float, float, float]
+
+
+def topology_hash_of(obj: bpy.types.Object) -> str:
+    """Topology hash (vertex count + per-face vertex indices) of ``obj``'s mesh.
+
+    The bpy-bound wrapper over the pure ``compute_topology_hash``: the one home
+    for the ``obj.data`` extraction the sidecar / regen / snapshot paths each
+    repeated inline.
+    """
+    mesh = obj.data
+    return compute_topology_hash(
+        len(mesh.vertices),
+        [list(p.vertices) for p in mesh.polygons],
+    )
 
 
 def iter_deform_bones(armature: bpy.types.Object) -> Iterator[bpy.types.Bone]:

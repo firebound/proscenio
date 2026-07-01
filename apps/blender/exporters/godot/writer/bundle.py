@@ -17,7 +17,7 @@ from pathlib import Path
 import bpy
 
 from ....core._shared.material_images import iter_material_images
-from .scene_discovery import image_filename
+from .scene_discovery import image_abspath, image_filename
 
 
 @dataclass
@@ -48,7 +48,7 @@ def bundle_textures(objects: list[bpy.types.Object], dest_dir: Path) -> BundleRe
 
     result = BundleResult()
     for filename, image in sorted(by_name.items()):
-        source = _resolve_image_source(image)
+        source = image_abspath(image)
         dest = dest_dir / filename
         if source is None or not source.exists():
             result.missing.append(filename)
@@ -60,11 +60,3 @@ def bundle_textures(objects: list[bpy.types.Object], dest_dir: Path) -> BundleRe
         shutil.copy2(source, dest)
         result.copied.append(filename)
     return result
-
-
-def _resolve_image_source(image: bpy.types.Image) -> Path | None:
-    """Absolute on-disk path of an image, or None when it has no filepath."""
-    fp = str(getattr(image, "filepath", "") or "")
-    if not fp:
-        return None
-    return Path(bpy.path.abspath(fp))

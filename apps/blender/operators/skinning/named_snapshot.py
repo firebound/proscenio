@@ -24,14 +24,15 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     apply_sidecar,
     snapshot_sidecar,
+    topology_hash_of,
 )
 from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     WeightSidecar,
     add_named_snapshot,
-    compute_topology_hash,
     find_snapshot,
     from_json,
     to_json,
+    weight_bearing_bone_names,
 )
 
 
@@ -134,10 +135,7 @@ class PROSCENIO_OT_restore_named_snapshot(bpy.types.Operator):
         if not snapshot.entries:
             report_error(self, f"snapshot '{self.snapshot_name}' has no entries")
             return {"CANCELLED"}
-        current_hash = compute_topology_hash(
-            len(obj.data.vertices),
-            [list(p.vertices) for p in obj.data.polygons],
-        )
+        current_hash = topology_hash_of(obj)
         if current_hash != sidecar.mesh_topology_hash:
             report_error(
                 self,
@@ -145,9 +143,14 @@ class PROSCENIO_OT_restore_named_snapshot(bpy.types.Operator):
                 "with preserve_on_regen ON to re-establish it",
             )
             return {"CANCELLED"}
+        # Recreate the groups the snapshot's own weights reference, NOT the live
+        # baseline's vertex_group_names: a re-bind under a renamed deform bone
+        # drifts the baseline names away from the snapshot's keys, and apply only
+        # writes a weight when its bone group exists - so baseline names here
+        # silently drop every snapshot weight (same topology, no error).
         restore_sidecar = WeightSidecar(
             version=sidecar.version,
-            vertex_group_names=sidecar.vertex_group_names,
+            vertex_group_names=weight_bearing_bone_names(snapshot.entries),
             mesh_topology_hash=sidecar.mesh_topology_hash,
             entries=snapshot.entries,
         )

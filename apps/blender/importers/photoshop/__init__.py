@@ -110,7 +110,7 @@ def import_manifest(
     # its lowest mesh is a prop hanging below the feet (a held weapon, a trailing
     # cloak). Feet-land only when there is no anchor to honour.
     if placement == "landed" and manifest.anchor is None:
-        _anchor_meshes_at_feet(result.meshes, manifest)
+        _anchor_meshes_at_feet(result.meshes)
     return result
 
 
@@ -275,16 +275,19 @@ def _sync_scene_pixels_per_unit(manifest: psd_manifest.LoadedManifest) -> str | 
     return None
 
 
-def _anchor_meshes_at_feet(
-    meshes: list[bpy.types.Object],
-    manifest: psd_manifest.LoadedManifest,
-) -> None:
+def _anchor_meshes_at_feet(meshes: list[bpy.types.Object]) -> None:
     """Shift every stamped mesh upward so the lowest figure point sits on Z=0.
 
-    Computes the figure's lowest world Z by combining each mesh's
-    location with its manifest-declared size (half-height in world
-    units). The shift is applied as a Z translation so all relative
+    Reads each mesh's lowest *visible* point from its actual quad vertices, then
+    shifts the whole figure by that amount as a Z translation so all relative
     layouts and the per-layer ``z_order`` Y-offset stay intact.
+
+    Reading the real geometry (not a size-based estimate off the object pivot)
+    is what keeps a sprite with an ``[origin]`` landed correctly: the origin
+    bakes a geometry offset into the quad and moves the pivot off the visible
+    art, so pivot-minus-half-height would land the figure by the wrong amount.
+    A pivot-centred quad (no origin) still reports ``location.z - half_height``,
+    so the common case is unchanged.
 
     Slot-attached meshes are excluded: their ``location`` is relative to
     the slot Empty, not the armature, so the slot owns their placement and
@@ -294,22 +297,35 @@ def _anchor_meshes_at_feet(
     meshes = [obj for obj in meshes if not is_slot_empty(obj.parent)]
     if not meshes:
         return
-    layer_by_name = {layer.name: layer for layer in manifest.layers}
     lowest_z: float | None = None
     for obj in meshes:
-        layer = layer_by_name.get(obj.name) or layer_by_name.get(
-            (obj.get(PROSCENIO_IMPORT_ORIGIN) or "").removeprefix("psd:")
-        )
-        if layer is None:
+        bottom = _visible_bottom_z(obj)
+        if bottom is None:
             continue
-        half_h = layer.size[1] / (2.0 * manifest.pixels_per_unit)
-        bottom = obj.location.z - half_h
         if lowest_z is None or bottom < lowest_z:
             lowest_z = bottom
     if lowest_z is None or abs(lowest_z) < 1e-6:
         return
     for obj in meshes:
         obj.location.z -= lowest_z
+
+
+def _visible_bottom_z(obj: bpy.types.Object) -> float | None:
+    """Lowest Z the object's geometry occupies, in the object's parent space.
+
+    Combines the object pivot with the lowest local quad vertex, so any
+    ``[origin]`` geometry offset baked into the vertices is honoured. Same
+    space as the ``obj.location.z`` shift in :func:`_anchor_meshes_at_feet`.
+    Returns None for a mesh carrying no geometry.
+
+    Reads ``vertices`` via ``getattr`` (the fake-bpy stub types
+    ``MeshVertices`` as non-iterable) and coerces each ``co.z`` to ``float`` so
+    the strict-typed return holds; mirrors ``writer.sprites._compute_sprite_offset``.
+    """
+    vertices = getattr(getattr(obj, "data", None), "vertices", None)
+    if not vertices:
+        return None
+    return obj.location.z + min(float(v.co.z) for v in vertices)
 
 
 def _armature_name(manifest: psd_manifest.LoadedManifest) -> str:

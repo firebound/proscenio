@@ -19,6 +19,8 @@ from mathutils import Vector
 from ...core.armature.quick_armature_math import (  # type: ignore[import-not-found]
     BONE_TOO_SHORT_TOLERANCE,
     AxisLock,
+    axis_guideline_endpoints,
+    preview_color_for,
 )
 from ...core.bpy_helpers._shared.modal_overlay import (  # type: ignore[import-not-found]
     draw_circle_3d,
@@ -30,10 +32,6 @@ from ...core.bpy_helpers._shared.modal_overlay import (  # type: ignore[import-n
 if TYPE_CHECKING:
     from .quick_armature import PROSCENIO_OT_quick_armature
 
-_PREVIEW_COLOR = (1.0, 0.6, 0.0, 0.9)  # connected (Blender modal-progress orange)
-_PREVIEW_COLOR_UNPARENTED = (0.4, 0.8, 1.0, 0.9)  # cyan = no parent
-_PREVIEW_COLOR_DISCONNECTED = (1.0, 0.85, 0.2, 0.9)  # yellow = parent + free head
-_PREVIEW_COLOR_INVALID = (0.9, 0.25, 0.25, 0.85)
 _AXIS_LINE_COLOR_X = (1.0, 0.3, 0.3, 0.9)
 _AXIS_LINE_COLOR_Z = (0.3, 0.55, 1.0, 0.9)
 _AXIS_LINE_HALF_LENGTH = 1000.0
@@ -111,13 +109,7 @@ def _resolve_parent_tail_world(
 def _preview_color_for(
     cls: type[PROSCENIO_OT_quick_armature],
 ) -> tuple[float, float, float, float]:
-    if not cls._cursor_in_canvas:
-        return _PREVIEW_COLOR_INVALID
-    if cls._press_mode == "unparented":
-        return _PREVIEW_COLOR_UNPARENTED
-    if cls._press_mode == "disconnected":
-        return _PREVIEW_COLOR_DISCONNECTED
-    return _PREVIEW_COLOR
+    return preview_color_for(cls._cursor_in_canvas, cls._press_mode)
 
 
 def _draw_axis_guideline(
@@ -128,16 +120,11 @@ def _draw_axis_guideline(
 
     X=red, Z=blue. Only X and Z lock (the authoring plane is Y=0).
     """
-    if axis == "X":
-        start = (head[0] - _AXIS_LINE_HALF_LENGTH, head[1], head[2])
-        end = (head[0] + _AXIS_LINE_HALF_LENGTH, head[1], head[2])
-        color = _AXIS_LINE_COLOR_X
-    elif axis == "Z":
-        start = (head[0], head[1], head[2] - _AXIS_LINE_HALF_LENGTH)
-        end = (head[0], head[1], head[2] + _AXIS_LINE_HALF_LENGTH)
-        color = _AXIS_LINE_COLOR_Z
-    else:
+    endpoints = axis_guideline_endpoints(head, axis, _AXIS_LINE_HALF_LENGTH)
+    if endpoints is None:
         return
+    start, end = endpoints
+    color = _AXIS_LINE_COLOR_X if axis == "X" else _AXIS_LINE_COLOR_Z
     draw_line_3d(start, end, color, line_width=_PREVIEW_LINE_WIDTH)
 
 

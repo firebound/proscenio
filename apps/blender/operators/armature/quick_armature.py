@@ -168,6 +168,15 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     def poll(cls, context: bpy.types.Context) -> bool:
         return bool(context.area is not None and context.area.type == "VIEW_3D")
 
+    @classmethod
+    def is_running(cls) -> bool:
+        """True while a Quick Armature modal session is live.
+
+        The public read of the ``_modal_running`` sentinel so the Skeleton panel
+        does not reach into the operator's private ClassVar via ``getattr``.
+        """
+        return cls._modal_running
+
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         if context.area is None or context.area.type != "VIEW_3D":
             report_warn(self, "must run in a 3D viewport")

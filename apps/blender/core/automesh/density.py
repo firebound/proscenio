@@ -42,6 +42,34 @@ _BOUNDARY_EPSILON = 1e-9
 _BOUNDARY_EPSILON_SQ = _BOUNDARY_EPSILON * _BOUNDARY_EPSILON
 
 
+def _closest_point_on_segment(
+    px: float,
+    py: float,
+    ax: float,
+    ay: float,
+    bx: float,
+    by: float,
+    *,
+    clamp: bool,
+) -> tuple[float, float, float] | None:
+    """Closest point on segment AB to ``(px, py)`` plus the projection ratio.
+
+    Returns ``(closest_x, closest_y, ratio)``. With ``clamp=True`` the ratio is
+    clamped to ``[0, 1]`` (the nearest point ON the segment, for distance);
+    with ``clamp=False`` the raw ratio is returned so the caller applies its own
+    on-segment epsilon band. Returns ``None`` for a degenerate zero-length
+    segment (the caller handles the endpoint case its own way).
+    """
+    abx, aby = bx - ax, by - ay
+    seg_length_sq = abx * abx + aby * aby
+    if seg_length_sq <= 0.0:
+        return None
+    ratio = ((px - ax) * abx + (py - ay) * aby) / seg_length_sq
+    if clamp:
+        ratio = max(0.0, min(1.0, ratio))
+    return ax + ratio * abx, ay + ratio * aby, ratio
+
+
 def _point_on_segment(
     px: float,
     py: float,
@@ -51,16 +79,12 @@ def _point_on_segment(
     by: float,
 ) -> bool:
     """True when ``(px, py)`` lies within epsilon of segment AB."""
-    abx, aby = bx - ax, by - ay
-    apx, apy = px - ax, py - ay
-    seg_length_sq = abx * abx + aby * aby
-    if seg_length_sq <= 0.0:
-        return abs(apx) < _BOUNDARY_EPSILON and abs(apy) < _BOUNDARY_EPSILON
-    ratio = (apx * abx + apy * aby) / seg_length_sq
+    projection = _closest_point_on_segment(px, py, ax, ay, bx, by, clamp=False)
+    if projection is None:
+        return abs(px - ax) < _BOUNDARY_EPSILON and abs(py - ay) < _BOUNDARY_EPSILON
+    closest_x, closest_y, ratio = projection
     if not -_BOUNDARY_EPSILON <= ratio <= 1.0 + _BOUNDARY_EPSILON:
         return False
-    closest_x = ax + ratio * abx
-    closest_y = ay + ratio * aby
     # Compare squared distance against SQUARED epsilon: mixing a
     # squared LHS with a linear epsilon widens the on-edge band and
     # excludes valid interior points near the boundary.
@@ -132,15 +156,10 @@ def distance_to_segment(point: Point2D, segment: BoneSegment2D) -> float:
     Standard 2D math, no numpy.
     """
     (ax, ay), (bx, by) = segment
-    abx, aby = bx - ax, by - ay
-    apx, apy = point[0] - ax, point[1] - ay
-    segment_length_sq = abx * abx + aby * aby
-    if segment_length_sq <= 0.0:
-        return math.hypot(apx, apy)
-    # Projection ratio of AP onto AB, clamped to the segment.
-    ratio = max(0.0, min(1.0, (apx * abx + apy * aby) / segment_length_sq))
-    closest_x = ax + ratio * abx
-    closest_y = ay + ratio * aby
+    projection = _closest_point_on_segment(point[0], point[1], ax, ay, bx, by, clamp=True)
+    if projection is None:
+        return math.hypot(point[0] - ax, point[1] - ay)
+    closest_x, closest_y, _ratio = projection
     return math.hypot(point[0] - closest_x, point[1] - closest_y)
 
 

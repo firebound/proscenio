@@ -212,7 +212,7 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         world_scale = 1.0 / resolve_pixels_per_unit(context)
 
         picker_armature = active_armature(context)
-        prior_sidecar = maybe_pre_regen_snapshot(obj, picker_armature)
+        prior_sidecar = maybe_pre_regen_snapshot(obj, picker_armature, op=self)
 
         try:
             counters = build_automesh(
@@ -252,6 +252,14 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
                     f"{sidecar_counts['total']} verts"
                 ),
             )
+            if sidecar_counts.get("rig_mismatch"):
+                report_warn(
+                    self,
+                    "target rig changed since bind - prior weights reference bones "
+                    "this armature does not deform, so they were NOT preserved; "
+                    "re-bind to the current rig",
+                    always=True,
+                )
         return {"FINISHED"}
 
     def _preflight_image(self, obj: bpy.types.Object) -> bpy.types.Image | None:

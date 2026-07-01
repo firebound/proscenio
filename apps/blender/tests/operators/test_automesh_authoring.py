@@ -29,6 +29,33 @@ def _resolve_image(obj: bpy.types.Object) -> bpy.types.Image:
     raise RuntimeError("no image texture on fixture hand")
 
 
+def test_authoring_restore_leaves_active_untouched_when_mode_unchanged(automesh_fixture):
+    # The authoring session capture is shared (SelectionModeSnapshot), but the
+    # restore stays divergent: when the object mode is unchanged, restore does
+    # NOT force the mesh active - it hands the active back to whatever was
+    # captured (via restore_selection). This locks that divergence (the Edit
+    # Weights session restores the mesh active unconditionally).
+    from proscenio.core.bpy_helpers.automesh.authoring_session import (  # type: ignore[import-not-found]
+        capture,
+        restore,
+    )
+
+    if bpy.context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    # Capture with the rig active (NOT the authored mesh), so prior_active differs
+    # from the session's obj - that is what exposes the divergence.
+    rig = _activate("automesh.hand_rig")
+    hand = bpy.data.objects["hand"]
+    session = capture(bpy.context, hand)
+    assert session.prior_mode == "OBJECT"
+    _activate("hand")  # move active onto the mesh; its mode never changed
+    restore(bpy.context, session)
+    # Mode was unchanged, so restore must NOT force the mesh active - it hands
+    # the active back to the captured prior_active (the rig). The Edit Weights
+    # session, by contrast, would re-activate the mesh unconditionally.
+    assert bpy.context.view_layer.objects.active is rig
+
+
 def test_active_stages_simple_drops_inner_loops(automesh_fixture):
     """SIMPLE has no INNER_LOOPS stage; DENSE keeps all 6."""
     from proscenio.core.skinning.authoring_stages import (
@@ -1194,4 +1221,40 @@ def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monke
         mod.PROSCENIO_OT_automesh_authoring._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
         assert is_running("automesh") is False
     finally:
+        mark_stopped("automesh")
+
+
+def test_authoring_state_snapshots_the_modal_fields():
+    # The Mesh Generation panel reads the modal via authoring_state() rather than
+    # the operator's private _current_* ClassVars; the snapshot must mirror them
+    # and reflect the run guard in `active`.
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        AuthoringStage,
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        mark_running,
+        mark_stopped,
+    )
+    from proscenio.operators.automesh.automesh_authoring import (  # type: ignore[import-not-found]
+        AuthoringModalState,
+        PROSCENIO_OT_automesh_authoring,
+    )
+
+    op = PROSCENIO_OT_automesh_authoring
+    prior = (op._current_stage, op._current_stage_label, op._current_active_tool)
+    try:
+        op._current_stage = AuthoringStage.INNER_LOOPS
+        op._current_stage_label = "Inner loops"
+        op._current_active_tool = "knife"
+        mark_stopped("automesh")
+        assert op.authoring_state() == AuthoringModalState(
+            active=False,
+            stage=AuthoringStage.INNER_LOOPS,
+            label="Inner loops",
+            tool="knife",
+        )
+        mark_running("automesh")
+        assert op.authoring_state().active is True
+    finally:
+        op._current_stage, op._current_stage_label, op._current_active_tool = prior
         mark_stopped("automesh")

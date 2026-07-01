@@ -42,10 +42,6 @@ class Rect:
     def bottom(self) -> int:
         return self.y + self.h
 
-    @property
-    def area(self) -> int:
-        return self.w * self.h
-
 
 @dataclass(frozen=True)
 class PackResult:

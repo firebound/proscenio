@@ -17,11 +17,11 @@ from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from ...core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
-from ...core.bpy_helpers.skinning import apply_sidecar  # type: ignore[import-not-found]
-from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
-    compute_topology_hash,
-    from_json,
+from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
+    apply_sidecar,
+    topology_hash_of,
 )
+from ...core.skinning.sidecar_schema import from_json  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
     from ...core.skinning.sidecar_schema import WeightSidecar
@@ -37,10 +37,7 @@ def _apply_if_topology_matches(obj: bpy.types.Object, sidecar: WeightSidecar) ->
     """
     if not sidecar.entries:
         return None
-    current_hash = compute_topology_hash(
-        len(obj.data.vertices),
-        [list(p.vertices) for p in obj.data.polygons],
-    )
+    current_hash = topology_hash_of(obj)
     if current_hash != sidecar.mesh_topology_hash:
         return None
     counters = apply_sidecar(obj, sidecar)

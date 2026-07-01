@@ -102,6 +102,19 @@ def find_snapshot(sidecar: WeightSidecar, name: str) -> NamedSnapshot | None:
     return next((s for s in sidecar.snapshots if s.name == name), None)
 
 
+def weight_bearing_bone_names(entries: list[SidecarEntry]) -> list[str]:
+    """Sorted union of every bone name carrying weight across ``entries``.
+
+    The authoritative group set for restoring a snapshot: a :class:`NamedSnapshot`
+    stores only its per-vert entries (no ``vertex_group_names`` of its own), so the
+    groups to recreate are exactly the names its weights reference - not the live
+    baseline's names, which a deform-bone rename / re-rig can have moved out from
+    under it. Also used to detect a rig switch (prior weight bones not present in
+    the new armature's deform bones).
+    """
+    return sorted({name for entry in entries for name in entry.weights})
+
+
 def compute_topology_hash(vert_count: int, face_indices: list[list[int]]) -> str:
     """sha1 over vert count + flattened face index tuples.
 
@@ -163,6 +176,35 @@ def from_json(payload: str) -> WeightSidecar:
         entries=entries,
         snapshots=snapshots,
     )
+
+
+def count_entries_by_provenance(payload: str | None) -> dict[str, int] | None:
+    """Count sidecar entries by provenance kind; None when there is no sidecar.
+
+    A lenient summary for the weight panel's provenance pill: it parses the raw
+    JSON (not the strict ``from_json``) so a version-mismatched or partial
+    sidecar still surfaces its entry counts. A missing or unparseable payload
+    returns None. Pure so the panel keeps the bpy Custom-Property read and this
+    stays unit-testable without Blender.
+    """
+    if payload is None:
+        return None
+    try:
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        return None
+    # Explicit display order for the panel pill (user paint first).
+    counts: dict[str, int] = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
+    entries = data.get("entries") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        # A corrupt sidecar with a non-list "entries" (int, bool, ...) still
+        # returns the zero counts rather than raising - the leniency contract.
+        return counts
+    for entry in entries:
+        provenance = entry.get("provenance") if isinstance(entry, dict) else None
+        if provenance in counts:
+            counts[provenance] += 1
+    return counts
 
 
 def _snapshot_from_dict(item: object) -> NamedSnapshot:

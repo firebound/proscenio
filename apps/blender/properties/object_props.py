@@ -50,6 +50,7 @@ from ..core._shared.sprite_grid import clamp_frame_index  # type: ignore[import-
 from ..core.armature.driver_expression import (  # type: ignore[import-not-found]
     DRIVER_SOURCE_AXIS_ITEMS,
 )
+from ..core.draw_order import y_location_from_draw_order  # type: ignore[import-not-found]
 from ._dynamic_items import driver_bone_items, is_armature
 
 
@@ -243,7 +244,7 @@ def _set_y_draw_order(self: ProscenioObjectProps, value: int) -> None:
     obj[cp_keys.PROSCENIO_Y_DRAW_ORDER] = order
     from ..addon_prefs import y_location_spacing  # local import avoids a register cycle
 
-    obj.location.y = order * y_location_spacing(bpy.context)
+    obj.location.y = y_location_from_draw_order(order, y_location_spacing(bpy.context))
 
 
 def _get_is_slot(self: ProscenioObjectProps) -> bool:

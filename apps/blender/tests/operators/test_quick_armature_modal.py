@@ -314,3 +314,20 @@ def test_seed_chain_parent_noop_when_target_missing(quick_armature_session):
     cls._last_bone_name = ""
     op._seed_chain_parent_from_active()
     assert cls._last_bone_name == ""
+
+
+def test_is_running_reflects_the_modal_sentinel():
+    # The Skeleton panel reads liveness through is_running() rather than the
+    # private _modal_running ClassVar; the accessor must mirror the sentinel.
+    from proscenio.operators.armature.quick_armature import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_quick_armature as QA,
+    )
+
+    prior = QA._modal_running
+    try:
+        QA._modal_running = True
+        assert QA.is_running() is True
+        QA._modal_running = False
+        assert QA.is_running() is False
+    finally:
+        QA._modal_running = prior

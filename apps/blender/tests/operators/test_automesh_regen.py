@@ -120,6 +120,73 @@ def test_changed_topology_regen_reprojects_snapshots(automesh_fixture):
     assert snap_entry_count == new_vert_count, "snapshot not reprojected to the new topology"
 
 
+def _make_other_rig(name: str, bone_name: str) -> bpy.types.Object:
+    """A second armature with a single deform bone of a distinct name.
+
+    Stands in for the picker being switched to a different rig between bind and
+    regen: its deform-bone names share nothing with the bound sidecar's keys.
+    """
+    arm = bpy.data.armatures.new(f"{name}_data")
+    obj = bpy.data.objects.new(name, arm)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    edit_bone = arm.edit_bones.new(bone_name)
+    edit_bone.head = (0.0, 0.0, 0.0)
+    edit_bone.tail = (0.0, 0.0, 1.0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return obj
+
+
+def test_regen_under_a_switched_rig_flags_the_mismatch(automesh_fixture):
+    """Binding to rig A then regenerating under rig B must NOT silently claim the
+    weights were preserved: rig B has none of A's bone groups, so the carried
+    entries (keyed by A's bones) would orphan to a weightless mesh. The hook must
+    flag the divergence so the caller can warn instead of lying about preserve."""
+    from proscenio.core.bpy_helpers.skinning.automesh_hook import (  # type: ignore[import-not-found]
+        maybe_post_regen_reproject,
+        maybe_pre_regen_snapshot,
+    )
+
+    obj = _activate("hand")
+    rig_a = bpy.data.objects["automesh.hand_rig"]
+    _set_picker("automesh.hand_rig")
+    _set_preserve(True)
+    bpy.ops.proscenio.bind_mesh_to_armature()  # entries keyed by rig A's deform bones
+    rig_b = _make_other_rig("regen.other_rig", "zz_unrelated_bone")
+
+    prior = maybe_pre_regen_snapshot(obj, rig_a)
+    assert prior is not None
+    counters = maybe_post_regen_reproject(obj, rig_b, prior)
+    assert counters["rig_mismatch"] == 1, "rig switch not flagged - weights orphan silently"
+
+
+def test_corrupt_sidecar_regen_warns_provenance_loss(automesh_fixture):
+    """When the existing sidecar is corrupt, the pre-regen snapshot falls back to
+    rebuilding from live vgroups - which loses the painted-vs-auto provenance the
+    corrupt CP carried. That loss must be surfaced as a WARNING, not swallowed."""
+    from types import SimpleNamespace
+
+    from proscenio.core.bpy_helpers.skinning.automesh_hook import (  # type: ignore[import-not-found]
+        maybe_pre_regen_snapshot,
+    )
+
+    obj = _activate("hand")
+    armature = bpy.data.objects["automesh.hand_rig"]
+    _set_picker("automesh.hand_rig")
+    _set_preserve(True)
+    bpy.ops.proscenio.bind_mesh_to_armature()
+    _mark_all_entries_user_paint(obj)  # there WAS painted provenance to lose
+    obj["proscenio_weight_sidecar"] = "{ not valid sidecar json"  # now unrecoverable
+
+    reports: list[tuple[tuple[str, ...], str]] = []
+    op = SimpleNamespace(report=lambda level, msg: reports.append((tuple(level), msg)))
+    prior = maybe_pre_regen_snapshot(obj, armature, op=op)
+    assert prior is not None, "fallback should still snapshot the live vgroup weights"
+    warned = any("WARNING" in level for level, _ in reports)
+    assert warned, "corrupt-sidecar provenance loss was not surfaced as a warning"
+
+
 def test_automesh_regen_with_preserve_off_skips_hook(automesh_fixture):
     obj = _activate("hand")
     _set_picker("automesh.hand_rig")

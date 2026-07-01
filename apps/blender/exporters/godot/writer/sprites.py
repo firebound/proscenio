@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Literal, NotRequired, TypedDict
 
 import bpy
@@ -24,7 +23,7 @@ from ....core.bpy_helpers._shared._bpy_compat import (
     vertex_group_at,
 )
 from .scene_discovery import image_filename
-from .skeleton import BoneWorld, world_to_godot_xy
+from .skeleton import BoneWorld, rotate_vec2, world_to_godot_xy
 
 _WEIGHT_EPS = 1e-9
 _OPAQUE_WHITE = [1.0, 1.0, 1.0, 1.0]
@@ -231,9 +230,7 @@ def build_element(
         else:
             dx = world_godot_pos.x - bone_world.x
             dy = world_godot_pos.y - bone_world.y
-            cos_b = math.cos(-bone_world.rot)
-            sin_b = math.sin(-bone_world.rot)
-            local = Vector((dx * cos_b - dy * sin_b, dx * sin_b + dy * cos_b))
+            local = Vector(rotate_vec2(dx, dy, -bone_world.rot))
         polygon.append([round(local.x, 6), round(local.y, 6)])
 
         if uv_layer is not None:
@@ -388,10 +385,19 @@ def build_sprite_weights(
             f"remove them so the sprite can use rigid attach."
         )
 
+    # Fallback bone for unweighted verts. The caller's fallback_bone can be a name
+    # that does not resolve to a real bone (a non-bone attach name); fall back to a
+    # deterministic real bone from known_groups (guaranteed non-empty above) so a
+    # zero-weight vertex never ends up with an all-zero weight column = undeformed.
+    effective_fallback = (
+        fallback_bone
+        if fallback_bone and fallback_bone in available_bones
+        else min(known_groups.values())
+    )
+
     n = len(vertex_indices)
     bone_to_values: dict[str, list[float]] = {name: [0.0] * n for name in known_groups.values()}
-    if fallback_bone and fallback_bone in available_bones:
-        bone_to_values.setdefault(fallback_bone, [0.0] * n)
+    bone_to_values.setdefault(effective_fallback, [0.0] * n)
 
     for slot, mesh_vi in enumerate(vertex_indices):
         weights_here = _vertex_bone_weights(vertex_at(mesh, mesh_vi), known_groups)
@@ -399,8 +405,8 @@ def build_sprite_weights(
         if total > _WEIGHT_EPS:
             for bone, w in weights_here.items():
                 bone_to_values[bone][slot] = w / total
-        elif fallback_bone in bone_to_values:
-            bone_to_values[fallback_bone][slot] = 1.0
+        else:
+            bone_to_values[effective_fallback][slot] = 1.0
 
     return [
         Weight(bone=bone, values=[round(v, 6) for v in values])

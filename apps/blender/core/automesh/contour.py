@@ -44,13 +44,6 @@ _NEIGHBOUR_OFFSETS_4: tuple[tuple[int, int], ...] = (
 """Four Von Neumann neighbours used by binary morphology kernels."""
 
 
-HOLE_SAFETY_DILATE_CELLS: int = 1
-"""Foreground dilation applied to the mask before hole detection.
-
-DEPRECATED - no longer used by :func:`extract_contours`. Retained as
-a public constant to avoid breaking callers that imported it directly."""
-
-
 _MAX_CONTOUR_STEPS: int = 200_000
 """Defensive cap on Moore-Neighbour tracing - protects against
 pathological inputs that would otherwise loop indefinitely. Above

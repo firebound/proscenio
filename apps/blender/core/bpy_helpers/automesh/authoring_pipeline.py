@@ -398,35 +398,6 @@ def _resolve_outer_override_local(
     return result
 
 
-def _build_stroke_cdt_inputs(
-    obj: bpy.types.Object,
-    outer_cuts: list[Stroke],
-    user_strokes: list[Stroke],
-    outer_world_local: list[Point2D],
-    outer_base_index: int,
-    interior_base_index: int,
-    params: StageParams,
-) -> tuple[list[Point2D], list[tuple[int, int]], int, list[list[Point2D]]]:
-    """Run the unified stroke CDT pipeline.
-
-    All kind='cut' strokes (Stage 2 outer cuts + Stage 4 interior strokes)
-    carve a corridor hole routed through holes_world. kind='stroke' produces
-    fold-line constraint edges; kind='point' a single Steiner. Returns merged
-    (extras, edges, dropped, cut_hole_loops).
-    """
-    return _strokes_to_cdt_inputs(
-        obj,
-        list(outer_cuts) + list(user_strokes),
-        outer_world_local,
-        outer_base_index=outer_base_index,
-        interior_base_index=interior_base_index,
-        interior_spacing=params.interior_spacing,
-        inner_world_local=None,
-        holes_world_local=None,
-        cut_margin=params.cut_margin,
-    )
-
-
 def _split_outer_strokes(
     strokes: list[Stroke],
 ) -> tuple[list[list[Point2D]], list[list[Point2D]], list[Stroke]]:
@@ -576,14 +547,20 @@ def _build_authoring_mesh(
     # remaps them to their true coord position once the auto-fill count is known.
     # Indexing from the sentinel avoids guessing the interior base before the
     # auto-fill count exists.
-    extras_local, extra_edges, stroke_verts_dropped, cut_hole_loops = _build_stroke_cdt_inputs(
+    # Unified stroke CDT pipeline over Stage 2 outer cuts + Stage 4 interior
+    # strokes: kind='cut' carves a corridor hole, kind='stroke' emits fold-line
+    # constraint edges, kind='point' a single Steiner. Returns merged
+    # (extras, edges, dropped, cut_hole_loops).
+    extras_local, extra_edges, stroke_verts_dropped, cut_hole_loops = _strokes_to_cdt_inputs(
         obj,
-        outer_cuts,
-        list(output.user_strokes),
+        list(outer_cuts) + list(output.user_strokes),
         outer_world_local,
         outer_base_index=0,
         interior_base_index=_EXTRA_INDEX_SENTINEL,
-        params=params,
+        interior_spacing=params.interior_spacing,
+        inner_world_local=None,
+        holes_world_local=None,
+        cut_margin=params.cut_margin,
     )
     counters = build_automesh(
         obj,

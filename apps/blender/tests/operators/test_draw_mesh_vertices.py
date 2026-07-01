@@ -91,6 +91,74 @@ def test_manual_contour_cp_round_trips(automesh_fixture):
     assert read_manual_contour(obj) == ([], [])
 
 
+def test_finish_clears_guard_when_a_teardown_step_raises(automesh_fixture, monkeypatch):
+    """A teardown step raising inside ``_finish`` must NOT leave the modal marked
+    running - the guard set by ``mark_running`` would stay stuck and lock out
+    BOTH authoring modes (Automesh + Manual Draw) until an addon reload."""
+    from types import SimpleNamespace
+
+    from proscenio.operators.automesh import (
+        draw_mesh_vertices as mod,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+        mark_running,
+        mark_stopped,
+    )
+
+    def _boom(_handles: object) -> None:
+        raise RuntimeError("overlay teardown failed")
+
+    monkeypatch.setattr(mod, "unregister_overlay", _boom)
+    # A bpy Operator cannot be constructed headlessly, so drive the real _finish
+    # with a minimal stand-in self (the operator instance is the I/O boundary).
+    ctx = SimpleNamespace(window=SimpleNamespace(cursor_set=lambda *_: None), window_manager=None)
+    stub = SimpleNamespace(
+        _handles={}, _session=None, _remove_statusbar=lambda: None, _tag_redraw=lambda _c: None
+    )
+
+    mark_running("manual_draw")
+    try:
+        # Call _finish directly (no test-side suppress): the production contract is
+        # that _finish itself swallows the teardown RuntimeError *and* clears the
+        # guard, so a leaked exception here is a regression the test must catch.
+        mod.PROSCENIO_OT_draw_mesh_vertices._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+        assert is_running("manual_draw") is False
+    finally:
+        mark_stopped("manual_draw")
+
+
+def test_finish_survives_a_closed_window(automesh_fixture, monkeypatch):
+    """On the window-close cancel path context.window is None; _finish must still
+    clear the guard AND run the overlay teardown - not AttributeError on
+    cursor_set (which would skip the teardown and leak the draw handlers)."""
+    from types import SimpleNamespace
+
+    from proscenio.operators.automesh import (
+        draw_mesh_vertices as mod,  # type: ignore[import-not-found]
+    )
+    from proscenio.operators.automesh._authoring_modal_guard import (  # type: ignore[import-not-found]
+        is_running,
+        mark_running,
+        mark_stopped,
+    )
+
+    teardown_calls: list[bool] = []
+    monkeypatch.setattr(mod, "unregister_overlay", lambda _h: teardown_calls.append(True))
+    ctx = SimpleNamespace(window=None, window_manager=None)
+    stub = SimpleNamespace(
+        _handles={}, _session=None, _remove_statusbar=lambda: None, _tag_redraw=lambda _c: None
+    )
+
+    mark_running("manual_draw")
+    try:
+        mod.PROSCENIO_OT_draw_mesh_vertices._finish(stub, ctx, cancel=True)  # type: ignore[arg-type]
+        assert is_running("manual_draw") is False
+        assert teardown_calls == [True], "cursor_set on a None window aborted the teardown"
+    finally:
+        mark_stopped("manual_draw")
+
+
 def test_authoring_modal_guard_tracks_running_state(automesh_fixture):
     """The guard drives the toggle (button -> 'Exit') + mutual exclusivity: a
     marked-running modal reads as running to itself (is_running) and as the

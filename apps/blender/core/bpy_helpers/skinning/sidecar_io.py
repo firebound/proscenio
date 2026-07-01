@@ -23,11 +23,10 @@ from ...skinning.sidecar_schema import (
     SidecarEntry,
     WeightSidecar,
     add_auto_snapshot,
-    compute_topology_hash,
     from_json,
     to_json,
 )
-from ._helpers import iter_deform_bones, wipe_non_base_groups
+from ._helpers import iter_deform_bones, topology_hash_of, wipe_non_base_groups
 
 
 def snapshot_sidecar(
@@ -47,10 +46,7 @@ def snapshot_sidecar(
     """
     mesh = obj.data
     deform_bone_names = [b.name for b in iter_deform_bones(armature)]
-    topology_hash = compute_topology_hash(
-        len(mesh.vertices),
-        [list(p.vertices) for p in mesh.polygons],
-    )
+    topology_hash = topology_hash_of(obj)
     uv_anchors = per_vert_uv_anchors(obj)
     if uv_anchors is None:
         return WeightSidecar(

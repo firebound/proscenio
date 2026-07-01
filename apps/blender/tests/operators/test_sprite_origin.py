@@ -1,36 +1,15 @@
-"""Headless tests for the PS [origin] -> Sprite2D pivot contract.
+"""Headless test for the PS [origin] -> Sprite2D pivot round trip.
 
-Runs INSIDE Blender via ``run_operator_tests.py``. Two halves of the
-sprite-origin cleanup:
-
-- Origin is sprite-only: the importer ignores an [origin] on a mesh layer
-  (a Polygon2D has no pivot, so it cancels at export) and keeps it on a sprite.
-- The round trip: a PS [origin] flows through the importer placement and the
-  writer into the Sprite2D offset that puts the node pivot on that origin -
-  the wiring that was only code-read before.
+Runs INSIDE Blender via ``run_operator_tests.py``. A PS [origin] flows through
+the importer placement and the writer into the Sprite2D offset that puts the
+node pivot on that origin - the bpy wiring that was only code-read before. The
+pure placement math (``origin_for_kind`` / ``layer_placement``) is unit-tested
+in ``tests/psd/test_placement.py``.
 """
 
 from __future__ import annotations
 
 import bpy
-
-
-def test_mesh_origin_is_ignored(automesh_fixture):
-    from proscenio.importers.photoshop.planes import _origin_for_kind
-
-    assert _origin_for_kind((10, 20), "mesh", "torso") is None
-
-
-def test_sprite_origin_is_kept(automesh_fixture):
-    from proscenio.importers.photoshop.planes import _origin_for_kind
-
-    assert _origin_for_kind((10, 20), "sprite", "spark") == (10, 20)
-
-
-def test_mesh_without_origin_stays_none(automesh_fixture):
-    from proscenio.importers.photoshop.planes import _origin_for_kind
-
-    assert _origin_for_kind(None, "mesh", "torso") is None
 
 
 def _build_sprite_quad(
@@ -64,12 +43,12 @@ def _build_sprite_quad(
 
 
 def test_origin_round_trips_to_the_sprite_offset(automesh_fixture):
+    from proscenio.core.psd.placement import layer_placement
     from proscenio.exporters.godot.writer import sprites
-    from proscenio.importers.photoshop.planes import _layer_placement
 
     # 100x100 doc, ppu 100, no anchor: bbox (40,40)+(20,20) centres on the doc
     # centre (world 0,0); the [origin] sits 20 PSD px below it (PSD y is down).
-    placement = _layer_placement(
+    placement = layer_placement(
         position_px=(40, 40),
         size_px=(20, 20),
         doc_size_px=(100, 100),

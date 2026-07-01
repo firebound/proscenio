@@ -14,10 +14,35 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
 
 import bpy
 
 from ..._shared.report import report_warn
+
+
+@dataclass(frozen=True)
+class SelectionModeSnapshot:
+    """The selection + active-object half of a modal session snapshot.
+
+    Both authoring modals (mesh authoring and Edit Weights) capture the active
+    object plus the selected-object names on invoke to restore on exit; this is
+    the shared capture. The restore stays each session's own - the mesh
+    authoring path leaves the active object untouched when the object mode is
+    unchanged, the Edit Weights path restores active unconditionally - so only
+    the capture unifies here (names, so undo-driven recreation cannot strand it).
+    """
+
+    prior_active: bpy.types.Object | None
+    prior_selected_names: list[str] = field(default_factory=list)
+
+    @classmethod
+    def capture(cls, context: bpy.types.Context) -> SelectionModeSnapshot:
+        """Snapshot the active object + selected-object names."""
+        return cls(
+            prior_active=context.view_layer.objects.active,
+            prior_selected_names=[obj.name for obj in context.selected_objects],
+        )
 
 
 def select_only(context: bpy.types.Context, obj: bpy.types.Object) -> None:

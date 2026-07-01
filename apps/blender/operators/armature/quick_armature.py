@@ -56,7 +56,7 @@ from ...core.armature.skeleton_target import (
     resolve_skeleton_target,  # type: ignore[import-not-found]
 )
 from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
-    tag_redraw_areas,
+    tag_redraw_view3d_statusbar,
 )
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     find_window_region,
@@ -168,6 +168,15 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     def poll(cls, context: bpy.types.Context) -> bool:
         return bool(context.area is not None and context.area.type == "VIEW_3D")
 
+    @classmethod
+    def is_running(cls) -> bool:
+        """True while a Quick Armature modal session is live.
+
+        The public read of the ``_modal_running`` sentinel so the Skeleton panel
+        does not reach into the operator's private ClassVar via ``getattr``.
+        """
+        return cls._modal_running
+
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         if context.area is None or context.area.type != "VIEW_3D":
             report_warn(self, "must run in a 3D viewport")
@@ -178,7 +187,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # restarting a fresh session here.
         if cls._modal_running:
             cls._exit_requested = True
-            tag_redraw_areas(context.window_manager, {"VIEW_3D", "STATUSBAR"})
+            tag_redraw_view3d_statusbar(context.window_manager)
             return {"CANCELLED"}
         cls._exit_requested = False
         # Defend against double-invoke: if a previous modal is still

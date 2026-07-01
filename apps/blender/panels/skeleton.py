@@ -804,7 +804,7 @@ def _quick_armature_is_running() -> bool:
         PROSCENIO_OT_quick_armature as op,
     )
 
-    return bool(getattr(op, "_modal_running", False))
+    return op.is_running()
 
 
 def _draw_quick_armature_shortcuts(layout: bpy.types.UILayout) -> None:
@@ -824,7 +824,7 @@ def _draw_quick_armature_shortcuts(layout: bpy.types.UILayout) -> None:
         PROSCENIO_OT_quick_armature as op,
     )
 
-    if not getattr(op, "_modal_running", False):
+    if not op.is_running():
         return
     header, body = layout.panel("proscenio_quick_armature_shortcuts", default_closed=True)
     header.label(text="Shortcuts", icon="GREASEPENCIL")

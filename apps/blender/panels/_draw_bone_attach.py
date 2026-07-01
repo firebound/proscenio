@@ -15,6 +15,7 @@ from ..core.bpy_helpers.sprite import (  # type: ignore[import-not-found]
     current_bone_parent,
     resolve_sprite_armature,
 )
+from ._helpers import draw_picture_plane_warning
 
 
 def _candidate_bone(context: bpy.types.Context, armature: bpy.types.Object) -> str:
@@ -47,11 +48,14 @@ def draw_body(
             col.label(text=f"parent: {parent.name} (bone)", icon="OUTLINER_OB_ARMATURE")
         col.operator("proscenio.clear_sprite_bone_parent", text="Clear Bone Parent", icon="X")
         if armature is not None and bone_in_picture_plane(armature, bone):
-            box = col.box().column(align=True)
-            box.alert = True
-            box.label(text=f"bone '{bone}' lies in the picture plane", icon="ERROR")
-            box.label(text="the sprite rotates out of the camera plane", icon="BLANK1")
-            box.label(text="use a slot instead for a flat follow", icon="BLANK1")
+            draw_picture_plane_warning(
+                col,
+                bone,
+                [
+                    "the sprite rotates out of the camera plane",
+                    "use a slot instead for a flat follow",
+                ],
+            )
         return
 
     if armature is None:

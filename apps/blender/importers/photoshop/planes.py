@@ -29,7 +29,7 @@ no longer appears in the manifest are left for the user to clean up manually.
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
@@ -61,6 +61,7 @@ from ...core.bpy_helpers._shared._bpy_compat import (
 from ...core.bpy_helpers.psd.psd_spritesheet import compose_spritesheet
 from ...core.bpy_helpers.skinning import reproject_stored_sidecar, snapshot_live_vgroups
 from ...core.psd import psd_manifest
+from ...core.psd.placement import layer_placement, origin_for_kind
 from ...core.skinning.sidecar_schema import from_json, to_json
 from ...core.slot.slot_emit import is_slot_empty
 
@@ -97,6 +98,7 @@ def _place_and_tag(
     *,
     kind: str,
     element_type: str,
+    spacing: float,
     hframes: int = 1,
     vframes: int = 1,
 ) -> bpy.types.Object:
@@ -107,18 +109,17 @@ def _place_and_tag(
     PSD root + subfolder, then stamps the origin / kind / blend-mode /
     element-type tags. Callers pass the kind-specific bits: the resolved
     image (single PNG vs composed spritesheet), the ``kind`` +
-    ``element_type`` tag values, and the sprite frame counts.
+    ``element_type`` tag values, the ``spacing`` Y-gap preference (threaded in
+    rather than read from context here), and the sprite frame counts.
     """
-    from ...addon_prefs import y_location_spacing
-
-    placement = _layer_placement(
+    placement = layer_placement(
         layer.position,
         layer.size,
         manifest.size,
         manifest.pixels_per_unit,
         layer.z_order,
-        y_location_spacing(bpy.context),
-        _origin_for_kind(layer.origin, element_type, layer.name),
+        spacing,
+        origin_for_kind(layer.origin, element_type, layer.name),
         manifest.anchor,
     )
     obj = _ensure_mesh(layer.name, placement.size, placement.geometry_offset)
@@ -154,7 +155,13 @@ def stamp_mesh(
         print(f"[psd_import] missing PNG for {layer.name}: {image_path}")
         return None
     return _place_and_tag(
-        layer, manifest, armature_obj, image_path, kind=layer.kind, element_type="mesh"
+        layer,
+        manifest,
+        armature_obj,
+        image_path,
+        kind=layer.kind,
+        element_type="mesh",
+        spacing=_y_location_spacing(),
     )
 
 
@@ -185,92 +192,18 @@ def stamp_sprite(
         sheet_path,
         kind="sprite",
         element_type="sprite",
+        spacing=_y_location_spacing(),
         hframes=sheet.hframes,
         vframes=sheet.vframes,
     )
     return StampedSprite(mesh_obj=obj, spritesheet_path=sheet_path)
 
 
-@dataclass(frozen=True)
-class _Placement:
-    """Output of `_layer_placement`: object world location plus the quad-vertex offset to bake."""
+def _y_location_spacing() -> float:
+    """Read the addon's Y-gap preference (local import avoids a register cycle)."""
+    from ...addon_prefs import y_location_spacing
 
-    location: tuple[float, float, float]
-    size: tuple[float, float]
-    # Geometry offset baked into the quad's local-space vertices so
-    # the visible texture sits where the manifest says (`position +
-    # size/2` in PSD pixels) even when the object's location was
-    # shifted to an explicit `origin`. Zero when no origin is set.
-    geometry_offset: tuple[float, float]
-
-
-def _origin_for_kind(
-    layer_origin: Sequence[int] | None,
-    element_type: str,
-    layer_name: str,
-) -> Sequence[int] | None:
-    """Honour ``[origin]`` for sprites only; ignore (and warn about) one on a mesh.
-
-    A Polygon2D has no pivot - the mesh exports in world / bone space, so an
-    origin only shifts the Blender object pivot and cancels at export. Treating
-    it as absent keeps the import placement at the bbox centre and surfaces the
-    no-op rather than silently honouring a tag that does nothing downstream. A
-    sprite keeps its origin: it becomes the Sprite2D offset.
-    """
-    if element_type == "mesh" and layer_origin is not None:
-        print(
-            f"[psd_import] mesh layer {layer_name!r} carries an [origin]; ignoring it "
-            "(origin is sprite-only - it cancels at mesh export)"
-        )
-        return None
-    return layer_origin
-
-
-def _layer_placement(
-    position_px: Sequence[int],
-    size_px: Sequence[int],
-    doc_size_px: Sequence[int],
-    pixels_per_unit: float,
-    z_order: int,
-    spacing: float,
-    origin_px: Sequence[int] | None,
-    anchor_px: Sequence[int] | None,
-) -> _Placement:
-    """Translate PSD pixel coords + optional origin / anchor into Blender world placement.
-
-    The Spine-style ``anchor`` (when set) becomes the world origin
-    (0, 0, 0): every layer's PSD pixel position is re-zeroed against
-    it. Without an anchor the importer falls back to canvas-centered
-    placement.
-    """
-    px_x, px_y = position_px
-    px_w, px_h = size_px
-    doc_w, doc_h = doc_size_px
-    if anchor_px is None:
-        ref_x = doc_w / 2.0
-        ref_y = doc_h / 2.0
-    else:
-        ref_x = float(anchor_px[0])
-        ref_y = float(anchor_px[1])
-    bbox_cx = (px_x + px_w / 2.0 - ref_x) / pixels_per_unit
-    bbox_cz = (ref_y - px_y - px_h / 2.0) / pixels_per_unit
-    cy = z_order * spacing
-    sx = px_w / pixels_per_unit
-    sz = px_h / pixels_per_unit
-    if origin_px is None:
-        return _Placement(
-            location=(bbox_cx, cy, bbox_cz),
-            size=(sx, sz),
-            geometry_offset=(0.0, 0.0),
-        )
-    origin_x, origin_y = origin_px
-    ox = (origin_x - ref_x) / pixels_per_unit
-    oz = (ref_y - origin_y) / pixels_per_unit
-    return _Placement(
-        location=(ox, cy, oz),
-        size=(sx, sz),
-        geometry_offset=(bbox_cx - ox, bbox_cz - oz),
-    )
+    return y_location_spacing(bpy.context)
 
 
 def _ensure_mesh(

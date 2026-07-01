@@ -8,11 +8,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
 from core.automesh.stroke_geometry import (  # noqa: E402
+    apply_pen_axis_lock,
     chaikin_smooth,
     contour_ring_from_pen,
     contour_ring_from_pen_edges,
     subdivide_polyline_edges,
 )
+
+
+def test_apply_pen_axis_lock_x_keeps_last_world_z():
+    # "x" (horizontal) lock: keep the new X, snap Z to the last vert's Z.
+    assert apply_pen_axis_lock((5.0, 9.0), (1.0, 2.0), "x") == (5.0, 2.0)
+
+
+def test_apply_pen_axis_lock_z_keeps_last_world_x():
+    # "z" (vertical) lock: keep the new Z, snap X to the last vert's X.
+    assert apply_pen_axis_lock((5.0, 9.0), (1.0, 2.0), "z") == (1.0, 9.0)
+
+
+def test_apply_pen_axis_lock_empty_axis_passes_through():
+    assert apply_pen_axis_lock((5.0, 9.0), (1.0, 2.0), "") == (5.0, 9.0)
+
+
+def test_apply_pen_axis_lock_no_last_vert_passes_through():
+    assert apply_pen_axis_lock((5.0, 9.0), None, "x") == (5.0, 9.0)
 
 
 def test_subdivide_polyline_edges_per_edge_counts():

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 import bpy
 
-from .._shared.select import restore_selection
+from .._shared.select import SelectionModeSnapshot, restore_selection
 
 
 @dataclass(frozen=True)
@@ -27,9 +27,10 @@ class AuthoringSession:
 
 def capture(context: bpy.types.Context, obj: bpy.types.Object) -> AuthoringSession:
     """Snapshot everything needed to restore on exit."""
+    selection = SelectionModeSnapshot.capture(context)
     return AuthoringSession(
-        prior_active=context.view_layer.objects.active,
-        prior_selected_names=[o.name for o in context.selected_objects],
+        prior_active=selection.prior_active,
+        prior_selected_names=selection.prior_selected_names,
         prior_mode=obj.mode,
         obj_name=obj.name,
     )

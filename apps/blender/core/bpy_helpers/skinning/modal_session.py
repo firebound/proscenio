@@ -11,8 +11,9 @@ from dataclasses import dataclass, field
 
 import bpy
 
+from ..._shared.props_access import scene_skinning
 from ...skinning.paint_preset_2d import PaintPresetSnapshot
-from .._shared.select import restore_selection
+from .._shared.select import SelectionModeSnapshot, restore_selection
 from .bone_collection_visibility import BoneCollectionSnapshot
 from .bone_collection_visibility import restore as restore_bone_visibility
 from .paint_preset_bind import restore_paint_preset
@@ -42,9 +43,10 @@ def capture(
     overlay_flag: bool,
 ) -> EditWeightsSession:
     """Snapshot everything needed to restore on exit."""
+    selection = SelectionModeSnapshot.capture(context)
     return EditWeightsSession(
-        prior_active=context.view_layer.objects.active,
-        prior_selected_names=[o.name for o in context.selected_objects],
+        prior_active=selection.prior_active,
+        prior_selected_names=selection.prior_selected_names,
         prior_obj_mode=obj.mode,
         prior_armature_mode=armature.mode,
         prior_paint_preset=paint_preset,
@@ -79,7 +81,6 @@ def restore(context: bpy.types.Context, session: EditWeightsSession) -> None:
 
 
 def _restore_overlay_flag(context: bpy.types.Context, prior: bool) -> None:
-    scene_props = getattr(context.scene, "proscenio", None)
-    skinning = getattr(scene_props, "skinning", None) if scene_props else None
+    skinning = scene_skinning(context)
     if skinning is not None and hasattr(skinning, "show_provenance_overlay"):
         skinning.show_provenance_overlay = prior

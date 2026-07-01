@@ -10,9 +10,44 @@ from core.skinning.sidecar_schema import (
     WeightSidecar,
     build_minimal_stub,
     compute_topology_hash,
+    count_entries_by_provenance,
     from_json,
     to_json,
 )
+
+
+def test_count_entries_by_provenance_tallies_each_kind():
+    payload = json.dumps(
+        {
+            "entries": [
+                {"provenance": "user_paint"},
+                {"provenance": "user_paint"},
+                {"provenance": "auto_seed"},
+                {"provenance": "reprojected"},
+                {"provenance": "user_paint"},
+            ]
+        }
+    )
+    assert count_entries_by_provenance(payload) == {
+        "user_paint": 3,
+        "auto_seed": 1,
+        "reprojected": 1,
+    }
+
+
+def test_count_entries_by_provenance_none_payload_is_none():
+    assert count_entries_by_provenance(None) is None
+
+
+def test_count_entries_by_provenance_corrupt_json_is_none():
+    assert count_entries_by_provenance("{not json") is None
+
+
+def test_count_entries_by_provenance_ignores_unknown_kinds_and_no_entries():
+    payload = json.dumps({"entries": [{"provenance": "mystery"}, {}]})
+    zero = {"user_paint": 0, "auto_seed": 0, "reprojected": 0}
+    assert count_entries_by_provenance(payload) == zero
+    assert count_entries_by_provenance(json.dumps({})) == zero
 
 
 def test_topology_hash_sensitive_to_vert_count():

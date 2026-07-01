@@ -24,11 +24,11 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     apply_sidecar,
     snapshot_sidecar,
+    topology_hash_of,
 )
 from ...core.skinning.sidecar_schema import (  # type: ignore[import-not-found]
     WeightSidecar,
     add_named_snapshot,
-    compute_topology_hash,
     find_snapshot,
     from_json,
     to_json,
@@ -135,10 +135,7 @@ class PROSCENIO_OT_restore_named_snapshot(bpy.types.Operator):
         if not snapshot.entries:
             report_error(self, f"snapshot '{self.snapshot_name}' has no entries")
             return {"CANCELLED"}
-        current_hash = compute_topology_hash(
-            len(obj.data.vertices),
-            [list(p.vertices) for p in obj.data.polygons],
-        )
+        current_hash = topology_hash_of(obj)
         if current_hash != sidecar.mesh_topology_hash:
             report_error(
                 self,

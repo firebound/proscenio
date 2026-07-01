@@ -20,6 +20,7 @@ from typing import ClassVar
 import bpy
 
 from ..addon_prefs import debug_mode_enabled
+from ..core._shared.material_images import first_material_image
 from ._helpers import (
     _active_armature,
     _is_mesh_element,
@@ -225,14 +226,13 @@ def _draw_automesh_cheatsheet(layout: bpy.types.UILayout) -> None:
         PROSCENIO_OT_automesh_authoring as op,
     )
 
-    if not _automesh_running():
+    state = op.authoring_state()
+    if not state.active:
         return
     header, body = layout.panel("proscenio_automesh_shortcuts", default_closed=True)
     header.label(text="Shortcuts", icon="MOD_REMESH")
     if body is not None:
-        emit_authoring_chord_layout(
-            body, op._current_stage_label, op._current_stage, op._current_active_tool
-        )
+        emit_authoring_chord_layout(body, state.label, state.stage, state.tool)
 
 
 def _draw_manual_draw_cheatsheet(layout: bpy.types.UILayout) -> None:
@@ -294,7 +294,7 @@ def _draw_automesh_step_nav(layout: bpy.types.UILayout) -> None:
         PROSCENIO_OT_automesh_authoring as op,
     )
 
-    layout.label(text=op._current_stage_label, icon="MOD_REMESH")
+    layout.label(text=op.authoring_state().label, icon="MOD_REMESH")
     row = layout.row(align=True)
     back = row.operator("proscenio.automesh_step", text="Back", icon="TRIA_LEFT")
     back.direction = "RETREAT"
@@ -342,14 +342,7 @@ def _draw_manual_mesh(layout: bpy.types.UILayout, context: bpy.types.Context) ->
 def _authoring_button_enabled(obj: bpy.types.Object | None) -> bool:
     if obj is None or obj.type != "MESH":
         return False
-    if obj.data is None:
-        return False
-    return any(
-        node.type == "TEX_IMAGE" and node.image is not None
-        for material in obj.data.materials
-        if material is not None and material.use_nodes and material.node_tree is not None
-        for node in material.node_tree.nodes
-    )
+    return first_material_image(obj) is not None
 
 
 def _draw_debug_pipeline(

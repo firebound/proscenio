@@ -320,7 +320,8 @@ def test_finish_tears_down_and_snapshots_on_non_cancel(automesh_fixture, monkeyp
     assert "statusbar" in events, "the status bar draw was not removed"
     assert "snapshot" in events, "a normal finish must capture the auto-snapshot"
     assert "restore:SESSION" in events, "the session was not restored"
-    assert stub._timer is None and stub._overlay_handle is None, "handles not cleared"
+    assert stub._timer is None, "the timer handle was not cleared"
+    assert stub._overlay_handle is None, "the overlay handle was not cleared"
 
 
 def test_finish_suppresses_snapshot_on_cancel(automesh_fixture, monkeypatch):

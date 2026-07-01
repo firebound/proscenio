@@ -29,22 +29,25 @@ def test_max_alpha_in_block_returns_block_maximum(automesh_fixture) -> None:
 
 
 def test_read_alpha_grid_caches_until_cleared(automesh_fixture) -> None:
-    from proscenio.core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
-        clear_alpha_grid_cache,
-        read_alpha_grid,
-    )
+    from proscenio.core.bpy_helpers.automesh import bridge  # type: ignore[import-not-found]
 
-    clear_alpha_grid_cache()
+    bridge.clear_alpha_grid_cache()
+    assert bridge._ALPHA_GRID_CACHE == {}
     img = bpy.data.images.new("cache_probe", width=4, height=4, alpha=True)
 
-    first = read_alpha_grid(img, 0.5)
-    second = read_alpha_grid(img, 0.5)
-    assert first is second, "same (image, downscale) must reuse the cached grid"
+    first = bridge.read_alpha_grid(img, 0.5)
+    assert len(bridge._ALPHA_GRID_CACHE) == 1, "the grid was not cached"
+    second = bridge.read_alpha_grid(img, 0.5)
+    assert second == first, "same (image, downscale) must serve the cached content"
+    assert second is not first, "a cache hit returns a defensive copy, not the stored grid"
 
-    other = read_alpha_grid(img, 1.0)
-    assert other is not first, "a different downscale must recompute"
+    # A different downscale is a distinct key -> a second cached entry.
+    bridge.read_alpha_grid(img, 1.0)
+    assert len(bridge._ALPHA_GRID_CACHE) == 2
 
-    clear_alpha_grid_cache()
-    third = read_alpha_grid(img, 0.5)
-    assert third is not first, "clearing the cache must force a recompute"
-    assert third == first, "the recomputed grid must be identical in content"
+    # Mutating a returned grid must not corrupt the cache.
+    first[0][0] = 999
+    assert bridge.read_alpha_grid(img, 0.5)[0][0] != 999, "a mutation leaked into the cache"
+
+    bridge.clear_alpha_grid_cache()
+    assert bridge._ALPHA_GRID_CACHE == {}, "clearing must empty the cache"

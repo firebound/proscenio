@@ -173,13 +173,15 @@ def test_build_skeleton_reparents_child_past_a_filtered_parent() -> None:
         "root.ctrl": BoneWorld(x=1.0, y=0.0, rot=0.0, length=1.0),
         "hand": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),
     }
-    skeleton, _rest = build_skeleton(
-        _armature_obj([grandparent, control, child]), world
-    )
+    skeleton, rest = build_skeleton(_armature_obj([grandparent, control, child]), world)
     names = [b.name for b in skeleton.bones]
     assert names == ["root", "hand"]
     hand = next(b for b in skeleton.bones if b.name == "hand")
     assert hand.parent == "root", "child kept a dangling parent to the filtered control"
+    # parent_name must track the EMITTED parent (the nearest deform ancestor),
+    # not the skipped raw Blender parent - the animation builder reads the
+    # exported parent's keys, so a stale "root.ctrl" here would miss them.
+    assert rest["hand"].parent_name == "root"
 
 
 def test_build_skeleton_child_of_root_control_becomes_a_root() -> None:

@@ -102,6 +102,18 @@ def test_close_refuses_a_degenerate_two_vert_loop():
     assert pen.closed is False
 
 
+def test_close_refuses_three_points_with_a_coincident_pair():
+    """3 points but only 2 distinct (a snap-to-candidate placed a duplicate
+    mid-loop) is still degenerate - ring() rejects it on len(set) < 3, so close()
+    must too, or EDIT enters with a ring the next CDT chokes on."""
+    pen = VertexPen()
+    pen.points = [(0.0, 0.0), (1.0, 0.0), (1.0, 0.0)]  # last two coincide
+    pen.edge_subdivs = [0, 0]
+    pen.close()
+    assert pen.closed is False
+    assert pen.ring() is None  # the ring the guard mirrors
+
+
 def test_insert_on_edge_splits_and_inherits_subdiv():
     """Spec 070 C4: inserting a vert on a placed edge grows the ring at that spot
     and both halves inherit the edge's subdivision count."""

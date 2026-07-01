@@ -18,6 +18,11 @@ from ..._shared.region import manual_region_or_none
 
 SLICER_GROUP_NAME = "Proscenio.SpriteFrameSlicer"
 SLICER_NODE_LABEL = "Proscenio Sprite Frame Slicer"
+# Bump when the slicer node graph changes shape so a group cached in an older
+# .blend (right topology name, stale wiring) is rebuilt instead of reused.
+# v2 = the V-Frames row-wrap MODULO (an out-of-range frame wraps to the top rows).
+_SLICER_GROUP_SCHEMA_KEY = "proscenio_slicer_schema_version"
+_SLICER_GROUP_SCHEMA_VERSION = 2
 
 _SOCK_UV = "UV"
 _SOCK_FRAME = "Frame"
@@ -44,7 +49,7 @@ def ensure_slicer_group(node_groups: Any) -> Any:
     """
     group = node_groups.get(SLICER_GROUP_NAME)
     if group is not None:
-        if _group_has_region(group):
+        if _group_is_current(group):
             return group
         group.nodes.clear()
         _clear_group_interface(group)
@@ -53,6 +58,20 @@ def ensure_slicer_group(node_groups: Any) -> Any:
     group = node_groups.new(name=SLICER_GROUP_NAME, type="ShaderNodeTree")
     _populate_slicer_group(group)
     return group
+
+
+def _group_is_current(group: Any) -> bool:
+    """True when the cached group is at the current schema (region sockets AND
+    the current graph version), so it can be reused without a rebuild.
+
+    Gating on the version is what lets a .blend saved after the region-socket
+    migration but before a later graph change (the V-Frames row wrap) still get
+    rebuilt - checking region sockets alone would wrongly reuse the stale graph.
+    """
+    return (
+        _group_has_region(group)
+        and group.get(_SLICER_GROUP_SCHEMA_KEY) == _SLICER_GROUP_SCHEMA_VERSION
+    )
 
 
 def _group_has_region(group: Any) -> bool:
@@ -197,6 +216,9 @@ def _populate_slicer_group(group: Any) -> None:
     links.new(final_x.outputs[0], combine.inputs["X"])
     links.new(final_y.outputs[0], combine.inputs["Y"])
     links.new(combine.outputs["Vector"], grp_out.inputs["UV"])
+    # Stamp the schema so a later graph change rebuilds this group instead of
+    # reusing it stale (see ensure_slicer_group / _group_is_current).
+    group[_SLICER_GROUP_SCHEMA_KEY] = _SLICER_GROUP_SCHEMA_VERSION
 
 
 def apply_slicer_to_material(

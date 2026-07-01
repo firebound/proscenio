@@ -41,6 +41,31 @@ def _set_slot_index_constant(empty: bpy.types.Object, data_path: str) -> None:
         fcurve.update()
 
 
+def _merge_attachment_order(empty: bpy.types.Object, live_attachments: list[str]) -> list[str]:
+    """Append-only merge of the current attachment names into the stored order.
+
+    Reads the existing ``PROSCENIO_SLOT_ATTACHMENT_ORDER`` snapshot (a JSON name
+    list) and appends any live attachment not already in it - never reordering or
+    dropping an existing entry. Append-only is what keeps an index keyed earlier
+    resolving to the same NAME after a later delete + re-key; overwriting the
+    snapshot wholesale would remap old indices once the order shrank. A malformed
+    or absent snapshot starts from the live child order.
+    """
+    raw = empty.get(PROSCENIO_SLOT_ATTACHMENT_ORDER)
+    order: list[str] = []
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, list):
+            order = [name for name in parsed if isinstance(name, str)]
+    for name in live_attachments:
+        if name not in order:
+            order.append(name)
+    return order
+
+
 class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
     """Re-parent the active mesh into the active slot Empty."""
 
@@ -195,14 +220,17 @@ class PROSCENIO_OT_keyframe_slot_attachment(bpy.types.Operator):
                 f"'{self.attachment_name}' is not an attachment of slot '{empty.name}'",
             )
             return {"CANCELLED"}
-        index = attachments.index(self.attachment_name)
+        # Resolve the keyed index against a STABLE, APPEND-ONLY name order the
+        # writer reads, not the live child list. Merge new attachment names onto
+        # the end of the existing snapshot (never reorder or drop) so an earlier
+        # keyframe's index keeps pointing at the same name after a later
+        # delete + re-key - overwriting the snapshot wholesale would remap old
+        # indices (axe -> shield) once the order shrank.
+        order = _merge_attachment_order(empty, attachments)
+        index = order.index(self.attachment_name)
         data_path = f'["{PROSCENIO_SLOT_INDEX}"]'
         frame = context.scene.frame_current
-        # Snapshot the attachment name order the index is resolved against, so the
-        # writer maps the keyed index to a name via this stable list instead of
-        # the live child order. Deleting an earlier attachment then no longer
-        # slides this and every later keyframe onto the wrong child.
-        empty[PROSCENIO_SLOT_ATTACHMENT_ORDER] = json.dumps(attachments)
+        empty[PROSCENIO_SLOT_ATTACHMENT_ORDER] = json.dumps(order)
         empty[PROSCENIO_SLOT_INDEX] = index
         empty.keyframe_insert(data_path=data_path, frame=frame)
         _set_slot_index_constant(empty, data_path)

@@ -193,8 +193,11 @@ def _max_alpha_in_block(
 # caching the grid by (image, size, downscale) lets a drag reuse it instead of
 # re-walking the whole image. A sprite's texture is static within an authoring
 # session; ``clear_alpha_grid_cache`` drops the cache when authoring (re-)starts
-# so a texture edited between sessions is re-read. The grid is consumed read-only
-# downstream (``binarize`` copies it into a fresh mask), so sharing it is safe.
+# so a texture edited between sessions is re-read. A cache hit returns a fresh
+# copy of the rows so a caller that mutates the grid in place cannot corrupt the
+# cached copy for every later hit - the perf win (skipping the source ``pixels[:]``
+# read + MAX downsample walk) survives, and the correctness no longer rests on an
+# unenforced "read-only downstream" contract.
 _ALPHA_GRID_CACHE: dict[tuple[str, int, int, float], AlphaGrid] = {}
 
 
@@ -241,7 +244,9 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
     cache_key = (image.name, source_w, source_h, downscale_factor)
     cached = _ALPHA_GRID_CACHE.get(cache_key)
     if cached is not None:
-        return cached
+        # Hand out a copy so an in-place mutation downstream cannot corrupt the
+        # cached grid for every later hit on this key.
+        return [row[:] for row in cached]
     pixels = list(image.pixels[:])
     target_w = max(1, int(source_w * downscale_factor))
     target_h = max(1, int(source_h * downscale_factor))
@@ -259,7 +264,9 @@ def read_alpha_grid(image: Image, downscale_factor: float) -> AlphaGrid:
                 pixels, source_w, sx_start, sx_end, sy_start, sy_end
             )
     _ALPHA_GRID_CACHE[cache_key] = grid
-    return grid
+    # Return a copy on the miss too, so mutating this first result cannot corrupt
+    # the cached grid for later hits (the hit path already copies).
+    return [row[:] for row in grid]
 
 
 def pixel_contour_to_world(

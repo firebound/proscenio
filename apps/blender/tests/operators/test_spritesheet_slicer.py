@@ -48,6 +48,31 @@ def test_slicer_group_wraps_the_row_by_vframes(automesh_fixture) -> None:
     assert has_row_wrap, "row path has no MODULO-by-V-Frames wrap (mirror of the column path)"
 
 
+def test_ensure_slicer_group_rebuilds_a_stale_cached_group(automesh_fixture) -> None:
+    from proscenio.core.bpy_helpers.spritesheet.spritesheet_shader import (  # type: ignore[import-not-found]
+        _SLICER_GROUP_SCHEMA_KEY,
+        _SLICER_GROUP_SCHEMA_VERSION,
+        _SOCK_VFRAMES,
+        ensure_slicer_group,
+    )
+
+    group = ensure_slicer_group(bpy.data.node_groups)
+    # Simulate a .blend saved at an older graph schema (region sockets present,
+    # but a stale version + a graph missing the row wrap).
+    group[_SLICER_GROUP_SCHEMA_KEY] = _SLICER_GROUP_SCHEMA_VERSION - 1
+    group.nodes.clear()
+
+    rebuilt = ensure_slicer_group(bpy.data.node_groups)
+    assert rebuilt is group, "the group datablock must be rebuilt in place, not replaced"
+    assert rebuilt[_SLICER_GROUP_SCHEMA_KEY] == _SLICER_GROUP_SCHEMA_VERSION
+    modulos = [n for n in rebuilt.nodes if n.type == "MATH" and n.operation == "MODULO"]
+    fed_by_vframes = any(
+        n.inputs[1].is_linked and n.inputs[1].links[0].from_socket.name == _SOCK_VFRAMES
+        for n in modulos
+    )
+    assert fed_by_vframes, "the stale group was not rebuilt with the V-Frames row wrap"
+
+
 def test_removing_slicer_drops_its_node_tree_drivers(automesh_fixture) -> None:
     from proscenio.core.bpy_helpers.spritesheet.spritesheet_shader import (  # type: ignore[import-not-found]
         apply_slicer_to_material,

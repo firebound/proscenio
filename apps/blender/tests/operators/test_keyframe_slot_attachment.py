@@ -128,6 +128,36 @@ def test_writer_resolves_attachment_by_name_after_an_earlier_delete(automesh_fix
     assert resolved_axe, f"index drift: the key must still resolve {axe!r}, got {swap_keys}"
 
 
+def test_keyframe_order_snapshot_is_append_only(automesh_fixture):
+    """A later delete + re-key must not remap an earlier key: keying `axe`, then
+    deleting `sword` and keying a freshly-added `shield`, must leave the first
+    key still resolving `axe` (append-only order), not slide it onto `shield`."""
+    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
+        build_slot_animations,
+    )
+
+    empty, sword, axe = _make_slot_with_two_attachments()
+    bpy.context.scene.frame_set(5)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
+
+    # Delete the earlier attachment, add a new one, and key the new one.
+    bpy.data.objects.remove(bpy.data.objects[sword], do_unlink=True)
+    shield = _new_mesh_object("shield", (0.0, 0.0, 2.0))
+    shield.parent = empty
+    bpy.context.view_layer.update()
+    bpy.context.view_layer.objects.active = empty
+    bpy.context.scene.frame_set(10)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="shield")
+
+    anims = build_slot_animations(bpy.context.scene)
+    resolved = {
+        k.attachment for a in anims for t in a.tracks if t.target == empty.name for k in t.keys
+    }
+    # Append-only -> both keys resolve their own name. Overwriting the snapshot
+    # would collapse both onto `shield` (the earlier `axe` key would be lost).
+    assert resolved == {axe, "shield"}, f"append-only order broke the binding: {resolved}"
+
+
 def test_keyframe_rejects_a_non_attachment(automesh_fixture):
     empty, _sword, _axe = _make_slot_with_two_attachments()
     result = bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="not_a_child")

@@ -203,11 +203,13 @@ class VertexPen:
             self.points.pop()
             if self.edge_subdivs:
                 self.edge_subdivs.pop()
-        if len(self.points) < 3:
-            # A loop needs >= 3 distinct verts; a 2-vert "close" would leave a
+        if len(self.points) < 3 or len(set(self.points)) < 3:
+            # A loop needs >= 3 DISTINCT verts; a 2-vert "close" (or 3 points with
+            # a coincident pair, e.g. a snap-to-candidate dup) would leave a
             # degenerate ring (a stray dup vert + a stray edge_subdiv) that
-            # corrupts the next CDT. Stay in the open DRAW phase instead of
-            # entering EDIT with a ring ``ring()`` would reject anyway.
+            # corrupts the next CDT. Match ring()/contour_ring_from_pen_edges,
+            # which rejects on ``len(set(ring)) < 3`` too: stay in the open DRAW
+            # phase instead of entering EDIT with a ring ``ring()`` would reject.
             return
         self.closed = True
         self._hover_edge = None

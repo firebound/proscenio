@@ -156,9 +156,8 @@ def _compute_sprite_offset(obj: bpy.types.Object, ppu: float) -> list[float] | N
     # sign, since ``|S| @ v == S @ (sign(S) .* v)``. A non-flipped sprite has all
     # signs +1, so the measured offset (and every golden) is unchanged.
     scale = obj.scale
-    sign_x = -1.0 if scale.x < 0 else 1.0
-    sign_y = -1.0 if scale.y < 0 else 1.0
-    sign_z = -1.0 if scale.z < 0 else 1.0
+    # Per-axis sign; a non-negative axis (including 0) maps to +1.
+    sign_x, sign_y, sign_z = (1.0 if c >= 0 else -1.0 for c in (scale.x, scale.y, scale.z))
     local_center = Vector(
         (
             (min(xs) + max(xs)) / 2.0 * sign_x,

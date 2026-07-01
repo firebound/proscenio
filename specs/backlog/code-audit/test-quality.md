@@ -1,5 +1,7 @@
 # Test quality
 
+> **Owned by [spec 076](../../076-blender-audit-remainder/TODO.md) Phase C.** These findings are the 074-audit test-quality tail; they moved wholesale to spec 076 when 074 pruned. The one medium (`edit-weights-modal-lifecycle`) is the coverage spec 075 Phase C's D6 waits on before the large operator splits.
+
 Verdict: the suite is **healthy**. It exercises real code, mock discipline is confined to the bpy/IO boundary, and failure modes are tested as first-class cases. Only one phase-1 "fake test" survived verification (and even that was downgraded to a partial gap), plus a handful of weak assertions worth tightening. One phase-1 test-org claim was refuted (`weight-transfer-test-docs` - see [refuted.md](refuted.md)).
 
 ## Measured coverage (not inferred)

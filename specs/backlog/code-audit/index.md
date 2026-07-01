@@ -2,7 +2,9 @@
 
 Structural-quality findings for `apps/blender/` (196 source files, 1283 symbols inventoried), produced by a two-phase multi-agent audit on 2026-06-28 and then **adversarially verified** against the real code. Scope is architecture and maintainability: misplaced code, god modules, single-responsibility, dependency direction, duplication, dead code, and test quality. Distinct from [code-quality.md](../code-quality.md), which tracks type-safety and lint enforcement only.
 
-Each entry promotes into a numbered spec under `specs/` when work begins. Nothing here is a fix already applied.
+Each entry promotes into a numbered spec under `specs/` when work begins.
+
+**Status (2026-07-01):** the correctness bugs + the whole quick-win cleanup theme (dead-code, DRY folds, misplaced-pure-logic moves, dependency accessors) shipped under spec 074 (PRs #180 / #181 / #182); the `misplaced-code` and `dependency-direction` files fully drained and were removed. The remaining tail is owned by two open specs: the structural god-modules / SRP splits by [spec 075](../../075-blender-structural-decomposition/TODO.md), and the low-severity bugs + performance + test-quality + the `psd_naming` dead-module removal + the two decision-gated correctness bugs by [spec 076](../../076-blender-audit-remainder/TODO.md).
 
 ## Headline
 
@@ -12,20 +14,20 @@ Treat this as a slow-burn cleanup backlog, not a remediation list.
 
 ## Thematic files
 
-- [misplaced-code.md](misplaced-code.md) - pure logic trapped in bpy-bound modules (and the reverse). 7 confirmed/adjusted.
-- [god-modules-and-srp.md](god-modules-and-srp.md) - oversized modules/functions and single-responsibility splits. 18 confirmed/adjusted.
-- [dependency-direction.md](dependency-direction.md) - UI/panels reaching into operator internals; one core/ layering break. 3 confirmed.
-- [duplication.md](duplication.md) - DRY clusters. 2 from phase 1 + **13 new** found by token-level body comparison. 1 high, several medium.
-- [dead-code.md](dead-code.md) - grep-verified unused symbols + wire-or-remove decisions. 6 confirmed (2 trivial deletes, rest are decisions).
-- [test-quality.md](test-quality.md) - test organization, weak/fake tests, measured coverage, and the suite's documented strengths.
+- [god-modules-and-srp.md](god-modules-and-srp.md) - oversized modules/functions and single-responsibility splits. 18 confirmed/adjusted. **-> spec 075** (open).
+- [duplication.md](duplication.md) - DRY clusters. 14 of 15 folded in spec 074 Phase 3; only `perimeter-length-dup` remains (**-> spec 076** Phase B, rides `arc-length-resample-quadratic`).
+- [dead-code.md](dead-code.md) - the four safe deletes shipped (spec 074 Phase 3); only the `psd_naming` module removal remains (**-> spec 076** Phase D).
+- [test-quality.md](test-quality.md) - test organization, weak/fake tests, measured coverage, and the suite's documented strengths. **-> spec 076** Phase C (incl. the one medium the 075 large splits wait on).
 - [refuted.md](refuted.md) - **6 phase-1 findings the verification pass disproved.** Recorded so nobody re-flags them.
-- [bugs.md](bugs.md) - **correctness findings (40 candidates) - PENDING VERIFICATION.** Phase-3 deep pass (bug hunt + domain invariants + resource lifecycle + perf). The session token limit was hit before the verifier stage ran, so NONE are confirmed yet; treat as leads. Resume `wf_9067a358-8eb` to finish. 5 finder dimensions (idprop contract, orphan datablocks, error paths, type-safety, version-compat) did not run.
+- [bugs.md](bugs.md) - correctness findings (40 candidates), **now with verdicts**: the high/medium bugs shipped under spec 074 (PRs #180 / #181); the low-severity tail + performance + the two decision-gated bugs moved to **spec 076**. 5 finder dimensions (idprop contract, orphan datablocks, error paths, type-safety, version-compat) never ran under the original token limit - a future pass can resume `wf_9067a358-8eb`.
+- **misplaced-code.md** (removed) - all 7 pure-logic moves shipped in spec 074 Phase 3.
+- **dependency-direction.md** (removed) - all 3 accessors / the i18n relocation shipped in spec 074 Phase 3.
 
 ## Severity / effort tally (confirmed + adjusted only)
 
 - By severity: 1 medium, the rest low.
-- Quick wins (trivial effort, safe): delete `Rect.area`, delete `VertexPen.dragging`, delete 2 unused `_bpy_compat` shims, inline `_build_stroke_cdt_inputs`, the 5 small test-assertion hardenings.
-- Large refactors (defer until touched for another reason): split `automesh_authoring.py` (~1556 lines), `quick_armature.py` (~865 lines), nested-PropertyGroup split of `ProscenioSkinningProps` (breaking, ~47 call sites).
+- Quick wins (SHIPPED, spec 074 Phase 3): `Rect.area` / `VertexPen.dragging` / the 2 `_bpy_compat` shims deleted, `_build_stroke_cdt_inputs` inlined. (The 5 test-assertion hardenings moved to spec 076 Phase C.)
+- Large refactors (spec 075, one PR each; land AFTER spec 076 Phase C's `edit-weights-modal-lifecycle` coverage per 075's D6): split `automesh_authoring.py` (~1642 lines), `quick_armature.py` (~1084 lines), nested-PropertyGroup split of `ProscenioSkinningProps` (breaking, ~67 call sites).
 
 ## Method and confidence
 

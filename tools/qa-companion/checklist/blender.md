@@ -936,7 +936,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - observe: The subpanel header carries an 'experimental' status badge (the automesh_interactive feature is flagged experimental). The body shows a label 'Interactive trace and edit', the Loops, Spacing, and Cut margin fields, the Preserve weights on regen toggle, and the Author Mesh (interactive) button (it reads 'Exit Author Mesh' while the modal runs). The button is enabled only when a mesh with an image texture is active; otherwise a 'select a mesh first' label shows.
 - intent: Confirm the Interactive subpanel renders its fields, the experimental badge, the regen toggle, and the Author Mesh toggle button with its enable rule; behavior lives in the named tests.
 - code: apps/blender/panels/mesh_generation.py:103-123,255-290; core/_shared/feature_status.py:120
-- note: spec 070 (#167): the automesh_interactive feature gained the EXPERIMENTAL badge. Re-walk the header inventory. Preserve weights on regen behavior -> GAP-REGEN-PRESERVE.
+- note: spec 070 (#167): the automesh_interactive feature gained the EXPERIMENTAL badge. Re-walk the header inventory. Preserve weights on regen behavior -> BL-WPAINT-SNAP-04 (was GAP-REGEN-PRESERVE, closed spec 074).
 
 ### BL-MESH-INTERACTIVE-01 · Author Mesh launches the interactive modal
 - status: pending
@@ -1055,7 +1055,7 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Confirm the Weight Paint subpanels render their controls and enable/grey rules; behavior lives in the named tests.
 - code: apps/blender/panels/weight_paint.py (_draw_bind / _draw_snapshot / _draw_named_snapshots / PROSCENIO_UL_bone_overrides); _helpers.py
 - note:
-  Preserve weights on regen behavior -> GAP-REGEN-PRESERVE; modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
+  Preserve weights on regen behavior -> BL-WPAINT-SNAP-04 (was GAP-REGEN-PRESERVE, closed spec 074); modal-entry enable predicate -> FLOW-DOLL-02 / BL-WPAINT-EDIT-01.
   (2026-06-17 spec 044: max_distance + falloff_power now draw under Proximity; Clear Empty Vertex Groups button added to Bind.)
   ui-polish: the per-bone override box became a scrolling list, the inert provenance-overlay toggle was dropped, and Save Snapshot + the named-snapshot list were added. Re-walk the inventory.
 
@@ -1178,6 +1178,20 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Named manual save points plus a rolling last-3 auto history make the weight save-point UX explicit (which point a restore targets), beyond the single 'last saved' Reset.
 - code: apps/blender/panels/weight_paint.py _draw_named_snapshots + apps/blender/operators/skinning/named_snapshot.py + core/skinning/sidecar_schema.py (NamedSnapshot, add_named_snapshot, add_auto_snapshot) + core/bpy_helpers/skinning/sidecar_io.py append_auto_snapshot
 - note: wpaint-named-snapshots: new feature (manual named + rolling auto). The rolling-3 cap + JSON round-trip have pure tests; the save/restore-by-name have headless tests; the list rendering + the per-session auto capture are the GUI-only pass.
+
+### BL-WPAINT-SNAP-04 · Automesh regen preserves painted weights, provenance, and snapshots
+- status: pending
+- review: keep
+- pre: A bound mesh element with a target armature picked and 'Preserve weights on regen' ON.
+- steps:
+  1. Bind the mesh, then Edit Weights and paint a region (the touched verts turn white / user_paint).
+  2. Save a named snapshot (e.g. 'pose-a').
+  3. Re-run Automesh (interactive or from-alpha) with the same alpha/params (a no-op regen), then again after a small parameter tweak (changed topology).
+  4. Re-open the Snapshot subpanel and the provenance line; re-enter Edit Weights.
+- observe: After both the no-op and the changed-topology regen, the painted region stays white (user_paint survives - the provenance line still reads paint verts, not '0 paint'), the 'pose-a' named snapshot is still in the list and restores, and the Reset to Last Saved baseline still reflects the paint. A no-op regen does not silently demote the paint to auto_seed.
+- intent: Automesh regen with Preserve ON keeps the paint-vs-auto distinction and the save points - the weight-provenance + named-snapshot loss fixed in spec 074 (PRs #180 / #181). Closes the standing GAP-REGEN-PRESERVE marker.
+- code: apps/blender/core/bpy_helpers/skinning/automesh_hook.py (_snapshot_from_existing_sidecar, maybe_post_regen_reproject, snapshot carry) + core/skinning/sidecar_schema.py
+- note: spec 074 Phase 1/2 fixed regen-wipes-provenance, noop-regen-overwrites-provenance, regen-drops-snapshots, regen-rerig-false-preserve; pinned by test_automesh_regen. This is the GUI walk that was the GAP-REGEN-PRESERVE placeholder.
 
 ### BL-WPAINT-XFER-01 · Copy Weights to Selected transfers weights
 - status: pass

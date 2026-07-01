@@ -114,12 +114,16 @@ def _bundle_after_write(scene: bpy.types.Scene, filepath: str) -> str:
     dest = Path(bpy.path.abspath(filepath)).parent
     result = bundle_textures(list(scene.objects), dest)
     print(
-        f"[Proscenio] bundle -> copied {result.copied}, "
-        f"skipped {result.skipped}, missing {result.missing}"
+        f"[Proscenio] bundle -> copied {result.copied}, skipped {result.skipped}, "
+        f"missing {result.missing}, collisions {result.collisions}"
     )
     parts = [f"bundled {len(result.copied)} texture(s)"]
     if result.missing:
         parts.append(f"{len(result.missing)} missing on disk")
+    if result.collisions:
+        # Two distinct sources share one bare filename; only one was bundled, so
+        # surface it (the loser's art is otherwise silently replaced).
+        parts.append(f"{len(result.collisions)} name collision(s) - rename to keep both")
     return "; " + ", ".join(parts)
 
 

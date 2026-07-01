@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
+
 import bpy
 from proscenio_models import Animation, Key, Track
 
-from ....core._shared.cp_keys import PROSCENIO_SLOT_INDEX
+from ....core._shared.cp_keys import PROSCENIO_SLOT_ATTACHMENT_ORDER, PROSCENIO_SLOT_INDEX
 from ....core.bpy_helpers._shared._bpy_compat import iter_keyframe_points, iter_objects
 from ....core.slot.slot_emit import is_slot_empty
 from .animations import action_fcurves, action_length
@@ -74,15 +76,35 @@ def merge_slot_animations_into(
     return out
 
 
+def _resolve_attachment_order(empty_obj: bpy.types.Object) -> tuple[str, ...]:
+    """Name list the keyed slot index resolves against.
+
+    The authoring-time snapshot (``PROSCENIO_SLOT_ATTACHMENT_ORDER``) when it is
+    present and well-formed - this is stable across a later child delete, so a
+    keyframe stays bound to the attachment NAME it was authored for. Falls back
+    to the live child order for slots keyed before the snapshot existed (their
+    export is unchanged as long as the child order has not shifted).
+    """
+    raw = empty_obj.get(PROSCENIO_SLOT_ATTACHMENT_ORDER)
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, list) and all(isinstance(name, str) for name in parsed):
+            return tuple(parsed)
+    return tuple(c.name for c in empty_obj.children if c.type == "MESH")
+
+
 def _build_slot_attachment_track(
     empty_obj: bpy.types.Object,
     action: bpy.types.Action,
     fps: int,
 ) -> Track | None:
     """Project ``proscenio_slot_index`` fcurve keys to a slot_attachment track."""
-    attachments = tuple(c.name for c in empty_obj.children if c.type == "MESH")
-    if not attachments:
+    if not any(c.type == "MESH" for c in empty_obj.children):
         return None
+    order = _resolve_attachment_order(empty_obj)
     keys: list[Key] = []
     target_path = f'["{PROSCENIO_SLOT_INDEX}"]'
     for fcurve in action_fcurves(action):
@@ -92,12 +114,12 @@ def _build_slot_attachment_track(
             frame = float(kp.co.x)
             t = max(0.0, (frame - 1) / float(fps))
             idx = int(kp.co.y)
-            if 0 <= idx < len(attachments):
+            if 0 <= idx < len(order):
                 keys.append(
                     Key(
                         time=round(t, 6),
                         interp="constant",
-                        attachment=attachments[idx],
+                        attachment=order[idx],
                     )
                 )
     if not keys:

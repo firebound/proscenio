@@ -105,10 +105,16 @@ def build_bone_track(
     by_time: dict[float, dict[str, dict[int, float]]],
     ppu: float,
     rest_local: dict[str, BoneRestLocal],
+    parent_rot_by_time: dict[float, float] | None = None,
 ) -> Track:
     """Build one ``bone_transform`` track. Channels with no non-rest deltas are
     dropped so the Bone2D rest pose is preserved on import. A bone keyed at
     rest still gets a track (timing markers only) - useful for ``root`` handles.
+
+    ``parent_rot_by_time`` maps a key time to the parent's POSED world rotation
+    at that frame (empty / None when the parent is static); it overrides the rest
+    parent rotation for the position projection so an animated-parent child does
+    not read sideways in Godot.
     """
     rest = rest_local.get(bone_name, _REST_FALLBACK)
     # rest_basis is required for the location/rotation projection. Every bone the
@@ -120,7 +126,10 @@ def build_bone_track(
         for entry in by_time.values()
     ):
         raise ValueError(f"missing rest_basis for animated bone {bone_name!r}")
-    resolved = {t: _resolve_pose_entry(entry, ppu, rest) for t, entry in by_time.items()}
+    parent_rot = parent_rot_by_time or {}
+    resolved = {
+        t: _resolve_pose_entry(entry, ppu, rest, parent_rot.get(t)) for t, entry in by_time.items()
+    }
     has_position = any(r.position is not None for r in resolved.values())
     has_rotation = any(r.rotation is not None for r in resolved.values())
     has_scale = any(r.scale is not None for r in resolved.values())
@@ -167,7 +176,14 @@ def build_animation(
         return None
 
     tracks = [
-        build_bone_track(name, by_time, ppu, rest_local) for name, by_time in bone_keys.items()
+        build_bone_track(
+            name,
+            by_time,
+            ppu,
+            rest_local,
+            _posed_parent_rotations(name, by_time, bone_keys, rest_local),
+        )
+        for name, by_time in bone_keys.items()
     ]
     return Animation(
         name=action.name,
@@ -233,13 +249,118 @@ def _screen_rotation_delta(entry: dict[str, dict[int, float]], rest: BoneRestLoc
     return round(delta, 6) if abs(delta) > 1e-6 else None
 
 
+_ROTATION_PROPS = ("rotation_euler", "rotation_quaternion", "rotation_axis_angle")
+
+
+def _entry_has_rotation(entry: dict[str, dict[int, float]]) -> bool:
+    return any(prop in entry for prop in _ROTATION_PROPS)
+
+
+def _interp_delta_at(t: float, samples: list[tuple[float, float]]) -> float:
+    """Linearly interpolate a parent rotation delta at time ``t``.
+
+    ``samples`` is the parent's ``(time, screen_rotation_delta)`` list, sorted.
+    Clamps outside the keyed range (matching Godot holding the end keys) and
+    interpolates linearly between them (bone rotation tracks are linear).
+    """
+    if t <= samples[0][0]:
+        return samples[0][1]
+    if t >= samples[-1][0]:
+        return samples[-1][1]
+    for i in range(1, len(samples)):
+        t0, d0 = samples[i - 1]
+        t1, d1 = samples[i]
+        if t0 <= t <= t1:
+            span = t1 - t0
+            return d1 if span <= 0 else d0 + (d1 - d0) * (t - t0) / span
+    return samples[-1][1]
+
+
+def _ancestor_rotation_samples(
+    parent_name: str,
+    bone_keys: dict[str, dict[float, dict[str, dict[int, float]]]],
+    rest_local: dict[str, BoneRestLocal],
+) -> list[list[tuple[float, float]]]:
+    """Sorted ``(time, screen-rotation delta)`` samples for the parent AND every
+    animated ancestor above it.
+
+    A bone's WORLD rotation is its parent's world rotation plus its OWN local
+    rotation, so the direct parent's posed world rotation delta is the sum of the
+    local rotation deltas of the parent and all its ancestors. Walks up the chain
+    via ``parent_name`` collecting each ancestor that has rotation keys - so a
+    rotating grandparent still turns a child's position even when the direct
+    parent has no rotation key of its own.
+    """
+    chain: list[list[tuple[float, float]]] = []
+    ancestor: str | None = parent_name
+    seen: set[str] = set()
+    while ancestor is not None and ancestor not in seen:
+        seen.add(ancestor)
+        anc_by_time = bone_keys.get(ancestor)
+        anc_rest = rest_local.get(ancestor)
+        if anc_rest is None:
+            break
+        if anc_by_time:
+            samples = sorted(
+                (t, _screen_rotation_delta(entry, anc_rest) or 0.0)
+                for t, entry in anc_by_time.items()
+                if _entry_has_rotation(entry)
+            )
+            if samples:
+                chain.append(samples)
+        ancestor = anc_rest.parent_name
+    return chain
+
+
+def _posed_parent_rotations(
+    bone_name: str,
+    by_time: dict[float, dict[str, dict[int, float]]],
+    bone_keys: dict[str, dict[float, dict[str, dict[int, float]]]],
+    rest_local: dict[str, BoneRestLocal],
+) -> dict[float, float]:
+    """The direct parent's POSED world rotation at each of the child's key times.
+
+    Recovered analytically: the parent's posed world rotation is
+    ``rest.parent_world_rot`` plus the sum of the screen-rotation deltas of the
+    parent AND all its animated ancestors at that time (a bone's world rotation
+    = its parent's world rotation + its own local rotation, so the deltas chain
+    up - see :func:`_ancestor_rotation_samples`), interpolated to the child's key
+    times. Empty when the parent is a root or nothing up the chain is
+    rotation-animated, so a static-parent child keeps its rest projection (and
+    every existing golden with it). Consistent with the writer's fcurve-only
+    model: an ancestor posed by a driver/constraint has no rotation track to
+    export, so nothing to sample.
+    """
+    rest = rest_local.get(bone_name)
+    if rest is None or rest.parent_name is None:
+        return {}
+    chain = _ancestor_rotation_samples(rest.parent_name, bone_keys, rest_local)
+    if not chain:
+        return {}
+    return {
+        t: rest.parent_world_rot + sum(_interp_delta_at(t, samples) for samples in chain)
+        for t in by_time
+    }
+
+
 def _resolve_pose_entry(
-    entry: dict[str, dict[int, float]], ppu: float, rest: BoneRestLocal
+    entry: dict[str, dict[int, float]],
+    ppu: float,
+    rest: BoneRestLocal,
+    parent_world_rot: float | None = None,
 ) -> PoseDelta:
-    """Reduce a per-time bucket of fcurve samples to (position, rotation, scale)."""
+    """Reduce a per-time bucket of fcurve samples to (position, rotation, scale).
+
+    ``parent_world_rot`` overrides ``rest.parent_world_rot`` for the position
+    projection: the builder passes the parent's POSED world rotation at this
+    frame when the parent is rotation-animated, so the screen delta lands in the
+    parent's animated frame rather than its rest frame. ``None`` keeps the rest
+    rotation (a static parent, and every existing caller / test).
+    """
     position: list[float] | None = None
     rotation: float | None = None
     scale: list[float] | None = None
+    effective_parent_rot = rest.parent_world_rot if parent_world_rot is None else parent_world_rot
 
     if "location" in entry and rest.rest_basis is not None:
         loc = entry["location"]
@@ -256,7 +377,7 @@ def _resolve_pose_entry(
             # correct only when the parent is unrotated, sideways otherwise.
             screen_x = world.x * ppu
             screen_y = -world.z * ppu
-            local_x, local_y = rotate_vec2(screen_x, screen_y, -rest.parent_world_rot)
+            local_x, local_y = rotate_vec2(screen_x, screen_y, -effective_parent_rot)
             position = [round(local_x, 6), round(local_y, 6)]
 
     rotation = _screen_rotation_delta(entry, rest)

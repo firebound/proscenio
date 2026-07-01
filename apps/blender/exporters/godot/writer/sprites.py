@@ -149,11 +149,20 @@ def _compute_sprite_offset(obj: bpy.types.Object, ppu: float) -> list[float] | N
     xs = [v.co.x for v in vertices]
     ys = [v.co.y for v in vertices]
     zs = [v.co.z for v in vertices]
+    # A flipped sprite (negative local scale) exports flip_h/flip_v flags that
+    # already mirror the texture in Godot. If the pivot gap were measured through
+    # the mirrored matrix it would be counted twice - once here, once by the flag
+    # - so cancel the reflection first: multiply the local centre by the scale
+    # sign, since ``|S| @ v == S @ (sign(S) .* v)``. A non-flipped sprite has all
+    # signs +1, so the measured offset (and every golden) is unchanged.
+    scale = obj.scale
+    # Per-axis sign; a non-negative axis (including 0) maps to +1.
+    sign_x, sign_y, sign_z = (1.0 if c >= 0 else -1.0 for c in (scale.x, scale.y, scale.z))
     local_center = Vector(
         (
-            (min(xs) + max(xs)) / 2.0,
-            (min(ys) + max(ys)) / 2.0,
-            (min(zs) + max(zs)) / 2.0,
+            (min(xs) + max(xs)) / 2.0 * sign_x,
+            (min(ys) + max(ys)) / 2.0 * sign_y,
+            (min(zs) + max(zs)) / 2.0 * sign_z,
         )
     )
     matrix_world = obj.matrix_world

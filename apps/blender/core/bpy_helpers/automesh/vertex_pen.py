@@ -203,6 +203,14 @@ class VertexPen:
             self.points.pop()
             if self.edge_subdivs:
                 self.edge_subdivs.pop()
+        if len(self.points) < 3 or len(set(self.points)) < 3:
+            # A loop needs >= 3 DISTINCT verts; a 2-vert "close" (or 3 points with
+            # a coincident pair, e.g. a snap-to-candidate dup) would leave a
+            # degenerate ring (a stray dup vert + a stray edge_subdiv) that
+            # corrupts the next CDT. Match ring()/contour_ring_from_pen_edges,
+            # which rejects on ``len(set(ring)) < 3`` too: stay in the open DRAW
+            # phase instead of entering EDIT with a ring ``ring()`` would reject.
+            return
         self.closed = True
         self._hover_edge = None
         self._stroke_active = False
@@ -461,7 +469,10 @@ class VertexPen:
         if mouse is None or near is None:
             return self._apply_axis_lock(world_pt), False
         pick_d2 = (near[0] - mouse[0]) ** 2 + (near[1] - mouse[1]) ** 2
-        if len(self.points) >= 2:
+        # Only offer to close once >= 3 verts are placed: a 2-vert loop is
+        # degenerate (see ``close``), so clicking the first vert with two points
+        # down must union/place, never close.
+        if len(self.points) >= 3:
             fx, fz = self.points[0]
             if (fx - mouse[0]) ** 2 + (fz - mouse[1]) ** 2 <= pick_d2:
                 return (fx, fz), True

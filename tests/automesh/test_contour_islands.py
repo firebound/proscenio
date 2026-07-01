@@ -10,11 +10,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
+import pytest  # noqa: E402
+
 from core.automesh.contour import (  # noqa: E402
     extract_outer_contour,
     extract_outer_contour_with_islands,
     fill_polygon_into_mask,
 )
+
+
+def _shoelace_area(contour: list[tuple[float, float]]) -> float:
+    """Absolute enclosed area of a closed polygon via the shoelace formula."""
+    total = 0.0
+    n = len(contour)
+    for i in range(n):
+        x0, y0 = contour[i]
+        x1, y1 = contour[(i + 1) % n]
+        total += x0 * y1 - x1 * y0
+    return abs(total) * 0.5
 
 
 def _empty_mask(w: int, h: int) -> list[list[bool]]:
@@ -67,8 +80,13 @@ def test_island_overlapping_silhouette_merges_into_one_larger_contour():
     bare_max_x = max(x for x, _ in bare)
     merged_max_x = max(x for x, _ in merged)
     assert merged_max_x > bare_max_x, "island did not grow the silhouette rightward"
-    # One contour (a single closed loop), not two.
-    assert len(merged) >= len(bare)
+    # Pin the ENCLOSED AREA gain, not the vertex count (which is vacuous - the
+    # return is always one flat contour). The island pokes out past the block's
+    # x=20 edge to x=30 over y in [14,26): ~10 wide x 12 tall = ~120 extra area.
+    # A grafted detour spur adds near-zero area and fails this; a real merge adds
+    # the protrusion.
+    gain = _shoelace_area(merged) - _shoelace_area(bare)
+    assert gain == pytest.approx(120.0, abs=40.0)
 
 
 def test_detached_island_is_dropped_not_traced():

@@ -22,7 +22,7 @@ def test_minimal_slot_emits_name_and_attachments() -> None:
     )
     assert slot.name == "eye.swap"
     assert slot.attachments == ["a", "b"]
-    assert slot.default == "a"  # falls back to sorted-first
+    assert slot.default == "a"  # falls back to the first attachment (child order)
     assert slot.bone is None
 
 
@@ -33,14 +33,15 @@ def test_explicit_default_overrides_sorted_fallback() -> None:
     assert slot.default == "b"
 
 
-def test_invalid_default_falls_back_to_sorted_first() -> None:
+def test_invalid_default_falls_back_to_first_attachment() -> None:
     """Dangling slot_default (names a child that no longer exists) does not
     block emission - the writer still ships a usable default; the panel
-    surfaces the broken reference via the validation pass."""
+    surfaces the broken reference via the validation pass. The fallback is the
+    first attachment in child order (``b`` here), not the alphabetical min."""
     slot = build_slot(
         SlotInput(name="s", bone="", slot_default="zzz_missing", attachments=("b", "a"))
     )
-    assert slot.default == "a"
+    assert slot.default == "b"
 
 
 def test_bone_emitted_only_when_set() -> None:

@@ -265,3 +265,34 @@ def test_authoring_modal_guard_tracks_running_state(automesh_fixture):
     finally:
         mark_stopped("manual_draw")
     assert is_running("manual_draw") is False
+
+
+def test_output_pins_manual_outer_and_folds_the_provisional_chain(automesh_fixture):
+    """`_output` is the StageOutput shared by APPLY + the live preview. Drive it on
+    a plain _Probe (a bpy.types.Operator subclass cannot be instantiated in 5.1):
+    it must flag outer_is_manual, keep the committed strokes, and fold an
+    in-progress FOLD click-chain (>= 2 verts) in as a provisional stroke so the
+    preview updates as the fold is built."""
+    from proscenio.operators.automesh.draw_mesh_vertices import (  # type: ignore[import-not-found]
+        PROSCENIO_OT_draw_mesh_vertices as OP,
+    )
+
+    class _Probe:
+        _output = OP._output  # method stolen by reference; state set per instance
+
+    probe = _Probe()
+    probe._user_strokes = [{"kind": "point", "points": [(0.5, 0.5)]}]
+    probe._fold_chain = [(0.1, 0.1), (0.9, 0.9)]  # >= 2 verts -> provisional stroke
+    probe._fold_subdivs = [0]
+    ring = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+
+    out = probe._output(ring)
+    assert out.outer == ring
+    assert out.outer_is_manual is True
+    assert out.user_strokes[0]["kind"] == "point", "committed stroke dropped"
+    folded_in = any(s["kind"] == "stroke" for s in out.user_strokes[1:])
+    assert folded_in, "in-progress fold chain did not ride in as a provisional stroke"
+
+    # A chain shorter than 2 verts contributes no provisional stroke.
+    probe._fold_chain = [(0.1, 0.1)]
+    assert len(probe._output(ring).user_strokes) == 1

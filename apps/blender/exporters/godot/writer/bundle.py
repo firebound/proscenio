@@ -27,6 +27,60 @@ class BundleResult:
     copied: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)  # source not on disk
     skipped: list[str] = field(default_factory=list)  # already beside the file
+    collisions: list[str] = field(default_factory=list)  # 2+ sources, one name
+
+
+def _register_image(
+    image: bpy.types.Image,
+    by_name: dict[str, bpy.types.Image],
+    source_by_name: dict[str, Path | None],
+    collisions: list[str],
+) -> None:
+    """Record one image under its bare filename, flagging a name collision.
+
+    A collision is a DISTINCT source resolving to a filename already claimed by
+    another source: only the first is bundled, so the later one is recorded (and
+    warned) instead of vanishing silently.
+    """
+    filename = image_filename(image)
+    if filename is None:
+        return
+    source = image_abspath(image)
+    if filename not in by_name:
+        by_name[filename] = image
+        source_by_name[filename] = source
+        return
+    # A distinct source (including one with no on-disk path yet) resolving to an
+    # already-claimed filename is a collision. The same image referenced twice
+    # compares equal (same abspath), so it never false-flags; only a genuinely
+    # different source trips this.
+    collided = source != source_by_name[filename]
+    if collided and filename not in collisions:
+        collisions.append(filename)
+        print(
+            f"  WARN: texture filename {filename!r} is used by two different "
+            f"sources - only one is bundled; rename one to keep both"
+        )
+
+
+def _collect_referenced_images(
+    objects: list[bpy.types.Object],
+) -> tuple[dict[str, bpy.types.Image], list[str]]:
+    """Map bare filename -> the first Image seen, plus the names that collide.
+
+    Godot resolves siblings by name, so two distinct sources sharing one bare
+    filename can only bundle one; the collided names are surfaced (see
+    :func:`_register_image`) rather than quietly dropped.
+    """
+    by_name: dict[str, bpy.types.Image] = {}
+    source_by_name: dict[str, Path | None] = {}
+    collisions: list[str] = []
+    for obj in objects:
+        if getattr(obj, "type", None) != "MESH":
+            continue
+        for image in iter_material_images(obj):
+            _register_image(image, by_name, source_by_name, collisions)
+    return by_name, collisions
 
 
 def bundle_textures(objects: list[bpy.types.Object], dest_dir: Path) -> BundleResult:
@@ -35,18 +89,11 @@ def bundle_textures(objects: list[bpy.types.Object], dest_dir: Path) -> BundleRe
     Each referenced image is copied to ``dest_dir / <filename>`` - the bare
     name the .proscenio carries - so Godot's siblings-only resolution finds
     it. Sources already in ``dest_dir`` are left alone; a source missing on
-    disk is reported, not copied.
+    disk is reported, not copied. Two distinct sources sharing one bare filename
+    are recorded as collisions (only the first is bundled).
     """
-    by_name: dict[str, bpy.types.Image] = {}
-    for obj in objects:
-        if getattr(obj, "type", None) != "MESH":
-            continue
-        for image in iter_material_images(obj):
-            filename = image_filename(image)
-            if filename is not None:
-                by_name.setdefault(filename, image)
-
-    result = BundleResult()
+    by_name, collisions = _collect_referenced_images(objects)
+    result = BundleResult(collisions=collisions)
     for filename, image in sorted(by_name.items()):
         source = image_abspath(image)
         dest = dest_dir / filename

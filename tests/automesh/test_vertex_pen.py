@@ -36,8 +36,14 @@ def test_ring_bakes_per_edge_subdivisions():
     pen.edge_subdivs = [1, 1]  # one per open edge; the wrap edge has no count
     base = VertexPen()
     base.points = list(pen.points)
+    ring = pen.ring()
     # Two open edges subdivided by 1 each -> +2; the implicit wrap stays bare.
-    assert len(pen.ring()) == len(base.ring()) + 2
+    assert len(ring) == len(base.ring()) + 2
+    # Pin WHERE the inserted verts land, not just the total: the midpoints of the
+    # two subdivided edges must appear, so subdividing a DIFFERENT edge by the
+    # same total count does not slip through on the length alone.
+    assert (1.0, 0.0) in ring  # midpoint of edge 0: (0,0) -> (2,0)
+    assert (2.0, 1.0) in ring  # midpoint of edge 1: (2,0) -> (2,2)
 
 
 def test_load_preloads_points_and_subdivs_for_reedit():
@@ -78,6 +84,34 @@ def test_close_drops_trailing_duplicate_first_vert():
     pen.edge_subdivs = [0, 0, 0]
     pen.close()
     assert pen.points == [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0)]
+
+
+def test_close_refuses_a_degenerate_two_vert_loop():
+    """A 2-vert loop is degenerate: close() must NOT enter the EDIT phase (it
+    would leave a stray dup vert + edge_subdiv that corrupts the next CDT).
+    The pen stays open so drawing can continue or re-arm cleanly."""
+    pen = VertexPen()
+    pen.points = [(0.0, 0.0), (1.0, 0.0)]
+    pen.edge_subdivs = [0]
+    pen.close()
+    assert pen.closed is False
+    # a close-on-first-vert click on two points (dup of the first) also refuses
+    pen.points = [(0.0, 0.0), (1.0, 0.0), (0.0, 0.0)]
+    pen.edge_subdivs = [0, 0]
+    pen.close()
+    assert pen.closed is False
+
+
+def test_close_refuses_three_points_with_a_coincident_pair():
+    """3 points but only 2 distinct (a snap-to-candidate placed a duplicate
+    mid-loop) is still degenerate - ring() rejects it on len(set) < 3, so close()
+    must too, or EDIT enters with a ring the next CDT chokes on."""
+    pen = VertexPen()
+    pen.points = [(0.0, 0.0), (1.0, 0.0), (1.0, 0.0)]  # last two coincide
+    pen.edge_subdivs = [0, 0]
+    pen.close()
+    assert pen.closed is False
+    assert pen.ring() is None  # the ring the guard mirrors
 
 
 def test_insert_on_edge_splits_and_inherits_subdiv():

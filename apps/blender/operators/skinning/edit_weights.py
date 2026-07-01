@@ -106,16 +106,7 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
 
         mirror_x = read_mirror_flag(armature)
         try:
-            armature.select_set(True)
-            context.view_layer.objects.active = armature
-            if armature.mode != "POSE":
-                bpy.ops.object.mode_set(mode="POSE")
-            context.view_layer.objects.active = obj
-            obj.select_set(True)
-            if obj.mode != "WEIGHT_PAINT":
-                bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
-            apply_paint_preset(context, mirror_x=mirror_x)
-            _auto_select_active_group(obj, armature)
+            _enter_weight_paint(context, obj, armature, mirror_x=mirror_x)
             if skinning is not None and hasattr(skinning, "show_provenance_overlay"):
                 skinning.show_provenance_overlay = True
             self._overlay_handle = register_handler(obj, mode="provenance")
@@ -261,6 +252,34 @@ def _validate_invoke_preconditions(
         report_error(operator, "mesh has no vertex groups - run Bind first")
         return None
     return obj, armature, scene_props, sidecar
+
+
+def _enter_weight_paint(
+    context: bpy.types.Context,
+    obj: bpy.types.Object,
+    armature: bpy.types.Object,
+    *,
+    mirror_x: bool,
+) -> None:
+    """Enter the 2D-safe weight-paint context (the headless-testable half of invoke).
+
+    POSE pre-step on the armature, switch the mesh to WEIGHT_PAINT, apply the 2D
+    paint preset, and select the active group from the posed bone. The modal-only
+    wiring (overlay handler, stroke tracker, statusbar, timer, modal_handler_add)
+    stays in ``invoke``. Extracted so a test drives this exact block instead of
+    re-implementing it inline - an inline copy let happy-path invoke-wiring
+    regressions go uncaught.
+    """
+    armature.select_set(True)
+    context.view_layer.objects.active = armature
+    if armature.mode != "POSE":
+        bpy.ops.object.mode_set(mode="POSE")
+    context.view_layer.objects.active = obj
+    obj.select_set(True)
+    if obj.mode != "WEIGHT_PAINT":
+        bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+    apply_paint_preset(context, mirror_x=mirror_x)
+    _auto_select_active_group(obj, armature)
 
 
 def _auto_select_active_group(obj: bpy.types.Object, armature: bpy.types.Object) -> None:

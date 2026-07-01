@@ -97,3 +97,31 @@ def test_inplane_lock_toggles_dof_flags(automesh_fixture: None) -> None:
         assert not (tip.lock_ik_x or tip.lock_ik_z), "second toggle did not unlock"
     finally:
         bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def test_inplane_lock_leaves_the_root_anchor_unbent(automesh_fixture: None) -> None:
+    from proscenio.operators.armature.authoring_ik import (
+        _IK_CONSTRAINT_NAME,
+        _chain_member_bones,
+    )
+
+    rig = _enter_pose_with_active_bone("automesh.hand_rig", "fingertip")
+    try:
+        bpy.ops.proscenio.toggle_ik_chain()
+        tip = rig.pose.bones["fingertip"]
+        ik = tip.constraints.get(_IK_CONSTRAINT_NAME)
+        assert ik is not None, "toggle did not create the IK constraint"
+        members = _chain_member_bones(tip, ik.chain_count)
+
+        bpy.ops.proscenio.toggle_ik_inplane_lock()
+
+        # The prebend seeds a bend on INTERIOR bones only; the root anchor (the
+        # topmost member) must keep its rest pose so the chain is not shoved off
+        # its anchor. Regression for inplane-prebend-root-anchor.
+        root_anchor = members[-1]
+        assert root_anchor.rotation_euler.y == 0.0, "root anchor was nudged by the prebend"
+        if len(members) >= 3:
+            interior_bent = any(abs(m.rotation_euler.y) > 1e-5 for m in members[1:-1])
+            assert interior_bent, "no interior bone received the elbow prebend"
+    finally:
+        bpy.ops.object.mode_set(mode="OBJECT")

@@ -132,9 +132,15 @@ class TestArcLengthResample:
             assert distance == pytest.approx(expected_step, abs=1e-9)
 
     def test_upsample_doubles_density(self) -> None:
-        # 4-vertex square upsampled to 32 -> 8 samples per original edge.
+        # 4-vertex square (perimeter 32) upsampled to 32 -> 8 samples per original
+        # edge at a uniform 1.0-unit step. Pin the SPACING, not just the count: a
+        # resample that clusters samples on some edges would still hit len 32.
         out = arc_length_resample(_square_contour(8.0), 32)
         assert len(out) == 32
+        for index in range(len(out)):
+            x0, y0 = out[index]
+            x1, y1 = out[(index + 1) % len(out)]
+            assert math.hypot(x1 - x0, y1 - y0) == pytest.approx(1.0, abs=1e-9)
 
     def test_first_sample_is_first_vertex(self) -> None:
         out = arc_length_resample(_square_contour(10.0), 8)

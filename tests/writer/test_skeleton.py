@@ -133,12 +133,16 @@ def test_build_skeleton_child_is_relative_to_parent() -> None:
         "root": BoneWorld(x=0.0, y=0.0, rot=0.0, length=1.0),
         "child": BoneWorld(x=2.0, y=0.0, rot=0.0, length=1.0),
     }
-    skeleton, _rest = build_skeleton(_armature_obj([root, child]), world)
+    skeleton, rest = build_skeleton(_armature_obj([root, child]), world)
     child_bone = next(b for b in skeleton.bones if b.name == "child")
     assert child_bone.parent == "root"
     # parent at origin with no rotation -> child local equals the world delta.
     assert child_bone.position == [2.0, 0.0]
     assert child_bone.rotation == pytest.approx(0.0)
+    # The rest record carries the parent name so the animation builder can read
+    # the parent's rotation keys for the posed-parent projection (O4).
+    assert rest["child"].parent_name == "root"
+    assert rest["root"].parent_name is None
 
 
 def test_build_skeleton_skips_non_deform_control_bones() -> None:

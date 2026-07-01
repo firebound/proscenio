@@ -52,6 +52,11 @@ class BoneRestLocal:
     scale: tuple[float, float]
     rest_basis: Matrix | None = field(default=None, compare=False)
     parent_world_rot: float = 0.0
+    # Exported parent bone name (None for a root). The animation builder reads the
+    # parent's own rotation keys to recover its POSED world rotation per frame, so
+    # a child's position delta is rotated into the parent's animated frame - not
+    # its rest frame - when the parent is rotation-animated.
+    parent_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,7 @@ def build_skeleton(
             scale=(1.0, 1.0),
             rest_basis=bone.matrix_local.to_3x3(),
             parent_world_rot=parent_world_rot,
+            parent_name=parent_bone.name if parent_bone else None,
         )
 
     return Skeleton(bones=bones_out), rest_local

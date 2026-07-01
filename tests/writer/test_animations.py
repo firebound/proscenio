@@ -147,6 +147,91 @@ def test_resolve_location_rotates_delta_into_parent_local_frame() -> None:
     assert delta.position == [15.0, 0.0]
 
 
+def test_resolve_location_uses_the_posed_parent_override() -> None:
+    # Same rest as above (rest parent rot -90deg would give [15, 0]), but the
+    # parent has swung back upright at THIS frame - passing the posed override
+    # (0.0) must win, so the screen-vertical delta stays screen-vertical
+    # [0, -15] instead of reading sideways. Regression for
+    # animated-delta-rest-rotation.
+    rotated_parent_rest = BoneRestLocal(
+        position=(30.0, 0.0),
+        rotation=0.0,
+        scale=(1.0, 1.0),
+        rest_basis=_IDENTITY,
+        parent_world_rot=-math.pi / 2,
+    )
+    delta = anim._resolve_pose_entry(
+        {"location": {2: 0.15}}, 100.0, rotated_parent_rest, 0.0
+    )
+    assert delta.position == [0.0, -15.0]
+
+
+def test_posed_parent_rotations_follow_the_parents_rotation_keys() -> None:
+    # A child ("hand") with a position key under a rotation-animated parent
+    # ("arm"): the posed parent rotation at the child's key time is the parent's
+    # REST world rotation plus the parent's own screen-rotation delta there, so
+    # the child's position lands in the parent's ANIMATED frame.
+    arm_rest = BoneRestLocal(
+        position=(0.0, 0.0), rotation=0.0, scale=(1.0, 1.0), rest_basis=_IDENTITY
+    )
+    hand_rest = BoneRestLocal(
+        position=(10.0, 0.0),
+        rotation=0.0,
+        scale=(1.0, 1.0),
+        rest_basis=_IDENTITY,
+        parent_world_rot=0.3,
+        parent_name="arm",
+    )
+    rest_local = {"arm": arm_rest, "hand": hand_rest}
+    arm_entry = {"rotation_euler": {2: 0.5}}
+    bone_keys = {
+        "arm": {1.0: arm_entry},
+        "hand": {1.0: {"location": {2: 0.15}}},
+    }
+    posed = anim._posed_parent_rotations(
+        "hand", bone_keys["hand"], bone_keys, rest_local
+    )
+    expected_delta = anim._screen_rotation_delta(arm_entry, arm_rest) or 0.0
+    assert posed == {1.0: pytest.approx(0.3 + expected_delta)}
+
+
+def test_posed_parent_rotations_empty_for_a_static_parent() -> None:
+    # The goldens-safe path: a parent that only translates (no rotation keys)
+    # yields no override, so the child keeps its rest projection unchanged.
+    arm_rest = BoneRestLocal(
+        position=(0.0, 0.0), rotation=0.0, scale=(1.0, 1.0), rest_basis=_IDENTITY
+    )
+    hand_rest = BoneRestLocal(
+        position=(10.0, 0.0),
+        rotation=0.0,
+        scale=(1.0, 1.0),
+        rest_basis=_IDENTITY,
+        parent_world_rot=0.3,
+        parent_name="arm",
+    )
+    rest_local = {"arm": arm_rest, "hand": hand_rest}
+    bone_keys = {
+        "arm": {1.0: {"location": {0: 0.2}}},
+        "hand": {1.0: {"location": {2: 0.15}}},
+    }
+    posed = anim._posed_parent_rotations(
+        "hand", bone_keys["hand"], bone_keys, rest_local
+    )
+    assert posed == {}
+
+
+def test_posed_parent_rotations_empty_for_a_root() -> None:
+    # A root bone (no parent_name) has nothing to sample.
+    root_rest = BoneRestLocal(
+        position=(0.0, 0.0), rotation=0.0, scale=(1.0, 1.0), rest_basis=_IDENTITY
+    )
+    bone_keys = {"root": {1.0: {"location": {2: 0.15}}}}
+    posed = anim._posed_parent_rotations(
+        "root", bone_keys["root"], bone_keys, {"root": root_rest}
+    )
+    assert posed == {}
+
+
 def test_resolve_location_unrotated_parent_is_unchanged() -> None:
     # parent_world_rot defaults to 0 (root / world-aligned parent): the screen
     # projection is emitted as-is, so the prior behaviour is preserved.

@@ -2,6 +2,13 @@
 
 Phase-1 findings the adversarial verification pass **disproved** by reading the real code. Recorded so nobody re-flags them - each is a sanctioned convention or a factual error in the original claim. Do NOT act on these.
 
+## Already-correct at HEAD by the time spec 076 implemented them (2026-07-01)
+
+Two bug findings the audit CONFIRMED on 2026-06-28 were, when spec 076 (PR #183) went to implement them, already correct in the code (fixed by intervening work / never actually broken). No change shipped for either; recorded so nobody re-flags them.
+
+- **driver-source-bone-enum-remap** (claimed: the `driver_source_bone` EnumProperty stores a positional index that a bone rename/reorder silently remaps) - **ALREADY CORRECT.** [_dynamic_items.py:57](../../../apps/blender/properties/_dynamic_items.py#L57) - `driver_bone_items` already emits `(bone.name, bone.name, "")` items, so the selection stores the bone NAME (the identifier is the first element), not a positional index; the module-level `_DRIVER_BONE_ITEMS_CACHE` also already pins the list against the EnumProperty GC bug. Nothing to fix.
+- **feet-landing-name-over-tag** (claimed: a mesh resolves to a PSD layer by name before tag) - **ALREADY CORRECT.** Every layer/mesh resolution in the photoshop importer is already tag-first / name-fallback: [`_layer_for_object`](../../../apps/blender/importers/photoshop/__init__.py#L216) resolves the stamped `proscenio_import_origin` before the object name, and [`_find_existing`](../../../apps/blender/importers/photoshop/planes.py#L315) checks the origin tag before a name match. No name-first path remains.
+
 - **bone-modes-cp-io** (claimed: misplaced - bpy custom-property IO in a bpy-free package) - **REFUTED.** [bone_modes.py](../../../apps/blender/core/skinning/bone_modes.py) imports bpy only under `TYPE_CHECKING`; there is no runtime bpy. Custom-property access is dict-style (`obj[...]` / `obj.get`), which is the **documented package-wide convention** (cp_keys.py:8-13, json_cp.py:10-13 state the runtime stays bpy-free precisely by using dict-style access that the headless writer and pytest satisfy without registering the addon). 11 of ~13 core/skinning modules do this. Moving the functions would break the existing bpy-free test and invert layering (bpy_helpers depend on core, not the reverse).
 
 - **validation-abspath-bpy** (claimed: misplaced - `abspath_or_none` imports bpy inside core/) - **REFUTED.** [_shared.py:50-56](../../../apps/blender/core/validation/_shared.py#L50) imports bpy **lazily inside the function body**, wrapped in try/except ImportError with a bpy-free fallback. The core/ contract (core/__init__.py:6-8) explicitly permits "import bpy lazily inside one function". Sanctioned pattern.

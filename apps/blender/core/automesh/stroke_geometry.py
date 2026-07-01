@@ -194,3 +194,19 @@ def snap_endpoint(
         raise ValueError(f"max_dist must be >= 0, got {max_dist}")
     idx = nearest_index(point, candidates, max_dist)
     return idx if idx >= 0 else None
+
+
+def apply_pen_axis_lock(world_pt: Point2D, last_pt: Point2D | None, axis: str) -> Point2D:
+    """Snap a new pen vert to share the locked axis with the last vert.
+
+    ``axis`` is "x" (horizontal - keep the last vert's world-Z) or "z"
+    (vertical - keep its world-X). An empty axis or a missing last vert returns
+    ``world_pt`` unchanged. Shared by the automesh open-stroke pen and the
+    manual-draw ``VertexPen``, which held identical copies.
+    """
+    if not axis or last_pt is None:
+        return world_pt
+    last_x, last_z = last_pt
+    if axis == "x":  # horizontal: keep the last vert's world-Z
+        return (world_pt[0], last_z)
+    return (last_x, world_pt[1])  # vertical: keep the last vert's world-X

@@ -70,6 +70,9 @@ from ...core.bpy_helpers.automesh.authoring_session import (
 from ...core.bpy_helpers.automesh.bridge import (  # type: ignore[import-not-found]
     collect_bone_segments,
 )
+from ...core.bpy_helpers.automesh.open_stroke_pen import (  # type: ignore[import-not-found]
+    OpenStrokePen,
+)
 from ...core.bpy_helpers.automesh.vertex_pen import VertexPen  # type: ignore[import-not-found]
 from ...core.skinning.authoring_stages import (  # type: ignore[import-not-found]
     AuthoringStage,
@@ -125,7 +128,6 @@ _DIGIT_KEYS = {
     "NUMPAD_8": 8,
     "NUMPAD_9": 9,
 }
-_PEN_SUBDIV_MAX = 20  # wheel can exceed the single-digit set; cap to keep CDT sane
 # Short stage titles; per-stage gesture chords render separately in the
 # statusbar via _status_bar.emit_authoring_chord_layout, so these stay
 # terse. The "N/M" prefix is derived per active mode by _stage_label, so
@@ -322,18 +324,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # contour) sets _draw_active so LMB is the click-pen; "point" / "auto"
         # leave _draw_active False (single-click drop / passive). The keyboard
         # stays free for X/Z axis lock + digit subdivisions, and Ctrl+Z stays
-        # undo because no modifier enters a mode any more. The pen polyline
-        # accumulates click-by-click and bakes its subdivision count on finish;
-        # _pen_points is mutated in-place so the live-preview draw handler keeps
-        # a stable reference.
+        # undo because no modifier enters a mode any more. The open-stroke pen
+        # line (points, per-edge subdivisions, axis lock) lives in OpenStrokePen
+        # (created after _live_preview below); the operator keeps only the draw-
+        # mode flag + the click-vs-drag capture buffers.
         self._active_tool: str = default_tool(self._stage)
         self._draw_active: bool = False
-        self._pen_active: bool = False
-        self._pen_kind: str = "stroke"  # committed Stroke kind: "stroke" or "cut"
-        self._pen_points: list[tuple[float, float]] = []
-        self._pen_subdivisions: int = 0  # current count (next edge / rubber-band)
-        self._pen_edge_subdivs: list[int] = []  # per placed-edge count (spec 070)
-        self._axis_lock: str = ""  # "", "x" (horizontal/world-X), "z" (vertical/world-Z)
         # Closed-loop island pen (spec 070): the shared VertexPen, armed when the
         # Edit-silhouette ADD / REMOVE tool is active. None when an open-stroke /
         # passive tool is active. It writes into _live_preview (below) so the
@@ -354,6 +350,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             "subdivisions": 0,  # ghost subdivision verts to preview
             "close_loop": False,  # island pen sets True for the cursor->first ghost
         }
+        # The in-progress open-stroke line (fold / cut / contour). Shares the
+        # _live_preview dict so its ghost renders through the existing overlay.
+        self._open_pen = OpenStrokePen(live_preview=self._live_preview)
 
         # Tooltip live state - single-element lists mutated in-place so the
         # registered POST_PIXEL draw handler always reads current values
@@ -689,34 +688,14 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _enter_draw(self, context: bpy.types.Context, kind: str) -> None:
         self._draw_active = True
-        self._pen_kind = kind
-        self._pen_active = False
-        self._pen_points.clear()
-        self._pen_subdivisions = 0
-        self._pen_edge_subdivs.clear()
-        self._axis_lock = ""
-        self._live_preview["active"] = True
-        self._live_preview["mode"] = "pen"
-        self._live_preview["kind"] = kind
-        self._live_preview["points"] = self._pen_points
-        self._live_preview["edge_subdivs"] = self._pen_edge_subdivs
-        self._live_preview["cursor"] = None
-        self._live_preview["axis"] = ""
-        self._live_preview["subdivisions"] = 0
-        self._live_preview["close_loop"] = False  # open-stroke pen: no closing ghost
+        self._open_pen.arm(kind)
         self._refresh_pen_tooltip()
         _tag_redraw_view3d(context)
 
     def _exit_draw(self, context: bpy.types.Context) -> None:
         self._draw_active = False
-        self._pen_active = False
         self._stroke_active = False
-        self._pen_points.clear()
-        self._pen_subdivisions = 0
-        self._pen_edge_subdivs.clear()
-        self._axis_lock = ""
-        self._live_preview["active"] = False
-        self._live_preview["cursor"] = None
+        self._open_pen.clear()
         self._refresh_pen_tooltip()
         _tag_redraw_view3d(context)
 
@@ -724,12 +703,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Clear all pen state on stage entry/exit so a stale draw mode,
         pen line, island, or live preview never carries across stages."""
         self._draw_active = False
-        self._pen_active = False
         self._stroke_active = False
-        self._pen_points.clear()
-        self._pen_subdivisions = 0
-        self._pen_edge_subdivs.clear()
-        self._axis_lock = ""
+        self._open_pen.clear()
         self._stroke_raw_points.clear()
         self._disarm_island_pen()
         self._live_preview["active"] = False
@@ -799,10 +774,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # is placed the line is a click-pen and a drag just adds a vert (clicks
         # and drags never mix within one line). Light the colored free-draw path
         # only while the pen is still empty.
-        if not self._pen_active:
+        if not self._open_pen.active:
             self._live_preview["active"] = True
             self._live_preview["mode"] = "free"
-            self._live_preview["kind"] = self._pen_kind
+            self._live_preview["kind"] = self._open_pen.kind
             self._live_preview["points"] = self._stroke_raw_points
             self._live_preview["cursor"] = None
         return {"RUNNING_MODAL"}
@@ -812,7 +787,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     ) -> set[str] | None:
         if event.type in {"WHEELUPMOUSE", "WHEELDOWNMOUSE"}:
             delta = 1 if event.type == "WHEELUPMOUSE" else -1
-            self._set_subdivisions(context, self._pen_subdivisions + delta)
+            self._set_subdivisions(context, self._open_pen.subdivisions + delta)
             return {"RUNNING_MODAL"}
         if event.value != "PRESS":
             return None
@@ -847,7 +822,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # Pen polyline in progress -> every LMB adds a vert (drag included), so
         # clicks and drags never mix within one line. Free-draw is only the
         # opening gesture (pen still empty).
-        if self._pen_active:
+        if self._open_pen.active:
             return self._pen_click(context, event, raw[-1], stage)
         if self._is_click(event, start):
             return self._pen_click(context, event, raw[0], stage)
@@ -856,10 +831,10 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if stage == "contour":
             return self._pen_click(context, event, raw[-1], stage)
         # Drag from an empty pen = free-draw stroke (commit immediately, stay in DRAW).
-        self._commit_drag_stroke(context, raw, self._pen_kind, stage)
+        self._commit_drag_stroke(context, raw, self._open_pen.kind, stage)
         # Restore the pen-polyline live view (free-draw drag was transient).
         self._live_preview["mode"] = "pen"
-        self._live_preview["points"] = list(self._pen_points)
+        self._live_preview["points"] = list(self._open_pen.points)
         self._live_preview["cursor"] = None
         self._append_persist(context, stage)
         return {"RUNNING_MODAL"}
@@ -878,60 +853,34 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     ) -> set[str]:
         """Append a pen vert: snap to a nearby existing vert / close the loop,
         else axis-lock the raw point."""
-        pt, close = self._snap_pen_click(context, event, world_pt, stage)
-        self._pen_active = True
-        self._pen_points.append(pt)
-        if len(self._pen_points) >= 2:
-            # The new edge bakes the current subdivision count (spec 070 per-edge:
-            # later scrolls only change the next segment).
-            self._pen_edge_subdivs.append(self._pen_subdivisions)
-        self._live_preview["active"] = True
-        self._live_preview["mode"] = "pen"
-        self._live_preview["kind"] = self._pen_kind
-        self._live_preview["points"] = list(self._pen_points)
-        self._live_preview["edge_subdivs"] = list(self._pen_edge_subdivs)
-        self._live_preview["cursor"] = None
+        pt, close = self._resolve_pen_click(context, event, world_pt, stage)
+        self._open_pen.place(pt)
         if close:
             # Clicked the first vert again -> close the loop + commit.
             return self._pen_finish(context, stage)
         _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
-    def _snap_pen_click(
+    def _resolve_pen_click(
         self,
         context: bpy.types.Context,
         event: bpy.types.Event,
         world_pt: tuple[float, float],
         stage: str,
     ) -> tuple[tuple[float, float], bool]:
-        """Resolve a pen click against nearby verts. Returns (point, close_loop):
+        """Project the pick radius (bpy) then delegate the resolution to the pen.
 
-        - click within the pick radius of the current line's FIRST vert ->
-          (first vert, True) to close the loop;
-        - click on an existing vert (committed strokes of this stage + outer
-          contour) -> (that exact vert, False) to union rather than stack a
-          near-duplicate;
-        - otherwise -> (axis-locked world point, False).
+        The pen decides close-loop / union-snap / axis-lock; here we only convert
+        the screen-space pick radius to a squared world distance at the cursor.
         """
         mouse = region_event_to_xz(context, event)
         near = region_event_to_xz_offset(context, event, dx=self._STROKE_PICK_RADIUS_PX)
         if mouse is None or near is None:
-            return self._apply_axis_lock(world_pt), False
+            return self._open_pen.apply_axis_lock(world_pt), False
         pick_d2 = (near[0] - mouse[0]) ** 2 + (near[1] - mouse[1]) ** 2
-        if len(self._pen_points) >= 2:
-            fx, fz = self._pen_points[0]
-            if (fx - mouse[0]) ** 2 + (fz - mouse[1]) ** 2 <= pick_d2:
-                return (fx, fz), True
-        best: tuple[float, float] | None = None
-        best_d2 = pick_d2
-        for cx, cz in self._pen_snap_candidates(stage):
-            d2 = (cx - mouse[0]) ** 2 + (cz - mouse[1]) ** 2
-            if d2 <= best_d2:
-                best_d2 = d2
-                best = (cx, cz)
-        if best is not None:
-            return best, False
-        return self._apply_axis_lock(world_pt), False
+        return self._open_pen.resolve_click(
+            world_pt, mouse, pick_d2, self._pen_snap_candidates(stage)
+        )
 
     def _pen_snap_candidates(self, stage: str) -> list[tuple[float, float]]:
         """World-XZ verts a pen click may union with: committed strokes of the
@@ -949,22 +898,15 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     def _apply_axis_lock(self, world_pt: tuple[float, float]) -> tuple[float, float]:
         """Snap the new vert to share the locked axis with the last pen vert."""
-        from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
-            apply_pen_axis_lock,
-        )
-
-        last = self._pen_points[-1] if self._pen_points else None
-        return apply_pen_axis_lock(world_pt, last, self._axis_lock)
+        return self._open_pen.apply_axis_lock(world_pt)
 
     def _toggle_axis_lock(self, context: bpy.types.Context, axis: str) -> None:
-        self._axis_lock = "" if self._axis_lock == axis else axis
-        self._live_preview["axis"] = self._axis_lock
+        self._open_pen.toggle_axis(axis)
         self._refresh_pen_tooltip()
         _tag_redraw_view3d(context)
 
     def _set_subdivisions(self, context: bpy.types.Context, n: int) -> None:
-        self._pen_subdivisions = max(0, min(_PEN_SUBDIV_MAX, n))
-        self._live_preview["subdivisions"] = self._pen_subdivisions
+        self._open_pen.set_subdivisions(n)
         self._refresh_pen_tooltip()
         _tag_redraw_view3d(context)
 
@@ -987,10 +929,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         """Bake subdivisions into the pen polyline + commit it, then re-arm the
         same pen tool so the next line draws without re-selecting (Tab picks the
         tool once)."""
-        pts = list(self._pen_points)
-        edge_subdivs = list(self._pen_edge_subdivs)
-        kind = self._pen_kind
-        subdiv = self._pen_subdivisions
+        pts = list(self._open_pen.points)
+        kind = self._open_pen.kind
+        subdiv = self._open_pen.subdivisions
+        # Per-edge subdivide (spec 070): each segment keeps the count it was drawn
+        # with. Capture the dense polyline BEFORE _exit_draw clears the pen.
+        dense = self._open_pen.dense_polyline()
         self._exit_draw(context)
         if stage == "contour":
             self._commit_contour(context, pts, subdiv)
@@ -999,13 +943,6 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                 self._user_strokes.append({"kind": "point", "points": [pts[0]]})
                 self._persist_and_redraw(context)
         elif len(pts) >= 2:
-            from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
-                subdivide_polyline_edges,
-            )
-
-            # Per-edge subdivide (spec 070): each segment keeps the count it was
-            # drawn with, not a single global value.
-            dense = subdivide_polyline_edges(pts, edge_subdivs)
             self._commit_pen_stroke(context, kind, dense, stage)
         if tool_is_pen(self._active_tool):
             self._enter_draw(context, self._tool_stroke_kind(self._active_tool))
@@ -1152,15 +1089,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         progress; with no pen verts placed this is a no-op rather than a
         silent undo of the last committed stroke (the artist has no visual
         cue that fallback would have happened)."""
-        if not self._pen_points:
+        if not self._open_pen.undo_last_vert():
             return {"RUNNING_MODAL"}
-        self._pen_points.pop()
-        if self._pen_edge_subdivs:
-            self._pen_edge_subdivs.pop()  # drop the removed edge's baked count
-        self._pen_active = bool(self._pen_points)
-        self._live_preview["points"] = list(self._pen_points)
-        self._live_preview["edge_subdivs"] = list(self._pen_edge_subdivs)
-        self._live_preview["active"] = bool(self._pen_points)
         _tag_redraw_view3d(context)
         return {"RUNNING_MODAL"}
 
@@ -1177,7 +1107,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             self._delete_hover_points.clear()
             cursor = region_event_to_xz(context, event)
             self._live_preview["cursor"] = (
-                self._apply_axis_lock(cursor) if (cursor and self._pen_active) else cursor
+                self._apply_axis_lock(cursor) if (cursor and self._open_pen.active) else cursor
             )
             if self._stroke_active and cursor:
                 self._stroke_raw_points.append(cursor)

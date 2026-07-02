@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .._shared.props_access import active_armature
+from .._shared.armature_resolve import active_armature
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import bpy

@@ -14,11 +14,13 @@ from typing import ClassVar
 
 import bpy
 
+from ...core._shared.armature_resolve import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
     PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
-    active_armature,
     require_object_visible,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]

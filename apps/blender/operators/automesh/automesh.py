@@ -27,11 +27,13 @@ from bpy.props import (
     IntProperty,
 )
 
+from ...core._shared.armature_resolve import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
 )
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
-    active_armature,
     element_type_of,
     resolve_pixels_per_unit,
     scene_skinning,

@@ -18,11 +18,11 @@ from typing import ClassVar, cast
 import bpy
 from mathutils import Vector
 
+from ...core._shared.armature_resolve import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
-)
-from ...core._shared.props_access import (  # type: ignore[import-not-found]
-    active_armature,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,

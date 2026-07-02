@@ -17,8 +17,10 @@ from typing import ClassVar
 import bpy
 from bpy.props import EnumProperty, FloatProperty
 
-from ...core._shared.props_access import (  # type: ignore[import-not-found]
+from ...core._shared.armature_resolve import (  # type: ignore[import-not-found]
     active_armature,
+)
+from ...core._shared.props_access import (  # type: ignore[import-not-found]
     scene_skinning,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]

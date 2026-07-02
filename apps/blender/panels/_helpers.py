@@ -11,13 +11,15 @@ from typing import TYPE_CHECKING
 
 import bpy
 
+from ..core._shared.armature_resolve import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ..core._shared.feature_status import (  # type: ignore[import-not-found]
     FeatureStatus,
     badge_for,
     status_for,
 )
 from ..core._shared.props_access import (  # type: ignore[import-not-found]
-    active_armature,
     scene_skinning,
 )
 from ..core.bpy_helpers.preview_icons import (  # type: ignore[import-not-found]

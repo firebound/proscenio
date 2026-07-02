@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from .._shared.armature_resolve import resolve_export_armature
 from .._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING
-from .._shared.props_access import resolve_export_armature
 from ._shared import armature_bone_names
 from .active_element import validate_active_element
 from .checks.atlas_files import validate_atlas_files

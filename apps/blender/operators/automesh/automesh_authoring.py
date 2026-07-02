@@ -26,6 +26,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
     report_warn,
 )
+from ...core.automesh.stroke_pick import stroke_index_within  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
     tag_redraw_view3d_statusbar,
 )
@@ -1494,12 +1495,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if near_world is None:
             return None
         pick_d2 = (near_world[0] - mouse_world[0]) ** 2 + (near_world[1] - mouse_world[1]) ** 2
-        for idx, stroke in enumerate(strokes):
-            for pt in stroke["points"]:
-                d2 = (pt[0] - mouse_world[0]) ** 2 + (pt[1] - mouse_world[1]) ** 2
-                if d2 <= pick_d2:
-                    return idx
-        return None
+        return stroke_index_within(strokes, mouse_world, pick_d2)
 
     def _update_delete_hover(
         self, context: bpy.types.Context, event: bpy.types.Event, strokes: list[Stroke]

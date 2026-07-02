@@ -236,10 +236,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
     _stage: AuthoringStage
     _output: StageOutput
-    _handles: OverlayHandles
     _session: AuthoringSession | None
     _last_params: StageParams | None
-    _timer: bpy.types.Timer | None
+    # Overlay draw-handler set + modal timer held at CLASS level so an addon
+    # reload while the modal is live can sweep them in unregister() (a per-
+    # instance handle is unreachable after reload -> leaked draw handlers).
+    _handles: ClassVar[OverlayHandles | None] = None
+    _timer: ClassVar[bpy.types.Timer | None] = None
     _statusbar_appended: bool = False
     _current_stage_label: str = _stage_label(AuthoringStage.OUTER, "SIMPLE")
     # Read by the module-level statusbar draw callback to pick per-stage chords.
@@ -303,8 +306,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         self._interior_mode: str = params.interior_mode
         self._active_stages: list[AuthoringStage] = _stages_for_mode(self._interior_mode)
         self._output = StageOutput()
-        self._handles = empty_overlay_handles()
-        self._timer = None
+        type(self)._handles = empty_overlay_handles()
+        type(self)._timer = None
         # Click-vs-drag tracking + free-draw sample buffer (shared by both pen
         # stages). _stroke_raw_points is mutated in-place so any handler holding
         # it by reference stays valid.
@@ -370,12 +373,12 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
         try:
             self._output.outer = compute_outer(obj, image, params)
-            self._handles = register_overlay(self._stage, self._output)
+            type(self)._handles = register_overlay(self._stage, self._output)
             type(self)._current_stage_label = _stage_label(self._stage, self._interior_mode)
             type(self)._current_stage = self._stage
             type(self)._current_interior_mode = self._interior_mode
             type(self)._current_active_tool = self._active_tool
-            self._timer = context.window_manager.event_timer_add(
+            type(self)._timer = context.window_manager.event_timer_add(
                 _TIMER_INTERVAL, window=context.window
             )
             self._append_statusbar()
@@ -1537,12 +1540,13 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # teardown (mirrors edit_weights._finish).
         mark_stopped(_MODAL_NAME)
         try:
-            with contextlib.suppress(RuntimeError):
-                unregister_overlay(self._handles)
+            if self._handles is not None:
+                with contextlib.suppress(RuntimeError):
+                    unregister_overlay(self._handles)
             if self._timer is not None:
                 with contextlib.suppress(RuntimeError):
                     context.window_manager.event_timer_remove(self._timer)
-                self._timer = None
+                type(self)._timer = None
             self._remove_statusbar()
             if self._session is not None:
                 restore_session(context, self._session)
@@ -1648,6 +1652,27 @@ class PROSCENIO_OT_automesh_step(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def _sweep_orphan_handlers() -> None:
+    """Remove overlay draw handlers / timer / statusbar leaked across a reload.
+
+    Called from :func:`unregister`. When the addon reloads while the authoring
+    modal is live, its per-class overlay handles + event timer + statusbar draw
+    are otherwise unreachable and leak. Safe to call repeatedly; missing handles
+    are swallowed (mirrors ``quick_armature._sweep_orphan_handlers``).
+    """
+    cls = PROSCENIO_OT_automesh_authoring
+    if cls._handles is not None:
+        unregister_overlay(cls._handles)
+        cls._handles = None
+    if cls._timer is not None:
+        wm = getattr(bpy.context, "window_manager", None)
+        if wm is not None:
+            with contextlib.suppress(ValueError, RuntimeError):
+                wm.event_timer_remove(cls._timer)
+        cls._timer = None
+    remove_statusbar_draw(cls, _draw_statusbar_authoring)
+
+
 _classes: tuple[type, ...] = (PROSCENIO_OT_automesh_authoring, PROSCENIO_OT_automesh_step)
 
 
@@ -1657,5 +1682,6 @@ def register() -> None:
 
 
 def unregister() -> None:
+    _sweep_orphan_handlers()
     for cls in reversed(_classes):
         bpy.utils.unregister_class(cls)

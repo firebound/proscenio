@@ -25,7 +25,7 @@ def test_native_ctrlp_bind_then_automesh_regen_preserves_weights(automesh_fixtur
     """
     obj = _activate("hand")
     bpy.context.scene.proscenio.active_armature = bpy.data.objects["automesh.hand_rig"]
-    bpy.context.scene.proscenio.skinning.preserve_on_regen = True
+    bpy.context.scene.proscenio.skinning.automesh.preserve_on_regen = True
     # Clear any sidecar the fixture may have stamped.
     if "proscenio_weight_sidecar" in obj:
         del obj["proscenio_weight_sidecar"]

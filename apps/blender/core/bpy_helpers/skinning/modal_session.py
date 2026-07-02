@@ -82,5 +82,5 @@ def restore(context: bpy.types.Context, session: EditWeightsSession) -> None:
 
 def _restore_overlay_flag(context: bpy.types.Context, prior: bool) -> None:
     skinning = scene_skinning(context)
-    if skinning is not None and hasattr(skinning, "show_provenance_overlay"):
-        skinning.show_provenance_overlay = prior
+    if skinning is not None and hasattr(skinning.authoring, "show_provenance_overlay"):
+        skinning.authoring.show_provenance_overlay = prior

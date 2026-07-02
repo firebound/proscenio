@@ -1524,7 +1524,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
     def _resolve_interior_spacing(self, context: bpy.types.Context) -> float:
         """Return the interior_spacing param from scene props (same source as _snapshot_params)."""
         skinning = context.scene.proscenio.skinning
-        return float(skinning.automesh_interior_spacing)
+        return float(skinning.automesh.interior_spacing)
 
     def cancel(self, context: bpy.types.Context) -> None:
         # Blender calls cancel() when the modal is killed externally (window close,
@@ -1563,18 +1563,20 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
 
 def _snapshot_params(context: bpy.types.Context) -> StageParams:
     skinning = context.scene.proscenio.skinning
+    automesh = skinning.automesh
+    authoring = skinning.authoring
     return StageParams(
-        resolution=float(skinning.automesh_resolution),
-        alpha_threshold=int(skinning.automesh_alpha_threshold),
-        margin_pixels=int(skinning.automesh_margin_pixels),
-        contour_vertices=int(skinning.automesh_contour_vertices),
-        inner_loop_count=int(skinning.authoring_inner_loop_count),
-        inner_loop_spacing=float(skinning.authoring_inner_loop_spacing),
-        interior_spacing=float(skinning.automesh_interior_spacing),
-        bone_radius=float(skinning.automesh_bone_radius),
-        bone_factor=int(skinning.automesh_bone_factor),
-        cut_margin=float(skinning.authoring_cut_margin),
-        interior_mode=cast(Literal["SIMPLE", "DENSE"], skinning.automesh_interior_mode),
+        resolution=float(automesh.resolution),
+        alpha_threshold=int(automesh.alpha_threshold),
+        margin_pixels=int(automesh.margin_pixels),
+        contour_vertices=int(automesh.contour_vertices),
+        inner_loop_count=int(authoring.inner_loop_count),
+        inner_loop_spacing=float(authoring.inner_loop_spacing),
+        interior_spacing=float(automesh.interior_spacing),
+        bone_radius=float(automesh.bone_radius),
+        bone_factor=int(automesh.bone_factor),
+        cut_margin=float(authoring.cut_margin),
+        interior_mode=cast(Literal["SIMPLE", "DENSE"], automesh.interior_mode),
     )
 
 

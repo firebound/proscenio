@@ -122,10 +122,10 @@ def test_density_under_bones_defaults_off(automesh_fixture):
     reads this PG value at invoke, so the PG default drives the behaviour; only
     a DENSE session with a picker armature consumes it."""
     from proscenio.properties.scene_props import (
-        ProscenioSkinningProps,  # type: ignore[import-not-found]
+        ProscenioAutomeshProps,  # type: ignore[import-not-found]
     )
 
-    pg = ProscenioSkinningProps.bl_rna.properties["automesh_density_under_bones"]
+    pg = ProscenioAutomeshProps.bl_rna.properties["density_under_bones"]
     assert pg.default is False
 
 
@@ -137,10 +137,10 @@ def test_trace_resolution_copy_is_not_inverted(automesh_fixture):
     must not carry the inverted claim."""
     from proscenio.core.help_topics import HELP_TOPICS  # type: ignore[import-not-found]
     from proscenio.properties.scene_props import (
-        ProscenioSkinningProps,  # type: ignore[import-not-found]
+        ProscenioAutomeshProps,  # type: ignore[import-not-found]
     )
 
-    prop = ProscenioSkinningProps.bl_rna.properties["automesh_resolution"]
+    prop = ProscenioAutomeshProps.bl_rna.properties["resolution"]
     assert prop.name == "Trace resolution"
     assert "Lower values produce more" not in prop.description
     topic = HELP_TOPICS["automesh_alpha"]

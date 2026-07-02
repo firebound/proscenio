@@ -62,20 +62,20 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
             # The trace params both entry points read (Automesh from Alpha + the
             # Interactive modal) live on the parent so neither subpanel hides
             # them; the alpha-only knobs stay in the Automesh from Alpha subpanel.
-            layout.prop(skinning_props, "automesh_interior_mode")
+            layout.prop(skinning_props.automesh, "interior_mode")
             col = layout.column(align=True)
-            col.prop(skinning_props, "automesh_contour_vertices")
+            col.prop(skinning_props.automesh, "contour_vertices")
             # Interior spacing is not dense-only: the interactive modal reads it
             # in SIMPLE mode too (free-draw resample + fold snap radius).
-            col.prop(skinning_props, "automesh_interior_spacing")
-            is_dense = skinning_props.automesh_interior_mode == "DENSE"
+            col.prop(skinning_props.automesh, "interior_spacing")
+            is_dense = skinning_props.automesh.interior_mode == "DENSE"
             dense_col = col.column(align=True)
             dense_col.active = is_dense
-            dense_col.prop(skinning_props, "automesh_density_under_bones")
+            dense_col.prop(skinning_props.automesh, "density_under_bones")
             sub = dense_col.column(align=True)
-            sub.active = is_dense and bool(skinning_props.automesh_density_under_bones)
-            sub.prop(skinning_props, "automesh_bone_radius")
-            sub.prop(skinning_props, "automesh_bone_factor")
+            sub.active = is_dense and bool(skinning_props.automesh.density_under_bones)
+            sub.prop(skinning_props.automesh, "bone_radius")
+            sub.prop(skinning_props.automesh, "bone_factor")
 
 
 class PROSCENIO_PT_automesh_alpha(bpy.types.Panel):
@@ -185,14 +185,14 @@ def _draw_automesh_alpha(
     """
     if skinning_props is not None:
         col = layout.column(align=True)
-        col.prop(skinning_props, "automesh_resolution")
-        col.prop(skinning_props, "automesh_alpha_threshold")
-        col.prop(skinning_props, "automesh_margin_pixels")
+        col.prop(skinning_props.automesh, "resolution")
+        col.prop(skinning_props.automesh, "alpha_threshold")
+        col.prop(skinning_props.automesh, "margin_pixels")
         col.separator()
-        col.prop(skinning_props, "preserve_base_quad")
+        col.prop(skinning_props.automesh, "preserve_base_quad")
         # Regen reprojects weights when ON; surfaced here (not only in the
         # Snapshot subpanel) because this button is what triggers the regen.
-        col.prop(skinning_props, "preserve_on_regen")
+        col.prop(skinning_props.automesh, "preserve_on_regen")
     layout.operator(
         "proscenio.automesh_from_alpha",
         text="Automesh from Alpha",
@@ -264,14 +264,14 @@ def _draw_automesh_interactive(
     layout.label(text="Interactive trace and edit")
     if skinning_props is not None:
         row = layout.row(align=True)
-        row.prop(skinning_props, "authoring_inner_loop_count", text="Loops")
-        row.prop(skinning_props, "authoring_inner_loop_spacing", text="Spacing")
+        row.prop(skinning_props.authoring, "inner_loop_count", text="Loops")
+        row.prop(skinning_props.authoring, "inner_loop_spacing", text="Spacing")
         row = layout.row()
-        row.prop(skinning_props, "authoring_cut_margin", text="Cut margin")
+        row.prop(skinning_props.authoring, "cut_margin", text="Cut margin")
         # APPLY regenerates the mesh + reprojects weights when ON; mirror the
         # toggle here so the regen trigger and its weight-preserve control sit
         # together.
-        layout.prop(skinning_props, "preserve_on_regen")
+        layout.prop(skinning_props.automesh, "preserve_on_regen")
     if running:
         _draw_automesh_step_nav(layout)
     row = layout.row()
@@ -325,9 +325,9 @@ def _draw_manual_mesh(layout: bpy.types.UILayout, context: bpy.types.Context) ->
     if skinning_props is not None:
         # Spec 070 C1: Manual Mesh has its own interior-mode toggle (independent
         # of the automesh fields); DENSE reveals the shared interior spacing knob.
-        layout.prop(skinning_props, "manual_interior_mode")
-        if skinning_props.manual_interior_mode == "DENSE":
-            layout.prop(skinning_props, "automesh_interior_spacing")
+        layout.prop(skinning_props.automesh, "manual_interior_mode")
+        if skinning_props.automesh.manual_interior_mode == "DENSE":
+            layout.prop(skinning_props.automesh, "interior_spacing")
     row = layout.row()
     row.enabled = running or _authoring_button_enabled(obj)
     row.operator(
@@ -359,7 +359,7 @@ def _draw_debug_pipeline(
     """
     if skinning_props is None:
         return
-    layout.prop(skinning_props, "debug_stage", text="")
+    layout.prop(skinning_props.debug, "stage", text="")
     layout.operator(
         "proscenio.clear_automesh_debug",
         text="Clear Debug Companions",

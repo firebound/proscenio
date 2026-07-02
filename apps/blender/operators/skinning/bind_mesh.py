@@ -107,9 +107,9 @@ class PROSCENIO_OT_bind_mesh_to_armature(bpy.types.Operator):
     def invoke(self, context: bpy.types.Context, _event: bpy.types.Event) -> set[str]:
         skinning = scene_skinning(context)
         if skinning is not None:
-            self.bind_init_mode = str(skinning.bind_init_mode)
-            self.falloff_power = float(skinning.bind_falloff_power)
-            self.max_distance = float(skinning.bind_max_distance)
+            self.bind_init_mode = str(skinning.bind.init_mode)
+            self.falloff_power = float(skinning.bind.falloff_power)
+            self.max_distance = float(skinning.bind.max_distance)
         return self.execute(context)
 
     def _bind_single(

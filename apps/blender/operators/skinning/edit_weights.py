@@ -98,7 +98,9 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
 
         skinning = getattr(scene_props, "skinning", None)
         prior_overlay = (
-            bool(getattr(skinning, "show_provenance_overlay", False)) if skinning else False
+            bool(getattr(skinning.authoring, "show_provenance_overlay", False))
+            if skinning
+            else False
         )
         prior_preset = snapshot_paint_preset(context)
         prior_visibility = snapshot_bone_visibility(armature)
@@ -109,8 +111,8 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
         mirror_x = read_mirror_flag(armature)
         try:
             _enter_weight_paint(context, obj, armature, mirror_x=mirror_x)
-            if skinning is not None and hasattr(skinning, "show_provenance_overlay"):
-                skinning.show_provenance_overlay = True
+            if skinning is not None and hasattr(skinning.authoring, "show_provenance_overlay"):
+                skinning.authoring.show_provenance_overlay = True
             self._overlay_handle = register_handler(obj, mode="provenance")
             self._stroke_tracker = StrokeDiffTracker(obj, sidecar)
             self._append_statusbar()

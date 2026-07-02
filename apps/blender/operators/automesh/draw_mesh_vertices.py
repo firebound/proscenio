@@ -688,7 +688,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         """Scene params with the interior mode taken from the Manual Mesh panel's
         own ``manual_interior_mode`` toggle (spec 070 C1) - independent of the
         automesh trace fields."""
-        mode = context.scene.proscenio.skinning.manual_interior_mode
+        mode = context.scene.proscenio.skinning.automesh.manual_interior_mode
         return cast("StageParams", replace(_snapshot_params(context), interior_mode=mode))
 
     def _register_overlay(self) -> OverlayHandles:

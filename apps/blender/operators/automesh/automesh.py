@@ -179,17 +179,18 @@ class PROSCENIO_OT_automesh_from_alpha(bpy.types.Operator):
         # both reflect the user's panel settings.
         skinning = scene_skinning(context)
         if skinning is not None:
-            self.resolution = float(skinning.automesh_resolution)
-            self.alpha_threshold = int(skinning.automesh_alpha_threshold)
-            self.margin_pixels = int(skinning.automesh_margin_pixels)
-            self.contour_vertices = int(skinning.automesh_contour_vertices)
-            self.interior_mode = str(skinning.automesh_interior_mode)
-            self.interior_spacing = float(skinning.automesh_interior_spacing)
-            self.density_under_bones = bool(skinning.automesh_density_under_bones)
-            self.bone_radius = float(skinning.automesh_bone_radius)
-            self.bone_factor = int(skinning.automesh_bone_factor)
-            self.preserve_base_quad = bool(skinning.preserve_base_quad)
-            self.debug_stage = str(skinning.debug_stage)
+            automesh = skinning.automesh
+            self.resolution = float(automesh.resolution)
+            self.alpha_threshold = int(automesh.alpha_threshold)
+            self.margin_pixels = int(automesh.margin_pixels)
+            self.contour_vertices = int(automesh.contour_vertices)
+            self.interior_mode = str(automesh.interior_mode)
+            self.interior_spacing = float(automesh.interior_spacing)
+            self.density_under_bones = bool(automesh.density_under_bones)
+            self.bone_radius = float(automesh.bone_radius)
+            self.bone_factor = int(automesh.bone_factor)
+            self.preserve_base_quad = bool(automesh.preserve_base_quad)
+            self.debug_stage = str(skinning.debug.stage)
         return self.execute(context)
 
     def execute(self, context: bpy.types.Context) -> set[str]:

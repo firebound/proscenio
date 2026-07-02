@@ -12,7 +12,7 @@ from typing import ClassVar
 
 import bpy
 
-from ..core._shared.props_access import describe_export_target  # type: ignore[import-not-found]
+from ..core._shared.armature_resolve import describe_export_target  # type: ignore[import-not-found]
 from ._helpers import draw_subpanel_header
 
 

@@ -17,7 +17,6 @@ snap/lock/name math is unit-tested in ``tests/test_quick_armature_math.py``.
 from __future__ import annotations
 
 import contextlib
-from typing import Any, ClassVar
 
 import bpy
 import pytest
@@ -43,6 +42,9 @@ def quick_armature_session(automesh_fixture):
     if bpy.context.object is not None and bpy.context.object.mode != "OBJECT":
         with contextlib.suppress(RuntimeError):
             bpy.ops.object.mode_set(mode="OBJECT")
+    from proscenio.core.bpy_helpers.armature.bone_session import (  # type: ignore[import-not-found]
+        BoneSession,
+    )
     from proscenio.operators.armature.quick_armature import (  # type: ignore[import-not-found]
         PROSCENIO_OT_quick_armature as QA,
     )
@@ -67,8 +69,7 @@ def quick_armature_session(automesh_fixture):
         _target_armature_name = ""
         _name_prefix = "qbone"
         _last_bone_name = ""
-        _session_records: ClassVar[list[Any]] = []
-        _redo_records: ClassVar[list[Any]] = []
+        _session = BoneSession()
         _ctrl_held = False
         _snap_increment = 1.0
         _drag_head = None
@@ -102,7 +103,7 @@ def test_create_bone_appends_to_session_stack(quick_armature_session):
     op._create_bone(
         bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
-    assert len(cls._session_records) == 1
+    assert len(cls._session.records) == 1
     assert len(_bones(arm)) == 1
     assert cls._last_bone_name == _bones(arm)[0].name
 
@@ -128,11 +129,11 @@ def test_create_clears_the_redo_stack(quick_armature_session):
         bpy.context, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
     op._undo_last_bone(bpy.context)
-    assert len(cls._redo_records) == 1
+    assert len(cls._session.redo) == 1
     op._create_bone(
         bpy.context, (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), parent_to_last=False, connect=False
     )
-    assert len(cls._redo_records) == 0, "a fresh bone must clear the redo history"
+    assert len(cls._session.redo) == 0, "a fresh bone must clear the redo history"
 
 
 def test_undo_to_empty_then_redo_restores_chain(quick_armature_session):
@@ -148,7 +149,7 @@ def test_undo_to_empty_then_redo_restores_chain(quick_armature_session):
 
     op._undo_last_bone(bpy.context)
     assert len(_bones(arm)) == 1
-    assert len(cls._redo_records) == 1
+    assert len(cls._session.redo) == 1
     op._undo_last_bone(bpy.context)
     assert len(_bones(arm)) == 0
     assert cls._last_bone_name == ""
@@ -156,7 +157,7 @@ def test_undo_to_empty_then_redo_restores_chain(quick_armature_session):
     op._redo_last_bone(bpy.context)
     op._redo_last_bone(bpy.context)
     assert _bone_names(arm) == full, "redo did not restore the same bones in order"
-    assert len(cls._redo_records) == 0
+    assert len(cls._session.redo) == 0
     assert _bones(arm)[1].parent is not None, "redo lost the chain parenting"
 
 
@@ -231,7 +232,7 @@ def test_exit_requested_finishes_modal_on_next_event(quick_armature_session):
 
     op._exit = _fake_exit  # type: ignore[method-assign]
     cls._drag_head = None
-    cls._session_records = []
+    cls._session.clear()
     cls._exit_requested = True
 
     result = op.modal(bpy.context, object())

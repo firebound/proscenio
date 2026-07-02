@@ -20,17 +20,31 @@ from core.validation.active_slot import (  # noqa: E402
     _check_slot_default,
     _has_bone_transform_keys,
 )
-from core.validation.export import (  # noqa: E402
-    _validate_atlas_files,
-    _validate_bone_orientation,
-    _validate_driver_rotation_modes,
-    _validate_element_against_armature,
-    _validate_ik_bake,
-    _validate_mesh_flatness,
-    _validate_slots,
-    _validate_sprite_frame_uvs,
-    validate_export,
+from core.validation.checks.atlas_files import (  # noqa: E402
+    validate_atlas_files as _validate_atlas_files,
 )
+from core.validation.checks.bone_orientation import (  # noqa: E402
+    validate_bone_orientation as _validate_bone_orientation,
+)
+from core.validation.checks.driver_rotation import (  # noqa: E402
+    validate_driver_rotation_modes as _validate_driver_rotation_modes,
+)
+from core.validation.checks.element_armature import (  # noqa: E402
+    validate_element_against_armature as _validate_element_against_armature,
+)
+from core.validation.checks.ik_bake import (  # noqa: E402
+    validate_ik_bake as _validate_ik_bake,
+)
+from core.validation.checks.mesh_flatness import (  # noqa: E402
+    validate_mesh_flatness as _validate_mesh_flatness,
+)
+from core.validation.checks.slots import (  # noqa: E402
+    validate_slots as _validate_slots,
+)
+from core.validation.checks.sprite_frame_uvs import (  # noqa: E402
+    validate_sprite_frame_uvs as _validate_sprite_frame_uvs,
+)
+from core.validation.export import validate_export  # noqa: E402
 from core.validation.issue import Issue  # noqa: E402
 
 # spec 037: the writer reads each per-Object field from its ``proscenio_*``

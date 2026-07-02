@@ -124,7 +124,7 @@ def test_restore_returns_overlay_flag_to_prior(automesh_fixture):
     )
 
     skinning = bpy.context.scene.proscenio.skinning
-    skinning.show_provenance_overlay = False
+    skinning.authoring.show_provenance_overlay = False
     session = capture_session(
         bpy.context,
         obj,
@@ -133,11 +133,11 @@ def test_restore_returns_overlay_flag_to_prior(automesh_fixture):
         snapshot_bone_visibility(armature),
         overlay_flag=False,
     )
-    skinning.show_provenance_overlay = True  # modal turns it on
+    skinning.authoring.show_provenance_overlay = True  # modal turns it on
 
     restore_session(bpy.context, session)
 
-    assert skinning.show_provenance_overlay is False
+    assert skinning.authoring.show_provenance_overlay is False
 
 
 def test_panel_button_present_when_sidecar_populated(automesh_fixture):

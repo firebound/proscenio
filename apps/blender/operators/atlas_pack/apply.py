@@ -17,13 +17,9 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_warn,
 )
 from ...core.uv_bounds import remap_uv_into_slot  # type: ignore[import-not-found]
-from ._paths import (
-    duplicate_active_uv_layer,
-    first_texture_image_name,
-    packed_atlas_paths,
-    pre_pack_snapshot_for,
-    swap_image_in_materials,
-)
+from ._materials import first_texture_image_name, swap_image_in_materials
+from ._paths import packed_atlas_paths
+from ._snapshot import duplicate_active_uv_layer, pre_pack_snapshot_for
 
 _PACKED_ATLAS_MAT_NAME = "Proscenio.PackedAtlas"
 

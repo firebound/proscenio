@@ -296,3 +296,36 @@ def test_output_pins_manual_outer_and_folds_the_provisional_chain(automesh_fixtu
     # A chain shorter than 2 verts contributes no provisional stroke.
     probe._fold_chain = [(0.1, 0.1)]
     assert len(probe._output(ring).user_strokes) == 1
+
+
+def test_sweep_orphan_handlers_removes_leaked_overlay_and_statusbar(automesh_fixture, monkeypatch):
+    """A reload while the Manual Mesh modal is live leaks the class-held overlay
+    handles + statusbar draw (the per-instance handle is unreachable after
+    reload). unregister() -> _sweep_orphan_handlers must remove both and null the
+    class handle so a second reload does not double-remove."""
+    from proscenio.core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+        authoring_overlay as ov,
+    )
+    from proscenio.operators.automesh import (  # type: ignore[import-not-found]
+        draw_mesh_vertices as mod,
+    )
+
+    removed: list[object] = []
+    monkeypatch.setattr(
+        ov.bpy.types.SpaceView3D, "draw_handler_remove", lambda h, _r: removed.append(h)
+    )
+    statusbar_removed: list[object] = []
+    monkeypatch.setattr(mod, "remove_statusbar_draw", lambda _cls, fn: statusbar_removed.append(fn))
+
+    cls = mod.PROSCENIO_OT_draw_mesh_vertices
+    handle = object()
+    handles = ov.empty_overlay_handles()
+    handles["outer"] = handle  # a handler the live modal had registered
+    monkeypatch.setattr(cls, "_handles", handles)
+
+    mod._sweep_orphan_handlers()
+
+    expected_statusbar = [mod._draw_statusbar_manual_draw]
+    assert removed == [handle], "sweep left the leaked overlay handler live"
+    assert statusbar_removed == expected_statusbar, "sweep skipped the statusbar draw"
+    assert cls._handles is None, "sweep must null the class handle so a re-sweep is a no-op"

@@ -44,6 +44,55 @@ def _slot_bone_target(
     return "", None
 
 
+def _make_slot_empty(scene: bpy.types.Scene, name: str) -> bpy.types.Object:
+    """Create the slot Empty, style it, and link it into the scene collection."""
+    empty = bpy.data.objects.new(name, None)
+    empty.empty_display_type = "PLAIN_AXES"
+    empty.empty_display_size = 0.1
+    scene.collection.objects.link(empty)
+    return empty
+
+
+def _anchor_to_bone(
+    context: bpy.types.Context,
+    empty: bpy.types.Object,
+    armature: bpy.types.Object,
+    bone_name: str,
+) -> None:
+    """Object-parent the slot to the armature and bind it to the bone's pose delta.
+
+    Object-parent + a Child Of follow (not a real bone parent, which would tilt
+    the flat attachment quads out of the picture plane). Anchor at the bone tail,
+    matching the old bone-parent placement, then bind so the slot rides the bone's
+    pose delta.
+    """
+    empty.parent = armature
+    empty.parent_type = "OBJECT"
+    context.view_layer.update()
+    pose_bone = armature.pose.bones[bone_name]
+    empty.matrix_world = Matrix.Translation(armature.matrix_world @ pose_bone.tail)
+    context.view_layer.update()
+    bind_slot_to_bone(empty, armature, bone_name)
+
+
+def _anchor_to_seed(
+    empty: bpy.types.Object,
+    selected_meshes: list[bpy.types.Object],
+) -> None:
+    """Parent the slot to the seed mesh's parent and center it on the geometry.
+
+    Write the world-space geometry center through ``matrix_world`` so a parented
+    seed does not compound the offset through the parent matrix and an unapplied
+    origin does not strand the slot away from its vertices.
+    """
+    seed = selected_meshes[0]
+    if seed.parent is not None:
+        empty.parent = seed.parent
+        empty.parent_type = seed.parent_type
+        empty.parent_bone = seed.parent_bone
+    empty.matrix_world = Matrix.Translation(world_geometry_center(selected_meshes))
+
+
 class PROSCENIO_OT_create_slot(bpy.types.Operator):
     """Create or wrap meshes into a Proscenio slot."""
 
@@ -71,35 +120,12 @@ class PROSCENIO_OT_create_slot(bpy.types.Operator):
         selected_meshes = [obj for obj in context.selected_objects if obj.type == "MESH"]
 
         bone_name, armature = _slot_bone_target(context, selected_meshes)
-        empty_name = self._resolve_name(bone_name)
-        empty = bpy.data.objects.new(empty_name, None)
-        empty.empty_display_type = "PLAIN_AXES"
-        empty.empty_display_size = 0.1
-        scene.collection.objects.link(empty)
+        empty = _make_slot_empty(scene, self._resolve_name(bone_name))
 
         if armature is not None and bone_name:
-            # Object-parent + a Child Of follow (not a real bone parent, which
-            # would tilt the flat attachment quads out of the picture plane).
-            # Anchor at the bone tail, matching the old bone-parent placement,
-            # then bind so the slot rides the bone's pose delta.
-            empty.parent = armature
-            empty.parent_type = "OBJECT"
-            context.view_layer.update()
-            pose_bone = armature.pose.bones[bone_name]
-            empty.matrix_world = Matrix.Translation(armature.matrix_world @ pose_bone.tail)
-            context.view_layer.update()
-            bind_slot_to_bone(empty, armature, bone_name)
+            _anchor_to_bone(context, empty, armature, bone_name)
         elif selected_meshes:
-            seed = selected_meshes[0]
-            if seed.parent is not None:
-                empty.parent = seed.parent
-                empty.parent_type = seed.parent_type
-                empty.parent_bone = seed.parent_bone
-            # Write the world-space geometry center through ``matrix_world`` so a
-            # parented seed does not compound the offset through the parent
-            # matrix and an unapplied origin does not strand the slot away from
-            # its vertices.
-            empty.matrix_world = Matrix.Translation(world_geometry_center(selected_meshes))
+            _anchor_to_seed(empty, selected_meshes)
 
         if hasattr(empty, "proscenio"):
             empty.proscenio.is_slot = True

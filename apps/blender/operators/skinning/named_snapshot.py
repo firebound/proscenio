@@ -13,10 +13,10 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
+from ...core._shared.armature_resolve import active_armature  # type: ignore[import-not-found]
 from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
     PROSCENIO_WEIGHT_SIDECAR as _SIDECAR_KEY,
 )
-from ...core._shared.props_access import active_armature  # type: ignore[import-not-found]
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
     report_info,

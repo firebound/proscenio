@@ -7,8 +7,8 @@ from pathlib import Path
 
 import bpy
 
+from ....core._shared.armature_resolve import resolve_export_armature
 from ....core._shared.material_images import iter_material_node_images
-from ....core._shared.props_access import resolve_export_armature
 from ....core.bpy_helpers._shared._bpy_compat import iter_materials, iter_objects
 
 

@@ -15,7 +15,8 @@ from ...core._shared.report import report_info, report_warn  # type: ignore[impo
 from ...core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
     scene_has_pre_pack_snapshot,
 )
-from ._paths import pre_pack_snapshot_for, swap_image_in_materials
+from ._materials import swap_image_in_materials
+from ._snapshot import pre_pack_snapshot_for
 
 
 def _rescue_material_by_marker(token: str) -> bpy.types.Material | None:

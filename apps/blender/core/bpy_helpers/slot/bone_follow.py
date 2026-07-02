@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import bpy
 
+from ..._shared.armature_resolve import resolve_target_armature
 from ..._shared.cp_keys import PROSCENIO_SLOT_BONE
 from ..._shared.pg_cp_fallback import read_field
-from ..._shared.props_access import resolve_target_armature
 from .._shared.bone_orientation import bone_in_picture_plane
 
 SLOT_FOLLOW_CONSTRAINT = "Proscenio Slot Follow"

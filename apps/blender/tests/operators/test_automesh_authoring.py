@@ -122,10 +122,10 @@ def test_density_under_bones_defaults_off(automesh_fixture):
     reads this PG value at invoke, so the PG default drives the behaviour; only
     a DENSE session with a picker armature consumes it."""
     from proscenio.properties.scene_props import (
-        ProscenioSkinningProps,  # type: ignore[import-not-found]
+        ProscenioAutomeshProps,  # type: ignore[import-not-found]
     )
 
-    pg = ProscenioSkinningProps.bl_rna.properties["automesh_density_under_bones"]
+    pg = ProscenioAutomeshProps.bl_rna.properties["density_under_bones"]
     assert pg.default is False
 
 
@@ -137,10 +137,10 @@ def test_trace_resolution_copy_is_not_inverted(automesh_fixture):
     must not carry the inverted claim."""
     from proscenio.core.help_topics import HELP_TOPICS  # type: ignore[import-not-found]
     from proscenio.properties.scene_props import (
-        ProscenioSkinningProps,  # type: ignore[import-not-found]
+        ProscenioAutomeshProps,  # type: ignore[import-not-found]
     )
 
-    prop = ProscenioSkinningProps.bl_rna.properties["automesh_resolution"]
+    prop = ProscenioAutomeshProps.bl_rna.properties["resolution"]
     assert prop.name == "Trace resolution"
     assert "Lower values produce more" not in prop.description
     topic = HELP_TOPICS["automesh_alpha"]
@@ -1258,3 +1258,37 @@ def test_authoring_state_snapshots_the_modal_fields():
     finally:
         op._current_stage, op._current_stage_label, op._current_active_tool = prior
         mark_stopped("automesh")
+
+
+def test_sweep_orphan_handlers_removes_leaked_overlay_and_statusbar(automesh_fixture, monkeypatch):
+    """A reload while the Automesh modal is live leaks the class-held overlay
+    handles + statusbar draw (the per-instance handle is unreachable after
+    reload). unregister() -> _sweep_orphan_handlers must remove both and null the
+    class handle so a second reload does not double-remove."""
+    from proscenio.core.bpy_helpers.automesh import (  # type: ignore[import-not-found]
+        authoring_overlay as ov,
+    )
+    from proscenio.operators.automesh import (  # type: ignore[import-not-found]
+        automesh_authoring as mod,
+    )
+
+    removed: list[object] = []
+    monkeypatch.setattr(
+        ov.bpy.types.SpaceView3D, "draw_handler_remove", lambda h, _r: removed.append(h)
+    )
+    statusbar_removed: list[object] = []
+    monkeypatch.setattr(mod, "remove_statusbar_draw", lambda _cls, fn: statusbar_removed.append(fn))
+
+    cls = mod.PROSCENIO_OT_automesh_authoring
+    handle = object()
+    handles = ov.empty_overlay_handles()
+    handles["outer"] = handle  # a handler the live modal had registered
+    monkeypatch.setattr(cls, "_handles", handles)
+    monkeypatch.setattr(cls, "_timer", None)  # no timer to remove in this path
+
+    mod._sweep_orphan_handlers()
+
+    expected_statusbar = [mod._draw_statusbar_authoring]
+    assert removed == [handle], "sweep left the leaked overlay handler live"
+    assert statusbar_removed == expected_statusbar, "sweep skipped the statusbar draw"
+    assert cls._handles is None, "sweep must null the class handle so a re-sweep is a no-op"

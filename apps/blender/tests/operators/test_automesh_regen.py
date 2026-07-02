@@ -21,7 +21,7 @@ def _set_picker(name: str) -> None:
 
 
 def _set_preserve(value: bool) -> None:
-    bpy.context.scene.proscenio.skinning.preserve_on_regen = value
+    bpy.context.scene.proscenio.skinning.automesh.preserve_on_regen = value
 
 
 def _read_sidecar(obj: bpy.types.Object) -> dict:

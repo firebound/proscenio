@@ -61,6 +61,7 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
 )
 from ...core.bpy_helpers.armature.bone_session import (  # type: ignore[import-not-found]
     BoneRecord,
+    BoneSession,
     author_edit_bone,
 )
 from ...core.bpy_helpers.armature.view_session import (  # type: ignore[import-not-found]
@@ -141,8 +142,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _snap_increment: ClassVar[float] = 1.0
     _ctrl_held: ClassVar[bool] = False
     _axis_lock: ClassVar[AxisLock] = None
-    _session_records: ClassVar[list[BoneRecord]] = []
-    _redo_records: ClassVar[list[BoneRecord]] = []
+    # Pure undo/redo record stack (replaces the two parallel record ClassVars).
+    _session: ClassVar[BoneSession] = BoneSession()
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -201,8 +202,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._restore_active_name = ""
         cls._ctrl_held = False
         cls._axis_lock = None
-        cls._session_records = []
-        cls._redo_records = []
+        cls._session = BoneSession()
         # Read PG defaults so the modal honours document-level config
         # without an F3 redo. Per-invoke override is only
         # ``lock_to_front_ortho`` for now.
@@ -271,7 +271,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # honour it like a bare Esc (discard an empty rig, keep authored bones).
         if cls._exit_requested:
             cls._exit_requested = False
-            cancelled = cls._drag_head is None and not cls._session_records
+            cancelled = cls._drag_head is None and not cls._session.records
             return self._exit(context, cancelled=cancelled)
         # Esc / RMB / Enter must work from any area so the user can
         # always exit the modal even if focus drifted to the Outliner.
@@ -280,7 +280,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             # _last_bone_name: selecting a bone writes _last_bone_name (the
             # chain parent) without creating a bone, so it must not flip a
             # bare Esc from cancel (discard the empty auto-rig) to keep.
-            cancelled = cls._drag_head is None and not cls._session_records
+            cancelled = cls._drag_head is None and not cls._session.records
             return self._exit(context, cancelled=cancelled)
         if _is_confirm_event(event):
             return self._exit(context, cancelled=False)
@@ -691,7 +691,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         )
         if bone_name:
             cls._last_bone_name = bone_name
-            cls._session_records.append(
+            # record_created appends + clears the redo stack (standard semantics).
+            cls._session.record_created(
                 BoneRecord(
                     name=bone_name,
                     head=actual_head,
@@ -700,17 +701,14 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                     connect=connect,
                 )
             )
-            # Any new bone clears the redo stack (standard semantics).
-            cls._redo_records = []
             report_info(self, f"'{bone_name}' added to {cls._target_armature_name}")
 
     def _undo_last_bone(self, context: bpy.types.Context) -> None:
         cls = type(self)
-        if not cls._session_records:
+        record = cls._session.undo()
+        if record is None:
             report_info(self, "nothing to undo")
             return
-        record = cls._session_records.pop()
-        cls._redo_records.append(record)
         armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return
@@ -719,35 +717,40 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         edit_bones = armature.data.edit_bones
         if record.name in edit_bones:
             edit_bones.remove(edit_bones[record.name])
-        cls._last_bone_name = cls._session_records[-1].name if cls._session_records else ""
+        cls._last_bone_name = cls._session.last_authored_name()
         report_info(self, f"undone '{record.name}'")
         if context.area is not None:
             context.area.tag_redraw()
 
     def _redo_last_bone(self, context: bpy.types.Context) -> None:
         cls = type(self)
-        if not cls._redo_records:
+        record = cls._session.take_redo()
+        if record is None:
             report_info(self, "nothing to redo")
             return
-        record = cls._redo_records.pop()
+        armature = context.scene.objects.get(cls._target_armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return
+        if not self._enter_armature_edit(context, armature):
+            return
         # Pin the chain parent to the one the bone was CREATED with, not the live
-        # _last_bone_name: a reparent-by-selection or the undo itself can have
-        # moved it, and _create_bone derives the parent from _last_bone_name -
-        # so redo would otherwise silently reparent the bone and corrupt the chain.
-        cls._last_bone_name = record.parent_to_last_name
-        # Re-create using the captured geometry. ``_create_bone`` will
-        # push the record onto the session stack and clear the redo
-        # stack as a side effect; restore the redo state we just popped
-        # before the call so the rest of the redo history survives.
-        saved_redo = list(cls._redo_records)
-        self._create_bone(
-            context,
+        # _last_bone_name: a reparent-by-selection or the undo can have moved it.
+        # Re-author from the captured geometry (the restored bone count yields the
+        # same name), then re-add the record WITHOUT clearing the rest of redo.
+        author_edit_bone(
+            armature.data.edit_bones,
             record.head,
             record.tail,
+            last_name=record.parent_to_last_name,
+            name_prefix=cls._name_prefix,
             parent_to_last=bool(record.parent_to_last_name),
             connect=record.connect,
         )
-        cls._redo_records = saved_redo
+        cls._session.readd(record)
+        cls._last_bone_name = record.name
+        report_info(self, f"'{record.name}' added to {cls._target_armature_name}")
+        if context.area is not None:
+            context.area.tag_redraw()
 
     def _snapshot_view(self, context: bpy.types.Context) -> None:
         type(self)._view.capture(context)
@@ -864,8 +867,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._shift_held = False
         cls._ctrl_held = False
         cls._axis_lock = None
-        cls._session_records = []
-        cls._redo_records = []
+        cls._session = BoneSession()
         if context.area is not None:
             context.area.tag_redraw()
         verb = "cancelled" if cancelled else "confirmed"

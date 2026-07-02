@@ -31,6 +31,53 @@ class BoneRecord:
     connect: bool
 
 
+class BoneSession:
+    """Pure undo/redo record stack for the Quick Armature modal.
+
+    Owns only the bookkeeping - the two stacks and their transitions - with no
+    bpy at all, so the create / undo / redo semantics are unit-testable without a
+    viewport. The operator drives it and performs the bpy edit-bone mutation at
+    the boundary (``author_edit_bone``).
+    """
+
+    def __init__(self) -> None:
+        self.records: list[BoneRecord] = []
+        self.redo: list[BoneRecord] = []
+
+    def record_created(self, record: BoneRecord) -> None:
+        """Push a freshly authored bone; any pending redo is cleared (standard)."""
+        self.records.append(record)
+        self.redo.clear()
+
+    def undo(self) -> BoneRecord | None:
+        """Pop the last authored bone onto the redo stack; ``None`` when empty."""
+        if not self.records:
+            return None
+        record = self.records.pop()
+        self.redo.append(record)
+        return record
+
+    def take_redo(self) -> BoneRecord | None:
+        """Pop the next record to re-author; ``None`` when the redo stack is empty.
+
+        Does NOT re-add it - the caller re-authors the bone (bpy) then calls
+        :meth:`readd`, so a failed re-author does not silently consume the redo.
+        """
+        return self.redo.pop() if self.redo else None
+
+    def readd(self, record: BoneRecord) -> None:
+        """Re-add a redone record WITHOUT clearing the rest of the redo stack."""
+        self.records.append(record)
+
+    def last_authored_name(self) -> str:
+        """Name of the current top-of-stack bone, or '' when the stack is empty."""
+        return self.records[-1].name if self.records else ""
+
+    def clear(self) -> None:
+        self.records.clear()
+        self.redo.clear()
+
+
 def author_edit_bone(
     edit_bones: bpy.types.ArmatureEditBones,
     head: tuple[float, float, float],

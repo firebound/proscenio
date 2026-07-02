@@ -2,6 +2,13 @@
 
 Phase-1 findings the adversarial verification pass **disproved** by reading the real code. Recorded so nobody re-flags them - each is a sanctioned convention or a factual error in the original claim. Do NOT act on these.
 
+## God-module claims left un-split by spec 075 (2026-07-02)
+
+When spec 075 (PR #184) drained the god-modules / SRP theme, two of its items shipped no split - one refuted as a god-module, one already decomposed. Recorded here (`god-modules-and-srp.md` was deleted on the prune) so nobody re-flags them.
+
+- **authoring-ik-module** (claimed: a god-module to split by operator) - **REFUTED as a god-module.** [authoring_ik.py](../../../apps/blender/operators/armature/authoring_ik.py) is a single cohesive Proscenio IK feature whose four operators share low-level helpers; splitting by operator would fracture those shared helpers. A size-only smell, not an unrelated bundle. Left intact by design.
+- **build-automesh-debug-stages** (claimed: `build_automesh` interleaves debug-stage early-returns that should move to a stage table) - **NO ACTION (already decomposed).** [bridge.py](../../../apps/blender/core/bpy_helpers/automesh/bridge.py) `build_automesh` is already broken into named helpers; its six debug early-returns each snapshot an intermediate only available at that point and cannot cleanly move to a stage table without re-threading the same state. Leave as-is unless a future change opens it.
+
 ## Already-correct at HEAD by the time spec 076 implemented them (2026-07-01)
 
 Two bug findings the audit CONFIRMED on 2026-06-28 were, when spec 076 (PR #183) went to implement them, already correct in the code (fixed by intervening work / never actually broken). No change shipped for either; recorded so nobody re-flags them.

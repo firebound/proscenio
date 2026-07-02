@@ -19,8 +19,7 @@ from ..core.bpy_helpers._shared.bone_collections import (  # type: ignore[import
 # it cannot cap a wider widget - the columns line up only because every row draws
 # the IDENTICAL widget in each slot (see draw_swatch). No color field: it (and a
 # text button) stretches and grabs the row's spare width on a wide panel. All
-# GUI-tunable.
-_RIG_UI_EYE_UNITS = 1.4
+# GUI-tunable. (The eye-column width lives in skeleton.py, which draws the eye.)
 _RIG_UI_DOT_UNITS = 0.9
 _RIG_UI_NUM_UNITS = 1.2
 _RIG_UI_PICK_UNITS = 1.4

@@ -89,10 +89,13 @@ def _picked_scene_armature(scene: object, objects: list[object]) -> bpy.types.Ob
     try:
         if getattr(picked, "type", None) != "ARMATURE":
             return None
-        name = getattr(picked, "name", None)
     except ReferenceError:
         return None
-    if not any(getattr(o, "name", None) == name for o in objects):
+    # Membership by object identity, not name: a picker whose armature was
+    # renamed after being picked is still the live target, and matching by name
+    # could otherwise be fooled by a same-named object. ``==`` catches bpy's
+    # fresh-wrapper-per-access (same datablock, different Python object).
+    if not any(o is picked or o == picked for o in objects):
         return None
     return cast("bpy.types.Object", picked)
 

@@ -17,14 +17,13 @@ Content guidelines:
 
 from __future__ import annotations
 
-from .help_topics_model import (
-    _SECTION_HOW,
-    _SECTION_WHAT,
-    _SECTION_WHERE,
-    HelpTopic,
-    _list_section,
-    _section,
-)
+from .help_topics_model import HelpTopic, _list_section, _section
+
+# Section headings used across the topic bodies below (kept next to their only
+# consumer, the HELP_TOPICS table).
+_SECTION_WHAT = "What it does"
+_SECTION_HOW = "How to use it"
+_SECTION_WHERE = "Where it fits"
 
 HELP_TOPICS: dict[str, HelpTopic] = {
     "status_legend": HelpTopic(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import bpy
 
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
@@ -15,7 +17,9 @@ def first_texture_image_name(mat: bpy.types.Material) -> str:
     return str(image.name) if image is not None else ""
 
 
-def swap_image_in_materials(materials: bpy.types.AnyType, atlas_image: bpy.types.Image) -> None:
+def swap_image_in_materials(
+    materials: Iterable[bpy.types.Material], atlas_image: bpy.types.Image
+) -> None:
     """For every image-textured node across ``materials``, swap to ``atlas_image``."""
     for mat in materials:
         if mat is None or not mat.use_nodes or mat.node_tree is None:

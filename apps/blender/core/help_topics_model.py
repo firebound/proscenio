@@ -57,11 +57,6 @@ class HelpTopic:
     doc_url: str = ""  # full URL to the online docs page; empty hides the button
 
 
-_SECTION_WHAT = "What it does"
-_SECTION_HOW = "How to use it"
-_SECTION_WHERE = "Where it fits"
-
-
 def _section(heading: str, *parts: str) -> HelpSection:
     """A prose section: ``parts`` join with spaces into one reflowed paragraph."""
     return HelpSection(heading=heading, body=" ".join(parts))

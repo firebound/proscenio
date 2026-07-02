@@ -108,28 +108,31 @@ def _rest_pose_for_geometry(armature_obj: bpy.types.Object) -> Iterator[None]:
     anim_data = armature_obj.animation_data
     saved_action = anim_data.action if anim_data is not None else None
     saved_basis: dict[str, Matrix] = {}
-    # Reset bases whenever the rig is posable, not only when an action is
-    # attached: a rig posed without an active action would otherwise bake its
-    # pose into the geometry.
-    if anim_data is not None and pose is not None:
+    # Detach the active action (if any) so its evaluated pose does not feed the
+    # geometry read; save/restore is gated on anim_data.
+    if anim_data is not None:
         anim_data.action = None
-        # Detaching the action does not reset pose_bone.matrix_basis - it keeps
-        # the last evaluated value - so zero each basis to drop to the rest pose
-        # before the geometry read. Restored in the finally below.
+    # Reset bases whenever the rig is posable, not only when an action is
+    # attached: a rig manually posed in Pose Mode without an active action would
+    # otherwise bake its pose into the geometry. Detaching the action does not
+    # reset pose_bone.matrix_basis (it keeps the last evaluated value), so zero
+    # each basis to drop to the rest pose before the read; restored in the finally.
+    if pose is not None:
         for pose_bone in pose.bones:
             saved_basis[pose_bone.name] = pose_bone.matrix_basis.copy()
             pose_bone.matrix_basis = Matrix()
     try:
         yield
     finally:
-        if anim_data is not None and pose is not None:
+        if pose is not None:
             for pose_bone in pose.bones:
                 if pose_bone.name in saved_basis:
                     pose_bone.matrix_basis = saved_basis[pose_bone.name]
+        if anim_data is not None:
             anim_data.action = saved_action
-            restore_vl = bpy.context.view_layer
-            if restore_vl is not None:
-                restore_vl.update()
+        restore_vl = bpy.context.view_layer
+        if restore_vl is not None:
+            restore_vl.update()
 
 
 @contextmanager

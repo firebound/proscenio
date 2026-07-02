@@ -681,7 +681,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         if obj is None or image is None:
             return
         self._output.outer = compute_outer(obj, image, _snapshot_params(context))
-        self._handles = refresh_overlay(
+        type(self)._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
         _tag_redraw_view3d(context)
@@ -971,7 +971,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         # today - the OUTER stage only exposes "auto" - but leaving the flag
         # unset would be a silent trap if the contour tool is ever re-added.)
         self._output.outer_is_manual = True
-        self._handles = refresh_overlay(
+        type(self)._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
         report_info(self, f"manual contour: {len(self._output.outer)} verts")
@@ -1228,7 +1228,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         type(self)._current_stage = self._stage
         self._arm_stage_default_tool(context)
         self._report_stage_entry(next_stage)
-        self._handles = refresh_overlay(
+        type(self)._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
         _tag_redraw_view3d(context)
@@ -1266,7 +1266,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         type(self)._current_stage = self._stage
         self._arm_stage_default_tool(context)
         self._report_stage_entry(self._stage)
-        self._handles = refresh_overlay(
+        type(self)._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
         _tag_redraw_view3d(context)
@@ -1350,7 +1350,7 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
             except ValueError as exc:
                 report_error(self, f"Preview failed: {exc}")
                 return
-        self._handles = refresh_overlay(
+        type(self)._handles = refresh_overlay(
             self._handles, self._stage, self._output, **self._overlay_kwargs()
         )
         _tag_redraw_view3d(context)

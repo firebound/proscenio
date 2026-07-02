@@ -16,12 +16,21 @@ _PLANE_TOLERANCE = 0.1  # sin of the off-plane angle (~5.7 degrees)
 def validate_bone_orientation(armature: object) -> list[Issue]:
     """Warn for rest bones whose direction tilts out of the world XZ plane."""
     data = getattr(armature, "data", None)
+    # head_local / tail_local are armature-space; the exporter projects them
+    # through the armature object's matrix_world (compute_bone_world_godot), so
+    # match that here or a rotated / scaled armature object would make this check
+    # disagree with the export. matrix_world is absent on the bpy-free test fakes
+    # (which author rigs at identity), so those fall back to the local coords.
+    matrix_world = getattr(armature, "matrix_world", None)
     issues: list[Issue] = []
     for bone in getattr(data, "bones", ()):
         head = getattr(bone, "head_local", None)
         tail = getattr(bone, "tail_local", None)
         if head is None or tail is None:
             continue
+        if matrix_world is not None:
+            head = matrix_world @ head
+            tail = matrix_world @ tail
         if _direction_off_plane(head, tail):
             issues.append(
                 Issue(

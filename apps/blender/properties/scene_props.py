@@ -67,17 +67,14 @@ class ProscenioQuickArmatureProps(PropertyGroup):
     )
 
 
-class ProscenioSkinningProps(PropertyGroup):
-    """Defaults for the Skinning subpanel.
+class ProscenioAutomeshProps(PropertyGroup):
+    """Automesh / mesh-generation trace + interior knobs.
 
-    Holds the knobs that the Automesh + Bind + Edit Weights
-    operators read at invoke time. Stored on the scene so the
-    settings persist across .blend reloads and surface in the
-    panel for in-context tuning (matching the pattern for the Quick
-    Armature defaults).
+    Read by the Automesh (one-shot + interactive) operators and the Manual Mesh
+    modal at invoke time. Nested under ``ProscenioSkinningProps.automesh``.
     """
 
-    automesh_resolution: FloatProperty(  # type: ignore[valid-type]
+    resolution: FloatProperty(  # type: ignore[valid-type]
         name="Trace resolution",
         description=(
             "Resolution of the alpha-silhouette trace, as an image downscale "
@@ -92,7 +89,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         max=1.0,
     )
-    automesh_alpha_threshold: IntProperty(  # type: ignore[valid-type]
+    alpha_threshold: IntProperty(  # type: ignore[valid-type]
         name="Alpha threshold",
         description=(
             "Pixels with alpha strictly above this value contribute "
@@ -106,7 +103,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0,
         max=255,
     )
-    automesh_margin_pixels: IntProperty(  # type: ignore[valid-type]
+    margin_pixels: IntProperty(  # type: ignore[valid-type]
         name="Boundary margin (annulus)",
         description=(
             "Source-pixel margin that builds an ANNULUS topology "
@@ -122,7 +119,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0,
         max=100,
     )
-    automesh_contour_vertices: IntProperty(  # type: ignore[valid-type]
+    contour_vertices: IntProperty(  # type: ignore[valid-type]
         name="Contour vertices",
         description=(
             "Target vertex count for the outer contour after Laplacian "
@@ -134,7 +131,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=8,
         max=512,
     )
-    automesh_interior_mode: EnumProperty(  # type: ignore[valid-type]
+    interior_mode: EnumProperty(  # type: ignore[valid-type]
         name="Interior mode",
         description=(
             "How the mesh interior is filled. SIMPLE triangulates only the "
@@ -182,7 +179,7 @@ class ProscenioSkinningProps(PropertyGroup):
         ],
         default="SIMPLE",
     )
-    automesh_interior_spacing: FloatProperty(  # type: ignore[valid-type]
+    interior_spacing: FloatProperty(  # type: ignore[valid-type]
         name="Interior spacing",
         description=(
             "World-unit spacing for the interior Steiner-point grid "
@@ -195,7 +192,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.001,
         soft_max=2.0,
     )
-    automesh_density_under_bones: BoolProperty(  # type: ignore[valid-type]
+    density_under_bones: BoolProperty(  # type: ignore[valid-type]
         name="Density follows bones",
         description=(
             "When ON and the target armature has deform bones, add "
@@ -205,7 +202,7 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=False,
     )
-    automesh_bone_radius: FloatProperty(  # type: ignore[valid-type]
+    bone_radius: FloatProperty(  # type: ignore[valid-type]
         name="Bone influence radius",
         description=(
             "World-unit radius around each bone segment within which "
@@ -215,7 +212,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=5.0,
     )
-    automesh_bone_factor: IntProperty(  # type: ignore[valid-type]
+    bone_factor: IntProperty(  # type: ignore[valid-type]
         name="Bone density factor",
         description=(
             "Multiplier for interior point density near bones. "
@@ -239,7 +236,24 @@ class ProscenioSkinningProps(PropertyGroup):
         ),
         default=False,
     )
-    bind_init_mode: EnumProperty(  # type: ignore[valid-type]
+    preserve_on_regen: BoolProperty(  # type: ignore[valid-type]
+        name="Preserve weights on regen",
+        description=(
+            "When ON (default), running Automesh from Alpha on an already-"
+            "bound mesh snapshots the current weights, regenerates the mesh, "
+            "then reprojects the weights onto the new topology via UV anchors. "
+            "OFF lets automesh wipe weights (legacy behavior) - useful when "
+            "the sprite changed enough that interpolation would produce "
+            "nonsense."
+        ),
+        default=True,
+    )
+
+
+class ProscenioBindProps(PropertyGroup):
+    """Bind + weight-transfer knobs, nested under ``ProscenioSkinningProps.bind``."""
+
+    init_mode: EnumProperty(  # type: ignore[valid-type]
         name="Bind mode",
         description=(
             "Algorithm used by Bind to Target Armature. BONE_HEAT delegates "
@@ -278,7 +292,7 @@ class ProscenioSkinningProps(PropertyGroup):
         ],
         default="BONE_HEAT",
     )
-    bind_falloff_power: FloatProperty(  # type: ignore[valid-type]
+    falloff_power: FloatProperty(  # type: ignore[valid-type]
         name="Bind falloff power",
         description=(
             "Exponent for 1/dist^power per-vert weight (PROXIMITY mode only). "
@@ -289,7 +303,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.5,
         max=8.0,
     )
-    bind_max_distance: FloatProperty(  # type: ignore[valid-type]
+    max_distance: FloatProperty(  # type: ignore[valid-type]
         name="Bind max distance",
         description=(
             "Bones beyond this distance contribute zero (PROXIMITY mode only). "
@@ -308,30 +322,12 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.0,
         soft_max=5.0,
     )
-    preserve_on_regen: BoolProperty(  # type: ignore[valid-type]
-        name="Preserve weights on regen",
-        description=(
-            "When ON (default), running Automesh from Alpha on an already-"
-            "bound mesh snapshots the current weights, regenerates the mesh, "
-            "then reprojects the weights onto the new topology via UV anchors. "
-            "OFF lets automesh wipe weights (legacy behavior) - useful when "
-            "the sprite changed enough that interpolation would produce "
-            "nonsense."
-        ),
-        default=True,
-    )
-    show_provenance_overlay: BoolProperty(  # type: ignore[valid-type]
-        name="Show provenance overlay",
-        description=(
-            "When ON, the Edit Weights session colors each vert by its "
-            "weight source: cyan = reprojected (came from a regen), white "
-            "= user paint, gray = auto seed (untouched bind output). The "
-            "GPU overlay renders inside the Edit Weights modal and refreshes "
-            "at stroke end."
-        ),
-        default=False,
-    )
-    authoring_inner_loop_count: IntProperty(  # type: ignore[valid-type]
+
+
+class ProscenioAuthoringProps(PropertyGroup):
+    """Interactive-authoring modal knobs, nested under ``ProscenioSkinningProps.authoring``."""
+
+    inner_loop_count: IntProperty(  # type: ignore[valid-type]
         name="Inner loops",
         description=(
             "Concentric inner polylines computed via morphological erosion of "
@@ -343,7 +339,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0,
         max=10,
     )
-    authoring_inner_loop_spacing: FloatProperty(  # type: ignore[valid-type]
+    inner_loop_spacing: FloatProperty(  # type: ignore[valid-type]
         name="Inner loop spacing",
         description=(
             "World-unit gap between adjacent inner loops in the authoring "
@@ -354,7 +350,7 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=1.0,
     )
-    authoring_cut_margin: FloatProperty(  # type: ignore[valid-type]
+    cut_margin: FloatProperty(  # type: ignore[valid-type]
         name="Cut margin",
         description=(
             "Width of the corridor gap carved by cut strokes, in world units. "
@@ -367,7 +363,23 @@ class ProscenioSkinningProps(PropertyGroup):
         min=0.01,
         soft_max=0.2,
     )
-    debug_stage: EnumProperty(  # type: ignore[valid-type]
+    show_provenance_overlay: BoolProperty(  # type: ignore[valid-type]
+        name="Show provenance overlay",
+        description=(
+            "When ON, the Edit Weights session colors each vert by its "
+            "weight source: cyan = reprojected (came from a regen), white "
+            "= user paint, gray = auto seed (untouched bind output). The "
+            "GPU overlay renders inside the Edit Weights modal and refreshes "
+            "at stroke end."
+        ),
+        default=False,
+    )
+
+
+class ProscenioDebugProps(PropertyGroup):
+    """Debug-pipeline knobs, nested under ``ProscenioSkinningProps.debug``."""
+
+    stage: EnumProperty(  # type: ignore[valid-type]
         name="Debug stage",
         description=(
             "Stop the automesh pipeline at the named stage + emit a "
@@ -419,6 +431,22 @@ class ProscenioSkinningProps(PropertyGroup):
         ],
         default="off",
     )
+
+
+class ProscenioSkinningProps(PropertyGroup):
+    """Defaults for the Skinning subpanel, grouped by concern.
+
+    Holds the knobs the Automesh + Bind + Edit Weights operators read at invoke
+    time, split into nested groups (``automesh`` / ``bind`` / ``authoring`` /
+    ``debug``) so each concern owns its fields. Stored on the scene so settings
+    persist across .blend reloads and surface in the panel for in-context tuning
+    (matching the Quick Armature defaults pattern).
+    """
+
+    automesh: PointerProperty(type=ProscenioAutomeshProps)  # type: ignore[valid-type]
+    bind: PointerProperty(type=ProscenioBindProps)  # type: ignore[valid-type]
+    authoring: PointerProperty(type=ProscenioAuthoringProps)  # type: ignore[valid-type]
+    debug: PointerProperty(type=ProscenioDebugProps)  # type: ignore[valid-type]
 
 
 class ProscenioSceneProps(PropertyGroup):

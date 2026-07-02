@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..._shared.props_access import resolve_target_armature
+from ..._shared.armature_resolve import resolve_target_armature
 from .._shared.bone_orientation import bone_in_picture_plane
 
 __all__ = [

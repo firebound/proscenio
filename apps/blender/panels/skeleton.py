@@ -15,7 +15,6 @@ import bpy
 from ..core.bone_export import bone_is_exported  # type: ignore[import-not-found]
 from ..core.bone_view import bone_depth, bone_sort_key  # type: ignore[import-not-found]
 from ..core.bpy_helpers._shared.bone_collections import (  # type: ignore[import-not-found]
-    collection_theme_label,
     resolve_collection,
 )
 from ..core.bpy_helpers._shared.bone_select import (  # type: ignore[import-not-found]
@@ -28,12 +27,16 @@ from ..core.bpy_helpers.armature import (  # type: ignore[import-not-found]
 )
 from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ..core.rig_ui_view import RigUIRow, rig_ui_rows  # type: ignore[import-not-found]
+from ._draw_ik import (
+    _active_ik_constraint,
+    _draw_ik_constraint_props,
+    _draw_ik_toggle,
+)
+from ._draw_rig_ui import draw_eye, draw_swatch
 from ._helpers import _POSE_FRIENDLY_MODES, draw_help_button, draw_subpanel_header
 from ._list import ProscenioListMixin, draw_select_marker
 
-# Constraint that marks a Proscenio-owned IK chain; the name is the single
-# source the panel reads (a renamed .IK control suffix must not change the cue).
-_IK_CONSTRAINT_NAME = "Proscenio IK"
+__all__ = ["_active_ik_constraint"]
 
 
 def _explicit_target(context: bpy.types.Context) -> bpy.types.Object | None:
@@ -57,41 +60,8 @@ def _bone_connectivity_icon(bone: bpy.types.Bone) -> str:
     return "BONE_DATA"
 
 
-def _theme_bone_color_set(theme_label: str) -> bpy.types.ThemeBoneColorSet | None:
-    """The theme's bone color set for a ``"1"``..``"15"`` theme label, or None.
-
-    ``THEME0N`` maps to ``bone_color_sets[N - 1]`` on the active theme; the set's
-    ``normal`` color is what the Rig UI swatch draws as a fixed colored dot. Any
-    gap - empty label, no themes, out-of-range - is a clean None.
-    """
-    if not theme_label:
-        return None
-    try:
-        idx = int(theme_label) - 1
-    except ValueError:
-        return None
-    themes = getattr(bpy.context.preferences, "themes", None)
-    sets = themes[0].bone_color_sets if themes else None
-    if sets is None or not (0 <= idx < len(sets)):
-        return None
-    return sets[idx]
-
-
-# Rig UI rows are a fixed eye, a flexible middle the select button(s) split
-# equally, and a theme selector of three fixed columns (dot | number | picker).
-# Alignment across rows is the constraint: ``ui_units_x`` is only a *minimum*, so
-# it cannot cap a wider widget - the columns line up only because every row draws
-# the IDENTICAL widget in each slot (see _draw_swatch). No color field: it (and a
-# text button) stretches and grabs the row's spare width on a wide panel. All
-# GUI-tunable.
+# Rig UI eye pinned width; the swatch/theme columns live in ``_draw_rig_ui``.
 _RIG_UI_EYE_UNITS = 1.4
-_RIG_UI_DOT_UNITS = 0.9
-_RIG_UI_NUM_UNITS = 1.2
-_RIG_UI_PICK_UNITS = 1.4
-# Neutral fill for the dot on a row with no shared theme (an "empty" circle).
-# Drawing a socket on every row - never a label - keeps the dot column one width,
-# so the theme selector lines up and the middle buttons stay aligned. GUI-tunable.
-_RIG_UI_NO_THEME_DOT = (0.18, 0.18, 0.18)
 
 
 # Below this N-panel width the Skeleton header drops the picked-armature name
@@ -488,7 +458,7 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
         # 1. Eye - pinned width, bound to the row's collection visibility.
         eye = row.row(align=True)
         eye.ui_units_x = _RIG_UI_EYE_UNITS
-        self._draw_eye(eye, resolve_collection(armature, view_row.collection_name))
+        draw_eye(eye, resolve_collection(armature, view_row.collection_name))
         # 2. Middle - the remaining width; the select buttons split it equally.
         middle = row.row(align=True)
         for member_name in view_row.member_names:
@@ -498,169 +468,7 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
         # 3. Theme selector - drawn on EVERY row so the columns line up; the
         #    picker only acts on a top-level row (it colors the whole subtree),
         #    nested rows reserve the same space with an inert blank picker.
-        self._draw_swatch(row, armature.name, view_row.collection_name, view_row.is_top_level)
-
-    @staticmethod
-    def _draw_eye(row: bpy.types.UILayout, collection: bpy.types.BoneCollection | None) -> None:
-        if collection is None:
-            # The view row named a collection the data no longer has; keep the
-            # column width with a disabled placeholder so the row still aligns.
-            sub = row.row(align=True)
-            sub.enabled = False
-            sub.label(text="", icon="HIDE_ON")
-            return
-        row.prop(
-            collection,
-            "is_visible",
-            text="",
-            icon="HIDE_OFF" if collection.is_visible else "HIDE_ON",
-            toggle=True,
-        )
-
-    @staticmethod
-    def _draw_swatch(
-        layout: bpy.types.UILayout,
-        arm_name: str,
-        collection_name: str,
-        is_top_level: bool,
-    ) -> None:
-        """Draw the theme selector - the three fixed columns ``o`` ``x`` ``p``.
-
-        Alignment is the whole point: every row draws the SAME three widgets so
-        the dot / number / picker columns line up and the middle buttons end at
-        the same x on every row. ``ui_units_x`` is only a *minimum*, so it cannot
-        cap a wide widget - the earlier bug was a themed row using a
-        ``template_node_socket`` dot (wider than the no-theme spacer) while other
-        rows used a non-breaking-space label, so the selectors were different
-        widths. The fix is to use the identical widget in each slot on every row:
-
-        - ``o`` dot: always a ``template_node_socket`` circle (the theme color on a
-          themed top-level row, a neutral fill otherwise - an empty circle), never
-          a label, so its width never changes between rows;
-        - ``x`` number: always a right-aligned label (the ``THEME##`` number on a
-          themed top-level row, a non-breaking space otherwise);
-        - ``p`` picker: always the ``color_bone_collection`` operator button - the
-          live ``COLOR`` picker on a top-level row, an inert ``BLANK1`` (disabled)
-          on a nested row, so the column is reserved at the same width but only a
-          top-level click colors (the subtree).
-        """
-        armature = bpy.data.objects.get(arm_name)
-        label = (
-            collection_theme_label(armature, collection_name) if is_top_level and armature else ""
-        )
-        color_set = _theme_bone_color_set(label)
-        theme = layout.row(align=True)
-        # o - dot: the same socket widget on every row (theme color, or neutral
-        # for an empty circle), so the dot column is one width everywhere.
-        dot = theme.row(align=True)
-        dot.ui_units_x = _RIG_UI_DOT_UNITS
-        if hasattr(dot, "template_node_socket"):
-            normal = tuple(color_set.normal) if color_set is not None else _RIG_UI_NO_THEME_DOT
-            dot.template_node_socket(color=(*normal[:3], 1.0))
-        else:
-            dot.label(text="\u00a0")
-        # x - number: a non-breaking space when there is no number, NOT "" -
-        # an empty label collapses (ui_units_x is only a minimum, ignored for
-        # empty content), which would make no-theme rows narrower.
-        num = theme.row(align=True)
-        num.ui_units_x = _RIG_UI_NUM_UNITS
-        num.alignment = "RIGHT"
-        num.label(text=label or "\u00a0")
-        # p - picker: the same operator widget on every row; nested rows draw it
-        # disabled with a BLANK1 icon, so the column is reserved at one width but
-        # only a top-level picker is live (and colors the whole subtree).
-        pick = theme.row(align=True)
-        pick.ui_units_x = _RIG_UI_PICK_UNITS
-        pick.enabled = is_top_level
-        op = pick.operator(
-            "proscenio.color_bone_collection",
-            text="",
-            icon="COLOR" if is_top_level else "BLANK1",
-        )
-        op.armature_name = arm_name
-        op.collection_name = collection_name
-
-
-def _active_ik_constraint(context: bpy.types.Context) -> bpy.types.Constraint | None:
-    """The active pose bone's ``Proscenio IK`` constraint, or None."""
-    bone = getattr(context, "active_pose_bone", None)
-    if bone is None:
-        return None
-    return bone.constraints.get(_IK_CONSTRAINT_NAME)
-
-
-def _draw_ik_toggle(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
-    """Draw the create / remove IK button with an honest, state-resolved label.
-
-    One operator (``proscenio.toggle_ik_chain``) does both create and destroy;
-    the label reads "Add IK Chain" when the active bone has no Proscenio IK and
-    "Remove IK Chain" when it does, so the button names the action it performs.
-    """
-    has_chain = _active_ik_constraint(context) is not None
-    text = "Remove IK Chain" if has_chain else "Add IK Chain"
-    icon = "X" if has_chain else "CON_KINEMATIC"
-    layout.operator("proscenio.toggle_ik_chain", text=text, icon=icon)
-
-
-def _draw_ik_constraint_props(
-    layout: bpy.types.UILayout,
-    context: bpy.types.Context,
-    constraint: bpy.types.Constraint,
-) -> None:
-    """Draw the curated IK constraint controls for the active chain.
-
-    The trio the IK flow needs - chain length, keyframable influence (the
-    IK/FK-blend seed, with an explicit insert-key button), pole target - plus an
-    opt-in "lock chain in-plane" toggle that gives the otherwise-hidden
-    ``lock_ik_*`` flags a visible owner. Deliberately not the full native
-    KinematicConstraint UI (no stretch / iterations / weight): the export bakes
-    the chain, so those are native-UI territory.
-    """
-    box = layout.box()
-    box.label(text="Proscenio IK", icon="CON_KINEMATIC")
-    box.prop(constraint, "chain_count", text="Chain length")
-
-    influence_row = box.row(align=True)
-    influence_row.prop(constraint, "influence", text="Influence", slider=True)
-    # Explicit insert-key affordance for the IK/FK-blend seed (the prop already
-    # honors keying; this is the one-click button on the chain's tip bone).
-    influence_row.operator("proscenio.key_ik_influence", text="", icon="KEYFRAME_HLT")
-
-    box.prop(constraint, "pole_target", text="Pole target")
-    if constraint.pole_target is not None and constraint.pole_target.type == "ARMATURE":
-        box.prop_search(
-            constraint,
-            "pole_subtarget",
-            constraint.pole_target.data,
-            "bones",
-            text="Pole bone",
-        )
-
-    _draw_ik_inplane_lock(box, context, constraint)
-
-
-def _draw_ik_inplane_lock(
-    layout: bpy.types.UILayout,
-    context: bpy.types.Context,
-    constraint: bpy.types.Constraint,
-) -> None:
-    """Opt-in "lock chain in-plane" toggle for the active chain's tip bone.
-
-    Locks the chain's out-of-plane rotation DOFs on the constrained bone so the
-    solve stays in the 2D picture plane. Off by default and clearly labelled,
-    because loose ``lock_ik_*`` flags are hidden bone state that otherwise read
-    as "the bone will not rotate" with no explanation.
-    """
-    bone = getattr(context, "active_pose_bone", None)
-    if bone is None or constraint.name != _IK_CONSTRAINT_NAME:
-        return
-    locked = bool(bone.lock_ik_x and bone.lock_ik_z)
-    op = layout.operator(
-        "proscenio.toggle_ik_inplane_lock",
-        text="Unlock chain in-plane" if locked else "Lock chain in-plane",
-        icon="LOCKED" if locked else "UNLOCKED",
-    )
-    op.bone_name = bone.name
+        draw_swatch(row, armature.name, view_row.collection_name, view_row.is_top_level)
 
 
 class PROSCENIO_PT_pose_mode(bpy.types.Panel):

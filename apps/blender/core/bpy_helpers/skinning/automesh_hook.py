@@ -56,7 +56,7 @@ def maybe_pre_regen_snapshot(
     if armature is None or armature.type != "ARMATURE":
         return None
     skinning = _get_skinning_props()
-    if skinning is None or not bool(getattr(skinning, "preserve_on_regen", True)):
+    if skinning is None or not bool(getattr(skinning.automesh, "preserve_on_regen", True)):
         return None
     payload = obj.get(_SIDECAR_KEY)
     if payload is not None:

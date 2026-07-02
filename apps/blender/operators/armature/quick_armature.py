@@ -10,12 +10,11 @@ Same constraint applies to every other ``bpy.types.Operator`` /
 """
 
 import contextlib
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import bpy
 from bpy.props import BoolProperty
-from mathutils import Quaternion, Vector
+from mathutils import Vector
 
 from ...core._shared.props_access import (  # type: ignore[import-not-found]
     object_is_visible,
@@ -36,9 +35,6 @@ from ...core.armature.quick_armature_math import (  # type: ignore[import-not-fo
 )
 from ...core.armature.quick_armature_math import (
     apply_axis_lock as _apply_axis_lock,
-)
-from ...core.armature.quick_armature_math import (
-    format_bone_name as _format_bone_name,
 )
 from ...core.armature.quick_armature_math import (
     resolve_press_mode as _resolve_press_mode,
@@ -62,8 +58,14 @@ from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-n
     find_window_region,
     mouse_event_to_plane_point,
     point_in_region_rect,
-    rv3d_is_front_ortho,
-    view_pose_equal,
+)
+from ...core.bpy_helpers.armature.bone_session import (  # type: ignore[import-not-found]
+    BoneRecord,
+    BoneSession,
+    author_edit_bone,
+)
+from ...core.bpy_helpers.armature.view_session import (  # type: ignore[import-not-found]
+    ViewSnapshot,
 )
 from ._overlay import draw_cursor_warning_2d, draw_preview_3d
 from ._status_bar import emit_chord_layout
@@ -71,21 +73,6 @@ from ._status_bar import emit_chord_layout
 _QUICK_RIG_NAME = "Proscenio.QuickRig"
 
 _DEFAULT_NAME_PREFIX = _DEFAULT_NAME_PREFIX_CORE
-
-
-@dataclass(frozen=True)
-class _BoneRecord:
-    """Snapshot of a bone authored during the modal session.
-
-    Used by the in-modal undo/redo stack so we can recreate the same
-    bone (or remove it) without losing geometry / parenting context.
-    """
-
-    name: str
-    head: tuple[float, float, float]
-    tail: tuple[float, float, float]
-    parent_to_last_name: str
-    connect: bool
 
 
 class PROSCENIO_OT_quick_armature(bpy.types.Operator):
@@ -124,17 +111,11 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _cursor_world: ClassVar[tuple[float, float, float] | None] = None
     _preview_handle_3d: ClassVar[Any] = None
     _created_armature_this_session: ClassVar[bool] = False
-    _restore_view_perspective: ClassVar[str | None] = None
-    _restore_view_location: ClassVar[Vector | None] = None
-    _restore_view_rotation: ClassVar[Quaternion | None] = None
-    _restore_view_distance: ClassVar[float] = 0.0
-    _restore_region_data: ClassVar[bpy.types.RegionView3D | None] = None
-    _post_snap_view_location: ClassVar[Vector | None] = None
-    _post_snap_view_rotation: ClassVar[Quaternion | None] = None
-    _post_snap_view_distance: ClassVar[float] = 0.0
+    # The view snap/restore lifecycle lives in one collaborator (replaced fresh
+    # each invoke) instead of a dozen parallel ClassVars.
+    _view: ClassVar[ViewSnapshot] = ViewSnapshot()
     _restore_selected_names: ClassVar[tuple[str, ...]] = ()
     _restore_active_name: ClassVar[str] = ""
-    _did_auto_snap: ClassVar[bool] = False
     _invoke_area: ClassVar[bpy.types.Area | None] = None
     _invoke_region: ClassVar[bpy.types.Region | None] = None
     _cursor_in_canvas: ClassVar[bool] = True
@@ -161,8 +142,8 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _snap_increment: ClassVar[float] = 1.0
     _ctrl_held: ClassVar[bool] = False
     _axis_lock: ClassVar[AxisLock] = None
-    _session_records: ClassVar[list[_BoneRecord]] = []
-    _redo_records: ClassVar[list[_BoneRecord]] = []
+    # Pure undo/redo record stack (replaces the two parallel record ClassVars).
+    _session: ClassVar[BoneSession] = BoneSession()
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -216,21 +197,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._preview_handle_3d = None
         cls._cursor_warning_handle_2d = None
         cls._created_armature_this_session = False
-        cls._restore_view_perspective = None
-        cls._restore_region_data = None
-        cls._restore_view_location = None
-        cls._restore_view_rotation = None
-        cls._restore_view_distance = 0.0
-        cls._post_snap_view_location = None
-        cls._post_snap_view_rotation = None
-        cls._post_snap_view_distance = 0.0
+        cls._view = ViewSnapshot()
         cls._restore_selected_names = ()
         cls._restore_active_name = ""
-        cls._did_auto_snap = False
         cls._ctrl_held = False
         cls._axis_lock = None
-        cls._session_records = []
-        cls._redo_records = []
+        cls._session = BoneSession()
         # Read PG defaults so the modal honours document-level config
         # without an F3 redo. Per-invoke override is only
         # ``lock_to_front_ortho`` for now.
@@ -299,7 +271,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         # honour it like a bare Esc (discard an empty rig, keep authored bones).
         if cls._exit_requested:
             cls._exit_requested = False
-            cancelled = cls._drag_head is None and not cls._session_records
+            cancelled = cls._drag_head is None and not cls._session.records
             return self._exit(context, cancelled=cancelled)
         # Esc / RMB / Enter must work from any area so the user can
         # always exit the modal even if focus drifted to the Outliner.
@@ -308,7 +280,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             # _last_bone_name: selecting a bone writes _last_bone_name (the
             # chain parent) without creating a bone, so it must not flip a
             # bare Esc from cancel (discard the empty auto-rig) to keep.
-            cancelled = cls._drag_head is None and not cls._session_records
+            cancelled = cls._drag_head is None and not cls._session.records
             return self._exit(context, cancelled=cancelled)
         if _is_confirm_event(event):
             return self._exit(context, cancelled=False)
@@ -707,31 +679,21 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
             return
         if not self._enter_armature_edit(context, armature):
             return
-        edit_bones = armature.data.edit_bones
-        bone_name = _format_bone_name(cls._name_prefix, len(edit_bones))
-        new_bone = edit_bones.new(bone_name)
         last = cls._last_bone_name
-        parent_bone = edit_bones[last] if (parent_to_last and last and last in edit_bones) else None
-        actual_head: tuple[float, float, float] = head
-        if parent_bone is not None and connect:
-            # Snap head to the parent's tail so chained bones share an exact
-            # junction (Blender E extrude convention).
-            actual_head = (
-                float(parent_bone.tail.x),
-                float(parent_bone.tail.y),
-                float(parent_bone.tail.z),
-            )
-        new_bone.head = Vector(actual_head)
-        new_bone.tail = Vector(tail)
-        if parent_bone is not None:
-            new_bone.parent = parent_bone
-            new_bone.use_connect = bool(connect)
-        # Make the fresh bone the active edit bone so it reads as selected.
-        edit_bones.active = new_bone
+        bone_name, actual_head = author_edit_bone(
+            armature.data.edit_bones,
+            head,
+            tail,
+            last_name=last,
+            name_prefix=cls._name_prefix,
+            parent_to_last=parent_to_last,
+            connect=connect,
+        )
         if bone_name:
             cls._last_bone_name = bone_name
-            cls._session_records.append(
-                _BoneRecord(
+            # record_created appends + clears the redo stack (standard semantics).
+            cls._session.record_created(
+                BoneRecord(
                     name=bone_name,
                     head=actual_head,
                     tail=tail,
@@ -739,17 +701,14 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
                     connect=connect,
                 )
             )
-            # Any new bone clears the redo stack (standard semantics).
-            cls._redo_records = []
             report_info(self, f"'{bone_name}' added to {cls._target_armature_name}")
 
     def _undo_last_bone(self, context: bpy.types.Context) -> None:
         cls = type(self)
-        if not cls._session_records:
+        record = cls._session.undo()
+        if record is None:
             report_info(self, "nothing to undo")
             return
-        record = cls._session_records.pop()
-        cls._redo_records.append(record)
         armature = context.scene.objects.get(cls._target_armature_name)
         if armature is None or armature.type != "ARMATURE":
             return
@@ -758,47 +717,43 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         edit_bones = armature.data.edit_bones
         if record.name in edit_bones:
             edit_bones.remove(edit_bones[record.name])
-        cls._last_bone_name = cls._session_records[-1].name if cls._session_records else ""
+        cls._last_bone_name = cls._session.last_authored_name()
         report_info(self, f"undone '{record.name}'")
         if context.area is not None:
             context.area.tag_redraw()
 
     def _redo_last_bone(self, context: bpy.types.Context) -> None:
         cls = type(self)
-        if not cls._redo_records:
+        record = cls._session.take_redo()
+        if record is None:
             report_info(self, "nothing to redo")
             return
-        record = cls._redo_records.pop()
+        armature = context.scene.objects.get(cls._target_armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return
+        if not self._enter_armature_edit(context, armature):
+            return
         # Pin the chain parent to the one the bone was CREATED with, not the live
-        # _last_bone_name: a reparent-by-selection or the undo itself can have
-        # moved it, and _create_bone derives the parent from _last_bone_name -
-        # so redo would otherwise silently reparent the bone and corrupt the chain.
-        cls._last_bone_name = record.parent_to_last_name
-        # Re-create using the captured geometry. ``_create_bone`` will
-        # push the record onto the session stack and clear the redo
-        # stack as a side effect; restore the redo state we just popped
-        # before the call so the rest of the redo history survives.
-        saved_redo = list(cls._redo_records)
-        self._create_bone(
-            context,
+        # _last_bone_name: a reparent-by-selection or the undo can have moved it.
+        # Re-author from the captured geometry (the restored bone count yields the
+        # same name), then re-add the record WITHOUT clearing the rest of redo.
+        author_edit_bone(
+            armature.data.edit_bones,
             record.head,
             record.tail,
+            last_name=record.parent_to_last_name,
+            name_prefix=cls._name_prefix,
             parent_to_last=bool(record.parent_to_last_name),
             connect=record.connect,
         )
-        cls._redo_records = saved_redo
+        cls._session.readd(record)
+        cls._last_bone_name = record.name
+        report_info(self, f"'{record.name}' added to {cls._target_armature_name}")
+        if context.area is not None:
+            context.area.tag_redraw()
 
     def _snapshot_view(self, context: bpy.types.Context) -> None:
-        rv3d = getattr(context, "region_data", None)
-        if rv3d is None:
-            return
-        cls = type(self)
-        cls._restore_region_data = rv3d
-        cls._restore_view_perspective = rv3d.view_perspective
-        cls._restore_view_location = rv3d.view_location.copy()
-        cls._restore_view_rotation = rv3d.view_rotation.copy()
-        cls._restore_view_distance = float(rv3d.view_distance)
-        _log_view("invoke (pre-snap)", rv3d)
+        type(self)._view.capture(context)
 
     def _snapshot_selection(self, context: bpy.types.Context) -> None:
         cls = type(self)
@@ -808,71 +763,13 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._restore_active_name = active.name if active is not None else ""
 
     def _snap_to_front_ortho(self, context: bpy.types.Context) -> None:
-        rv3d = getattr(context, "region_data", None)
-        if rv3d is None:
-            return
-        cls = type(self)
-        if rv3d_is_front_ortho(rv3d):
-            cls._did_auto_snap = False
-            return
-        # ``view3d.view_axis`` honors the active region; the operator
-        # poll already guaranteed VIEW_3D context.
-        bpy.ops.view3d.view_axis(type="FRONT")
-        cls._did_auto_snap = True
-        cls._post_snap_view_location = rv3d.view_location.copy()
-        cls._post_snap_view_rotation = rv3d.view_rotation.copy()
-        cls._post_snap_view_distance = float(rv3d.view_distance)
-        report_info(self, "snapped to Front Orthographic")
-        _log_view("post-snap", rv3d)
+        type(self)._view.snap_to_front_ortho(context, lambda msg: report_info(self, msg))
 
     def _restore_view(self) -> None:
         cls = type(self)
-        rv3d = cls._restore_region_data
-        if rv3d is None:
-            return
-        _log_view("exit (before restore decision)", rv3d)
-        if not cls._did_auto_snap:
-            # User did not request snap, nothing to restore.
-            self._clear_view_snapshot()
-            return
-        # Compare via decomposed values (location, rotation, distance)
-        # rather than the raw 4x4 view_matrix. The matrix accumulates
-        # float precision drift across mode-toggle round-trips even when
-        # the user does not actually move the camera; decomposed values
-        # stay stable.
-        if not view_pose_equal(
-            rv3d.view_location,
-            rv3d.view_rotation,
-            float(rv3d.view_distance),
-            cls._post_snap_view_location,
-            cls._post_snap_view_rotation,
-            cls._post_snap_view_distance,
-        ):
-            report_info(self, "view kept (user-moved during modal)")
-            self._clear_view_snapshot()
-            return
-        if cls._restore_view_location is not None:
-            rv3d.view_location = cls._restore_view_location
-        if cls._restore_view_rotation is not None:
-            rv3d.view_rotation = cls._restore_view_rotation
-        rv3d.view_distance = cls._restore_view_distance
-        if cls._restore_view_perspective is not None:
-            rv3d.view_perspective = cls._restore_view_perspective
-        report_info(self, "view restored to pre-snap")
-        _log_view("exit (after restore)", rv3d)
-        self._clear_view_snapshot()
-
-    def _clear_view_snapshot(self) -> None:
-        cls = type(self)
-        cls._restore_view_location = None
-        cls._restore_view_rotation = None
-        cls._restore_view_distance = 0.0
-        cls._restore_view_perspective = None
-        cls._restore_region_data = None
-        cls._post_snap_view_location = None
-        cls._post_snap_view_rotation = None
-        cls._post_snap_view_distance = 0.0
-        cls._did_auto_snap = False
+        cls._view.restore(lambda msg: report_info(self, msg))
+        # The region filter uses these; the old _clear_view_snapshot nulled them
+        # alongside the view state, so keep that coupling on every restore.
         cls._invoke_area = None
         cls._invoke_region = None
 
@@ -970,31 +867,12 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._shift_held = False
         cls._ctrl_held = False
         cls._axis_lock = None
-        cls._session_records = []
-        cls._redo_records = []
+        cls._session = BoneSession()
         if context.area is not None:
             context.area.tag_redraw()
         verb = "cancelled" if cancelled else "confirmed"
         report_info(self, f"{verb} ({bones_created} bone(s) authored)")
         return {"CANCELLED"} if cancelled else {"FINISHED"}
-
-
-def _log_view(label: str, rv3d: bpy.types.RegionView3D) -> None:
-    """Print a one-line view state snapshot to the console.
-
-    Logs persistent (location, rotation, distance) + the active
-    perspective enum. Use ``System Console`` (Window > Toggle System
-    Console) to inspect the trace while authoring.
-    """
-    loc = rv3d.view_location
-    rot = rv3d.view_rotation
-    print(
-        f"[Proscenio.QuickArmature] {label}: "
-        f"perspective={rv3d.view_perspective} "
-        f"location=({loc.x:.3f}, {loc.y:.3f}, {loc.z:.3f}) "
-        f"rotation=(w={rot.w:.3f}, x={rot.x:.3f}, y={rot.y:.3f}, z={rot.z:.3f}) "
-        f"distance={rv3d.view_distance:.3f}"
-    )
 
 
 def _is_exit_event(event: bpy.types.Event) -> bool:

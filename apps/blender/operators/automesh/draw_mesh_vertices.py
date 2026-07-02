@@ -18,11 +18,11 @@ from typing import ClassVar, cast
 import bpy
 from mathutils import Vector
 
+from ...core._shared.armature_resolve import (  # type: ignore[import-not-found]
+    active_armature,
+)
 from ...core._shared.material_images import (  # type: ignore[import-not-found]
     first_material_image,
-)
-from ...core._shared.props_access import (  # type: ignore[import-not-found]
-    active_armature,
 )
 from ...core._shared.report import (  # type: ignore[import-not-found]
     report_error,
@@ -136,7 +136,6 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     _pen: VertexPen
-    _handles: OverlayHandles
     _session: AuthoringSession | None
     _tri: list[tuple[tuple[float, float], tuple[float, float]]]
     # Spec 070 C3: Tab cycles the active tool OUTER -> POINT -> FOLD. POINT drops a
@@ -165,6 +164,10 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
     # Active tool mirrored at class level so the STATUSBAR draw shows it (mode is
     # surfaced there, not in a mouse tooltip - tooltips are warning-only here).
     _current_tool: ClassVar[str] = "outer"
+    # Overlay draw-handler set held at CLASS level so an addon reload while the
+    # modal is live can sweep it in unregister() (a per-instance handle is
+    # unreachable after reload -> leaked draw handlers).
+    _handles: ClassVar[OverlayHandles | None] = None
     _statusbar_appended: bool = False
     # Set by the panel's "Exit" button (a re-invoke while live): the running modal
     # finishes on its next event (Quick Armature toggle pattern).
@@ -220,9 +223,9 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         # Seed a complete empty handle set BEFORE registering so the except path
         # can _finish() (which tears the overlay down) even if registration itself
         # raised - mirrors the automesh modal's invoke.
-        self._handles = empty_overlay_handles()
+        type(self)._handles = empty_overlay_handles()
         try:
-            self._handles = self._register_overlay()
+            type(self)._handles = self._register_overlay()
             self._append_statusbar()
             mark_running(_MODAL_NAME)
             self._tag_redraw(context)
@@ -650,8 +653,9 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         """Recompute the live SIMPLE triangulation from the in-progress contour
         (one CDT per call) and re-register the overlay so it draws."""
         self._tri = self._compute_triangulation(context)
-        unregister_overlay(self._handles)
-        self._handles = self._register_overlay()
+        if self._handles is not None:
+            unregister_overlay(self._handles)
+        type(self)._handles = self._register_overlay()
         self._tag_redraw(context)
 
     def _compute_triangulation(
@@ -684,7 +688,7 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         """Scene params with the interior mode taken from the Manual Mesh panel's
         own ``manual_interior_mode`` toggle (spec 070 C1) - independent of the
         automesh trace fields."""
-        mode = context.scene.proscenio.skinning.manual_interior_mode
+        mode = context.scene.proscenio.skinning.automesh.manual_interior_mode
         return cast("StageParams", replace(_snapshot_params(context), interior_mode=mode))
 
     def _register_overlay(self) -> OverlayHandles:
@@ -715,8 +719,9 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         try:
             if context.window is not None:  # None on the window-close cancel path
                 context.window.cursor_set("DEFAULT")  # drop the CROSSHAIR over the canvas
-            with contextlib.suppress(RuntimeError):
-                unregister_overlay(self._handles)
+            if self._handles is not None:
+                with contextlib.suppress(RuntimeError):
+                    unregister_overlay(self._handles)
             self._remove_statusbar()
             if self._session is not None and cancel:
                 restore_session(context, self._session)
@@ -770,6 +775,21 @@ def _draw_statusbar_manual_draw(self: bpy.types.Header, _context: bpy.types.Cont
     self.layout.separator_spacer()
 
 
+def _sweep_orphan_handlers() -> None:
+    """Remove overlay draw handlers / statusbar leaked across a reload.
+
+    Called from :func:`unregister`. When the addon reloads while the Manual Mesh
+    modal is live, its per-class overlay handles + statusbar draw are otherwise
+    unreachable and leak. Safe to call repeatedly (mirrors
+    ``quick_armature._sweep_orphan_handlers``).
+    """
+    cls = PROSCENIO_OT_draw_mesh_vertices
+    if cls._handles is not None:
+        unregister_overlay(cls._handles)
+        cls._handles = None
+    remove_statusbar_draw(cls, _draw_statusbar_manual_draw)
+
+
 _classes: tuple[type, ...] = (PROSCENIO_OT_draw_mesh_vertices,)
 
 
@@ -779,5 +799,6 @@ def register() -> None:
 
 
 def unregister() -> None:
+    _sweep_orphan_handlers()
     for cls in reversed(_classes):
         bpy.utils.unregister_class(cls)

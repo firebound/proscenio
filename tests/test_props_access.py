@@ -14,11 +14,13 @@ from types import SimpleNamespace
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "apps/blender"))
 
-from core._shared.props_access import (  # noqa: E402
+from core._shared.armature_resolve import (  # noqa: E402
     describe_export_target,
-    object_props,
     resolve_export_armature,
     resolve_target_armature,
+)
+from core._shared.props_access import (  # noqa: E402
+    object_props,
     scene_props,
 )
 

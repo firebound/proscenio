@@ -180,12 +180,12 @@ class PROSCENIO_PT_weight_transfer(bpy.types.Panel):
         layout = self.layout
         skinning_props = _scene_skinning(context)
         if skinning_props is not None:
-            layout.prop(skinning_props, "weight_transfer_max_distance", text="Max Distance")
+            layout.prop(skinning_props.bind, "weight_transfer_max_distance", text="Max Distance")
         op = layout.operator("proscenio.copy_weights_to_selected", icon="DUPLICATE")
         if skinning_props is not None:
             # Seed the operator from the panel so the click uses the field value;
             # F9 redo still exposes max_distance for a one-off tweak.
-            op.max_distance = skinning_props.weight_transfer_max_distance
+            op.max_distance = skinning_props.bind.weight_transfer_max_distance
 
 
 def _draw_bind(
@@ -205,15 +205,15 @@ def _draw_bind(
     """
     bind_mode = "BONE_HEAT"
     if skinning_props is not None:
-        layout.prop(skinning_props, "bind_init_mode", text="Mode")
-        bind_mode = skinning_props.bind_init_mode
+        layout.prop(skinning_props.bind, "init_mode", text="Mode")
+        bind_mode = skinning_props.bind.init_mode
         # max_distance / falloff_power feed only the Proximity bind; the other
         # modes ignore both, so drawing them elsewhere would be inert UI. The
         # data path (operator props, invoke seeding, apply) is already wired -
         # this is layout-only.
         if bind_mode == "PROXIMITY":
-            layout.prop(skinning_props, "bind_max_distance", text="Max Distance")
-            layout.prop(skinning_props, "bind_falloff_power", text="Falloff Power")
+            layout.prop(skinning_props.bind, "max_distance", text="Max Distance")
+            layout.prop(skinning_props.bind, "falloff_power", text="Falloff Power")
     # No own "Target:" line - the Weight Paint parent panel already shows the
     # "Target: Skeleton <name>" readout above this subpanel.
 
@@ -413,7 +413,7 @@ def _draw_snapshot(
     the live weights when the mesh topology still matches.
     """
     if skinning_props is not None:
-        layout.prop(skinning_props, "preserve_on_regen")
+        layout.prop(skinning_props.automesh, "preserve_on_regen")
         # The provenance overlay toggle lived here but registered no draw handler
         # outside the Edit Weights modal (which forces the overlay on for its
         # session and restores the prior value on exit), so it was dead UI.

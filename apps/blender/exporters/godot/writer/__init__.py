@@ -37,10 +37,13 @@ function consumers should call.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal, NotRequired, TypedDict
 
 import bpy
+from mathutils import Matrix
 from proscenio_models import (
     Animation,
     ProscenioDocument,
@@ -88,6 +91,70 @@ DEFAULT_PIXELS_PER_UNIT = 100.0
 __all__ = ["DEFAULT_PIXELS_PER_UNIT", "SCHEMA_VERSION", "export"]
 
 
+@contextmanager
+def _rest_pose_for_geometry(armature_obj: bpy.types.Object) -> Iterator[None]:
+    """Drop the armature to its rest pose for the geometry read, then restore.
+
+    Element geometry is the bind/rest shape; the action animates it on top
+    (e.g. slot_swap's swinging arm). Reading matrix_world while the .blend
+    sits on a posed frame would bake the pose into the geometry, which the
+    bone_transform track then double-applies. Detach the armature action so
+    the pose drops to rest for the geometry read, and restore it on exit (the
+    tracks are built from the action's fcurves). Bones already export at rest -
+    compute_bone_world_godot reads head_local/tail_local - so only the geometry
+    read needs this.
+    """
+    pose = armature_obj.pose
+    anim_data = armature_obj.animation_data
+    saved_action = anim_data.action if anim_data is not None else None
+    saved_basis: dict[str, Matrix] = {}
+    # Detach the active action (if any) so its evaluated pose does not feed the
+    # geometry read; save/restore is gated on anim_data.
+    if anim_data is not None:
+        anim_data.action = None
+    # Reset bases whenever the rig is posable, not only when an action is
+    # attached: a rig manually posed in Pose Mode without an active action would
+    # otherwise bake its pose into the geometry. Detaching the action does not
+    # reset pose_bone.matrix_basis (it keeps the last evaluated value), so zero
+    # each basis to drop to the rest pose before the read; restored in the finally.
+    if pose is not None:
+        for pose_bone in pose.bones:
+            saved_basis[pose_bone.name] = pose_bone.matrix_basis.copy()
+            pose_bone.matrix_basis = Matrix()
+    try:
+        yield
+    finally:
+        if pose is not None:
+            for pose_bone in pose.bones:
+                if pose_bone.name in saved_basis:
+                    pose_bone.matrix_basis = saved_basis[pose_bone.name]
+        if anim_data is not None:
+            anim_data.action = saved_action
+        restore_vl = bpy.context.view_layer
+        if restore_vl is not None:
+            restore_vl.update()
+
+
+@contextmanager
+def _unhidden(sprite_objs: list[bpy.types.Object]) -> Iterator[None]:
+    """Temporarily un-hide hidden sprites so matrix_world evaluates, then restore.
+
+    Blender skips depsgraph evaluation for hide_viewport=True objects, so
+    matrix_world is stale for hidden slot attachments. Un-hide, let the caller
+    force a depsgraph update and build the entries, then restore the hide state.
+    """
+    hidden_state: dict[bpy.types.Object, bool] = {}
+    for obj in sprite_objs:
+        if obj.hide_viewport:
+            hidden_state[obj] = True
+            obj.hide_viewport = False
+    try:
+        yield
+    finally:
+        for obj in hidden_state:
+            obj.hide_viewport = True
+
+
 def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_UNIT) -> None:
     """Write the active scene to a ``.proscenio`` file."""
     path_str = str(filepath)
@@ -105,58 +172,14 @@ def export(filepath: str | Path, *, pixels_per_unit: float = DEFAULT_PIXELS_PER_
 
     sprite_objs = find_sprite_meshes(scene)
 
-    # Element geometry is the bind/rest shape; the action animates it on top
-    # (e.g. slot_swap's swinging arm). Reading matrix_world while the .blend
-    # sits on a posed frame would bake the pose into the geometry, which the
-    # bone_transform track then double-applies. Detach the armature action so
-    # the pose drops to rest for the geometry read, and restore it before the
-    # tracks are built (they come from the action's fcurves). Bones already
-    # export at rest - compute_bone_world_godot reads head_local/tail_local -
-    # so only the geometry read needs this.
-    from mathutils import Matrix
-
-    pose = armature_obj.pose
-    anim_data = armature_obj.animation_data
-    saved_action = anim_data.action if anim_data is not None else None
-    saved_basis: dict[str, Matrix] = {}
-    # Reset bases whenever the rig is posable, not only when an action is
-    # attached: a rig posed without an active action would otherwise bake its
-    # pose into the geometry.
-    if anim_data is not None and pose is not None:
-        anim_data.action = None
-        # Detaching the action does not reset pose_bone.matrix_basis - it keeps
-        # the last evaluated value - so zero each basis to drop to the rest pose
-        # before the geometry read. Restored in the finally below.
-        for pose_bone in pose.bones:
-            saved_basis[pose_bone.name] = pose_bone.matrix_basis.copy()
-            pose_bone.matrix_basis = Matrix()
-
-    # Blender skips depsgraph evaluation for hide_viewport=True objects, so
-    # matrix_world is stale for hidden slot attachments. Un-hide, force a
-    # depsgraph update so matrix_world reflects the parent chain (and the
-    # rest pose above), build the entries, then restore the hide state.
-    hidden_state: dict[bpy.types.Object, bool] = {}
-    for obj in sprite_objs:
-        if obj.hide_viewport:
-            hidden_state[obj] = True
-            obj.hide_viewport = False
-
-    try:
+    # The geometry read needs the rig at rest and hidden attachments un-hidden;
+    # both are restored on block exit (un-hide first, then the rest pose - the
+    # same order the old inline try/finally used).
+    with _rest_pose_for_geometry(armature_obj), _unhidden(sprite_objs):
         view_layer = bpy.context.view_layer
         if view_layer is not None:
             view_layer.update()
         sprites_out = [build_element(obj, bone_world_godot, pixels_per_unit) for obj in sprite_objs]
-    finally:
-        for obj in hidden_state:
-            obj.hide_viewport = True
-        if anim_data is not None and pose is not None:
-            for pose_bone in pose.bones:
-                if pose_bone.name in saved_basis:
-                    pose_bone.matrix_basis = saved_basis[pose_bone.name]
-            anim_data.action = saved_action
-            restore_vl = bpy.context.view_layer
-            if restore_vl is not None:
-                restore_vl.update()
 
     slots = build_slots_for_scene(scene)
     atlas = find_atlas_image(path)

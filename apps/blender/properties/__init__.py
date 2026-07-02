@@ -55,6 +55,10 @@ from ._handlers import (
 from .bone_props import ProscenioBoneProps
 from .object_props import ProscenioObjectProps
 from .scene_props import (
+    ProscenioAuthoringProps,
+    ProscenioAutomeshProps,
+    ProscenioBindProps,
+    ProscenioDebugProps,
     ProscenioQuickArmatureProps,
     ProscenioSceneProps,
     ProscenioSkinningProps,
@@ -66,6 +70,12 @@ _classes: tuple[type, ...] = (
     ProscenioBoneProps,
     ProscenioValidationIssue,
     ProscenioQuickArmatureProps,
+    # The nested skinning groups must register BEFORE ProscenioSkinningProps,
+    # whose PointerProperty fields reference them.
+    ProscenioAutomeshProps,
+    ProscenioBindProps,
+    ProscenioAuthoringProps,
+    ProscenioDebugProps,
     ProscenioSkinningProps,
     ProscenioSceneProps,
 )

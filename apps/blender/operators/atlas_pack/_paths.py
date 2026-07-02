@@ -1,53 +1,10 @@
-"""Shared atlas-pack filesystem + snapshot helpers."""
+"""Atlas-pack output path derivation."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import bpy
-
-from ...core._shared.cp_keys import PROSCENIO_PRE_PACK  # type: ignore[import-not-found]
-from ...core._shared.json_cp import read_json_dict_cp  # type: ignore[import-not-found]
-from ...core._shared.material_images import (  # type: ignore[import-not-found]
-    iter_material_node_images,
-)
-
-
-def first_texture_image_name(mat: bpy.types.Material) -> str:
-    """Return the name of the first image-textured node on ``mat`` (or '')."""
-    image = next(iter_material_node_images(mat), None)
-    return str(image.name) if image is not None else ""
-
-
-def duplicate_active_uv_layer(obj: bpy.types.Object) -> str:
-    """Duplicate the active UV layer to ``<name>.pre_pack`` for later restore.
-
-    No-op when the snapshot already exists. Returns the snapshot layer
-    name or an empty string when there was no active UV layer.
-    """
-    mesh = obj.data
-    uv_layers = getattr(mesh, "uv_layers", None)
-    if uv_layers is None:
-        return ""
-    active = uv_layers.active
-    if active is None or len(active.data) == 0:
-        return ""
-    snap_name = f"{active.name}.pre_pack"
-    if snap_name in uv_layers:
-        return snap_name
-    snap = uv_layers.new(name=snap_name, do_init=False)
-    if snap is None:
-        return ""
-    for i, loop in enumerate(active.data):
-        snap.data[i].uv = loop.uv
-    uv_layers.active = active
-    return str(snap.name)
-
-
-def pre_pack_snapshot_for(obj: bpy.types.Object) -> dict[str, Any] | None:
-    """Read the pre-pack snapshot stored as a Custom Property, or ``None``."""
-    return read_json_dict_cp(obj, PROSCENIO_PRE_PACK) or None
 
 
 def packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:
@@ -56,13 +13,3 @@ def packed_atlas_paths(blend_path: str) -> tuple[Path, Path]:
     stem = blend.stem if blend.stem else "atlas_packed"
     folder = blend.parent if blend_path else Path(bpy.path.abspath("//"))
     return folder / f"{stem}.atlas.png", folder / f"{stem}.atlas.json"
-
-
-def swap_image_in_materials(materials: bpy.types.AnyType, atlas_image: bpy.types.Image) -> None:
-    """For every image-textured node across ``materials``, swap to ``atlas_image``."""
-    for mat in materials:
-        if mat is None or not mat.use_nodes or mat.node_tree is None:
-            continue
-        for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE":
-                node.image = atlas_image

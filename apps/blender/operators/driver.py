@@ -220,7 +220,30 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
                 self.in_min, self.in_max, self.out_min, self.out_max
             )
 
-        driver = fcurve.driver
+        self._configure_driver_target(fcurve.driver, expression, armature)
+        self._mirror_props_back(props, armature, expression)
+
+        # The source bone is NOT auto-excluded from export here. A Drive-from-Bone
+        # source can be a real deform bone (e.g. an eye sprite driven by the head
+        # bone that also deforms the mesh); auto-excluding it would silently drop a
+        # deform bone from the Godot skeleton. A non-deform helper is already
+        # dropped by ``bone_is_exported`` (the use_deform gate), so the rigger
+        # excludes a deform helper explicitly via the Skeleton list export toggle.
+
+        report_info(
+            self,
+            f"driver on '{sprite.name}.{data_path}' "
+            f"<- {armature.name}:{self.bone_name}.{self.source_axis}",
+        )
+        return {"FINISHED"}
+
+    def _configure_driver_target(
+        self,
+        driver: bpy.types.Driver,
+        expression: str,
+        armature: bpy.types.Object,
+    ) -> None:
+        """Point the fcurve's driver at the source bone channel (mutates bpy)."""
         driver.type = "SCRIPTED"
         driver.expression = expression
         var = driver.variables[0] if driver.variables else driver.variables.new()
@@ -243,9 +266,17 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
             # and break rigs repositioned at instance time.
             target.transform_space = "LOCAL_SPACE"
 
-        # Mirror redo-panel overrides back to the PropertyGroup. The computed
-        # expression is stored too, so the Advanced field shows the built map
-        # as a starting point to hand-tweak.
+    def _mirror_props_back(
+        self,
+        props: bpy.types.PropertyGroup,
+        armature: bpy.types.Object,
+        expression: str,
+    ) -> None:
+        """Mirror redo-panel overrides back to the PropertyGroup.
+
+        The computed expression is stored too, so the Advanced field shows the
+        built map as a starting point to hand-tweak.
+        """
         props.driver_target = self.target_property
         props.driver_source_axis = self.source_axis
         props.driver_expression = expression
@@ -256,20 +287,6 @@ class PROSCENIO_OT_create_driver(bpy.types.Operator):
         props.driver_out_max = self.out_max
         props.driver_source_armature = armature
         props.driver_source_bone = self.bone_name
-
-        # The source bone is NOT auto-excluded from export here. A Drive-from-Bone
-        # source can be a real deform bone (e.g. an eye sprite driven by the head
-        # bone that also deforms the mesh); auto-excluding it would silently drop a
-        # deform bone from the Godot skeleton. A non-deform helper is already
-        # dropped by ``bone_is_exported`` (the use_deform gate), so the rigger
-        # excludes a deform helper explicitly via the Skeleton list export toggle.
-
-        report_info(
-            self,
-            f"driver on '{sprite.name}.{data_path}' "
-            f"<- {armature.name}:{self.bone_name}.{self.source_axis}",
-        )
-        return {"FINISHED"}
 
 
 class PROSCENIO_OT_remove_driver(bpy.types.Operator):

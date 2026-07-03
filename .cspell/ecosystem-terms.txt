@@ -101,6 +101,7 @@ dtype
 dunder
 editability
 elif
+elts
 endoflife
 ensurepip
 esac
@@ -119,6 +120,7 @@ fromfile
 frontmost
 frozenset
 fset
+fstring
 gdlintrc
 generalise
 getattr
@@ -349,6 +351,7 @@ unhide
 unhides
 unjudged
 unopenable
+unparse
 unparseable
 unrecognised
 unsanitized

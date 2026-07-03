@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import _active_armature, draw_subpanel_header, draw_target_readout
 from ._list import ProscenioListMixin
 
@@ -63,7 +64,7 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
         draw_target_readout(layout, _active_armature(context))
         actions = bpy.data.actions
         if not actions:
-            layout.label(text="no actions to export", icon="INFO")
+            layout.label(text=iface("no actions to export"), icon="INFO")
             return
         layout.template_list(
             "PROSCENIO_UL_actions",

@@ -12,6 +12,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import draw_subpanel_header
 
 
@@ -44,7 +45,7 @@ class PROSCENIO_PT_helpers(bpy.types.Panel):
         space = context.space_data
         if space is not None and getattr(space, "type", None) == "VIEW_3D":
             col = layout.column(align=True)
-            col.label(text="3D View Clip:")
+            col.label(text=iface("3D View Clip:"))
             col.prop(space, "clip_start")
             col.prop(space, "clip_end")
 

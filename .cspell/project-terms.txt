@@ -160,3 +160,11 @@ zsword
 abow
 adversarialmente
 multilanguage
+autorar
+reamostrado
+reamostragem
+reespaçar
+reparentear
+reprojeção
+revincula
+subpainel

@@ -14,6 +14,7 @@ import bpy
 from bpy.props import StringProperty
 
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core.bpy_helpers.i18n import iface
 from ...core.bpy_helpers.slot import (  # type: ignore[import-not-found]
     bind_slot_to_bone,
     resolve_slot_armature,
@@ -76,7 +77,7 @@ class PROSCENIO_OT_bind_slot_to_bone(bpy.types.Operator):
         empty = context.active_object
         armature = resolve_slot_armature(context, empty)
         if armature is None:
-            self.layout.label(text="no armature to follow", icon="ERROR")
+            self.layout.label(text=iface("no armature to follow"), icon="ERROR")
             return
         self.layout.prop_search(self, "bone_name", armature.data, "bones", text="Bone")
 

@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import draw_issue_row, draw_subpanel_header
 
 
@@ -32,19 +33,19 @@ class PROSCENIO_PT_validation(bpy.types.Panel):
         layout = self.layout
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
-            layout.label(text="proscenio scene props not registered", icon="ERROR")
+            layout.label(text=iface("proscenio scene props not registered"), icon="ERROR")
             return
 
         layout.operator("proscenio.validate_export", text="Validate", icon="CHECKMARK")
         layout.separator()
 
         if not scene_props.validation_ran:
-            layout.label(text="run Validate to see issues", icon="INFO")
+            layout.label(text=iface("run Validate to see issues"), icon="INFO")
             return
 
         issues = list(scene_props.validation_results)
         if not issues:
-            layout.label(text="no issues - ready to export", icon="CHECKMARK")
+            layout.label(text=iface("no issues - ready to export"), icon="CHECKMARK")
             return
 
         for issue in issues:

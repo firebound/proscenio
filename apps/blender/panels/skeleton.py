@@ -25,6 +25,7 @@ from ..core.bpy_helpers.armature import (  # type: ignore[import-not-found]
     IkChainScan,
     scan_ik_chains,
 )
+from ..core.bpy_helpers.i18n import iface
 from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ..core.rig_ui_view import RigUIRow, rig_ui_rows  # type: ignore[import-not-found]
 from ._draw_ik import (
@@ -288,7 +289,7 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         if name and width >= _SKELETON_HEADER_NAME_MIN_WIDTH:
             self.layout.label(text=f"Skeleton: {name}")
         else:
-            self.layout.label(text="Skeleton")
+            self.layout.label(text=iface("Skeleton"))
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "skeleton", "skeleton")
@@ -309,14 +310,14 @@ class PROSCENIO_PT_skeleton(bpy.types.Panel):
         explicit_target = _explicit_target(context)
         if not armatures:
             row = layout.row()
-            row.label(text="no Armature in scene - use Quick Armature below", icon="INFO")
+            row.label(text=iface("no Armature in scene - use Quick Armature below"), icon="INFO")
         elif explicit_target is None:
             box = layout.box()
             box.label(
-                text="no rig picked - skeleton ops will create a new Proscenio.QuickRig",
+                text=iface("no rig picked - skeleton ops will create a new Proscenio.QuickRig"),
                 icon="INFO",
             )
-            box.label(text="Use existing instead:")
+            box.label(text=iface("Use existing instead:"))
             buttons = box.column(align=True)
             for arm in armatures:
                 op = buttons.operator(
@@ -429,7 +430,7 @@ class PROSCENIO_PT_rig_ui(bpy.types.Panel):
         collections = getattr(getattr(target, "data", None), "collections", None)
         if not collections:
             layout.label(
-                text="no bone collections - add them in Blender's Bone Collections panel",
+                text=iface("no bone collections - add them in Blender's Bone Collections panel"),
                 icon="INFO",
             )
             return
@@ -489,7 +490,7 @@ class PROSCENIO_PT_pose_mode(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         if context.mode != "POSE":
-            layout.label(text="enter Pose mode to bake / save poses", icon="INFO")
+            layout.label(text=iface("enter Pose mode to bake / save poses"), icon="INFO")
             return
         layout.operator("proscenio.bake_current_pose", text="Bake Current Pose", icon="KEY_HLT")
         _draw_ik_toggle(layout, context)
@@ -545,7 +546,7 @@ class PROSCENIO_PT_ik_chains(bpy.types.Panel):
             return
         chains = scan_ik_chains(target).chains
         if not chains:
-            layout.label(text="no IK chains - add one in Pose Mode", icon="INFO")
+            layout.label(text=iface("no IK chains - add one in Pose Mode"), icon="INFO")
             return
         for chain in chains:
             box = layout.box()
@@ -635,7 +636,7 @@ def _draw_quick_armature_shortcuts(layout: bpy.types.UILayout) -> None:
     if not op.is_running():
         return
     header, body = layout.panel("proscenio_quick_armature_shortcuts", default_closed=True)
-    header.label(text="Shortcuts", icon="GREASEPENCIL")
+    header.label(text=iface("Shortcuts"), icon="GREASEPENCIL")
     if body is not None:
         emit_chord_layout(body, op)
 

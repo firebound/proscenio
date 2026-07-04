@@ -187,6 +187,24 @@ test('coverage guard: a suffix-less .md in a translated directory fails', (t) =>
   assert.throws(() => sync({docsDir, outDir}), /orphan/);
 });
 
+test('coverage treats a mixed .md/.mdx language pair as one page', (t) => {
+  const {docsDir, outDir, cleanup} = scaffold({
+    'index-en.md': 'en',
+    'index-pt.md': 'pt',
+    // Same page, translation authored as .mdx: Docusaurus routes both to the
+    // same slug, so the guard must group them, not fault each as missing.
+    'guide-en.md': 'en',
+    'guide-pt.mdx': 'pt',
+    '_i18n/chrome-en.json': JSON.stringify({navbar: {}, footer: {}, sidebar: {}}),
+    '_i18n/chrome-pt.json': JSON.stringify({navbar: {}, footer: {}, sidebar: {}}),
+  });
+  t.after(cleanup);
+
+  sync({docsDir, outDir});
+  assert.ok(existsSync(join(outDir, EN, 'guide.md')), 'en page keeps its .md');
+  assert.ok(existsSync(join(outDir, PT, 'guide.mdx')), 'pt page keeps its .mdx');
+});
+
 test('--check mode runs the guard without writing output', (t) => {
   const {docsDir, outDir, cleanup} = scaffold({
     'index-en.md': 'en',

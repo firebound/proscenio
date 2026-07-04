@@ -107,7 +107,10 @@ function assertCoverage(pages) {
       errors.push(`untranslated page (no -${SUFFIXES.join('/-')} suffix): docs/${asPosix(rel)}`);
       continue;
     }
-    const key = stripSuffix(rel, m);
+    // Key by the page path minus -<lang>.<ext> so a page whose translation
+    // is authored with a different extension (guide-en.md + guide-pt.mdx,
+    // same route in Docusaurus) groups as one, not two half-missing pages.
+    const key = rel.slice(0, rel.length - m[0].length);
     if (!groups.has(key)) groups.set(key, new Set());
     groups.get(key).add(m[1]);
   }

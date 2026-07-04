@@ -281,6 +281,11 @@ def test_every_topic_has_a_panel_or_operator_caller() -> None:
 
 DOCS_DIR = REPO_ROOT / "docs" / "02-tools" / "blender-addon"
 
+#: The docs are co-located per language as ``<name>-en.md`` / ``<name>-pt.md``
+#: (spec 077). The panel mirror keys on the English source; pt-BR is a
+#: translation of the same page set, so the mirror globs the ``-en`` pages.
+_CANONICAL_PAGES = "*-en.md"
+
 #: The twelve pages the mirror allows: the eleven top-level panels plus the index
 #: (the About footer panel). Bare page slug -> the panel topic that owns it. The
 #: index has no panel topic of its own (status_legend deep-links to an anchor on
@@ -361,19 +366,20 @@ def _slugify_heading(text: str) -> str:
 
 
 def _doc_page_slug(path: Path) -> str:
-    """Bare routing slug for a doc file: the ``NN-`` ordering prefix is stripped.
+    """Bare routing slug for a co-located doc file: the ``NN-`` ordering prefix
+    and the ``-en``/``-pt`` language suffix are both stripped (spec 077).
 
-    Docusaurus routes ``10-pipeline.md`` at ``.../pipeline`` and ``index.md`` at
-    the section root, so ``_DOC_PATHS`` keys on the bare slug while the files on
-    disk carry the numeric prefix.
+    Docusaurus routes ``10-pipeline-en.md`` at ``.../pipeline`` and
+    ``index-en.md`` at the section root, so ``_DOC_PATHS`` keys on the bare slug
+    while the co-located source carries the numeric prefix and language suffix.
     """
-    stem = path.stem
+    stem = re.sub(r"-(en|pt)$", "", path.stem)
     return stem.split("-", 1)[1] if re.match(r"^\d+-", stem) else stem
 
 
 def _doc_page_path(slug: str) -> Path:
-    """Resolve a bare routing slug to its prefixed file on disk."""
-    for path in DOCS_DIR.glob("*.md"):
+    """Resolve a bare routing slug to its English co-located file on disk."""
+    for path in DOCS_DIR.glob(_CANONICAL_PAGES):
         if _doc_page_slug(path) == slug:
             return path
     raise FileNotFoundError(f"no Blender-addon doc page for slug {slug!r}")
@@ -434,14 +440,14 @@ def test_doc_pages_on_disk_equal_the_locked_panel_set() -> None:
     a section of the Pipeline page. ``_category_.json`` is sidebar metadata, not
     a page.
     """
-    on_disk = {_doc_page_slug(p) for p in DOCS_DIR.glob("*.md")}
+    on_disk = {_doc_page_slug(p) for p in DOCS_DIR.glob(_CANONICAL_PAGES)}
     assert on_disk == set(PANEL_PAGES), (
         f"doc page set drifted from the locked panel mirror: "
         f"extra={sorted(on_disk - set(PANEL_PAGES))} "
         f"missing={sorted(set(PANEL_PAGES) - on_disk)}"
     )
-    assert not (DOCS_DIR / "09-validation.md").exists(), (
-        "09-validation.md must be folded into pipeline.md#validate (spec 064)"
+    assert not (DOCS_DIR / "09-validation-en.md").exists(), (
+        "09-validation must stay folded into pipeline.md#validate (spec 064)"
     )
 
 
@@ -490,7 +496,7 @@ def test_every_doc_path_resolves_to_a_page_and_anchor_on_disk() -> None:
     ``#anchor``, a real heading on that page."""
     for topic, rel in _DOC_PATHS.items():
         page, _, anchor = rel.partition("#")
-        assert page in {_doc_page_slug(p) for p in DOCS_DIR.glob("*.md")}, (
+        assert page in {_doc_page_slug(p) for p in DOCS_DIR.glob(_CANONICAL_PAGES)}, (
             f"{topic}: doc page {page!r} is missing"
         )
         if anchor:

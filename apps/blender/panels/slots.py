@@ -16,6 +16,7 @@ from typing import ClassVar
 import bpy
 
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface
 from ..core.bpy_helpers.slot import (  # type: ignore[import-not-found]
     bone_parent_collapses,
     slot_follow_shape,
@@ -118,7 +119,7 @@ def _draw_follow_state(
     elif shape == "field_inert":
         col.label(text=f"bound to '{bone}' - not following yet", icon="BONE_DATA")
     else:
-        col.label(text="bone: (unparented)", icon="BONE_DATA")
+        col.label(text=iface("bone: (unparented)"), icon="BONE_DATA")
 
     parent = empty.parent
     if parent is not None:
@@ -128,11 +129,13 @@ def _draw_follow_state(
     if shape == "none":
         row = col.row()
         row.alert = True
-        row.label(text="no bone - attachments will not follow any bone", icon="ERROR")
+        row.label(text=iface("no bone - attachments will not follow any bone"), icon="ERROR")
     elif shape == "field_inert":
         row = col.row()
         row.alert = True
-        row.label(text="slot_bone set but inert - Bind to Bone to follow in Blender", icon="ERROR")
+        row.label(
+            text=iface("slot_bone set but inert - Bind to Bone to follow in Blender"), icon="ERROR"
+        )
     elif shape == "bone_parent" and bone_parent_collapses(empty):
         draw_picture_plane_warning(
             col,
@@ -176,7 +179,7 @@ class PROSCENIO_PT_slots(bpy.types.Panel):
         scene_props = getattr(context.scene, "proscenio", None)
         has_slots = any(_is_slot(o) for o in context.scene.objects)
         if not has_slots or scene_props is None:
-            layout.label(text="no slots yet - select meshes and Create Slot", icon="INFO")
+            layout.label(text=iface("no slots yet - select meshes and Create Slot"), icon="INFO")
         else:
             layout.template_list(
                 "PROSCENIO_UL_slots",
@@ -190,8 +193,8 @@ class PROSCENIO_PT_slots(bpy.types.Panel):
         layout.separator()
         tip = layout.box().column(align=True)
         tip.scale_y = 0.8
-        tip.label(text="Pose Mode + active bone: slot anchored to the bone", icon="INFO")
-        tip.label(text="Object Mode + meshes: slot wraps the selection", icon="BLANK1")
+        tip.label(text=iface("Pose Mode + active bone: slot anchored to the bone"), icon="INFO")
+        tip.label(text=iface("Object Mode + meshes: slot wraps the selection"), icon="BLANK1")
         layout.operator("proscenio.create_slot", text="Create Slot", icon="ADD")
 
 

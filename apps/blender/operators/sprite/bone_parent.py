@@ -17,6 +17,7 @@ from bpy.props import StringProperty
 
 from ...core._shared.props_access import element_type_of  # type: ignore[import-not-found]
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
+from ...core.bpy_helpers.i18n import iface
 from ...core.bpy_helpers.sprite import (  # type: ignore[import-not-found]
     clear_bone_parent_keep_world,
     current_bone_parent,
@@ -69,7 +70,7 @@ class PROSCENIO_OT_parent_sprite_to_bone(bpy.types.Operator):
         obj = context.active_object
         armature = resolve_sprite_armature(context, obj) if obj is not None else None
         if armature is None:
-            self.layout.label(text="no armature to parent to", icon="ERROR")
+            self.layout.label(text=iface("no armature to parent to"), icon="ERROR")
             return
         self.layout.prop_search(self, "bone_name", armature.data, "bones", text="Bone")
 

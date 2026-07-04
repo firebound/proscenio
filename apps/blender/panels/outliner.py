@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
 from ..core.list_view import compute_list_filter
 from ..core.outliner_view import (
     RANK_ARMATURE,
@@ -219,7 +220,7 @@ class PROSCENIO_PT_outliner(bpy.types.Panel):
         layout = self.layout
         scene_props = getattr(context.scene, "proscenio", None)
         if scene_props is None:
-            layout.label(text="Proscenio scene props not registered", icon="ERROR")
+            layout.label(text=iface("Proscenio scene props not registered"), icon="ERROR")
             return
         # Search is Blender's native "Filter by Name" (the UIList's expand
         # arrows); spec 043 dropped the redundant Proscenio search drawer.

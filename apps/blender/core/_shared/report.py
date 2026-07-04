@@ -12,6 +12,7 @@ used by the pytest suite both satisfy it.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
 _PREFIX = "Proscenio: "
@@ -26,6 +27,26 @@ _LEVELS = {"errors": 0, "info": 1, "debug": 2}
 _INFO_LEVEL = _LEVELS["info"]
 _DEBUG_LEVEL = _LEVELS["debug"]
 _min_level = _LEVELS["info"]
+
+
+def _identity(msg: str) -> str:
+    return msg
+
+
+# Interface-string translator for report messages. Identity until the addon
+# wires ``i18n.iface`` via ``set_translator`` at register time - report.py stays
+# bpy-free for the pytest suite, so it cannot import ``iface`` (which imports
+# bpy) directly. Once wired, every fixed-literal report message translates for
+# the active locale while the ``Proscenio:`` prefix stays outside the translated
+# text (spec 072 D5). f-string messages evaluate before reaching here, so only
+# literal reports match a msgid; interpolated ones fall back to English.
+_translate: Callable[[str], str] = _identity
+
+
+def set_translator(translate: Callable[[str], str]) -> None:
+    """Wire the interface translator for report messages (addon passes ``iface``)."""
+    global _translate
+    _translate = translate
 
 
 def set_min_level(name: str) -> None:
@@ -44,7 +65,7 @@ class ReportTarget(Protocol):
 def report_info(op: ReportTarget, msg: str) -> None:
     """Emit an INFO report with the ``Proscenio:`` prefix (gated by log level)."""
     if _min_level >= _INFO_LEVEL:
-        op.report({"INFO"}, _PREFIX + msg)
+        op.report({"INFO"}, _PREFIX + _translate(msg))
 
 
 def report_warn(op: ReportTarget, msg: str, *, always: bool = False) -> None:
@@ -55,12 +76,12 @@ def report_warn(op: ReportTarget, msg: str, *, always: bool = False) -> None:
     the ``errors`` verbosity, or the click looks like a silent no-op.
     """
     if always or _min_level >= _INFO_LEVEL:
-        op.report({"WARNING"}, _PREFIX + msg)
+        op.report({"WARNING"}, _PREFIX + _translate(msg))
 
 
 def report_error(op: ReportTarget, msg: str) -> None:
     """Emit an ERROR report with the ``Proscenio:`` prefix."""
-    op.report({"ERROR"}, _PREFIX + msg)
+    op.report({"ERROR"}, _PREFIX + _translate(msg))
 
 
 def report_debug(op: ReportTarget, msg: str) -> None:
@@ -74,4 +95,4 @@ def report_debug(op: ReportTarget, msg: str) -> None:
     ``Proscenio:`` prefix) keeps them readable apart in the Info editor.
     """
     if _min_level >= _DEBUG_LEVEL:
-        op.report({"INFO"}, _DEBUG_PREFIX + msg)
+        op.report({"INFO"}, _DEBUG_PREFIX + _translate(msg))

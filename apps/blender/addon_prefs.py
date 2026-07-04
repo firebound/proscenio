@@ -12,6 +12,7 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty
 
 from .core._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING
 from .core._shared.report import set_min_level
+from .core.bpy_helpers.i18n import iface
 
 # The addon root package - the key both bl_idname and the prefs lookup use.
 ADDON_PACKAGE = __package__ or ""
@@ -76,10 +77,10 @@ class ProscenioAddonPreferences(bpy.types.AddonPreferences):
 
     def draw(self, _context: bpy.types.Context) -> None:
         box = self.layout.box()
-        box.label(text="Authoring", icon="OPTIONS")
+        box.label(text=iface("Authoring"), icon="OPTIONS")
         box.prop(self, "y_location_spacing")
         box = self.layout.box()
-        box.label(text="Developer", icon="TOOL_SETTINGS")
+        box.label(text=iface("Developer"), icon="TOOL_SETTINGS")
         box.prop(self, "log_level")
         box.prop(self, "debug_mode")
 

@@ -30,6 +30,7 @@ from __future__ import annotations
 import bpy
 
 from ..addon_prefs import debug_mode_enabled
+from ..core.bpy_helpers.i18n import iface
 from . import (
     animation,
     atlas,
@@ -58,7 +59,7 @@ class PROSCENIO_PT_main(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         row = layout.row(align=True)
-        row.label(text="Pipeline v0.1.0")
+        row.label(text=iface("Pipeline v0.1.0"))
         right = row.row(align=True)
         right.alignment = "RIGHT"
         gh = right.operator("wm.url_open", text="", icon="URL", emboss=False)

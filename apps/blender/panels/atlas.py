@@ -13,6 +13,7 @@ from ..core._shared.material_images import (
 from ..core.bpy_helpers.atlas.snapshot import (  # type: ignore[import-not-found]
     scene_has_pre_pack_snapshot,
 )
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import draw_subpanel_header
 
 
@@ -34,7 +35,7 @@ class PROSCENIO_PT_atlas(bpy.types.Panel):
         layout = self.layout
         discovered = _discover_atlas()
         if discovered is None:
-            layout.label(text="no atlas linked in materials", icon="INFO")
+            layout.label(text=iface("no atlas linked in materials"), icon="INFO")
         elif discovered[1]:
             layout.label(text=f"packed atlas: {discovered[0]}", icon="IMAGE")
         else:
@@ -52,7 +53,7 @@ def _draw_packer_box(layout: bpy.types.UILayout, context: bpy.types.Context) -> 
     if scene_props is None:
         return
     box = layout.box()
-    box.label(text="Atlas packer", icon="TEXTURE")
+    box.label(text=iface("Atlas packer"), icon="TEXTURE")
     col = box.column(align=True)
     col.prop(scene_props, "pack_padding_px")
     col.prop(scene_props, "pack_max_size")
@@ -64,7 +65,7 @@ def _draw_packer_box(layout: bpy.types.UILayout, context: bpy.types.Context) -> 
     else:
         sub = box.row()
         sub.enabled = False
-        sub.label(text="run Pack Atlas first", icon="INFO")
+        sub.label(text=iface("run Pack Atlas first"), icon="INFO")
     if scene_has_pre_pack_snapshot(context.scene):
         box.operator("proscenio.unpack_atlas", text="Unpack Atlas", icon="LOOP_BACK")
 

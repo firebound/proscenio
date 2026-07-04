@@ -18,6 +18,7 @@ import bpy
 
 from ..addon_prefs import y_location_spacing  # type: ignore[import-not-found]
 from ..core import validation  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface
 from . import (
     _draw_bone_attach,
     _draw_driver_shortcut,
@@ -61,7 +62,7 @@ class PROSCENIO_PT_element(bpy.types.Panel):
         if name and width >= _ELEMENT_HEADER_NAME_MIN_WIDTH:
             self.layout.label(text=f"Element: {name}")
         else:
-            self.layout.label(text="Element")
+            self.layout.label(text=iface("Element"))
 
     def draw_header_preset(self, context: bpy.types.Context) -> None:
         draw_subpanel_header(self.layout, context, "element", "active_element")
@@ -70,23 +71,23 @@ class PROSCENIO_PT_element(bpy.types.Panel):
         layout = self.layout
         obj = context.active_object
         if obj is None or obj.type != "MESH":
-            layout.label(text="select a mesh or sprite element", icon="INFO")
+            layout.label(text=iface("select a mesh or sprite element"), icon="INFO")
             return
         props = getattr(obj, "proscenio", None)
         if props is None:
-            layout.label(text="proscenio property group not registered", icon="ERROR")
+            layout.label(text=iface("proscenio property group not registered"), icon="ERROR")
             return
         if context.mode == "PAINT_WEIGHT":
             col = layout.column()
             col.enabled = False
             col.prop(props, "element_type")
-            layout.label(text="element type is locked in Weight Paint mode", icon="INFO")
+            layout.label(text=iface("element type is locked in Weight Paint mode"), icon="INFO")
             return
         if obj.get("proscenio_type") is None:
             # Hand-authored mesh with no element data yet: offer one-click adopt
             # with a smart Mesh/Sprite default before showing the element fields.
             box = layout.box()
-            box.label(text="hand-authored mesh - not a Proscenio element yet", icon="INFO")
+            box.label(text=iface("hand-authored mesh - not a Proscenio element yet"), icon="INFO")
             box.operator(
                 "proscenio.incorporate_element", text="Incorporate as Element", icon="IMPORT"
             )

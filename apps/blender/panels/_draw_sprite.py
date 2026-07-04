@@ -13,6 +13,7 @@ import bpy
 from ..core._shared.material_images import (  # type: ignore[import-not-found]
     iter_material_images,
 )
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import draw_subbox_header
 
 
@@ -38,7 +39,7 @@ def _draw_readout(
     """Show atlas + region + frame size info for a sprite_frame mesh."""
     atlas_size = _discover_atlas_size_for(obj)
     if atlas_size is None:
-        box.label(text="atlas: not linked in material", icon="INFO")
+        box.label(text=iface("atlas: not linked in material"), icon="INFO")
         return
     aw, ah = atlas_size
     box.label(text=f"atlas: {aw}x{ah} px", icon="IMAGE_DATA")

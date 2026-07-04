@@ -31,6 +31,7 @@ from ..core._shared.cp_keys import (  # type: ignore[import-not-found]
 )
 from ..core._shared.props_access import element_type_of  # type: ignore[import-not-found]
 from ..core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface
 from ..importers.photoshop.planes import _build_quad  # type: ignore[import-not-found]
 
 # Custom Properties a revert clears: the skinning bind metadata, the automesh
@@ -97,13 +98,13 @@ class PROSCENIO_OT_revert_to_plane(bpy.types.Operator):
 
     def draw(self, _context: bpy.types.Context) -> None:
         layout = self.layout
-        layout.label(text="Revert this element to its original plane?", icon="ERROR")
+        layout.label(text=iface("Revert this element to its original plane?"), icon="ERROR")
         col = layout.column(align=True)
-        col.label(text="This DESTROYS the generated mesh and its weight paint:")
-        col.label(text="- the automesh / hand-drawn geometry")
-        col.label(text="- all vertex groups + bound weights")
-        col.label(text="- the authoring strokes")
-        layout.label(text="The image + placement are kept. Ctrl+Z undoes it.", icon="INFO")
+        col.label(text=iface("This DESTROYS the generated mesh and its weight paint:"))
+        col.label(text=iface("- the automesh / hand-drawn geometry"))
+        col.label(text=iface("- all vertex groups + bound weights"))
+        col.label(text=iface("- the authoring strokes"))
+        layout.label(text=iface("The image + placement are kept. Ctrl+Z undoes it."), icon="INFO")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         obj = context.active_object

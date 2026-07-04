@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
 from ..core.bpy_helpers.sprite import (  # type: ignore[import-not-found]
     bone_in_picture_plane,
     current_bone_parent,
@@ -59,11 +60,11 @@ def draw_body(
         return
 
     if armature is None:
-        col.label(text="no rig - pick an armature in Skeleton", icon="INFO")
+        col.label(text=iface("no rig - pick an armature in Skeleton"), icon="INFO")
         return
 
     candidate = _candidate_bone(context, armature)
     text = f"Parent To Bone ({candidate})" if candidate else "Parent To Bone"
     op = col.operator("proscenio.parent_sprite_to_bone", text=text, icon="BONE_DATA")
     op.bone_name = candidate
-    col.label(text="rigid follow of one bone - no slot, no swap", icon="INFO")
+    col.label(text=iface("rigid follow of one bone - no slot, no swap"), icon="INFO")

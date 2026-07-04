@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import bpy
 
+from ..core.bpy_helpers.i18n import iface
+
 # Constraint that marks a Proscenio-owned IK chain; the name is the single
 # source the panel reads (a renamed .IK control suffix must not change the cue).
 _IK_CONSTRAINT_NAME = "Proscenio IK"
@@ -51,7 +53,7 @@ def _draw_ik_constraint_props(
     the chain, so those are native-UI territory.
     """
     box = layout.box()
-    box.label(text="Proscenio IK", icon="CON_KINEMATIC")
+    box.label(text=iface("Proscenio IK"), icon="CON_KINEMATIC")
     box.prop(constraint, "chain_count", text="Chain length")
 
     influence_row = box.row(align=True)

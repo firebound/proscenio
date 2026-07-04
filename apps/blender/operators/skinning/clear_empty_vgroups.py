@@ -14,6 +14,7 @@ from typing import ClassVar
 import bpy
 
 from ...core._shared.report import report_info  # type: ignore[import-not-found]
+from ...core.bpy_helpers.i18n import iface
 
 
 def empty_vertex_group_names(obj: bpy.types.Object) -> list[str]:
@@ -67,7 +68,7 @@ class PROSCENIO_OT_clear_empty_vertex_groups(bpy.types.Operator):
         for name in self._empty_names:
             col.label(text=name)
         layout.label(
-            text="Empty groups hold no weights, so this is safe.",
+            text=iface("Empty groups hold no weights, so this is safe."),
             icon="INFO",
         )
 

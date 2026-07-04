@@ -14,6 +14,7 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.cp_keys import PROSCENIO_WEIGHT_SIDECAR  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface
 from ..core.bpy_helpers.skinning import read_snapshots  # type: ignore[import-not-found]
 from ..core.list_view import clamped_rows  # type: ignore[import-not-found]
 from ..core.skinning.bone_modes import (  # type: ignore[import-not-found]
@@ -55,7 +56,9 @@ class PROSCENIO_PT_weight_paint(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
         if not _is_mesh_element(context):
-            layout.label(text="select a mesh element (Weight Paint is mesh-only)", icon="INFO")
+            layout.label(
+                text=iface("select a mesh element (Weight Paint is mesh-only)"), icon="INFO"
+            )
             return
         draw_target_readout(layout, _active_armature(context))
 
@@ -129,7 +132,7 @@ def _draw_edit_weights_shortcuts(layout: bpy.types.UILayout) -> None:
     if not op._statusbar_appended:
         return
     header, body = layout.panel("proscenio_edit_weights_shortcuts", default_closed=True)
-    header.label(text="Shortcuts", icon="BRUSHES_ALL")
+    header.label(text=iface("Shortcuts"), icon="BRUSHES_ALL")
     if body is not None:
         emit_edit_weights_chords(body)
 
@@ -285,10 +288,10 @@ def _draw_bone_overrides(
     if not bones:
         return
     override_box = layout.box()
-    override_box.label(text="Per-bone Soft/Hard overrides:")
+    override_box.label(text=iface("Per-bone Soft/Hard overrides:"))
     if not overrides_apply_under_bind_mode(bind_mode):
         override_box.label(
-            text="applies only to the planar modes - Bone Heat ignores these",
+            text=iface("applies only to the planar modes - Bone Heat ignores these"),
             icon="INFO",
         )
         return
@@ -340,9 +343,9 @@ def _draw_edit_weights(
     if obj is None or obj.type != "MESH":
         return
     if obj.get(PROSCENIO_WEIGHT_SIDECAR) is None:
-        layout.label(text="bind first to enable", icon="INFO")
+        layout.label(text=iface("bind first to enable"), icon="INFO")
 
-    layout.label(text="Brush curve preset:")
+    layout.label(text=iface("Brush curve preset:"))
     row = layout.row(align=True)
     for preset_name in PRESETS:
         op = row.operator("proscenio.set_brush_preset", text=PRESET_LABELS[preset_name])
@@ -390,14 +393,14 @@ def _draw_weight_overlay_controls(
     not fully hide the overlay - upstream Blender issue 145603.
     """
     box = layout.box()
-    box.label(text="Viewport display:")
+    box.label(text=iface("Viewport display:"))
     overlay = getattr(context.space_data, "overlay", None)
     if overlay is not None:
         box.prop(overlay, "weight_paint_mode_opacity", text="Weight Opacity")
     tool_settings = context.tool_settings
     if tool_settings is not None:
         box.prop(tool_settings, "vertex_group_user", text="Zero Weights")
-    box.label(text="opacity 0 is not fully invisible (Blender 145603)", icon="INFO")
+    box.label(text=iface("opacity 0 is not fully invisible (Blender 145603)"), icon="INFO")
 
 
 def _draw_snapshot(
@@ -419,7 +422,7 @@ def _draw_snapshot(
         # session and restores the prior value on exit), so it was dead UI.
     counts = _sidecar_counts(obj)
     if counts is None:
-        layout.label(text="no snapshot (run Bind first)", icon="INFO")
+        layout.label(text=iface("no snapshot (run Bind first)"), icon="INFO")
     else:
         layout.label(
             text=(

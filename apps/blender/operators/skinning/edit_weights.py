@@ -28,6 +28,7 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
 )
 from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers.i18n import iface
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     StrokeDiffTracker,
     append_auto_snapshot,
@@ -332,7 +333,7 @@ def _draw_statusbar_edit_weights(self: bpy.types.Header, _context: bpy.types.Con
     layout = self.layout
     title = layout.row(align=True)
     title.label(text="", icon="BRUSHES_ALL")
-    title.label(text="Edit Weights:")
+    title.label(text=iface("Edit Weights:"))
     emit_edit_weights_chords(layout)
 
 

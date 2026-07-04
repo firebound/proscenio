@@ -21,6 +21,7 @@ import bpy
 
 from ..addon_prefs import debug_mode_enabled
 from ..core._shared.material_images import first_material_image
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import (
     _active_armature,
     _is_mesh_element,
@@ -48,13 +49,13 @@ class PROSCENIO_PT_mesh_generation(bpy.types.Panel):
         layout = self.layout
         obj = context.active_object
         if obj is None or obj.type != "MESH":
-            layout.label(text="select a mesh to generate or edit", icon="INFO")
+            layout.label(text=iface("select a mesh to generate or edit"), icon="INFO")
             return
         if not _is_mesh_element(context):
             # warn-not-hide: a sprite element is a mesh in Blender, but meshing
             # it would replace its single quad. Point at native bone-parenting.
-            layout.label(text="mesh tools are mesh-only (this is a sprite)", icon="INFO")
-            layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
+            layout.label(text=iface("mesh tools are mesh-only (this is a sprite)"), icon="INFO")
+            layout.label(text=iface("to rig a sprite, parent it to a bone: Ctrl+P > Bone"))
             return
         skinning_props = _scene_skinning(context)
         draw_target_readout(layout, _active_armature(context))
@@ -230,7 +231,7 @@ def _draw_automesh_cheatsheet(layout: bpy.types.UILayout) -> None:
     if not state.active:
         return
     header, body = layout.panel("proscenio_automesh_shortcuts", default_closed=True)
-    header.label(text="Shortcuts", icon="MOD_REMESH")
+    header.label(text=iface("Shortcuts"), icon="MOD_REMESH")
     if body is not None:
         emit_authoring_chord_layout(body, state.label, state.stage, state.tool)
 
@@ -261,7 +262,7 @@ def _draw_automesh_interactive(
     the modal, and re-invokes as an Exit while it runs (Quick Armature pattern);
     the trace fields stay editable mid-flight (the modal polls them live)."""
     running = _automesh_running()
-    layout.label(text="Interactive trace and edit")
+    layout.label(text=iface("Interactive trace and edit"))
     if skinning_props is not None:
         row = layout.row(align=True)
         row.prop(skinning_props.authoring, "inner_loop_count", text="Loops")
@@ -311,16 +312,16 @@ def _draw_manual_mesh(layout: bpy.types.UILayout, context: bpy.types.Context) ->
     """
     obj = context.active_object
     if obj is None or obj.type != "MESH":
-        layout.label(text="select a mesh to author", icon="INFO")
+        layout.label(text=iface("select a mesh to author"), icon="INFO")
         return
     if not _is_mesh_element(context):
         # warn-not-hide: a sprite element is a Blender mesh, but drawing a mesh
         # would replace its single quad. Point at native bone-parenting.
-        layout.label(text="mesh tools are mesh-only (this is a sprite)", icon="INFO")
-        layout.label(text="to rig a sprite, parent it to a bone: Ctrl+P > Bone")
+        layout.label(text=iface("mesh tools are mesh-only (this is a sprite)"), icon="INFO")
+        layout.label(text=iface("to rig a sprite, parent it to a bone: Ctrl+P > Bone"))
         return
     running = _manual_draw_running()
-    layout.label(text="Build the mesh by clicking vertices")
+    layout.label(text=iface("Build the mesh by clicking vertices"))
     skinning_props = _scene_skinning(context)
     if skinning_props is not None:
         # Spec 070 C1: Manual Mesh has its own interior-mode toggle (independent

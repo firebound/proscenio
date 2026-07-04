@@ -29,6 +29,14 @@ def _reset_gate():
     report.set_min_level("info")
 
 
+@pytest.fixture(autouse=True)
+def _reset_translator():
+    """Report translation is identity by default; keep injections from leaking."""
+    report.set_translator(lambda msg: msg)
+    yield
+    report.set_translator(lambda msg: msg)
+
+
 def _recorder() -> tuple[SimpleNamespace, list[tuple[set[str], str]]]:
     calls: list[tuple[set[str], str]] = []
     target = SimpleNamespace(report=lambda level, msg: calls.append((level, msg)))
@@ -98,3 +106,27 @@ def test_warn_without_always_still_gated_at_errors_level():
     target, calls = _recorder()
     report.report_warn(target, "ordinary warning")
     assert calls == []
+
+
+def test_default_translator_is_identity():
+    """With no translator wired, messages pass through unchanged (bpy-free default)."""
+    target, calls = _recorder()
+    report.report_info(target, "fyi")
+    assert calls == [({"INFO"}, "Proscenio: fyi")]
+
+
+def test_set_translator_translates_message_keeping_prefix_outside():
+    """The injected translator (i18n.iface at runtime) translates the message
+    only; the ``Proscenio:`` prefix stays outside the translated text (D5)."""
+    report.set_translator(str.upper)
+    target, calls = _recorder()
+    report.report_info(target, "hello")
+    assert calls == [({"INFO"}, "Proscenio: HELLO")]
+
+
+def test_translator_applies_under_the_debug_prefix_too():
+    report.set_min_level("debug")
+    report.set_translator(str.upper)
+    target, calls = _recorder()
+    report.report_debug(target, "trace")
+    assert calls == [({"INFO"}, "[Proscenio debug] TRACE")]

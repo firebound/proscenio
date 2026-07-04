@@ -13,6 +13,7 @@ from typing import ClassVar
 import bpy
 
 from ..core._shared.armature_resolve import describe_export_target  # type: ignore[import-not-found]
+from ..core.bpy_helpers.i18n import iface
 from ._helpers import draw_subpanel_header
 
 
@@ -37,7 +38,7 @@ class PROSCENIO_PT_pipeline(bpy.types.Panel):
 
     def draw(self, context: bpy.types.Context) -> None:
         if _scene_props(context) is None:
-            self.layout.label(text="proscenio scene props not registered", icon="ERROR")
+            self.layout.label(text=iface("proscenio scene props not registered"), icon="ERROR")
 
 
 class PROSCENIO_PT_import(bpy.types.Panel):

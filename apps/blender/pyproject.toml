@@ -47,6 +47,12 @@ ignore = [
     "N815",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# The per-locale i18n tables are generated translation data: each row's msgid +
+# msgstr are single string literals (tooltips / descriptions run long) that
+# cannot be line-wrapped meaningfully, so E501 does not apply to them.
+"**/i18n_locales/*.py" = ["E501"]
+
 [tool.ruff.format]
 quote-style = "double"
 

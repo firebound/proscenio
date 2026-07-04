@@ -37,6 +37,9 @@ const config: Config = {
         indexBlog: false,
         docsRouteBasePath: '/',
         docsDir: '../../docs',
+        // Index pt-BR pages with the Portuguese lunr stemmer alongside en
+        // (spec 072 D7); without 'pt' the pt-BR locale search degrades.
+        language: ['en', 'pt'],
       },
     ],
   ],
@@ -55,7 +58,14 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'pt-BR'],
+    localeConfigs: {
+      'pt-BR': {
+        label: 'Português (Brasil)',
+        htmlLang: 'pt-BR',
+        direction: 'ltr',
+      },
+    },
   },
 
   plugins: [
@@ -128,6 +138,10 @@ const config: Config = {
           sidebarId: 'toolsSidebar',
           position: 'left',
           label: 'Tools',
+        },
+        {
+          type: 'localeDropdown',
+          position: 'right',
         },
         {
           href: 'https://github.com/firebound/proscenio',

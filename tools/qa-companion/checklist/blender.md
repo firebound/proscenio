@@ -105,6 +105,19 @@ Each block answers three questions in plain language: what passing it proves (`i
 - intent: Narrow headers shed their extra icons; native titles truncate and the Skeleton and Element headers drop their name suffix, matching Blender's narrow-header behaviour; nothing overlaps.
 - code: apps/blender/panels/_helpers.py draw_subpanel_header (_HEADER_ICONS_MIN_WIDTH gate)
 
+### BL-CHROME-10 · pt-BR interface renders when the language is Portuguese
+- status: pending
+- review: keep
+- pre: A fresh Blender session with the addon loaded; Preferences > Interface > Translation, Language = Portuguese (Brazilian), Interface checkbox on.
+- steps:
+  1. Open the N-panel and read the Proscenio panel headers, subpanel titles, and operator buttons.
+  2. Hover a property field for its tooltip; open an enum dropdown (a bind mode or a display enum).
+  3. Trigger a fixed report message (run an operator that reports a fixed error, e.g. a bind with no armature picked).
+  4. Switch Language back to English and confirm every string reverts.
+- observe: Panel titles, subpanel headers, operator buttons (Pack Atlas -> Empacotar atlas, Revert to Plane -> Reverter para plano), property names + tooltips, and enum items render in Portuguese. Fixed report messages translate with the 'Proscenio:' prefix kept (e.g. 'Proscenio: nada para desfazer'). Any string with no pt-BR row falls back to English cleanly; interpolated status messages that name a bone or a count stay English by design. Switching Language back to English restores every string.
+- intent: The registered pt-BR table drives every static UI string (labels, property names + tooltips, enums, button text= overrides) and the fixed report messages, with English as a clean per-string fallback; the switch is Blender-native.
+- code: apps/blender/core/i18n_locales/pt_br.py (ROWS); apps/blender/core/bpy_helpers/i18n.py (register); apps/blender/core/_shared/report.py (set_translator); scripts/blender/extract_i18n.py (catalog + --unwrapped worklist)
+
 ## Outliner panel
 
 ### BL-OUTLN-SWEEP · Outliner panel inventory (visual pass)

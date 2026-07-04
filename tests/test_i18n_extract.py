@@ -2,8 +2,8 @@
 
 Pure pytest, no Blender: the extractor is a bpy-free ``ast`` walk over the
 addon source. It produces the ``(msgctxt, msgid)`` catalog (what actually
-translates: Blender-auto-translated static strings + ``iface()`` calls)
-plus a worklist of raw dynamic literals not yet wrapped (the A3 to-do).
+translates: Blender-auto-translated static strings + ``text=`` overrides +
+``iface()`` calls) plus a worklist of deferred f-string dynamic strings.
 Contexts follow the empirical Blender probe: operators translate under
 ``"Operator"``, everything else under ``"*"``.
 """
@@ -44,6 +44,8 @@ class Props(bpy.types.PropertyGroup):
 
     def draw(self, context):
         self.layout.label(text="Inline label")
+        self.layout.prop(context.scene, "field", text="Prop Label")
+        self.layout.operator("proscenio.thing", text="Op Button")
         self.layout.label(text=f"dynamic {self.field}")
         report_info(self, "A literal report")
         report_warn(self, f"dynamic {self.mode}")
@@ -103,11 +105,13 @@ def test_report_literals_go_to_catalog_via_central_translation() -> None:
     assert "A literal report" not in {u.text for u in res.unwrapped}
 
 
-def test_raw_label_literals_are_flagged_unwrapped() -> None:
-    """Labels have no central intercept (Blender UILayout) - they need call-site wrap."""
-    res = extract_from_source(SAMPLE)
-    assert "Inline label" in {u.text for u in res.unwrapped}
-    assert ("*", "Inline label") not in set(res.catalog)
+def test_ui_text_literals_go_to_catalog() -> None:
+    """label/prop/operator text= literals auto-translate (translate=True default),
+    so they are catalog entries - no iface() wrapping needed."""
+    cat = _catalog(SAMPLE)
+    assert ("*", "Inline label") in cat
+    assert ("*", "Prop Label") in cat
+    assert ("*", "Op Button") in cat
 
 
 def test_fstring_dynamic_calls_are_flagged_unwrapped() -> None:

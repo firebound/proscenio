@@ -22,6 +22,7 @@ LOCALE: str = "pt_BR"
 #: Translated rows, keyed by ``(msgctxt, msgid)``. Held in sync with the source
 #: catalog by the reverse-coverage test (tests/test_i18n_coverage.py); a new
 #: translatable string or a stale row fails the build. Grow append-only.
+
 ROWS: tuple[LocaleRow, ...] = (
     (
         ("*", "- all vertex groups + bound weights"),
@@ -55,6 +56,8 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Active bone"), "Osso ativo"),
     (("*", "Active outliner row"), "Linha ativa do outliner"),
     (("*", "Active slot row"), "Linha ativa do slot"),
+    (("*", "Active to Euler"), "Ativo para Euler"),
+    (("*", "Add Selected"), "Adicionar selecionados"),
     (
         ("*", "Add to the bone selection instead of replacing it (Shift)"),
         "Adiciona à seleção de ossos em vez de substituí-la (Shift)",
@@ -88,6 +91,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Algoritmo usado por Vincular à armadura-alvo. BONE_HEAT delega ao Parentear com Pesos Automáticos nativo do Blender (recomendado para sprites com ossos coplanares ao plano da imagem). PROXIMITY / ENVELOPE / SINGLE_NEAREST / EMPTY são alternativas do Proscenio para casos extremos (armaduras fora do sprite, linha de base de pintura manual).",
     ),
     (("*", "All Bones"), "Todos os ossos"),
+    (("*", "All to Euler"), "Todos para Euler"),
     (("*", "All-zero baseline for manual paint"), "Linha de base toda zero para pintura manual"),
     (
         ("*", "All-zero baseline for manual paint workflows"),
@@ -102,6 +106,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Resolução do traçado da silhueta de alpha, um fator de redução da imagem. 1.0 = imagem completa (mais fino, mais lento), 0.25 = um quarto (mais grosseiro, mais rápido); define a fidelidade do contorno, não a contagem de vértices",
     ),
     (("*", "Animation"), "Animação"),
+    (("*", "Apply Packed Atlas"), "Aplicar atlas empacotado"),
     (("*", "Armature"), "Armadura"),
     (("*", "Armature name"), "Nome da armadura"),
     (
@@ -114,18 +119,24 @@ ROWS: tuple[LocaleRow, ...] = (
     ),
     (("*", "Atlas"), "Atlas"),
     (("*", "Atlas packer"), "Empacotador de atlas"),
+    (("*", "Attach Mesh"), "Anexar malha"),
     (("*", "Attach to Bone"), "Anexar ao osso"),
     (("*", "Attachment name"), "Nome do anexo"),
     (("*", "Authoring"), "Autoria"),
     (("*", "Authoring modal restored"), "Modal de autoria restaurado"),
     (("*", "Automesh Interactive"), "Automesh interativo"),
     (("*", "Automesh from Alpha"), "Automesh a partir do alpha"),
+    (("*", "Axis"), "Eixo"),
     (("*", "Back"), "Voltar"),
+    (("*", "Bake Current Pose"), "Assar pose atual"),
+    (("*", "Bake IK to Keyframes"), "Assar IK em quadros-chave"),
     (("*", "Band"), "Faixa"),
     (("*", "Bind"), "Vincular"),
     (("*", "Bind falloff power"), "Potência do decaimento do vínculo"),
     (("*", "Bind max distance"), "Distância máxima do vínculo"),
     (("*", "Bind mode"), "Modo de vínculo"),
+    (("*", "Bind to Bone"), "Vincular ao osso"),
+    (("*", "Bind to Target Armature"), "Vincular à armadura-alvo"),
     (
         (
             "*",
@@ -187,10 +198,14 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Brush curve preset:"), "Predefinição de curva do pincel:"),
     (("*", "Build the mesh by clicking vertices"), "Construir a malha clicando nos vértices"),
     (("*", "Bundle textures"), "Agrupar texturas"),
+    (("*", "By draw order"), "Por ordem de desenho"),
     (("*", "Centered"), "Centralizado"),
     (("*", "Centered (Canvas at World Origin)"), "Centralizado (Canvas na origem do mundo)"),
     (("*", "Chain length"), "Comprimento da cadeia"),
     (("*", "Clear"), "Limpar"),
+    (("*", "Clear Bone Parent"), "Limpar parentesco de osso"),
+    (("*", "Clear Debug Companions"), "Limpar companheiros de debug"),
+    (("*", "Clear Empty Vertex Groups"), "Limpar grupos de vértices vazios"),
     (
         (
             "*",
@@ -226,6 +241,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Converter apenas o osso ativo ou todos os ossos da armadura",
     ),
     (("*", "Convert only the active pose bone"), "Converter apenas o osso de pose ativo"),
+    (("*", "Create Slot"), "Criar slot"),
     (("*", "Cut margin"), "Margem de corte"),
     (("*", "Data path"), "Caminho de dados"),
     (("*", "Debug"), "Depuração"),
@@ -246,6 +262,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Density under bones"), "Densidade sob os ossos"),
     (("*", "Developer"), "Desenvolvedor"),
     (("*", "Direction"), "Direção"),
+    (("*", "Display As"), "Exibir como"),
     (
         (
             "*",
@@ -295,6 +312,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Errors only"), "Somente erros"),
     (("*", "Exclude from atlas"), "Excluir do atlas"),
     (("*", "Exclude from export"), "Excluir da exportação"),
+    (("*", "Exit Painting Mode"), "Sair do modo de pintura"),
     (
         ("*", "Exponent for 1/dist^power (PROXIMITY only)"),
         "Expoente para 1/dist^power (somente PROXIMITY)",
@@ -307,9 +325,13 @@ ROWS: tuple[LocaleRow, ...] = (
         "Expoente para o peso por vértice 1/dist^power (somente no modo PROXIMITY). Valores maiores = influência local mais concentrada. 2.0 (quadrado inverso) segue a convenção do Spine / DragonBones.",
     ),
     (("*", "Export"), "Exportar"),
+    (("*", "Export (.proscenio)"), "Exportar (.proscenio)"),
+    (("*", "Export Snapshot"), "Exportar instantâneo"),
     (("*", "Expression"), "Expressão"),
     (("*", "Extend"), "Estender"),
+    (("*", "Falloff Power"), "Potência de decaimento"),
     (("*", "Falloff power"), "Potência do decaimento"),
+    (("*", "Favorites"), "Favoritos"),
     (("*", "Favorites only"), "Somente favoritos"),
     (
         ("*", "FeatureStatus enum value - 'godot-ready', 'blender-only', etc."),
@@ -378,6 +400,12 @@ ROWS: tuple[LocaleRow, ...] = (
     ),
     (("*", "IK chains"), "Cadeias IK"),
     (("*", "Import"), "Importar"),
+    (("*", "Import Photoshop Manifest"), "Importar manifesto do Photoshop"),
+    (("*", "Import Snapshot"), "Importar instantâneo"),
+    (("*", "In Max"), "Entrada máx"),
+    (("*", "In Min"), "Entrada mín"),
+    (("*", "Incorporate as Element"), "Incorporar como elemento"),
+    (("*", "Influence"), "Influência"),
     (("*", "Info"), "Info"),
     (
         (
@@ -443,6 +471,7 @@ ROWS: tuple[LocaleRow, ...] = (
     ),
     (("*", "Lock to Front Orthographic"), "Travar em Frontal Ortográfica"),
     (("*", "Log level"), "Nível de log"),
+    (("*", "Loops"), "Loops"),
     (("*", "Manual Mesh"), "Malha manual"),
     (("*", "Margin (px)"), "Margem (px)"),
     (("*", "Max Distance"), "Distância máxima"),
@@ -520,7 +549,10 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "One bone per vert, weight 1.0"), "Um osso por vértice, peso 1.0"),
     (("*", "One of 'error' or 'warning'"), "Um de 'error' ou 'warning'"),
     (("*", "Only error reports surface"), "Somente relatórios de erro aparecem"),
+    (("*", "Open help"), "Abrir ajuda"),
     (("*", "Open online docs"), "Abrir a documentação online"),
+    (("*", "Out Max"), "Saída máx"),
+    (("*", "Out Min"), "Saída mín"),
     (
         ("*", "Outer + inner + radial bridge edges, no fill"),
         "Arestas externas + internas + de ponte radial, sem preenchimento",
@@ -530,6 +562,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Outliner filter"), "Filtro do outliner"),
     (("*", "Output max"), "Máx. de saída"),
     (("*", "Output min"), "Mín. de saída"),
+    (("*", "Pack Atlas"), "Empacotar atlas"),
     (("*", "Pack max size"), "Tamanho máx. do empacotamento"),
     (("*", "Pack padding"), "Espaçamento do empacotamento"),
     (("*", "Palette"), "Paleta"),
@@ -573,6 +606,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Pixels com alpha estritamente acima deste valor contribuem para a silhueta. O padrão 1 inclui TODOS os pixels visíveis (até bordas fracas de anti-alias) - a escolha segura para skinning de sprite onde perder pixels na borda é inaceitável. Aumente para 127 para ignorar bordas de anti-alias (segue a convenção do COA Tools 2 mas corta pixels de AA).",
     ),
     (("*", "Placement"), "Posicionamento"),
+    (("*", "Pole target"), "Alvo de polo"),
     (("*", "Pose Mode"), "Modo de pose"),
     (
         ("*", "Pose Mode + active bone: slot anchored to the bone"),
@@ -603,6 +637,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Preserve base quad"), "Preservar o quad base"),
     (("*", "Preserve weights on regen"), "Preservar pesos na regeneração"),
     (("*", "Preset"), "Predefinição"),
+    (("*", "Preview Camera"), "Câmera de prévia"),
     (("*", "PropertyGroup not registered on this bone"), "PropertyGroup não registrado neste osso"),
     (
         ("*", "PropertyGroup not registered on this object"),
@@ -621,6 +656,9 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Proximity (1/d^p)"), "Proximidade (1/d^p)"),
     (("*", "Proximity falloff"), "Decaimento por proximidade"),
     (("*", "Quick Armature"), "Armadura Rápida"),
+    (("*", "Re-export"), "Reexportar"),
+    (("*", "Re-import from PSD"), "Reimportar do PSD"),
+    (("*", "Re-space Planes"), "Reespaçar planos"),
     (
         ("*", "Region height (manual mode). Normalized [0,1] of atlas height."),
         "Altura da região (modo manual). Normalizada [0,1] da altura do atlas.",
@@ -639,10 +677,13 @@ ROWS: tuple[LocaleRow, ...] = (
         "Largura da região (modo manual). Normalizada [0,1] da largura do atlas.",
     ),
     (("*", "Regular"), "Regular"),
+    (("*", "Remove Preview"), "Remover prévia"),
     (
         ("*", "Rendering path - Mesh maps to Polygon2D, Sprite maps to Sprite2D"),
         "Caminho de renderização - Malha mapeia para Polygon2D, Sprite mapeia para Sprite2D",
     ),
+    (("*", "Reproject UV"), "Reprojetar UV"),
+    (("*", "Reset to Last Saved Weights"), "Restaurar últimos pesos salvos"),
     (
         (
             "*",
@@ -654,6 +695,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("*", "Revert this element to its original plane?"),
         "Reverter este elemento ao seu plano original?",
     ),
+    (("*", "Revert to Plane"), "Reverter para plano"),
     (("*", "Rig UI"), "UI do rig"),
     (("*", "Root Bone Length"), "Comprimento do osso raiz"),
     (("*", "Root Bone Name"), "Nome do osso raiz"),
@@ -661,6 +703,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("*", "Round packed atlas dimensions up to a power of two (legacy GPU optimization)"),
         "Arredonda as dimensões do atlas empacotado para cima até uma potência de dois (otimização legada de GPU)",
     ),
+    (("*", "Run Smoke Test"), "Rodar smoke test"),
     (
         ("*", "Run the full pipeline AND clear any prior debug companions for the sprite"),
         "Executa o pipeline completo E limpa quaisquer companheiros de depuração anteriores do sprite",
@@ -676,6 +719,8 @@ ROWS: tuple[LocaleRow, ...] = (
         ),
         "SIMPLE triangula apenas a silhueta, os buracos e os vértices do usuário (esparso, estilo Spine). DENSE adiciona a grade uniforme + preenchimento por densidade de ossos. Os padrões são lidos do painel de Skinning.",
     ),
+    (("*", "Save Pose to Library"), "Salvar pose na biblioteca"),
+    (("*", "Save Snapshot"), "Salvar instantâneo"),
     (("*", "Scope"), "Escopo"),
     (("*", "See also:"), "Veja também:"),
     (("*", "Selected"), "Selecionado"),
@@ -695,6 +740,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("*", "Selected row in the Skeleton panel's bone list"),
         "Linha selecionada na lista de ossos do painel de Esqueleto",
     ),
+    (("*", "Setup Preview"), "Configurar prévia"),
     (("*", "Severity"), "Severidade"),
     (
         (
@@ -729,6 +775,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Slot name"), "Nome do slot"),
     (("*", "Slots"), "Slots"),
     (("*", "Snap increment"), "Incremento de encaixe"),
+    (("*", "Snap to UV bounds"), "Encaixar nos limites de UV"),
     (("*", "Snapshot"), "Instantâneo"),
     (("*", "Soft"), "Suave"),
     (("*", "Sort by draw order"), "Ordenar por ordem de desenho"),
@@ -740,6 +787,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ),
         "Margem de pixel de origem que constrói uma topologia ANNULUS (anel externo dilatado + anel interno erodido + Delaunay Restrito entre eles). Zero (padrão) pula o annulus e produz uma triangulação plana de contorno único - o caso comum para skinning 2D (segue Spine / DragonBones). Defina > 0 apenas quando quiser densidade extra de loops de arestas na silhueta para controle fino de deformação de borda (capa, cabelo, fita).",
     ),
+    (("*", "Spacing"), "Espaçamento"),
     (
         ("*", "Sprite proscenio property the driver writes to"),
         "Propriedade proscenio do sprite na qual o driver escreve",
@@ -878,6 +926,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("*", "True after the user has run Validate at least once this session"),
         "Verdadeiro depois que o usuário executou Validar pelo menos uma vez nesta sessão",
     ),
+    (("*", "Unbind from Bone"), "Desvincular do osso"),
     (
         ("*", "Uniform grid + bone-density subdivision"),
         "Grade uniforme + subdivisão por densidade de ossos",
@@ -890,6 +939,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("*", "Uniform interior grid over the drawn contour (interior spacing)"),
         "Grade interior uniforme sobre o contorno desenhado (espaçamento interior)",
     ),
+    (("*", "Unpack Atlas"), "Desempacotar atlas"),
     (("*", "Use existing instead:"), "Usar o existente em vez disso:"),
     (
         ("*", "Use the raw expression instead of the two-range linear map"),
@@ -906,6 +956,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ),
         "Peso 1.0 dentro do raio por osso (lido da Propriedade Personalizada do osso), 0 fora, depois normalizado por vértice",
     ),
+    (("*", "Weight Opacity"), "Opacidade de peso"),
     (("*", "Weight Paint"), "Pintura de peso"),
     (("*", "Weight Transfer"), "Transferência de pesos"),
     (("*", "Weight transfer max distance"), "Distância máxima da transferência de pesos"),
@@ -1020,6 +1071,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Y"), "Y"),
     (("*", "Y Location (Draw Order)"), "Posição Y (Ordem de Desenho)"),
     (("*", "Y Location spacing"), "Espaçamento da Posição Y"),
+    (("*", "Zero Weights"), "Pesos zero"),
     (
         ("*", "active mesh has no image texture - add a material with a TEX_IMAGE node first"),
         "a malha ativa não tem textura de imagem - adicione primeiro um material com um nó TEX_IMAGE",
@@ -1688,7 +1740,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ("Operator", "Removes this bone driver from the active sprite's proscenio property"),
         "Remove este driver de osso da propriedade proscenio do sprite ativo",
     ),
-    (("Operator", "Reset to Last Saved Weights"), "Redefinir para os últimos pesos salvos"),
+    (("Operator", "Reset to Last Saved Weights"), "Restaurar últimos pesos salvos"),
     (("Operator", "Restore Weight Snapshot"), "Restaurar instantâneo de pesos"),
     (
         (

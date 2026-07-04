@@ -14,12 +14,16 @@ What lands in the catalog is what actually translates at runtime:
   - static strings Blender auto-translates: operator/panel ``bl_label`` +
     ``bl_description``, ``*Property(name=, description=)``, ``EnumProperty``
     item names + descriptions;
-  - ``iface(...)`` calls (explicitly routed through the translation table).
+  - UILayout ``text=`` overrides on ``label`` / ``prop`` / ``operator`` /
+    ``menu`` - Blender auto-translates these too (the ``translate=True``
+    default), so a string literal is a catalog entry, no wrapping needed;
+  - ``iface(...)`` calls (report messages + f-string templates routed through
+    the translation table explicitly).
 
-Raw ``.label(text=...)`` / ``report_*(op, ...)`` string arguments do NOT
-translate until wrapped in ``iface()``; they are reported as *unwrapped* (the
-A3 worklist), not as catalog entries, so the catalog never lists a msgid that
-would silently stay English.
+The only strings that do NOT translate are f-strings passed to a ``text=`` or
+``report_*`` argument: they evaluate before Blender/report.py can match a
+msgid. Those are reported as *unwrapped* (the deferred worklist), not catalog
+entries, so the catalog never lists a msgid that would silently stay English.
 
 CLI::
 
@@ -58,6 +62,10 @@ _REPORT_FUNCS = frozenset(
     {"report_info", "report_warn", "report_error", "report_debug"}
 )
 _TRANSLATABLE_KWARGS = ("name", "description")
+# UILayout methods whose ``text=`` override is a translatable label. Blender
+# auto-translates these from the registered table (the ``translate=True``
+# default), so a string literal there is a catalog entry - no iface() needed.
+_UI_TEXT_METHODS = frozenset({"label", "prop", "operator", "menu", "popover"})
 
 
 @dataclass(frozen=True)
@@ -65,7 +73,7 @@ class Unwrapped:
     """A dynamic string still routed around the translation table (A3 worklist)."""
 
     text: str
-    kind: str  # "label" | "report"
+    kind: str  # "ui-text" | "report"
     filename: str
     lineno: int
     is_fstring: bool
@@ -163,8 +171,8 @@ class _Visitor(ast.NodeVisitor):
             self._collect_iface(node)
         elif name in _PROPERTY_FUNCS:
             self._collect_property(node)
-        elif name == "label":
-            self._collect_label(node)
+        elif name in _UI_TEXT_METHODS:
+            self._collect_ui_text(node)
         elif name in _REPORT_FUNCS:
             self._collect_report(node)
         self.generic_visit(node)
@@ -196,10 +204,29 @@ class _Visitor(ast.NodeVisitor):
                 if msgid:
                     self.result.catalog.append((DEFAULT_CTX, msgid))
 
-    def _collect_label(self, node: ast.Call) -> None:
+    def _collect_ui_text(self, node: ast.Call) -> None:
+        """Catalog a UILayout ``text=`` override (label/prop/operator/menu).
+
+        Blender auto-translates these from the table (``translate=True`` default),
+        so a string literal is a catalog entry; an f-string is the deferred
+        worklist; an ``iface()`` call is caught by _collect_iface.
+        """
         for kw in node.keywords:
-            if kw.arg == "text":
-                self._flag_dynamic(kw.value, "label")
+            if kw.arg != "text" or _is_iface_call(kw.value):
+                continue
+            literal = _str_const(kw.value)
+            if literal:
+                self.result.catalog.append((DEFAULT_CTX, literal))
+            elif isinstance(kw.value, ast.JoinedStr):
+                self.result.unwrapped.append(
+                    Unwrapped(
+                        _fstring_template(kw.value),
+                        "ui-text",
+                        self.filename,
+                        kw.value.lineno,
+                        True,
+                    )
+                )
 
     def _collect_report(self, node: ast.Call) -> None:
         # report.py routes every message through the injected translator, so a
@@ -218,24 +245,6 @@ class _Visitor(ast.NodeVisitor):
             self.result.unwrapped.append(
                 Unwrapped(
                     _fstring_template(msg), "report", self.filename, msg.lineno, True
-                )
-            )
-
-    def _flag_dynamic(self, value: ast.expr, kind: str) -> None:
-        """Record a raw label/report string as unwrapped, unless already iface()."""
-        if _is_iface_call(value):
-            return
-        literal = _str_const(value)
-        if literal:
-            self.result.unwrapped.append(
-                Unwrapped(
-                    literal, kind, self.filename, getattr(value, "lineno", 0), False
-                )
-            )
-        elif isinstance(value, ast.JoinedStr):
-            self.result.unwrapped.append(
-                Unwrapped(
-                    _fstring_template(value), kind, self.filename, value.lineno, True
                 )
             )
 

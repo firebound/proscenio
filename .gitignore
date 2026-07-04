@@ -100,6 +100,11 @@ build/
 out/
 *.zip
 
+# Generated Docusaurus i18n trees. The source of truth is the co-located docs/
+# (docs/**/<name>-<lang>.md + docs/_i18n/chrome-<lang>.json); apps/docs/scripts/
+# sync-i18n.mjs regenerates this on prebuild. Spec 077.
+/apps/docs/i18n/
+
 # Node / UXP plugin
 node_modules/
 package-lock.json

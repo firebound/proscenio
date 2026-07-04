@@ -1,0 +1,112 @@
+{
+  "navbar": {
+    "title": {
+      "message": "Proscenio",
+      "description": "The title in the navbar"
+    },
+    "logo.alt": {
+      "message": "Proscenio logo",
+      "description": "The alt text of navbar logo"
+    },
+    "item.label.Guides": {
+      "message": "Guides",
+      "description": "Navbar item with label Guides"
+    },
+    "item.label.Project": {
+      "message": "Project",
+      "description": "Navbar item with label Project"
+    },
+    "item.label.Tools": {
+      "message": "Tools",
+      "description": "Navbar item with label Tools"
+    },
+    "item.label.GitHub": {
+      "message": "GitHub",
+      "description": "Navbar item with label GitHub"
+    }
+  },
+  "footer": {
+    "link.title.Docs": {
+      "message": "Docs",
+      "description": "The title of the footer links column with title=Docs in the footer"
+    },
+    "link.title.More": {
+      "message": "More",
+      "description": "The title of the footer links column with title=More in the footer"
+    },
+    "link.item.label.Walkthrough": {
+      "message": "Walkthrough",
+      "description": "The label of footer link with label=Walkthrough linking to /guides/basic"
+    },
+    "link.item.label.Architecture": {
+      "message": "Architecture",
+      "description": "The label of footer link with label=Architecture linking to /project/architecture"
+    },
+    "link.item.label.Tools": {
+      "message": "Tools",
+      "description": "The label of footer link with label=Tools linking to /tools/blender-addon"
+    },
+    "link.item.label.GitHub": {
+      "message": "GitHub",
+      "description": "The label of footer link with label=GitHub linking to https://github.com/firebound/proscenio"
+    },
+    "link.item.label.Firebound": {
+      "message": "Firebound",
+      "description": "The label of footer link with label=Firebound linking to https://github.com/firebound/firebound"
+    },
+    "copyright": {
+      "message": "Copyright (c) 2026 Space Wizard Studios. Built with Docusaurus.",
+      "description": "The footer copyright"
+    }
+  },
+  "sidebar": {
+    "version.label": {
+      "message": "Current",
+      "description": "The label for version current"
+    },
+    "sidebar.guidesSidebar.category.Guides": {
+      "message": "Guides",
+      "description": "The label for category 'Guides' in sidebar 'guidesSidebar'"
+    },
+    "sidebar.guidesSidebar.category.Basic walkthrough": {
+      "message": "Basic walkthrough",
+      "description": "The label for category 'Basic walkthrough' in sidebar 'guidesSidebar'"
+    },
+    "sidebar.guidesSidebar.category.Advanced Workflows": {
+      "message": "Advanced Workflows",
+      "description": "The label for category 'Advanced Workflows' in sidebar 'guidesSidebar'"
+    },
+    "sidebar.projectSidebar.category.Schema": {
+      "message": "Schema",
+      "description": "The label for category 'Schema' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.Proscenio character": {
+      "message": "Proscenio character",
+      "description": "The label for category 'Proscenio character' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.Proscenio character.link.generated-index.title": {
+      "message": "Proscenio character (.proscenio)",
+      "description": "The generated-index page title for category 'Proscenio character' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.Proscenio character.link.generated-index.description": {
+      "message": "The document the Godot importer reads, grouped by feature.",
+      "description": "The generated-index page description for category 'Proscenio character' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.PSD manifest": {
+      "message": "PSD manifest",
+      "description": "The label for category 'PSD manifest' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.PSD manifest.link.generated-index.title": {
+      "message": "PSD manifest",
+      "description": "The generated-index page title for category 'PSD manifest' in sidebar 'projectSidebar'"
+    },
+    "sidebar.projectSidebar.category.PSD manifest.link.generated-index.description": {
+      "message": "The manifest the Blender importer reads from the Photoshop export.",
+      "description": "The generated-index page description for category 'PSD manifest' in sidebar 'projectSidebar'"
+    },
+    "sidebar.toolsSidebar.category.Blender Addon": {
+      "message": "Blender Addon",
+      "description": "The label for category 'Blender Addon' in sidebar 'toolsSidebar'"
+    }
+  }
+}

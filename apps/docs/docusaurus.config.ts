@@ -8,6 +8,13 @@ import repoLinks from './src/remark/repo-links.mjs';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
+// The docs source is co-located under repo-root docs/ as <name>-en.md /
+// <name>-pt.md; scripts/sync-i18n.mjs fans each language out into the Docusaurus
+// i18n/<locale>/ trees on prebuild. English is a generated pack like every other
+// language: the docs plugin and the search index both read the generated en tree,
+// not docs/ directly. Spec 077.
+const GENERATED_EN_DOCS = './i18n/en/docusaurus-plugin-content-docs/current';
+
 const config: Config = {
   title: 'Proscenio',
   tagline: 'A Photoshop -> Blender -> Godot pipeline for 2D cutout animation',
@@ -36,7 +43,7 @@ const config: Config = {
         hashed: true,
         indexBlog: false,
         docsRouteBasePath: '/',
-        docsDir: '../../docs',
+        docsDir: GENERATED_EN_DOCS,
         // Index pt-BR pages with the Portuguese lunr stemmer alongside en
         // (spec 072 D7); without 'pt' the pt-BR locale search degrades.
         language: ['en', 'pt'],
@@ -86,9 +93,11 @@ const config: Config = {
       'classic',
       {
         docs: {
-          // The hand-authored guides (docs/*.md) plus the codegen schema
-          // reference (docs/content/**) are served from the repo docs/ folder.
-          path: '../../docs',
+          // Served from the generated English pack (see GENERATED_EN_DOCS
+          // above). The tree mirrors the old docs/ layout exactly (numbered
+          // prefixes and doc ids unchanged); only its source moved to the
+          // co-located docs/**-en.md via the sync.
+          path: GENERATED_EN_DOCS,
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
           // Run before Docusaurus's own remark pipeline:
@@ -98,8 +107,16 @@ const config: Config = {
           //   into Docusaurus `:::note` directives so the same syntax renders
           //   styled on both GitHub and the docs site.
           beforeDefaultRemarkPlugins: [repoLinks, remarkGithubAdmonitionsToDirectives],
-          editUrl:
-            'https://github.com/firebound/proscenio/tree/main/docs/',
+          // Docs are served from the generated tree; point Edit at the
+          // co-located source (docs/<path>-<lang>.md) instead of the artifact.
+          // The codegen schema reference under content/ is single-language.
+          editUrl: ({locale, docPath}) => {
+            const lang = locale === 'pt-BR' ? 'pt' : 'en';
+            const source = docPath.startsWith('content/')
+              ? docPath
+              : docPath.replace(/\.mdx?$/, (ext) => `-${lang}${ext}`);
+            return `https://github.com/firebound/proscenio/tree/main/docs/${source}`;
+          },
         },
         blog: false,
         theme: {

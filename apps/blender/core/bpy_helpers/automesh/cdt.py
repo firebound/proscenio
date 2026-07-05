@@ -143,10 +143,13 @@ def build_mesh_via_delaunay(
 
     - Treat outer + inner cyclic edges as hard constraints (must
       appear in the output).
-    - Auto-detect the inner ring AND every hole loop as HOLEs via
-      ``output_type=2`` (CDT_INSIDE_WITH_HOLES) when present, so the
-      interior of the inner ring + every alpha hole is correctly
-      excluded from triangulation.
+    - Carve only genuine alpha holes as HOLEs via ``output_type=2``
+      (CDT_INSIDE_WITH_HOLES) when present, so each hole interior is
+      excluded. The eroded inner ring is a constraint loop ONLY - it
+      adds edge density near the silhouette but its interior stays
+      FILLED (spec 078). Carving the inner ring as a hole left an
+      empty centre that starved the Dense interior fill, so Dense
+      and Simple looked identical.
     - Include Steiner interior points as additional verts from the
       start so they participate in the Delaunay rather than being
       fan-split into an existing fan triangulation afterwards.
@@ -178,7 +181,9 @@ def build_mesh_via_delaunay(
     all_coords, edges_constraint = _build_cdt_inputs(
         outer_world, inner_world, interior_points, holes, extra_edges=extra_edges
     )
-    output_type = 2 if (len(inner_world) >= 3 or holes) else 1
+    # Only genuine alpha holes flip to with-holes; the inner ring is a
+    # constraint loop, not a hole, so its interior stays filled (spec 078).
+    output_type = 2 if holes else 1
     result = mathutils.geometry.delaunay_2d_cdt(
         all_coords,
         edges_constraint,

@@ -54,6 +54,9 @@ from ...core.armature.skeleton_target import (
 from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
     tag_redraw_view3d_statusbar,
 )
+from ...core.bpy_helpers._shared.view_session import (  # type: ignore[import-not-found]
+    ViewSnapshot,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     find_window_region,
     mouse_event_to_plane_point,
@@ -63,9 +66,6 @@ from ...core.bpy_helpers.armature.bone_session import (  # type: ignore[import-n
     BoneRecord,
     BoneSession,
     author_edit_bone,
-)
-from ...core.bpy_helpers.armature.view_session import (  # type: ignore[import-not-found]
-    ViewSnapshot,
 )
 from ._overlay import draw_cursor_warning_2d, draw_preview_3d
 from ._status_bar import emit_chord_layout
@@ -113,7 +113,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
     _created_armature_this_session: ClassVar[bool] = False
     # The view snap/restore lifecycle lives in one collaborator (replaced fresh
     # each invoke) instead of a dozen parallel ClassVars.
-    _view: ClassVar[ViewSnapshot] = ViewSnapshot()
+    _view: ClassVar[ViewSnapshot] = ViewSnapshot(tag="QuickArmature")
     _restore_selected_names: ClassVar[tuple[str, ...]] = ()
     _restore_active_name: ClassVar[str] = ""
     _invoke_area: ClassVar[bpy.types.Area | None] = None
@@ -197,7 +197,7 @@ class PROSCENIO_OT_quick_armature(bpy.types.Operator):
         cls._preview_handle_3d = None
         cls._cursor_warning_handle_2d = None
         cls._created_armature_this_session = False
-        cls._view = ViewSnapshot()
+        cls._view = ViewSnapshot(tag="QuickArmature")
         cls._restore_selected_names = ()
         cls._restore_active_name = ""
         cls._ctrl_held = False

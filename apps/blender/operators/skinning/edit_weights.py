@@ -28,6 +28,9 @@ from ...core._shared.report import (  # type: ignore[import-not-found]
     report_info,
 )
 from ...core.bpy_helpers._shared.redraw import tag_redraw_areas  # type: ignore[import-not-found]
+from ...core.bpy_helpers._shared.view_session import (  # type: ignore[import-not-found]
+    FrontOrthoModalMixin,
+)
 from ...core.bpy_helpers.i18n import iface
 from ...core.bpy_helpers.skinning import (  # type: ignore[import-not-found]
     StrokeDiffTracker,
@@ -53,7 +56,7 @@ from ._status_bar import emit_edit_weights_chords
 _MODE_WATCH_INTERVAL = 0.2
 
 
-class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
+class PROSCENIO_OT_edit_weights_modal(FrontOrthoModalMixin, bpy.types.Operator):
     """Enter a 2D-safe weight paint context with provenance overlay."""
 
     bl_idname = "proscenio.edit_weights"
@@ -96,6 +99,10 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
             return {"CANCELLED"}
         if not require_object_visible(self, obj, action="edit weights"):
             return {"CANCELLED"}
+
+        # The mesh is authored on the Y=0 picture plane; paint from a flat front
+        # view by default (spec 078). Restored in _finish.
+        self.enter_front_ortho(context, lambda m: report_info(self, m), tag="EditWeights")
 
         skinning = getattr(scene_props, "skinning", None)
         prior_overlay = (
@@ -190,6 +197,8 @@ class PROSCENIO_OT_edit_weights_modal(bpy.types.Operator):
                 unregister_handler(self._overlay_handle)
                 self._overlay_handle = None
             self._remove_statusbar()
+            with contextlib.suppress(Exception):
+                self.exit_front_ortho(lambda m: report_info(self, m))
             # A normal finish captures the session's end weights as a rolling
             # auto-snapshot. Suppressed so a snapshot failure never aborts the
             # mode/selection restore below (cleanup must run in every exit path).

@@ -30,6 +30,9 @@ from ...core.automesh.stroke_pick import stroke_index_within  # type: ignore[imp
 from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
     tag_redraw_view3d_statusbar,
 )
+from ...core.bpy_helpers._shared.view_session import (  # type: ignore[import-not-found]
+    FrontOrthoModalMixin,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -217,7 +220,7 @@ class AuthoringModalState:
     tool: str
 
 
-class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
+class PROSCENIO_OT_automesh_authoring(FrontOrthoModalMixin, bpy.types.Operator):
     """Multi-stage modal preview of the automesh pipeline."""
 
     bl_idname = "proscenio.automesh_authoring"
@@ -287,6 +290,9 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
         obj = validate_authoring_invoke(self, context, _MODAL_NAME)
         if obj is None:
             return {"CANCELLED"}
+        # Author on the flat Y=0 picture plane: snap to Front Ortho by default
+        # (spec 078). Restored in _finish.
+        self.enter_front_ortho(context, lambda m: report_info(self, m), tag="Automesh")
         # Fresh session: drop any cached alpha grid so an edited texture is
         # re-read. Within the session the cache then serves every threshold /
         # margin drag without re-walking the whole image.
@@ -1474,6 +1480,8 @@ class PROSCENIO_OT_automesh_authoring(bpy.types.Operator):
                     context.window_manager.event_timer_remove(self._timer)
                 type(self)._timer = None
             self._remove_statusbar()
+            with contextlib.suppress(Exception):
+                self.exit_front_ortho(lambda m: report_info(self, m))
             if self._session is not None:
                 restore_session(context, self._session)
         finally:

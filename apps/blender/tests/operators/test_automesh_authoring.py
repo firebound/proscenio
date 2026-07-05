@@ -350,6 +350,74 @@ def test_apply_mesh_simple_is_sparser_than_dense(automesh_fixture):
     assert simple["total_faces"] >= 1
 
 
+def test_boundary_margin_does_not_starve_dense_interior_fill(automesh_fixture):
+    """Spec 078: with a boundary edge loop (margin_pixels > 0) the eroded inner
+    ring is a constraint loop, not a CDT hole, so DENSE fills the whole interior
+    instead of only the thin perimeter band. DENSE must stay materially denser
+    than SIMPLE with the loop on, and keep close to the interior density it has
+    at margin_pixels=0 - before the fix the annulus carved the centre into a
+    hole and DENSE collapsed onto SIMPLE here."""
+    obj = _activate("hand")
+    _set_picker("automesh.hand_rig")
+    image = _resolve_image(obj)
+    from proscenio.core.bpy_helpers.automesh.authoring_pipeline import (  # type: ignore[import-not-found]
+        apply_mesh,
+    )
+    from proscenio.core.skinning.authoring_stages import (  # type: ignore[import-not-found]
+        StageOutput,
+        StageParams,
+    )
+
+    base = {
+        "resolution": 0.25,
+        "alpha_threshold": 1,
+        "contour_vertices": 64,
+        "inner_loop_count": 0,
+        "inner_loop_spacing": 0.15,
+        "interior_spacing": 0.1,
+        "bone_radius": 0.5,
+        "bone_factor": 2,
+    }
+    dense_flat = apply_mesh(
+        obj, image, StageOutput(), StageParams(**base, margin_pixels=0, interior_mode="DENSE"), None
+    )
+    dense_loop = apply_mesh(
+        obj, image, StageOutput(), StageParams(**base, margin_pixels=4, interior_mode="DENSE"), None
+    )
+    simple_loop = apply_mesh(
+        obj,
+        image,
+        StageOutput(),
+        StageParams(**base, margin_pixels=4, interior_mode="SIMPLE"),
+        None,
+    )
+    # Interior mode still matters with the boundary loop on.
+    assert simple_loop["total_verts"] < dense_loop["total_verts"]
+    # The loop no longer starves the fill: DENSE at margin>0 keeps close to its
+    # margin=0 vert count (a filled interior, not a thin ring band).
+    assert dense_loop["total_verts"] >= dense_flat["total_verts"] * 0.8
+
+
+def test_front_ortho_mixin_lifecycle_noops_without_a_viewport_region(automesh_fixture):
+    """Spec 078: the FrontOrthoModalMixin enter/exit lifecycle is guarded on the
+    3D-view region, so in a headless / non-VIEW_3D context (region_data is None)
+    it captures nothing, snaps nothing, and restores nothing - neither call
+    raises and nothing is reported."""
+    from types import SimpleNamespace
+
+    from proscenio.core.bpy_helpers._shared.view_session import (  # type: ignore[import-not-found]
+        FrontOrthoModalMixin,
+    )
+
+    mixin = FrontOrthoModalMixin()
+    mixin.lock_to_front_ortho = True
+    ctx = SimpleNamespace(region_data=None)
+    logs: list[str] = []
+    mixin.enter_front_ortho(ctx, logs.append, tag="Smoke")
+    mixin.exit_front_ortho(logs.append)
+    assert logs == []
+
+
 def test_triangulation_preview_returns_world_edges_without_mutating_obj(automesh_fixture):
     """SIMPLE preview returns world-XZ edges and must NOT mutate the
     source object's mesh (it runs the real build on a throwaway copy)."""

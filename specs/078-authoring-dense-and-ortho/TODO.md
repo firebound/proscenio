@@ -6,44 +6,43 @@ Execution plan for [STUDY.md](STUDY.md). Two independent tracks; no ordering bet
 
 ### A1. Fill the whole silhouette (stop treating the inner ring as a hole)
 
-- [ ] [cdt.py:181](../../apps/blender/core/bpy_helpers/automesh/cdt.py#L181): `output_type = 2 if holes else 1` (the inner ring is a constraint loop, not a hole; only real alpha holes flip to with-holes). Update the `build_mesh_via_delaunay` docstring block that claims the inner ring's interior is excluded ([cdt.py:144-149](../../apps/blender/core/bpy_helpers/automesh/cdt.py#L144-L149)).
-- [ ] [bridge.py:585](../../apps/blender/core/bpy_helpers/automesh/bridge.py#L585): pass `[]` for the inner argument to `interior_points_for_annulus` so the Dense grid fills inside the outer contour. Keep `inner_world` in the min-separation `boundary_for_filter` ([bridge.py:607](../../apps/blender/core/bpy_helpers/automesh/bridge.py#L607)). Correct the `_compute_steiner_points` docstring (the annulus-skip note).
-- [ ] [authoring_pipeline.py:359](../../apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py#L359): the interactive authoring path already passes `inner=[]` (its preview always filled the full interior); this fix makes the one-shot build match it, so no change is needed here - just confirm consistency.
-- [ ] [scene_props.py:106-121](../../apps/blender/properties/scene_props.py#L106-L121): rewrite the `margin_pixels` description - it adds an inner edge-density loop at the silhouette; it no longer produces a ring / excludes the interior.
+- [x] [cdt.py](../../apps/blender/core/bpy_helpers/automesh/cdt.py): `build_mesh_via_delaunay` now always uses `output_type=1` (CDT_INSIDE) and never auto-detects holes. The original `output_type=2 if inner or holes` carved the eroded inner ring as a hole; the intermediate `2 if holes else 1` still risked it whenever a real alpha hole was present (CodeRabbit), because CDT auto-hole-detection is unreliable against the bridge's orientation flow. Genuine alpha holes are carved downstream by the deterministic `delete_faces_inside_holes` centroid prune, so the inner ring stays a constraint loop only.
+- [x] [bridge.py](../../apps/blender/core/bpy_helpers/automesh/bridge.py): `_compute_steiner_points` passes `[]` for the inner argument to `interior_points_for_annulus` so the Dense grid fills inside the outer contour; `inner_world` is kept in the min-separation `boundary_for_filter`. Docstring corrected.
+- [x] [authoring_pipeline.py:359](../../apps/blender/core/bpy_helpers/automesh/authoring_pipeline.py#L359): the interactive authoring path already passed `inner=[]` (its preview always filled the full interior); this fix makes the one-shot build match it. No change needed - confirmed consistent.
+- [x] [scene_props.py](../../apps/blender/properties/scene_props.py): `margin_pixels` description rewritten (it adds an inner edge-density loop; it no longer produces a ring / excludes the interior). pt-BR i18n catalog entry updated to match.
 
 ### A2. Lock the behaviour with a test
 
-- [ ] In-Blender operator test ([apps/blender/tests/operators/test_automesh_authoring.py](../../apps/blender/tests/operators/test_automesh_authoring.py)): with `margin_pixels > 0`, Dense fills the interior (verts inside the eroded inner ring exist and faces cover the centre - no hole) and `dense_verts` is materially greater than `simple_verts` (not a 1-vert margin). Keep the existing simple<dense test green.
-- [ ] Confirm the pure `tests/automesh/test_density.py` stays unchanged and green (the density module contract is untouched).
+- [x] `test_boundary_margin_does_not_starve_dense_interior_fill`: with `margin_pixels > 0`, Dense keeps close to its `margin_pixels=0` vert count and stays materially denser than Simple. Verified it fails without the fix (Dense and Simple both 128 verts). Existing simple<dense test stays green.
+- [x] `test_cdt_keeps_the_inner_ring_filled_alongside_a_real_hole`: a margin ring plus a genuine hole produces a filled centre and a carved hole (guards the margin+hole combination CodeRabbit flagged). Note: the collapse does not reproduce with synthetic square loops at the CDT layer, so this is a behaviour-contract test, not a fail-without-fix regression; the fix rests on removing the unreliable auto-detection the module already documents.
+- [x] Pure `tests/automesh/test_density.py` stays unchanged and green (the density module contract is untouched).
 
 ## Track B - Front-ortho snap for the interactive modals
 
 ### B1. Shared view-session infra
 
-- [ ] Move `ViewSnapshot` (+ `_log_view`) from [bpy_helpers/armature/view_session.py](../../apps/blender/core/bpy_helpers/armature/view_session.py) to `bpy_helpers/_shared/view_session.py`; give the log tag a constructor arg (default `Proscenio`) so it is not Quick-Armature-specific.
-- [ ] Update Quick Armature's import to the new path ([quick_armature.py:68](../../apps/blender/operators/armature/quick_armature.py#L68)); no behaviour change.
-- [ ] Add `FrontOrthoModalMixin` to the same module: owns a `_view: ClassVar[ViewSnapshot]`, exposes `lock_to_front_ortho: BoolProperty(default=True)`, and provides `enter_front_ortho(context, report)` (capture + conditional snap) and `exit_front_ortho(report)` (restore).
+- [x] Moved `ViewSnapshot` (+ `_log_view`) to `bpy_helpers/_shared/view_session.py` with a constructor `tag` (default `Proscenio`).
+- [x] Quick Armature's import updated to the new path; no behaviour change (its own `lock_to_front_ortho` toggle is unchanged).
+- [x] Added `FrontOrthoModalMixin`: owns `_front_ortho_view`, exposes `lock_to_front_ortho: BoolProperty(default=True)`, and provides `enter_front_ortho(context, report, tag=...)` + `exit_front_ortho(report)`. No `from __future__ import annotations` in the module (it would break the RNA property registration).
 
 ### B2. Apply to the three modals
 
-- [ ] Automesh authoring ([operators/automesh/automesh_authoring.py](../../apps/blender/operators/automesh/automesh_authoring.py)): inherit the mixin; call `enter_front_ortho` in `invoke` (after the precondition gate) and `exit_front_ortho` in `_finish`/`cancel`.
-- [ ] Manual Mesh ([operators/automesh/draw_mesh_vertices.py](../../apps/blender/operators/automesh/draw_mesh_vertices.py)): same wiring.
-- [ ] Edit Weights ([operators/skinning/edit_weights.py](../../apps/blender/operators/skinning/edit_weights.py)): same wiring (snap before entering weight-paint mode; restore on exit).
-- [ ] The mixin's `lock_to_front_ortho` reuses Quick Armature's exact name + description so it stays out of the i18n catalog. The `exit_front_ortho` call in each `_finish` is wrapped in `contextlib.suppress(Exception)` (a view-restore failure must not abort the mode/selection restore, matching the other teardown steps).
+- [x] Automesh authoring, Manual Mesh, Edit Weights inherit the mixin; `enter_front_ortho` in `invoke` (after the precondition gate), `exit_front_ortho` in `_finish` (covers cancel).
+- [x] The mixin's `lock_to_front_ortho` reuses Quick Armature's exact name + description so it stays out of the i18n catalog. The `exit_front_ortho` call in each `_finish` is wrapped in `contextlib.suppress(Exception)` (a view-restore failure must not abort the mode/selection restore, matching the other teardown steps).
 - [ ] Deferred: a per-tool PG field + panel checkbox so the artist can opt out interactively. The operator property (default True) forces front ortho for now, which matches the "only front ortho" intent; the panel toggle is a fast-follow.
 
 ### B3. Verify the snap lifecycle
 
-- [ ] Headless smoke: each modal's `invoke` reads the toggle and does not raise when no `region_data` (the `ViewSnapshot.capture`/`snap` no-op path). A full view-round-trip needs an interactive region, so the deep assert stays a manual QA walk.
-- [ ] Manual QA (log in the QA Companion): entering each tool snaps to Front Ortho and exiting restores the prior view; toggling the checkbox OFF authors from the current view.
+- [x] Headless smoke: `test_front_ortho_mixin_lifecycle_noops_without_a_viewport_region` drives the mixin `enter`/`exit` with no `region_data` and asserts neither raises nor reports.
+- [ ] Manual QA (log in the QA Companion): entering each tool snaps to Front Ortho and exiting restores the prior view (a full view round-trip needs an interactive region).
 
 ## Track C - Gates + close-out
 
-- [ ] Gates: ruff + ruff-format, mypy, `tests/` pytest (density unchanged), the in-Blender operator suite, and the 8/8 export goldens (Track A changes authoring-time mesh gen; the baked goldens must stay byte-identical - if a fixture regenerates automesh, re-bake and justify).
+- [x] Gates: ruff + ruff-format, mypy, `tests/` pytest (1002, density unchanged), the in-Blender operator suite (300), and the 8/8 export goldens byte-identical.
 - [ ] On ship, prune `078-authoring-dense-and-ortho/` and record the summary + PR in [index.md](index.md). Code rides this branch + PR.
 
 ## Definition of done
 
-- Automesh Dense produces a visibly denser FILLED mesh than Simple with `margin_pixels > 0` (no empty centre); the density module + its tests are untouched.
+- Automesh Dense produces a denser FILLED mesh than Simple with `margin_pixels > 0` (no empty centre), including when a genuine alpha hole is present; the density module + its tests are untouched.
 - Automesh, Manual Mesh, and Edit Weights snap to Front Orthographic on entry (default ON) and restore on exit, reusing the shared `ViewSnapshot`.
 - All gates green; goldens byte-identical.

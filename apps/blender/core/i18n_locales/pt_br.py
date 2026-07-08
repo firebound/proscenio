@@ -194,7 +194,7 @@ ROWS: tuple[LocaleRow, ...] = (
         ),
         "Ossos além desta distância contribuem com zero (somente PROXIMITY). -1 = adaptativo (1.5x o bbox da armadura)",
     ),
-    (("*", "Boundary margin (annulus)"), "Margem de borda (annulus)"),
+    (("*", "Boundary margin (edge loop)"), "Margem de borda (loop de arestas)"),
     (("*", "Brush curve preset:"), "Predefinição de curva do pincel:"),
     (("*", "Build the mesh by clicking vertices"), "Construir a malha clicando nos vértices"),
     (("*", "Bundle textures"), "Agrupar texturas"),
@@ -783,9 +783,9 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         (
             "*",
-            "Source-pixel margin that builds an ANNULUS topology (dilated outer ring + eroded inner ring + Constrained Delaunay between them). Zero (default) skips the annulus and produces a single-contour flat triangulation - the common case for 2D skinning (matches Spine / DragonBones). Set > 0 only when you want extra edge-loop density at the silhouette for fine border deformation control (cape, hair, ribbon).",
+            "Source-pixel margin that adds an inner edge-density loop (the silhouette eroded inward) as an extra constraint ring near the boundary. The mesh interior stays FILLED - the loop only adds silhouette edge density, it does not carve a hole. Zero (default) skips it and produces a single-contour triangulation, the common case for 2D skinning (matches Spine / DragonBones). Set > 0 for fine border deformation control (cape, hair, ribbon).",
         ),
-        "Margem de pixel de origem que constrói uma topologia ANNULUS (anel externo dilatado + anel interno erodido + Delaunay Restrito entre eles). Zero (padrão) pula o annulus e produz uma triangulação plana de contorno único - o caso comum para skinning 2D (segue Spine / DragonBones). Defina > 0 apenas quando quiser densidade extra de loops de arestas na silhueta para controle fino de deformação de borda (capa, cabelo, fita).",
+        "Margem em pixels de origem que adiciona um loop interno de densidade de arestas (a silhueta erodida para dentro) como um anel de restrição extra perto da borda. O interior da malha permanece PREENCHIDO - o loop só adiciona densidade de arestas na silhueta, não recorta um buraco. Zero (padrão) pula isso e produz uma triangulação de contorno único, o caso comum para skinning 2D (segue Spine / DragonBones). Defina > 0 para controle fino de deformação de borda (capa, cabelo, fita).",
     ),
     (("*", "Spacing"), "Espaçamento"),
     (

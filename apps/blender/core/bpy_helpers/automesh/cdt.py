@@ -143,10 +143,16 @@ def build_mesh_via_delaunay(
 
     - Treat outer + inner cyclic edges as hard constraints (must
       appear in the output).
-    - Auto-detect the inner ring AND every hole loop as HOLEs via
-      ``output_type=2`` (CDT_INSIDE_WITH_HOLES) when present, so the
-      interior of the inner ring + every alpha hole is correctly
-      excluded from triangulation.
+    - Always fill every constrained region (``output_type=1``,
+      CDT_INSIDE) and NEVER auto-detect holes. ``output_type=2``'s
+      nested-loop detection is unreliable against the bridge's
+      orientation flow and cannot reliably tell a genuine alpha hole
+      from the eroded inner ring, so with a real hole present it could
+      re-carve the inner ring's interior into a hole and collapse Dense
+      onto Simple again (spec 078). Genuine alpha holes are carved
+      downstream by the deterministic ``delete_faces_inside_holes``
+      centroid prune (bridge), the reliable mechanism; the inner ring is
+      a constraint loop only and its interior stays FILLED.
     - Include Steiner interior points as additional verts from the
       start so they participate in the Delaunay rather than being
       fan-split into an existing fan triangulation afterwards.
@@ -170,15 +176,19 @@ def build_mesh_via_delaunay(
     """
     if len(outer_world) < 3:
         return 0
-    # Filter degenerate hole loops up front: a <3-vertex hole adds no valid
-    # constraint, so it must not flip the output type to with-holes (which
-    # would auto-detect holes the constraint edges never carved). With the
-    # filter here, the _build_cdt_inputs guard is redundant and dropped.
+    # Filter degenerate hole loops up front: a <3-vertex hole is not a valid
+    # constraint edge loop. With the filter here, the _build_cdt_inputs guard
+    # is redundant and dropped.
     holes = [hole for hole in holes_world if len(hole) >= 3] if holes_world else []
     all_coords, edges_constraint = _build_cdt_inputs(
         outer_world, inner_world, interior_points, holes, extra_edges=extra_edges
     )
-    output_type = 2 if (len(inner_world) >= 3 or holes) else 1
+    # Never auto-detect holes. CDT auto-hole-detection is unreliable against the
+    # bridge's orientation flow (module docstring), so with a real hole present
+    # CDT_INSIDE_WITH_HOLES could also mistake the eroded inner ring for a hole
+    # and re-empty the centre (spec 078). Fill every region and let
+    # delete_faces_inside_holes (bridge) carve the real holes deterministically.
+    output_type = 1
     result = mathutils.geometry.delaunay_2d_cdt(
         all_coords,
         edges_constraint,

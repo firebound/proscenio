@@ -36,6 +36,9 @@ from ...core.automesh.stroke_geometry import (  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared.redraw import (  # type: ignore[import-not-found]
     tag_redraw_view3d_statusbar,
 )
+from ...core.bpy_helpers._shared.view_session import (  # type: ignore[import-not-found]
+    FrontOrthoModalMixin,
+)
 from ...core.bpy_helpers._shared.viewport_math import (  # type: ignore[import-not-found]
     event_in_canvas,
     find_window_region,
@@ -117,7 +120,7 @@ def _world_xz_to_local(
     return out
 
 
-class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
+class PROSCENIO_OT_draw_mesh_vertices(FrontOrthoModalMixin, bpy.types.Operator):
     """Manual Draw: build the mesh silhouette by clicking vertices.
 
     LMB place a vertex (click the first vertex to close), RMB drag a vertex,
@@ -187,6 +190,9 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
         obj = validate_authoring_invoke(self, context, _MODAL_NAME)
         if obj is None:
             return {"CANCELLED"}
+        # Author on the flat Y=0 picture plane: snap to Front Ortho by default
+        # (spec 078). Restored in _finish.
+        self.enter_front_ortho(context, lambda m: report_info(self, m), tag="ManualMesh")
 
         self._session = capture_session(context, obj)
         # Viewport canvas region (not the N-panel button's): lets the modal pass
@@ -723,6 +729,8 @@ class PROSCENIO_OT_draw_mesh_vertices(bpy.types.Operator):
                 with contextlib.suppress(RuntimeError):
                     unregister_overlay(self._handles)
             self._remove_statusbar()
+            with contextlib.suppress(Exception):
+                self.exit_front_ortho(lambda m: report_info(self, m))
             if self._session is not None and cancel:
                 restore_session(context, self._session)
         finally:

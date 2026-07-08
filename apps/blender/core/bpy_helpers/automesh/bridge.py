@@ -568,14 +568,12 @@ def _compute_steiner_points(
     Three-step funnel:
 
     1. ``interior_points_for_annulus`` produces a candidate grid
-       (uniform OR bone-clustered when picker armature is set).
-       ``inner_world`` is passed so the helper skips points inside
-       the inner ring when the user opted into the annulus topology
-       (margin_pixels > 0); without it, points inside the ring
-       would survive into CDT only to become loose verts after the
-       inner ring's hole exclusion. When ``inner_world`` is empty
-       (margin_pixels = 0, default), the helper treats the whole
-       outer interior as fair game.
+       (uniform OR bone-clustered when picker armature is set)
+       filling the whole outer interior. The inner ring is a
+       constraint loop, not a hole (spec 078), so interior points
+       inside it belong in the mesh - the grid is no longer clipped
+       to the annulus band, which is what made Dense collapse onto
+       Simple.
     2. Points falling inside any detected alpha hole are dropped -
        CDT excludes the hole region, so a Steiner there would
        become a loose vertex with no incident face.
@@ -584,7 +582,9 @@ def _compute_steiner_points(
     """
     interior_points = interior_points_for_annulus(
         outer_world,
-        inner_world,
+        # Fill the whole silhouette, not just the annulus band: the inner ring
+        # is no longer a hole (spec 078), so points inside it belong in the mesh.
+        [],
         interior_spacing,
         bone_segments=bone_segments,
         bone_density_radius=bone_density_radius,

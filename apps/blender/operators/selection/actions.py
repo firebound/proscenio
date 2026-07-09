@@ -7,6 +7,9 @@ from typing import ClassVar
 import bpy
 from bpy.props import StringProperty
 
+from ...core._shared.action_kind import (  # type: ignore[import-not-found]
+    is_visibility_only_action,
+)
 from ...core._shared.report import report_warn  # type: ignore[import-not-found]
 from ...core.armature.skeleton_target import (  # type: ignore[import-not-found]
     resolve_skeleton_target,
@@ -34,6 +37,19 @@ class PROSCENIO_OT_set_active_action(bpy.types.Operator):
         action = bpy.data.actions.get(self.action_name)
         if action is None:
             report_warn(self, f"action '{self.action_name}' not found", always=True)
+            return {"CANCELLED"}
+        # A slot swap authored as direct visibility keyframes creates its own
+        # visibility-only action (hide_render / hide_viewport). Grafting it onto
+        # the armature would play empty on the rig and hide the real rig action
+        # of the same name behind it; refuse and point the artist at the swap
+        # authoring instead (spec 079 D2).
+        if is_visibility_only_action(action):
+            report_warn(
+                self,
+                f"action '{action.name}' animates attachment visibility, not the rig - "
+                "author it from the Active Slot panel, not the Animation list",
+                always=True,
+            )
             return {"CANCELLED"}
         # The Skeleton picker is the single source of truth, same as every
         # other skeleton op. Do not scan the scene for an armature - that

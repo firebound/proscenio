@@ -6,7 +6,11 @@ from typing import ClassVar
 
 import bpy
 
+from ..core._shared.action_kind import (  # type: ignore[import-not-found]
+    animation_representatives,
+)
 from ..core.bpy_helpers.i18n import iface
+from ..core.list_view import compute_list_filter  # type: ignore[import-not-found]
 from ._helpers import _active_armature, draw_subpanel_header, draw_target_readout
 from ._list import ProscenioListMixin
 
@@ -15,10 +19,33 @@ class PROSCENIO_UL_actions(ProscenioListMixin, bpy.types.UIList):
     """List view for ``bpy.data.actions`` - Animation subpanel uses this.
 
     Single-select (a click assigns the active action); the shared mixin gives it
-    native ``filter_name`` search. Source order is kept.
+    native ``filter_name`` search. Rows are deduped to one per exported animation
+    name (spec 079 D2), so a rig action and its per-mesh visibility action show
+    as one animation.
     """
 
     bl_idname = "PROSCENIO_UL_actions"
+
+    def filter_items(
+        self,
+        _context: bpy.types.Context,
+        data: bpy.types.AnyType,
+        propname: str,
+    ) -> tuple[list[int], list[int]]:
+        """Show one row per exported animation name, honouring the search box.
+
+        Overrides the mixin's plain name filter to also collapse same-named
+        datablocks (rig + visibility) into a single representative row.
+        """
+        actions = list(getattr(data, propname))
+        representative_ids = {id(actions[i]) for i in animation_representatives(actions)}
+        return compute_list_filter(
+            actions,
+            bitflag=self.bitflag_filter_item,
+            name_filter=self.filter_name or "",
+            name_of=lambda action: str(getattr(action, "name", "")),
+            visible=lambda action: id(action) in representative_ids,
+        )
 
     def draw_item(
         self,
@@ -66,6 +93,10 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
         if not actions:
             layout.label(text=iface("no actions to export"), icon="INFO")
             return
+        # The list dedups same-named datablocks (rig + per-mesh visibility) into
+        # one row per exported animation, so count the deduped names, not the raw
+        # datablocks (spec 079 D2).
+        n_animations = len({str(getattr(action, "name", "")) for action in actions})
         layout.template_list(
             "PROSCENIO_UL_actions",
             "",
@@ -73,9 +104,9 @@ class PROSCENIO_PT_animation(bpy.types.Panel):
             "actions",
             context.scene.proscenio,
             "active_action_index",
-            rows=min(max(len(actions), 2), 6),
+            rows=min(max(n_animations, 2), 6),
         )
-        layout.label(text=f"{len(actions)} action(s) total", icon="INFO")
+        layout.label(text=f"{n_animations} animation(s) total", icon="INFO")
 
 
 _classes: tuple[type, ...] = (

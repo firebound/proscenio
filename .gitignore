@@ -114,3 +114,4 @@ yarn-error.log*
 
 # Local scratch (renders, throwaway scripts) - never committed
 .scratch/
+RELEASE_V1.md

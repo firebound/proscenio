@@ -104,16 +104,16 @@ class ProscenioAutomeshProps(PropertyGroup):
         max=255,
     )
     margin_pixels: IntProperty(  # type: ignore[valid-type]
-        name="Boundary margin (annulus)",
+        name="Boundary margin (edge loop)",
         description=(
-            "Source-pixel margin that builds an ANNULUS topology "
-            "(dilated outer ring + eroded inner ring + Constrained "
-            "Delaunay between them). Zero (default) skips the annulus "
-            "and produces a single-contour flat triangulation - the "
-            "common case for 2D skinning (matches Spine / DragonBones). "
-            "Set > 0 only when you want extra edge-loop density at the "
-            "silhouette for fine border deformation control (cape, "
-            "hair, ribbon)."
+            "Source-pixel margin that adds an inner edge-density loop "
+            "(the silhouette eroded inward) as an extra constraint ring "
+            "near the boundary. The mesh interior stays FILLED - the loop "
+            "only adds silhouette edge density, it does not carve a hole. "
+            "Zero (default) skips it and produces a single-contour "
+            "triangulation, the common case for 2D skinning (matches "
+            "Spine / DragonBones). Set > 0 for fine border deformation "
+            "control (cape, hair, ribbon)."
         ),
         default=0,
         min=0,

@@ -9,10 +9,10 @@ O painel abre com a leitura do alvo de exportação (`Exports: <name>`), a mesma
 **O que a exportação emite.** Na exportação o escritor itera toda Action e emite uma entrada de animação por Action. Três tipos de canal se fundem naquela única entrada, chaveados pelo nome da Action:
 
 - **Transformações de osso** - as fcurves de posição, rotação e escala nos ossos de deformação do rig viram trilhas `bone_transform`. Um canal sem movimento fora da pose de descanso é descartado para que o descanso do Bone2D sobreviva à importação; as fcurves de um osso de controle (um alvo de IK ou de polo) são filtradas e nunca chegam ao documento.
-- **Índices de slot** - quadros-chave no índice de um slot viram uma trilha `slot_attachment` no slot, com interpolação constante para que a troca seja um corte duro.
+- **Visibilidade de anexo de slot** - quadros-chave de visibilidade nas malhas de anexo de um slot (veja [Slots](03-slots.md)) viram uma trilha `slot_attachment` no slot, com interpolação constante para que a troca seja um corte duro. Cada animação carrega a sua própria linha de troca, então um slot de arma pode não mostrar nada no `idle` e um porrete no `attack`.
 - **Quadros de sprite controlados** - um `frame` de sprite controlado a partir de um osso de pose (o atalho [Drive from Bone](02-element.md#drive-from-bone)) é assado ao percorrer a Action e ler o osso posado, emitindo uma trilha `sprite_frame` com chaves de interpolação constante a cada mudança.
 
-Como todos os três são chaveados pelo nome da Action, os índices de slot e as propriedades de sprite controladas animam na mesma timeline que os ossos.
+Como todos os três são chaveados pelo nome da Action, a visibilidade de anexo de slot e as propriedades de sprite controladas animam na mesma timeline que os ossos.
 
 **Onde as animações vão parar no Godot.** Toda Action vai parar no `AnimationPlayer` da cena importada sob a biblioteca padrão (de nome vazio), para que uma cena Wrapper possa hospedar um segundo `AnimationPlayer` para animações do lado do jogo sem colisão de nomes.
 

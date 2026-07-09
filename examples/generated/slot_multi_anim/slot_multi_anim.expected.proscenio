@@ -1,0 +1,253 @@
+{
+  "format_version": 1,
+  "name": "slot_multi_anim",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "arm",
+        "parent": null,
+        "position": [
+          0.0,
+          -0.0
+        ],
+        "rotation": -0.0,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 31.999999
+      }
+    ]
+  },
+  "elements": [
+    {
+      "name": "arm",
+      "bone": "arm",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          4.0
+        ],
+        [
+          32.0,
+          4.0
+        ],
+        [
+          32.0,
+          -4.0
+        ],
+        [
+          0.0,
+          -4.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "arm.png",
+      "weights": [
+        {
+          "bone": "arm",
+          "values": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "club",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          16.0,
+          16.0
+        ],
+        [
+          48.0,
+          16.0
+        ],
+        [
+          48.0,
+          -16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "club.png",
+      "z_index": 1
+    },
+    {
+      "name": "torch",
+      "bone": "",
+      "texture_region": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "polygon": [
+        [
+          16.0,
+          16.0
+        ],
+        [
+          48.0,
+          16.0
+        ],
+        [
+          48.0,
+          -16.0
+        ],
+        [
+          16.0,
+          -16.0
+        ]
+      ],
+      "uv": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture": "torch.png",
+      "z_index": 2
+    }
+  ],
+  "slots": [
+    {
+      "name": "weapon",
+      "attachments": [
+        "club",
+        "torch"
+      ],
+      "bone": "arm",
+      "default": "club"
+    }
+  ],
+  "atlas": "arm.png",
+  "animations": [
+    {
+      "name": "attack",
+      "length": 0.458333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "bone_transform",
+          "target": "arm",
+          "keys": [
+            {
+              "time": 0.0,
+              "rotation": -0.261799
+            },
+            {
+              "time": 0.458333,
+              "rotation": 0.261799
+            }
+          ]
+        },
+        {
+          "type": "slot_attachment",
+          "target": "weapon",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "attachment": "club"
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "attachment": "club"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "length": 0.458333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "slot_attachment",
+          "target": "weapon",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "attachment": "(none)"
+            },
+            {
+              "time": 0.458333,
+              "interp": "constant",
+              "attachment": "(none)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

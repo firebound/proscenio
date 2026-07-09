@@ -31,6 +31,9 @@ packages/fixtures/
 ├── slot_cycle/
 │   ├── draw_layers.py              Pillow → pillow_layers/attachment_red|green|blue.png (32x32 each)
 │   └── build_blend.py              Bpy: armature + slot Empty + 3 polygon attachments + cycle action → slot_cycle.blend
+├── slot_multi_anim/
+│   ├── draw_layers.py              Pillow → pillow_layers/arm.png + club.png + torch.png
+│   └── build_blend.py              Bpy: armature + slot Empty + 2 attachments + idle/attack actions (per-animation swap) → slot_multi_anim.blend
 └── atlas_pack/
     ├── draw_layers.py              Pillow → pillow_layers/sprite_1..9.png (32x32 each, distinct color + digit)
     └── build_blend.py              Bpy: 1-bone armature + 9 quads + 9 materials/textures (3x3 grid) → atlas_pack.blend
@@ -62,6 +65,9 @@ packages/fixtures/
 | slot_cycle | `slot_cycle/draw_layers.py` | (Pillow primitives) | `examples/generated/slot_cycle/pillow_layers/attachment_red.png` + `_green.png` + `_blue.png` |
 | slot_cycle | `slot_cycle/build_blend.py` | `examples/generated/slot_cycle/pillow_layers/*.png` | `examples/generated/slot_cycle/slot_cycle.blend` |
 | slot_cycle | `_shared/export_proscenio.py` | `examples/generated/slot_cycle/slot_cycle.blend` | `examples/generated/slot_cycle/slot_cycle.expected.proscenio` |
+| slot_multi_anim | `slot_multi_anim/draw_layers.py` | (Pillow primitives) | `examples/generated/slot_multi_anim/pillow_layers/arm.png` + `club.png` + `torch.png` |
+| slot_multi_anim | `slot_multi_anim/build_blend.py` | `examples/generated/slot_multi_anim/pillow_layers/*.png` | `examples/generated/slot_multi_anim/slot_multi_anim.blend` |
+| slot_multi_anim | `_shared/export_proscenio.py` | `examples/generated/slot_multi_anim/slot_multi_anim.blend` | `examples/generated/slot_multi_anim/slot_multi_anim.expected.proscenio` |
 | atlas_pack | `atlas_pack/draw_layers.py` | (Pillow primitives) | `examples/generated/atlas_pack/pillow_layers/sprite_1..9.png` |
 | atlas_pack | `atlas_pack/build_blend.py` | `examples/generated/atlas_pack/pillow_layers/*.png` | `examples/generated/atlas_pack/atlas_pack.blend` |
 | atlas_pack | `_shared/export_proscenio.py` | `examples/generated/atlas_pack/atlas_pack.blend` | `examples/generated/atlas_pack/atlas_pack.expected.proscenio` |

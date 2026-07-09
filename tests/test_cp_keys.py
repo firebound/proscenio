@@ -38,7 +38,6 @@ def test_known_keys_present() -> None:
     expected = {
         "PROSCENIO_IS_SLOT",
         "PROSCENIO_SLOT_DEFAULT",
-        "PROSCENIO_SLOT_INDEX",
         "PROSCENIO_PRE_PACK",
         "PROSCENIO_TYPE",
         "PROSCENIO_HFRAMES",

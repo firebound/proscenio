@@ -280,9 +280,9 @@ def test_transform_key_check_sees_a_legacy_action() -> None:
 
 
 def test_transform_key_check_ignores_a_visibility_only_layered_action() -> None:
-    child = _child_with_action(
-        _action_with_path('["proscenio_slot_index"]', layered=True)
-    )
+    # A slot swap is authored as attachment ``hide_render`` visibility keys
+    # (spec 079); those are not bone transforms, so the check must skip them.
+    child = _child_with_action(_action_with_path('["hide_render"]', layered=True))
     assert _has_bone_transform_keys(child) is False
 
 

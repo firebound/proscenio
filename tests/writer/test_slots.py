@@ -8,10 +8,9 @@ the mesh-attachment collection - with hand-built fakes.
 
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 
-from blender.core._shared.cp_keys import PROSCENIO_SLOT_ATTACHMENT_ORDER
+from blender.core._shared.action_fcurves import object_action_fcurves
 from blender.core.slot import slot_emit
 from blender.exporters.godot.writer import slot_animations, slots
 
@@ -108,69 +107,100 @@ def test_build_slots_for_scene_skips_non_slot_and_non_empty() -> None:
     assert slots.build_slots_for_scene(scene) == []
 
 
-# -- slot_attachment keyframe binding (O3: resolve the keyed index against the
-#    snapshotted name order, not the live child list) --------------------------
+# -- visibility-driven slot_attachment collapse (spec 079) --------------------
+#
+# The writer reads each attachment mesh's own ``hide_render`` keyframes and
+# collapses them per frame into one exclusive key: 0 visible -> "(none)"; 1 ->
+# that attachment; 2+ -> first in child order. Per-mesh reading is scoped to the
+# mesh's own action slot so siblings sharing a 4.4+ slotted action never
+# cross-read.
 
 
-class _SlotObj(SimpleNamespace):
-    """A slot Empty stand-in with a dict-style ``.get`` over raw idprops."""
-
-    def get(self, key, default=None):  # noqa: ANN001, ANN201
-        return getattr(self, "_cps", {}).get(key, default)
-
-
-def _mesh(name: str) -> SimpleNamespace:
-    return SimpleNamespace(name=name, type="MESH")
+def _hide_render_curve(points: list[tuple[float, float]]) -> SimpleNamespace:
+    """A ``hide_render`` fcurve fake; ``points`` are ``(frame, value)`` (1.0 = hidden)."""
+    kps = [SimpleNamespace(co=SimpleNamespace(x=f, y=v)) for f, v in points]
+    return SimpleNamespace(data_path="hide_render", keyframe_points=kps)
 
 
-def test_resolve_attachment_order_prefers_the_snapshot() -> None:
-    # The snapshot names survive a later child delete: live children shrank to
-    # [axe] but the keyed index still resolves against the stored order.
-    obj = _SlotObj(
-        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps(["sword", "axe"])},
-        children=[_mesh("axe")],
+def _slotted_action_two_meshes() -> SimpleNamespace:
+    """One 4.4+ slotted action datablock holding two meshes on distinct slots.
+
+    Slot handle 1 (club) shown at frame 1; slot handle 2 (sword) hidden. A
+    flattened read would see both curves per mesh; scoped reading sees one each.
+    """
+    club_cb = SimpleNamespace(slot_handle=1, fcurves=[_hide_render_curve([(1.0, 0.0)])])
+    sword_cb = SimpleNamespace(slot_handle=2, fcurves=[_hide_render_curve([(1.0, 1.0)])])
+    strip = SimpleNamespace(channelbags=[club_cb, sword_cb])
+    return SimpleNamespace(
+        name="swing", fcurves=[], layers=[SimpleNamespace(strips=[strip])], frame_range=(1.0, 1.0)
     )
-    assert slot_animations._resolve_attachment_order(obj) == ("sword", "axe")
 
 
-def test_resolve_attachment_order_falls_back_to_live_children() -> None:
-    obj = _SlotObj(
-        _cps={},
-        children=[_mesh("a"), _mesh("b"), SimpleNamespace(name="cam", type="LIGHT")],
+def _mesh_on_slot(name: str, action: SimpleNamespace, handle: int) -> _Obj:
+    return _Obj(
+        name=name,
+        type="MESH",
+        animation_data=SimpleNamespace(action=action, action_slot=SimpleNamespace(handle=handle)),
     )
-    assert slot_animations._resolve_attachment_order(obj) == ("a", "b")
 
 
-def test_resolve_attachment_order_falls_back_on_malformed_snapshot() -> None:
-    corrupt = _SlotObj(
-        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: "{not json"}, children=[_mesh("a")]
+def test_object_action_fcurves_scopes_to_the_mesh_own_slot() -> None:
+    action = _slotted_action_two_meshes()
+    club = _mesh_on_slot("club", action, handle=1)
+    seen = [
+        (fc.data_path, [(kp.co.x, kp.co.y) for kp in fc.keyframe_points])
+        for fc in object_action_fcurves(club)
+    ]
+    # Only club's own channelbag (handle 1), never sword's (handle 2).
+    assert seen == [("hide_render", [(1.0, 0.0)])]
+
+
+def test_collapse_single_visible_picks_that_attachment() -> None:
+    track = slot_animations._build_slot_attachment_track(
+        "weapon",
+        ["club", "sword"],
+        {"club": [(1.0, True), (12.0, False)], "sword": [(1.0, False), (12.0, True)]},
+        fps=24,
     )
-    non_list = _SlotObj(
-        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps({"a": 1})},
-        children=[_mesh("a")],
-    )
-    assert slot_animations._resolve_attachment_order(corrupt) == ("a",)
-    assert slot_animations._resolve_attachment_order(non_list) == ("a",)
-
-
-def test_build_slot_attachment_track_resolves_index_against_the_order() -> None:
-    obj = _SlotObj(
-        name="weapon",
-        _cps={PROSCENIO_SLOT_ATTACHMENT_ORDER: json.dumps(["sword", "axe"])},
-        children=[_mesh("axe")],  # sword deleted; only axe remains live
-    )
-    kp = SimpleNamespace(co=SimpleNamespace(x=5.0, y=1.0))  # index 1 at frame 5
-    fcurve = SimpleNamespace(data_path='["proscenio_slot_index"]', keyframe_points=[kp])
-    action = SimpleNamespace(fcurves=[fcurve], layers=[])
-    track = slot_animations._build_slot_attachment_track(obj, action, fps=24)
     assert track is not None
-    assert [k.attachment for k in track.keys] == ["axe"]  # order[1], not live[1]
+    assert [(k.time, k.attachment) for k in track.keys] == [
+        (0.0, "club"),
+        (0.458333, "sword"),
+    ]
     assert all(k.interp == "constant" for k in track.keys)
 
 
-def test_build_slot_attachment_track_none_without_mesh_children() -> None:
-    obj = _SlotObj(
-        name="empty_slot", _cps={}, children=[SimpleNamespace(name="cam", type="LIGHT")]
+def test_collapse_none_when_all_hidden() -> None:
+    track = slot_animations._build_slot_attachment_track(
+        "weapon",
+        ["club", "sword"],
+        {"club": [(1.0, False)], "sword": [(1.0, False)]},
+        fps=24,
     )
-    action = SimpleNamespace(fcurves=[], layers=[])
-    assert slot_animations._build_slot_attachment_track(obj, action, fps=24) is None
+    assert track is not None
+    assert track.keys[0].attachment == slot_animations.NONE_ATTACHMENT
+
+
+def test_collapse_two_visible_takes_first_in_child_order() -> None:
+    track = slot_animations._build_slot_attachment_track(
+        "weapon",
+        ["club", "sword"],
+        {"club": [(1.0, True)], "sword": [(1.0, True)]},
+        fps=24,
+    )
+    assert track is not None
+    assert track.keys[0].attachment == "club"  # order[0], deterministic
+
+
+def test_build_slot_animations_does_not_cross_read_a_shared_slotted_action() -> None:
+    action = _slotted_action_two_meshes()
+    club = _mesh_on_slot("club", action, handle=1)
+    sword = _mesh_on_slot("sword", action, handle=2)
+    empty = _slot_empty("weapon", is_slot=True, children=(club, sword))
+    scene = SimpleNamespace(objects=[empty], render=SimpleNamespace(fps=24))
+    anims = slot_animations.build_slot_animations(scene)
+    assert len(anims) == 1
+    assert anims[0].name == "swing"
+    keys = anims[0].tracks[0].keys
+    # Frame 1: club shown, sword hidden -> a single "club" key, not a double count.
+    assert [k.attachment for k in keys] == ["club"]

@@ -563,6 +563,16 @@ class ProscenioSceneProps(PropertyGroup):
         default=0,
         min=0,
     )
+    slot_swap_target_animation: StringProperty(  # type: ignore[valid-type]
+        name="Target animation",
+        description=(
+            "Animation a new slot-swap keyframe targets. Empty (default) follows "
+            "the rig's active animation, so authoring the swap needs no extra "
+            "step; set a name here to bind the swap into that animation instead "
+            "(spec 079 D3)."
+        ),
+        default="",
+    )
     quick_armature: PointerProperty(  # type: ignore[valid-type]
         type=ProscenioQuickArmatureProps,
     )

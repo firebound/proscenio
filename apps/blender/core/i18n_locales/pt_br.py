@@ -1881,4 +1881,24 @@ ROWS: tuple[LocaleRow, ...] = (
         ("Operator", "Write the active scene to a Proscenio JSON file"),
         "Grava a cena ativa em um arquivo JSON do Proscenio",
     ),
+    # Spec 079 PR2 - Active Slot swap authoring + target-animation override.
+    (
+        ("*", "(empty: follows the active animation)"),
+        "(vazio: segue a animação ativa)",
+    ),
+    (("*", "(none) / Hide All"), "(nenhum) / Ocultar todos"),
+    (
+        (
+            "*",
+            "Animation a new slot-swap keyframe targets. Empty (default) follows the rig's active animation, so authoring the swap needs no extra step; set a name here to bind the swap into that animation instead (spec 079 D3).",
+        ),
+        "Animação que um novo quadro-chave de troca de slot mira. Vazio (padrão) segue a animação ativa da armadura, então autorar a troca não requer passo extra; defina um nome aqui para vincular a troca àquela animação (spec 079 D3).",
+    ),
+    (
+        ("*", "Keyframe swap (show only at current frame):"),
+        "Quadro-chave de troca (exibir apenas no quadro atual):",
+    ),
+    (("*", "Show Only"), "Exibir apenas"),
+    (("*", "Target anim"), "Animação-alvo"),
+    (("*", "Target animation"), "Animação-alvo"),
 )

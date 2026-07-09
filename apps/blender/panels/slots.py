@@ -228,6 +228,10 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         if empty is None:
             return
         props = empty.proscenio
+        scene_props = getattr(context.scene, "proscenio", None)
+        swap_anim = (
+            str(getattr(scene_props, "slot_swap_target_animation", "")) if scene_props else ""
+        )
         children = sorted(
             (c for c in empty.children if c.type == "MESH"),
             key=lambda c: c.name,
@@ -269,12 +273,42 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
             row.label(text=child.name)
             kind = _attachment_kind_for(child)
             row.label(text=kind, icon=_attachment_icon_for(kind))
+            # "Show only" keys this attachment shown + every sibling hidden at the
+            # current frame (a slot swap), not an index into a list.
             key_op = row.operator(
                 "proscenio.keyframe_slot_attachment",
-                text="",
+                text="Show Only",
                 icon="KEYFRAME_HLT",
             )
             key_op.attachment_name = child.name
+            key_op.animation_name = swap_anim
+
+        # Slot-swap authoring: the target animation the swap follows, plus the
+        # keyable "(none)" state (every attachment hidden). Per-attachment
+        # "Show only" buttons live in the rows above.
+        swap_col = layout.column(align=True)
+        swap_col.label(
+            text=iface("Keyframe swap (show only at current frame):"), icon="KEYFRAME_HLT"
+        )
+        if scene_props is not None:
+            swap_col.prop_search(
+                scene_props,
+                "slot_swap_target_animation",
+                bpy.data,
+                "actions",
+                text=iface("Target anim"),
+            )
+            if not swap_anim:
+                hint = swap_col.row()
+                hint.scale_y = 0.8
+                hint.label(text=iface("(empty: follows the active animation)"), icon="BLANK1")
+        none_op = swap_col.operator(
+            "proscenio.keyframe_slot_attachment",
+            text=iface("(none) / Hide All"),
+            icon="HIDE_ON",
+        )
+        none_op.hide_all = True
+        none_op.animation_name = swap_anim
 
         layout.separator()
         row = layout.row(align=True)

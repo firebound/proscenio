@@ -20,21 +20,23 @@ Layout:
 - **Two attachment meshes** parented to the slot Empty:
   - ``club`` - 32x32 polygon mesh with club.png material
   - ``sword`` - 32x32 polygon mesh with sword.png material
-- **Two actions named ``swing``** that share a name so the writer
-  merges them into a single animation with two tracks:
-  - On the armature: keyframes the arm bone's local Y rotation
+- **One slotted action ``swing``** (Blender 4.4+), shared by the armature
+  and both attachment meshes on their own slots, so the writer emits one
+  merged animation with two tracks:
+  - The armature slot keyframes the arm bone's local Y rotation
     -pi/6 -> +pi/6 -> 0 over 24 frames (gentle swing).
-  - On the slot Empty: keyframes ``proscenio_slot_index`` 0 (club)
-    -> 1 (sword) -> 0 (club) over the same 24 frames, constant
-    interpolation. Swap happens at the apex of the swing.
+  - Each attachment mesh's slot keyframes ``hide_render`` + ``hide_viewport``
+    (constant): club shown -> sword shown -> club shown over the same 24
+    frames. Swap happens at the apex of the swing.
 
 The fixture exercises:
 
 1. Slot Empty + N attachments + slot_default round-trip through the
    writer into a ``slots[]`` entry.
-2. Slot index keyframes round-trip into a ``slot_attachment`` track.
-3. Bone rotation animation co-exists with slot animation under a
-   shared action name (writer's merge logic).
+2. Per-attachment visibility keyframes collapse into a ``slot_attachment``
+   track (spec 079).
+3. Bone rotation animation co-exists with the slot swap under a shared
+   slotted action name (writer's merge logic).
 4. ``apps/blender/tests/run_tests.py`` re-exports the .blend and
    the result matches the committed golden.
 
@@ -87,10 +89,10 @@ def main() -> None:
     # Stagger attachments by draw order so Eevee never disambiguates coplanar
     # quads if both end up visible. The writer negates the order into z_index
     # (club -1 -> z_index 1, sword -2 -> z_index 2).
-    _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1)
-    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2)
-    _build_swing_action(armature_obj)
-    _build_swap_action(slot_empty)
+    club_obj = _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1)
+    sword_obj = _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2)
+    swing_action = _build_swing_action(armature_obj)
+    _key_attachment_visibility(swing_action, [club_obj, sword_obj])
     _save_blend()
     rewrite_images_to_relpath("[build_slot_swap]")
     bpy.ops.wm.save_mainfile()
@@ -215,7 +217,6 @@ def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
     empty["proscenio_is_slot"] = True
     empty["proscenio_slot_default"] = "club"
     empty["proscenio_slot_bone"] = ARM_BONE
-    empty["proscenio_slot_index"] = 0
 
     # Author the Blender-side follow so the weapon swings with the arm in the
     # viewport, mirroring the Godot importer. Baked at rest (no action yet), so
@@ -269,12 +270,12 @@ def _build_attachment(
     return obj
 
 
-def _build_swing_action(armature_obj: bpy.types.Object) -> None:
+def _build_swing_action(armature_obj: bpy.types.Object) -> bpy.types.Action:
     """Gentle Y rotation swing on the arm bone over 24 frames.
 
-    Action name ``swing`` is shared with the slot Empty's swap action
-    so the writer merges both into a single animation with one
-    ``bone_transform`` track + one ``slot_attachment`` track.
+    Returns the ``swing`` action datablock so the attachment meshes can bind
+    their visibility onto their own slots of the SAME action (Blender 4.4+),
+    keeping the bone motion + the swap in one animation the writer emits merged.
     """
     import math
 
@@ -303,29 +304,69 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
         bpy.context.scene.frame_set(frame)
         arm_pose.matrix_basis = rest_inv @ Matrix.Rotation(value, 4, "Y") @ rest
         arm_pose.keyframe_insert(data_path="rotation_euler", frame=frame)
+    return action
 
 
-def _build_swap_action(slot_empty: bpy.types.Object) -> None:
-    """Keyframe slot_index 0 -> 1 -> 0 over 24 frames, constant interp.
+def _key_attachment_visibility(
+    action: bpy.types.Action,
+    meshes: list[bpy.types.Object],
+) -> None:
+    """Show-only visibility swap: club -> sword -> club over 24 frames.
 
-    Mirrors the slot system contract: keys are sampled at the action's
-    fcurve-key timestamps; the writer expands them into
-    ``slot_attachment`` tracks with constant interpolation.
-
-    Action name matches ``_build_swing_action`` (``swing``) so the
-    writer's merge logic collapses bone tracks + slot tracks under a
-    single ``swing`` animation entry.
+    At each swap frame every attachment mesh keys ``hide_render`` +
+    ``hide_viewport`` in lockstep (chosen shown, rest hidden), constant interp,
+    on its own slot of the shared ``swing`` action - the exact per-mesh state
+    the ``keyframe_slot_attachment`` operator authors and the writer collapses
+    back into one exclusive ``slot_attachment`` track. Sharing the armature's
+    action datablock keeps the swap in the ``swing`` animation (no ``.001``
+    disambiguation split).
     """
-    slot_empty.animation_data_create()
-    action = bpy.data.actions.new(name="swing")
-    slot_empty.animation_data.action = action
-    bpy.context.scene.frame_start = 1
-    bpy.context.scene.frame_end = 24
-
-    for frame, idx in ((1, 0), (12, 1), (24, 0)):
+    sequence = ((1, "club"), (12, "sword"), (24, "club"))
+    for frame, chosen in sequence:
         bpy.context.scene.frame_set(frame)
-        slot_empty["proscenio_slot_index"] = idx
-        slot_empty.keyframe_insert(data_path='["proscenio_slot_index"]', frame=frame)
+        for mesh in meshes:
+            _key_show_only(mesh, action, visible=mesh.name == chosen, frame=frame)
+
+
+def _key_show_only(
+    mesh: bpy.types.Object,
+    action: bpy.types.Action,
+    *,
+    visible: bool,
+    frame: int,
+) -> None:
+    """Bind ``mesh`` to ``action`` and hard-cut-key its visibility at ``frame``."""
+    mesh.animation_data_create()
+    if mesh.animation_data.action is not action:
+        mesh.animation_data.action = action
+    mesh.hide_viewport = not visible
+    mesh.hide_render = not visible
+    mesh.keyframe_insert(data_path="hide_viewport", frame=frame)
+    mesh.keyframe_insert(data_path="hide_render", frame=frame)
+    for fcurve in _object_fcurves(mesh):
+        if fcurve.data_path in ("hide_render", "hide_viewport"):
+            for keyframe in fcurve.keyframe_points:
+                keyframe.interpolation = "CONSTANT"
+            fcurve.update()
+
+
+def _object_fcurves(obj: bpy.types.Object) -> list[bpy.types.FCurve]:
+    """The object's OWN fcurves, scoped to its action slot on a slotted action."""
+    anim = obj.animation_data
+    action = anim.action
+    flat = getattr(action, "fcurves", None)
+    if flat:
+        return list(flat)
+    slot = getattr(anim, "action_slot", None)
+    handle = getattr(slot, "handle", None) if slot is not None else None
+    out: list[bpy.types.FCurve] = []
+    for layer in action.layers:
+        for strip in layer.strips:
+            for channelbag in strip.channelbags:
+                if handle is not None and getattr(channelbag, "slot_handle", None) != handle:
+                    continue
+                out.extend(channelbag.fcurves)
+    return out
 
 
 def _save_blend() -> None:

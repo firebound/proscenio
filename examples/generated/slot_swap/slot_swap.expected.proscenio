@@ -211,14 +211,7 @@
               "rotation": -0.523599
             }
           ]
-        }
-      ]
-    },
-    {
-      "name": "swing.001",
-      "length": 0.958333,
-      "loop": true,
-      "tracks": [
+        },
         {
           "type": "slot_attachment",
           "target": "weapon",

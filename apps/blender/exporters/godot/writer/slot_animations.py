@@ -15,8 +15,12 @@ from __future__ import annotations
 import bpy
 from proscenio_models import Animation, Key, Track
 
-from ....core._shared.action_fcurves import object_action_fcurves
-from ....core.bpy_helpers._shared._bpy_compat import iter_keyframe_points, iter_objects
+from ....core._shared.action_fcurves import object_fcurves_in_action
+from ....core.bpy_helpers._shared._bpy_compat import (
+    iter_actions,
+    iter_keyframe_points,
+    iter_objects,
+)
 from ....core.slot.slot_emit import is_slot_empty
 from .animations import action_length
 
@@ -32,22 +36,26 @@ _VISIBLE_THRESHOLD = 0.5
 
 
 def build_slot_animations(scene: bpy.types.Scene) -> list[Animation]:
-    """Walk slot Empties for attachment-mesh visibility keyframes.
+    """Walk slot Empties for attachment-mesh visibility keyframes, per animation.
 
-    For each slot Empty, every attachment mesh contributes its own
-    ``hide_render`` keyframes (scoped to that mesh's own animation data, so
-    siblings sharing a 4.4+ slotted action never cross-read). The per-mesh
-    visibility is collapsed per frame into one exclusive ``slot_attachment``
-    key. Returns one animation entry per (slot, animation-name) pair; the merge
-    helper consolidates entries that share an animation name with the bone
-    animation of the same name.
+    Mirrors the bone writer's coverage: it iterates EVERY action in the file
+    (:func:`iter_actions`, like ``build_animations``), and for each (action, slot
+    Empty) reads each attachment mesh's ``hide_render`` visibility scoped to that
+    mesh's slot WITHIN that action - so a character whose ``idle`` hides every
+    weapon and whose ``attack`` shows one exports a distinct ``slot_attachment``
+    timeline per animation (spec 079's core). Reading is scoped per mesh per
+    action (never the flattened channelbag view), so siblings sharing a 4.4+
+    slotted action never cross-read (R4). Returns one animation entry per
+    (slot, animation-name) pair; :func:`merge_slot_animations_into` then folds
+    each entry onto the bone animation of the same name.
     """
     fps = scene.render.fps
+    actions = list(iter_actions())
     out: list[Animation] = []
     for obj in iter_objects(scene):
         if not is_slot_empty(obj):
             continue
-        out.extend(_slot_animations_for_empty(obj, fps))
+        out.extend(_slot_animations_for_empty(obj, actions, fps))
     return out
 
 
@@ -81,47 +89,61 @@ def merge_slot_animations_into(
     return out
 
 
-def _slot_animations_for_empty(empty_obj: bpy.types.Object, fps: int) -> list[Animation]:
-    """Build every slot_attachment animation carried by one slot Empty."""
+def _slot_animations_for_empty(
+    empty_obj: bpy.types.Object,
+    actions: list[bpy.types.Action],
+    fps: int,
+) -> list[Animation]:
+    """Build every slot_attachment animation carried by one slot Empty.
+
+    Emits one animation per action in which any of the Empty's attachment meshes
+    carries a visibility keyframe. For each action the attachments' visibility is
+    read scoped to that action (their per-mesh slot on a 4.4+ slotted action, or
+    a mesh's own dedicated 4.2 action) and collapsed into one exclusive
+    ``slot_attachment`` track named after the action.
+    """
     attachments = [child for child in empty_obj.children if child.type == "MESH"]
     if not attachments:
         return []
-    # Group attachment-mesh visibility by the animation name each mesh's active
-    # action carries. In the spec's model every attachment of a slot follows the
-    # same active animation, so this is normally a single group; grouping keeps
-    # the walker correct if they diverge.
     order = [child.name for child in attachments]
-    grouped: dict[str, dict[str, list[tuple[float, bool]]]] = {}
-    lengths: dict[str, float] = {}
-    for mesh in attachments:
-        anim_data = getattr(mesh, "animation_data", None)
-        action = getattr(anim_data, "action", None) if anim_data is not None else None
-        if action is None:
-            continue
-        vis_keys = _read_visibility_keys(mesh)
-        if not vis_keys:
-            continue
-        grouped.setdefault(action.name, {})[mesh.name] = vis_keys
-        lengths[action.name] = action_length(action, fps)
     out: list[Animation] = []
-    for name, mesh_vis in grouped.items():
+    for action in actions:
+        mesh_vis: dict[str, list[tuple[float, bool]]] = {}
+        for mesh in attachments:
+            vis_keys = _read_visibility_keys_in_action(mesh, action)
+            if vis_keys:
+                mesh_vis[mesh.name] = vis_keys
+        if not mesh_vis:
+            continue
         track = _build_slot_attachment_track(empty_obj.name, order, mesh_vis, fps)
         if track is None:
             continue
-        out.append(Animation(name=name, length=lengths[name], loop=True, tracks=[track]))
+        out.append(
+            Animation(
+                name=action.name,
+                length=action_length(action, fps),
+                loop=True,
+                tracks=[track],
+            )
+        )
     return out
 
 
-def _read_visibility_keys(mesh: bpy.types.Object) -> list[tuple[float, bool]]:
-    """Sorted ``(frame, visible)`` from ``mesh``'s own ``hide_render`` fcurve.
+def _read_visibility_keys_in_action(
+    mesh: bpy.types.Object,
+    action: bpy.types.Action,
+) -> list[tuple[float, bool]]:
+    """Sorted ``(frame, visible)`` from ``mesh``'s ``hide_render`` fcurve in ``action``.
 
-    Reads only the mesh's own animation data (its 4.4+ action-slot channelbag
-    or its 4.2 dedicated action), never the flattened action view - so a mesh
-    sharing a slotted action with its siblings reads only its own curve.
+    Reads only the curves scoped to ``mesh`` within ``action`` (its slot's
+    channelbag on a 4.4+ slotted action, or ``action`` itself when ``mesh``
+    actively binds a legacy 4.2 flat action), never the flattened action view -
+    so a mesh sharing a slotted action with its siblings reads only its own curve
+    (spec 079 R4). Empty when ``mesh`` has no visibility keyed in ``action``.
     ``visible`` is ``True`` when the keyed ``hide_render`` value is shown (< 0.5).
     """
     keys: list[tuple[float, bool]] = []
-    for fcurve in object_action_fcurves(mesh):
+    for fcurve in object_fcurves_in_action(mesh, action):
         if getattr(fcurve, "data_path", None) != "hide_render":
             continue
         for kp in iter_keyframe_points(fcurve):

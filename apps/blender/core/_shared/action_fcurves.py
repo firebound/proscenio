@@ -73,3 +73,66 @@ def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
                 if slot_handle is not None and cb_handle != slot_handle:
                     continue
                 yield from getattr(channelbag, "fcurves", None) or []
+
+
+def _object_slot_handle(action: object, obj_name: str | None) -> object | None:
+    """The slot ``handle`` in ``action`` whose slot targets the object ``obj_name``.
+
+    Blender auto-creates one slot per bound datablock; an Object slot is
+    identified by its ``name_display`` (the object's name) and its
+    ``identifier`` (``"OB"`` + the object name at bind time). Matches on either
+    - verified against Blender 5.1, where both retain the bind-time name. Returns
+    ``None`` when ``action`` has no slot for that object (the object was never
+    keyed in this action), so an attachment absent from an animation contributes
+    nothing to it.
+    """
+    for slot in getattr(action, "slots", None) or []:
+        if getattr(slot, "target_id_type", None) != "OBJECT":
+            continue
+        if getattr(slot, "name_display", None) == obj_name or (
+            obj_name is not None and getattr(slot, "identifier", None) == f"OB{obj_name}"
+        ):
+            return getattr(slot, "handle", None)
+    return None
+
+
+def object_fcurves_in_action(obj: object, action: object) -> Iterator[bpy.types.FCurve]:
+    """Yield the fcurves belonging to ``obj`` within a GIVEN ``action``.
+
+    Unlike :func:`object_action_fcurves` (which reads ``obj``'s OWN active
+    action), this reads *any* action - ``obj`` need not be actively bound to it.
+    That is what per-animation slot export needs: on Blender 4.4+ one attachment
+    mesh holds a channelbag in every animation's action it was keyed in, but only
+    one of those actions is the mesh's active binding, so the others are only
+    reachable by scanning ``bpy.data.actions`` and matching by slot identity.
+
+    - Slotted (Blender 4.4+) action: match the slot whose Object identity is
+      ``obj`` (:func:`_object_slot_handle`) and read only that slot's channelbag,
+      never the flattened view - flattening would read every sibling mesh's
+      curves while processing one (spec 079 R4).
+    - Legacy (Blender 4.2) flat action: a bare ``fcurves`` collection carries no
+      slot identity, so it belongs to exactly one datablock - the object that
+      actively binds it. Yield it only when ``obj`` is that binder, so a sibling's
+      flat action never cross-reads. A 4.2 object binds one active action, so this
+      is the single-animation fallback (multiple animations there need slots,
+      which are 4.4+).
+
+    Duck-typed (plain ``getattr``) so the pytest suite can drive it with
+    ``SimpleNamespace`` stubs.
+    """
+    fcurves = getattr(action, "fcurves", None)
+    if fcurves:
+        anim = getattr(obj, "animation_data", None)
+        active = getattr(anim, "action", None) if anim is not None else None
+        if active is action:
+            yield from fcurves
+        return
+    handle = _object_slot_handle(action, getattr(obj, "name", None))
+    if handle is None:
+        return
+    for layer in getattr(action, "layers", None) or []:
+        for strip in getattr(layer, "strips", None) or []:
+            for channelbag in getattr(strip, "channelbags", None) or []:
+                if getattr(channelbag, "slot_handle", None) != handle:
+                    continue
+                yield from getattr(channelbag, "fcurves", None) or []

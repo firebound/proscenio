@@ -18,6 +18,11 @@ class SlotInfo:
 
 const NodeNameUtil := preload("res://addons/proscenio/builders/node_name_util.gd")
 
+# The writer's sentinel for "no attachment shown" (spec 079 D4). A slot whose
+# default is exactly this rests blank; it must stay in lockstep with the Blender
+# writer's `slot_animations.NONE_ATTACHMENT`.
+const NONE_ATTACHMENT := "(none)"
+
 
 static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) -> Dictionary:
 	# Returns `{sanitized_attachment_name: SlotInfo}`, keyed to match
@@ -41,10 +46,18 @@ static func build(skeleton: Skeleton2D, slot_resources: Array[ProscenioSlot]) ->
 static func _effective_default(
 	slot_res: ProscenioSlot, sanitized_attachments: PackedStringArray
 ) -> String:
-	# The default decides which attachment starts visible. When it names nothing
-	# in the slot, fall back to the first attachment so the slot is not blank
-	# (every attachment hidden). An empty default with attachments is the same
-	# fallback; a slot with no attachments has nothing to show.
+	# The default decides which attachment starts visible.
+	#
+	# Three cases, in order:
+	#   1. Explicit blank (the "(none)" sentinel): the slot rests with nothing
+	#      shown (spec 079 D4 resting-none). Returned before sanitizing so the
+	#      sentinel is matched literally, not routed through name-sanitization.
+	#   2. A default naming a real attachment: that attachment starts visible.
+	#   3. Missing / invalid default (unset "", or a name matching no attachment):
+	#      fall back to the first attachment so the slot is not accidentally blank,
+	#      warning on an invalid (non-empty) name.
+	if slot_res.default == NONE_ATTACHMENT:
+		return ""
 	var wanted := NodeNameUtil.sanitize(slot_res.default)
 	if wanted != "" and sanitized_attachments.has(wanted):
 		return wanted

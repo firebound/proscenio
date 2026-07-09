@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "proscenio"
-version = "0.9.1"
+version = "1.0.0"
 name = "Proscenio"
 tagline = "Blender → Godot 4 pipeline for 2D cutout animation"
 maintainer = "Space Wizard Studios <contato@spacewiz.dev>"
@@ -47,4 +47,19 @@ wheels = [
     "./wheels/pydantic_core-2.46.4-cp313-cp313-win_amd64.whl",
     "./wheels/typing_extensions-4.15.0-py3-none-any.whl",
     "./wheels/typing_inspection-0.4.2-py3-none-any.whl",
+]
+
+[build]
+# `blender --command extension build` ships the whole source tree by default;
+# keep the dev-only trees out of the installed add-on. Mirrors the exclusions
+# the old raw-`zip` packaging used (tests, dev pyproject, repo README). Patterns
+# are gitignore-style; a leading `/` anchors to the extension root.
+paths_exclude_pattern = [
+    "__pycache__/",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    "/tests/",
+    "/pyproject.toml",
+    "/README.md",
 ]

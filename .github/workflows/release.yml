@@ -38,6 +38,16 @@ jobs:
           else
             tag="${GITHUB_REF#refs/tags/}"
             version="${tag#v}"
+            # The tag is authoritative for the artifact name, but it must agree
+            # with the committed VERSION (which drives every in-bundle manifest
+            # via scripts/maintenance/sync_version.py). A mismatch means the
+            # release would ship manifests that disagree with the tag - fail
+            # loudly instead.
+            expected="$(cat VERSION)"
+            if [ "$version" != "$expected" ]; then
+              echo "::error::tag version '$version' != VERSION file '$expected'; run scripts/maintenance/sync_version.py and retag" >&2
+              exit 1
+            fi
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -57,14 +67,41 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
-      - name: Build all three artifacts
+      - name: Cache Blender
+        id: cache-blender
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/blender
+          key: blender-5.1.1-linux-x64
+      - name: Download Blender
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/blender
+          curl -fL "https://download.blender.org/release/Blender5.1/blender-5.1.1-linux-x64.tar.xz" \
+            | tar -xJ -C ~/blender --strip-components=1
+
+      - name: Build the Blender extension
+        # Package the add-on the way Blender's installer expects: validate the
+        # manifest, then `extension build` (honours the [build] excludes in
+        # blender_manifest.toml and bundles the wheels block). Replaces the old
+        # raw `zip`, which shipped an unvalidated tree and could not catch a
+        # malformed manifest before release.
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          mkdir -p dist
+          ~/blender/blender --factory-startup --command extension validate apps/blender
+          ~/blender/blender --factory-startup --command extension build \
+            --source-dir apps/blender \
+            --output-filepath "dist/proscenio-blender-$VERSION.zip"
+
+      - name: Build the Godot and Photoshop artifacts
         # Same defense as the meta step: the version rides an env var, never a
         # `${{ }}` expansion inside the script body.
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           mkdir -p dist
-          (cd apps/blender && zip -r "../../dist/proscenio-blender-$VERSION.zip" . -x "tests/*" "pyproject.toml" "README.md")
           (cd apps/godot && zip -r "../../dist/proscenio-godot-$VERSION.zip" addons/proscenio)
           # The UXP plugin root is dist/ itself - manifest.json lands there
           # after the webpack build - so archive its contents, keeping

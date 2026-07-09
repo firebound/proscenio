@@ -1,6 +1,6 @@
 {
   "name": "proscenio-photoshop-uxp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Proscenio Photoshop UXP plugin (PSD layers + manifest JSON exporter / importer)",
   "license": "GPL-3.0-or-later",
   "packageManager": "pnpm@9.0.0",

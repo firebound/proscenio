@@ -51,6 +51,6 @@
       "addWords": true
     }
   ],
-  "words": ["bleh", "braba", "zizmor"],
+  "words": ["bleh", "braba", "fullmatch", "lifecycles", "retag", "subn", "zizmor"],
   "ignoreWords": []
 }

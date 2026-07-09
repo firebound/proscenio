@@ -14,10 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - name: Version declarations in sync with VERSION
+        run: python3 scripts/maintenance/sync_version.py --check
+      # Pin ruff to the exact version the pre-commit hook uses (see
+      # .pre-commit-config.yaml) so CI and local formatting never disagree.
       - name: Ruff lint
-        run: uvx ruff check apps/blender/
+        run: uvx ruff@0.15.20 check apps/blender/
       - name: Ruff format check
-        run: uvx ruff format --check apps/blender/
+        run: uvx ruff@0.15.20 format --check apps/blender/
       - name: Sync uv workspace
         run: uv sync --all-packages
       # Run from the repo root (not `cd apps/blender`). The addon's mypy

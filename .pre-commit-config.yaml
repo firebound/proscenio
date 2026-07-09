@@ -23,7 +23,10 @@ repos:
             exclude: ^(examples/.*\.(blend|psd|psb|kra|png)|apps/blender/wheels/.*\.whl)$
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.8.4
+      # Pinned to the same version CI resolves (uvx ruff@0.15.20) so the hook and
+      # CI format identically - a drift here silently fails CI `ruff format
+      # --check` on code the hook accepted. Bump both together.
+      rev: v0.15.20
       hooks:
           - id: ruff
             args: [--fix]

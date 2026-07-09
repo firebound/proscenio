@@ -20,6 +20,12 @@ permissions:
 jobs:
   sonarcloud:
     name: SonarCloud
+    # Dependabot PRs run in the Dependabot context, which does NOT expose
+    # Actions secrets - SONAR_TOKEN comes through empty and the scanner exits 3
+    # ("Not authorized"), painting a false CI failure on dependency bumps. A
+    # dependency-only PR has no source delta for the analyzer anyway, so skip
+    # the scan for Dependabot; real-code PRs and pushes to main still run it.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

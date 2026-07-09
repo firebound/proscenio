@@ -10,6 +10,7 @@
     "examples/**/*.photoshop_exported.json",
     "PROBLEMS",
     "PROBLEMS.md",
+    "RELEASE_V1.md",
     "specs/021-blender-ui-audit/ia-mockup.html",
     "specs/066-mesh-generation-interaction/interaction-mockup.html",
     "specs/069-skeleton-rig-ui-and-bone-display/interaction-mockup.html",
@@ -51,6 +52,6 @@
       "addWords": true
     }
   ],
-  "words": ["bleh", "braba", "fullmatch", "lifecycles", "retag", "subn", "zizmor"],
+  "words": ["authorable", "bleh", "braba", "fullmatch", "keyable", "lifecycles", "retag", "subn", "zizmor"],
   "ignoreWords": []
 }

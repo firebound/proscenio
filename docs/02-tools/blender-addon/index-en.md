@@ -4,9 +4,6 @@ Per-panel reference for the Proscenio sidebar. Open it in Blender at **3D Viewpo
 
 For the end-to-end workflow, start with the [Blender walkthrough](../../00-guides/01-basic/02-blender.md); this section documents each panel and subpanel on its own.
 
-> [!NOTE]
-> **Placeholder pages.** These reference pages are a first cut. Each panel and subpanel carries a brief, specific description that mirrors the in-addon `?` help; they expand over time.
-
 ## What it does
 
 The addon is where the pipeline's heavy lifting happens:
@@ -30,6 +27,7 @@ Every panel renders on any selection and warns (rather than hiding) when it need
 - [Slots](03-slots.md) - the project slot list and per-slot attachment detail.
 - [Skeleton](04-skeleton.md) - the armature picker, bone list, pose helpers, and Quick Armature.
 - [Mesh Generation](05-mesh-generation.md) - trace a sprite alpha into a deformable mesh.
+- [Manual Mesh](09-manual-mesh.md) - hand-author a mesh silhouette vertex by vertex, the manual counterpart to Mesh Generation.
 - [Weight Paint](06-weight-paint.md) - bind and refine bone weights (mesh elements only).
 - [Animation](07-animation.md) - read-only summary of the actions the writer exports.
 - [Atlas](08-atlas.md) - pack source images into a shared atlas.

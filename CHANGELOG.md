@@ -10,6 +10,21 @@ while the `-beta` channel marker lives on the git tag and this file.
 The on-disk `.proscenio` format carries its own integer `format_version`
 (currently 2), independent of the product version below.
 
+## [1.0.0] - 2026-07-08
+
+First stable release. The Photoshop → Blender → Godot pipeline graduates from
+the beta channel: the three apps ship in lockstep at `1.0.0`, and the on-disk
+`.proscenio` format (`format_version` 2) is now considered stable. The beta
+window (`0.9.0-beta`, `0.9.1-beta`) collected real `.blend` files and tester
+feedback; this release folds in that hardening and drops the pre-1.0 caveats.
+
+### Repository
+
+- The product version now has a single source of truth: the root `VERSION`
+  file drives every in-bundle manifest through
+  `scripts/maintenance/sync_version.py`, CI fails on drift, and the release
+  workflow refuses a tag that disagrees with `VERSION`.
+
 ## [0.9.1-beta] - 2026-06-22
 
 Beta bugfix: Blender 4.2 LTS compatibility.

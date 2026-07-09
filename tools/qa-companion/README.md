@@ -4,7 +4,7 @@ A local tool to walk and curate the Proscenio manual-test checklists. The produc
 
 The checklist `.md` files under [`checklist/`](checklist/) are the source of truth. The tool parses them, serves a local UI, and writes every change straight back to the `.md` - there is no parallel database. The walk record (status, notes, screenshot references) and the curation (edited wording, added or removed tests) all live in those files, reviewable in git.
 
-The surface was mapped by the spec 040 pass (an automatic, code-read audit of the whole product); that spec is retired and its two outputs now live here: the walkable [`checklist/`](checklist/) and the [`findings.md`](findings.md) audit (suspected divergences to verify during the walk, then promote to `specs/backlog/bugs-found.md`).
+The surface was mapped by the spec 040 pass (an automatic, code-read audit of the whole product); that spec is retired and its walkable output lives here as [`checklist/`](checklist/). The pass's suspected-divergence audit has already been drained into `specs/backlog/` (see [`specs/backlog/index.md`](../../specs/backlog/index.md)), so there is no separate `findings.md` to carry forward.
 
 ## Run
 
@@ -62,7 +62,6 @@ Each line is `kind: text` (a line with no kind defaults to `note`); emptying an 
 - `src/normalize.ts` - one-shot: rewrite every checklist through the serializer to the canonical form.
 - `public/` - the static UI (no build step).
 - `checklist/` - the test surface (one block per item); `removed.md` archives dropped tests; `feedback.md` holds panel-level feedback by area.
-- `findings.md` - the spec 040 code-read audit (suspected divergences) that seeds the walk.
 - `walk-screenshots/` - pasted prints, referenced from item `shots` (created on first paste).
 
 ## Develop

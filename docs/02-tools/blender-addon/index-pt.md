@@ -4,9 +4,6 @@ Referência painel a painel da barra lateral do Proscenio. Abra-a no Blender em 
 
 Para o fluxo de ponta a ponta, comece pelo [passo a passo do Blender](../../00-guides/01-basic/02-blender.md); esta seção documenta cada painel e subpainel individualmente.
 
-> [!NOTE]
-> **Páginas provisórias.** Estas páginas de referência são um primeiro esboço. Cada painel e subpainel traz uma descrição breve e específica que espelha a ajuda `?` de dentro do addon; elas se expandem com o tempo.
-
 ## O que ele faz
 
 O addon é onde o trabalho pesado do pipeline acontece:
@@ -30,6 +27,7 @@ Todo painel é exibido em qualquer seleção e avisa (em vez de se ocultar) quan
 - [Slots](03-slots.md) - a lista de slots do projeto e o detalhe de anexação por slot.
 - [Esqueleto](04-skeleton.md) - o seletor de armadura, a lista de ossos, os auxiliares de pose e o Quick Armature.
 - [Geração de Malha](05-mesh-generation.md) - traça o alpha de um sprite para uma malha deformável.
+- [Malha Manual](09-manual-mesh.md) - cria a silhueta de uma malha à mão, vértice a vértice, a contraparte manual da Geração de Malha.
 - [Pintura de Peso](06-weight-paint.md) - vincula e refina os pesos dos ossos (somente elementos de malha).
 - [Animação](07-animation.md) - resumo somente leitura das ações que o escritor exporta.
 - [Atlas](08-atlas.md) - empacota as imagens de origem em um atlas compartilhado.

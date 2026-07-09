@@ -30,7 +30,7 @@ const config: Config = {
     format: 'detect',
     mermaid: true,
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
@@ -60,8 +60,10 @@ const config: Config = {
 
   // Docs cross-link to repo source (../apps, ../packages, ../specs) that does
   // not exist as a site route. The repo-links remark plugin rewrites those to
-  // github.com URLs before resolution; kept as 'warn' as a safety net.
-  onBrokenLinks: 'warn',
+  // github.com URLs before resolution; 'throw' now holds the build to that
+  // guarantee - a repo link the plugin misses, or a genuinely dead internal
+  // link, fails CI instead of shipping a 404.
+  onBrokenLinks: 'throw',
 
   i18n: {
     defaultLocale: 'en',

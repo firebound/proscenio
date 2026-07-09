@@ -4,9 +4,6 @@
 
 **A Photoshop → Blender → Godot pipeline for 2D cutout animation.**
 
-> [!WARNING]
-> Proof of concept, work in progress. The format is still unstable - not for production use.
-
 ## What it is
 
 Proscenio is an open-source pipeline for 2D cutout animation. You paint in Photoshop, rig and animate in Blender, and ship to Godot.

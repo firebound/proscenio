@@ -505,8 +505,8 @@ ROWS: tuple[LocaleRow, ...] = (
         "Nome da malha filha a marcar como padrão",
     ),
     (
-        ("*", "Name of the mesh child to make visible from this frame"),
-        "Nome da malha filha a tornar visível a partir deste quadro",
+        ("*", "Name of the mesh child to show from this frame"),
+        "Nome da malha filha a exibir a partir deste quadro",
     ),
     (
         ("*", "Name of the new Empty. Defaults to '<bone>.slot' or 'slot'."),
@@ -1479,9 +1479,32 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         (
             "Operator",
-            "Key the chosen attachment visible from the current frame - the constant-interpolation slot swap the exporter projects into a Godot slot_attachment track",
+            "Show only the chosen attachment from the current frame (hard cut) - the slot swap the exporter projects into a Godot slot_attachment track",
         ),
-        "Insere quadro-chave do anexo escolhido como visível a partir do quadro atual - a troca de slot por interpolação constante que o exportador projeta em uma trilha slot_attachment do Godot",
+        "Exibe apenas o anexo escolhido a partir do quadro atual (corte seco) - a troca de slot que o exportador projeta em uma trilha slot_attachment do Godot",
+    ),
+    (
+        ("*", "Hide all"),
+        "Ocultar tudo",
+    ),
+    (
+        ("*", "Key the (none) state - every attachment hidden at this frame"),
+        "Insere quadro-chave do estado (nenhum) - todos os anexos ocultos neste quadro",
+    ),
+    (
+        ("*", "Override the animation the swap follows (defaults to the rig's active one)"),
+        "Substitui a animação que a troca segue (o padrão é a ativa do rig)",
+    ),
+    (
+        ("Operator", "Proscenio: Convert Slot Index to Visibility"),
+        "Proscenio: Converter índice de slot em visibilidade",
+    ),
+    (
+        (
+            "Operator",
+            "Convert this slot's legacy proscenio_slot_index keyframes into attachment visibility keyframes (spec 079 migration)",
+        ),
+        "Converte os quadros-chave legados proscenio_slot_index deste slot em quadros-chave de visibilidade dos anexos (migração da spec 079)",
     ),
     (
         (

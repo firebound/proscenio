@@ -36,3 +36,40 @@ def action_fcurves(action: object) -> Iterator[bpy.types.FCurve]:
         for strip in getattr(layer, "strips", None) or []:
             for channelbag in getattr(strip, "channelbags", None) or []:
                 yield from getattr(channelbag, "fcurves", None) or []
+
+
+def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
+    """Yield FCurves from ``obj``'s OWN active action, scoped to its action slot.
+
+    Unlike :func:`action_fcurves` (which flattens *every* channelbag of an
+    action), this reads only the curves that belong to ``obj``:
+
+    - Legacy (Blender 4.2) action: a bare ``fcurves`` collection is already this
+      object's own curves - a legacy action binds to exactly one datablock.
+    - Slotted (Blender 4.4+) action possibly SHARED across objects (the armature
+      and every attachment mesh co-locate their tracks in one action per
+      animation): only the channelbag whose ``slot_handle`` matches
+      ``obj.animation_data.action_slot.handle``. Flattening instead would make a
+      slot writer processing one mesh read every sibling mesh's visibility curves
+      too, double-counting them (spec 079 R4).
+
+    Duck-typed (plain ``getattr``) so the pytest suite can drive it with
+    ``SimpleNamespace`` stubs.
+    """
+    anim = getattr(obj, "animation_data", None)
+    action = getattr(anim, "action", None) if anim is not None else None
+    if action is None:
+        return
+    fcurves = getattr(action, "fcurves", None)
+    if fcurves:
+        yield from fcurves
+        return
+    slot = getattr(anim, "action_slot", None)
+    slot_handle = getattr(slot, "handle", None) if slot is not None else None
+    for layer in getattr(action, "layers", None) or []:
+        for strip in getattr(layer, "strips", None) or []:
+            for channelbag in getattr(strip, "channelbags", None) or []:
+                cb_handle = getattr(channelbag, "slot_handle", None)
+                if slot_handle is not None and cb_handle != slot_handle:
+                    continue
+                yield from getattr(channelbag, "fcurves", None) or []

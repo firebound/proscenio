@@ -1,4 +1,4 @@
-"""Slot attachment operators: add attachment, set default."""
+"""Slot attachment operators: add attachment, set default, keyframe visibility."""
 
 from __future__ import annotations
 
@@ -6,12 +6,11 @@ import json
 from typing import ClassVar
 
 import bpy
-from bpy.props import StringProperty
+from bpy.props import BoolProperty, StringProperty
 
-from ...core._shared.action_fcurves import action_fcurves  # type: ignore[import-not-found]
-from ...core._shared.cp_keys import (  # type: ignore[import-not-found]
-    PROSCENIO_SLOT_ATTACHMENT_ORDER,
-    PROSCENIO_SLOT_INDEX,
+from ...core._shared.action_fcurves import (  # type: ignore[import-not-found]
+    action_fcurves,
+    object_action_fcurves,
 )
 from ...core._shared.report import report_info, report_warn  # type: ignore[import-not-found]
 from ...core.bpy_helpers._shared._bpy_compat import (  # type: ignore[import-not-found]
@@ -21,49 +20,87 @@ from ...core.bpy_helpers._shared.parenting import (  # type: ignore[import-not-f
     parent_keep_world,
 )
 
+# Legacy Custom Property + fcurve data path the visibility model replaced. Named
+# here only so the one-shot migration operator can read an in-flight authored
+# blend; the live authoring + export paths no longer touch them.
+_LEGACY_SLOT_INDEX = "proscenio_slot_index"
+_LEGACY_SLOT_INDEX_PATH = '["proscenio_slot_index"]'
+_LEGACY_ATTACHMENT_ORDER = "proscenio_slot_attachment_order"
 
-def _set_slot_index_constant(empty: bpy.types.Object, data_path: str) -> None:
-    """Force every key on the slot-index fcurve to a hard cut.
+# Fallback animation name when a swap is keyed with no rig animation to follow.
+_DEFAULT_SWAP_ANIMATION = "Swap"
 
-    An integer attachment index must not tween between swaps, so the whole
-    curve is CONSTANT - matching the ``interp="constant"`` the writer emits
-    unconditionally for ``slot_attachment`` keys.
+
+def _slot_armature(empty: bpy.types.Object) -> bpy.types.Object | None:
+    """The armature a slot Empty rides, via its object-parent or its Child Of."""
+    parent = getattr(empty, "parent", None)
+    if parent is not None and getattr(parent, "type", None) == "ARMATURE":
+        return parent
+    for con in empty.constraints:
+        target = getattr(con, "target", None)
+        if target is not None and getattr(target, "type", None) == "ARMATURE":
+            return target
+    return None
+
+
+def _active_action(obj: bpy.types.Object | None) -> bpy.types.Action | None:
+    anim = getattr(obj, "animation_data", None) if obj is not None else None
+    return getattr(anim, "action", None) if anim is not None else None
+
+
+def _resolve_target_action(
+    empty: bpy.types.Object,
+    siblings: list[bpy.types.Object],
+    override: str,
+) -> bpy.types.Action:
+    """The action datablock the visibility keys land in (spec 079 D3).
+
+    Resolution, in order: an explicit ``override`` animation name; else the
+    rig's active action (so the swap co-locates in that animation and merges
+    into it by name on export); else an action a sibling already keyed (repeat
+    keys extend one datablock); else a fresh default-named swap action.
     """
-    anim = getattr(empty, "animation_data", None)
-    action = getattr(anim, "action", None) if anim is not None else None
-    if action is None:
-        return
-    for fcurve in action_fcurves(action):
-        if fcurve.data_path != data_path:
+    if override:
+        return bpy.data.actions.get(override) or bpy.data.actions.new(override)
+    rig_action = _active_action(_slot_armature(empty))
+    if rig_action is not None:
+        return rig_action
+    for mesh in siblings:
+        sibling_action = _active_action(mesh)
+        if sibling_action is not None:
+            return sibling_action
+    return bpy.data.actions.get(_DEFAULT_SWAP_ANIMATION) or bpy.data.actions.new(
+        _DEFAULT_SWAP_ANIMATION
+    )
+
+
+def _key_visibility(
+    mesh: bpy.types.Object,
+    action: bpy.types.Action,
+    *,
+    visible: bool,
+    frame: int,
+) -> None:
+    """Bind ``mesh`` to ``action`` and hard-cut-key its visibility at ``frame``.
+
+    Keys ``hide_viewport`` (viewport preview) and ``hide_render`` (the export
+    truth the writer reads) in lockstep, then forces CONSTANT interpolation so
+    the swap is a hard cut, never a tween. On Blender 4.4+ the mesh binds its
+    own slot in the shared action; on 4.2 the caller passes a per-mesh action.
+    """
+    mesh.animation_data_create()
+    if mesh.animation_data.action is not action:
+        mesh.animation_data.action = action
+    mesh.hide_viewport = not visible
+    mesh.hide_render = not visible
+    mesh.keyframe_insert(data_path="hide_viewport", frame=frame)
+    mesh.keyframe_insert(data_path="hide_render", frame=frame)
+    for fcurve in object_action_fcurves(mesh):
+        if fcurve.data_path not in ("hide_render", "hide_viewport"):
             continue
         for keyframe in iter_keyframe_points(fcurve):
             keyframe.interpolation = "CONSTANT"
         fcurve.update()
-
-
-def _merge_attachment_order(empty: bpy.types.Object, live_attachments: list[str]) -> list[str]:
-    """Append-only merge of the current attachment names into the stored order.
-
-    Reads the existing ``PROSCENIO_SLOT_ATTACHMENT_ORDER`` snapshot (a JSON name
-    list) and appends any live attachment not already in it - never reordering or
-    dropping an existing entry. Append-only is what keeps an index keyed earlier
-    resolving to the same NAME after a later delete + re-key; overwriting the
-    snapshot wholesale would remap old indices once the order shrank. A malformed
-    or absent snapshot starts from the live child order.
-    """
-    raw = empty.get(PROSCENIO_SLOT_ATTACHMENT_ORDER)
-    order: list[str] = []
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-        except (ValueError, TypeError):
-            parsed = None
-        if isinstance(parsed, list):
-            order = [name for name in parsed if isinstance(name, str)]
-    for name in live_attachments:
-        if name not in order:
-            order.append(name)
-    return order
 
 
 class PROSCENIO_OT_add_slot_attachment(bpy.types.Operator):
@@ -186,20 +223,35 @@ class PROSCENIO_OT_set_slot_default(bpy.types.Operator):
 
 
 class PROSCENIO_OT_keyframe_slot_attachment(bpy.types.Operator):
-    """Keyframe the slot's visible attachment at the current frame."""
+    """Show only the chosen attachment at the current frame (a slot swap).
+
+    Keys every sibling attachment's visibility in lockstep - the chosen one
+    shown, the rest hidden (or all hidden for the ``(none)`` state) - with hard
+    cuts, on the animation the swap follows. The writer collapses these per-mesh
+    visibility keys back into one exclusive ``slot_attachment`` track.
+    """
 
     bl_idname = "proscenio.keyframe_slot_attachment"
     bl_label = "Proscenio: Keyframe Slot Attachment"
     bl_description = (
-        "Key the chosen attachment visible from the current frame - the "
-        "constant-interpolation slot swap the exporter projects into a Godot "
-        "slot_attachment track"
+        "Show only the chosen attachment from the current frame (hard cut) - the "
+        "slot swap the exporter projects into a Godot slot_attachment track"
     )
     bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
     attachment_name: StringProperty(  # type: ignore[valid-type]
         name="Attachment name",
-        description="Name of the mesh child to make visible from this frame",
+        description="Name of the mesh child to show from this frame",
+        default="",
+    )
+    hide_all: BoolProperty(  # type: ignore[valid-type]
+        name="Hide all",
+        description="Key the (none) state - every attachment hidden at this frame",
+        default=False,
+    )
+    animation_name: StringProperty(  # type: ignore[valid-type]
+        name="Animation",
+        description="Override the animation the swap follows (defaults to the rig's active one)",
         default="",
     )
 
@@ -213,32 +265,113 @@ class PROSCENIO_OT_keyframe_slot_attachment(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         empty = context.active_object
-        attachments = [child.name for child in empty.children if child.type == "MESH"]
-        if self.attachment_name not in attachments:
+        siblings = [child for child in empty.children if child.type == "MESH"]
+        frame = context.scene.frame_current
+        if not self.hide_all and self.attachment_name not in {m.name for m in siblings}:
             report_warn(
                 self,
                 f"'{self.attachment_name}' is not an attachment of slot '{empty.name}'",
             )
             return {"CANCELLED"}
-        # Resolve the keyed index against a STABLE, APPEND-ONLY name order the
-        # writer reads, not the live child list. Merge new attachment names onto
-        # the end of the existing snapshot (never reorder or drop) so an earlier
-        # keyframe's index keeps pointing at the same name after a later
-        # delete + re-key - overwriting the snapshot wholesale would remap old
-        # indices (axe -> shield) once the order shrank.
-        order = _merge_attachment_order(empty, attachments)
-        index = order.index(self.attachment_name)
-        data_path = f'["{PROSCENIO_SLOT_INDEX}"]'
-        frame = context.scene.frame_current
-        empty[PROSCENIO_SLOT_ATTACHMENT_ORDER] = json.dumps(order)
-        empty[PROSCENIO_SLOT_INDEX] = index
-        empty.keyframe_insert(data_path=data_path, frame=frame)
-        _set_slot_index_constant(empty, data_path)
+        action = _resolve_target_action(empty, siblings, self.animation_name)
+        for mesh in siblings:
+            visible = (not self.hide_all) and mesh.name == self.attachment_name
+            _key_visibility(mesh, action, visible=visible, frame=frame)
+        shown = "(none)" if self.hide_all else self.attachment_name
+        report_info(self, f"keyed '{shown}' on slot '{empty.name}' at frame {frame}")
+        return {"FINISHED"}
+
+
+class PROSCENIO_OT_convert_slot_index_to_visibility(bpy.types.Operator):
+    """Migrate a legacy ``proscenio_slot_index`` track to visibility keyframes.
+
+    One-shot converter for a blend authored before spec 079: reads the active
+    slot Empty's index fcurve and re-authors each keyed index as a show-only
+    visibility keyframe on its attachments, so an in-flight authored swap carries
+    over without hand re-authoring. Clears the legacy index track + idprops so a
+    second run is a no-op.
+    """
+
+    bl_idname = "proscenio.convert_slot_index_to_visibility"
+    bl_label = "Proscenio: Convert Slot Index to Visibility"
+    bl_description = (
+        "Convert this slot's legacy proscenio_slot_index keyframes into "
+        "attachment visibility keyframes (spec 079 migration)"
+    )
+    bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        empty = context.active_object
+        if empty is None or empty.type != "EMPTY":
+            return False
+        props = getattr(empty, "proscenio", None)
+        return props is not None and bool(getattr(props, "is_slot", False))
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        empty = context.active_object
+        index_action = _active_action(empty)
+        if index_action is None:
+            report_warn(self, f"slot '{empty.name}' has no animation to convert")
+            return {"CANCELLED"}
+        index_keys = _read_legacy_index_keys(index_action)
+        if not index_keys:
+            report_warn(self, f"slot '{empty.name}' has no proscenio_slot_index keyframes")
+            return {"CANCELLED"}
+        order = _legacy_attachment_order(empty)
+        siblings = [child for child in empty.children if child.type == "MESH"]
+        # Co-locate the migrated swap in the rig's active animation (merge by
+        # name), preserving the legacy index-action name when there is no rig.
+        target = _resolve_target_action(empty, siblings, override="")
+        if target is index_action:
+            target = bpy.data.actions.get(_DEFAULT_SWAP_ANIMATION) or bpy.data.actions.new(
+                _DEFAULT_SWAP_ANIMATION
+            )
+        for frame, idx in index_keys:
+            chosen = order[idx] if 0 <= idx < len(order) else None
+            for mesh in siblings:
+                _key_visibility(mesh, target, visible=mesh.name == chosen, frame=frame)
+        _clear_legacy_index(empty)
         report_info(
             self,
-            f"keyed '{self.attachment_name}' (index {index}) at frame {frame}",
+            f"converted {len(index_keys)} slot-index key(s) on '{empty.name}' to visibility",
         )
         return {"FINISHED"}
+
+
+def _read_legacy_index_keys(action: bpy.types.Action) -> list[tuple[int, int]]:
+    """Sorted ``(frame, index)`` from a legacy ``proscenio_slot_index`` fcurve."""
+    keys: list[tuple[int, int]] = []
+    for fcurve in action_fcurves(action):
+        if fcurve.data_path != _LEGACY_SLOT_INDEX_PATH:
+            continue
+        for kp in iter_keyframe_points(fcurve):
+            keys.append((round(kp.co.x), round(kp.co.y)))
+    keys.sort()
+    return keys
+
+
+def _legacy_attachment_order(empty: bpy.types.Object) -> list[str]:
+    """The name order a legacy index resolved against: snapshot idprop or children."""
+    raw = empty.get(_LEGACY_ATTACHMENT_ORDER)
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, list) and all(isinstance(name, str) for name in parsed):
+            return list(parsed)
+    return [child.name for child in empty.children if child.type == "MESH"]
+
+
+def _clear_legacy_index(empty: bpy.types.Object) -> None:
+    """Drop the legacy index binding + idprops so a re-run is a no-op."""
+    anim = getattr(empty, "animation_data", None)
+    if anim is not None and _active_action(empty) is not None:
+        anim.action = None
+    for key in (_LEGACY_SLOT_INDEX, _LEGACY_ATTACHMENT_ORDER):
+        if key in empty:
+            del empty[key]
 
 
 _classes: tuple[type, ...] = (
@@ -246,6 +379,7 @@ _classes: tuple[type, ...] = (
     PROSCENIO_OT_attach_mesh_to_slot,
     PROSCENIO_OT_set_slot_default,
     PROSCENIO_OT_keyframe_slot_attachment,
+    PROSCENIO_OT_convert_slot_index_to_visibility,
 )
 
 

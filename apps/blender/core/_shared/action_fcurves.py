@@ -21,6 +21,20 @@ if TYPE_CHECKING:
     import bpy
 
 
+def _iter_channelbags(action: object) -> Iterator[object]:
+    """Yield each channelbag of a 4.4+ layered ``action`` (layers > strips > bags).
+
+    The single shared walk the three public readers below flatten before
+    applying their own slot filter. A legacy flat action has no ``layers`` and
+    yields nothing. Duck-typed (plain ``getattr``) so callers stay importable
+    without ``bpy`` and the pytest suite can drive it with ``SimpleNamespace``
+    stubs.
+    """
+    for layer in getattr(action, "layers", None) or []:
+        for strip in getattr(layer, "strips", None) or []:
+            yield from getattr(strip, "channelbags", None) or []
+
+
 def action_fcurves(action: object) -> Iterator[bpy.types.FCurve]:
     """Yield every FCurve on ``action``, legacy flat or 4.4+ layered.
 
@@ -32,10 +46,8 @@ def action_fcurves(action: object) -> Iterator[bpy.types.FCurve]:
     if fcurves:
         yield from fcurves
         return
-    for layer in getattr(action, "layers", None) or []:
-        for strip in getattr(layer, "strips", None) or []:
-            for channelbag in getattr(strip, "channelbags", None) or []:
-                yield from getattr(channelbag, "fcurves", None) or []
+    for channelbag in _iter_channelbags(action):
+        yield from getattr(channelbag, "fcurves", None) or []
 
 
 def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
@@ -66,13 +78,11 @@ def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
         return
     slot = getattr(anim, "action_slot", None)
     slot_handle = getattr(slot, "handle", None) if slot is not None else None
-    for layer in getattr(action, "layers", None) or []:
-        for strip in getattr(layer, "strips", None) or []:
-            for channelbag in getattr(strip, "channelbags", None) or []:
-                cb_handle = getattr(channelbag, "slot_handle", None)
-                if slot_handle is not None and cb_handle != slot_handle:
-                    continue
-                yield from getattr(channelbag, "fcurves", None) or []
+    for channelbag in _iter_channelbags(action):
+        cb_handle = getattr(channelbag, "slot_handle", None)
+        if slot_handle is not None and cb_handle != slot_handle:
+            continue
+        yield from getattr(channelbag, "fcurves", None) or []
 
 
 def _object_slot_handle(action: object, obj_name: str | None) -> object | None:
@@ -130,9 +140,7 @@ def object_fcurves_in_action(obj: object, action: object) -> Iterator[bpy.types.
     handle = _object_slot_handle(action, getattr(obj, "name", None))
     if handle is None:
         return
-    for layer in getattr(action, "layers", None) or []:
-        for strip in getattr(layer, "strips", None) or []:
-            for channelbag in getattr(strip, "channelbags", None) or []:
-                if getattr(channelbag, "slot_handle", None) != handle:
-                    continue
-                yield from getattr(channelbag, "fcurves", None) or []
+    for channelbag in _iter_channelbags(action):
+        if getattr(channelbag, "slot_handle", None) != handle:
+            continue
+        yield from getattr(channelbag, "fcurves", None) or []

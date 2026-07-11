@@ -37,6 +37,7 @@ from mathutils import Matrix
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from blend_utils import rewrite_images_to_relpath  # noqa: E402
+from slot_keying import key_show_only  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_multi_anim"
@@ -236,14 +237,14 @@ def _build_animations(
 
     idle = bpy.data.actions.new(name="idle")
     for mesh in (club, torch):
-        _key_show_only(mesh, idle, visible=False, frame=1)
-        _key_show_only(mesh, idle, visible=False, frame=12)
+        key_show_only(mesh, idle, visible=False, frame=1)
+        key_show_only(mesh, idle, visible=False, frame=12)
 
     attack = bpy.data.actions.new(name="attack")
     _key_arm_swing(armature_obj, attack)
     for mesh in (club, torch):
-        _key_show_only(mesh, attack, visible=mesh.name == "club", frame=1)
-        _key_show_only(mesh, attack, visible=mesh.name == "club", frame=12)
+        key_show_only(mesh, attack, visible=mesh.name == "club", frame=1)
+        key_show_only(mesh, attack, visible=mesh.name == "club", frame=12)
 
     # Each attachment ends actively bound to `attack`, so `idle` has no active
     # user and Blender would purge it as orphan data on save (losing the whole
@@ -266,51 +267,6 @@ def _key_arm_swing(armature_obj: bpy.types.Object, action: bpy.types.Action) -> 
         bpy.context.scene.frame_set(frame)
         arm_pose.matrix_basis = rest_inv @ Matrix.Rotation(value, 4, "Y") @ rest
         arm_pose.keyframe_insert(data_path="rotation_euler", frame=frame)
-
-
-def _key_show_only(
-    mesh: bpy.types.Object,
-    action: bpy.types.Action,
-    *,
-    visible: bool,
-    frame: int,
-) -> None:
-    """Bind ``mesh`` to ``action`` and hard-cut-key its visibility at ``frame``."""
-    mesh.animation_data_create()
-    if mesh.animation_data.action is not action:
-        mesh.animation_data.action = action
-    mesh.hide_viewport = not visible
-    mesh.hide_render = not visible
-    mesh.keyframe_insert(data_path="hide_viewport", frame=frame)
-    mesh.keyframe_insert(data_path="hide_render", frame=frame)
-    for fcurve in _object_fcurves_in_action(mesh, action):
-        if fcurve.data_path in ("hide_render", "hide_viewport"):
-            for keyframe in fcurve.keyframe_points:
-                keyframe.interpolation = "CONSTANT"
-            fcurve.update()
-
-
-def _object_fcurves_in_action(
-    obj: bpy.types.Object, action: bpy.types.Action
-) -> list[bpy.types.FCurve]:
-    """The fcurves ``obj`` owns within ``action`` (its slot channelbag on 4.4+)."""
-    flat = getattr(action, "fcurves", None)
-    if flat:
-        return list(flat)
-    anim = obj.animation_data
-    slot = getattr(anim, "action_slot", None)
-    handle = getattr(slot, "handle", None) if slot is not None else None
-    out: list[bpy.types.FCurve] = []
-    for layer in action.layers:
-        for strip in layer.strips:
-            for channelbag in strip.channelbags:
-                if (
-                    handle is not None
-                    and getattr(channelbag, "slot_handle", None) != handle
-                ):
-                    continue
-                out.extend(channelbag.fcurves)
-    return out
 
 
 def _save_blend() -> None:

@@ -54,6 +54,7 @@ import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from blend_utils import rewrite_images_to_relpath  # noqa: E402
+from slot_keying import key_show_only  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_swap"
@@ -89,8 +90,12 @@ def main() -> None:
     # Stagger attachments by draw order so Eevee never disambiguates coplanar
     # quads if both end up visible. The writer negates the order into z_index
     # (club -1 -> z_index 1, sword -2 -> z_index 2).
-    club_obj = _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1)
-    sword_obj = _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2)
+    club_obj = _build_attachment(
+        "club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1
+    )
+    sword_obj = _build_attachment(
+        "sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2
+    )
     swing_action = _build_swing_action(armature_obj)
     _key_attachment_visibility(swing_action, [club_obj, sword_obj])
     _save_blend()
@@ -325,48 +330,7 @@ def _key_attachment_visibility(
     for frame, chosen in sequence:
         bpy.context.scene.frame_set(frame)
         for mesh in meshes:
-            _key_show_only(mesh, action, visible=mesh.name == chosen, frame=frame)
-
-
-def _key_show_only(
-    mesh: bpy.types.Object,
-    action: bpy.types.Action,
-    *,
-    visible: bool,
-    frame: int,
-) -> None:
-    """Bind ``mesh`` to ``action`` and hard-cut-key its visibility at ``frame``."""
-    mesh.animation_data_create()
-    if mesh.animation_data.action is not action:
-        mesh.animation_data.action = action
-    mesh.hide_viewport = not visible
-    mesh.hide_render = not visible
-    mesh.keyframe_insert(data_path="hide_viewport", frame=frame)
-    mesh.keyframe_insert(data_path="hide_render", frame=frame)
-    for fcurve in _object_fcurves(mesh):
-        if fcurve.data_path in ("hide_render", "hide_viewport"):
-            for keyframe in fcurve.keyframe_points:
-                keyframe.interpolation = "CONSTANT"
-            fcurve.update()
-
-
-def _object_fcurves(obj: bpy.types.Object) -> list[bpy.types.FCurve]:
-    """The object's OWN fcurves, scoped to its action slot on a slotted action."""
-    anim = obj.animation_data
-    action = anim.action
-    flat = getattr(action, "fcurves", None)
-    if flat:
-        return list(flat)
-    slot = getattr(anim, "action_slot", None)
-    handle = getattr(slot, "handle", None) if slot is not None else None
-    out: list[bpy.types.FCurve] = []
-    for layer in action.layers:
-        for strip in layer.strips:
-            for channelbag in strip.channelbags:
-                if handle is not None and getattr(channelbag, "slot_handle", None) != handle:
-                    continue
-                out.extend(channelbag.fcurves)
-    return out
+            key_show_only(mesh, action, visible=mesh.name == chosen, frame=frame)
 
 
 def _save_blend() -> None:

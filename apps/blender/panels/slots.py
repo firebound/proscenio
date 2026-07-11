@@ -287,24 +287,22 @@ class PROSCENIO_PT_active_slot(bpy.types.Panel):
         # keyable "(none)" state (every attachment hidden). Per-attachment
         # "Show only" buttons live in the rows above.
         swap_col = layout.column(align=True)
-        swap_col.label(
-            text=iface("Keyframe swap (show only at current frame):"), icon="KEYFRAME_HLT"
-        )
+        swap_col.label(text="Keyframe swap (show only at current frame):", icon="KEYFRAME_HLT")
         if scene_props is not None:
             swap_col.prop_search(
                 scene_props,
                 "slot_swap_target_animation",
                 bpy.data,
                 "actions",
-                text=iface("Target anim"),
+                text="Target anim",
             )
             if not swap_anim:
                 hint = swap_col.row()
                 hint.scale_y = 0.8
-                hint.label(text=iface("(empty: follows the active animation)"), icon="BLANK1")
+                hint.label(text="(empty: follows the active animation)", icon="BLANK1")
         none_op = swap_col.operator(
             "proscenio.keyframe_slot_attachment",
-            text=iface("(none) / Hide All"),
+            text="(none) / Hide All",
             icon="HIDE_ON",
         )
         none_op.hide_all = True

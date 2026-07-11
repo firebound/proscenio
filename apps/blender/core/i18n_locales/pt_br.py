@@ -606,6 +606,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Pixels com alpha estritamente acima deste valor contribuem para a silhueta. O padrão 1 inclui TODOS os pixels visíveis (até bordas fracas de anti-alias) - a escolha segura para skinning de sprite onde perder pixels na borda é inaceitável. Aumente para 127 para ignorar bordas de anti-alias (segue a convenção do COA Tools 2 mas corta pixels de AA).",
     ),
     (("*", "Placement"), "Posicionamento"),
+    (("*", "Pole bone"), "Osso de polo"),
     (("*", "Pole target"), "Alvo de polo"),
     (("*", "Pose Mode"), "Modo de pose"),
     (

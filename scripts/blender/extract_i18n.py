@@ -65,7 +65,9 @@ _TRANSLATABLE_KWARGS = ("name", "description")
 # UILayout methods whose ``text=`` override is a translatable label. Blender
 # auto-translates these from the registered table (the ``translate=True``
 # default), so a string literal there is a catalog entry - no iface() needed.
-_UI_TEXT_METHODS = frozenset({"label", "prop", "operator", "menu", "popover"})
+_UI_TEXT_METHODS = frozenset(
+    {"label", "prop", "operator", "menu", "popover", "prop_search"}
+)
 
 
 @dataclass(frozen=True)

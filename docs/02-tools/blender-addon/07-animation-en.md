@@ -9,10 +9,10 @@ The panel opens with the export target read-out (`Exports: <name>`), the same li
 **What export emits.** At export the writer iterates every Action and emits one animation entry per Action. Three kinds of channel merge into that one entry, keyed by the Action name:
 
 - **Bone transforms** - position, rotation, and scale fcurves on the rig's deform bones become `bone_transform` tracks. A channel with no motion off the rest pose is dropped so the Bone2D rest survives import; a control bone's fcurves (an IK or pole target) are filtered out and never reach the document.
-- **Slot indices** - keyframes on a slot's index become a `slot_attachment` track on the slot, with constant interpolation so the swap is a hard cut.
+- **Slot attachment visibility** - visibility keyframes on a slot's attachment meshes (see [Slots](03-slots.md)) become a `slot_attachment` track on the slot, with constant interpolation so the swap is a hard cut. Each animation carries its own swap timeline, so a weapon slot can show nothing in `idle` and a club in `attack`.
 - **Driven sprite frames** - a sprite `frame` driven from a pose bone (the [Drive from Bone](02-element.md#drive-from-bone) shortcut) is baked by stepping the Action and reading the posed bone, emitting a `sprite_frame` track with constant-interpolation keys at each change.
 
-Because all three are keyed by Action name, slot indices and driven sprite properties animate on the same timeline as the bones.
+Because all three are keyed by Action name, slot attachment visibility and driven sprite properties animate on the same timeline as the bones.
 
 **Where the animations land in Godot.** Every Action lands in the imported scene's `AnimationPlayer` under the default (empty-name) library, so a Wrapper scene can host a second `AnimationPlayer` for game-side animations without a name collision.
 

@@ -505,8 +505,8 @@ ROWS: tuple[LocaleRow, ...] = (
         "Nome da malha filha a marcar como padrão",
     ),
     (
-        ("*", "Name of the mesh child to make visible from this frame"),
-        "Nome da malha filha a tornar visível a partir deste quadro",
+        ("*", "Name of the mesh child to show from this frame"),
+        "Nome da malha filha a exibir a partir deste quadro",
     ),
     (
         ("*", "Name of the new Empty. Defaults to '<bone>.slot' or 'slot'."),
@@ -606,6 +606,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "Pixels com alpha estritamente acima deste valor contribuem para a silhueta. O padrão 1 inclui TODOS os pixels visíveis (até bordas fracas de anti-alias) - a escolha segura para skinning de sprite onde perder pixels na borda é inaceitável. Aumente para 127 para ignorar bordas de anti-alias (segue a convenção do COA Tools 2 mas corta pixels de AA).",
     ),
     (("*", "Placement"), "Posicionamento"),
+    (("*", "Pole bone"), "Osso de polo"),
     (("*", "Pole target"), "Alvo de polo"),
     (("*", "Pose Mode"), "Modo de pose"),
     (
@@ -1479,9 +1480,32 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         (
             "Operator",
-            "Key the chosen attachment visible from the current frame - the constant-interpolation slot swap the exporter projects into a Godot slot_attachment track",
+            "Show only the chosen attachment from the current frame (hard cut) - the slot swap the exporter projects into a Godot slot_attachment track",
         ),
-        "Insere quadro-chave do anexo escolhido como visível a partir do quadro atual - a troca de slot por interpolação constante que o exportador projeta em uma trilha slot_attachment do Godot",
+        "Exibe apenas o anexo escolhido a partir do quadro atual (corte seco) - a troca de slot que o exportador projeta em uma trilha slot_attachment do Godot",
+    ),
+    (
+        ("*", "Hide all"),
+        "Ocultar tudo",
+    ),
+    (
+        ("*", "Key the (none) state - every attachment hidden at this frame"),
+        "Insere quadro-chave do estado (nenhum) - todos os anexos ocultos neste quadro",
+    ),
+    (
+        ("*", "Override the animation the swap follows (defaults to the rig's active one)"),
+        "Substitui a animação que a troca segue (o padrão é a ativa do rig)",
+    ),
+    (
+        ("Operator", "Proscenio: Convert Slot Index to Visibility"),
+        "Proscenio: Converter índice de slot em visibilidade",
+    ),
+    (
+        (
+            "Operator",
+            "Convert this slot's legacy proscenio_slot_index keyframes into attachment visibility keyframes (spec 079 migration)",
+        ),
+        "Converte os quadros-chave legados proscenio_slot_index deste slot em quadros-chave de visibilidade dos anexos (migração da spec 079)",
     ),
     (
         (
@@ -1858,4 +1882,24 @@ ROWS: tuple[LocaleRow, ...] = (
         ("Operator", "Write the active scene to a Proscenio JSON file"),
         "Grava a cena ativa em um arquivo JSON do Proscenio",
     ),
+    # Spec 079 PR2 - Active Slot swap authoring + target-animation override.
+    (
+        ("*", "(empty: follows the active animation)"),
+        "(vazio: segue a animação ativa)",
+    ),
+    (("*", "(none) / Hide All"), "(nenhum) / Ocultar todos"),
+    (
+        (
+            "*",
+            "Animation a new slot-swap keyframe targets. Empty (default) follows the rig's active animation, so authoring the swap needs no extra step; set a name here to bind the swap into that animation instead (spec 079 D3).",
+        ),
+        "Animação que um novo quadro-chave de troca de slot mira. Vazio (padrão) segue a animação ativa da armadura, então autorar a troca não requer passo extra; defina um nome aqui para vincular a troca àquela animação (spec 079 D3).",
+    ),
+    (
+        ("*", "Keyframe swap (show only at current frame):"),
+        "Quadro-chave de troca (exibir apenas no quadro atual):",
+    ),
+    (("*", "Show Only"), "Exibir apenas"),
+    (("*", "Target anim"), "Animação-alvo"),
+    (("*", "Target animation"), "Animação-alvo"),
 )

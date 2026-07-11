@@ -1,0 +1,20 @@
+; Documentation-by-example wrapper scene for the Proscenio slot_multi_anim fixture.
+;
+; Per-animation slot swap isolation test (spec 079 core): one slot Empty
+; carries a different attachment-visibility timeline per animation - `idle`
+; shows no weapon ("(none)"), `attack` shows the club while the arm swings.
+; Wraps the imported scene so the user can attach scripts / collisions / extra
+; nodes here without losing them on reimport.
+;
+; Drop `examples/generated/slot_multi_anim/` at `res://examples/slot_multi_anim/`
+; in your Godot project, or adjust paths to match your layout.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://examples/slot_multi_anim/slot_multi_anim.proscenio" id="1_slot"]
+[ext_resource type="Script" path="res://examples/slot_multi_anim/SlotMultiAnim.gd" id="2_slot"]
+
+[node name="SlotMultiAnim" type="Node2D"]
+script = ExtResource("2_slot")
+
+[node name="SlotMultiAnimCharacter" parent="." instance=ExtResource("1_slot")]

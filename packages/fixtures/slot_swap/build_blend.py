@@ -20,23 +20,28 @@ Layout:
 - **Two attachment meshes** parented to the slot Empty:
   - ``club`` - 32x32 polygon mesh with club.png material
   - ``sword`` - 32x32 polygon mesh with sword.png material
-- **Two actions named ``swing``** that share a name so the writer
-  merges them into a single animation with two tracks:
-  - On the armature: keyframes the arm bone's local Y rotation
+- **One slotted action ``swing``** (Blender 4.4+), shared by the armature
+  and both attachment meshes on their own slots, so the writer emits one
+  merged animation with two tracks:
+  - The armature slot keyframes the arm bone's local Y rotation
     -pi/6 -> +pi/6 -> 0 over 24 frames (gentle swing).
-  - On the slot Empty: keyframes ``proscenio_slot_index`` 0 (club)
-    -> 1 (sword) -> 0 (club) over the same 24 frames, constant
-    interpolation. Swap happens at the apex of the swing.
+  - Each attachment mesh's slot keyframes ``hide_render`` + ``hide_viewport``
+    (constant): club shown -> sword shown -> club shown over the same 24
+    frames. Swap happens at the apex of the swing.
 
 The fixture exercises:
 
 1. Slot Empty + N attachments + slot_default round-trip through the
    writer into a ``slots[]`` entry.
-2. Slot index keyframes round-trip into a ``slot_attachment`` track.
-3. Bone rotation animation co-exists with slot animation under a
-   shared action name (writer's merge logic).
+2. Per-attachment visibility keyframes collapse into a ``slot_attachment``
+   track (spec 079).
+3. Bone rotation animation co-exists with the slot swap under a shared
+   slotted action name (writer's merge logic).
 4. ``apps/blender/tests/run_tests.py`` re-exports the .blend and
    the result matches the committed golden.
+
+The shared arm + slot + attachment character is built by
+``_shared/weapon_slot.py``; this script only authors the ``swing`` animation.
 
 Image filepaths stored as ``//pillow_layers/...`` so the fixture
 works cross-machine. Materials use ``Closest`` interpolation so
@@ -51,7 +56,14 @@ from pathlib import Path
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from blend_utils import rewrite_images_to_relpath  # noqa: E402
+from slot_keying import key_show_only  # noqa: E402
+from weapon_slot import (  # noqa: E402
+    ARM_BONE,
+    AttachmentSpec,
+    build_weapon_slot_character,
+    finalize_blend,
+    require_layers,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_swap"
@@ -61,220 +73,34 @@ CLUB_PATH = LAYERS_DIR / "club.png"
 SWORD_PATH = LAYERS_DIR / "sword.png"
 BLEND_PATH = FIXTURE_DIR / "slot_swap.blend"
 
-PIXELS_PER_UNIT = 100.0
-
-ARM_W_PX = 32
-ARM_H_PX = 8
-WEAPON_W_PX = 32
-WEAPON_H_PX = 32
-
-ARM_BONE = "arm"
-SLOT_NAME = "weapon"
+LOG_PREFIX = "[build_slot_swap]"
 
 
 def main() -> None:
-    for path in (ARM_PATH, CLUB_PATH, SWORD_PATH):
-        if not path.exists():
-            print(
-                f"[build_slot_swap] missing {path} - run draw_layers.py first",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-    _wipe_blend()
-    armature_obj = _build_armature()
-    _build_arm_mesh(armature_obj)
-    slot_empty = _build_slot_empty(armature_obj)
+    require_layers((ARM_PATH, CLUB_PATH, SWORD_PATH), LOG_PREFIX)
     # Stagger attachments by draw order so Eevee never disambiguates coplanar
     # quads if both end up visible. The writer negates the order into z_index
     # (club -1 -> z_index 1, sword -2 -> z_index 2).
-    _build_attachment("club", CLUB_PATH, slot_empty, is_default=True, draw_order=-1)
-    _build_attachment("sword", SWORD_PATH, slot_empty, is_default=False, draw_order=-2)
-    _build_swing_action(armature_obj)
-    _build_swap_action(slot_empty)
-    _save_blend()
-    rewrite_images_to_relpath("[build_slot_swap]")
-    bpy.ops.wm.save_mainfile()
-    print(f"[build_slot_swap] wrote {BLEND_PATH}")
-
-
-def _wipe_blend() -> None:
-    for collection in (
-        bpy.data.objects,
-        bpy.data.meshes,
-        bpy.data.armatures,
-        bpy.data.materials,
-        bpy.data.images,
-        bpy.data.actions,
-    ):
-        while collection:
-            collection.remove(collection[0])
-
-
-def _build_armature() -> bpy.types.Object:
-    """Single lateral arm bone, in the XZ picture plane (+X, never into depth).
-
-    The bone points +X (shoulder at origin, hand at the tip); the arm mesh is
-    skinned to it so a pose rotation swings the whole arm in the plane.
-    """
-    arm_data = bpy.data.armatures.new("arm_rig")
-    arm_obj = bpy.data.objects.new("arm_rig", arm_data)
-    bpy.context.scene.collection.objects.link(arm_obj)
-    bpy.context.view_layer.objects.active = arm_obj
-    bpy.ops.object.mode_set(mode="EDIT")
-
-    bone = arm_data.edit_bones.new(ARM_BONE)
-    bone.head = (0.0, 0.0, 0.0)
-    bone.tail = (0.32, 0.0, 0.0)
-
-    bpy.ops.object.mode_set(mode="OBJECT")
-    return arm_obj
-
-
-def _quad_mesh(name: str, w_px: int, h_px: int) -> bpy.types.Mesh:
-    w = w_px / PIXELS_PER_UNIT
-    h = h_px / PIXELS_PER_UNIT
-    mesh = bpy.data.meshes.new(name)
-    mesh.from_pydata(
-        vertices=[
-            (-w / 2, 0.0, -h / 2),
-            (w / 2, 0.0, -h / 2),
-            (w / 2, 0.0, h / 2),
-            (-w / 2, 0.0, h / 2),
-        ],
-        edges=[],
-        faces=[(0, 1, 2, 3)],
+    character = build_weapon_slot_character(
+        arm_image=ARM_PATH,
+        attachments=(
+            AttachmentSpec("club", CLUB_PATH, is_default=True, draw_order=-1),
+            AttachmentSpec("sword", SWORD_PATH, is_default=False, draw_order=-2),
+        ),
     )
-    mesh.update()
-    uv = mesh.uv_layers.new(name="UVMap")
-    uv.data[0].uv = (0.0, 0.0)
-    uv.data[1].uv = (1.0, 0.0)
-    uv.data[2].uv = (1.0, 1.0)
-    uv.data[3].uv = (0.0, 1.0)
-    return mesh
+    club_obj = character.attachments["club"]
+    sword_obj = character.attachments["sword"]
+    swing_action = _build_swing_action(character.armature)
+    _key_attachment_visibility(swing_action, [club_obj, sword_obj])
+    finalize_blend(BLEND_PATH, LOG_PREFIX)
 
 
-def _build_material(name: str, image_path: Path) -> bpy.types.Material:
-    mat = bpy.data.materials.new(name=name)
-    mat.use_nodes = True
-    nt = mat.node_tree
-    while nt.nodes:
-        nt.nodes.remove(nt.nodes[0])
-    out = nt.nodes.new(type="ShaderNodeOutputMaterial")
-    bsdf = nt.nodes.new(type="ShaderNodeBsdfPrincipled")
-    tex = nt.nodes.new(type="ShaderNodeTexImage")
-    tex.image = bpy.data.images.load(str(image_path), check_existing=True)
-    tex.interpolation = "Closest"  # pixel-art: nearest-neighbor, no bilinear blur
-    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-    return mat
-
-
-def _stamp_polygon_props(obj: bpy.types.Object) -> None:
-    """Set element_type=mesh on PG and CP mirrors."""
-    obj["proscenio_type"] = "mesh"
-    obj["proscenio_centered"] = True
-
-
-def _build_arm_mesh(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    mesh = _quad_mesh("arm", ARM_W_PX, ARM_H_PX)
-    obj = bpy.data.objects.new("arm", mesh)
-    bpy.context.scene.collection.objects.link(obj)
-    # Skinned (not bone-parented): object-parent to the armature and weight every
-    # vertex 1.0 to the arm bone. The mesh stays flat in the plane and follows
-    # the bone`s swing; bone-parenting to the in-plane bone would tilt it out of
-    # plane and collapse it. Centred on the bone (shoulder 0 -> hand 0.32).
-    obj.location = (0.16, 0.0, 0.0)
-    obj.parent = armature_obj
-    obj.parent_type = "OBJECT"
-    vg = obj.vertex_groups.new(name=ARM_BONE)
-    vg.add([v.index for v in mesh.vertices], 1.0, "REPLACE")
-    arm_mod = obj.modifiers.new(name="Armature", type="ARMATURE")
-    arm_mod.object = armature_obj
-    mat = _build_material("arm.mat", ARM_PATH)
-    mesh.materials.append(mat)
-    _stamp_polygon_props(obj)
-    return obj
-
-
-def _build_slot_empty(armature_obj: bpy.types.Object) -> bpy.types.Object:
-    """Empty at the hand, flagged as a slot that follows the arm bone.
-
-    Object-parented (not bone-parented) so the attachment quads stay flat in the
-    plane; `slot_bone="arm"` tells the importer to parent the slot Node2D under
-    the arm Bone2D, so the weapon follows the swinging arm in Godot.
-    """
-    empty = bpy.data.objects.new(SLOT_NAME, None)
-    empty.empty_display_type = "PLAIN_AXES"
-    empty.empty_display_size = 0.05
-    bpy.context.scene.collection.objects.link(empty)
-    empty.parent = armature_obj
-    empty.parent_type = "OBJECT"
-    empty.location = (0.32, 0.0, 0.0)
-
-    empty["proscenio_is_slot"] = True
-    empty["proscenio_slot_default"] = "club"
-    empty["proscenio_slot_bone"] = ARM_BONE
-    empty["proscenio_slot_index"] = 0
-
-    # Author the Blender-side follow so the weapon swings with the arm in the
-    # viewport, mirroring the Godot importer. Baked at rest (no action yet), so
-    # the writer's rest read leaves the golden unchanged. Name matches
-    # core.bpy_helpers.slot.bone_follow.SLOT_FOLLOW_CONSTRAINT.
-    con = empty.constraints.new(type="CHILD_OF")
-    con.name = "Proscenio Slot Follow"
-    con.target = armature_obj
-    con.subtarget = ARM_BONE
-    bpy.context.view_layer.update()
-    pose_bone = armature_obj.pose.bones[ARM_BONE]
-    con.inverse_matrix = (armature_obj.matrix_world @ pose_bone.matrix).inverted()
-    return empty
-
-
-def _build_attachment(
-    name: str,
-    image_path: Path,
-    slot_empty: bpy.types.Object,
-    *,
-    is_default: bool,
-    draw_order: int,
-) -> bpy.types.Object:
-    """Polygon mesh attachment parented to the slot Empty.
-
-    Non-default attachments are hidden in the viewport + render so the
-    Blender preview matches the slot's runtime semantics (only one
-    attachment visible at a time). Animation tracks toggle visibility
-    at runtime via the slot_attachment track in the .proscenio output.
-
-    ``draw_order`` is the Y Location (Draw Order) layer: stamped as the
-    ``proscenio_y_draw_order`` Custom Property (the writer negates it into
-    the Godot z_index) and used to stagger the attachment along the bone-Y
-    axis (order * the default 0.001 spacing) so attachments never exactly
-    share the picture plane - protects against Eevee z-fight if two end up
-    visible at once (e.g. the user unhides one for inspection).
-    """
-    mesh = _quad_mesh(name, WEAPON_W_PX, WEAPON_H_PX)
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.collection.objects.link(obj)
-    obj.parent = slot_empty
-    obj.parent_type = "OBJECT"
-    obj.location = (0.0, draw_order * 0.001, 0.0)
-    obj["proscenio_y_draw_order"] = draw_order
-    mat = _build_material(f"{name}.mat", image_path)
-    mesh.materials.append(mat)
-    _stamp_polygon_props(obj)
-    if not is_default:
-        obj.hide_viewport = True
-        obj.hide_render = True
-    return obj
-
-
-def _build_swing_action(armature_obj: bpy.types.Object) -> None:
+def _build_swing_action(armature_obj: bpy.types.Object) -> bpy.types.Action:
     """Gentle Y rotation swing on the arm bone over 24 frames.
 
-    Action name ``swing`` is shared with the slot Empty's swap action
-    so the writer merges both into a single animation with one
-    ``bone_transform`` track + one ``slot_attachment`` track.
+    Returns the ``swing`` action datablock so the attachment meshes can bind
+    their visibility onto their own slots of the SAME action (Blender 4.4+),
+    keeping the bone motion + the swap in one animation the writer emits merged.
     """
     import math
 
@@ -303,39 +129,33 @@ def _build_swing_action(armature_obj: bpy.types.Object) -> None:
         bpy.context.scene.frame_set(frame)
         arm_pose.matrix_basis = rest_inv @ Matrix.Rotation(value, 4, "Y") @ rest
         arm_pose.keyframe_insert(data_path="rotation_euler", frame=frame)
+    return action
 
 
-def _build_swap_action(slot_empty: bpy.types.Object) -> None:
-    """Keyframe slot_index 0 -> 1 -> 0 over 24 frames, constant interp.
+def _key_attachment_visibility(
+    action: bpy.types.Action,
+    meshes: list[bpy.types.Object],
+) -> None:
+    """Show-only visibility swap: club -> sword -> club over 24 frames.
 
-    Mirrors the slot system contract: keys are sampled at the action's
-    fcurve-key timestamps; the writer expands them into
-    ``slot_attachment`` tracks with constant interpolation.
-
-    Action name matches ``_build_swing_action`` (``swing``) so the
-    writer's merge logic collapses bone tracks + slot tracks under a
-    single ``swing`` animation entry.
+    At each swap frame every attachment mesh keys ``hide_render`` +
+    ``hide_viewport`` in lockstep (chosen shown, rest hidden), constant interp,
+    on its own slot of the shared ``swing`` action - the exact per-mesh state
+    the ``keyframe_slot_attachment`` operator authors and the writer collapses
+    back into one exclusive ``slot_attachment`` track. Sharing the armature's
+    action datablock keeps the swap in the ``swing`` animation (no ``.001``
+    disambiguation split).
     """
-    slot_empty.animation_data_create()
-    action = bpy.data.actions.new(name="swing")
-    slot_empty.animation_data.action = action
-    bpy.context.scene.frame_start = 1
-    bpy.context.scene.frame_end = 24
-
-    for frame, idx in ((1, 0), (12, 1), (24, 0)):
+    sequence = ((1, "club"), (12, "sword"), (24, "club"))
+    for frame, chosen in sequence:
         bpy.context.scene.frame_set(frame)
-        slot_empty["proscenio_slot_index"] = idx
-        slot_empty.keyframe_insert(data_path='["proscenio_slot_index"]', frame=frame)
-
-
-def _save_blend() -> None:
-    BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), check_existing=False)
+        for mesh in meshes:
+            key_show_only(mesh, action, visible=mesh.name == chosen, frame=frame)
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"[build_slot_swap] FAILED: {exc}", file=sys.stderr)
+        print(f"{LOG_PREFIX} FAILED: {exc}", file=sys.stderr)
         raise

@@ -30,19 +30,6 @@ PROSCENIO_SLOT_BONE = "proscenio_slot_bone"
 # ProscenioObjectProps.is_outliner_favorite.
 PROSCENIO_OUTLINER_FAVORITE = "proscenio_outliner_favorite"
 
-# Per-Object slot index keyed by the action's slot_attachment animation.
-# Read by writer._build_slot_attachment_track via fcurve data_path
-# '["proscenio_slot_index"]'.
-PROSCENIO_SLOT_INDEX = "proscenio_slot_index"
-
-# JSON list of attachment names in the order the keyframe operator resolved its
-# indices against, snapshotted at key time. The writer resolves a keyed
-# ``proscenio_slot_index`` against THIS stable order rather than the live child
-# order, so deleting an earlier attachment does not slide later keyframes onto
-# the wrong child. Absent on slots keyed before this existed -> writer falls back
-# to the live child order (unchanged output for those).
-PROSCENIO_SLOT_ATTACHMENT_ORDER = "proscenio_slot_attachment_order"
-
 # Pre-pack snapshot of UV layers / material refs, written by
 # PROSCENIO_OT_pack_atlas, restored by PROSCENIO_OT_unpack_atlas.
 PROSCENIO_PRE_PACK = "proscenio_pre_pack"

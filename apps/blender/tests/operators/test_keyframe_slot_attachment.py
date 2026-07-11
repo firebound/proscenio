@@ -1,12 +1,12 @@
-"""Headless tests for keyframing the active slot attachment.
+"""Headless tests for keyframing the active slot attachment (spec 079).
 
-Runs INSIDE Blender via ``run_operator_tests.py``. Keying the slot's active
-attachment is the format's standard part-swap mechanism: the operator sets
-``proscenio_slot_index`` to the chosen attachment's writer-order index and
-inserts a constant-interpolation keyframe, which ``build_slot_animations``
-projects into a ``slot_attachment`` track. These tests pin the operator to that
-writer contract so a key authored in Blender is exactly the swap exported to
-Godot.
+Runs INSIDE Blender via ``run_operator_tests.py``. The slot swap is now authored
+as direct visibility keyframes on the attachment meshes: "show only this
+attachment" keys ``hide_render`` + ``hide_viewport`` (hard cut) on every sibling
+- the chosen one shown, the rest hidden - on the animation the swap follows.
+``build_slot_animations`` collapses those per-mesh visibility keys back into one
+exclusive ``slot_attachment`` track. These tests pin the operator to that writer
+contract so a key authored in Blender is exactly the swap exported to Godot.
 """
 
 from __future__ import annotations
@@ -46,122 +46,132 @@ def _make_slot_with_two_attachments() -> tuple[bpy.types.Object, str, str]:
     return empty, sword.name, axe.name
 
 
-def _slot_index_fcurve(empty: bpy.types.Object):
-    from proscenio.core._shared.cp_keys import (  # type: ignore[import-not-found]
-        PROSCENIO_SLOT_INDEX,
-    )
-    from proscenio.exporters.godot.writer.animations import (  # type: ignore[import-not-found]
-        action_fcurves,
+def _own_fcurve(obj: bpy.types.Object, data_path: str):
+    from proscenio.core._shared.action_fcurves import (  # type: ignore[import-not-found]
+        object_action_fcurves,
     )
 
-    action = empty.animation_data.action
-    target = f'["{PROSCENIO_SLOT_INDEX}"]'
-    return next((fc for fc in action_fcurves(action) if fc.data_path == target), None)
+    return next((fc for fc in object_action_fcurves(obj) if fc.data_path == data_path), None)
 
 
-def test_keyframe_writes_the_writer_order_index(automesh_fixture):
-    empty, _sword, axe = _make_slot_with_two_attachments()
-    attachments = [c.name for c in empty.children if c.type == "MESH"]
-    expected_index = attachments.index(axe)
+def _hide_render_at(obj: bpy.types.Object, frame: float) -> float | None:
+    fcurve = _own_fcurve(obj, "hide_render")
+    if fcurve is None:
+        return None
+    return next(
+        (round(kp.co.y, 3) for kp in fcurve.keyframe_points if round(kp.co.x, 3) == frame),
+        None,
+    )
 
+
+def _slot_track_keys(empty: bpy.types.Object) -> list:
+    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
+        build_slot_animations,
+    )
+
+    anims = build_slot_animations(bpy.context.scene)
+    return [k for a in anims for t in a.tracks if t.target == empty.name for k in t.keys]
+
+
+def test_keyframe_shows_only_the_chosen_attachment(automesh_fixture):
+    _empty, sword, axe = _make_slot_with_two_attachments()
     bpy.context.scene.frame_set(5)
     result = bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
     assert "FINISHED" in result
 
-    fcurve = _slot_index_fcurve(empty)
-    assert fcurve is not None, "operator left no proscenio_slot_index fcurve"
-    keyed = [(round(kp.co.x, 3), round(kp.co.y, 3)) for kp in fcurve.keyframe_points]
-    detail = f"expected index {expected_index} keyed at frame 5, got {keyed}"
-    assert (5.0, float(expected_index)) in keyed, detail
+    axe_obj = bpy.data.objects[axe]
+    sword_obj = bpy.data.objects[sword]
+    # hide_render is the export truth: chosen shown (0.0), sibling hidden (1.0).
+    assert _hide_render_at(axe_obj, 5.0) == 0.0, "chosen attachment must be shown"
+    assert _hide_render_at(sword_obj, 5.0) == 1.0, "the sibling must be hidden"
+    # hide_viewport is mirrored so the viewport preview matches the export.
+    assert _own_fcurve(axe_obj, "hide_viewport") is not None
+    assert _own_fcurve(sword_obj, "hide_viewport") is not None
 
 
 def test_keyframe_uses_constant_interpolation(automesh_fixture):
-    empty, _sword, axe = _make_slot_with_two_attachments()
+    _empty, sword, axe = _make_slot_with_two_attachments()
     bpy.context.scene.frame_set(3)
     bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
 
-    fcurve = _slot_index_fcurve(empty)
-    assert fcurve is not None
-    all_constant = all(kp.interpolation == "CONSTANT" for kp in fcurve.keyframe_points)
-    assert all_constant, "an integer attachment index must hard-cut, not tween"
+    for name in (axe, sword):
+        obj = bpy.data.objects[name]
+        for path in ("hide_render", "hide_viewport"):
+            fcurve = _own_fcurve(obj, path)
+            assert fcurve is not None, f"{name} left no {path} fcurve"
+            all_constant = all(kp.interpolation == "CONSTANT" for kp in fcurve.keyframe_points)
+            assert all_constant, f"{name}.{path} must hard-cut, not tween"
 
 
 def test_keyframe_projects_to_the_writer_slot_attachment_track(automesh_fixture):
-    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
-        build_slot_animations,
-    )
-
     empty, _sword, axe = _make_slot_with_two_attachments()
     bpy.context.scene.frame_set(7)
     bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
 
-    anims = build_slot_animations(bpy.context.scene)
-    tracks = [t for a in anims for t in a.tracks if t.target == empty.name]
-    assert tracks, "writer projected no slot_attachment track from the keyed swap"
-    swap_keys = [k for t in tracks for k in t.keys]
-    hit = any(k.attachment == axe and k.interp == "constant" for k in swap_keys)
-    assert hit, f"keyed attachment '{axe}' did not reach the writer track: {swap_keys}"
+    keys = _slot_track_keys(empty)
+    assert keys, "writer projected no slot_attachment track from the keyed swap"
+    hit = any(k.attachment == axe and k.interp == "constant" for k in keys)
+    assert hit, f"keyed attachment '{axe}' did not reach the writer track: {keys}"
 
 
-def test_writer_resolves_attachment_by_name_after_an_earlier_delete(automesh_fixture):
-    """The index-drift guard: key `axe`, then delete an EARLIER attachment
-    (`sword`). The keyed index would now slide onto the wrong (or a now
-    out-of-range) child if the writer resolved against the LIVE child order;
-    binding it to the snapshotted name order keeps it resolving `axe`."""
+def test_hide_all_keys_the_none_state(automesh_fixture):
+    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
+        NONE_ATTACHMENT,
+    )
+
+    empty, _sword, _axe = _make_slot_with_two_attachments()
+    bpy.context.scene.frame_set(4)
+    result = bpy.ops.proscenio.keyframe_slot_attachment(hide_all=True)
+    assert "FINISHED" in result
+
+    keys = _slot_track_keys(empty)
+    assert keys, "the (none) state produced no slot_attachment key"
+    all_none = all(k.attachment == NONE_ATTACHMENT for k in keys)
+    assert all_none, f"hiding every attachment must key the (none) state, got {keys}"
+
+
+def test_keyframe_override_targets_the_named_animation(automesh_fixture):
+    """The override picker binds the swap into a specific animation (D3)."""
+    empty, _sword, axe = _make_slot_with_two_attachments()
+    bpy.context.scene.frame_set(6)
+    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe, animation_name="attack")
+
     from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
         build_slot_animations,
     )
 
-    empty, sword, axe = _make_slot_with_two_attachments()
-    bpy.context.scene.frame_set(5)
-    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
-
-    # Remove the earlier attachment: the live child list shrinks to [axe], so
-    # axe's keyed index (1) is now out of range against the live children.
-    bpy.data.objects.remove(bpy.data.objects[sword], do_unlink=True)
-    bpy.context.view_layer.update()
-
     anims = build_slot_animations(bpy.context.scene)
-    swap_keys = [k for a in anims for t in a.tracks if t.target == empty.name for k in t.keys]
-    assert swap_keys, "the keyed swap vanished after deleting an unrelated attachment"
-    resolved_axe = all(k.attachment == axe for k in swap_keys)
-    assert resolved_axe, f"index drift: the key must still resolve {axe!r}, got {swap_keys}"
-
-
-def test_keyframe_order_snapshot_is_append_only(automesh_fixture):
-    """A later delete + re-key must not remap an earlier key: keying `axe`, then
-    deleting `sword` and keying a freshly-added `shield`, must leave the first
-    key still resolving `axe` (append-only order), not slide it onto `shield`."""
-    from proscenio.exporters.godot.writer.slot_animations import (  # type: ignore[import-not-found]
-        build_slot_animations,
-    )
-
-    empty, sword, axe = _make_slot_with_two_attachments()
-    bpy.context.scene.frame_set(5)
-    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name=axe)
-
-    # Delete the earlier attachment, add a new one, and key the new one.
-    bpy.data.objects.remove(bpy.data.objects[sword], do_unlink=True)
-    shield = _new_mesh_object("shield", (0.0, 0.0, 2.0))
-    shield.parent = empty
-    bpy.context.view_layer.update()
-    bpy.context.view_layer.objects.active = empty
-    bpy.context.scene.frame_set(10)
-    bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="shield")
-
-    anims = build_slot_animations(bpy.context.scene)
-    resolved = {
-        k.attachment for a in anims for t in a.tracks if t.target == empty.name for k in t.keys
-    }
-    # Append-only -> both keys resolve their own name. Overwriting the snapshot
-    # would collapse both onto `shield` (the earlier `axe` key would be lost).
-    both_resolve = resolved == {axe, "shield"}
-    assert both_resolve, f"append-only order broke the binding: {resolved}"
+    slot_names = {a.name for a in anims if any(t.target == empty.name for t in a.tracks)}
+    assert slot_names == {"attack"}, f"swap must follow the named animation, got {slot_names}"
 
 
 def test_keyframe_rejects_a_non_attachment(automesh_fixture):
-    empty, _sword, _axe = _make_slot_with_two_attachments()
+    _empty, sword, axe = _make_slot_with_two_attachments()
     result = bpy.ops.proscenio.keyframe_slot_attachment(attachment_name="not_a_child")
     assert "CANCELLED" in result
-    no_action = empty.animation_data is None or empty.animation_data.action is None
-    assert no_action, "a rejected attachment must not author any keyframe"
+    # A rejected swap must not author any keyframe on any sibling.
+    for name in (axe, sword):
+        obj = bpy.data.objects[name]
+        clean = obj.animation_data is None or obj.animation_data.action is None
+        assert clean, f"rejected swap left animation data on {name}"
+
+
+def test_converter_migrates_legacy_index_keys_to_visibility(automesh_fixture):
+    """The one-shot migration reads a legacy proscenio_slot_index track and
+    re-authors it as attachment visibility, clearing the legacy idprop."""
+    empty, _sword, axe = _make_slot_with_two_attachments()
+    order = [c.name for c in empty.children if c.type == "MESH"]
+
+    empty.animation_data_create()
+    empty.animation_data.action = bpy.data.actions.new("legacy_swing")
+    empty["proscenio_slot_index"] = order.index(axe)
+    empty.keyframe_insert(data_path='["proscenio_slot_index"]', frame=5)
+    bpy.context.view_layer.objects.active = empty
+
+    result = bpy.ops.proscenio.convert_slot_index_to_visibility()
+    assert "FINISHED" in result
+
+    keys = _slot_track_keys(empty)
+    assert keys, "the converter produced no visibility-derived slot track"
+    assert any(k.attachment == axe for k in keys), f"index -> '{axe}' not migrated: {keys}"
+    assert "proscenio_slot_index" not in empty, "the legacy idprop must be cleared"

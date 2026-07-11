@@ -79,6 +79,36 @@ def _fcurve(data_path: str) -> SimpleNamespace:
     return SimpleNamespace(data_path=data_path)
 
 
+def _keyframe(frame: float, value: float) -> SimpleNamespace:
+    return SimpleNamespace(co=SimpleNamespace(x=frame, y=value))
+
+
+def _vis_mesh(
+    name: str,
+    *,
+    action_name: str,
+    hide_render_keys: list[tuple[float, float]],
+) -> SimpleNamespace:
+    """A slot attachment carrying a ``hide_render`` fcurve (0.0 shown / 1.0 hidden).
+
+    Models the visibility swap the writer reads: each key is ``(frame, value)``.
+    The keys live on an action named ``action_name`` so the overlap check groups
+    attachments by the animation they are keyed in.
+    """
+    hide_render = SimpleNamespace(
+        data_path="hide_render",
+        keyframe_points=tuple(_keyframe(f, v) for f, v in hide_render_keys),
+    )
+    action = SimpleNamespace(name=action_name, fcurves=(hide_render,))
+    return SimpleNamespace(
+        name=name,
+        type="MESH",
+        parent_bone="",
+        parent_type="OBJECT",
+        animation_data=SimpleNamespace(action=action),
+    )
+
+
 def test_non_empty_object_returns_no_issues() -> None:
     mesh = _mesh("torso")
     assert validate_active_slot(mesh) == []
@@ -186,6 +216,51 @@ def test_slot_with_no_bone_skips_bone_mismatch_check() -> None:
         ],
     )
     assert validate_active_slot(empty) == []
+
+
+def test_two_attachments_visible_at_same_frame_warn() -> None:
+    # Both attachments keyed shown (hide_render 0.0) at frame 5 in the same
+    # animation: the writer would drop one, so the validator flags the overlap.
+    empty = _empty(
+        "hand.swap",
+        children=[
+            _vis_mesh("club", action_name="attack", hide_render_keys=[(5.0, 0.0)]),
+            _vis_mesh("torch", action_name="attack", hide_render_keys=[(5.0, 0.0)]),
+        ],
+    )
+    issues = validate_active_slot(empty)
+    overlaps = [i for i in issues if "are all" in i.message]
+    assert len(overlaps) == 1
+    assert overlaps[0].severity == "warning"
+    assert "club" in overlaps[0].message and "torch" in overlaps[0].message
+    assert "frame 5" in overlaps[0].message
+
+
+def test_exclusive_swap_does_not_warn() -> None:
+    # club shown then hidden, torch hidden then shown - never two at once.
+    empty = _empty(
+        "hand.swap",
+        children=[
+            _vis_mesh("club", action_name="attack", hide_render_keys=[(1.0, 0.0), (5.0, 1.0)]),
+            _vis_mesh("torch", action_name="attack", hide_render_keys=[(1.0, 1.0), (5.0, 0.0)]),
+        ],
+    )
+    overlaps = [i for i in validate_active_slot(empty) if "are all" in i.message]
+    assert overlaps == []
+
+
+def test_overlap_across_different_animations_does_not_warn() -> None:
+    # Each attachment is shown at frame 5 but in a DIFFERENT animation, so they
+    # never coexist on the same clip - no overlap warning.
+    empty = _empty(
+        "hand.swap",
+        children=[
+            _vis_mesh("club", action_name="attack_club", hide_render_keys=[(5.0, 0.0)]),
+            _vis_mesh("torch", action_name="attack_torch", hide_render_keys=[(5.0, 0.0)]),
+        ],
+    )
+    overlaps = [i for i in validate_active_slot(empty) if "are all" in i.message]
+    assert overlaps == []
 
 
 def test_slot_parent_bone_reads_a_bone_parent() -> None:

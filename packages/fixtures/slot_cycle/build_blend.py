@@ -11,8 +11,10 @@ Builds the smallest possible slot fixture:
 - 3 polygon meshes (red / green / blue) parented to the Empty as
   attachments. Each is a 32x32 quad weight-mapped to the root bone.
 - ``slot_default = "attachment_red"`` - red shows at scene load.
-- An action ``cycle`` keyframing each attachment per second
-  (the slot system imports as one visibility track per attachment in Godot).
+- One slotted action ``cycle`` (Blender 4.4+) shared by the three
+  attachment meshes on their own slots, keyframing each mesh's
+  ``hide_render`` + ``hide_viewport`` so exactly one shows per second
+  (the writer collapses them into one ``slot_attachment`` track).
 
 Run ``draw_layers.py`` first or the textures will be missing.
 """
@@ -26,6 +28,7 @@ import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from blend_utils import rewrite_images_to_relpath  # noqa: E402
+from slot_keying import key_show_only  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "examples" / "generated" / "slot_cycle"
@@ -53,9 +56,8 @@ def main() -> None:
     _wipe_blend()
     armature_obj = _build_armature()
     slot_empty = _build_slot_empty(armature_obj)
-    for name in ATTACHMENT_NAMES:
-        _build_attachment_mesh(name, slot_empty)
-    _build_cycle_action(slot_empty)
+    meshes = [_build_attachment_mesh(name, slot_empty) for name in ATTACHMENT_NAMES]
+    _build_cycle_visibility(meshes)
     _save_blend()
     rewrite_images_to_relpath("[build_slot_cycle]")
     bpy.ops.wm.save_mainfile()
@@ -161,33 +163,30 @@ def _build_attachment_mesh(name: str, slot_empty: bpy.types.Object) -> bpy.types
     return obj
 
 
-def _build_cycle_action(slot_empty: bpy.types.Object) -> None:
-    """Author a ``cycle`` action keyframing ``proscenio_slot_index``.
+def _build_cycle_visibility(meshes: list[bpy.types.Object]) -> None:
+    """Author a ``cycle`` action keying attachment visibility once per second.
 
-    The writer's ``_build_slot_animations`` walker reads this Custom
-    Property fcurve and projects each int value to the matching slot
-    attachment name; the Godot importer then expands the resulting
-    ``slot_attachment`` track into N visibility tracks. Custom-property
-    keyframing works without the addon's PropertyGroup being registered,
-    so this path is robust to headless contexts (CI runs Blender with
-    no addon enabled).
+    The writer's ``build_slot_animations`` walker reads each attachment mesh's
+    ``hide_render`` keyframes (scoped to its own slot of the shared action) and
+    collapses them into one exclusive ``slot_attachment`` track; the Godot
+    importer then expands that into N per-attachment visibility tracks. Show-only
+    per frame: blue -> green -> red -> blue, so exactly one shows at a time -
+    the same per-mesh state the ``keyframe_slot_attachment`` operator authors.
     """
-    slot_empty.animation_data_create()
     action = bpy.data.actions.new(name="cycle")
-    slot_empty.animation_data.action = action
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = 24
 
     sequence = (
-        (1, 0),
-        (8, 1),
-        (16, 2),
-        (24, 0),
+        (1, "attachment_blue"),
+        (8, "attachment_green"),
+        (16, "attachment_red"),
+        (24, "attachment_blue"),
     )
-    for frame, idx in sequence:
+    for frame, chosen in sequence:
         bpy.context.scene.frame_set(frame)
-        slot_empty["proscenio_slot_index"] = idx
-        slot_empty.keyframe_insert(data_path='["proscenio_slot_index"]', frame=frame)
+        for mesh in meshes:
+            key_show_only(mesh, action, visible=mesh.name == chosen, frame=frame)
 
 
 def _save_blend() -> None:

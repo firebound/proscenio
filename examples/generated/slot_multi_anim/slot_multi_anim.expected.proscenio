@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "name": "slot_swap",
+  "name": "slot_multi_anim",
   "pixels_per_unit": 100.0,
   "skeleton": {
     "bones": [
@@ -128,7 +128,7 @@
       "z_index": 1
     },
     {
-      "name": "sword",
+      "name": "torch",
       "bone": "",
       "texture_region": [
         0.0,
@@ -172,7 +172,7 @@
           0.0
         ]
       ],
-      "texture": "sword.png",
+      "texture": "torch.png",
       "z_index": 2
     }
   ],
@@ -181,7 +181,7 @@
       "name": "weapon",
       "attachments": [
         "club",
-        "sword"
+        "torch"
       ],
       "bone": "arm",
       "default": "club"
@@ -190,8 +190,8 @@
   "atlas": "arm.png",
   "animations": [
     {
-      "name": "swing",
-      "length": 0.958333,
+      "name": "attack",
+      "length": 0.458333,
       "loop": true,
       "tracks": [
         {
@@ -200,15 +200,11 @@
           "keys": [
             {
               "time": 0.0,
-              "rotation": -0.523599
+              "rotation": -0.261799
             },
             {
               "time": 0.458333,
-              "rotation": 0.523599
-            },
-            {
-              "time": 0.958333,
-              "rotation": -0.523599
+              "rotation": 0.261799
             }
           ]
         },
@@ -224,12 +220,30 @@
             {
               "time": 0.458333,
               "interp": "constant",
-              "attachment": "sword"
+              "attachment": "club"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "length": 0.458333,
+      "loop": true,
+      "tracks": [
+        {
+          "type": "slot_attachment",
+          "target": "weapon",
+          "keys": [
+            {
+              "time": 0.0,
+              "interp": "constant",
+              "attachment": "(none)"
             },
             {
-              "time": 0.958333,
+              "time": 0.458333,
               "interp": "constant",
-              "attachment": "club"
+              "attachment": "(none)"
             }
           ]
         }

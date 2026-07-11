@@ -27,6 +27,7 @@ var _passes: int = 0  # gdlint: ignore=unused-private-class-variable
 
 func _initialize() -> void:
 	_run_anchor_check()
+	_run_resting_none_check()
 	_finish()
 
 
@@ -90,6 +91,69 @@ func _run_anchor_check() -> void:
 	var gp := slot.global_position
 	_assert_near(gp.x, 0.0, "anchor: slot global x at skeleton origin")
 	_assert_near(gp.y, 0.0, "anchor: slot global y at skeleton origin")
+
+
+# Spec 079 D4 resting-none: a slot whose default is the writer's "(none)" sentinel
+# rests with nothing shown; an unset default still falls back to the first
+# attachment so a slot is never accidentally blank.
+func _resting_document() -> ProscenioDocumentRes:
+	return (
+		ProscenioDocumentRes
+		. from_dict(
+			{
+				"name": "resting_probe",
+				"skeleton": {"bones": [{"name": "root", "position": [0.0, 0.0], "length": 10.0}]},
+				"slots":
+				[
+					{
+						"name": "hand.none",
+						"bone": "",
+						"attachments": ["club_n", "torch_n"],
+						"default": "(none)",
+					},
+					{
+						"name": "hand.fallback",
+						"bone": "",
+						"attachments": ["club_f", "torch_f"],
+						"default": "",
+					},
+				],
+			}
+		)
+	)
+
+
+func _run_resting_none_check() -> void:
+	var document := _resting_document()
+	var skeleton := SkeletonBuilder.build(document.skeleton)
+	var character := Node2D.new()
+	character.name = "resting_char"
+	get_root().add_child(character)
+	character.add_child(skeleton)
+
+	var slot_map := SlotBuilder.build(skeleton, document.slots)
+
+	# Explicit "(none)" default -> the slot rests blank: no attachment's name is
+	# the effective default, so every attachment starts hidden.
+	var none_info: SlotBuilder.SlotInfo = slot_map.get("club_n", null)
+	_assert_true(none_info != null, "resting-none: club_n routed into its slot")
+	if none_info != null:
+		_assert_true(
+			none_info.default == "",
+			'resting-none: "(none)" default rests blank, got "%s"' % none_info.default
+		)
+
+	# Unset default -> legacy first-attachment fallback, so the slot is not blank.
+	var fallback_info: SlotBuilder.SlotInfo = slot_map.get("club_f", null)
+	_assert_true(fallback_info != null, "resting-none: club_f routed into its slot")
+	if fallback_info != null:
+		_assert_true(
+			fallback_info.default == "club_f",
+			(
+				"resting-none: unset default falls back to first attachment, got '%s'"
+				% fallback_info.default
+			)
+		)
 
 
 func _assert_near(actual: float, expected: float, label: String) -> void:

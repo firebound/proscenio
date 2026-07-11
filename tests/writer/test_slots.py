@@ -195,6 +195,20 @@ def test_object_action_fcurves_scopes_to_the_mesh_own_slot() -> None:
     assert seen == [("hide_render", [(1.0, 0.0)])]
 
 
+def test_object_action_fcurves_yields_nothing_when_layered_but_no_slot() -> None:
+    # A mesh bound to a layered (4.4+) action but with no action_slot has no slot
+    # handle to match on. It must yield NOTHING, not flatten every channelbag -
+    # otherwise a slot writer processing one mesh would read every sibling's
+    # visibility curves (spec 079 R4).
+    action = _slotted_action_two_meshes()  # two channelbags: club (1), sword (2)
+    orphan = _Obj(
+        name="club",
+        type="MESH",
+        animation_data=SimpleNamespace(action=action, action_slot=None),
+    )
+    assert list(object_action_fcurves(orphan)) == []
+
+
 def test_object_fcurves_in_action_reads_a_non_active_action_by_slot_identity() -> None:
     # club's ACTIVE action is `attack`, but its visibility in `idle` lives in the
     # idle datablock's slot. Scoped-by-identity reading must reach it even though

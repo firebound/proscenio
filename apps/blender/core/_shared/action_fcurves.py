@@ -63,7 +63,10 @@ def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
       animation): only the channelbag whose ``slot_handle`` matches
       ``obj.animation_data.action_slot.handle``. Flattening instead would make a
       slot writer processing one mesh read every sibling mesh's visibility curves
-      too, double-counting them (spec 079 R4).
+      too, double-counting them (spec 079 R4). When ``obj`` is bound to a layered
+      action but carries no ``action_slot`` (so no slot handle to match on), this
+      yields NOTHING rather than every channelbag - the same no-identity guard
+      :func:`object_fcurves_in_action` applies, so a sibling's curves never leak.
 
     Duck-typed (plain ``getattr``) so the pytest suite can drive it with
     ``SimpleNamespace`` stubs.
@@ -78,9 +81,10 @@ def object_action_fcurves(obj: object) -> Iterator[bpy.types.FCurve]:
         return
     slot = getattr(anim, "action_slot", None)
     slot_handle = getattr(slot, "handle", None) if slot is not None else None
+    if slot_handle is None:
+        return
     for channelbag in _iter_channelbags(action):
-        cb_handle = getattr(channelbag, "slot_handle", None)
-        if slot_handle is not None and cb_handle != slot_handle:
+        if getattr(channelbag, "slot_handle", None) != slot_handle:
             continue
         yield from getattr(channelbag, "fcurves", None) or []
 

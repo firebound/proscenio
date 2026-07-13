@@ -9,6 +9,7 @@ the in-Blender suite.
 
 from __future__ import annotations
 
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -45,6 +46,41 @@ def _vgroup(index: int, name: str) -> SimpleNamespace:
 
 def _vec(x: float = 0.0, y: float = 0.0, z: float = 0.0) -> SimpleNamespace:
     return SimpleNamespace(x=x, y=y, z=z)
+
+
+class _Mat4:
+    """4x4 world-matrix stand-in: row indexing, ``@ Vector`` and ``translation``.
+
+    The conftest mathutils stub is 3x3 (the skeleton math), while the sprite
+    rest-transform path reads a 4x4 by ``[row][col]`` and the offset path
+    multiplies a point through it - this covers both surfaces.
+    """
+
+    def __init__(self, rows: list[list[float]]) -> None:
+        self.rows = rows
+
+    def __getitem__(self, index: int) -> list[float]:
+        return self.rows[index]
+
+    def __matmul__(self, v: SimpleNamespace) -> SimpleNamespace:
+        p = (v.x, v.y, v.z, 1.0)
+        out = [sum(self.rows[i][j] * p[j] for j in range(4)) for i in range(3)]
+        return SimpleNamespace(x=out[0], y=out[1], z=out[2])
+
+    @property
+    def translation(self) -> SimpleNamespace:
+        return SimpleNamespace(x=self.rows[0][3], y=self.rows[1][3], z=self.rows[2][3])
+
+
+def _identity4(tx: float = 0.0, ty: float = 0.0, tz: float = 0.0) -> _Mat4:
+    return _Mat4(
+        [
+            [1.0, 0.0, 0.0, tx],
+            [0.0, 1.0, 0.0, ty],
+            [0.0, 0.0, 1.0, tz],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
 
 
 def test_derive_modulate_none_for_opaque_white() -> None:
@@ -161,6 +197,7 @@ def test_build_sprite_reads_grid_and_bone() -> None:
         color=(1.0, 1.0, 1.0, 1.0),
         location=_vec(),
         scale=_vec(1.0, 1.0, 1.0),
+        matrix_world=_identity4(),
     )
     sprite = sprites.build_sprite(obj, ppu=100.0)
     assert sprite.type == "sprite"
@@ -169,6 +206,9 @@ def test_build_sprite_reads_grid_and_bone() -> None:
     assert (sprite.hframes, sprite.vframes, sprite.frame) == (2, 3, 4)
     assert sprite.centered is False
     assert sprite.texture_region is None  # auto mode omits the region
+    # The rest position is always carried; identity rotation/scale are omitted.
+    assert sprite.position == [0.0, 0.0]
+    assert (sprite.rotation, sprite.scale) == (None, None)
     # A default-appearance object emits no appearance fields.
     assert (sprite.modulate, sprite.z_index, sprite.flip_h, sprite.flip_v) == (
         None,
@@ -190,12 +230,217 @@ def test_build_sprite_emits_derived_appearance() -> None:
         color=(1.0, 0.5, 0.25, 1.0),
         location=_vec(y=0.001),  # one step back; the order, not the Y, drives z_index
         scale=_vec(-1.0, 1.0, 1.0),  # mirrored horizontally
+        matrix_world=_Mat4(
+            [
+                [-1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.001],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        ),
     )
     sprite = sprites.build_sprite(obj, ppu=100.0)
     assert sprite.modulate == [1.0, 0.5, 0.25, 1.0]
     assert sprite.z_index == -1
     assert sprite.flip_h is True
     assert sprite.flip_v is None  # omitted, not False
+
+
+def _rot_y4(angle: float, tx: float = 0.0, ty: float = 0.0, tz: float = 0.0) -> _Mat4:
+    """World matrix rotated by ``angle`` about world Y (the screen rotation)."""
+    c, s = math.cos(angle), math.sin(angle)
+    return _Mat4(
+        [
+            [c, 0.0, s, tx],
+            [0.0, 1.0, 0.0, ty],
+            [-s, 0.0, c, tz],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+
+
+def test_rest_transform_maps_translation_to_godot_screen() -> None:
+    # Blender world (x, z) -> Godot (x*ppu, -z*ppu), same mapping as bones.
+    obj = _Obj(
+        name="fx",
+        parent_type="OBJECT",
+        parent_bone="",
+        vertex_groups=[],
+        proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+        color=(1.0, 1.0, 1.0, 1.0),
+        scale=_vec(1.0, 1.0, 1.0),
+        matrix_world=_identity4(tx=5.1, tz=-4.1),
+    )
+    sprite = sprites.build_sprite(obj, ppu=100.0)
+    assert sprite.position == [510.0, 410.0]
+
+
+def test_rest_transform_reads_in_plane_rotation() -> None:
+    # A Blender rotation about world +Y turns the picture plane; the Godot
+    # angle equals it (CW positive with Y down).
+    obj = _Obj(
+        name="fx",
+        parent_type="OBJECT",
+        parent_bone="",
+        vertex_groups=[],
+        proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+        color=(1.0, 1.0, 1.0, 1.0),
+        scale=_vec(1.0, 1.0, 1.0),
+        matrix_world=_rot_y4(math.radians(30.0)),
+    )
+    sprite = sprites.build_sprite(obj, ppu=100.0)
+    assert sprite.rotation == pytest.approx(math.radians(30.0), abs=1e-6)
+    assert sprite.scale is None  # unit scale still omitted under rotation
+
+
+def test_rest_transform_scale_covers_both_quad_conventions() -> None:
+    # PSD-imported planes are flat in local XZ (vertical = local Z, depth =
+    # local Y); a hand-made plane is local XY stood up 90deg on X (vertical =
+    # local Y, depth = local Z). The screen projection zeroes the depth axis,
+    # so the vertical scale must come out the same either way.
+    xz_authored = _Mat4(
+        [
+            [2.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 3.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    # Stood-up: local Y maps to world +Z (scaled 3), local Z to world -Y.
+    xy_stood_up = _Mat4(
+        [
+            [2.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0, 0.0],
+            [0.0, 3.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    for matrix in (xz_authored, xy_stood_up):
+        obj = _Obj(
+            name="fx",
+            parent_type="OBJECT",
+            parent_bone="",
+            vertex_groups=[],
+            proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+            color=(1.0, 1.0, 1.0, 1.0),
+            scale=_vec(1.0, 1.0, 1.0),
+            matrix_world=matrix,
+        )
+        sprite = sprites.build_sprite(obj, ppu=100.0)
+        assert sprite.scale == [2.0, 3.0]
+        assert sprite.rotation is None
+
+
+def test_rest_transform_mirror_is_not_a_rotation() -> None:
+    # A horizontal mirror (negative local X scale) exports flip_h; the angle
+    # read cancels the sign so the sprite does not masquerade as rotated 180.
+    obj = _Obj(
+        name="fx",
+        parent_type="OBJECT",
+        parent_bone="",
+        vertex_groups=[],
+        proscenio=SimpleNamespace(hframes=1, vframes=1, frame=0, centered=True),
+        color=(1.0, 1.0, 1.0, 1.0),
+        scale=_vec(-2.0, 1.0, 1.0),
+        matrix_world=_Mat4(
+            [
+                [-2.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        ),
+    )
+    sprite = sprites.build_sprite(obj, ppu=100.0)
+    assert sprite.rotation is None
+    assert sprite.scale == [2.0, 1.0]  # magnitude only; the mirror is the flag
+    assert sprite.flip_h is True
+
+
+def test_sprite_offset_pulls_back_into_the_node_frame() -> None:
+    # XZ-authored quad whose centre sits at local (0.5, 0, 0.25), object
+    # rotated 90deg in the picture plane. Sprite2D.offset applies before the
+    # node transform, so the measured gap must come out in the node's local
+    # frame - the plain local centre in screen axes - not rotated by the
+    # world matrix.
+    mesh = SimpleNamespace(
+        vertices=[
+            SimpleNamespace(co=_vec(0.0, 0.0, 0.0)),
+            SimpleNamespace(co=_vec(1.0, 0.0, 0.5)),
+        ]
+    )
+    obj = SimpleNamespace(
+        scale=_vec(1.0, 1.0, 1.0),
+        data=mesh,
+        matrix_world=_rot_y4(math.radians(90.0)),
+    )
+    offset = sprites._compute_sprite_offset(obj, ppu=100.0)
+    assert offset == pytest.approx([50.0, -25.0], abs=1e-4)
+
+
+def test_sprite_offset_divides_out_the_node_scale() -> None:
+    # A scaled sprite carries its scale on the node now; the offset is
+    # pre-transform pixels, so the world gap divides the scale back out.
+    mesh = SimpleNamespace(
+        vertices=[
+            SimpleNamespace(co=_vec(0.0, 0.0, 0.0)),
+            SimpleNamespace(co=_vec(1.0, 0.0, 0.5)),
+        ]
+    )
+    obj = SimpleNamespace(
+        scale=_vec(1.0, 1.0, 1.0),
+        data=mesh,
+        matrix_world=_Mat4(
+            [
+                [2.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 4.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        ),
+    )
+    offset = sprites._compute_sprite_offset(obj, ppu=100.0)
+    # Local centre (0.5, 0, 0.25): screen px (50, -25) regardless of the 2x/4x
+    # node scale the world matrix carries.
+    assert offset == pytest.approx([50.0, -25.0], abs=1e-4)
+
+
+def test_resolve_sprite_bone_prefers_the_follow_constraint() -> None:
+    # Spec 080 D5 precedence: Proscenio Child Of > raw bone parent > first
+    # vertex group.
+    obj = SimpleNamespace(
+        parent_type="BONE",
+        parent_bone="stale_parent",
+        vertex_groups=[_vgroup(0, "stale_group")],
+        constraints=[
+            SimpleNamespace(name="Proscenio Sprite Follow", type="CHILD_OF", subtarget="arm")
+        ],
+    )
+    assert sprites.resolve_sprite_bone(obj) == "arm"
+
+
+def test_resolve_sprite_bone_falls_back_parent_then_vgroup() -> None:
+    parented = SimpleNamespace(
+        parent_type="BONE", parent_bone="spine", vertex_groups=[_vgroup(0, "g")], constraints=[]
+    )
+    assert sprites.resolve_sprite_bone(parented) == "spine"
+    grouped = SimpleNamespace(
+        parent_type="OBJECT", parent_bone="", vertex_groups=[_vgroup(0, "head")], constraints=[]
+    )
+    assert sprites.resolve_sprite_bone(grouped) == "head"
+
+
+def test_resolve_sprite_bone_ignores_a_repurposed_constraint_name() -> None:
+    # A non-CHILD_OF constraint wearing the Proscenio name is not a binding.
+    obj = SimpleNamespace(
+        parent_type="OBJECT",
+        parent_bone="",
+        vertex_groups=[],
+        constraints=[
+            SimpleNamespace(name="Proscenio Sprite Follow", type="COPY_LOCATION", subtarget="x")
+        ],
+    )
+    assert sprites.resolve_sprite_bone(obj) == ""
 
 
 def test_build_sprite_rejects_zero_grid() -> None:
@@ -222,6 +467,7 @@ def test_build_sprite_routes_sprite_kind() -> None:
         color=(1.0, 1.0, 1.0, 1.0),
         location=_vec(),
         scale=_vec(1.0, 1.0, 1.0),
+        matrix_world=_identity4(),
     )
     out = sprites.build_element(obj, {}, ppu=100.0)
     assert out.type == "sprite"

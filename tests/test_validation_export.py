@@ -23,6 +23,9 @@ from core.validation.active_slot import (  # noqa: E402
 from core.validation.checks.atlas_files import (  # noqa: E402
     validate_atlas_files as _validate_atlas_files,
 )
+from core.validation.checks.bone_follow import (  # noqa: E402
+    validate_bone_follow as _validate_bone_follow,
+)
 from core.validation.checks.bone_orientation import (  # noqa: E402
     validate_bone_orientation as _validate_bone_orientation,
 )
@@ -452,6 +455,78 @@ def test_ik_chain_baked_to_keyframes_passes() -> None:
     )
     shin.constraints = [_ik_constraint("foot_ik", target=arm, chain_count=2)]
     assert _validate_ik_bake(arm) == []
+
+
+# --- bone-follow health (spec 080 D7/D8): double-drive + stale inverse ---
+
+
+def _identity4() -> list[list[float]]:
+    return [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+
+
+def _follow_armature(bone: str = "arm") -> SimpleNamespace:
+    return SimpleNamespace(
+        name="rig",
+        matrix_world=_identity4(),
+        data=SimpleNamespace(bones=[SimpleNamespace(name=bone, matrix_local=_identity4())]),
+    )
+
+
+def _follower(
+    *,
+    inverse: list[list[float]] | None = None,
+    subtarget: str = "arm",
+    armature: SimpleNamespace | None = None,
+    parent_bone: str = "",
+) -> SimpleNamespace:
+    armature = armature if armature is not None else _follow_armature()
+    con = SimpleNamespace(
+        name="Proscenio Slot Follow",
+        type="CHILD_OF",
+        subtarget=subtarget,
+        target=armature,
+        inverse_matrix=inverse if inverse is not None else _identity4(),
+    )
+    return SimpleNamespace(
+        name="hand.slot",
+        constraints=[con],
+        parent_type="BONE" if parent_bone else "OBJECT",
+        parent_bone=parent_bone,
+    )
+
+
+def test_bone_follow_healthy_binding_passes() -> None:
+    # Identity rest x identity inverse: the stored inverse still cancels.
+    assert _validate_bone_follow([_follower()]) == []
+
+
+def test_bone_follow_double_drive_warns() -> None:
+    issues = _validate_bone_follow([_follower(parent_bone="arm")])
+    assert _has(issues, "warning", "double-driven")
+
+
+def test_bone_follow_stale_inverse_warns() -> None:
+    # The stored inverse carries a translation the current rest does not
+    # cancel: the rig's rest changed since the bind.
+    stale = _identity4()
+    stale[0][3] = 5.0
+    issues = _validate_bone_follow([_follower(inverse=stale)])
+    assert _has(issues, "warning", "stale follow")
+
+
+def test_bone_follow_missing_bone_warns() -> None:
+    issues = _validate_bone_follow([_follower(subtarget="ghost")])
+    assert _has(issues, "warning", "no longer exists")
+
+
+def test_bone_follow_ignores_unbound_objects() -> None:
+    plain = SimpleNamespace(name="torso", constraints=[], parent_type="OBJECT", parent_bone="")
+    assert _validate_bone_follow([plain]) == []
 
 
 def test_ik_gate_ignores_a_muted_constraint() -> None:

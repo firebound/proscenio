@@ -16,6 +16,9 @@ packages/fixtures/
 ├── blink_eyes/
 │   ├── draw_layers.py              Pillow → pillow_layers/eye_0..3.png + eye_spritesheet.png
 │   └── build_blend.py              Bpy: load spritesheet, build blink_eyes.blend
+├── bone_attach/
+│   ├── draw_layers.py              Pillow → pillow_layers/badge.png (asymmetric flag)
+│   └── build_blend.py              Bpy: +Z bone (rest rot -90) + sprite REAL bone-parented keep-transform with origin gap + authored rotation + pivot offset → bone_attach.blend (spec 080)
 ├── mouth_drive/
 │   ├── draw_layers.py              Pillow → pillow_layers/mouth_0..3.png + mouth_spritesheet.png
 │   └── build_blend.py              Bpy: 2-bone armature (mouth_pos + mouth_drive) + driver + action → mouth_drive.blend
@@ -50,6 +53,9 @@ packages/fixtures/
 | blink_eyes | `blink_eyes/draw_layers.py` | (Pillow primitives) | `examples/generated/blink_eyes/pillow_layers/eye_0..3.png` + `eye_spritesheet.png` |
 | blink_eyes | `blink_eyes/build_blend.py` | `examples/generated/blink_eyes/pillow_layers/eye_spritesheet.png` | `examples/generated/blink_eyes/blink_eyes.blend` |
 | blink_eyes | `_shared/export_proscenio.py` | `examples/generated/blink_eyes/blink_eyes.blend` | `examples/generated/blink_eyes/blink_eyes.expected.proscenio` |
+| bone_attach | `bone_attach/draw_layers.py` | (Pillow primitives) | `examples/generated/bone_attach/pillow_layers/badge.png` |
+| bone_attach | `bone_attach/build_blend.py` | `examples/generated/bone_attach/pillow_layers/badge.png` | `examples/generated/bone_attach/bone_attach.blend` |
+| bone_attach | `_shared/export_proscenio.py` | `examples/generated/bone_attach/bone_attach.blend` | `examples/generated/bone_attach/bone_attach.expected.proscenio` |
 | mouth_drive | `mouth_drive/draw_layers.py` | (Pillow primitives) | `examples/generated/mouth_drive/pillow_layers/mouth_0..3.png` + `mouth_spritesheet.png` |
 | mouth_drive | `mouth_drive/build_blend.py` | `examples/generated/mouth_drive/pillow_layers/mouth_spritesheet.png` | `examples/generated/mouth_drive/mouth_drive.blend` |
 | mouth_drive | `_shared/export_proscenio.py` | `examples/generated/mouth_drive/mouth_drive.blend` | `examples/generated/mouth_drive/mouth_drive.expected.proscenio` |
@@ -105,7 +111,7 @@ When adding a new isolated / minimal fixture (the kind that exercises ONE featur
 - **Attaching objects to bones**: **skin them** (Armature modifier targeting the armature + a vertex group), `parent_type="OBJECT"`. Do NOT bone-parent: bone-parenting a flat (XZ) quad to an in-plane bone inherits the bone's 3D orientation and tilts it out of the plane (collapses on import). A skinned object stays flat at rest and the bone actually moves/deforms it in Blender too.
   - **mesh that deforms** (`mixed_feature` body): a vertex group per bone, weighted. Exports `weights`; Godot makes a `Polygon2D` skinned as a **sibling** of the `Skeleton2D` (never a child - a child collapses).
   - **mesh / static stamp, rigid** (`atlas_pack`, `shared_atlas`, `slot_cycle`, `slot_swap` arm): one vertex group, weight 1, to its bone. Same Polygon2D-skinned path.
-  - **sprite** (`blink_eyes` eye, `mouth_drive` mouth): one vertex group, weight 1, to a **+X (lateral)** bone. The Godot `Sprite2D` is a child of that `Bone2D` and inherits its rotation, so the bone must export rotation 0 (a +X bone does; a +Z bone exports -90deg and lays the sprite on its side). The vertex group only names the attach bone for the export; the Armature modifier is what lets the bone move the sprite in the Blender preview.
+  - **sprite** (`blink_eyes` eye, `mouth_drive` mouth): one vertex group, weight 1, to a **+X (lateral)** bone. The vertex group only names the attach bone for the export; the Armature modifier is what lets the bone move the sprite in the Blender preview. Since spec 080 a sprite may also REAL bone-parent **keep-transform** to a bone of any in-plane orientation (`bone_attach` badge): the document now carries the sprite's rest transform, so the Godot `Sprite2D` renders where it was authored instead of inheriting the bone rest (the old "the bone must export rotation 0" constraint is gone). A keep-transform parent never tilts the quad - only a snap parent (no keep-transform) does.
   - **slot attachments** (`slot_cycle`, `slot_swap` club/sword): object-parented under the slot Empty (the slot groups + swaps them). A slot that should *follow* a bone is a deferred feature (needs a slot-bone property; see backlog).
   - **invisible driver-source bones** (`mouth_drive` drive, `mixed_feature` jaw): spin about the bone's own axis (local Y) and read it with a `ROT_Z` driver. The spin is invisible and adds no `bone_transform` rotation.
 

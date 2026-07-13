@@ -1,0 +1,57 @@
+{
+  "format_version": 1,
+  "name": "bone_attach",
+  "pixels_per_unit": 100.0,
+  "skeleton": {
+    "bones": [
+      {
+        "name": "anchor",
+        "parent": null,
+        "position": [
+          40.0,
+          -20.0
+        ],
+        "rotation": -1.570796,
+        "scale": [
+          1.0,
+          1.0
+        ],
+        "length": 60.000002
+      }
+    ]
+  },
+  "elements": [
+    {
+      "type": "sprite",
+      "name": "badge",
+      "bone": "anchor",
+      "position": [
+        55.000001,
+        -44.999999
+      ],
+      "rotation": 0.35,
+      "hframes": 1,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true,
+      "offset": [
+        5.000003,
+        -9.999996
+      ]
+    },
+    {
+      "type": "sprite",
+      "name": "pin",
+      "bone": "anchor",
+      "position": [
+        10.0,
+        -80.000001
+      ],
+      "hframes": 1,
+      "vframes": 1,
+      "frame": 0,
+      "centered": true
+    }
+  ],
+  "atlas": "badge.png"
+}

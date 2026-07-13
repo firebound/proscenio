@@ -25,6 +25,10 @@
       "type": "sprite",
       "name": "arrow",
       "bone": "",
+      "position": [
+        31.999999,
+        0.0
+      ],
       "hframes": 4,
       "vframes": 1,
       "frame": 0,

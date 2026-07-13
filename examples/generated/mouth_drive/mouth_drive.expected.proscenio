@@ -39,6 +39,10 @@
       "type": "sprite",
       "name": "mouth",
       "bone": "mouth_pos",
+      "position": [
+        -20.0,
+        0.0
+      ],
       "hframes": 4,
       "vframes": 1,
       "frame": 2,

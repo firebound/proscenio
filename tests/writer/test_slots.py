@@ -82,6 +82,40 @@ def test_read_slot_default_empty_when_absent() -> None:
     assert slots.read_slot_default(obj) == ""
 
 
+def _follow_con(bone: str, name: str = "Proscenio Slot Follow") -> SimpleNamespace:
+    return SimpleNamespace(name=name, type="CHILD_OF", subtarget=bone)
+
+
+def test_build_slots_bone_resolves_constraint_first() -> None:
+    # Spec 080 D5: the Proscenio Child Of IS the binding - it wins over both
+    # the legacy slot_bone field and a raw bone parent.
+    slot_empty = _slot_empty(
+        "hand.swap",
+        is_slot=True,
+        bone="stale_parent",
+        children=(_mesh_child("club"),),
+    )
+    slot_empty.constraints = [_follow_con("arm")]
+    slot_empty.proscenio.slot_bone = "stale_field"
+    scene = SimpleNamespace(objects=[slot_empty])
+    out = slots.build_slots_for_scene(scene)
+    assert out[0].bone == "arm"
+
+
+def test_build_slots_bone_falls_back_to_legacy_field_then_parent() -> None:
+    # Pre-080 file: no constraint - the slot_bone field still exports.
+    with_field = _slot_empty("a.swap", is_slot=True, children=(_mesh_child("a"),))
+    with_field.proscenio.slot_bone = "arm"
+    # Older still: only a raw bone parent.
+    with_parent = _slot_empty(
+        "b.swap", is_slot=True, bone="head", children=(_mesh_child("b"),)
+    )
+    scene = SimpleNamespace(objects=[with_field, with_parent])
+    out = slots.build_slots_for_scene(scene)
+    assert out[0].bone == "arm"
+    assert out[1].bone == "head"
+
+
 def test_build_slots_for_scene_collects_mesh_attachments() -> None:
     slot_empty = _slot_empty(
         "brow.swap",

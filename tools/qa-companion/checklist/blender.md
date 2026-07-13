@@ -361,6 +361,34 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/operators/revert_to_plane.py; apps/blender/panels/element.py (Revert to Plane button)
 - note: spec 071 (#167). Operator behavior pinned by the headless revert tests; this is the GUI confirm + destructive-scope + no-placement-guard walk.
 
+### BL-ELEM-BONE-01 · Bind to Bone authors the constraint follow (element)
+- status: pending
+- review: todo
+- pre: A rig picked with a bone whose rest is NOT axis-aligned (e.g. pointing up, like firebound_guy's fire bone); a sprite element placed away from that bone's head. Also a rigid mesh element (no vertex groups) and a skinned mesh (with vertex groups) to test the poll.
+- steps:
+  1. With the sprite active, open Element > Attach to Bone and click Bind to Bone; pick the bone.
+  2. Inspect the object: parenting, constraints, and its on-screen position.
+  3. Pose the bone and scrub; return to rest.
+  4. Click Clear Bone Follow.
+  5. Repeat step 1 on the rigid mesh element, then check the button on the skinned mesh.
+- observe: Bind adds a `Child Of` constraint named 'Proscenio Sprite Follow' (object-parenting untouched, never a raw bone parent) and the element does NOT move on screen - the inverse cancels the bone REST, for any bone orientation. Posing the bone moves the element rigidly with it; back at rest it sits exactly where authored. The panel shows "follows bone '<name>' (Proscenio constraint)" with a Clear Bone Follow button. Clear removes the constraint keeping the position. The rigid mesh binds the same way; on the skinned mesh the Bind button is unavailable (it binds via weights). Binding on a posed bone warns and snaps the element to its rest-relative spot (what Godot reproduces).
+- intent: Element binding is constraint-first (spec 080 D4) - one mental model with Bind Slot to Bone; the inverse always cancels the REST (D7) so Blender and the Godot import agree; rigid meshes share the flow and skinned meshes are excluded.
+- code: apps/blender/operators/sprite/bone_parent.py <- core/bpy_helpers/_shared/bone_follow.py; apps/blender/panels/_draw_bone_attach.py
+- note: spec 080. The old 'bone in the picture plane rotates the sprite - use a slot' caveat is retired (the exported rest transform fixed the render); confirm the panel no longer shows it.
+
+### BL-ELEM-BONE-02 · Raw bone parent converts to the constraint in place
+- status: pending
+- review: todo
+- pre: A sprite element hand-parented to a bone via Ctrl+P > Bone (Keep Transform) - the power-user fallback.
+- steps:
+  1. With the sprite active, open Element > Attach to Bone.
+  2. Click Convert to Constraint.
+  3. Export and diff the element's bone binding before/after (optional).
+- observe: The panel shows "follows bone '<name>' (raw bone parent)" with Convert to Constraint and Clear Bone Follow buttons. Convert drops the raw parent and adds the Proscenio constraint on the SAME bone without moving the element on screen. The export resolves the same bone either way (constraint wins when both exist - which the validator flags as double-driven).
+- intent: The raw bone parent stays a supported fallback and the one-click Convert migrates it to the constraint-first model keeping bone + position (spec 080 R3).
+- code: apps/blender/operators/sprite/bone_parent.py PROSCENIO_OT_convert_element_follow; apps/blender/core/validation/checks/bone_follow.py (double-drive + stale-follow warnings surface in Pipeline > Validate)
+- note: spec 080. Validate also warns on a stale follow (rig rest edited after bind) pointing at re-Bind.
+
 ### BL-ELEM-MESH-SWEEP · Active Mesh subpanel inventory (visual pass)
 - status: pass
 - review: keep
@@ -620,12 +648,13 @@ Each block answers three questions in plain language: what passing it proves (`i
 - code: apps/blender/panels/slots.py:96-99
 
 ### BL-SLOTS-ACTIVE-02 · Warning row when the slot has no parent bone
-- status: pass
-- review: keep
+- status: pending
+- review: todo
 - pre: A slot Empty active.
-- observe: A red alert row, 'no parent bone - attachments will not follow any bone', appears only when the active slot is unparented; it is absent when the slot is bone-parented.
-- intent: An unparented slot is flagged so you know its attachments will not follow any bone.
-- code: apps/blender/panels/slots.py:122-128
+- observe: A red alert row, 'no bone - attachments will not follow any bone', appears only when the active slot follows nothing at all; it is absent when the slot follows via the constraint or a bone parent. A pre-080 slot carrying only the legacy `slot_bone` field shows a distinct legacy row ('legacy slot_bone field - Bind to Bone to adopt the constraint') - the field still exports but nothing follows in the viewport until Bind adopts it.
+- intent: An unbound slot is flagged so you know its attachments will not follow any bone; a legacy inert field gets its own adopt-the-constraint hint (spec 080 D5 retired the field as authority).
+- code: apps/blender/panels/slots.py _draw_follow_state
+- note: spec 080 re-walk: the `field_inert` shape is gone from the core vocabulary; the panel derives the legacy hint from the resolved bone + shape none.
 
 ### BL-SLOTS-ACTIVE-03 · Error row when the slot has no children
 - status: pending

@@ -29,7 +29,9 @@ A subcaixa **Material Preview** hospeda `Setup Preview` / `Remove Preview`. `Set
 
 ## Attach to Bone
 
-Mostrado para um elemento sprite. Parenteia rigidamente o sprite a um único osso - a maneira não-slot de fazer um sprite seguir um osso, sem troca. `Parent To Bone` preenche antecipadamente o osso de pose ativo quando há um atual, senão passa por um diálogo de escolha; `Clear Bone Parent` o desanexa. Exporta como um `Sprite2D` parentado a esse `Bone2D`. Um osso deitado no plano da imagem gira o sprite rígido para fora do plano da câmera - o painel avisa e o aponta para um [slot](03-slots.md) para um seguimento plano em qualquer osso.
+Mostrado para um elemento rígido - um sprite, ou uma malha sem grupos de vértices (uma malha com skin vincula pelos pesos). Faz o elemento seguir rigidamente um único osso - a maneira não-slot, sem troca. `Bind to Bone` funciona exatamente como o Bind do slot: mantém o parenteamento por objeto e adiciona uma restrição `Child Of` cuja inversa cancela o descanso do osso, então o elemento fica onde você o autorou e só a pose do osso o move - para qualquer orientação de osso. O botão preenche antecipadamente o osso de pose ativo quando há um atual, senão passa por um diálogo de escolha; `Clear Bone Follow` o desanexa no lugar.
+
+Parentear ao osso à mão (`Ctrl+P > Bone`, com Manter Transformação) ainda exporta e é suportado como alternativa avançada; o painel o mostra como parenteamento de osso cru e oferece um `Convert to Constraint` de um clique. De qualquer forma o elemento exporta com sua posição, rotação e escala de descanso autoradas, e importa como um `Sprite2D` (ou `Polygon2D`) sob aquele `Bone2D` renderizando exatamente onde foi autorado.
 
 ## Região de Textura
 

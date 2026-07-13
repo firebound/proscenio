@@ -29,7 +29,9 @@ The **Material Preview** sub-box hosts `Setup Preview` / `Remove Preview`. `Setu
 
 ## Attach to Bone
 
-Shown for a sprite element. Rigidly parents the sprite to a single bone - the non-slot way to make a sprite follow one bone, with no swap. `Parent To Bone` prefills the active pose bone when one is current, otherwise it routes through a picker dialog; `Clear Bone Parent` detaches it. It exports as a `Sprite2D` parented to that `Bone2D`. A bone lying in the picture plane rotates the rigid sprite out of the camera plane - the panel warns and points you at a [slot](03-slots.md) for a flat follow on any bone.
+Shown for a rigid element - a sprite, or a mesh with no vertex groups (a skinned mesh binds through its weights instead). Makes the element rigidly follow a single bone - the non-slot way, with no swap. `Bind to Bone` works exactly like the slot's Bind: it keeps the object-parent and adds a `Child Of` constraint whose inverse cancels the bone rest, so the element stays where you authored it and only the bone's pose moves it - for any bone orientation. The button prefills the active pose bone when one is current, otherwise it routes through a picker dialog; `Clear Bone Follow` detaches it in place.
+
+Hand bone-parenting (`Ctrl+P > Bone`, with Keep Transform) still exports and is supported as a power-user fallback; the panel shows it as a raw bone parent and offers a one-click `Convert to Constraint`. Either way the element exports with its authored rest position, rotation, and scale, and imports as a `Sprite2D` (or `Polygon2D`) under that `Bone2D` rendering exactly where it was authored.
 
 ## Texture Region
 

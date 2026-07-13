@@ -110,7 +110,7 @@ Use um slot quando um ponto de fixação alterna entre N variantes discretas: es
 
 2. *Escolha a variante padrão*: no subpainel **Slot ativo**, escolha qual anexo fica visível no carregamento da cena (o ícone SOLO).
 
-3. *Anime a troca*: insira quadros-chave em `proscenio_slot_index` no slot para alternar os anexos ao longo do tempo. → Na importação, o Godot expande aquela única trilha em trilhas de visibilidade por anexo.
+3. *Anime a troca*: deixe a animação ativa, vá até um quadro e clique em `Show Only` numa linha de anexo no subpainel **Slot Ativo** para fixar aquele anexo visível (irmãos ocultos), ou `(none) / Hide All` para nenhum anexo. → A troca é pré-visualizada ao vivo na viewport, cada animação mantém sua própria timeline de troca, e o Godot dirige a mesma visibilidade por anexo em runtime.
 
 Consulte [`examples/generated/slot_cycle/`](../../../examples/generated/slot_cycle/) para o fixture mínimo de slot.
 

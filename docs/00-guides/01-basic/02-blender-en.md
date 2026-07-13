@@ -110,7 +110,7 @@ Use a slot when an attachment point toggles between N discrete variants: sword /
 
 2. *Pick the default variant*: in the **Active Slot** subpanel, choose which attachment is visible at scene load (the SOLO icon).
 
-3. *Animate the swap*: keyframe `proscenio_slot_index` on the slot to flip attachments over time. → At import, Godot expands that single track into per-attachment visibility tracks.
+3. *Animate the swap*: make the animation active, scrub to a frame, and click `Show Only` on an attachment row in the **Active Slot** subpanel to key that attachment visible (siblings hidden), or `(none) / Hide All` for no attachment. → The swap previews live in the viewport, each animation keeps its own swap timeline, and Godot drives the same per-attachment visibility at runtime.
 
 See [`examples/generated/slot_cycle/`](../../../examples/generated/slot_cycle/) for the minimal slot fixture.
 

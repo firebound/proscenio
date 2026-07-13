@@ -53,10 +53,9 @@ static func element_local_transform(
 	var parent_2d := parent as Node2D
 	if parent_2d == null:
 		return rest
-	var parent_in_skeleton := (
-		skeleton.global_transform.affine_inverse() * parent_2d.global_transform
-	)
-	return parent_in_skeleton.affine_inverse() * rest
+	# (skeleton^-1 * parent)^-1 * rest simplifies to parent^-1 * skeleton * rest:
+	# one affine_inverse() instead of two, with fewer compounded FP errors.
+	return parent_2d.global_transform.affine_inverse() * skeleton.global_transform * rest
 
 
 static func resolve_sprite_parent(

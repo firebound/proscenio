@@ -1,26 +1,20 @@
-"""Sprite bone-attach helpers.
+"""Element bone-attach helpers.
 
-The non-slot path for pinning a rigid sprite to a single bone: a real
-``parent_type == "BONE"`` parent authored keep-transform (no jump to the bone
-tail), plus the picture-plane check that warns when the chosen bone would
-rotate the sprite out of the camera plane. Mirrors the slot ``bone_follow``
-split - bpy helpers here, operators in ``operators/sprite``.
+The non-slot path for pinning a rigid element to a single bone. Authoring is
+constraint-first via the shared bone-follow core (spec 080); this package
+keeps the element-facing armature resolution plus the picture-plane check.
+Mirrors the slot ``bone_follow`` split - bpy helpers here, operators in
+``operators/sprite``.
 """
 
 from __future__ import annotations
 
 from .bone_attach import (
     bone_in_picture_plane,
-    clear_bone_parent_keep_world,
-    current_bone_parent,
-    parent_to_bone_keep_world,
     resolve_sprite_armature,
 )
 
 __all__ = [
     "bone_in_picture_plane",
-    "clear_bone_parent_keep_world",
-    "current_bone_parent",
-    "parent_to_bone_keep_world",
     "resolve_sprite_armature",
 ]

@@ -94,3 +94,20 @@ static func _build_sprite(
 	)
 	sprite.visible = routing.visible
 	routing.node.add_child(sprite)
+
+	# The document's absolute rest transform (spec 080): converted to
+	# parent-local so the sprite renders where it was authored instead of
+	# inheriting its Bone2D's rest rotation and anchoring at the bone head.
+	# A legacy document carries no `position` and keeps the identity-local
+	# placement it was built against.
+	if sprite_res._set_fields.has("position") and sprite_res.position.size() >= 2:
+		var rest_scale := Vector2.ONE
+		if sprite_res._set_fields.has("scale") and sprite_res.scale.size() >= 2:
+			rest_scale = Vector2(sprite_res.scale[0], sprite_res.scale[1])
+		var rest := Transform2D(
+			sprite_res.rotation,
+			rest_scale,
+			0.0,
+			Vector2(sprite_res.position[0], sprite_res.position[1]),
+		)
+		sprite.transform = SpriteAttachUtil.element_local_transform(skeleton, routing.node, rest)

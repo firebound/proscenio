@@ -84,6 +84,18 @@ export type Name2 = string;
  */
 export type Offset = [number, number];
 /**
+ * Optional absolute rest position of the Sprite2D node, in pixels, in the same skeleton space as bone rest positions and mesh vertices. Consumers convert it to parent-local against whatever the sprite parents under (Bone2D, slot anchor, or skeleton root). Absent means the legacy identity-local placement (the node sits on its parent's origin). Additive at format_version 1.
+ */
+export type Position1 = [number, number] | null;
+/**
+ * Optional absolute rest rotation of the Sprite2D node, radians in skeleton space (CW positive with Y down, the Godot convention). Absent means 0. Additive at format_version 1.
+ */
+export type Rotation1 = number | null;
+/**
+ * Optional absolute rest scale of the Sprite2D node, magnitudes only - mirrors travel as flip_h / flip_v so the reflection is never double-counted. Absent means [1, 1]. Additive at format_version 1.
+ */
+export type Scale1 = [number, number] | null;
+/**
  * Optional per-element texture filename, resolved relative to the .proscenio document. Mirrors the mesh-element field. Importers fall back to the top-level `atlas` field when absent.
  */
 export type Texture1 = string | null;
@@ -110,9 +122,9 @@ export type PixelsPerUnit = number;
 export type Length1 = number | null;
 export type Name4 = string;
 export type Parent = string | null;
-export type Position1 = [number, number] | null;
-export type Rotation1 = number | null;
-export type Scale1 = [number, number] | null;
+export type Position2 = [number, number] | null;
+export type Rotation2 = number | null;
+export type Scale2 = [number, number] | null;
 export type Bones = Bone3[];
 export type Slots = Slot[] | null;
 export type Attachments = string[];
@@ -197,6 +209,9 @@ export interface SpriteElement {
   modulate?: Modulate1;
   name: Name2;
   offset?: Offset;
+  position?: Position1;
+  rotation?: Rotation1;
+  scale?: Scale1;
   texture?: Texture1;
   texture_region?: TextureRegion1;
   type: Type2;
@@ -210,9 +225,9 @@ export interface Bone3 {
   length?: Length1;
   name: Name4;
   parent?: Parent;
-  position?: Position1;
-  rotation?: Rotation1;
-  scale?: Scale1;
+  position?: Position2;
+  rotation?: Rotation2;
+  scale?: Scale2;
 }
 export interface Slot {
   attachments: Attachments;

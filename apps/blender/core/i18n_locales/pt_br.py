@@ -153,14 +153,7 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Bone name prefix"), "Prefixo do nome do osso"),
     (("*", "Bone radius"), "Raio do osso"),
     (("*", "Bone the slot follows"), "Osso que o slot segue"),
-    (("*", "Bone the sprite rigidly follows"), "Osso que o sprite segue rigidamente"),
-    (
-        (
-            "*",
-            "Bone this slot follows. The Godot importer parents the slot Node2D under that Bone2D so the attachments track the bone (e.g. a weapon following an arm). Bind to Bone sets this and adds a Child Of constraint that keeps the flat attachment quads in the picture plane for any bone orientation. Hand bone-parenting the Empty (Ctrl+P > Bone) also sets the followed bone and exports, but only for bones pointing into the screen - an in-plane bone tilts the quads edge-on. Empty string anchors the slot at the skeleton root.",
-        ),
-        "Osso que este slot segue. O importador do Godot parenteia o Node2D do slot sob aquele Bone2D para que os anexos acompanhem o osso (ex.: uma arma seguindo um braço). Vincular ao osso define isto e adiciona uma restrição Child Of que mantém os quads planos do anexo no plano da imagem para qualquer orientação do osso. Parentear o Vazio ao osso à mão (Ctrl+P > Bone) também define o osso seguido e exporta, mas apenas para ossos apontando para dentro da tela - um osso no plano inclina os quads de lado. String vazia ancora o slot na raiz do esqueleto.",
-    ),
+    (("*", "Bone the element rigidly follows"), "Osso que o elemento segue rigidamente"),
     (
         ("*", "Bone-channel value mapped to the output maximum"),
         "Valor do canal do osso mapeado para o máximo da saída",
@@ -203,7 +196,8 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Centered (Canvas at World Origin)"), "Centralizado (Canvas na origem do mundo)"),
     (("*", "Chain length"), "Comprimento da cadeia"),
     (("*", "Clear"), "Limpar"),
-    (("*", "Clear Bone Parent"), "Limpar parentesco de osso"),
+    (("*", "Clear Bone Follow"), "Limpar vínculo de osso"),
+    (("*", "Convert to Constraint"), "Converter para constraint"),
     (("*", "Clear Debug Companions"), "Limpar companheiros de debug"),
     (("*", "Clear Empty Vertex Groups"), "Limpar grupos de vértices vazios"),
     (
@@ -771,7 +765,6 @@ ROWS: tuple[LocaleRow, ...] = (
     (("*", "Single-nearest"), "Único mais próximo"),
     (("*", "Skeleton"), "Esqueleto"),
     (("*", "Skeleton favorite"), "Favorito do esqueleto"),
-    (("*", "Slot bone"), "Osso do slot"),
     (("*", "Slot default"), "Padrão do slot"),
     (("*", "Slot name"), "Nome do slot"),
     (("*", "Slots"), "Slots"),
@@ -1098,7 +1091,10 @@ ROWS: tuple[LocaleRow, ...] = (
         ),
         "o objeto ativo é um elemento sprite - a autoria de malha é apenas para malhas; isso substituiria seu quad. Para anexar um sprite a um osso, em vez disso parenteie-o com Ctrl+P > Bone",
     ),
-    (("*", "active object is not a sprite element"), "o objeto ativo não é um elemento sprite"),
+    (
+        ("*", "active object is not a rigid element (sprite or unskinned mesh)"),
+        "o objeto ativo não é um elemento rígido (sprite ou malha sem skin)",
+    ),
     (("*", "active object must be a mesh"), "o objeto ativo deve ser uma malha"),
     (("*", "active object must be a mesh element"), "o objeto ativo deve ser um elemento de malha"),
     (
@@ -1179,14 +1175,29 @@ ROWS: tuple[LocaleRow, ...] = (
         "nenhuma armadura - escolha uma Armadura ativa no painel de Esqueleto",
     ),
     (("*", "no armature found for this slot"), "nenhuma armadura encontrada para este slot"),
-    (("*", "no armature found for this sprite"), "nenhuma armadura encontrada para este sprite"),
+    (
+        ("*", "bone parent has no armature parent to bind against"),
+        "o parentesco de osso não tem armadura para vincular",
+    ),
+    (
+        ("*", "element already follows a bone - Clear first, then Bind"),
+        "o elemento já segue um osso - Limpe primeiro, depois Vincule",
+    ),
+    (
+        ("*", "legacy slot_bone field - Bind to Bone to adopt the constraint"),
+        "campo slot_bone legado - Vincular ao osso para adotar a constraint",
+    ),
+    (
+        ("*", "no armature found for this element"),
+        "nenhuma armadura encontrada para este elemento",
+    ),
     (("*", "no armature name supplied"), "nenhum nome de armadura fornecido"),
     (
         ("*", "no armature picked - pick one in the Skeleton panel"),
         "nenhuma armadura escolhida - escolha uma no painel de Esqueleto",
     ),
     (("*", "no armature to follow"), "nenhuma armadura para seguir"),
-    (("*", "no armature to parent to"), "nenhuma armadura para parentear"),
+    (("*", "no armature to bind to"), "nenhuma armadura para vincular"),
     (("*", "no atlas linked in materials"), "nenhum atlas vinculado nos materiais"),
     (
         ("*", "no bone - attachments will not follow any bone"),
@@ -1267,7 +1278,7 @@ ROWS: tuple[LocaleRow, ...] = (
         "opacidade 0 não é totalmente invisível (Blender 145603)",
     ),
     (("*", "pick a bone for the slot to follow"), "escolha um osso para o slot seguir"),
-    (("*", "pick a bone for the sprite to follow"), "escolha um osso para o sprite seguir"),
+    (("*", "pick a bone for the element to follow"), "escolha um osso para o elemento seguir"),
     (("*", "pick a source armature in the panel"), "escolha uma armadura de fonte no painel"),
     (
         ("*", "picked armature no longer exists - pick one again"),
@@ -1305,10 +1316,6 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         ("*", "sidecar/topology mismatch - re-bind to the current mesh topology"),
         "incompatibilidade entre sidecar/topologia - vincule de novo à topologia atual da malha",
-    ),
-    (
-        ("*", "slot_bone set but inert - Bind to Bone to follow in Blender"),
-        "slot_bone definido mas inerte - Vincular ao osso para seguir no Blender",
     ),
     (("*", "snapshot name cannot be empty"), "o nome do instantâneo não pode ficar vazio"),
     (
@@ -1531,9 +1538,9 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         (
             "Operator",
-            "Make the active sprite follow a single bone as a rigid attachment: a bone parent authored keep-transform so the sprite stays put instead of jumping to the bone tail. Exports as a Sprite2D parented to that Bone2D. For a bone in the picture plane the sprite rotates with the bone rest - use a slot for a flat follow",
+            "Make the active element follow a single bone the way a slot does: keeps the object-parent and adds a Child Of constraint whose inverse cancels the bone rest, so the element stays where it was authored and only the bone's pose moves it - for any bone orientation. Hand bone-parenting (Ctrl+P > Bone, keep-transform) also exports, as a power-user fallback",
         ),
-        "Faz o sprite ativo seguir um único osso como um anexo rígido: um parenteamento de osso feito com Manter Transformação para que o sprite fique no lugar em vez de saltar para a cauda do osso. Exporta como um Sprite2D parenteado àquele Bone2D. Para um osso no plano da imagem o sprite gira com o descanso do osso - use um slot para um acompanhamento plano",
+        "Faz o elemento ativo seguir um único osso do jeito que um slot faz: mantém o parenteamento por objeto e adiciona uma restrição Child Of cuja inversa cancela o descanso do osso, então o elemento fica onde foi autorado e só a pose do osso o move - para qualquer orientação de osso. Parentear ao osso à mão (Ctrl+P > Bone, com Manter Transformação) também exporta, como alternativa avançada",
     ),
     (
         ("Operator", "Make this attachment the slot's default visible child at scene load"),
@@ -1615,8 +1622,8 @@ ROWS: tuple[LocaleRow, ...] = (
         "Proscenio: Limpar grupos de vértices vazios",
     ),
     (
-        ("Operator", "Proscenio: Clear Sprite Bone Parent"),
-        "Proscenio: Limpar parenteamento de osso do sprite",
+        ("Operator", "Proscenio: Clear Bone Follow"),
+        "Proscenio: Limpar vínculo de osso",
     ),
     (("Operator", "Proscenio: Color Bone Collection"), "Proscenio: Colorir coleção de ossos"),
     (
@@ -1647,7 +1654,18 @@ ROWS: tuple[LocaleRow, ...] = (
         "Proscenio: Inserir quadro-chave do anexo de slot",
     ),
     (("Operator", "Proscenio: Pack Atlas"), "Proscenio: Empacotar atlas"),
-    (("Operator", "Proscenio: Parent Sprite to Bone"), "Proscenio: Parentear sprite ao osso"),
+    (("Operator", "Proscenio: Bind Element to Bone"), "Proscenio: Vincular elemento ao osso"),
+    (
+        ("Operator", "Proscenio: Convert to Constraint Follow"),
+        "Proscenio: Converter para vínculo por constraint",
+    ),
+    (
+        (
+            "Operator",
+            "Replace this element's raw bone parent with the Proscenio Child Of follow, keeping the same bone and the on-screen position - the one-click migration to the constraint-first binding model",
+        ),
+        "Substitui o parenteamento de osso cru deste elemento pelo vínculo Child Of do Proscenio, mantendo o mesmo osso e a posição na tela - a migração de um clique para o modelo de vínculo por constraint",
+    ),
     (("Operator", "Proscenio: Preview Camera"), "Proscenio: Câmera de prévia"),
     (("Operator", "Proscenio: Quick Armature"), "Proscenio: Armadura Rápida"),
     (("Operator", "Proscenio: Re-export"), "Proscenio: Reexportar"),
@@ -1849,9 +1867,9 @@ ROWS: tuple[LocaleRow, ...] = (
     (
         (
             "Operator",
-            "Stop the active sprite following a bone: drops the bone parent and leaves the sprite unparented at the same position, ready to re-parent or attach to a slot",
+            "Stop the active element following a bone: removes the Proscenio Child Of constraint or a raw bone parent (whichever it uses) and leaves the element at the same position, ready to re-bind or attach to a slot",
         ),
-        "Para o sprite ativo de seguir um osso: descarta o parenteamento de osso e deixa o sprite sem parenteamento na mesma posição, pronto para reparentear ou anexar a um slot",
+        "Para o elemento ativo de seguir um osso: remove a restrição Child Of do Proscenio ou um parenteamento de osso cru (o que estiver em uso) e deixa o elemento na mesma posição, pronto para revincular ou anexar a um slot",
     ),
     (
         (

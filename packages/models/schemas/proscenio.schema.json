@@ -536,6 +536,55 @@
           "title": "Offset",
           "type": "array"
         },
+        "position": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional absolute rest position of the Sprite2D node, in pixels, in the same skeleton space as bone rest positions and mesh vertices. Consumers convert it to parent-local against whatever the sprite parents under (Bone2D, slot anchor, or skeleton root). Absent means the legacy identity-local placement (the node sits on its parent's origin). Additive at format_version 1.",
+          "title": "Position"
+        },
+        "rotation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional absolute rest rotation of the Sprite2D node, radians in skeleton space (CW positive with Y down, the Godot convention). Absent means 0. Additive at format_version 1.",
+          "title": "Rotation"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional absolute rest scale of the Sprite2D node, magnitudes only - mirrors travel as flip_h / flip_v so the reflection is never double-counted. Absent means [1, 1]. Additive at format_version 1.",
+          "title": "Scale"
+        },
         "texture": {
           "anyOf": [
             {

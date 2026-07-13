@@ -25,6 +25,10 @@
       "type": "sprite",
       "name": "eye",
       "bone": "head",
+      "position": [
+        0.0,
+        0.0
+      ],
       "hframes": 4,
       "vframes": 1,
       "frame": 0,

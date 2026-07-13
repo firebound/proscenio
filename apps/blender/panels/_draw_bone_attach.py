@@ -1,26 +1,30 @@
 """Attach-to-Bone body draw (Element subpanel).
 
-Renders the rigid sprite-to-bone attach block: the current bone-parent state,
-the Parent / Clear button, and the picture-plane warning. This is the non-slot
-path - a sprite pinned to a single bone with no swap. Mirrors the slot panel's
-follow-state block but for the active sprite object itself.
+Renders the rigid element-to-bone follow block: the current follow state
+(constraint / raw bone parent / none), the Bind / Convert / Clear buttons.
+This is the non-slot path - an element pinned to a single bone with no swap.
+Mirrors the slot panel's follow-state block but for the active element
+itself. Constraint-first (spec 080): Bind authors the Child Of follow; a raw
+bone parent still exports and offers a one-click Convert.
 """
 
 from __future__ import annotations
 
 import bpy
 
+from ..core._shared.bone_follow_resolve import (  # type: ignore[import-not-found]
+    ELEMENT_FOLLOW_CONSTRAINT,
+    follow_subtarget,
+)
+from ..core.bpy_helpers._shared.bone_follow import follow_shape  # type: ignore[import-not-found]
 from ..core.bpy_helpers.i18n import iface
 from ..core.bpy_helpers.sprite import (  # type: ignore[import-not-found]
-    bone_in_picture_plane,
-    current_bone_parent,
     resolve_sprite_armature,
 )
-from ._helpers import draw_picture_plane_warning
 
 
 def _candidate_bone(context: bpy.types.Context, armature: bpy.types.Object) -> str:
-    """The bone to prefill the Parent button with: the active pose bone, else "".
+    """The bone to prefill the Bind button with: the active pose bone, else "".
 
     Only an active pose bone of the resolved armature qualifies; anything else
     leaves the button generic and routes the choice through the picker dialog.
@@ -39,24 +43,27 @@ def draw_body(
 ) -> None:
     """Attach-to-Bone body block - drawn inside the Attach to Bone subpanel."""
     col = layout.column()
-    bone = current_bone_parent(obj)
+    shape = follow_shape(obj, ELEMENT_FOLLOW_CONSTRAINT)
     armature = resolve_sprite_armature(context, obj)
 
-    if bone:
-        col.label(text=f"parented to bone '{bone}'", icon="BONE_DATA")
+    if shape == "constraint":
+        bone = follow_subtarget(obj, ELEMENT_FOLLOW_CONSTRAINT)
+        col.label(text=f"follows bone '{bone}' (Proscenio constraint)", icon="CONSTRAINT")
+        col.operator("proscenio.clear_sprite_bone_parent", text="Clear Bone Follow", icon="X")
+        return
+
+    if shape == "bone_parent":
+        bone = str(obj.parent_bone)
+        col.label(text=f"follows bone '{bone}' (raw bone parent)", icon="BONE_DATA")
         parent = obj.parent
         if parent is not None:
             col.label(text=f"parent: {parent.name} (bone)", icon="OUTLINER_OB_ARMATURE")
-        col.operator("proscenio.clear_sprite_bone_parent", text="Clear Bone Parent", icon="X")
-        if armature is not None and bone_in_picture_plane(armature, bone):
-            draw_picture_plane_warning(
-                col,
-                bone,
-                [
-                    "the sprite rotates out of the camera plane",
-                    "use a slot instead for a flat follow",
-                ],
-            )
+        col.operator(
+            "proscenio.convert_element_follow",
+            text="Convert to Constraint",
+            icon="CONSTRAINT",
+        )
+        col.operator("proscenio.clear_sprite_bone_parent", text="Clear Bone Follow", icon="X")
         return
 
     if armature is None:
@@ -64,7 +71,7 @@ def draw_body(
         return
 
     candidate = _candidate_bone(context, armature)
-    text = f"Parent To Bone ({candidate})" if candidate else "Parent To Bone"
+    text = f"Bind to Bone ({candidate})" if candidate else "Bind to Bone"
     op = col.operator("proscenio.parent_sprite_to_bone", text=text, icon="BONE_DATA")
     op.bone_name = candidate
     col.label(text=iface("rigid follow of one bone - no slot, no swap"), icon="INFO")

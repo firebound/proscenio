@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from .._shared.action_fcurves import action_fcurves, object_action_fcurves
+from .._shared.bone_follow_resolve import SLOT_FOLLOW_CONSTRAINT, follow_subtarget
 from .._shared.cp_keys import PROSCENIO_SLOT_BONE, PROSCENIO_SLOT_DEFAULT
 from .._shared.pg_cp_fallback import read_field
 from ..slot.slot_emit import is_slot_empty
@@ -63,16 +64,18 @@ def _check_slot_default(obj: object, children: list[object], obj_name: str) -> l
 def slot_parent_bone(obj: object) -> str:
     """The bone ``obj`` follows, or "" when it follows none.
 
-    Reads the ``slot_bone`` field first (the object-parent + Child Of
-    convention), then a real ``parent_type == "BONE"`` parent - the same
-    order the writer emits (``writer/slots.py``), so the Active Slot panel,
-    the slot validators, and the export never disagree about the followed
-    bone. A leftover ``parent_bone`` on an OBJECT-parented slot with no
-    field is not a live follow.
+    Constraint-first (spec 080 D5: the Proscenio Child Of IS the binding),
+    then the legacy ``slot_bone`` field for pre-080 files, then a real
+    ``parent_type == "BONE"`` parent - the same order the writer emits
+    (``writer/slots.py``), so the Active Slot panel, the slot validators,
+    and the export never disagree about the followed bone.
 
     Shared by the validators and the panel so the "no parent bone" notion
     has a single definition.
     """
+    constraint_bone = follow_subtarget(obj, SLOT_FOLLOW_CONSTRAINT)
+    if constraint_bone:
+        return constraint_bone
     slot_bone = str(read_field(obj, cp_key=PROSCENIO_SLOT_BONE, default=""))
     if slot_bone:
         return slot_bone

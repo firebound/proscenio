@@ -35,6 +35,29 @@ static func resolve_sprite_texture(
 	return fallback_atlas
 
 
+static func element_local_transform(
+	skeleton: Skeleton2D,
+	parent: Node,
+	rest: Transform2D,
+) -> Transform2D:
+	# Convert an element's absolute (skeleton-space) rest transform into the
+	# local transform under `parent`, cancelling the parent's own skeleton-space
+	# rest: local = parent_in_skeleton^-1 * rest. The bones carry no pose at
+	# build time, so global_transform IS the rest chain - the same
+	# live-rest-globals technique slot_builder.gd uses for the anchor cancel.
+	# Under the skeleton root or a slot anchor (whose transform already cancels
+	# its bone) the parent term is identity and `rest` passes through; under a
+	# Bone2D it cancels the bone's cumulative rest so the element renders where
+	# it was authored and only the pose delta moves it. A non-Node2D parent
+	# (defensive) contributes identity.
+	var parent_2d := parent as Node2D
+	if parent_2d == null:
+		return rest
+	# (skeleton^-1 * parent)^-1 * rest simplifies to parent^-1 * skeleton * rest:
+	# one affine_inverse() instead of two, with fewer compounded FP errors.
+	return parent_2d.global_transform.affine_inverse() * skeleton.global_transform * rest
+
+
 static func resolve_sprite_parent(
 	skeleton: Skeleton2D,
 	sanitized_name: String,

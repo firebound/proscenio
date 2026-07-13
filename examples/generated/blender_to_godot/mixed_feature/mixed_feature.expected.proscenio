@@ -182,6 +182,10 @@
       "type": "sprite",
       "name": "face_glow",
       "bone": "",
+      "position": [
+        0.0,
+        -55.000001
+      ],
       "hframes": 1,
       "vframes": 1,
       "frame": 0,
@@ -246,6 +250,10 @@
       "type": "sprite",
       "name": "mouth",
       "bone": "mouth_anchor",
+      "position": [
+        0.0,
+        -46.000001
+      ],
       "hframes": 2,
       "vframes": 2,
       "frame": 2,

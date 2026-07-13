@@ -263,14 +263,6 @@ def _set_slot_default(self: ProscenioObjectProps, value: str) -> None:
     _idprop_set(self, cp_keys.PROSCENIO_SLOT_DEFAULT, str(value))
 
 
-def _get_slot_bone(self: ProscenioObjectProps) -> str:
-    return str(_idprop_get(self, cp_keys.PROSCENIO_SLOT_BONE, ""))
-
-
-def _set_slot_bone(self: ProscenioObjectProps, value: str) -> None:
-    _idprop_set(self, cp_keys.PROSCENIO_SLOT_BONE, str(value))
-
-
 def _idprop_get(self: ProscenioObjectProps, key: str, default: object) -> object:
     obj = self.id_data
     if obj is None:
@@ -531,19 +523,7 @@ class ProscenioObjectProps(PropertyGroup):
         get=_get_slot_default,
         set=_set_slot_default,
     )
-    slot_bone: StringProperty(  # type: ignore[valid-type]
-        name="Slot bone",
-        description=(
-            "Bone this slot follows. The Godot importer parents the slot Node2D "
-            "under that Bone2D so the attachments track the bone (e.g. a weapon "
-            "following an arm). Bind to Bone sets this and adds a Child Of "
-            "constraint that keeps the flat attachment quads in the picture "
-            "plane for any bone orientation. Hand bone-parenting the Empty "
-            "(Ctrl+P > Bone) also sets the followed bone and exports, but only "
-            "for bones pointing into the screen - an in-plane bone tilts the "
-            "quads edge-on. Empty string anchors the slot at the skeleton root."
-        ),
-        default="",
-        get=_get_slot_bone,
-        set=_set_slot_bone,
-    )
+    # `slot_bone` retired (spec 080 D5): the Proscenio Child Of constraint is
+    # the binding's single source of truth - the writer and the panel read its
+    # subtarget directly, with the legacy `proscenio_slot_bone` idprop kept as
+    # a read-fallback for pre-080 files only.

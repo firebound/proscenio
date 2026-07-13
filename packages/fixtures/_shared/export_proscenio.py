@@ -25,6 +25,30 @@ import bpy
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADDON_PATH = REPO_ROOT / "apps/blender"
 ADDON_PACKAGE = "proscenio"  # matches apps/blender/blender_manifest.toml `id`
+MODELS_SRC = REPO_ROOT / "packages" / "models" / "src"
+
+
+def _prefer_source_models() -> None:
+    """Make the in-repo ``proscenio_models`` win over the installed extension copy.
+
+    Same shim as run_tests.py: the auto-enabled extension bundles a
+    version-keyed ``proscenio_models`` wheel that Blender never re-unpacks on
+    a same-version field change, and it is already imported at enable. Without
+    this, a golden regenerated right after a model change silently drops the
+    new fields.
+    """
+    if not MODELS_SRC.is_dir():
+        print(
+            f"[export_proscenio] WARN: models source not at {MODELS_SRC}; "
+            "using the installed copy",
+            file=sys.stderr,
+        )
+        return
+    sys.path.insert(0, str(MODELS_SRC))
+    for name in [
+        m for m in sys.modules if m == "proscenio_models" or m.startswith("proscenio_models.")
+    ]:
+        del sys.modules[name]
 
 
 def _load_addon_as_package() -> None:
@@ -64,6 +88,7 @@ def main() -> None:
     blend_path = Path(blend)
     out_path = blend_path.parent / f"{blend_path.stem}.expected.proscenio"
 
+    _prefer_source_models()
     _load_addon_as_package()
     from proscenio.exporters.godot import writer  # type: ignore[import-not-found]
 

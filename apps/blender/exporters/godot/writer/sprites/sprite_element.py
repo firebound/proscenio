@@ -10,7 +10,7 @@ from proscenio_models import SpriteElement
 
 from .....core._shared import region as region_core
 from .....core._shared.pg_cp_fallback import read_field
-from ..skeleton import world_to_godot_xy
+from .....core.godot_export_math import rotate_vec2, sprite_rest_transform, world_to_godot_xy
 from ._common import _derive_modulate, _derive_z_index, resolve_sprite_bone
 
 
@@ -21,6 +21,9 @@ class _SpriteFrameKwargs(TypedDict):
     type: Literal["sprite"]
     name: str
     bone: str
+    position: list[float]
+    rotation: NotRequired[float]
+    scale: NotRequired[list[float]]
     hframes: int
     vframes: int
     frame: int
@@ -49,14 +52,18 @@ def _derive_flips(obj: bpy.types.Object) -> tuple[bool | None, bool | None]:
 def _compute_sprite_offset(obj: bpy.types.Object, ppu: float) -> list[float] | None:
     """Sprite2D pixel offset from the object origin to its quad centre.
 
-    A rigid sprite renders centred on its node origin (the bone attach
-    point); when the authored pivot sits away from the quad centre the
-    texture must shift by that gap or it lands in the wrong place. Projects
-    the local mesh-bounds centre and the origin through the same Godot screen
-    mapping the mesh path uses, then returns their difference. None when
-    origin and centre coincide (no authored pivot) or the object carries no
-    geometry. Reads ``mesh.vertices`` rather than ``bound_box`` so the bounds
-    are current without a depsgraph refresh.
+    A rigid sprite renders centred on its node origin; when the authored
+    pivot sits away from the quad centre the texture must shift by that gap
+    or it lands in the wrong place. ``Sprite2D.offset`` applies BEFORE the
+    node transform, and the node now carries the authored rest
+    rotation/scale (spec 080) - so the world-projected gap is pulled back
+    into the node's local frame (rotate by -rest rotation, divide by the
+    rest scale) or the transform would apply to it twice. For the untouched
+    common case (no authored rotation, unit scale) the value is exactly the
+    old world measure. None when origin and centre coincide (no authored
+    pivot) or the object carries no geometry. Reads ``mesh.vertices`` rather
+    than ``bound_box`` so the bounds are current without a depsgraph
+    refresh.
     """
     mesh = getattr(obj, "data", None)
     vertices = getattr(mesh, "vertices", None)
@@ -84,11 +91,43 @@ def _compute_sprite_offset(obj: bpy.types.Object, ppu: float) -> list[float] | N
     matrix_world = obj.matrix_world
     center_godot = world_to_godot_xy(matrix_world @ local_center, ppu)
     origin_godot = world_to_godot_xy(matrix_world.translation, ppu)
-    offset = [
-        round(center_godot.x - origin_godot.x, 6),
-        round(center_godot.y - origin_godot.y, 6),
-    ]
+    gap_x = center_godot.x - origin_godot.x
+    gap_y = center_godot.y - origin_godot.y
+    # Pull the screen gap back into the node's local frame: undo the rest
+    # rotation, then the rest scale (guarded against a degenerate axis).
+    _, rest_rotation, rest_scale = sprite_rest_transform(matrix_world, sign_x, ppu)
+    local_x, local_y = rotate_vec2(gap_x, gap_y, -rest_rotation)
+    scale_x = rest_scale[0] if abs(rest_scale[0]) > 1e-9 else 1.0
+    scale_y = rest_scale[1] if abs(rest_scale[1]) > 1e-9 else 1.0
+    offset = [round(local_x / scale_x, 6), round(local_y / scale_y, 6)]
     return None if offset == [0.0, 0.0] else offset
+
+
+def _derive_rest_transform(
+    obj: bpy.types.Object, ppu: float
+) -> tuple[list[float], float | None, list[float] | None]:
+    """The sprite's absolute Godot rest transform: (position, rotation, scale).
+
+    Position is always returned (it is the placement the document previously
+    dropped - the whole spec 080 fix); rotation and scale come back None at
+    identity so the writer omits them, matching the modulate / z_index
+    omission pattern. The sign of the local X scale is passed through so an
+    authored horizontal mirror (exported as ``flip_h``) never reads as a
+    180-degree rotation.
+    """
+    sign_x = 1.0 if obj.scale.x >= 0 else -1.0
+    position, rotation, scale = sprite_rest_transform(obj.matrix_world, sign_x, ppu)
+    # `+ 0.0` folds a rounded -0.0 into 0.0 so the JSON never carries the sign.
+    position_out = [round(position[0], 6) + 0.0, round(position[1], 6) + 0.0]
+    # Truthiness, not float equality: a rotation that rounds to +/-0.0 is falsy,
+    # the same `or None` idiom _derive_z_index uses for its net-zero order.
+    rotation_out = round(rotation, 6) or None
+    scale_out = [round(scale[0], 6), round(scale[1], 6)]
+    return (
+        position_out,
+        rotation_out,
+        scale_out if scale_out != [1.0, 1.0] else None,
+    )
 
 
 def build_sprite(obj: bpy.types.Object, ppu: float) -> SpriteElement:
@@ -101,15 +140,21 @@ def build_sprite(obj: bpy.types.Object, ppu: float) -> SpriteElement:
             f"and vframes >= 1 (got hframes={hframes}, vframes={vframes})."
         )
 
+    position, rotation, scale = _derive_rest_transform(obj, ppu)
     sf_kwargs: _SpriteFrameKwargs = {
         "type": "sprite",
         "name": obj.name,
         "bone": resolve_sprite_bone(obj),
+        "position": position,
         "hframes": hframes,
         "vframes": vframes,
         "frame": int(read_field(obj, cp_key="proscenio_frame", default=0)),
         "centered": bool(read_field(obj, cp_key="proscenio_centered", default=True)),
     }
+    if rotation is not None:
+        sf_kwargs["rotation"] = rotation
+    if scale is not None:
+        sf_kwargs["scale"] = scale
     manual_region = region_core.manual_region_or_none(obj)
     if manual_region is not None:
         sf_kwargs["texture_region"] = manual_region

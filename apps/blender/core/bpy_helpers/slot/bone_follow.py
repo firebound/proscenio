@@ -1,11 +1,16 @@
 """Slot bone-follow: the Blender twin of the Godot importer's slot anchor.
 
-bpy-bound (manipulates ``Object.constraints`` + reads pose matrices), so this
-module imports bpy at top per the bpy_helpers contract. The convention it
-authors - object-parent + a Child Of constraint whose inverse cancels the
-bone rest - keeps slot attachment quads flat in the picture plane while the
-slot rides only the bone's pose delta, mirroring slot_builder.gd's
-``get_skeleton_rest().affine_inverse()`` cancel in Godot.
+Thin slot-facing wrapper over the shared bone-follow core (spec 080 D6):
+object-parent + a Child Of constraint whose inverse cancels the bone REST,
+keeping slot attachment quads flat in the picture plane while the slot rides
+only the bone's pose delta - mirroring slot_builder.gd's
+``affine_inverse()`` cancel in Godot.
+
+The constraint IS the binding (D5): the writer reads its ``subtarget``
+directly, so there is no ``slot_bone`` field to keep in sync and no
+"field set but nothing follows" state to represent. Bind and unbind still
+clear a legacy ``proscenio_slot_bone`` Custom Property when one is present
+so pre-080 files converge on the single source as they are touched.
 """
 
 from __future__ import annotations
@@ -13,11 +18,23 @@ from __future__ import annotations
 import bpy
 
 from ..._shared.armature_resolve import resolve_target_armature
+from ..._shared.bone_follow_resolve import SLOT_FOLLOW_CONSTRAINT
 from ..._shared.cp_keys import PROSCENIO_SLOT_BONE
-from ..._shared.pg_cp_fallback import read_field
+from .._shared.bone_follow import (
+    bind_to_bone_rest,
+    follow_shape,
+    unbind_keep_world,
+)
 from .._shared.bone_orientation import bone_in_picture_plane
 
-SLOT_FOLLOW_CONSTRAINT = "Proscenio Slot Follow"
+__all__ = [
+    "SLOT_FOLLOW_CONSTRAINT",
+    "bind_slot_to_bone",
+    "bone_parent_collapses",
+    "resolve_slot_armature",
+    "slot_follow_shape",
+    "unbind_slot_from_bone",
+]
 
 
 def resolve_slot_armature(
@@ -32,35 +49,10 @@ def resolve_slot_armature(
     return resolve_target_armature(context, empty)
 
 
-def _follow_constraint(empty: bpy.types.Object) -> bpy.types.Constraint | None:
-    """The single named follow constraint we own on ``empty``, or None."""
-    con = empty.constraints.get(SLOT_FOLLOW_CONSTRAINT)
-    return con if con is not None and con.type == "CHILD_OF" else None
-
-
 def slot_follow_shape(empty: bpy.types.Object) -> str:
-    """How the slot currently follows a bone: the live authoring shape.
-
-    - ``"constraint"`` - the Proscenio object-parent + Child Of follow (the safe
-      route, flat for any bone orientation).
-    - ``"bone_parent"`` - a hand-authored real bone parent (``parent_type ==
-      "BONE"``). Exports fine, but collapses the attachment quads when the bone
-      lies in the picture plane (see :func:`bone_parent_collapses`).
-    - ``"field_inert"`` - a ``slot_bone`` field is set but nothing drives the
-      Empty in Blender (object-parented, no constraint): exports, yet the
-      authoring view does not follow. Bind to Bone wires the live follow.
-    - ``"none"`` - the slot follows no bone.
-
-    Both ``constraint`` and ``bone_parent`` are first-class exportable shapes;
-    this is the single definition the panel and the bind operator read so they
-    never disagree about which one is live.
-    """
-    if _follow_constraint(empty) is not None:
-        return "constraint"
-    if getattr(empty, "parent_type", "") == "BONE" and getattr(empty, "parent_bone", ""):
-        return "bone_parent"
-    field = str(read_field(empty, cp_key=PROSCENIO_SLOT_BONE, default=""))
-    return "field_inert" if field else "none"
+    """How the slot currently follows a bone: ``constraint`` / ``bone_parent``
+    / ``none`` (the shared shape vocabulary; both follow shapes export)."""
+    return follow_shape(empty, SLOT_FOLLOW_CONSTRAINT)
 
 
 def bone_parent_collapses(empty: bpy.types.Object) -> bool:
@@ -83,78 +75,36 @@ def bone_parent_collapses(empty: bpy.types.Object) -> bool:
     return bone_in_picture_plane(armature, empty.parent_bone)
 
 
-def _drop_legacy_bone_parent(empty: bpy.types.Object) -> None:
-    """Convert a legacy real BONE parent to an object parent, preserving world.
-
-    A slot authored by the old create_slot bone path is ``parent_type ==
-    "BONE"``. Layering a Child Of follow on top of that would double-drive the
-    slot, and unbinding would leave it bone-driven; flip it to the object-parent
-    convention first so the follow (or its removal) is the only bone influence.
-    No-op on a slot already on the convention.
-    """
-    if empty.parent_type != "BONE":
-        return
-    world = empty.matrix_world.copy()
-    empty.parent_type = "OBJECT"
-    empty.parent_bone = ""
-    if empty.parent is not None:
-        empty.matrix_parent_inverse = empty.parent.matrix_world.inverted()
-    empty.matrix_world = world
-
-
-def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_name: str) -> None:
+def bind_slot_to_bone(empty: bpy.types.Object, armature: bpy.types.Object, bone_name: str) -> bool:
     """Wire ``empty`` to follow ``bone_name`` of ``armature`` in Blender.
 
-    Assumes ``empty`` is object-parented or unparented - never a live BONE
-    parent (the bind operator refuses that, routing the user through Unbind
-    first, and ``create_slot`` object-parents before calling here). Any prior
-    Proscenio follow constraint is removed first so a standalone re-call
-    recomputes the inverse at the current pose. Writes ``slot_bone`` dual (PG +
-    Custom Property) so the writer's preferred field carries the follow even on
-    a headless re-open.
+    Delegates to the shared core: drops a legacy real BONE parent keep-world
+    (never double-drive), rebuilds the constraint, and bakes the inverse from
+    the bone REST - not the posed matrix - so Blender and the Godot anchor
+    cancel the same thing (D7). Returns True when the bone is posed at bind
+    time (the caller warns; the Empty snaps to the placement Godot will
+    reproduce). Clears a legacy ``proscenio_slot_bone`` Custom Property so
+    the constraint stays the one source of truth.
 
     Raises ``RuntimeError`` when the armature lacks ``bone_name``.
     """
-    pose_bone = armature.pose.bones.get(bone_name)
-    if pose_bone is None:
-        raise RuntimeError(f"armature '{armature.name}' has no bone '{bone_name}'")
-
-    existing = _follow_constraint(empty)
-    if existing is not None:
-        empty.constraints.remove(existing)
-
-    con = empty.constraints.new(type="CHILD_OF")
-    con.name = SLOT_FOLLOW_CONSTRAINT
-    con.target = armature
-    con.subtarget = bone_name
-    # Headless Set-Inverse: cancel the full bone rest (location + rotation +
-    # scale) so only the pose delta moves the slot - the affine_inverse() cancel
-    # slot_builder.gd applies in Godot.
-    con.inverse_matrix = (armature.matrix_world @ pose_bone.matrix).inverted()
-
-    _write_slot_bone(empty, bone_name)
+    posed = bind_to_bone_rest(empty, armature, bone_name, SLOT_FOLLOW_CONSTRAINT)
+    _clear_legacy_slot_bone_field(empty)
+    return posed
 
 
 def unbind_slot_from_bone(empty: bpy.types.Object) -> None:
-    """Reverse :func:`bind_slot_to_bone`: drop the constraint + clear slot_bone.
+    """Reverse :func:`bind_slot_to_bone`: drop whichever follow shape is live.
 
-    Leaves the Empty object-parented and inert (the pre-bind state). A legacy
-    real BONE parent is dropped too, so a slot from the old convention does not
-    stay bone-driven after unbind.
+    Keeps the on-screen position, leaves the Empty object-parented and inert
+    (the pre-bind state), and clears a legacy ``proscenio_slot_bone`` Custom
+    Property so the writer's read-fallback cannot resurrect the binding.
     """
-    _drop_legacy_bone_parent(empty)
-    existing = _follow_constraint(empty)
-    if existing is not None:
-        empty.constraints.remove(existing)
-    _write_slot_bone(empty, "")
+    unbind_keep_world(empty, SLOT_FOLLOW_CONSTRAINT)
+    _clear_legacy_slot_bone_field(empty)
 
 
-def _write_slot_bone(empty: bpy.types.Object, bone_name: str) -> None:
-    """Write slot_bone PG-first + Custom Property; clear both on empty string."""
-    props = getattr(empty, "proscenio", None)
-    if props is not None:
-        props.slot_bone = bone_name
-    if bone_name:
-        empty[PROSCENIO_SLOT_BONE] = bone_name
-    elif PROSCENIO_SLOT_BONE in empty:
+def _clear_legacy_slot_bone_field(empty: bpy.types.Object) -> None:
+    """Drop the pre-080 ``proscenio_slot_bone`` idprop when present."""
+    if PROSCENIO_SLOT_BONE in empty:
         del empty[PROSCENIO_SLOT_BONE]

@@ -47,6 +47,9 @@ from core.validation.checks.slots import (  # noqa: E402
 from core.validation.checks.sprite_frame_uvs import (  # noqa: E402
     validate_sprite_frame_uvs as _validate_sprite_frame_uvs,
 )
+from core.validation.checks.sprite_orientation import (  # noqa: E402
+    validate_sprite_orientation as _validate_sprite_orientation,
+)
 from core.validation.export import validate_export  # noqa: E402
 from core.validation.issue import Issue  # noqa: E402
 
@@ -527,6 +530,42 @@ def test_bone_follow_missing_bone_warns() -> None:
 def test_bone_follow_ignores_unbound_objects() -> None:
     plain = SimpleNamespace(name="torso", constraints=[], parent_type="OBJECT", parent_bone="")
     assert _validate_bone_follow([plain]) == []
+
+
+# --- sprite orientation (spec 080): a sprite tilted off the picture plane ---
+
+
+def _sprite(name: str, rows: list[list[float]]) -> _Obj:
+    return _Obj(
+        name=name,
+        proscenio=SimpleNamespace(element_type="sprite"),
+        matrix_world=rows,
+    )
+
+
+def test_sprite_orientation_flat_quad_passes() -> None:
+    flat = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    assert _validate_sprite_orientation(_sprite("badge", flat)) == []
+
+
+def test_sprite_orientation_tilted_quad_warns() -> None:
+    import math
+
+    c, s = math.cos(math.radians(45.0)), math.sin(math.radians(45.0))
+    tilted = [[1.0, 0.0, 0.0, 0.0], [0.0, c, -s, 0.0], [0.0, s, c, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    issues = _validate_sprite_orientation(_sprite("badge", tilted))
+    assert _has(issues, "warning", "tilted off the picture plane")
+
+
+def test_sprite_orientation_skips_mesh_elements() -> None:
+    import math
+
+    # A tilted matrix that WOULD warn for a sprite - a mesh element is exempt
+    # (its geometry bakes per-vertex, not through the sprite rest transform).
+    c, s = math.cos(math.radians(45.0)), math.sin(math.radians(45.0))
+    tilted = [[1.0, 0.0, 0.0, 0.0], [0.0, c, -s, 0.0], [0.0, s, c, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    mesh = _Obj(name="body", proscenio=SimpleNamespace(element_type="mesh"), matrix_world=tilted)
+    assert _validate_sprite_orientation(mesh) == []
 
 
 def test_ik_gate_ignores_a_muted_constraint() -> None:

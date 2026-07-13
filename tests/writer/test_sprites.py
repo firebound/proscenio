@@ -331,6 +331,41 @@ def test_rest_transform_scale_covers_both_quad_conventions() -> None:
         assert sprite.rotation is None
 
 
+def test_sprite_off_picture_plane_flat_quads_pass() -> None:
+    from blender.core.godot_export_math import sprite_off_picture_plane
+
+    # Both flat conventions face the camera (normal along the depth axis, which
+    # projects to zero on screen), so neither reads as tilted.
+    xz_authored = _Mat4(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    xy_stood_up = _Mat4(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, -1.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    assert sprite_off_picture_plane(xz_authored) is False
+    assert sprite_off_picture_plane(xy_stood_up) is False
+
+
+def test_sprite_off_picture_plane_ignores_in_plane_rotation() -> None:
+    from blender.core.godot_export_math import sprite_off_picture_plane
+
+    # An in-plane rotation spins about the depth axis - the normal stays aligned
+    # with the camera, so a keep-transform in-plane bone (fire, badge) is fine.
+    assert sprite_off_picture_plane(_rot_y4(math.radians(90.0))) is False
+
+
+def test_sprite_off_picture_plane_flags_a_tilted_quad() -> None:
+    from blender.core.godot_export_math import sprite_off_picture_plane
+
+    # Tilt the quad 45deg about world X: both local Y and Z now project onto
+    # the screen, so the face turns partly edge-on - the snap-parent failure.
+    c, s = math.cos(math.radians(45.0)), math.sin(math.radians(45.0))
+    tilted = _Mat4(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, c, -s, 0.0], [0.0, s, c, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    assert sprite_off_picture_plane(tilted) is True
+
+
 def test_rest_transform_mirror_is_not_a_rotation() -> None:
     # A horizontal mirror (negative local X scale) exports flip_h; the angle
     # read cancels the sign so the sprite does not masquerade as rotated 180.

@@ -15,6 +15,7 @@ from .checks.ik_bake import validate_ik_bake
 from .checks.mesh_flatness import validate_mesh_flatness
 from .checks.slots import validate_slots
 from .checks.sprite_frame_uvs import validate_sprite_frame_uvs
+from .checks.sprite_orientation import validate_sprite_orientation
 from .issue import Issue
 
 
@@ -54,6 +55,7 @@ def validate_export(
         issues.extend(validate_element_against_armature(obj, available_bones))
         issues.extend(validate_mesh_flatness(obj))
         issues.extend(validate_sprite_frame_uvs(obj))
+        issues.extend(validate_sprite_orientation(obj))
 
     issues.extend(validate_driver_rotation_modes(scene_objects))
     issues.extend(validate_bone_follow(scene_objects))

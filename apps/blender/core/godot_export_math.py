@@ -20,6 +20,32 @@ def world_to_godot_xy(p: Vector, ppu: float) -> Vector:
     return Vector((p.x * ppu, -p.z * ppu))
 
 
+def sprite_off_picture_plane(matrix_world: Matrix, tolerance: float = 0.1) -> bool:
+    """True when a sprite quad is tilted off the picture plane (edge-on risk).
+
+    A picture-plane quad has its normal along the camera/depth axis (world Y),
+    so that normal projects to zero on screen while the two quad axes project
+    with full magnitude. ``sprite_rest_transform`` takes local X as horizontal
+    and the longer of local Y / Z as vertical; the remaining (shorter) axis is
+    the presumed normal, which must project to near zero when the quad is flat
+    in the picture plane. When BOTH local Y and Z project appreciably, the
+    normal is not aligned with the depth axis - the quad is tilted (a snap bone
+    parent to an in-plane bone, or a hand-tilted object), and its rest
+    transform would come out foreshortened. Flags exactly that case, and stays
+    quiet for an in-plane rotation (which spins about the depth axis and keeps
+    the normal aligned). Bpy-free; reads the world matrix by index so a
+    list-of-lists test fake and a live ``mathutils.Matrix`` both work.
+    """
+    m = matrix_world
+    y_screen = math.hypot(m[0][1], m[2][1])
+    z_screen = math.hypot(m[0][2], m[2][2])
+    normal_screen = min(y_screen, z_screen)
+    vertical_screen = max(y_screen, z_screen)
+    if vertical_screen < 1e-6:
+        return False  # degenerate; mesh-flatness owns a zero-area quad
+    return normal_screen > tolerance * vertical_screen
+
+
 def sprite_rest_transform(
     matrix_world: Matrix,
     sign_x: float,

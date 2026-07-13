@@ -18,6 +18,7 @@ from .....core.bpy_helpers._shared._bpy_compat import (
     iter_polygons,
     vertex_at,
 )
+from .....core.slot.slot_emit import is_slot_empty
 from ..scene_discovery import image_filename
 from ..skeleton import BoneWorld, rotate_vec2, world_to_godot_xy
 from ._common import _derive_modulate, _derive_z_index, resolve_sprite_bone
@@ -93,19 +94,22 @@ def build_element(
     mesh_world = obj.matrix_world
 
     bone_name = resolve_sprite_bone(obj)
-    # Bake polygon vertices in bone-local space ONLY for a rigid bone-bound
-    # mesh (a Polygon2D child of that Bone2D in Godot) - bound via the
-    # Proscenio follow constraint or a raw bone parent alike, since both
-    # route it under the Bone2D on import. A skinned mesh is a sibling of the
-    # Skeleton2D and Godot's skinning deforms it from skeleton space - baking
-    # it bone-local would pre-rotate it by the bone rest (e.g. a +Z spine
-    # bone rotates the torso 90deg). A bone-bound mesh that ALSO carries
-    # vertex groups exports weights and so imports as a skinned sibling too,
-    # so it must bake absolute as well; with no vertex groups, a non-empty
-    # ``bone_name`` can only come from the constraint or the parent.
-    # Object-parented meshes likewise bake in absolute screen space.
+    # Bake polygon vertices in bone-local space ONLY for a rigid mesh that
+    # actually imports UNDER its Bone2D (a Polygon2D child of it) - bound via
+    # the Proscenio follow constraint or a raw bone parent alike. Three kinds
+    # bake ABSOLUTE instead, because Godot does not parent them to the bone:
+    #   - a skinned mesh (has vertex groups) is a sibling of the Skeleton2D
+    #     and Godot's skinning deforms it from skeleton space; baking it
+    #     bone-local would pre-rotate it by the bone rest (a +Z spine bone
+    #     rotates the torso 90deg);
+    #   - a slot attachment (its parent is a slot Empty) routes under the slot
+    #     Node2D, whose anchor already cancels the bone rest - mesh_builder.gd
+    #     gives slot_map precedence over bone parenting - so a non-empty
+    #     ``bone_name`` on it must NOT trigger a bone-local bake;
+    #   - an object-parented mesh with no bone at all.
     has_vertex_groups = bool(obj.vertex_groups)
-    is_rigid_bone_bound = bool(bone_name) and not has_vertex_groups
+    parent_is_slot = is_slot_empty(getattr(obj, "parent", None))
+    is_rigid_bone_bound = bool(bone_name) and not has_vertex_groups and not parent_is_slot
     bone_world = world_godot.get(bone_name) if is_rigid_bone_bound else None
     uv_layer = mesh.uv_layers.active
 

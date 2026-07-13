@@ -23,28 +23,22 @@ matrix fakes and against live mathutils matrices identically.
 
 from __future__ import annotations
 
-from typing import Protocol, cast
+from collections.abc import Sequence
+from typing import cast
 
 from ..._shared.bone_follow_resolve import (
     ELEMENT_FOLLOW_CONSTRAINT,
     SLOT_FOLLOW_CONSTRAINT,
+    bone_parent_name,
     follow_subtarget,
 )
 from .._shared import name_of
 from ..issue import Issue
 
-
-class _Row(Protocol):
-    """A matrix row readable as ``row[j]``."""
-
-    def __getitem__(self, index: int) -> float: ...
-
-
-class _Indexable(Protocol):
-    """Anything readable as ``m[i][j]`` - a mathutils Matrix or a list fake."""
-
-    def __getitem__(self, index: int) -> _Row: ...
-
+# Anything indexable as ``m[i][j]`` yielding floats - a mathutils Matrix and a
+# list-of-lists test fake both satisfy it, and it carries no explicit Any (the
+# addon's mypy profile bans that) nor an ineffectual ``...`` Protocol body.
+_Matrix4 = Sequence[Sequence[float]]
 
 _FOLLOW_NAMES = (SLOT_FOLLOW_CONSTRAINT, ELEMENT_FOLLOW_CONSTRAINT)
 _IDENTITY_TOLERANCE = 1e-4
@@ -58,7 +52,7 @@ def validate_bone_follow(scene_objects: list[object]) -> list[Issue]:
         if follow is None:
             continue
         obj_name = name_of(obj)
-        parent_bone = _bone_parent_name(obj)
+        parent_bone = bone_parent_name(obj)
         if parent_bone:
             issues.append(
                 Issue(
@@ -85,12 +79,6 @@ def _proscenio_follow(obj: object) -> object | None:
             if getattr(con, "name", "") == constraint_name:
                 return cast("object", con)
     return None
-
-
-def _bone_parent_name(obj: object) -> str:
-    if getattr(obj, "parent_type", "") != "BONE":
-        return ""
-    return str(getattr(obj, "parent_bone", ""))
 
 
 def _check_stale_inverse(con: object, obj_name: str) -> list[Issue]:
@@ -147,7 +135,7 @@ def _data_bone(armature: object, bone_name: str) -> object | None:
     return None
 
 
-def _matmul4(a: _Indexable, b: _Indexable) -> list[list[float]]:
+def _matmul4(a: _Matrix4, b: _Matrix4) -> list[list[float]]:
     """Row-major 4x4 product over anything indexable as ``m[i][j]``."""
     return [
         [sum(float(a[i][k]) * float(b[k][j]) for k in range(4)) for j in range(4)] for i in range(4)

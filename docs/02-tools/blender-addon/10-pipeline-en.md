@@ -46,6 +46,7 @@ Each finding renders as one row with an `error` or `info` icon. A row that names
 - A slot child carries bone-transform keyframes - a slot animates visibility only.
 - An object is double-driven: it carries both a raw bone parent AND a Proscenio follow constraint, so the bone's influence applies twice - `Clear Bone Follow` (or `Unbind`) keeps the position and drops both.
 - A bone follow is stale: the rig's rest changed since the bind, so Blender and the Godot import disagree on the follower's rest position - re-run `Bind to Bone` to recompute it.
+- A sprite is tilted off the picture plane: its quad turns edge-on to the camera (a snap bone parent to an in-plane bone, or a hand-rotated object), so its exported rest transform comes out foreshortened - keep the sprite facing front.
 
 The Element and Active Slot subpanels surface a cheap subset of these checks inline on every redraw (the active object, the active slot), so most problems show before you click `Validate`.
 

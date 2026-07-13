@@ -46,6 +46,7 @@ Cada achado aparece como uma linha com um ícone `error` ou `info`. Uma linha qu
 - Um filho de slot carrega quadros-chave de transformação de osso - um slot anima apenas a visibilidade.
 - Um objeto está duplamente dirigido: carrega um parenteamento de osso cru E uma restrição de seguimento do Proscenio, então a influência do osso aplica duas vezes - `Clear Bone Follow` (ou `Unbind`) mantém a posição e descarta ambos.
 - Um seguimento de osso está obsoleto: o descanso do rig mudou desde o vínculo, então o Blender e a importação do Godot discordam da posição de descanso do seguidor - rode `Bind to Bone` de novo para recalculá-lo.
+- Um sprite está tombado fora do plano da imagem: seu quad fica de lado para a câmera (um parenteamento de osso por snap num osso no plano, ou um objeto girado à mão), então seu transform de descanso exportado sai encurtado - mantenha o sprite virado de frente.
 
 Os subpainéis Elemento e Slot Ativo trazem inline um subconjunto barato dessas verificações a cada redesenho (o objeto ativo, o slot ativo), então a maioria dos problemas aparece antes de você clicar em `Validate`.
 

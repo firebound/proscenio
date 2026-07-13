@@ -18,9 +18,12 @@ local rotation is the world angle minus the parent's world angle.
 UVs are written normalized [0, 1] of the atlas image - engine-agnostic.
 The Godot importer multiplies by atlas size at attach time.
 
-Vertex Y in mesh local space is dropped: sprite planes are assumed to
-be authored as flat quads in Blender XY local then rotated 90 deg on X
-by the user so they live in the XZ world plane.
+Sprite planes live flat in the XZ world plane under either authoring
+convention: PSD-imported planes are built directly in local XZ with an
+identity rotation, a hand-made Blender plane is local XY stood up 90
+deg on X. The sprite rest-transform math projects through the world
+matrix, so both conventions read identically (the screen projection
+zeroes whichever local axis points into the depth).
 
 Module organization:
 

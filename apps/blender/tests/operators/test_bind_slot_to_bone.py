@@ -2,7 +2,8 @@
 
 Runs INSIDE Blender via ``run_operator_tests.py``. Builds a one-bone armature
 + an object-parented slot Empty, then drives bind/unbind through bpy.ops and
-asserts the constraint, the slot_bone field, and the rest/posed follow.
+asserts the constraint (the binding's single source of truth, spec 080 D5)
+and the rest/posed follow.
 """
 
 from __future__ import annotations
@@ -66,7 +67,7 @@ def _activate(obj: bpy.types.Object) -> None:
     bpy.context.view_layer.objects.active = obj
 
 
-def test_bind_adds_named_constraint_and_writes_field(automesh_fixture):
+def test_bind_adds_named_constraint_as_single_source(automesh_fixture):
     arm = _make_rig()
     empty = _make_slot(arm)
     _activate(empty)
@@ -77,9 +78,28 @@ def test_bind_adds_named_constraint_and_writes_field(automesh_fixture):
     con = empty.constraints.get("Proscenio Slot Follow")
     assert con is not None and con.type == "CHILD_OF"
     assert con.target is arm and con.subtarget == "arm"
-    assert empty.proscenio.slot_bone == "arm"
-    assert empty["proscenio_slot_bone"] == "arm"
+    # The constraint IS the binding (D5): no slot_bone field is written.
+    assert "proscenio_slot_bone" not in empty
     assert empty.parent_type == "OBJECT"  # never bone-parented
+
+
+def test_bind_inverse_cancels_rest_even_on_a_posed_bone(automesh_fixture):
+    arm = _make_rig()
+    empty = _make_slot(arm)
+    # Pose the bone BEFORE binding: the inverse must cancel the REST (what the
+    # Godot anchor reproduces), never the posed matrix (D7).
+    arm.pose.bones["arm"].rotation_mode = "XYZ"
+    arm.pose.bones["arm"].rotation_euler = (0.4, 0.0, 0.0)
+    bpy.context.view_layer.update()
+
+    _activate(empty)
+    bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+
+    con = empty.constraints.get("Proscenio Slot Follow")
+    expected = (arm.matrix_world @ arm.data.bones["arm"].matrix_local).inverted()
+    for i in range(4):
+        for j in range(4):
+            assert con.inverse_matrix[i][j] == pytest.approx(expected[i][j], abs=1e-6)
 
 
 def test_bind_keeps_slot_at_rest_then_follows_pose(automesh_fixture):
@@ -125,19 +145,21 @@ def test_unbind_then_bind_rebinds_without_stacking(automesh_fixture):
     bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
     follow = [c for c in empty.constraints if c.name == "Proscenio Slot Follow"]
     assert len(follow) == 1
-    assert empty.proscenio.slot_bone == "arm"
+    assert follow[0].subtarget == "arm"
 
 
-def test_unbind_removes_constraint_and_clears_field(automesh_fixture):
+def test_unbind_removes_constraint_and_clears_legacy_field(automesh_fixture):
     arm = _make_rig()
     empty = _make_slot(arm)
     _activate(empty)
     bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
+    # Simulate a pre-080 file that still carries the legacy field: unbind must
+    # clear it or the writer's read-fallback would resurrect the binding.
+    empty["proscenio_slot_bone"] = "arm"
 
     result = bpy.ops.proscenio.unbind_slot_from_bone()
     assert "FINISHED" in result
     assert empty.constraints.get("Proscenio Slot Follow") is None
-    assert empty.proscenio.slot_bone == ""
     assert "proscenio_slot_bone" not in empty
 
 
@@ -167,8 +189,8 @@ def test_create_slot_pose_bone_uses_follow_not_bone_parent(automesh_fixture):
     # The migrated path object-parents + follows; it never bone-parents.
     assert empty.parent is arm
     assert empty.parent_type == "OBJECT"
-    assert empty.constraints.get("Proscenio Slot Follow") is not None
-    assert empty.proscenio.slot_bone == "arm"
+    con = empty.constraints.get("Proscenio Slot Follow")
+    assert con is not None and con.subtarget == "arm"
     # Anchored at the bone tail (world (0,1,0)).
     bpy.context.view_layer.update()
     tail = empty.matrix_world.translation
@@ -198,8 +220,8 @@ def test_unbind_then_bind_converts_bone_parent(automesh_fixture):
     assert empty.parent_bone == ""
     bpy.ops.proscenio.bind_slot_to_bone(bone_name="arm")
     assert empty.parent_type == "OBJECT"
-    assert empty.constraints.get("Proscenio Slot Follow") is not None
-    assert empty.proscenio.slot_bone == "arm"
+    con = empty.constraints.get("Proscenio Slot Follow")
+    assert con is not None and con.subtarget == "arm"
 
 
 def test_unbind_drops_legacy_bone_parent(automesh_fixture):
@@ -214,7 +236,6 @@ def test_unbind_drops_legacy_bone_parent(automesh_fixture):
     assert empty.parent_type == "OBJECT"
     assert empty.parent_bone == ""
     assert empty.constraints.get("Proscenio Slot Follow") is None
-    assert empty.proscenio.slot_bone == ""
 
 
 def test_slot_follow_shape_reports_each_state(automesh_fixture):
@@ -230,9 +251,12 @@ def test_slot_follow_shape_reports_each_state(automesh_fixture):
     boned = _make_legacy_bone_parented_slot(arm, name="boned")
     assert slot_follow_shape(boned) == "bone_parent"
 
+    # A pre-080 file with only the legacy field: no live follow shape - the
+    # `field_inert` state is gone (D5); the field survives as a writer
+    # read-fallback and the panel derives its own "legacy field" hint.
     inert = _make_slot(arm, name="inert")
-    inert.proscenio.slot_bone = "arm"
-    assert slot_follow_shape(inert) == "field_inert"
+    inert["proscenio_slot_bone"] = "arm"
+    assert slot_follow_shape(inert) == "none"
 
 
 def test_bone_parent_collapses_only_for_in_plane_bone(automesh_fixture):

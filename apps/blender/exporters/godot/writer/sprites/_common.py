@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import bpy
 
+from .....core._shared.bone_follow_resolve import (
+    ELEMENT_FOLLOW_CONSTRAINT,
+    follow_subtarget,
+)
 from .....core._shared.cp_keys import PROSCENIO_Y_DRAW_ORDER
 from .....core._shared.pg_cp_fallback import read_field
 from .....core.bpy_helpers._shared._bpy_compat import (
@@ -39,6 +43,16 @@ def _derive_z_index(obj: bpy.types.Object) -> int | None:
 
 
 def resolve_sprite_bone(obj: bpy.types.Object) -> str:
+    """The bone a rigid element follows: constraint > raw parent > first vgroup.
+
+    Constraint-first (spec 080 D5): the Proscenio Child Of follow is the
+    binding's source of truth; a raw ``parent_type == "BONE"`` parent stays a
+    power-user fallback and the first vertex group keeps naming the attach
+    bone for the skinned convention.
+    """
+    constraint_bone = follow_subtarget(obj, ELEMENT_FOLLOW_CONSTRAINT)
+    if constraint_bone:
+        return constraint_bone
     if obj.parent_type == "BONE" and obj.parent_bone:
         return str(obj.parent_bone)
     if obj.vertex_groups:

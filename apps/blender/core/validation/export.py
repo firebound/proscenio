@@ -7,6 +7,7 @@ from .._shared.cp_keys import DEFAULT_Y_LOCATION_SPACING
 from ._shared import armature_bone_names
 from .active_element import validate_active_element
 from .checks.atlas_files import validate_atlas_files
+from .checks.bone_follow import validate_bone_follow
 from .checks.bone_orientation import validate_bone_orientation
 from .checks.driver_rotation import validate_driver_rotation_modes
 from .checks.element_armature import validate_element_against_armature
@@ -55,6 +56,7 @@ def validate_export(
         issues.extend(validate_sprite_frame_uvs(obj))
 
     issues.extend(validate_driver_rotation_modes(scene_objects))
+    issues.extend(validate_bone_follow(scene_objects))
     issues.extend(validate_slots(scene_objects))
     issues.extend(validate_atlas_files(scene_objects))
 

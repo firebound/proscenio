@@ -116,8 +116,10 @@ def _draw_follow_state(
         col.label(text=f"follows bone '{bone}' (Proscenio constraint)", icon="CONSTRAINT")
     elif shape == "bone_parent":
         col.label(text=f"follows bone '{bone}' (bone parent)", icon="BONE_DATA")
-    elif shape == "field_inert":
-        col.label(text=f"bound to '{bone}' - not following yet", icon="BONE_DATA")
+    elif bone:
+        # Pre-080 file: the legacy slot_bone field still exports (read-fallback)
+        # but nothing follows in the viewport; Bind adopts the constraint.
+        col.label(text=f"legacy field '{bone}' - exports, not following", icon="BONE_DATA")
     else:
         col.label(text=iface("bone: (unparented)"), icon="BONE_DATA")
 
@@ -126,15 +128,16 @@ def _draw_follow_state(
         kind = "bone" if empty.parent_type == "BONE" else "object"
         col.label(text=f"parent: {parent.name} ({kind})", icon="OUTLINER_OB_EMPTY")
 
-    if shape == "none":
+    if shape == "none" and not bone:
         row = col.row()
         row.alert = True
         row.label(text=iface("no bone - attachments will not follow any bone"), icon="ERROR")
-    elif shape == "field_inert":
+    elif shape == "none":
         row = col.row()
         row.alert = True
         row.label(
-            text=iface("slot_bone set but inert - Bind to Bone to follow in Blender"), icon="ERROR"
+            text=iface("legacy slot_bone field - Bind to Bone to adopt the constraint"),
+            icon="ERROR",
         )
     elif shape == "bone_parent" and bone_parent_collapses(empty):
         draw_picture_plane_warning(
@@ -156,7 +159,7 @@ def _draw_follow_button(col: bpy.types.UILayout, shape: str) -> None:
     row = col.row(align=True)
     if shape in {"constraint", "bone_parent"}:
         row.operator("proscenio.unbind_slot_from_bone", text="Unbind from Bone", icon="X")
-    else:  # none / field_inert - wire the live follow
+    else:  # none (including a legacy inert field) - wire the live follow
         row.operator("proscenio.bind_slot_to_bone", text="Bind to Bone", icon="BONE_DATA")
 
 

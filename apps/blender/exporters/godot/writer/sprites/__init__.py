@@ -11,7 +11,12 @@ from __future__ import annotations
 
 from ._common import _derive_modulate, _derive_z_index, resolve_sprite_bone
 from .mesh_element import _build_polygon_topology, _per_sprite_texture, build_element
-from .sprite_element import _compute_sprite_offset, _derive_flips, build_sprite
+from .sprite_element import (
+    _compute_sprite_offset,
+    _derive_flips,
+    _derive_rest_transform,
+    build_sprite,
+)
 from .weights import _resolve_known_groups, _vertex_bone_weights, build_sprite_weights
 
 __all__ = [
@@ -19,6 +24,7 @@ __all__ = [
     "_compute_sprite_offset",
     "_derive_flips",
     "_derive_modulate",
+    "_derive_rest_transform",
     "_derive_z_index",
     "_per_sprite_texture",
     "_resolve_known_groups",

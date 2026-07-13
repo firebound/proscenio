@@ -12,12 +12,47 @@ from __future__ import annotations
 
 import math
 
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 def world_to_godot_xy(p: Vector, ppu: float) -> Vector:
     """Blender world (XZ plane, Y into screen) -> Godot world XY."""
     return Vector((p.x * ppu, -p.z * ppu))
+
+
+def sprite_rest_transform(
+    matrix_world: Matrix,
+    sign_x: float,
+    ppu: float,
+) -> tuple[tuple[float, float], float, tuple[float, float]]:
+    """Absolute Godot rest transform (position px, rotation rad, scale) of a sprite.
+
+    Reads the object's 4x4 world matrix by row/column indexing (works for
+    ``mathutils.Matrix`` and the nested-sequence test stand-in): translation
+    from the fourth column through the XZ->XY screen mapping, the screen
+    rotation as the angle of the local X axis projected on the picture plane,
+    and the scale as the screen-projected lengths of the horizontal and
+    vertical in-plane axes. Sprite quads carry two authoring conventions
+    (PSD-imported planes are flat in local XZ; a hand-made Blender plane is
+    local XY stood up 90 degrees on X), so which local axis is the screen
+    vertical differs per object - but the screen projection zeroes whichever
+    local axis points into the depth (world Y), so the vertical basis is
+    simply the longer of the two projected candidates. ``sign_x`` (the sign
+    of the object's local X scale) cancels an authored horizontal mirror
+    before the angle read so a flipped sprite does not masquerade as a
+    180-degree rotation - mirrors travel as ``flip_h`` / ``flip_v`` flags and
+    the returned scale is magnitudes only.
+    """
+    m = matrix_world
+    position = (m[0][3] * ppu, -m[2][3] * ppu)
+    # Screen projection (x, -z) of the three local basis columns.
+    x_screen = (m[0][0], -m[2][0])
+    y_screen = (m[0][1], -m[2][1])
+    z_screen = (m[0][2], -m[2][2])
+    rotation = math.atan2(x_screen[1] * sign_x, x_screen[0] * sign_x)
+    vertical = max(y_screen, z_screen, key=lambda v: math.hypot(*v))
+    scale = (math.hypot(*x_screen), math.hypot(*vertical))
+    return position, rotation, scale
 
 
 def godot_world_angle_from_dir(dir_blender: Vector) -> float:

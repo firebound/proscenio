@@ -93,19 +93,20 @@ def build_element(
     mesh_world = obj.matrix_world
 
     bone_name = resolve_sprite_bone(obj)
-    # Bake polygon vertices in bone-local space ONLY for a rigid bone-parented
-    # mesh (a Polygon2D child of that Bone2D in Godot). A skinned mesh is a
-    # sibling of the Skeleton2D and Godot's skinning deforms it from skeleton
-    # space - baking it bone-local would pre-rotate it by the bone rest (e.g. a
-    # +Z spine bone rotates the torso 90deg). A bone-parented mesh that ALSO
-    # carries vertex groups exports weights and so imports as a skinned sibling
-    # too, so it must bake absolute as well. Object-parented meshes likewise bake
-    # in absolute screen space.
+    # Bake polygon vertices in bone-local space ONLY for a rigid bone-bound
+    # mesh (a Polygon2D child of that Bone2D in Godot) - bound via the
+    # Proscenio follow constraint or a raw bone parent alike, since both
+    # route it under the Bone2D on import. A skinned mesh is a sibling of the
+    # Skeleton2D and Godot's skinning deforms it from skeleton space - baking
+    # it bone-local would pre-rotate it by the bone rest (e.g. a +Z spine
+    # bone rotates the torso 90deg). A bone-bound mesh that ALSO carries
+    # vertex groups exports weights and so imports as a skinned sibling too,
+    # so it must bake absolute as well; with no vertex groups, a non-empty
+    # ``bone_name`` can only come from the constraint or the parent.
+    # Object-parented meshes likewise bake in absolute screen space.
     has_vertex_groups = bool(obj.vertex_groups)
-    is_rigid_bone_parented = (
-        obj.parent_type == "BONE" and bool(obj.parent_bone) and not has_vertex_groups
-    )
-    bone_world = world_godot.get(bone_name) if is_rigid_bone_parented else None
+    is_rigid_bone_bound = bool(bone_name) and not has_vertex_groups
+    bone_world = world_godot.get(bone_name) if is_rigid_bone_bound else None
     uv_layer = mesh.uv_layers.active
 
     # Whole-mesh emission: every face's vertices, deduplicated, plus per-face

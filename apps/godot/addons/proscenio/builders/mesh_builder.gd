@@ -153,3 +153,8 @@ static func _build_mesh(
 	)
 	poly.visible = routing.visible
 	routing.node.add_child(poly)
+	# No rest-cancel here (unlike sprite_builder.gd): a rigid bone-parented
+	# mesh's vertices are baked BONE-LOCAL by the writer (mesh_element.py
+	# rotates them into the bone frame), so the identity local transform under
+	# the Bone2D composes correctly already. Slot-routed and root-routed rigid
+	# meshes bake absolute and their parents contribute identity.

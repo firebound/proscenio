@@ -12,6 +12,9 @@ class_name ProscenioSpriteElement extends ProscenioElement
 @export var type: String = "sprite"
 @export var name: String = ""
 @export var bone: String = ""
+@export var position: PackedFloat32Array = PackedFloat32Array()
+@export var rotation: float = 0.0
+@export var scale: PackedFloat32Array = PackedFloat32Array()
 @export var hframes: int = 0
 @export var vframes: int = 0
 @export var frame: int = 0
@@ -36,6 +39,15 @@ static func from_dict(data: Dictionary) -> ProscenioSpriteElement:
 	if data.has("bone") and data["bone"] != null:
 		res.bone = String(data["bone"])
 		res._set_fields.append("bone")
+	if data.has("position") and data["position"] != null:
+		res.position = PackedFloat32Array(data["position"])
+		res._set_fields.append("position")
+	if data.has("rotation") and data["rotation"] != null:
+		res.rotation = float(data["rotation"])
+		res._set_fields.append("rotation")
+	if data.has("scale") and data["scale"] != null:
+		res.scale = PackedFloat32Array(data["scale"])
+		res._set_fields.append("scale")
 	if data.has("hframes") and data["hframes"] != null:
 		res.hframes = int(data["hframes"])
 		res._set_fields.append("hframes")

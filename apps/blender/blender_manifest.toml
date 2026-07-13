@@ -30,7 +30,7 @@ copyright = ["2026 Space Wizard Studios"]
 # the bundled addon resolve to the same pydantic build.
 wheels = [
     "./wheels/annotated_types-0.7.0-py3-none-any.whl",
-    "./wheels/proscenio_models-0.1.0-py3-none-any.whl",
+    "./wheels/proscenio_models-0.2.0-py3-none-any.whl",
     "./wheels/pydantic-2.13.4-py3-none-any.whl",
     # pydantic-core is a Rust extension: one wheel per (platform, Python ABI).
     # cp311 covers Blender 4.2 LTS (Python 3.11); cp313 covers Blender 5.x

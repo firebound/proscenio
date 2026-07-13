@@ -192,6 +192,34 @@ class SpriteElement(_Strict):
     )
     name: str = Field(min_length=1)
     bone: str
+    position: Vec2 | None = Field(
+        default=None,
+        description=(
+            "Optional absolute rest position of the Sprite2D node, in pixels, "
+            "in the same skeleton space as bone rest positions and mesh "
+            "vertices. Consumers convert it to parent-local against whatever "
+            "the sprite parents under (Bone2D, slot anchor, or skeleton "
+            "root). Absent means the legacy identity-local placement (the "
+            "node sits on its parent's origin). Additive at format_version 1."
+        ),
+    )
+    rotation: float | None = Field(
+        default=None,
+        description=(
+            "Optional absolute rest rotation of the Sprite2D node, radians in "
+            "skeleton space (CW positive with Y down, the Godot convention). "
+            "Absent means 0. Additive at format_version 1."
+        ),
+    )
+    scale: Vec2 | None = Field(
+        default=None,
+        description=(
+            "Optional absolute rest scale of the Sprite2D node, magnitudes "
+            "only - mirrors travel as flip_h / flip_v so the reflection is "
+            "never double-counted. Absent means [1, 1]. Additive at "
+            "format_version 1."
+        ),
+    )
     hframes: int = Field(ge=1)
     vframes: int = Field(ge=1)
     frame: int = Field(

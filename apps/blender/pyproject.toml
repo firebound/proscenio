@@ -18,7 +18,7 @@ dev = [
     # mathutils / gpu / blf so mypy can resolve the Blender API at the
     # dev-environment boundary. Pinned to a snapshot newer than the
     # Blender LTS the addon targets; bump when a new LTS lands.
-    "fake-bpy-module-latest>=20260501",
+    "fake-bpy-module-latest>=20260727",
     # `proscenio-models` (workspace) + `numpy` are Blender-runtime deps
     # that the addon imports at execution time inside Blender's bundled
     # Python. They are not packaged with the extension build; they live in
